@@ -9,4 +9,10 @@ uv tool update-shell
 
 ´´´bash
 specify init --here
+```
+
+- https://github.github.com/spec-kit/community/presets.html
+
+```bash
+specify preset add --install-allowed --from https://github.com/0xrafasec/spec-kit-preset-claude-ask-questions/archive/refs/tags/v1.0.0.zip
 ´``
