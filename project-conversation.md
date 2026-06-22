@@ -1,12 +1,12 @@
 ---
 dateCreated: 2026-06-21T11:30:00
-dateModified: 2026-06-21T16:45:00
+dateModified: 2026-06-22T10:06:26
+status: seedling
 title: LLM-Wiki AI-Harness — Konzept und Tool-Vergleich
 aliases:
   - LLM-Wiki Harness
   - Wiki-Harness-Konzept
   - AI-Harness für Zettelkasten
-status: seedling
 categories:
   - formate/konzept
   - agentic/agents
@@ -84,14 +84,17 @@ categories:
 | Persona-Konfiguration | ⚠️ Szenario-Templates (Research/Personal Growth/etc.) aber keine freie Persona |
 
 **Lint-Artefakt-Format:**
+
 ```
 ---LINT: contradiction | high | Widersprüchliche Datumsangaben in zwei Notizen---
 ---LINT: orphan | medium | Konzept "Temporal Coupling" erwähnt, Seite fehlt---
 ---LINT: stale | low | Quelle aus 2022 — neuere Version verfügbar?---
 ```
+
 Diese sind einzeln lösbar — exakt das gewünschte Muster.
 
 **Weitere Features:**
+
 - SHA256 inkrementeller Cache → nur geänderte Dateien werden neu ingested
 - Auto-Watch auf `raw/sources/` → Zettelkasten als Watch-Ordner konfigurierbar
 - Lokaler HTTP-API-Server → externe Agenten können zugreifen
@@ -138,15 +141,6 @@ Diese sind einzeln lösbar — exakt das gewünschte Muster.
 
 ---
 
-## Verbindungen
-
-- [[harness-engineering]] — Diese Architektur ist die konkrete Umsetzung des Harness-Konzepts für Wissensmanagement
-- [[sensors-for-coding-agents-boeckeler]] — Lint-Artefakte = Böckelers Sensor-Output: einzeln lösbare Findings statt globale Qualitätsbewertung
-- [[agent-dx-orchestrator-workflow]] — Run-Directory-Pattern als Inspiration für Batch-Artefakt-Verwaltung
-- [[agenten-vollstaendige-transparenz-reflexion]] — Obsidian-Kompatibilität = Transparenz-Bedingung: Agent-Arbeit muss für Menschen lesbar bleiben
-
----
-
 ## Weiterentwicklung: Git-Native, Headless, Server-First
 
 > [!personal]
@@ -177,6 +171,7 @@ docker run -v ./wiki:/wiki wiki-harness
 ```
 
 **Single-Container-Design (KISS):**
+
 ```
 ┌─────────────────────────────────────┐
 │          wiki-harness               │
@@ -288,6 +283,7 @@ docker run -v ./wiki:/wiki wiki-harness
 ```
 
 **Hub-Aufgaben:**
+
 - Agent-Container orchestrieren (Start/Stop/Health)
 - Requests von Channels an den richtigen Agent routen
 - Channel-Routing-Konfiguration verwalten
@@ -318,4 +314,115 @@ cp .env.example .env   # LLM-Key, Zettelkasten-Mount
 docker compose up      # fertig
 ```
 
-#LLMWiki #Harness #Obsidian #Zettelkasten #RAG #SelfHosted #NanoClaw #KISS #Ingest #Query #Lint #Git #GitNative #Headless #Python #FastAPI #WebUI #Container
+---
+
+## Entwicklungsphilosophie — Spec-Driven, ADR-First (Grimoire)
+
+> [!note]
+> Gemini-Konversation, 22. Jun 2026. Bezug: Wie Grimoire entwickelt werden soll — kein BDUF, aber klare Leitplanken von Tag 1 an.
+
+### Kein Big Design Up Front
+
+Eine starre "Constitution" ab Tag 1 erzeugt Reibungsverluste in der Frühphase. Trennung ist entscheidend:
+
+**Strategisches DDD — ab Tag 1 verankert:**
+
+- Ubiquitous Language und initiale Bounded Contexts
+- Falsche Begriffe im Code erzeugen später teure Refactorings
+
+**Taktisches DDD — später:**
+
+- Komplexe Aggregates, strikte Repositories, Domain Events
+- Lohnt sich initial nur in der isolierten Core Domain
+
+### Pragmatisches TDD
+
+Dogmatisches Red-Green-Refactor für jede DTO-Zuweisung bremst den Aufbau.
+
+- **Unit-Tests:** Ausschließlich für komplexe Business-Logik (Entities/Domain Services)
+- **Integrationstests:** Für den Rest — via Testcontainers gegen echte Datenbank entlang API-Grenzen → keine Fragilität durch exzessives Mocking
+
+### Leichtgewichtige Constitution: ADRs im Repo
+
+Keine 50-seitige Wiki. Drei initiale ADRs:
+
+| ADR | Inhalt |
+|---|---|
+| ADR 001 | Architekturstil (z.B. Modularer Monolith) |
+| ADR 002 | Testing-Strategie (Integrationstests für API-Contracts, Unit-Tests für Domain-Logic) |
+| ADR 003 | Umgang mit Abhängigkeiten (Domain Core ist referenzfrei) |
+
+**Durchsetzung in CI/CD:**
+
+> Konventionen, die nicht automatisiert in der CI/CD-Pipeline brechen, existieren praktisch nicht.
+
+- **NetArchTest.Rules** — Architekturvorgaben als automatisierte Tests (z.B. `Types.InNamespace("Domain").ShouldNot().HaveDependencyOn("Infrastructure")`)
+- **Roslyn Analyzer + .editorconfig** — formale Diskussionen aus Pull Requests verbannen
+
+---
+
+### ADRs im Spec-Kit-Workflow (Agentenkontext)
+
+ADRs klinken sich zwischen `/specify` (Was) und `/plan` (Wie) ein. `.specify/memory/constitution.md` ist der permanente System-Prompt für Coding-Agents.
+
+**Regeln in constitution.md:**
+
+- "Before generating a plan.md, you must read all existing ADRs in docs/adr/. The resulting plan must explicitly reference which ADRs constrain the implementation."
+- "If the spec.md introduces a new structural pattern, integration point, or cross-cutting concern not covered by existing ADRs, you must draft a new ADR using the MADR format in docs/adr/ before finalizing the plan.md."
+
+**plan.md-Template:** Dedizierte Sektion `## Architectural Constraints & ADRs` — Agent evaluiert bei jedem Planungsschritt die Brücke zwischen Feature und Gesamtarchitektur.
+
+**Workflow:**
+
+1. `/speckit.specify` — rein fachlich, Bounded Contexts, keine Technik
+2. `/speckit.plan` — Agent liest Spec + Constitution; bei architektonischer Weichenstellung → erst ADR, dann Plan
+3. `/speckit.tasks` — Plan in Tickets
+
+### Test-Driven Architecture
+
+ADRs im Markdown-Format stoppen keinen fehlerhaften Commit. Kopplung von ADR + automatisiertem Test:
+
+Constitution-Regel: "Whenever a new ADR introduces a structural boundary or dependency rule, the first task in tasks.md must be to implement an automated architecture test (e.g., NetArchTest.Rules or Roslyn Analyzers) enforcing this decision."
+
+**Reihenfolge:** ADR schreiben → Architektur-Test (Red) → Feature-Code (Green)
+
+---
+
+### Constitution vs. ADRs — Trennung der Verantwortlichkeiten
+
+**Constitution = Prinzipien (Warum + Was) — unverrückbar:**
+
+| Prinzip | Kernregel |
+|---|---|
+| **Behavioral Engineering** | "Pit of Success" definieren — KI durch harte Prompts zur Einhaltung von Leitplanken zwingen. Custom Infrastructure ohne ADR-Approval ist verboten. |
+| **Observable Engineering** | Observability ist strukturelle Anforderung, kein Afterthought. Jeder Domain Service emittiert semantische Business-Metriken und distributed Traces. Code ohne Instrumentation verletzt die DoD. |
+
+**Observability in constitution.md:**
+
+> "During the /plan phase, the plan.md must include a mandatory 'Observability' section. The AI must explicitly list what business metrics, structured log events, and trace spans the new feature will emit."
+
+**ADRs = Werkzeuge & Schwellenwerte (Wie) — austauschbar:**
+
+Für Behavioral Engineering:
+
+- Azure Policies mit 'Deny'-Effekt für nicht-konforme Cloud-Ressourcen
+- CI-Build-Abbruch bei Coverage-Reduktion >1% oder neuen Roslyn-Warnungen
+
+Für Observable Engineering:
+
+- OpenTelemetry statt herstellerspezifischer Application Insights SDKs
+- DORA-Metriken + Flaky-Test-Raten via GitHub Actions → Azure Data Explorer
+
+**Offene Frage (Gemini-Konversation):** Wie werden Telemetrie- und Pipeline-Daten (steigende Build-Zeiten, Analyzer-Warnungen, DORA-Metriken) aggregiert, um automatisiert zu reagieren — statt nur passive Dashboards zu befüllen?
+
+---
+
+## Verbindungen
+
+- [[harness-engineering]] — Diese Architektur ist die konkrete Umsetzung des Harness-Konzepts für Wissensmanagement
+- [[sensors-for-coding-agents-boeckeler]] — Lint-Artefakte = Böckelers Sensor-Output: einzeln lösbare Findings statt globale Qualitätsbewertung
+- [[agent-dx-orchestrator-workflow]] — Run-Directory-Pattern als Inspiration für Batch-Artefakt-Verwaltung
+- [[agenten-vollstaendige-transparenz-reflexion]] — Obsidian-Kompatibilität = Transparenz-Bedingung: Agent-Arbeit muss für Menschen lesbar bleiben
+- [[code-qualitaetssignale-monitoring]] — Observable Engineering: DORA-Metriken und Code-Signale als Grundlage der ADRs
+
+#LLMWiki #Harness #Obsidian #Zettelkasten #RAG #SelfHosted #NanoClaw #KISS #Ingest #Query #Lint #Git #GitNative #Headless #Python #FastAPI #WebUI #Container #DDD #ADR #SpecKit #TDD #NetArchTest #ObservableEngineering #BehavioralEngineering #Grimoire
