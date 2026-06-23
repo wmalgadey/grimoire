@@ -12,11 +12,11 @@ Refactor the `.NET Grimoire.Api` codebase from layer-based (Clean Architecture) 
 
 **Language/Version**: C# with .NET 9, nullable reference types enabled
 
-**Primary Dependencies**: ASP.NET Core 9, SignalR (Grimoire.Api.csproj), NUnit (tests), NetArchTest.Rules (architecture enforcement)
+**Primary Dependencies**: ASP.NET Core 9, SignalR (Grimoire.Api.csproj), xUnit (tests), NetArchTest.Rules (architecture enforcement)
 
 **Storage**: SQLite for ephemeral operational state (ADR-008); Git + Markdown for persistent content (ADR-007)
 
-**Testing**: NUnit for unit and integration tests; Testcontainers for infrastructure testing (per Constitution Principle II); architecture tests via NetArchTest.Rules
+**Testing**: xUnit for unit and integration tests; Testcontainers for infrastructure testing (per Constitution Principle II); architecture tests via NetArchTest.Rules
 
 **Target Platform**: Linux server (.NET 9 compatible)
 
