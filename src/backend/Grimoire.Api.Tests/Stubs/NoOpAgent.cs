@@ -3,10 +3,10 @@ using Grimoire.Api.Core.Domain;
 namespace Grimoire.Api.Tests.Stubs;
 
 /// <summary>
-/// No-op implementation of IAgentWorker for testing the Hub without real agent implementations.
+/// No-op implementation of IHubAgent for testing the Hub without real agent implementations.
 /// Returns healthy status, completes start/stop immediately.
 /// </summary>
-public class NoOpAgent : IAgentWorker
+public class NoOpAgent : IHubAgent
 {
     public string AgentId { get; }
 

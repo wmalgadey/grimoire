@@ -100,8 +100,8 @@ public class AgentJob
         if (Status != JobStatus.Running)
             throw new InvalidOperationException($"Cannot complete job in {Status} state. Must be Running.");
 
-        if (StartedAt > DateTime.UtcNow)
-            throw new InvalidOperationException("StartedAt cannot be after CompletedAt.");
+        if (StartedAt == null)
+            throw new InvalidOperationException("Cannot complete a job that was never started (StartedAt is null).");
 
         Status = JobStatus.Completed;
         CompletedAt = DateTime.UtcNow;

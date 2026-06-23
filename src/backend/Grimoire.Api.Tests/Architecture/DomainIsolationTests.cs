@@ -49,16 +49,16 @@ public class DomainIsolationTests
     }
 
     [Fact]
-    public void InfrastructurePersistence_CannotImportFromApi()
+    public void ApiInfrastructurePersistence_CannotImportFromApi()
     {
         // Infrastructure.Persistence layer must not depend on Api layer
-        var result = Types.InNamespace("Grimoire.Infrastructure.Persistence")
+        var result = Types.InNamespace("Grimoire.Api.Infrastructure.Persistence")
             .ShouldNot()
-            .HaveDependencyOn("Grimoire.Api")
+            .HaveDependencyOn("Grimoire.Api.Api")
             .GetResult();
 
         Assert.True(result.IsSuccessful,
-            "Infrastructure.Persistence must not import Api layer (layered architecture)");
+            "Grimoire.Api.Infrastructure.Persistence must not import Api layer (layered architecture)");
     }
 
     [Fact]

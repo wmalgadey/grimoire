@@ -270,17 +270,17 @@ public class HubAgentRegistryTests
     }
 
     [Fact]
-    public void MarkAgentFaulted_AlreadyFaultedAgent_SetsStatusFaultedAgain()
+    public void MarkAgentFaulted_AlreadyFaultedAgent_ThrowsInvalidStateTransition()
     {
-        // MarkAgentFaulted has no guard; re-faulting is allowed (idempotent fault)
+        // Faulted is terminal; cannot transition from Faulted to Faulted
         var registry = new HubAgentRegistry();
         registry.RegisterAgent(MakeDescriptor());
+        registry.StartAgent("agent-01");
         registry.MarkAgentFaulted("agent-01", "First fault");
 
-        // Should not throw; simply overwrites
-        registry.MarkAgentFaulted("agent-01", "Second fault");
-
-        Assert.Equal(AgentStatus.Faulted, registry.GetRegistrySnapshot()["agent-01"].Status);
+        // Attempting to fault an already-faulted agent should throw
+        Assert.Throws<InvalidStateTransitionException>(() =>
+            registry.MarkAgentFaulted("agent-01", "Second fault"));
     }
 
     // -------------------------------------------------------------------------

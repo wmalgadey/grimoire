@@ -7,7 +7,10 @@ namespace Grimoire.Api.Infrastructure.Observability;
 /// </summary>
 public class HubMetrics
 {
+    public const string MeterName = "Grimoire.Hub";
+
     private readonly Meter _meter;
+    private int _activeAgentCount = 0;
 
     public Counter<int> AgentRegisteredTotal { get; }
     public Counter<int> AgentFailedTotal { get; }
@@ -17,7 +20,7 @@ public class HubMetrics
 
     public HubMetrics(string version = "1.0.0")
     {
-        _meter = new Meter("Grimoire.Hub", version);
+        _meter = new Meter(MeterName, version);
 
         AgentRegisteredTotal = _meter.CreateCounter<int>(
             "grimoire.hub.agent.registered_total",
@@ -39,8 +42,19 @@ public class HubMetrics
             "grimoire.hub.health_check_duration_ms",
             unit: "ms",
             description: "Duration of health check operations in milliseconds");
+
+        _meter.CreateObservableGauge(
+            "grimoire.hub.agent.active_total",
+            () => _activeAgentCount,
+            description: "Current number of agents in Running state");
     }
 
     public Meter Meter => _meter;
+
+    public void UpdateActiveAgentCount(int count)
+    {
+        _activeAgentCount = count;
+    }
 }
+
 

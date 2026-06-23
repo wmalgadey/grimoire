@@ -1,11 +1,11 @@
 namespace Grimoire.Api.Core.Domain;
 
 /// <summary>
-/// Interface that all agent implementations must provide to be managed by the Hub orchestrator.
-/// Agents are passive: they implement this interface and react to work dispatched by the Hub.
-/// No agent initiates work or communicates with other agents directly (ADR-006 hub-spoke pattern).
+/// Interface for agents managed by the Hub orchestrator.
+/// Agents implement this interface for lifecycle management and health checks.
+/// Different from Grimoire.Core.Agents.IAgentWorker (work execution contract).
 /// </summary>
-public interface IAgentWorker
+public interface IHubAgent
 {
     /// <summary>
     /// Unique identifier for this agent type (e.g., "ingest", "query", "lint").
