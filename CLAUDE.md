@@ -28,5 +28,5 @@ Reference: `docs/adr/` for detailed rationale on each decision.
 <!-- SPECKIT START -->
 For additional context about technologies to be used, project structure,
 shell commands, and other important information, read the current plan
-at `specs/001-grimoire-scaffold/plan.md`.
+at `specs/002-hub-agent-lifecycle/plan.md`.
 <!-- SPECKIT END -->
