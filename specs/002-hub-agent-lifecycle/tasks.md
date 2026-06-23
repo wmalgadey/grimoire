@@ -16,7 +16,7 @@
 
 ⚠️ **NON-NEGOTIABLE**: No feature implementation can begin until this test is RED.
 
-- [ ] T000 Implement NetArchTest.Rules architecture test in `src/Grimoire.Api.Tests/Architecture/DomainIsolationTests.cs` enforcing:
+- [x] T000 Implement NetArchTest.Rules architecture test in `src/Grimoire.Api.Tests/Architecture/DomainIsolationTests.cs` enforcing:
   - Core.Domain namespace has no imports from Infrastructure, Api, or Framework layers
   - Infrastructure.Persistence cannot import from Api layer
   - IAgentWorker is defined in Core.Domain, implemented in Infrastructure layer
@@ -30,22 +30,22 @@
 
 **Purpose**: Project initialization and build configuration
 
-- [ ] T001 Create project structure per plan.md in `src/Grimoire.Api/`:
+- [x] T001 Create project structure per plan.md in `src/Grimoire.Api/`:
   - Core/Domain/, Core/Exceptions/, Infrastructure/Persistence/, Infrastructure/Observability/, Api/Endpoints/, Api/Handlers/
   - Tests/Unit/, Tests/Integration/, Tests/Architecture/
 
-- [ ] T002 [P] Add .NET 9 dependencies to `src/Grimoire.Api/Grimoire.Api.csproj`:
+- [x] T002 [P] Add .NET 9 dependencies to `src/Grimoire.Api/Grimoire.Api.csproj`:
   - System.Data.SQLite for SQLite persistence
   - xUnit, Testcontainers for testing
   - OpenTelemetry packages for instrumentation
   - NetArchTest.Rules for architecture testing
 
-- [ ] T003 [P] Configure appsettings.json and appsettings.Development.json in `src/Grimoire.Api/`:
+- [x] T003 [P] Configure appsettings.json and appsettings.Development.json in `src/Grimoire.Api/`:
   - SQLite database file path (default: `./grimoire.db`)
   - Logging configuration (structured JSON)
   - OpenTelemetry endpoint configuration
 
-- [ ] T004 [P] Configure build targets in `.github/workflows/` for CI/CD:
+- [x] T004 [P] Configure build targets in `.github/workflows/` for CI/CD:
   - Architecture test gate (T000) must pass before feature tests
   - Integration test stage with real SQLite
   - No merge without passing all tests
@@ -62,34 +62,34 @@
 
 ### Domain Core Layer (Dependency-Free)
 
-- [ ] T005 [P] Create AgentStatus enum in `src/Grimoire.Api/Core/Domain/AgentStatus.cs`:
+- [x] T005 [P] Create AgentStatus enum in `src/Grimoire.Api/Core/Domain/AgentStatus.cs`:
   - Values: Unregistered, Starting, Running, Stopping, Stopped, Faulted
   - Serializable for SQLite persistence
 
-- [ ] T006 [P] Create AgentDescriptor value object in `src/Grimoire.Api/Core/Domain/AgentDescriptor.cs`:
+- [x] T006 [P] Create AgentDescriptor value object in `src/Grimoire.Api/Core/Domain/AgentDescriptor.cs`:
   - Fields: AgentId, Name, Status, Capabilities[], RegisteredAt, LastHealthCheckAt
   - Immutable (record type)
   - Validation: non-empty AgentId (alphanumeric + hyphens), non-empty Name, unique per Hub instance
 
-- [ ] T007 [P] Create AgentJob aggregate root in `src/Grimoire.Api/Core/Domain/AgentJob.cs`:
+- [x] T007 [P] Create AgentJob aggregate root in `src/Grimoire.Api/Core/Domain/AgentJob.cs`:
   - Fields: JobId, AgentId, Payload (JSON), Status, CreatedAt, StartedAt, CompletedAt, FailedAt, ErrorMessage
   - Methods: Start(), Complete(), Fail(reason)
   - Enforce state machine: Pending → Running → (Completed | Failed)
 
-- [ ] T008 [P] Create JobStatus enum in `src/Grimoire.Api/Core/Domain/JobStatus.cs`:
+- [x] T008 [P] Create JobStatus enum in `src/Grimoire.Api/Core/Domain/JobStatus.cs`:
   - Values: Pending, Running, Completed, Failed
 
-- [ ] T009 [P] Create AgentHealthStatus value object in `src/Grimoire.Api/Core/Domain/AgentHealthStatus.cs`:
+- [x] T009 [P] Create AgentHealthStatus value object in `src/Grimoire.Api/Core/Domain/AgentHealthStatus.cs`:
   - Fields: AgentId, IsHealthy, CheckedAt, Message
   - Immutable (record type)
 
-- [ ] T010 Create DomainException base class in `src/Grimoire.Api/Core/Exceptions/DomainException.cs`:
+- [x] T010 Create DomainException base class in `src/Grimoire.Api/Core/Exceptions/DomainException.cs`:
   - Base for all domain-level exceptions
   - AgentAlreadyRegisteredException (409 Conflict)
   - AgentNotFoundException (404 Not Found)
   - InvalidStateTransition (400 Bad Request)
 
-- [ ] T011 Create HubAgentRegistry domain service in `src/Grimoire.Api/Core/Domain/HubAgentRegistry.cs`:
+- [x] T011 Create HubAgentRegistry domain service in `src/Grimoire.Api/Core/Domain/HubAgentRegistry.cs`:
   - No external dependencies (pure logic)
   - Methods:
     - `RegisterAgent(AgentDescriptor)` → throws DomainException if duplicate
@@ -102,17 +102,17 @@
 
 ### Persistence Layer
 
-- [ ] T012 Create SQLite schema in `src/Grimoire.Api/Infrastructure/Persistence/InitialSchema.sql`:
+- [x] T012 Create SQLite schema in `src/Grimoire.Api/Infrastructure/Persistence/InitialSchema.sql`:
   - AgentDescriptors table: AgentId (PK), Name, Status, Capabilities (JSON), RegisteredAt, LastHealthCheckAt
   - AgentJobs table: JobId (PK), AgentId (FK), Payload (JSON), Status, CreatedAt, StartedAt, CompletedAt, FailedAt, ErrorMessage
   - Indexes: idx_AgentJobs_AgentId, idx_AgentJobs_Status, idx_AgentJobs_CreatedAt
 
-- [ ] T013 Create AgentDbContext in `src/Grimoire.Api/Infrastructure/Persistence/AgentDbContext.cs`:
+- [x] T013 Create AgentDbContext in `src/Grimoire.Api/Infrastructure/Persistence/AgentDbContext.cs`:
   - DbSet for AgentDescriptors and AgentJobs (if using EF Core alternative; otherwise direct SQLite)
   - Auto-create schema on first startup if database file missing
   - Connection string from configuration
 
-- [ ] T014 Create AgentRepository in `src/Grimoire.Api/Infrastructure/Persistence/AgentRepository.cs`:
+- [x] T014 Create AgentRepository in `src/Grimoire.Api/Infrastructure/Persistence/AgentRepository.cs`:
   - Methods:
     - `SaveAgentDescriptor(AgentDescriptor)` → create/update
     - `GetAgentDescriptor(agentId)` → read single
@@ -124,7 +124,7 @@
 
 ### Observability Layer
 
-- [ ] T015 [P] Create OpenTelemetry Metrics in `src/Grimoire.Api/Infrastructure/Observability/Metrics.cs`:
+- [x] T015 [P] Create OpenTelemetry Metrics in `src/Grimoire.Api/Infrastructure/Observability/Metrics.cs`:
   - Counter: `grimoire.hub.agent.registered_total` (labels: agent_id, agent_name)
   - Gauge: `grimoire.hub.agent.active_total`
   - Counter: `grimoire.hub.agent.failed_total` (labels: agent_id, reason)
@@ -142,12 +142,12 @@
 
 ### IAgentWorker Interface
 
-- [ ] T018 Create IAgentWorker interface in `src/Grimoire.Api/Core/Domain/IAgentWorker.cs`:
+- [x] T018 Create IAgentWorker interface in `src/Grimoire.Api/Core/Domain/IAgentWorker.cs`:
   - Properties: AgentId, Descriptor
   - Methods: GetHealthAsync(), StartAsync(), StopAsync()
   - Documented with XML comments per contract
 
-- [ ] T019 Create NoOpAgent test stub in `src/Grimoire.Api.Tests/Stubs/NoOpAgent.cs`:
+- [x] T019 Create NoOpAgent test stub in `src/Grimoire.Api.Tests/Stubs/NoOpAgent.cs`:
   - Implements IAgentWorker
   - Returns healthy status, completes start/stop immediately
   - Used for testing Hub without real agent implementations
