@@ -42,6 +42,57 @@
 
 [Gates determined based on constitution file]
 
+## Architectural Constraints & ADRs
+
+*GATE: Agent MUST read all ADRs in `docs/adr/` before completing this section.*
+
+<!--
+  ACTION REQUIRED: List every ADR that constrains this feature's implementation.
+  If this feature introduces a new structural boundary, integration pattern, or
+  cross-cutting concern not covered by existing ADRs, draft a new MADR in docs/adr/
+  BEFORE finalizing this plan.
+
+  Format:
+  - ADR-NNN: [Title] — [How it constrains this feature]
+  - ADR-NNN: [Title] — [How it constrains this feature]
+
+  If no existing ADRs apply and no new boundary is introduced, write:
+  "No new or existing ADRs constrain this feature."
+-->
+
+| ADR | Title | Constraint on this feature |
+|-----|-------|---------------------------|
+| [ADR-NNN] | [Title] | [How it constrains implementation] |
+
+**New ADR required?**: [Yes — draft docs/adr/ADR-NNN-[name].md before proceeding / No]
+
+## Observability
+
+*MANDATORY: Code without this instrumentation fails the Definition of Done.*
+
+<!--
+  ACTION REQUIRED: Enumerate every observable signal this feature MUST emit.
+  Be specific — use the domain's Ubiquitous Language for metric/span names.
+-->
+
+### Business Metrics (OpenTelemetry Counters / Gauges)
+
+| Metric name | Type | Description | Labels |
+|-------------|------|-------------|--------|
+| `[domain.component.event]` | Counter/Gauge | [What it measures] | `[key=value]` |
+
+### Structured Log Events
+
+| Event | Level | Trigger | Mandatory fields |
+|-------|-------|---------|-----------------|
+| `[event_name]` | INFO/WARN/ERROR | [When emitted] | `[field1, field2]` |
+
+### Distributed Trace Spans (OpenTelemetry)
+
+| Span name | Parent span | Attributes |
+|-----------|-------------|-----------|
+| `[service.operation]` | `[parent or root]` | `[key=value]` |
+
 ## Project Structure
 
 ### Documentation (this feature)

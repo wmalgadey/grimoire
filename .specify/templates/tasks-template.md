@@ -45,6 +45,32 @@ description: "Task list template for feature implementation"
   ============================================================================
 -->
 
+## Phase 0: Architecture Enforcement (MANDATORY — Constitution Principle III)
+
+**Purpose**: Automated architecture tests must exist and FAIL before any feature code is written.
+This phase MUST be the first phase in every tasks.md, regardless of feature scope.
+
+**⚠️ NON-NEGOTIABLE**: No feature implementation can begin until the architecture test is RED.
+
+<!--
+  ACTION REQUIRED: Replace the placeholder below with the concrete architecture test
+  for the ADR(s) referenced in plan.md § Architectural Constraints & ADRs.
+  Use the appropriate tool for the tech stack:
+  - Python: import-linter, pytest with ast inspection, or custom module boundary checks
+  - JVM: ArchUnit
+  - .NET: NetArchTest.Rules or Roslyn Analyzers
+  - Go: custom package dependency check
+
+  Example: "Implement ArchUnit rule in tests/arch/test_domain_isolation.py
+  asserting that src/domain/ has no imports from src/infrastructure/"
+-->
+
+- [ ] T000 Implement automated architecture test enforcing ADR-[NNN] ([structural rule]) in [tests/arch/test_*.py or equivalent]
+
+**Checkpoint**: Architecture test EXISTS and FAILS (Red). Feature code may now begin.
+
+---
+
 ## Phase 1: Setup (Shared Infrastructure)
 
 **Purpose**: Project initialization and basic structure
