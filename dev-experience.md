@@ -99,3 +99,136 @@ führe den nächsten spec-kit schritt aus
 ```claude
 implement the current plan
 ```
+---
+
+Umsetzung (KI generiert)
+- Phase 1 — Hub + erster Agent (Fundament)
+
+    IChannel/IAgentWorker vollständig implementiert — Health-Endpoint, Agent-Lifecycle (Start/Stop/Health), noch kein echter Agent
+    Ingest-Agent — Watch auf raw/sources/, Git-Commit nach Verarbeitung, SHA256-Cache für inkrementelles Processing. Das ist der kritischste Agent weil alle anderen auf ingested Content aufbauen
+    Web-UI Channel — /ingest — Minimales Form-UI, löst Ingest-Agent aus, zeigt Status
+
+- Phase 2 — Query
+
+    Query-Agent — Liest wiki/, antwortet mit konfigurierbarer Persona aus purpose.md
+    Web-UI — /query — Chat-Interface mit SignalR-Streaming
+
+- Phase 3 — Lint
+
+    Lint-Agent — Cron-basiert, schreibt audits/open/*.md im definierten Artefakt-Format
+    Web-UI — /audit — Checklist-UI zum Lösen von Audit-Artefakten, Commit zu audits/resolved/
+
+- Phase 4 — Batch + Telegram
+
+    Batch-Agent — Synthese, Connection-Suggestions, schreibt wiki/batch/*.md
+    Telegram Channel — Zweiter Channel-Spoke am Hub, ohne Agent-Änderungen
+
+---
+
+Für Phase 1 von claude.ai eine beschreibung des features generieren lassen... Das war eine Menge Text, ist das wirklich so notwendig?
+
+```claude
+/speckit.specify
+
+## Context
+
+Project: Grimoire — Wiki-Harness for Zettelkasten/Obsidian knowledge management.
+Constitution: Read `constitution.md` before proceeding.
+ADRs: Read all ADRs in `docs/adr/` before proceeding.
+Architecture: Read LikeC4 model in `docs/architecture/` before proceeding.
+
+Existing foundation:
+- `IChannel` and `IAgentWorker` interfaces exist (empty contracts)
+- .NET 9 Minimal API project builds successfully
+- No implementations exist yet
+
+---
+
+## Spec: Hub Foundation + Agent Lifecycle
+
+### Bounded Context
+
+This spec is scoped to the **Orchestration Bounded Context** only.
+No Wiki domain logic. No channel-specific logic. No agent business logic.
+
+Ubiquitous Language established by this spec:
+- **Hub**: The central orchestrator that manages agent lifecycle and routes channel requests
+- **AgentDescriptor**: Metadata describing a registered agent (id, name, status, capabilities)
+- **AgentStatus**: Enum — `Unregistered | Starting | Running | Stopping | Stopped | Faulted`
+- **AgentJob**: A unit of work dispatched to an agent (id, agentId, payload, status, timestamps)
+- **JobStatus**: Enum — `Pending | Running | Completed | Failed`
+
+---
+
+### User Stories
+
+**US-01: Agent Registration**
+As the Hub, I want to register an IAgentWorker implementation at startup
+so that the Hub knows which agents are available and can manage their lifecycle.
+
+Acceptance Criteria:
+- An agent can be registered with a unique id and descriptor
+- Registering the same agent id twice throws a domain exception
+- Registered agents are discoverable via the Hub
+
+**US-02: Agent Lifecycle Management**
+As the Hub, I want to start, stop, and health-check registered agents
+so that I can ensure agents are available before dispatching work.
+
+Acceptance Criteria:
+- Hub can start a registered agent (transitions: Unregistered → Starting → Running)
+- Hub can stop a running agent (transitions: Running → Stopping → Stopped)
+- Hub detects a faulted agent and transitions status to Faulted
+- All lifecycle transitions are logged as structured log events
+
+**US-03: Health Endpoint**
+As an operator, I want a `/health` endpoint
+so that I can verify the Hub and all registered agents are operational.
+
+Acceptance Criteria:
+- `GET /health` returns overall Hub status
+- Response includes status of each registered agent (id, name, AgentStatus)
+- Returns HTTP 200 if Hub is healthy, HTTP 503 if any agent is Faulted
+- Response is JSON
+
+**US-04: Hub Operational State (SQLite)**
+As the Hub, I want to persist agent job queue and agent status in SQLite
+so that operational state survives Hub restarts without polluting the Git-managed Wiki state.
+
+Acceptance Criteria:
+- SQLite stores: AgentDescriptors, AgentJobs (with JobStatus and timestamps)
+- SQLite is NOT used for Wiki content, audit artefacts, or any domain output — those belong to Git
+- Schema is created automatically on first startup (no manual migration step)
+- SQLite file path is configurable via config
+
+---
+
+### Out of Scope
+
+- No actual agent implementation (IAgentWorker remains an interface; a NoOpAgent stub is sufficient for lifecycle testing)
+- No channel implementation (IChannel remains an interface)
+- No job dispatching logic (AgentJob persistence only — no execution)
+- No Wiki domain logic (no Git operations, no Markdown, no Zettelkasten)
+- No authentication
+
+---
+
+### Architectural Notes for Planner
+
+This spec introduces:
+- **Hub as an Application Service** coordinating agent lifecycle — must live in Application layer, not Domain Core
+- **SQLite as operational state** (ADR to be drafted: State Strategy — Git for domain artefacts, SQLite for Hub operational state)
+- **Structured logging** on all lifecycle transitions is a DoD requirement per constitution.md
+
+The planner MUST:
+1. Draft ADR for State Strategy (Git vs. SQLite) before finalizing plan.md
+2. Include `## Architectural Constraints & ADRs` section referencing ADR-001, ADR-002, ADR-004, and the new State Strategy ADR
+3. Include `## Observability` section with:
+   - Business metrics: `grimoire.hub.agents_registered`, `grimoire.hub.agent_status_transitions_total`
+   - Structured log events: agent registered, lifecycle transition (with agentId, fromStatus, toStatus), agent faulted
+   - Trace spans: `hub.agent.start`, `hub.agent.stop`, `hub.agent.health_check`
+4. First task in tasks.md MUST be NetArchTest enforcing that Hub/Application layer does not reference Infrastructure directly
+```
+
+---
+

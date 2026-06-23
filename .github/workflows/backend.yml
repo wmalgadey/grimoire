@@ -27,6 +27,14 @@ jobs:
         working-directory: src/backend
         run: dotnet build
 
-      - name: Run architecture tests
+      - name: Run architecture tests (Grimoire.ArchTests)
         working-directory: src/backend
         run: dotnet test Grimoire.ArchTests --logger "console;verbosity=normal"
+
+      - name: Run API architecture tests (DomainIsolationTests)
+        working-directory: src/backend
+        run: dotnet test Grimoire.Api.Tests/Grimoire.Api.Tests.csproj --filter "DomainIsolationTests" --logger "console;verbosity=normal"
+
+      - name: Run integration tests
+        working-directory: src/backend
+        run: dotnet test Grimoire.Api.Tests/Grimoire.Api.Tests.csproj --filter "Integration" --logger "console;verbosity=normal"
