@@ -87,11 +87,11 @@ public class DomainIsolationTests
     {
         var result = Types.InNamespace("Grimoire.Api.Hubs")
             .Should()
-            .NotHaveDependencyOn("Grimoire.Api.Agents.Handlers")
+            .NotHaveDependencyOn("Grimoire.Api.Agents.Endpoints")
             .GetResult();
 
         Assert.True(result.IsSuccessful,
-            "Grimoire.Api.Hubs must communicate with Agents via interfaces, not concrete handlers");
+            "Grimoire.Api.Hubs must not depend on Grimoire.Api.Agents.Endpoints (communicate via interfaces only)");
     }
 
     [Fact]
