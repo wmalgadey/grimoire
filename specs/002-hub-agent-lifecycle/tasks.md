@@ -132,11 +132,11 @@
   - Counter: `grimoire.hub.job.completed_total` (labels: agent_id, status)
   - Histogram: `grimoire.hub.health_check_duration_ms`
 
-- [ ] T016 [P] Create OpenTelemetry Tracing in `src/Grimoire.Api/Infrastructure/Observability/Tracing.cs`:
+- [x] T016 [P] Create OpenTelemetry Tracing in `src/Grimoire.Api/Infrastructure/Observability/Tracing.cs`:
   - Span names: hub.register_agent, hub.start_agent, hub.stop_agent, hub.health_check, hub.dispatch_job, hub.recover_state
   - Attributes: agent_id, agent_name, agent_count, job_id, agents_count, jobs_count
 
-- [ ] T017 Configure structured logging in `src/Grimoire.Api/Program.cs`:
+- [x] T017 Configure structured logging in `src/Grimoire.Api/Program.cs`:
   - Log events: agent_registered, agent_lifecycle_transition, agent_health_check, agent_faulted, job_dispatched, job_completed, job_failed, sqlite_recovery
   - JSON structured format (key=value pairs)
 
@@ -164,36 +164,36 @@
 
 ### Unit Tests for US1
 
-- [ ] T020 [P] [US1] Create unit test for AgentDescriptor validation in `src/Grimoire.Api.Tests/Unit/Domain/AgentDescriptorTests.cs`:
+- [x] T020 [P] [US1] Create unit test for AgentDescriptor validation in `src/Grimoire.Api.Tests/Unit/Domain/AgentDescriptorTests.cs`:
   - AgentId validation (non-empty, alphanumeric + hyphens)
   - Name validation (non-empty)
   - Capabilities validation (if present, non-empty strings)
 
-- [ ] T021 [P] [US1] Create unit test for HubAgentRegistry.RegisterAgent in `src/Grimoire.Api.Tests/Unit/Domain/HubAgentRegistryTests.cs`:
+- [x] T021 [P] [US1] Create unit test for HubAgentRegistry.RegisterAgent in `src/Grimoire.Api.Tests/Unit/Domain/HubAgentRegistryTests.cs`:
   - Register new agent succeeds, emits AgentRegisteredEvent
   - Register duplicate AgentId throws AgentAlreadyRegisteredException
   - GetRegistrySnapshot returns all registered agents
 
 ### Integration Tests for US1
 
-- [ ] T022 [P] [US1] Create integration test for POST /api/agents in `src/Grimoire.Api.Tests/Integration/AgentRegistrationTests.cs`:
+- [x] T022 [P] [US1] Create integration test for POST /api/agents in `src/Grimoire.Api.Tests/Integration/AgentRegistrationTests.cs`:
   - Register single agent returns 201 with AgentDescriptor
   - Register multiple agents, all discoverable
   - Attempt duplicate registration returns 409 Conflict
   - Verify agents persisted to SQLite
 
-- [ ] T023 [P] [US1] Create integration test for GET /api/agents in `src/Grimoire.Api.Tests/Integration/AgentRegistrationTests.cs`:
+- [x] T023 [P] [US1] Create integration test for GET /api/agents in `src/Grimoire.Api.Tests/Integration/AgentRegistrationTests.cs`:
   - List all agents returns 200 with array of agents
   - Response includes agentId, name, status, capabilities, registeredAt, lastHealthCheckAt
   - Empty list when no agents registered
 
-- [ ] T024 [P] [US1] Create integration test for GET /api/agents/{agentId} in `src/Grimoire.Api.Tests/Integration/AgentRegistrationTests.cs`:
+- [x] T024 [P] [US1] Create integration test for GET /api/agents/{agentId} in `src/Grimoire.Api.Tests/Integration/AgentRegistrationTests.cs`:
   - Get single agent returns 200 with AgentDescriptor
   - Get non-existent agent returns 404 AgentNotFoundException
 
 ### Implementation for US1
 
-- [ ] T025 Create RegisterAgentEndpoint in `src/Grimoire.Api/Api/Endpoints/RegisterAgentEndpoint.cs`:
+- [x] T025 Create RegisterAgentEndpoint in `src/Grimoire.Api/Api/Endpoints/RegisterAgentEndpoint.cs`:
   - POST /api/agents
   - Accept JSON: { agentId, name, capabilities[] }
   - Call HubAgentRegistry.RegisterAgent (enforces uniqueness)
@@ -202,22 +202,22 @@
   - Emit agent_registered structured log event
   - Return 201 with AgentDescriptor or 409 on duplicate
 
-- [ ] T026 Create ListAgentsEndpoint in `src/Grimoire.Api/Api/Endpoints/ListAgentsEndpoint.cs`:
+- [x] T026 Create ListAgentsEndpoint in `src/Grimoire.Api/Api/Endpoints/ListAgentsEndpoint.cs`:
   - GET /api/agents
   - Query all from AgentRepository
   - Return 200 with { agents[], total }
 
-- [ ] T027 Create GetAgentEndpoint in `src/Grimoire.Api/Api/Endpoints/GetAgentEndpoint.cs`:
+- [x] T027 Create GetAgentEndpoint in `src/Grimoire.Api/Api/Endpoints/GetAgentEndpoint.cs`:
   - GET /api/agents/{agentId}
   - Query from AgentRepository
   - Return 200 with AgentDescriptor or 404 if not found
 
-- [ ] T028 Create HubOrchestrationHandler in `src/Grimoire.Api/Api/Handlers/HubOrchestrationHandler.cs`:
+- [x] T028 Create HubOrchestrationHandler in `src/Grimoire.Api/Api/Handlers/HubOrchestrationHandler.cs`:
   - Coordinates HubAgentRegistry, AgentRepository, observability
   - Methods align with endpoints
   - Handles domain exceptions, logs errors
 
-- [ ] T029 Wire endpoints in `src/Grimoire.Api/Program.cs`:
+- [x] T029 Wire endpoints in `src/Grimoire.Api/Program.cs`:
   - Register endpoint methods in Minimal API
   - Configure dependency injection for HubAgentRegistry, AgentRepository
   - Initialize SQLite schema on startup
@@ -234,7 +234,7 @@
 
 ### Unit Tests for US2
 
-- [ ] T030 [P] [US2] Create unit test for agent state machine in `src/Grimoire.Api.Tests/Unit/Domain/AgentLifecycleStateTests.cs`:
+- [x] T030 [P] [US2] Create unit test for agent state machine in `src/Grimoire.Api.Tests/Unit/Domain/AgentLifecycleStateTests.cs`:
   - Valid transitions: Unregistered → Starting → Running → Stopping → Stopped
   - Valid fault transition: Running → Faulted
   - Invalid transitions throw InvalidStateTransition
@@ -242,25 +242,25 @@
 
 ### Integration Tests for US2
 
-- [ ] T031 [P] [US2] Create integration test for POST /api/agents/{agentId}/start in `src/Grimoire.Api.Tests/Integration/AgentLifecycleTests.cs`:
+- [x] T031 [P] [US2] Create integration test for POST /api/agents/{agentId}/start in `src/Grimoire.Api.Tests/Integration/AgentLifecycleTests.cs`:
   - Start Unregistered agent transitions to Running (through Starting)
   - Lifecycle events logged as structured entries
   - Invalid start (already Running) returns 400 InvalidStateTransition
   - Unknown agent returns 404
 
-- [ ] T032 [P] [US2] Create integration test for POST /api/agents/{agentId}/stop in `src/Grimoire.Api.Tests/Integration/AgentLifecycleTests.cs`:
+- [x] T032 [P] [US2] Create integration test for POST /api/agents/{agentId}/stop in `src/Grimoire.Api.Tests/Integration/AgentLifecycleTests.cs`:
   - Stop Running agent transitions to Stopped (through Stopping)
   - Invalid stop (already Stopped) returns 400
   - Unknown agent returns 404
 
-- [ ] T033 [P] [US2] Create integration test for fault detection in `src/Grimoire.Api.Tests/Integration/AgentLifecycleTests.cs`:
+- [x] T033 [P] [US2] Create integration test for fault detection in `src/Grimoire.Api.Tests/Integration/AgentLifecycleTests.cs`:
   - Running agent with failed health check transitions to Faulted
   - Faulted agent appears in registry with Faulted status
   - Log events capture fault with reason
 
 ### Implementation for US2
 
-- [ ] T034 Create StartAgentEndpoint in `src/Grimoire.Api/Api/Endpoints/StartAgentEndpoint.cs`:
+- [x] T034 Create StartAgentEndpoint in `src/Grimoire.Api/Api/Endpoints/StartAgentEndpoint.cs`:
   - POST /api/agents/{agentId}/start
   - Call HubAgentRegistry.StartAgent (validates state machine)
   - Call IAgentWorker.StartAsync()
@@ -270,7 +270,7 @@
   - Return 200 with updated status or 400/404 on error
   - Broadcast AgentStatusChanged via SignalR
 
-- [ ] T035 Create StopAgentEndpoint in `src/Grimoire.Api/Api/Endpoints/StopAgentEndpoint.cs`:
+- [x] T035 Create StopAgentEndpoint in `src/Grimoire.Api/Api/Endpoints/StopAgentEndpoint.cs`:
   - POST /api/agents/{agentId}/stop
   - Call HubAgentRegistry.StopAgent (validates state machine)
   - Call IAgentWorker.StopAsync()
@@ -280,7 +280,7 @@
   - Return 200 with updated status or 400/404 on error
   - Broadcast AgentStatusChanged via SignalR
 
-- [ ] T036 Create HealthCheckService in `src/Grimoire.Api/Api/Handlers/HealthCheckService.cs`:
+- [x] T036 Create HealthCheckService in `src/Grimoire.Api/Api/Handlers/HealthCheckService.cs`:
   - Periodic or on-demand health checks for all agents
   - Call IAgentWorker.GetHealthAsync() for each agent
   - Detect faults (IsHealthy=false), call HubAgentRegistry.MarkAgentFaulted()
@@ -288,7 +288,7 @@
   - Emit agent_health_check structured log event
   - Update grimoire_hub_agent_failed_total counter on fault
 
-- [ ] T037 Integrate SignalR for real-time updates in `src/Grimoire.Api/Program.cs`:
+- [x] T037 Integrate SignalR for real-time updates in `src/Grimoire.Api/Program.cs`:
   - Configure SignalR hub for agent status broadcasts
   - Broadcast AgentStatusChanged after state transitions
   - Include agentId, previousStatus, currentStatus, transitionedAt, reason
@@ -305,26 +305,26 @@
 
 ### Integration Tests for US3
 
-- [ ] T038 [P] [US3] Create integration test for GET /health (all healthy) in `src/Grimoire.Api.Tests/Integration/HealthEndpointTests.cs`:
+- [x] T038 [P] [US3] Create integration test for GET /health (all healthy) in `src/Grimoire.Api.Tests/Integration/HealthEndpointTests.cs`:
   - Register 2+ agents, start all
   - GET /health returns 200 OK
   - Response includes: overall="Healthy", timestamp, agents[] with status, lastHealthCheckAt
   - Response time < 50ms (performance requirement)
 
-- [ ] T039 [P] [US3] Create integration test for GET /health (degraded) in `src/Grimoire.Api.Tests/Integration/HealthEndpointTests.cs`:
+- [x] T039 [P] [US3] Create integration test for GET /health (degraded) in `src/Grimoire.Api.Tests/Integration/HealthEndpointTests.cs`:
   - Register 2 agents, start both, fault one
   - GET /health returns 503 Service Unavailable
   - Response includes: overall="Degraded", agents with mixed statuses
   - Include faultReason for Faulted agent
 
-- [ ] T040 [P] [US3] Create integration test for GET /health (empty) in `src/Grimoire.Api.Tests/Integration/HealthEndpointTests.cs`:
+- [x] T040 [P] [US3] Create integration test for GET /health (empty) in `src/Grimoire.Api.Tests/Integration/HealthEndpointTests.cs`:
   - No agents registered
   - GET /health returns 200 (Hub itself healthy)
   - agents[] is empty
 
 ### Implementation for US3
 
-- [ ] T041 Create HealthEndpoint in `src/Grimoire.Api/Api/Endpoints/HealthEndpoint.cs`:
+- [x] T041 Create HealthEndpoint in `src/Grimoire.Api/Api/Endpoints/HealthEndpoint.cs`:
   - GET /health
   - Collect all agent descriptors from AgentRepository
   - Determine overall status: Healthy (all Running), Degraded (any Faulted), Unknown (none Running)
@@ -333,7 +333,7 @@
   - Return 200 if all Running, 503 if any Faulted
   - Response: { overall, timestamp, agents[] }
 
-- [ ] T042 Emit health_check structured logs in `src/Grimoire.Api/Api/Handlers/HealthCheckService.cs`:
+- [x] T042 Emit health_check structured logs in `src/Grimoire.Api/Api/Handlers/HealthCheckService.cs`:
   - Log agent_health_check event for each agent with status, timestamp
   - Include optional message (e.g., "timeout", "connection refused")
 
@@ -349,7 +349,7 @@
 
 ### Unit Tests for US4
 
-- [ ] T043 [P] [US4] Create unit test for AgentJob state machine in `src/Grimoire.Api.Tests/Unit/Domain/AgentJobTests.cs`:
+- [x] T043 [P] [US4] Create unit test for AgentJob state machine in `src/Grimoire.Api.Tests/Unit/Domain/AgentJobTests.cs`:
   - Job creation sets Pending status, CreatedAt timestamp
   - Transition to Running sets StartedAt
   - Transition to Completed sets CompletedAt, validates CreatedAt ≤ StartedAt ≤ CompletedAt
@@ -357,53 +357,53 @@
 
 ### Integration Tests for US4
 
-- [ ] T044 [P] [US4] Create integration test for SQLite persistence in `src/Grimoire.Api.Tests/Integration/SqlitePersistenceTests.cs`:
+- [x] T044 [P] [US4] Create integration test for SQLite persistence in `src/Grimoire.Api.Tests/Integration/SqlitePersistenceTests.cs`:
   - Register agents, verify saved to AgentDescriptors table
   - Query SQLite directly, verify schema matches contract
   - No null violations, proper types (TEXT, INTEGER)
 
-- [ ] T045 [P] [US4] Create integration test for state recovery in `src/Grimoire.Api.Tests/Integration/SqlitePersistenceTests.cs`:
+- [x] T045 [P] [US4] Create integration test for state recovery in `src/Grimoire.Api.Tests/Integration/SqlitePersistenceTests.cs`:
   - Register 3 agents, start 2
   - Stop Hub (simulate by closing DbContext)
   - Restart Hub, verify agents recovered from SQLite with correct statuses
   - Verify RecoverState() timing < 500ms
   - Verify startup logs include sqlite_recovery event
 
-- [ ] T046 [P] [US4] Create integration test for job persistence in `src/Grimoire.Api.Tests/Integration/SqlitePersistenceTests.cs`:
+- [x] T046 [P] [US4] Create integration test for job persistence in `src/Grimoire.Api.Tests/Integration/SqlitePersistenceTests.cs`:
   - Dispatch 10 jobs to agents, verify saved to AgentJobs table
   - Query by status (Pending, Completed, Failed)
   - Verify no data loss across restarts
 
-- [ ] T047 [P] [US4] Create integration test for Git isolation in `src/Grimoire.Api.Tests/Integration/SqlitePersistenceTests.cs`:
+- [x] T047 [P] [US4] Create integration test for Git isolation in `src/Grimoire.Api.Tests/Integration/SqlitePersistenceTests.cs`:
   - Perform all operations (register, start, dispatch jobs)
   - Run `git status` subprocess, verify no changes to wiki/, audits/, raw/ directories
   - Verify only SQLite (./grimoire.db) is modified in working directory
 
 ### Implementation for US4
 
-- [ ] T048 Create AgentDbInitializer in `src/Grimoire.Api/Infrastructure/Persistence/AgentDbInitializer.cs`:
+- [x] T048 Create AgentDbInitializer in `src/Grimoire.Api/Infrastructure/Persistence/AgentDbInitializer.cs`:
   - On Hub startup, check if database file exists
   - If not, create file and execute InitialSchema.sql
   - If exists, verify schema matches contract (or migrate if needed)
   - Log initialization event: sqlite_recovery with agents_recovered, jobs_recovered, duration_ms
 
-- [ ] T049 Implement AgentRepository.RecoverState() in `src/Grimoire.Api/Infrastructure/Persistence/AgentRepository.cs`:
+- [x] T049 Implement AgentRepository.RecoverState() in `src/Grimoire.Api/Infrastructure/Persistence/AgentRepository.cs`:
   - Load all AgentDescriptors from database
   - Load all AgentJobs from database (filter by status for efficiency)
   - Rebuild HubAgentRegistry in-memory state
   - Emit structured log: sqlite_recovery
 
-- [ ] T050 Create SqliteConfigurationProvider in `src/Grimoire.Api/Infrastructure/Persistence/SqliteConfigurationProvider.cs`:
+- [x] T050 Create SqliteConfigurationProvider in `src/Grimoire.Api/Infrastructure/Persistence/SqliteConfigurationProvider.cs`:
   - Read database file path from appsettings.json or environment variable (GRIMOIRE_DB_PATH)
   - Support both relative and absolute paths
   - Create parent directories if needed
 
-- [ ] T051 Wire startup sequence in `src/Grimoire.Api/Program.cs`:
+- [x] T051 Wire startup sequence in `src/Grimoire.Api/Program.cs`:
   - Initialize SQLite on startup (T048)
   - Recover state on startup (T049)
   - Register agents that were registered before shutdown
 
-**Checkpoint**: US4 fully functional — state persists to SQLite, recovers on restart, Git content never polluted, performance SLA met.
+**Checkpoint**: US4 fully functional — state persists to SQLite, recovers on restart, Git content never polluted, performance SLA met. Foundation complete and ready for deployment.
 
 ---
 
@@ -411,52 +411,52 @@
 
 **Purpose**: Improvements affecting multiple user stories, final validation, documentation.
 
-- [ ] T052 [P] Add comprehensive error handling in `src/Grimoire.Api/Api/Middleware/ExceptionHandlingMiddleware.cs`:
+- [x] T052 [P] Add comprehensive error handling in `src/Grimoire.Api/Api/Middleware/ExceptionHandlingMiddleware.cs`:
   - Catch all domain exceptions (DomainException, InvalidStateTransition, etc.)
   - Map to appropriate HTTP status codes (400, 404, 409)
   - Return JSON error response per contract (error, message, statusCode)
   - Log error events with stack traces for 500 errors
 
-- [ ] T053 [P] Add validation middleware in `src/Grimoire.Api/Api/Middleware/ValidationMiddleware.cs`:
+- [x] T053 [P] Add validation middleware in `src/Grimoire.Api/Api/Middleware/ValidationMiddleware.cs`:
   - Validate request payloads (agentId format, required fields)
   - Return 400 Bad Request with validation errors
 
-- [ ] T054 [P] Implement additional observability in `src/Grimoire.Api/Infrastructure/Observability/`:
+- [x] T054 [P] Implement additional observability in `src/Grimoire.Api/Infrastructure/Observability/`:
   - Add request/response tracing via OpenTelemetry middleware
   - Correlate traces with W3C Trace Context headers
   - Export metrics to Prometheus (if configured)
   - Export traces to Jaeger (if configured)
 
-- [ ] T055 [P] Add integration test for all scenarios in `src/Grimoire.Api.Tests/Integration/EndToEndTests.cs`:
+- [x] T055 [P] Add integration test for all scenarios in `src/Grimoire.Api.Tests/Integration/EndToEndTests.cs`:
   - Run quickstart.md scenarios 1-5 programmatically
   - Register 3+ agents, lifecycle transitions, health checks, persistence, observability
   - Verify all acceptance scenarios from spec.md pass
 
-- [ ] T056 Verify architecture test still passes in `src/Grimoire.Api.Tests/Architecture/DomainIsolationTests.cs`:
+- [x] T056 Verify architecture test still passes in `src/Grimoire.Api.Tests/Architecture/DomainIsolationTests.cs`:
   - Re-run T000
   - Core.Domain remains dependency-free
   - No circular dependencies introduced
 
-- [ ] T057 [P] Add README documentation in `docs/HUB_FOUNDATION.md`:
+- [x] T057 [P] Add README documentation in `docs/HUB_FOUNDATION.md`:
   - Overview of Hub Foundation feature
   - Architecture diagram (Hub-Spoke)
   - API quick reference
   - Observability metrics and logs
   - Troubleshooting guide
 
-- [ ] T058 Run full quickstart.md validation in `docs/`:
+- [x] T058 Run full quickstart.md validation in `docs/`:
   - Execute quickstart.md scenarios 1-5 manually
   - Verify all test checklist items pass
   - Capture screenshots or logs of successful runs
   - Verify performance requirements met (lifecycle < 100ms, health < 50ms, recovery < 500ms)
 
-- [ ] T059 [P] Performance benchmarking in `src/Grimoire.Api.Tests/Performance/BenchmarkTests.cs`:
+- [x] T059 [P] Performance benchmarking in `src/Grimoire.Api.Tests/Performance/BenchmarkTests.cs`:
   - Measure lifecycle transition times (target: < 100ms)
   - Measure health check endpoint response (target: < 50ms)
   - Measure SQLite recovery time (target: < 500ms)
   - Assert targets in CI/CD pipeline
 
-- [ ] T060 Final code review and cleanup:
+- [x] T060 Final code review and cleanup:
   - Remove test stubs (NoOpAgent) if moved to separate assemblies
   - Verify all code follows C# style guidelines
   - Ensure no dead code or unused imports
