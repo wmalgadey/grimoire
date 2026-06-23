@@ -13,35 +13,39 @@ public static class HealthEndpoint
 {
     public static IEndpointRouteBuilder MapHealth(this IEndpointRouteBuilder routes)
     {
-        routes.MapGet("/health", async (AgentRepository repository, HubMetrics metrics) =>
+        routes.MapGet("/health", async (AgentRepository repository, HubMetrics metrics, HubAgentRegistry registry) =>
         {
             var sw = Stopwatch.StartNew();
+            var snapshot = registry.GetRegistrySnapshot();
 
-            var agents = await repository.GetAllAgentDescriptorsAsync();
-            var hasRunning = agents.Any(a => a.Status == AgentStatus.Running);
-            var hasFaulted = agents.Any(a => a.Status == AgentStatus.Faulted);
-
-            string overall;
-            if (hasFaulted)
-                overall = "Degraded";
-            else if (hasRunning)
-                overall = "Healthy";
-            else
-                overall = "Unknown";
-
-            sw.Stop();
-            metrics.HealthCheckDurationMs.Record(sw.Elapsed.TotalMilliseconds);
-
-            var response = new
+            using (var activity = HubTracing.StartHealthCheck(snapshot.Count))
             {
-                overall,
-                timestamp = DateTime.UtcNow,
-                agents
-            };
+                var agents = await repository.GetAllAgentDescriptorsAsync();
+                var hasRunning = agents.Any(a => a.Status == AgentStatus.Running);
+                var hasFaulted = agents.Any(a => a.Status == AgentStatus.Faulted);
 
-            return overall == "Degraded"
-                ? Results.Json(response, statusCode: 503)
-                : Results.Ok(response);
+                string overall;
+                if (hasFaulted)
+                    overall = "Degraded";
+                else if (hasRunning)
+                    overall = "Healthy";
+                else
+                    overall = "Unknown";
+
+                sw.Stop();
+                metrics.HealthCheckDurationMs.Record(sw.Elapsed.TotalMilliseconds);
+
+                var response = new
+                {
+                    overall,
+                    timestamp = DateTime.UtcNow,
+                    agents
+                };
+
+                return overall == "Degraded"
+                    ? Results.Json(response, statusCode: 503)
+                    : Results.Ok(response);
+            }
         });
 
         return routes;

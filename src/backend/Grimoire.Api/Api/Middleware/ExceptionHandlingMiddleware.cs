@@ -41,6 +41,16 @@ public class ExceptionHandlingMiddleware
             _logger.LogError(ex, "Unhandled domain exception: {Message}", ex.Message);
             await WriteErrorAsync(context, 400, "DomainError", ex.Message);
         }
+        catch (ArgumentException ex)
+        {
+            _logger.LogWarning(ex, "Validation error: {Message}", ex.Message);
+            await WriteErrorAsync(context, 400, "ValidationError", ex.Message);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Unhandled exception: {Message}", ex.Message);
+            await WriteErrorAsync(context, 500, "InternalServerError", "An unexpected error occurred. Please try again later.");
+        }
     }
 
     private static async Task WriteErrorAsync(HttpContext context, int statusCode, string error, string message)

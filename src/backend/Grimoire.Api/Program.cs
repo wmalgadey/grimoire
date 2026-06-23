@@ -6,6 +6,7 @@ using Grimoire.Api.Core.Domain;
 using Grimoire.Api.Infrastructure.Observability;
 using Grimoire.Api.Infrastructure.Persistence;
 using OpenTelemetry;
+using OpenTelemetry.Metrics;
 using OpenTelemetry.Trace;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -36,7 +37,10 @@ builder.Services.AddSignalR();
 builder.Services.AddOpenTelemetry()
     .WithTracing(tracing => tracing
         .AddAspNetCoreInstrumentation()
-        .AddSource(HubTracing.Source.Name));
+        .AddSource(HubTracing.Source.Name))
+    .WithMetrics(metrics => metrics
+        .AddAspNetCoreInstrumentation()
+        .AddMeter(HubMetrics.MeterName));
 
 var app = builder.Build();
 
@@ -69,4 +73,5 @@ app.MapHealth();
 await app.RunAsync();
 
 logger.LogInformation("grimoire.host.stopped environment={Environment}", environment);
+
 

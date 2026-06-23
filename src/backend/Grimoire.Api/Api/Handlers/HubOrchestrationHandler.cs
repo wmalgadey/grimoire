@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using Grimoire.Api.Api.Hubs;
 using Grimoire.Api.Core.Domain;
 using Grimoire.Api.Infrastructure.Observability;
@@ -37,21 +38,24 @@ public class HubOrchestrationHandler
     /// </summary>
     public async Task<AgentDescriptor> RegisterAgentAsync(string agentId, string name, string[] capabilities)
     {
-        var descriptor = new AgentDescriptor
+        using (var activity = HubTracing.StartRegisterAgent(agentId, name))
         {
-            AgentId = agentId,
-            Name = name,
-            Status = AgentStatus.Unregistered,
-            Capabilities = capabilities,
-            RegisteredAt = DateTime.UtcNow
-        };
+            var descriptor = new AgentDescriptor
+            {
+                AgentId = agentId,
+                Name = name,
+                Status = AgentStatus.Unregistered,
+                Capabilities = capabilities,
+                RegisteredAt = DateTime.UtcNow
+            };
 
-        _registry.RegisterAgent(descriptor);
-        await _repository.SaveAgentDescriptorAsync(descriptor);
-        _metrics.AgentRegisteredTotal.Add(1);
-        _logger.LogInformation("agent_registered agentId={AgentId} name={Name}", agentId, name);
+            _registry.RegisterAgent(descriptor);
+            await _repository.SaveAgentDescriptorAsync(descriptor);
+            _metrics.AgentRegisteredTotal.Add(1, new KeyValuePair<string, object?>("agent_id", agentId), new KeyValuePair<string, object?>("agent_name", name));
+            _logger.LogInformation("agent_registered agentId={AgentId} name={Name}", agentId, name);
 
-        return descriptor;
+            return descriptor;
+        }
     }
 
     /// <summary>
@@ -76,18 +80,22 @@ public class HubOrchestrationHandler
     /// </summary>
     public async Task<AgentDescriptor> StartAgentAsync(string agentId)
     {
-        var snapshot = _registry.GetRegistrySnapshot();
-        var previousStatus = snapshot.TryGetValue(agentId, out var prev) ? prev.Status.ToString() : "Unknown";
+        using (var activity = HubTracing.StartStartAgent(agentId))
+        {
+            var snapshot = _registry.GetRegistrySnapshot();
+            var previousStatus = snapshot.TryGetValue(agentId, out var prev) ? prev.Status.ToString() : "Unknown";
 
-        _registry.StartAgent(agentId);
+            _registry.StartAgent(agentId);
 
-        var updated = _registry.GetRegistrySnapshot()[agentId];
-        await _repository.SaveAgentDescriptorAsync(updated);
+            var updated = _registry.GetRegistrySnapshot()[agentId];
+            await _repository.SaveAgentDescriptorAsync(updated);
 
-        _logger.LogInformation("agent_lifecycle agentId={AgentId} event=started status={Status}", agentId, updated.Status);
-        await _hubContext.Clients.All.SendAsync("AgentStatusChanged", agentId, previousStatus, updated.Status.ToString());
+            UpdateActiveAgentCount();
+            _logger.LogInformation("agent_lifecycle agentId={AgentId} event=started status={Status}", agentId, updated.Status);
+            await _hubContext.Clients.All.SendAsync("AgentStatusChanged", agentId, previousStatus, updated.Status.ToString());
 
-        return updated;
+            return updated;
+        }
     }
 
     /// <summary>
@@ -96,18 +104,22 @@ public class HubOrchestrationHandler
     /// </summary>
     public async Task<AgentDescriptor> StopAgentAsync(string agentId)
     {
-        var snapshot = _registry.GetRegistrySnapshot();
-        var previousStatus = snapshot.TryGetValue(agentId, out var prev) ? prev.Status.ToString() : "Unknown";
+        using (var activity = HubTracing.StartStopAgent(agentId))
+        {
+            var snapshot = _registry.GetRegistrySnapshot();
+            var previousStatus = snapshot.TryGetValue(agentId, out var prev) ? prev.Status.ToString() : "Unknown";
 
-        _registry.StopAgent(agentId);
+            _registry.StopAgent(agentId);
 
-        var updated = _registry.GetRegistrySnapshot()[agentId];
-        await _repository.SaveAgentDescriptorAsync(updated);
+            var updated = _registry.GetRegistrySnapshot()[agentId];
+            await _repository.SaveAgentDescriptorAsync(updated);
 
-        _logger.LogInformation("agent_lifecycle agentId={AgentId} event=stopped status={Status}", agentId, updated.Status);
-        await _hubContext.Clients.All.SendAsync("AgentStatusChanged", agentId, previousStatus, updated.Status.ToString());
+            UpdateActiveAgentCount();
+            _logger.LogInformation("agent_lifecycle agentId={AgentId} event=stopped status={Status}", agentId, updated.Status);
+            await _hubContext.Clients.All.SendAsync("AgentStatusChanged", agentId, previousStatus, updated.Status.ToString());
 
-        return updated;
+            return updated;
+        }
     }
 
     /// <summary>
@@ -120,7 +132,15 @@ public class HubOrchestrationHandler
         var updated = _registry.GetRegistrySnapshot()[agentId];
         await _repository.SaveAgentDescriptorAsync(updated);
 
-        _metrics.AgentFailedTotal.Add(1);
+        _metrics.AgentFailedTotal.Add(1, new KeyValuePair<string, object?>("agent_id", agentId), new KeyValuePair<string, object?>("reason", reason));
+        UpdateActiveAgentCount();
         _logger.LogWarning("agent_faulted agentId={AgentId} reason={Reason}", agentId, reason);
+    }
+
+    private void UpdateActiveAgentCount()
+    {
+        var snapshot = _registry.GetRegistrySnapshot();
+        var count = snapshot.Values.Count(a => a.Status == AgentStatus.Running);
+        _metrics.UpdateActiveAgentCount(count);
     }
 }

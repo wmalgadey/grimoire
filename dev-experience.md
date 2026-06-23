@@ -232,3 +232,14 @@ The planner MUST:
 
 ---
 
+habe ich security vergessen? wie werden die channels authentifiziert, also das Web UI und die Api des Backends?
+
+---
+
+```claude
+check the pr remarks
+```
+
+---
+
+mir gefällt der aufbau der api nicht. ich hätte lieber "screaming architecture", bzw. "screaming design" gehabt. also agent-classes im /agents-Ordner und ähnliches.
