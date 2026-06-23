@@ -253,3 +253,7 @@ mir gefällt der aufbau der api nicht. ich hätte lieber "screaming architecture
 
 /speckit-specify refactor den code hin zu einer screaming architecture, inder der die klassen nach domänen organisiert sind und nicht nach Clean Architecture prinzipien
 ```
+
+---
+
+- warum haben wir eigentlich .net 9 verwendet? .net 10 ist doch viel aktueller!?

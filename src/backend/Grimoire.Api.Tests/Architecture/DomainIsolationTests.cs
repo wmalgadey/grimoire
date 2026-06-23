@@ -4,91 +4,114 @@ using Xunit;
 namespace Grimoire.Api.Tests.Architecture;
 
 /// <summary>
-/// Phase 0 (MANDATORY): Architecture test enforcing domain isolation.
+/// ADR-009: Enforce domain-driven code organization (Screaming Architecture).
+/// Domains: Agents, Hubs, Channels, Shared. No circular dependencies. No layer-based namespaces.
 /// This test MUST FAIL before domain code is written (TDD approach to architecture).
 /// </summary>
 public class DomainIsolationTests
 {
     [Fact]
-    public void CoreNamespace_HasNoDependencyOnInfrastructure()
+    public void AgentsDomain_MustNotDependOnHubs()
     {
-        // Core namespace must be dependency-free (per Constitution Principle III)
-        var result = Types.InNamespace("Grimoire.Core")
-            .ShouldNot()
-            .HaveDependencyOn("Grimoire.Infrastructure")
-            .GetResult();
-
-        Assert.True(result.IsSuccessful,
-            "Grimoire.Core namespace must not import Infrastructure layer (domain isolation)");
-    }
-
-    [Fact]
-    public void CoreNamespace_HasNoDependencyOnApi()
-    {
-        // Core must never reference API layer
-        var result = Types.InNamespace("Grimoire.Core")
-            .ShouldNot()
-            .HaveDependencyOn("Grimoire.Api")
-            .GetResult();
-
-        Assert.True(result.IsSuccessful,
-            "Grimoire.Core namespace must not import Api layer");
-    }
-
-    [Fact]
-    public void CoreNamespace_HasNoDependencyOnFramework()
-    {
-        // Core must not reference framework-specific packages
-        var result = Types.InNamespace("Grimoire.Core")
-            .ShouldNot()
-            .HaveDependencyOn("Microsoft.EntityFrameworkCore")
-            .GetResult();
-
-        Assert.True(result.IsSuccessful,
-            "Grimoire.Core must not reference EntityFrameworkCore (dependency-free domain)");
-    }
-
-    [Fact]
-    public void ApiInfrastructurePersistence_CannotImportFromApi()
-    {
-        // Infrastructure.Persistence layer must not depend on Api layer
-        var result = Types.InNamespace("Grimoire.Api.Infrastructure.Persistence")
-            .ShouldNot()
-            .HaveDependencyOn("Grimoire.Api.Api")
-            .GetResult();
-
-        Assert.True(result.IsSuccessful,
-            "Grimoire.Api.Infrastructure.Persistence must not import Api layer (layered architecture)");
-    }
-
-    [Fact]
-    public void IAgentWorker_DefinedInCoreAgents()
-    {
-        // IAgentWorker interface must be defined in Grimoire.Core.Agents
-        var result = Types.InNamespace("Grimoire.Core.Agents")
-            .That()
-            .HaveNameMatching("IAgentWorker")
+        var result = Types.InNamespace("Grimoire.Api.Agents")
             .Should()
-            .BeInterfaces()
+            .NotHaveDependencyOn("Grimoire.Api.Hubs")
             .GetResult();
 
         Assert.True(result.IsSuccessful,
-            "IAgentWorker must be defined as an interface in Grimoire.Core.Agents");
+            "Grimoire.Api.Agents must not depend on Grimoire.Api.Hubs (no circular domain dependencies)");
     }
 
     [Fact]
-    public void IAgentWorker_ImplementedInAgents()
+    public void AgentsDomain_MustNotDependOnChannels()
     {
-        // Implementations of IAgentWorker may exist in Grimoire.Agents layer
-        var result = Types.InNamespace("Grimoire.Agents")
-            .That()
-            .ImplementInterface(typeof(Grimoire.Core.Agents.IAgentWorker))
+        var result = Types.InNamespace("Grimoire.Api.Agents")
             .Should()
-            .ResideInNamespace("Grimoire.Agents")
+            .NotHaveDependencyOn("Grimoire.Api.Channels")
             .GetResult();
 
-        // This test passes vacuously if no implementations exist yet (expected in skeleton)
         Assert.True(result.IsSuccessful,
-            "IAgentWorker implementations must reside in Grimoire.Agents layer (if they exist)");
+            "Grimoire.Api.Agents must not depend on Grimoire.Api.Channels (no circular domain dependencies)");
+    }
+
+    [Fact]
+    public void ChannelsDomain_MustNotDependOnHubs()
+    {
+        var result = Types.InNamespace("Grimoire.Api.Channels")
+            .Should()
+            .NotHaveDependencyOn("Grimoire.Api.Hubs")
+            .GetResult();
+
+        Assert.True(result.IsSuccessful,
+            "Grimoire.Api.Channels must not depend on Grimoire.Api.Hubs (no circular domain dependencies)");
+    }
+
+    [Fact]
+    public void ChannelsDomain_MustNotDependOnAgents()
+    {
+        var result = Types.InNamespace("Grimoire.Api.Channels")
+            .Should()
+            .NotHaveDependencyOn("Grimoire.Api.Agents")
+            .GetResult();
+
+        Assert.True(result.IsSuccessful,
+            "Grimoire.Api.Channels must not depend on Grimoire.Api.Agents (no circular domain dependencies)");
+    }
+
+    [Fact]
+    public void SharedDomain_MustNotDependOnAgents()
+    {
+        var result = Types.InNamespace("Grimoire.Api.Shared")
+            .Should()
+            .NotHaveDependencyOn("Grimoire.Api.Agents")
+            .GetResult();
+
+        Assert.True(result.IsSuccessful,
+            "Grimoire.Api.Shared must not depend on domain-specific code");
+    }
+
+    [Fact]
+    public void SharedDomain_MustNotDependOnHubs()
+    {
+        var result = Types.InNamespace("Grimoire.Api.Shared")
+            .Should()
+            .NotHaveDependencyOn("Grimoire.Api.Hubs")
+            .GetResult();
+
+        Assert.True(result.IsSuccessful,
+            "Grimoire.Api.Shared must not depend on domain-specific code");
+    }
+
+    [Fact]
+    public void HubsDomain_MustNotDependOnAgentConcretes()
+    {
+        var result = Types.InNamespace("Grimoire.Api.Hubs")
+            .Should()
+            .NotHaveDependencyOn("Grimoire.Api.Agents.Handlers")
+            .GetResult();
+
+        Assert.True(result.IsSuccessful,
+            "Grimoire.Api.Hubs must communicate with Agents via interfaces, not concrete handlers");
+    }
+
+    [Fact]
+    public void OldLayerNamespace_Api_MustNotExist()
+    {
+        var types = Types.InNamespace("Grimoire.Api.Api").GetTypes();
+        Assert.Empty(types);
+    }
+
+    [Fact]
+    public void OldLayerNamespace_Core_MustNotExist()
+    {
+        var types = Types.InNamespace("Grimoire.Api.Core").GetTypes();
+        Assert.Empty(types);
+    }
+
+    [Fact]
+    public void OldLayerNamespace_Infrastructure_MustNotExist()
+    {
+        var types = Types.InNamespace("Grimoire.Api.Infrastructure").GetTypes();
+        Assert.Empty(types);
     }
 }

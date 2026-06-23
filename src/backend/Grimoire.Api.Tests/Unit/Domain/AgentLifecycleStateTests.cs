@@ -1,5 +1,6 @@
-using Grimoire.Api.Core.Domain;
-using Grimoire.Api.Core.Exceptions;
+using Grimoire.Api.Agents.Services;
+using Grimoire.Api.Agents.Models;
+using Grimoire.Api.Shared.Exceptions;
 using Xunit;
 
 namespace Grimoire.Api.Tests.Unit.Domain;
@@ -242,7 +243,7 @@ public class AgentLifecycleStateTests
         var ex = Assert.Throws<InvalidStateTransitionException>(() =>
             registry.StartAgent("agent-01"));
 
-        Assert.Equal(AgentStatus.Stopped, ex.FromState);
-        Assert.Equal(AgentStatus.Running, ex.ToState);
+        Assert.Equal(AgentStatus.Stopped.ToString(), ex.FromState);
+        Assert.Equal(AgentStatus.Running.ToString(), ex.ToState);
     }
 }

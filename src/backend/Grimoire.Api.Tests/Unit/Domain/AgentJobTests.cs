@@ -1,4 +1,4 @@
-using Grimoire.Api.Core.Domain;
+using Grimoire.Api.Agents.Models;
 using Xunit;
 
 namespace Grimoire.Api.Tests.Unit.Domain;

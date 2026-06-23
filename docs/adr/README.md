@@ -19,6 +19,8 @@
 | [ADR-005](adr-005.md) | Monorepo Structure and Spec-Kit Workflow Integration | Accepted | Flat monorepo with `constitution.md` for Spec-Kit context |
 | [ADR-006](adr-006.md) | Hub-Spoke Orchestration Architecture | Accepted | Centralized backend orchestrator routing to specialized agent workers |
 | [ADR-007](adr-007.md) | Storage Strategy — Git + Plain Markdown Files | Accepted | Git-native, Obsidian-compatible knowledge base inspired by Karpathy's llm.txt |
+| [ADR-008](adr-008.md) | Operational State Persistence — SQLite for Hub Ephemera | Accepted | SQLite for ephemeral runtime state; Git + Markdown remains canonical storage |
+| [ADR-009](adr-009.md) | Domain-Driven Code Organization — Screaming Architecture | Proposed | Reorganize by business domain (Agents, Hubs, Channels, Shared) instead of technical layers |
 
 ---
 
