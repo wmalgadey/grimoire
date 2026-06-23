@@ -94,3 +94,8 @@ execute the implementation planning
 führe den nächsten spec-kit schritt aus
 ```
 
+---
+
+```claude
+implement the current plan
+```

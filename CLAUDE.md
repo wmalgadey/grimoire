@@ -20,6 +20,8 @@ Reference: `docs/adr/` for detailed rationale on each decision.
 - **Agent Runtime**: .NET Worker Services (ADR-002)
 - **Channel Abstraction**: `IChannel` interface (ADR-004)
 - **Project Structure**: Flat monorepo with Spec-Kit integration (ADR-005)
+- **Orchestration Pattern**: Hub-spoke — all routing via `Grimoire.Api` (ADR-006)
+- **Storage Strategy**: Git + Markdown; no binary database (ADR-007)
 
 ## Spec-Kit Workflow
 
