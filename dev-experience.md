@@ -35,3 +35,16 @@ specify preset add --install-allowed --from https://github.com/0xrafasec/spec-ki
 - Techstack?
 - Guidelines?
 - Architektur Tests --> NetArchTest.Rules/Roslyn
+- Was steht dann in CLAUDE.md?
+
+---
+
+- problem: ich weiß nicht, was der ideale techstack ist. ich würde gerne C# nutzen, weiß aber auch, dass das mit LLMs nicht so optimale ergebnisse bringt.
+- das habe ich dann mit claude gespiegelt: https://claude.ai/share/d203a4c2-0c0f-46fc-bb49-233df685264c
+- daraus habe ich ADRs generieren lassen.
+- Danach musste ich aber nochmal constitution.md anpassen und den Plan den ich zwischenzeitlich für die ADRs erstellt hatte, war nicht mehr gültig.
+
+---
+
+- `/speckit.agent-context.update` aktualisiert die CLAUDE.md
+
