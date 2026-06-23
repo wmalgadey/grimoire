@@ -84,3 +84,8 @@ Ich würde gerne noch LikeC4 ins Projekt integrieren!! Das gehört aber nicht in
 
 ---
 
+```claude
+execute the implementation planning
+```
+
+---
