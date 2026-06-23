@@ -243,3 +243,19 @@ check the pr remarks
 ---
 
 mir gefällt der aufbau der api nicht. ich hätte lieber "screaming architecture", bzw. "screaming design" gehabt. also agent-classes im /agents-Ordner und ähnliches.
+
+- Hier wurde eine "constitution" nicht berücksichtigt: "Domain Architecture & Strategic DDD"
+
+```claude
+mir gefällt der aufbau der api nicht. ich hätte lieber "screaming architecture", bzw. "screaming design" gehabt. also agent-classes im /agents-Ordner und ähnliches. sprich alle classen nicht anhand von tier bzw. levels unterteilt, sondern anhand der funktionen
+
+...
+
+/speckit-specify refactor den code hin zu einer screaming architecture, inder der die klassen nach domänen organisiert sind und nicht nach Clean Architecture prinzipien
+```
+
+Refactoring hat eigentlich gut funktioniert (Codebase war ja auch noch klein), aber die tasks.md wurde nicht abgehakt. Die CLAUDE.md wurde auch nicht auf das neue Feature angepasst!
+
+---
+
+- warum haben wir eigentlich .net 9 verwendet? .net 10 ist doch viel aktueller!?

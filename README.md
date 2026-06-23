@@ -46,14 +46,4 @@ npm run lint          # ESLint 9 flat config
 
 ## Architecture Decision Records
 
-All structural choices are documented under [`docs/adr/`](docs/adr/):
-
-| ADR | Title |
-|-----|-------|
-| [ADR-001](docs/adr/ADR-001-backend-framework.md) | Backend Framework — .NET 9 Minimal API with SignalR |
-| [ADR-002](docs/adr/ADR-002-agent-runtime.md) | Agent Runtime — Worker Services + IAgentWorker |
-| [ADR-003](docs/adr/ADR-003-frontend.md) | Frontend — Svelte 5 + Vite |
-| [ADR-004](docs/adr/ADR-004-channel-abstraction.md) | Channel Abstraction — IChannel |
-| [ADR-005](docs/adr/ADR-005-monorepo-structure.md) | Monorepo Structure |
-| [ADR-006](docs/adr/ADR-006-hub-spoke-orchestration.md) | Hub-Spoke Orchestration |
-| [ADR-007](docs/adr/ADR-007-storage-strategy.md) | Storage Strategy — Git + Markdown |
+See [`docs/adr/`](docs/adr/) for all structural decisions.
