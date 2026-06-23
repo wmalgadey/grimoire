@@ -1,7 +1,7 @@
 using Grimoire.Api.Agents.Models;
 using Xunit;
 
-namespace Grimoire.Api.Tests.Unit.Domain;
+namespace Grimoire.Api.Tests.Unit.Agents;
 
 public class AgentDescriptorTests
 {

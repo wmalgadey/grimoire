@@ -3,7 +3,7 @@ using Grimoire.Api.Agents.Models;
 using Grimoire.Api.Shared.Exceptions;
 using Xunit;
 
-namespace Grimoire.Api.Tests.Unit.Domain;
+namespace Grimoire.Api.Tests.Unit.Agents;
 
 /// <summary>
 /// Tests for the agent lifecycle state machine, covering valid and invalid
