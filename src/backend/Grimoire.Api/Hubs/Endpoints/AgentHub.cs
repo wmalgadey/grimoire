@@ -14,4 +14,10 @@ public class AgentHub : Hub
     {
         await base.OnDisconnectedAsync(exception);
     }
+
+    /// <summary>Broadcasts an agent status change to all connected clients.</summary>
+    public async Task SendAgentStatusChange(string agentId, string previousStatus, string currentStatus)
+    {
+        await Clients.All.SendAsync("AgentStatusChanged", agentId, previousStatus, currentStatus);
+    }
 }
