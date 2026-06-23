@@ -42,14 +42,7 @@ public class AgentDbInitializer
         _logger.LogInformation("sqlite_recovery agents_recovered={Count}", agents.Count);
     }
 
-    private static string GetSchemaSql()
-    {
-        var assemblyDir = Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location)!;
-        var schemaPath = Path.Combine(assemblyDir, "Agents", "Persistence", "InitialSchema.sql");
-        if (File.Exists(schemaPath))
-            return File.ReadAllText(schemaPath);
-
-        return @"
+    private static string GetSchemaSql() => @"
 CREATE TABLE IF NOT EXISTS AgentDescriptors (
     AgentId TEXT PRIMARY KEY,
     Name TEXT NOT NULL,
@@ -73,5 +66,4 @@ CREATE TABLE IF NOT EXISTS AgentJobs (
 CREATE INDEX IF NOT EXISTS idx_AgentJobs_AgentId ON AgentJobs(AgentId);
 CREATE INDEX IF NOT EXISTS idx_AgentJobs_Status ON AgentJobs(Status);
 CREATE INDEX IF NOT EXISTS idx_AgentJobs_CreatedAt ON AgentJobs(CreatedAt);";
-    }
 }
