@@ -46,5 +46,41 @@ specify preset add --install-allowed --from https://github.com/0xrafasec/spec-ki
 
 ---
 
-- `/speckit.agent-context.update` aktualisiert die CLAUDE.md
+- `/speckit.agent-context.update` aktualisiert die CLAUDE.md (hat nur nichts gemacht bei mir!)
+
+---
+
+Was nun? ADRs finde ich gut, constitution.md auch. Aber wie gehe ich jetzt wirklich vor um das Projekt umzusetzen?
+
+```claude
+/speckit.specify
+
+We are building an AI Agent Orchestrator platform called "Grimoire".
+
+This spec covers the PROJECT SKELETON ONLY — no features, no business logic.
+
+Scope:
+- Monorepo directory structure (src/backend, src/frontend, src/agents, docs/adr/)
+- .NET 9 Minimal API + SignalR project scaffold (empty, compiles, no endpoints except health)
+- IChannel and IAgentWorker interface definitions (empty contracts only)
+- Svelte 5 + Vite frontend scaffold (empty app, compiles, no UI content)
+- NetArchTest.Rules setup + architecture tests enforcing ADR-001 through ADR-007
+- CI pipeline skeleton (build + architecture tests pass)
+
+Out of scope: Any channel implementation, any agent implementation, any UI components, 
+any business logic.
+
+Read constitution.md and all ADRs in docs/adr/ before generating the spec.
+```
+
+---
+
+Ein bischen in der spec-kit Doku nachgeschaut, und dann noch den "Git Branching Workflow" hinzugefügt.
+- `specify extension add git`
+
+---
+
+Ich würde gerne noch LikeC4 ins Projekt integrieren!! Das gehört aber nicht in einen ADR, sondern in die constitution.md. Hier habe ich aber gerade keine Idee, wie ich das am besten formuliere.
+
+---
 
