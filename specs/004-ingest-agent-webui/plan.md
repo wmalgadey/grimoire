@@ -71,12 +71,12 @@ Build the Ingest Agent as a standalone .NET 9 process in `src/agents/ingest/` th
 | ADR-002 | Agent Runtime — Worker Services + Escape-Hatch | `IAgentWorker` for in-process agents; RemoteAgent concept replaced — see ADR-010 |
 | ADR-010 | Ingest Agent Standalone + Claude SDK | Standalone process in `src/agents/ingest/`; Hub uses `IngestAgentClient` (typed HttpClient) — no proxy abstraction; amends ADR-002 |
 | ADR-003 | Frontend — Svelte 5 + Vite | Ingest UI is Svelte 5 with Runes syntax (`$state`, `$derived`, `$effect`); no class-based components |
-| ADR-004 | Channel Abstraction — IChannel | `IngestChannel` implements `IChannel`; routes ingest events (progress, feedback, conversation) to SignalR clients |
-| ADR-005 | Monorepo Structure | Agent in `src/agents/ingest/`; frontend components in `src/frontend/src/components/ingest/`; no mixing of subproject code |
+| ADR-004 | Channel Abstraction — IChannel | `IngestChannel` implements `IChannel` in `Grimoire.Api/Channels/Ingest/`; routes ingest events (progress, feedback, conversation) to SignalR clients |
+| ADR-005 | Monorepo Structure | Agent in `src/agents/ingest/`; Ingest Channel in `src/backend/Grimoire.Api/Channels/Ingest/`; frontend components in `src/frontend/src/components/ingest/`; no mixing of subproject code |
 | ADR-006 | Hub-Spoke Orchestration | Hub relays all ingest triggers and results; no direct frontend ↔ agent communication; agent reports progress to Hub via HTTP callback |
 | ADR-007 | Storage — Git + Markdown | Processed output written to `wiki/` as Markdown with YAML frontmatter; auto git-commit per run; no SQL writes to wiki/ |
 | ADR-008 | SQLite for Hub Ephemera | Hub extends `grimoire.db` with `IngestRuns` and `ConversationTurns` tables; agent maintains its own `ingest-cache.db` |
-| ADR-009 | Screaming Architecture | All Hub-side additions live in `Grimoire.Api/Ingest/` domain folder; no code placed in unrelated domains |
+| ADR-009 | Screaming Architecture | Hub code organized by domain: `Grimoire.Api/Agents/`, `Grimoire.Api/Channels/Ingest/`, `Grimoire.Api/Hubs/`, `Grimoire.Api/Shared/` |
 | ADR-010 | Ingest Agent Standalone + Claude SDK | Agent in `src/agents/ingest/`; uses `Anthropic.SDK`; all config via env vars; no `src/backend/` namespace imports |
 
 **New ADR required?**: No — ADR-010 covers the new structural boundary introduced by this feature.
@@ -193,23 +193,25 @@ src/
 │
 ├── backend/
 │   └── Grimoire.Api/
-│       └── Ingest/                          # EXTEND — domain scaffold already exists
-│           ├── Agent/
-│           │   └── IngestAgentClient.cs     # Typed HttpClient — direct HTTP to agent (ADR-002)
-│           ├── Channel/
-│           │   └── IngestChannel.cs         # IChannel implementation (ADR-004)
-│           ├── Endpoints/
-│           │   ├── UploadSourceEndpoint.cs  # POST /api/ingest/upload
-│           │   ├── TriggerIngestEndpoint.cs # POST /api/ingest/trigger
-│           │   ├── GetIngestRunEndpoint.cs  # GET /api/ingest/runs/{runId}
-│           │   └── ConversationEndpoint.cs  # POST /api/ingest/conversations/{id}/messages
-│           ├── Models/
-│           │   ├── IngestRunRecord.cs
-│           │   └── ConversationTurnRecord.cs
-│           ├── Persistence/
-│           │   └── IngestRepository.cs      # SQLite CRUD for IngestRuns + Turns
-│           └── Services/
-│               └── IngestHub.cs             # SignalR hub for real-time ingest events
+│       ├── Agents/
+│       ├── Hubs/
+│       ├── Channels/                        # EXTEND — per ADR-004 (IChannel)
+│       │   └── Ingest/                      # Ingest channel: Web-UI entry point for file ingestion
+│       │       ├── Endpoints/
+│       │       │   ├── UploadSourceEndpoint.cs  # POST /api/ingest/upload
+│       │       │   ├── TriggerIngestEndpoint.cs # POST /api/ingest/trigger
+│       │       │   ├── GetIngestRunEndpoint.cs  # GET /api/ingest/runs/{runId}
+│       │       │   └── ConversationEndpoint.cs  # POST /api/ingest/conversations/{id}/messages
+│       │       ├── Services/
+│       │       │   ├── IngestChannel.cs     # IChannel implementation (ADR-004)
+│       │       │   ├── IngestHub.cs         # SignalR hub for real-time ingest events
+│       │       │   └── IngestAgentClient.cs # Typed HttpClient — direct HTTP to agent (ADR-010)
+│       │       ├── Persistence/
+│       │       │   └── IngestRepository.cs  # SQLite CRUD for IngestRuns + Turns
+│       │       └── Models/
+│       │           ├── IngestRunRecord.cs
+│       │           └── ConversationTurnRecord.cs
+│       └── Shared/
 │
 └── frontend/
     └── src/
@@ -227,4 +229,4 @@ src/
             └── ingestHub.ts                 # @microsoft/signalr client for IngestHub
 ```
 
-**Structure Decision**: Three-subproject layout per ADR-005. Agent is a new .NET project in `src/agents/ingest/`. Hub gets domain extensions in the already-scaffolded `Grimoire.Api/Ingest/` folders. Frontend gets a new page and component subtree under `src/frontend/src/`.
+**Structure Decision**: Three-subproject layout per ADR-005. Agent is a new .NET project in `src/agents/ingest/`. Backend gets Ingest Channel implementation in `Grimoire.Api/Channels/Ingest/` (per ADR-004 and ADR-009 screaming architecture — all Hub-side additions are domain-organized). Frontend gets a new page and component subtree under `src/frontend/src/`.

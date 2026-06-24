@@ -134,44 +134,68 @@ repo.Commit(message, author, author);
 
 ## 6. Hub ↔ Agent Communication Protocol
 
-**Decision**: Direct HTTP (JSON REST) — Hub holds a typed `IngestAgentClient` (`HttpClient`) and calls the agent's Minimal API endpoints directly. No proxy abstraction layer.
+**Decision**: Dual-mode communication:
+- **Hub → Agent**: Synchronous HTTP REST for commands (trigger run, submit feedback)
+- **Agent → Hub**: Asynchronous HTTP POST for events (progress, feedback requests, conversation turns)
+- Agent stores all work locally; Hub never blocks agent processing
 
-**Rationale**: ADR-002 (amended) clarifies that `IAgentWorker` is for in-process agents only. Standalone agents are called via a typed HTTP client registered in the Hub's DI container — simple, transparent, no indirection. The Hub is still the orchestrator; it routes channel requests to the agent and broadcasts agent events back to the frontend via SignalR.
+**Rationale**: ADR-010 (amended) clarifies that standalone agents are NOT proxied via `IAgentWorker`. Instead:
+- Hub holds typed `IngestAgentClient` and invokes agent endpoints directly (synchronous)
+- Agent posts progress events to Hub callback URL asynchronously (best-effort)
+- Agent is never blocked by Hub state; continues processing even if Hub is unavailable
+- Hub can query agent status via `GET /ingest/runs/{id}` if needed to catch up on missed events
 
 **Communication pattern**:
 ```
-Web-UI Channel (browser)
-  ↓ upload / trigger / feedback / conversation message
-Hub HTTP endpoints  (src/backend/Grimoire.Api/Ingest/Endpoints/)
-  ↓ IngestAgentClient (typed HttpClient)
-Agent HTTP API      (src/agents/ingest/Api/)
-  ↓ progress / feedback requests / conversation events  (HTTP POST callback)
-Hub callback endpoint
-  ↓ IngestHub.BroadcastAsync(...)
-Frontend (SignalR)
+Synchronous (Hub → Agent, command flow):
+  Web-UI Channel (browser)
+    ↓ upload / trigger / feedback / conversation message
+  Hub Channel Endpoints
+    ↓ IngestAgentClient (typed HttpClient, HTTP POST)
+  Agent HTTP API
+
+Asynchronous (Agent → Hub, event flow):
+  Agent completes processing step
+    ↓ POSTs event to Hub callback URL
+  Hub callback endpoint (stores in DB + broadcasts via SignalR)
+    ↓ IngestHub (SignalR)
+  Frontend (UI updates in real-time)
+
+Resilience (Hub unavailable):
+  Agent fails to POST to Hub callback
+    ↓ Logs failure, continues processing
+  Status persisted in agent's ingest-cache.db
+    ↓ Hub can later query GET /ingest/runs/{id}
+  Hub catches up without requiring agent restart
 ```
 
 **Agent port**: Configurable via `INGEST_HTTP_PORT` env var (default: `5100`). Hub reads `INGEST_AGENT_URL` from its own config.
 
-**Progress reporting**: Agent POSTs progress events to a Hub callback URL (`POST /api/ingest/callback/progress`) after each file. Hub persists to SQLite and broadcasts via `IngestHub`.
+**Progress reporting**: 
+- Agent POSTs progress events to Hub callback after each file
+- HTTP POST includes: file path, status, chunk count, duration, run ID
+- Hub persists to `IngestRuns` table and broadcasts via `IngestHub`
+- If POST fails: Agent logs and continues; Hub can query later
 
 **Feedback flow**:
 1. Agent detects ambiguous file → POSTs `FeedbackRequest` to Hub callback
 2. Hub stores in SQLite, broadcasts `IngestFeedbackRequest` via SignalR
 3. User submits decision → `POST /api/ingest/runs/{id}/feedback`
-4. Hub forwards via `IngestAgentClient` → agent unblocks processing
+4. Hub forwards to agent via `IngestAgentClient` (synchronous)
+5. Agent processes response, continues file processing
 
 **Conversation flow**:
-1. Agent finishes file → POSTs `ConversationOpened` to Hub callback (with opening message)
+1. Agent finishes file → POSTs `ConversationOpened` event to Hub callback
 2. Hub stores in SQLite, broadcasts `IngestConversationOpened` via SignalR
 3. User message → `POST /api/ingest/conversations/{id}/messages`
-4. Hub forwards via `IngestAgentClient` → agent calls Claude SDK → returns response synchronously
-5. Hub persists turn, broadcasts `IngestConversationTurn` via SignalR
+4. Hub forwards to agent via `IngestAgentClient` (synchronous, wait for response)
+5. Agent calls Claude SDK, returns response immediately
+6. Hub persists turn in `IngestRepository`, broadcasts via `IngestHub`
 
 **Alternatives considered**:
-- `IAgentWorker` proxy wrapping HttpClient ("RemoteAgent"): rejected — adds abstraction without value; the typed HTTP client is sufficient and transparent
-- gRPC: viable but adds proto tooling complexity with no benefit at this scale
-- WebSocket agent→Hub push: more complex lifecycle; HTTP callbacks are simpler and sufficient
+- `IAgentWorker` proxy (RemoteAgent): rejected — adds abstraction without value
+- Agent actively pulls status from Hub: rejected — wrong direction; Hub should not be required
+- Bidirectional WebSocket: overkill for v1; HTTP callbacks + periodic polling sufficient
 
 ---
 
