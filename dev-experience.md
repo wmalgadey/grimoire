@@ -316,8 +316,10 @@ Ein minimales Browser-Interface als primärer Interaktionskanal für den Ingest-
 **Was das UI explizit nicht ist:** kein Dashboard, keine Konfigurationsoberfläche, keine Authentifizierung (im ersten Schritt).
 ```
 
-- diesmal habe ich diese specs manuell erweitert
+- diesmal habe ich diese specs per rückfragen erweitert
   - hinzufügen der tatsache dass der agent ein eigenständiger prozess ist, und nicht im backend eingebettet ist
   - erweitern der info, dass das "embedding" mit einem LLM gemacht wird, und nicht mit einem embedding-service
   - dazu wurde dann der adr 010 erstellt, der das beschreibt
   - zuletzt erweitern, dass der human in the loop nicht nur bei problemen, sondern ggf. auch bei rückfragen oder zur diskussion der ingesten dokumente interagieren kann.
+
+- bleibt noch ein Problem, in adr-002 wird von einem "RemoteAgent" gesprochen, der die Kommunikation zwischen Hub und Agenten übernimmt. Sowas war eigentlich nicht geplant, habe ich aber im ADR übersehen!
