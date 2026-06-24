@@ -1,7 +1,13 @@
 export interface UploadResponse {
-  runId?: string;
-  fileCount: number;
-  uploadedFiles: string[];
+  accepted: Array<{
+    fileName: string;
+    destination: string;
+  }>;
+  rejected: Array<{
+    fileName: string;
+    error: string;
+    message: string;
+  }>;
 }
 
 export interface TriggerResponse {
@@ -24,8 +30,9 @@ export interface ConversationTurn {
 export interface ConversationTurnResponse {
   conversationId: string;
   turnIndex: number;
-  role: string;
+  role: 'agent' | 'user';
   message: string;
+  createdAt: string;
 }
 
 export interface ConversationResponse {

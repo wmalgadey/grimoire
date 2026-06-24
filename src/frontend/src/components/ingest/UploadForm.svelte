@@ -53,8 +53,12 @@
 
     try {
       const result = await uploadFiles(files, subDirectory || undefined);
-      statusMessage = `Uploaded ${result.fileCount} file(s) successfully.`;
-      statusKind = 'success';
+      const acceptedCount = result.accepted.length;
+      const rejectedCount = result.rejected.length;
+      statusMessage = rejectedCount > 0
+        ? `Uploaded ${acceptedCount} file(s), rejected ${rejectedCount}.`
+        : `Uploaded ${acceptedCount} file(s) successfully.`;
+      statusKind = rejectedCount > 0 ? 'error' : 'success';
       files = [];
       subDirectory = '';
       onUploaded?.(result);

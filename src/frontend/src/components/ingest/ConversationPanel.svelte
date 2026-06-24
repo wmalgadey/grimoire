@@ -74,7 +74,19 @@
     scrollToBottom();
 
     try {
-      await sendConversationMessage(conversationId, msg);
+      const returnedTurn = await sendConversationMessage(conversationId, msg);
+      const exists = turns.some(
+        t => t.turnIndex === returnedTurn.turnIndex && t.role === returnedTurn.role,
+      );
+      if (!exists) {
+        turns = [...turns, {
+          turnIndex: returnedTurn.turnIndex,
+          role: returnedTurn.role,
+          message: returnedTurn.message,
+          createdAt: returnedTurn.createdAt,
+        }];
+        scrollToBottom();
+      }
     } catch (err) {
       errorMessage = err instanceof Error ? err.message : 'Failed to send message.';
       // Remove optimistic entry on failure
