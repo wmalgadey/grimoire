@@ -100,7 +100,7 @@ public class IngestAgentClient
         }
     }
 
-    public async Task<object> SubmitConversationTurnAsync(string conversationId, string message)
+    public async Task<ConversationTurnResponse> SubmitConversationTurnAsync(string conversationId, string message)
     {
         var payload = new { message };
         var content = new StringContent(JsonSerializer.Serialize(payload), System.Text.Encoding.UTF8, "application/json");
@@ -115,7 +115,17 @@ public class IngestAgentClient
             }
 
             var json = await response.Content.ReadAsStringAsync();
-            return JsonSerializer.Deserialize<object>(json) ?? new { };
+            using var doc = JsonDocument.Parse(json);
+            var root = doc.RootElement;
+
+            return new ConversationTurnResponse(
+                ConversationId: root.GetProperty("conversationId").GetString() ?? conversationId,
+                TurnIndex: root.GetProperty("turnIndex").GetInt32(),
+                Role: root.GetProperty("role").GetString() ?? "agent",
+                Message: root.GetProperty("message").GetString() ?? string.Empty,
+                CreatedAt: root.TryGetProperty("createdAt", out var createdAt)
+                    ? createdAt.GetString() ?? DateTime.UtcNow.ToString("O")
+                    : DateTime.UtcNow.ToString("O"));
         }
         catch (Exception ex)
         {
@@ -124,3 +134,11 @@ public class IngestAgentClient
         }
     }
 }
+
+public record ConversationTurnResponse(
+    string ConversationId,
+    int TurnIndex,
+    string Role,
+    string Message,
+    string CreatedAt
+);

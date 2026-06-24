@@ -3,6 +3,7 @@ using Grimoire.Api.Ingest.Models;
 using Grimoire.Api.Ingest.Models.SignalREvents;
 using Grimoire.Api.Ingest.Persistence;
 using Microsoft.AspNetCore.SignalR;
+using System.Text.Json;
 
 namespace Grimoire.Api.Ingest.Services;
 
@@ -70,11 +71,30 @@ public class IngestOrchestrationHandler
         }
     }
 
-    public async Task<object> SubmitConversationTurnAsync(string conversationId, string message)
+    public async Task<ConversationTurnResponse> SubmitConversationTurnAsync(string conversationId, string message)
     {
         try
         {
             var result = await _agentClient.SubmitConversationTurnAsync(conversationId, message);
+
+            var existingTurns = await _repository.GetConversationTurnsAsync(conversationId);
+            var filePath = existingTurns.FirstOrDefault()?.FilePath ?? string.Empty;
+
+            await _repository.SaveConversationTurnAsync(new ConversationTurnRecord(
+                ConversationId: result.ConversationId,
+                TurnIndex: result.TurnIndex,
+                FilePath: filePath,
+                Role: result.Role,
+                Message: result.Message,
+                CreatedAt: result.CreatedAt));
+
+            await _hubContext.Clients.All.SendAsync("IngestConversationTurn", new IngestConversationTurn(
+                ConversationId: result.ConversationId,
+                TurnIndex: result.TurnIndex,
+                Role: result.Role,
+                Message: result.Message,
+                CreatedAt: result.CreatedAt));
+
             _logger.LogInformation("ingest_conversation_turn_submitted conversationId={ConversationId}", conversationId);
             return result;
         }
@@ -154,12 +174,21 @@ public class IngestOrchestrationHandler
     {
         try
         {
+            var existing = await _repository.GetIngestRunAsync(runId);
+            var summary = TryParseSummary(completed.Summary);
+
             var record = new IngestRunRecord
             {
                 RunId = runId,
                 Status = completed.Status,
-                StartedAt = "",
-                CompletedAt = completed.CompletedAt
+                StartedAt = existing?.StartedAt ?? completed.CompletedAt,
+                CompletedAt = completed.CompletedAt,
+                TotalFiles = summary.TotalFiles,
+                ProcessedFiles = summary.ProcessedCount,
+                FailedFiles = summary.FailedCount,
+                SkippedFiles = summary.SkippedCount,
+                DurationMs = summary.DurationMs,
+                FileResults = summary.FileResults
             };
             await _repository.SaveIngestRunAsync(record);
             await _hubContext.Clients.All.SendAsync("IngestRunCompleted", completed);
@@ -182,5 +211,51 @@ public class IngestOrchestrationHandler
         {
             _logger.LogError(ex, "ingest_handle_log_entry_failed runId={RunId}", runId);
         }
+    }
+
+    private static ParsedSummary TryParseSummary(object summary)
+    {
+        if (summary is not JsonElement json || json.ValueKind != JsonValueKind.Object)
+        {
+            return ParsedSummary.Empty;
+        }
+
+        var results = new List<FileProcessingResult>();
+        if (json.TryGetProperty("files", out var files) && files.ValueKind == JsonValueKind.Array)
+        {
+            foreach (var item in files.EnumerateArray())
+            {
+                results.Add(new FileProcessingResult
+                {
+                    FilePath = item.TryGetProperty("filePath", out var filePath) ? filePath.GetString() ?? string.Empty : string.Empty,
+                    Status = item.TryGetProperty("status", out var status) ? status.GetString() ?? "unknown" : "unknown",
+                    ChunkCount = item.TryGetProperty("chunkCount", out var chunkCount) ? chunkCount.GetInt32() : 0,
+                    DurationMs = item.TryGetProperty("durationMs", out var durationMs) ? durationMs.GetInt64() : 0,
+                    ErrorMessage = item.TryGetProperty("errorMessage", out var errorMessage)
+                        && errorMessage.ValueKind != JsonValueKind.Null
+                        ? errorMessage.GetString()
+                        : null
+                });
+            }
+        }
+
+        return new ParsedSummary(
+            TotalFiles: json.TryGetProperty("totalFiles", out var totalFiles) ? totalFiles.GetInt32() : 0,
+            ProcessedCount: json.TryGetProperty("processedCount", out var processedCount) ? processedCount.GetInt32() : 0,
+            FailedCount: json.TryGetProperty("failedCount", out var failedCount) ? failedCount.GetInt32() : 0,
+            SkippedCount: json.TryGetProperty("skippedCount", out var skippedCount) ? skippedCount.GetInt32() : 0,
+            DurationMs: json.TryGetProperty("durationMs", out var durationMsValue) ? durationMsValue.GetInt64() : 0,
+            FileResults: results);
+    }
+
+    private readonly record struct ParsedSummary(
+        int TotalFiles,
+        int ProcessedCount,
+        int FailedCount,
+        int SkippedCount,
+        long DurationMs,
+        List<FileProcessingResult> FileResults)
+    {
+        public static ParsedSummary Empty { get; } = new(0, 0, 0, 0, 0, new List<FileProcessingResult>());
     }
 }
