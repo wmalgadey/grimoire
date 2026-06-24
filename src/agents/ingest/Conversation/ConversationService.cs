@@ -213,7 +213,7 @@ public class ConversationService
 
     private async Task<string> CallLlmAsync(string prompt)
     {
-        var apiKey = _configuration["Anthropic:ApiKey"];
+        var apiKey = GetRequiredApiKey();
         var client = new AnthropicClient(apiKey);
 
         var response = await client.Messages.GetClaudeMessageAsync(new MessageParameters
@@ -224,6 +224,19 @@ public class ConversationService
         });
 
         return response.Content.First().ToString() ?? "";
+    }
+
+    private string GetRequiredApiKey()
+    {
+        var apiKey = _configuration["Anthropic:ApiKey"];
+        if (!string.IsNullOrWhiteSpace(apiKey))
+        {
+            return apiKey;
+        }
+
+        _logger.LogError("ingest.config_missing setting=Anthropic:ApiKey");
+        throw new InvalidOperationException(
+            "Missing required configuration 'Anthropic:ApiKey'. Set Anthropic__ApiKey or Anthropic:ApiKey before running ingest conversation calls.");
     }
 
     private async Task CheckForCorrectionsAsync(IngestConversation conversation, string message)
