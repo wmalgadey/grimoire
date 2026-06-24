@@ -137,6 +137,14 @@ public class IngestOrchestrationHandler
     {
         try
         {
+            await _repository.SaveConversationTurnAsync(new ConversationTurnRecord(
+                ConversationId: conversationId,
+                TurnIndex: 0,
+                FilePath: payload.FilePath,
+                Role: "agent",
+                Message: payload.OpeningMessage,
+                CreatedAt: payload.CreatedAt));
+
             await _hubContext.Clients.All.SendAsync("IngestConversationOpened", payload);
             _logger.LogInformation("ingest_conversation_opened_broadcasted conversationId={ConversationId}",
                 conversationId);
@@ -151,10 +159,13 @@ public class IngestOrchestrationHandler
     {
         try
         {
+            var existingTurns = await _repository.GetConversationTurnsAsync(conversationId);
+            var filePath = existingTurns.FirstOrDefault()?.FilePath ?? string.Empty;
+
             var record = new ConversationTurnRecord(
                 ConversationId: conversationId,
                 TurnIndex: turn.TurnIndex,
-                FilePath: "",
+                FilePath: filePath,
                 Role: turn.Role,
                 Message: turn.Message,
                 CreatedAt: turn.CreatedAt
