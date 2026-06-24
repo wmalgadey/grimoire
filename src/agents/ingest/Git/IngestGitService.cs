@@ -17,9 +17,15 @@ public class IngestGitService
 
     public Task<string> CommitAsync(IEnumerable<string> filePaths, int fileCount, int chunkCount)
     {
-        var repoPath = _configuration["Git:RepoPath"] ?? ".";
-        var userName = _configuration["Git:UserName"] ?? "Grimoire Ingest";
-        var userEmail = _configuration["Git:UserEmail"] ?? "ingest@grimoire";
+        var repoPath = _configuration["Git:RepoPath"]
+            ?? _configuration["INGEST_GIT_REPO_PATH"]
+            ?? ".";
+        var userName = _configuration["Git:UserName"]
+            ?? _configuration["INGEST_GIT_AUTHOR_NAME"]
+            ?? "Grimoire Ingest";
+        var userEmail = _configuration["Git:UserEmail"]
+            ?? _configuration["INGEST_GIT_AUTHOR_EMAIL"]
+            ?? "ingest@grimoire";
         var now = DateTimeOffset.UtcNow;
         var message = $"ingest: {fileCount} file(s), {chunkCount} chunks — {now:o}";
 

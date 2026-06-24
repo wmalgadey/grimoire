@@ -30,7 +30,9 @@ public class SourceWatcher : IHostedService
 
     public Task StartAsync(CancellationToken cancellationToken)
     {
-        var sourceDir = _configuration["IngestSourceDir"] ?? "raw/sources";
+        var sourceDir = _configuration["IngestSourceDir"]
+            ?? _configuration["INGEST_SOURCE_DIR"]
+            ?? "raw/sources";
 
         if (!Directory.Exists(sourceDir))
         {

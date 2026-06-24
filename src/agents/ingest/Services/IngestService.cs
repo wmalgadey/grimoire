@@ -71,7 +71,9 @@ public class IngestService
         using var activity = IngestTracing.Source.StartActivity("ingest.run");
         activity?.SetTag("run_id", run.RunId);
 
-        var sourceDir = _configuration["IngestSourceDir"] ?? "raw/sources";
+        var sourceDir = _configuration["IngestSourceDir"]
+            ?? _configuration["INGEST_SOURCE_DIR"]
+            ?? "raw/sources";
         var sw = Stopwatch.StartNew();
 
         var files = Directory.Exists(sourceDir)
@@ -231,7 +233,9 @@ public class IngestService
 
         try
         {
-            var sourceDir = _configuration["IngestSourceDir"] ?? "raw/sources";
+            var sourceDir = _configuration["IngestSourceDir"]
+                ?? _configuration["INGEST_SOURCE_DIR"]
+                ?? "raw/sources";
             run.TotalFiles++;
 
             var result = await _pipeline.ProcessFileAsync(filePath, run.RunId, run);

@@ -149,7 +149,9 @@ public class IngestPipeline
         }
 
         // Index
-        var sourceDir = _configuration["IngestSourceDir"] ?? "raw/sources";
+        var sourceDir = _configuration["IngestSourceDir"]
+            ?? _configuration["INGEST_SOURCE_DIR"]
+            ?? "raw/sources";
         string outputPath;
         try
         {
@@ -203,7 +205,9 @@ public class IngestPipeline
         if (!KnownExtensions.Contains(ext))
             return FeedbackReason.UnknownFormat;
 
-        var fileSizeLimitMb = _configuration.GetValue<int>("IngestFileSizeLimitMb", 10);
+        var fileSizeLimitMb = _configuration.GetValue<int?>("IngestFileSizeLimitMb")
+            ?? _configuration.GetValue<int?>("INGEST_FILE_SIZE_LIMIT_MB")
+            ?? 10;
         var info = new FileInfo(filePath);
         if (info.Exists && info.Length > fileSizeLimitMb * 1024L * 1024L)
             return FeedbackReason.Oversized;

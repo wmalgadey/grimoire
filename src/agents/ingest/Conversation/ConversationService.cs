@@ -33,7 +33,9 @@ public class ConversationService
         _configuration = configuration;
         _logger = logger;
         _metrics = metrics;
-        _model = _configuration["Anthropic:Model"] ?? "claude-opus-4-5-20251001";
+        _model = _configuration["Anthropic:Model"]
+            ?? _configuration["ANTHROPIC_MODEL"]
+            ?? "claude-opus-4-5-20251001";
     }
 
     public async Task<IngestConversation> OpenConversationAsync(
@@ -228,7 +230,8 @@ public class ConversationService
 
     private string GetRequiredApiKey()
     {
-        var apiKey = _configuration["Anthropic:ApiKey"];
+        var apiKey = _configuration["Anthropic:ApiKey"]
+            ?? _configuration["ANTHROPIC_API_KEY"];
         if (!string.IsNullOrWhiteSpace(apiKey))
         {
             return apiKey;

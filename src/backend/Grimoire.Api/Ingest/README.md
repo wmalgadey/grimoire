@@ -73,11 +73,11 @@ CREATE TABLE ConversationTurns (
 
 ### Agent Callbacks
 
-- `POST /api/ingest/callback/progress` - Agent POSTs progress updates
-- `POST /api/ingest/callback/feedback-request` - Agent requests user feedback
-- `POST /api/ingest/callback/conversation-opened` - Agent opens conversation
-- `POST /api/ingest/callback/conversation-turn` - Agent sends conversation turn
-- `POST /api/ingest/callback/run-completed` - Agent reports batch summary
+- `POST /api/ingest/callbacks/progress` - Agent POSTs progress updates
+- `POST /api/ingest/callbacks/feedback-request` - Agent requests user feedback
+- `POST /api/ingest/callbacks/conversation-opened` - Agent opens conversation
+- `POST /api/ingest/callbacks/conversation-turn` - Agent sends conversation turn
+- `POST /api/ingest/callbacks/run-completed` - Agent reports batch summary
 
 ## Integration
 

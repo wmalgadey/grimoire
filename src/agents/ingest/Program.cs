@@ -31,7 +31,9 @@ var port = builder.Configuration["IngestHttpPort"]
 builder.WebHost.UseUrls($"http://0.0.0.0:{port}");
 
 // SQLite connection string
-var dbPath = builder.Configuration["IngestDbPath"] ?? "./ingest-cache.db";
+var dbPath = builder.Configuration["IngestDbPath"]
+    ?? builder.Configuration["INGEST_DB_PATH"]
+    ?? "./ingest-cache.db";
 var connectionString = $"Data Source={dbPath};Version=3;";
 
 // Register Cache layer

@@ -18,7 +18,8 @@ public class HubReporter
         _configuration = configuration;
         _httpClientFactory = httpClientFactory;
         _logger = logger;
-        _hubUrl = _configuration["IngestHubUrl"];
+        _hubUrl = _configuration["IngestHubUrl"]
+            ?? _configuration["INGEST_HUB_URL"];
     }
 
     public async Task PostProgressAsync(IngestProgressPayload payload)
