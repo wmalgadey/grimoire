@@ -1,5 +1,6 @@
 using System.Net;
 using System.Net.Http.Json;
+using System.Text.Json;
 using Xunit;
 using Grimoire.Api.Tests.Fixtures;
 
@@ -30,8 +31,10 @@ public class IngestEndpointsTests
         var response = await _client.PostAsync("/api/ingest/upload", content);
 
         Assert.Equal(HttpStatusCode.Accepted, response.StatusCode);
-        var result = await response.Content.ReadFromJsonAsync<dynamic>();
-        Assert.NotNull(result);
+        var json = await response.Content.ReadAsStringAsync();
+        using var doc = JsonDocument.Parse(json);
+        Assert.True(doc.RootElement.TryGetProperty("accepted", out _));
+        Assert.True(doc.RootElement.TryGetProperty("rejected", out _));
     }
 
     [Fact]
@@ -40,8 +43,10 @@ public class IngestEndpointsTests
         var response = await _client.PostAsJsonAsync("/api/ingest/trigger", new { });
 
         Assert.Equal(HttpStatusCode.Accepted, response.StatusCode);
-        var result = await response.Content.ReadFromJsonAsync<dynamic>();
-        Assert.NotNull(result?.runId);
+        var json = await response.Content.ReadAsStringAsync();
+        using var doc = JsonDocument.Parse(json);
+        Assert.True(doc.RootElement.TryGetProperty("runId", out var runId));
+        Assert.False(string.IsNullOrWhiteSpace(runId.GetString()));
     }
 
     [Fact]
@@ -74,8 +79,10 @@ public class IngestEndpointsTests
     public async Task GetIngestRun_WithValidRunId_ReturnsRunDetails()
     {
         var trigger = await _client.PostAsJsonAsync("/api/ingest/trigger", new { });
-        var triggerResult = await trigger.Content.ReadFromJsonAsync<dynamic>();
-        string runId = triggerResult!.runId;
+        var triggerJson = await trigger.Content.ReadAsStringAsync();
+        using var triggerDoc = JsonDocument.Parse(triggerJson);
+        var runId = triggerDoc.RootElement.GetProperty("runId").GetString();
+        Assert.False(string.IsNullOrWhiteSpace(runId));
 
         var response = await _client.GetAsync($"/api/ingest/runs/{runId}");
 
