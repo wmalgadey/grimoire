@@ -115,11 +115,11 @@
 
 ### Implementation for User Story 3
 
-- [ ] T042 Implement `TriggerIngestEndpoint` in `src/backend/Grimoire.Api/Channels/Ingest/Endpoints/TriggerIngestEndpoint.cs`: Accepts POST (optional runId), calls `IngestAgentClient.TriggerRunAsync()`, returns 202 with run ID; returns 409 if run already active (FR-015)
-- [ ] T043 Register trigger endpoint in Hub's `Program.cs`: `MapPost("/api/ingest/trigger", handler)` (FR-015)
-- [ ] T044 Implement concurrency guard in agent: Add `_activeRun` field to track current run, return 409 Conflict from `TriggerRunEndpoint` if `_activeRun != null`, set `_activeRun = runId` on start, clear on completion (FR-015)
-- [ ] T045 Implement frontend `TriggerButton.svelte`: Button text "Trigger", disabled while run in progress, enabled after completion; onClick calls `POST /api/ingest/trigger`; listen to SignalR `IngestRunStarted` and `IngestRunCompleted` events to control disabled state
-- [ ] T046 Wire trigger button to status feed: Clicking Trigger should emit `IngestRunStarted` event and start showing progress; concurrent trigger attempts should do nothing (button disabled enforces this on client)
+- [X] T042 Implement `TriggerIngestEndpoint` in `src/backend/Grimoire.Api/Channels/Ingest/Endpoints/TriggerIngestEndpoint.cs`: Accepts POST (optional runId), calls `IngestAgentClient.TriggerRunAsync()`, returns 202 with run ID; returns 409 if run already active (FR-015)
+- [X] T043 Register trigger endpoint in Hub's `Program.cs`: `MapPost("/api/ingest/trigger", handler)` (FR-015)
+- [X] T044 Implement concurrency guard in agent: Add `_activeRun` field to track current run, return 409 Conflict from `TriggerRunEndpoint` if `_activeRun != null`, set `_activeRun = runId` on start, clear on completion (FR-015)
+- [X] T045 Implement frontend `TriggerButton.svelte`: Button text "Trigger", disabled while run in progress, enabled after completion; onClick calls `POST /api/ingest/trigger`; listen to SignalR `IngestRunStarted` and `IngestRunCompleted` events to control disabled state
+- [X] T046 Wire trigger button to status feed: Clicking Trigger should emit `IngestRunStarted` event and start showing progress; concurrent trigger attempts should do nothing (button disabled enforces this on client)
 
 **Checkpoint**: Manual trigger works; concurrent run protection verified; UI button state correctly reflects run progress.
 
@@ -133,14 +133,14 @@
 
 ### Implementation for User Story 4
 
-- [ ] T047 Implement ambiguity detection in agent's `IngestPipeline.cs`: Check file extension against known list, check file size vs threshold (env-configurable, default 10 MB), return ambiguity reason (UnknownFormat/Oversized/MissingMetadata); if ambiguous, create `FeedbackRequest` instead of processing (FR-007)
-- [ ] T048 Implement agent-side feedback handler in `src/agents/ingest/Api/FeedbackEndpoint.cs` (POST /ingest/runs/{id}/feedback): Accepts FeedbackResponse (requestId, filePath, action, tagValue), validates action, persists to cache via `IngestCacheRepository` (sets FeedbackAction + FeedbackTag on `IngestRecord`), resumes blocked pipeline (FR-008)
-- [ ] T049 Implement agent-side feedback reporting: When `FeedbackRequest` is created, POST to Hub callback via `HubReporter` with file path + reason + options (FR-007)
-- [ ] T050 Implement Hub-side feedback relay in `src/backend/Grimoire.Api/Channels/Ingest/Endpoints/ConversationEndpoint.cs`: `POST /api/ingest/runs/{runId}/feedback` accepts FeedbackResponse, forwards to agent, persists to Hub SQLite if needed
-- [ ] T051 Implement frontend `FeedbackDialog.svelte`: Modal/inline dialog, displays file name + reason (UnknownFormat/Oversized/MissingMetadata) + radio options (Process/Skip/Tag), conditionally shows text input if Tag selected, submit button calls `POST /api/ingest/runs/{runId}/feedback`
-- [ ] T052 Integrate feedback dialog with status feed: Listen to SignalR `IngestFeedbackRequest` event, display dialog, wait for user response, send via Hub endpoint
-- [ ] T053 Implement cache lookup on subsequent runs: Before requesting feedback, check `IngestRecord.FeedbackAction` in cache; if set, apply cached decision automatically without prompting user again (FR-008)
-- [ ] T054 Add feedback-related observability: Log events `ingest.feedback_requested` (file, reason), `ingest.feedback_received` (file, action); emit metrics `grimoire.ingest.feedback_requests_total` (labels: reason)
+- [X] T047 Implement ambiguity detection in agent's `IngestPipeline.cs`: Check file extension against known list, check file size vs threshold (env-configurable, default 10 MB), return ambiguity reason (UnknownFormat/Oversized/MissingMetadata); if ambiguous, create `FeedbackRequest` instead of processing (FR-007)
+- [X] T048 Implement agent-side feedback handler in `src/agents/ingest/Api/FeedbackEndpoint.cs` (POST /ingest/runs/{id}/feedback): Accepts FeedbackResponse (requestId, filePath, action, tagValue), validates action, persists to cache via `IngestCacheRepository` (sets FeedbackAction + FeedbackTag on `IngestRecord`), resumes blocked pipeline (FR-008)
+- [X] T049 Implement agent-side feedback reporting: When `FeedbackRequest` is created, POST to Hub callback via `HubReporter` with file path + reason + options (FR-007)
+- [X] T050 Implement Hub-side feedback relay in `src/backend/Grimoire.Api/Channels/Ingest/Endpoints/ConversationEndpoint.cs`: `POST /api/ingest/runs/{runId}/feedback` accepts FeedbackResponse, forwards to agent, persists to Hub SQLite if needed
+- [X] T051 Implement frontend `FeedbackDialog.svelte`: Modal/inline dialog, displays file name + reason (UnknownFormat/Oversized/MissingMetadata) + radio options (Process/Skip/Tag), conditionally shows text input if Tag selected, submit button calls `POST /api/ingest/runs/{runId}/feedback`
+- [X] T052 Integrate feedback dialog with status feed: Listen to SignalR `IngestFeedbackRequest` event, display dialog, wait for user response, send via Hub endpoint
+- [X] T053 Implement cache lookup on subsequent runs: Before requesting feedback, check `IngestRecord.FeedbackAction` in cache; if set, apply cached decision automatically without prompting user again (FR-008)
+- [X] T054 Add feedback-related observability: Log events `ingest.feedback_requested` (file, reason), `ingest.feedback_received` (file, action); emit metrics `grimoire.ingest.feedback_requests_total` (labels: reason)
 
 **Checkpoint**: Ambiguous files trigger feedback dialogs; user decisions are cached; second run applies cached decision without prompting; feedback flow end-to-end verified.
 
@@ -154,18 +154,18 @@
 
 ### Implementation for User Story 5
 
-- [ ] T055 Implement `ConversationService` in `src/agents/ingest/Conversation/ConversationService.cs`: After `Indexer` completes, create `IngestConversation` with opening message from LLM (summary + topics + invitation); store in `IngestCacheRepository` (FR-020)
-- [ ] T056 Implement opening message generation: Call LLM with chunks + extracted metadata, structured output prompt: "Summarize this document in 2-3 sentences and list key topics. Invite questions." (FR-020)
-- [ ] T057 Implement agent-side conversation endpoint in `src/agents/ingest/Api/ConversationEndpoint.cs` (POST /ingest/conversations/{conversationId}/turns): Accepts user message, validates conversation exists and is not dismissed, calls LLM with conversation history + document context, returns agent response (FR-022)
-- [ ] T058 Implement LLM context management in `ConversationService`: Store full document content + chunks + extracted metadata as conversation context; pass to LLM on each turn to ground responses (FR-021)
-- [ ] T059 Implement correction handling: When user message contains "tag:" or other correction patterns, extract correction, update `IngestRecord.UserCorrections` in cache (FR-023)
-- [ ] T060 Implement conversation reporting: After opening conversation, POST `ConversationOpened` event to Hub callback via `HubReporter` (conversationId, filePath, opening message) (FR-020)
-- [ ] T061 Implement Hub-side conversation relay in `src/backend/Grimoire.Api/Channels/Ingest/Endpoints/ConversationEndpoint.cs`: `POST /api/ingest/conversations/{conversationId}/messages` accepts user message, forwards to agent via `IngestAgentClient`, persists turn in `IngestRepository`, broadcasts turn via `IngestHub`
-- [ ] T062 Implement frontend `ConversationPanel.svelte`: Modal/side panel, displays opening message, scrollable turn history (agent + user messages), text input for user message, submit button calls Hub endpoint, listen to SignalR `IngestConversationOpened` and `IngestConversationTurn` events
-- [ ] T063 Integrate conversation panel with batch summary: Batch summary table "Discuss" button triggers conversation panel to open for that file, re-hydrates turn history from Hub via `GET /api/ingest/conversations/{conversationId}`
-- [ ] T064 Implement dismissible conversation: User can close/dismiss panel, listen to dismissal event, set `dismissed_at` timestamp, conversation remains accessible via batch summary (can be re-opened)
-- [ ] T065 Add conversation observability: Log events `ingest.conversation_turn` (conversationId, turn_index, role), emit metrics `grimoire.ingest.conversation_turns_total`, emit trace spans `ingest.conversation.turn` + `ingest.llm.respond`
-- [ ] T066 Implement standalone CLI mode for conversations: In CLI, after processing file, enter interactive prompt: "Ask a question about this document (or press Enter to skip)", accept stdin, call LLM, display response, repeat until user quits (FR-025)
+- [X] T055 Implement `ConversationService` in `src/agents/ingest/Conversation/ConversationService.cs`: After `Indexer` completes, create `IngestConversation` with opening message from LLM (summary + topics + invitation); store in `IngestCacheRepository` (FR-020)
+- [X] T056 Implement opening message generation: Call LLM with chunks + extracted metadata, structured output prompt: "Summarize this document in 2-3 sentences and list key topics. Invite questions." (FR-020)
+- [X] T057 Implement agent-side conversation endpoint in `src/agents/ingest/Api/ConversationEndpoint.cs` (POST /ingest/conversations/{conversationId}/turns): Accepts user message, validates conversation exists and is not dismissed, calls LLM with conversation history + document context, returns agent response (FR-022)
+- [X] T058 Implement LLM context management in `ConversationService`: Store full document content + chunks + extracted metadata as conversation context; pass to LLM on each turn to ground responses (FR-021)
+- [X] T059 Implement correction handling: When user message contains "tag:" or other correction patterns, extract correction, update `IngestRecord.UserCorrections` in cache (FR-023)
+- [X] T060 Implement conversation reporting: After opening conversation, POST `ConversationOpened` event to Hub callback via `HubReporter` (conversationId, filePath, opening message) (FR-020)
+- [X] T061 Implement Hub-side conversation relay in `src/backend/Grimoire.Api/Channels/Ingest/Endpoints/ConversationEndpoint.cs`: `POST /api/ingest/conversations/{conversationId}/messages` accepts user message, forwards to agent via `IngestAgentClient`, persists turn in `IngestRepository`, broadcasts turn via `IngestHub`
+- [X] T062 Implement frontend `ConversationPanel.svelte`: Modal/side panel, displays opening message, scrollable turn history (agent + user messages), text input for user message, submit button calls Hub endpoint, listen to SignalR `IngestConversationOpened` and `IngestConversationTurn` events
+- [X] T063 Integrate conversation panel with batch summary: Batch summary table "Discuss" button triggers conversation panel to open for that file, re-hydrates turn history from Hub via `GET /api/ingest/conversations/{conversationId}`
+- [X] T064 Implement dismissible conversation: User can close/dismiss panel, listen to dismissal event, set `dismissed_at` timestamp, conversation remains accessible via batch summary (can be re-opened)
+- [X] T065 Add conversation observability: Log events `ingest.conversation_turn` (conversationId, turn_index, role), emit metrics `grimoire.ingest.conversation_turns_total`, emit trace spans `ingest.conversation.turn` + `ingest.llm.respond`
+- [X] T066 Implement standalone CLI mode for conversations: In CLI, after processing file, enter interactive prompt: "Ask a question about this document (or press Enter to skip)", accept stdin, call LLM, display response, repeat until user quits (FR-025)
 
 **Checkpoint**: Post-ingest conversations fully functional; user can ask questions, receive grounded answers, submit corrections; corrections persist; CLI mode supports interactive prompts.
 
@@ -179,12 +179,12 @@
 
 ### Implementation for User Story 6
 
-- [ ] T067 Implement `GetIngestRunEndpoint` in `src/backend/Grimoire.Api/Channels/Ingest/Endpoints/GetIngestRunEndpoint.cs`: GET `/api/ingest/runs/{runId}` retrieves `IngestRunRecord` from Hub SQLite, assembles summary object (total, processed, failed, skipped, file-level details)
-- [ ] T068 Agent-side: After run completes, compute batch summary stats (total, processed, failed, skipped, per-file details), emit `IngestRunCompleted` event to Hub callback via `HubReporter` (FR-006)
-- [ ] T069 Hub-side: Receive `IngestRunCompleted`, persist summary to `IngestRunRecord`, persist to SQLite, broadcast via `IngestHub.IngestRunCompletedAsync()` (FR-006)
-- [ ] T070 Frontend: `BatchSummary.svelte` displays table, listen to SignalR `IngestRunCompleted` event, populate table with run summary + per-file rows, add "Discuss" button per processed file row, onClick: fetch conversation details via `GET /api/ingest/conversations/{conversationId}`, open `ConversationPanel.svelte` (FR-018, FR-027)
-- [ ] T071 Implement `GetConversationEndpoint` in Hub: GET `/api/ingest/conversations/{conversationId}` retrieves full turn history from `IngestRepository`, returns conversation object with all turns
-- [ ] T072 CLI mode batch summary: After run completes, print summary to stdout in tabular format (file, status, chunks, duration); if interactive, prompt user per file: "Discuss [file]? (y/n)"
+- [X] T067 Implement `GetIngestRunEndpoint` in `src/backend/Grimoire.Api/Channels/Ingest/Endpoints/GetIngestRunEndpoint.cs`: GET `/api/ingest/runs/{runId}` retrieves `IngestRunRecord` from Hub SQLite, assembles summary object (total, processed, failed, skipped, file-level details)
+- [X] T068 Agent-side: After run completes, compute batch summary stats (total, processed, failed, skipped, per-file details), emit `IngestRunCompleted` event to Hub callback via `HubReporter` (FR-006)
+- [X] T069 Hub-side: Receive `IngestRunCompleted`, persist summary to `IngestRunRecord`, persist to SQLite, broadcast via `IngestHub.IngestRunCompletedAsync()` (FR-006)
+- [X] T070 Frontend: `BatchSummary.svelte` displays table, listen to SignalR `IngestRunCompleted` event, populate table with run summary + per-file rows, add "Discuss" button per processed file row, onClick: fetch conversation details via `GET /api/ingest/conversations/{conversationId}`, open `ConversationPanel.svelte` (FR-018, FR-027)
+- [X] T071 Implement `GetConversationEndpoint` in Hub: GET `/api/ingest/conversations/{conversationId}` retrieves full turn history from `IngestRepository`, returns conversation object with all turns
+- [X] T072 CLI mode batch summary: After run completes, print summary to stdout in tabular format (file, status, chunks, duration); if interactive, prompt user per file: "Discuss [file]? (y/n)"
 
 **Checkpoint**: Batch summary table displays; user can navigate from summary to individual conversations; P3 feature complete; all 6 user stories functional.
 
@@ -194,21 +194,21 @@
 
 **Purpose**: Observability, documentation, validation, refinement
 
-- [ ] T073 Implement full OpenTelemetry instrumentation per plan.md Observability section: All business metrics (counters for files, chunks, LLM calls, conversations; gauges for active run), all structured log events (fields per spec), all trace spans (hierarchy, attributes)
-- [ ] T074 [P] Add xUnit integration tests in `src/backend/Grimoire.Api.Tests/`: Test all Hub Ingest endpoints (upload, trigger, feedback, conversation, status) with Testcontainers + in-memory SQLite
-- [ ] T075 [P] Add xUnit unit tests for agent pipeline logic in `src/agents/ingest/` (if Grimoire.Ingest.Tests project exists): Chunker, LlmAnalyzer, Indexer classes with mocked LLM
-- [ ] T076 [P] Add integration tests for agent HTTP API in `src/agents/ingest/`: Test endpoints (trigger, feedback, conversation, health) with real SQLite
-- [ ] T077 Add error handling + validation across agent: File read errors, LLM failures, Git failures, Hub unavailability; ensure graceful degradation (status = Failed, continue processing)
-- [ ] T078 Add error handling across Hub: Agent unreachable, database errors, SignalR disconnections; ensure client-side resilience
-- [ ] T079 Add logging/tracing to agent Program.cs: INFO logs for major lifecycle events, WARN for recoverable failures, ERROR for unrecoverable failures
-- [ ] T080 [P] Document environment variables in README.md for agent: `ANTHROPIC_API_KEY`, `ANTHROPIC_MODEL`, `INGEST_SOURCE_DIR`, `INGEST_HUB_URL`, `INGEST_HTTP_PORT`, `INGEST_FILE_SIZE_LIMIT_MB`, `INGEST_GIT_*`
-- [ ] T081 [P] Document frontend setup in `src/frontend/README.md`: How to run dev server, where Ingest page is mounted, how to test with agent + Hub
-- [ ] T082 [P] Document Hub Ingest domain setup in `src/backend/README.md`: Ingest domain structure, endpoints, registration with IngestAgentClient
-- [ ] T083 Run quickstart.md validation: Execute all 7 scenarios (standalone agent, upload via UI, manual trigger, feedback dialog, conversation, batch summary, architecture test), verify each acceptance criteria passes
-- [ ] T084 Code cleanup: Remove scaffolding/comments, ensure naming consistency, fix linter warnings, run formatters
-- [ ] T085 Security hardening: Scan for hardcoded secrets (API keys), validate all user inputs (file paths, conversation messages), ensure SQL injection prevention in SQLite queries
-- [ ] T086 Performance validation: Verify file detection < 30s (SC-001), feedback visible < 3s (SC-007), conversation opens < 5s (SC-010), batch summary < 2s (SC-008); profile hot paths if needed
-- [ ] T087 Architecture tests: Run `dotnet test Grimoire.ArchTests` to confirm all ADR-010 constraints pass (no imports from backend, no API key literals)
+- [X] T073 Implement full OpenTelemetry instrumentation per plan.md Observability section: All business metrics (counters for files, chunks, LLM calls, conversations; gauges for active run), all structured log events (fields per spec), all trace spans (hierarchy, attributes)
+- [X] T074 [P] Add xUnit integration tests in `src/backend/Grimoire.Api.Tests/`: Test all Hub Ingest endpoints (upload, trigger, feedback, conversation, status) with Testcontainers + in-memory SQLite
+- [X] T075 [P] Add xUnit unit tests for agent pipeline logic in `src/agents/ingest/` (if Grimoire.Ingest.Tests project exists): Chunker, LlmAnalyzer, Indexer classes with mocked LLM
+- [X] T076 [P] Add integration tests for agent HTTP API in `src/agents/ingest/`: Test endpoints (trigger, feedback, conversation, health) with real SQLite
+- [X] T077 Add error handling + validation across agent: File read errors, LLM failures, Git failures, Hub unavailability; ensure graceful degradation (status = Failed, continue processing)
+- [X] T078 Add error handling across Hub: Agent unreachable, database errors, SignalR disconnections; ensure client-side resilience
+- [X] T079 Add logging/tracing to agent Program.cs: INFO logs for major lifecycle events, WARN for recoverable failures, ERROR for unrecoverable failures
+- [X] T080 [P] Document environment variables in README.md for agent: `ANTHROPIC_API_KEY`, `ANTHROPIC_MODEL`, `INGEST_SOURCE_DIR`, `INGEST_HUB_URL`, `INGEST_HTTP_PORT`, `INGEST_FILE_SIZE_LIMIT_MB`, `INGEST_GIT_*`
+- [X] T081 [P] Document frontend setup in `src/frontend/README.md`: How to run dev server, where Ingest page is mounted, how to test with agent + Hub
+- [X] T082 [P] Document Hub Ingest domain setup in `src/backend/README.md`: Ingest domain structure, endpoints, registration with IngestAgentClient
+- [X] T083 Run quickstart.md validation: Execute all 7 scenarios (standalone agent, upload via UI, manual trigger, feedback dialog, conversation, batch summary, architecture test), verify each acceptance criteria passes
+- [X] T084 Code cleanup: Remove scaffolding/comments, ensure naming consistency, fix linter warnings, run formatters
+- [X] T085 Security hardening: Scan for hardcoded secrets (API keys), validate all user inputs (file paths, conversation messages), ensure SQL injection prevention in SQLite queries
+- [X] T086 Performance validation: Verify file detection < 30s (SC-001), feedback visible < 3s (SC-007), conversation opens < 5s (SC-010), batch summary < 2s (SC-008); profile hot paths if needed
+- [X] T087 Architecture tests: Run `dotnet test Grimoire.ArchTests` to confirm all ADR-010 constraints pass (no imports from backend, no API key literals)
 
 **Checkpoint**: Full feature complete, tested, documented, observable, validated against quickstart; ready for merge and deployment.
 
