@@ -1,6 +1,7 @@
 using System.Net;
 using System.Net.Http.Json;
 using Xunit;
+using Grimoire.Api.Tests.Fixtures;
 
 namespace Grimoire.Api.Tests.Integration.Ingest;
 
@@ -29,7 +30,7 @@ public class IngestEndpointsTests
         var response = await _client.PostAsync("/api/ingest/upload", content);
 
         Assert.Equal(HttpStatusCode.Accepted, response.StatusCode);
-        var result = await response.Content.ReadAsAsync<dynamic>();
+        var result = await response.Content.ReadFromJsonAsync<dynamic>();
         Assert.NotNull(result);
     }
 
@@ -39,7 +40,7 @@ public class IngestEndpointsTests
         var response = await _client.PostAsJsonAsync("/api/ingest/trigger", new { });
 
         Assert.Equal(HttpStatusCode.Accepted, response.StatusCode);
-        var result = await response.Content.ReadAsAsync<dynamic>();
+        var result = await response.Content.ReadFromJsonAsync<dynamic>();
         Assert.NotNull(result?.runId);
     }
 
@@ -73,8 +74,8 @@ public class IngestEndpointsTests
     public async Task GetIngestRun_WithValidRunId_ReturnsRunDetails()
     {
         var trigger = await _client.PostAsJsonAsync("/api/ingest/trigger", new { });
-        var triggerResult = await trigger.Content.ReadAsAsync<dynamic>();
-        string runId = triggerResult.runId;
+        var triggerResult = await trigger.Content.ReadFromJsonAsync<dynamic>();
+        string runId = triggerResult!.runId;
 
         var response = await _client.GetAsync($"/api/ingest/runs/{runId}");
 

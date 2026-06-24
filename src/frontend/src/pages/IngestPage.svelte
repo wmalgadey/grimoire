@@ -42,7 +42,7 @@
     activeConversation = { conversationId: payload.conversationId, filePath: payload.filePath };
   }
 
-  function handleUploaded(_result: UploadResponse) {
+  function handleUploaded() {
     // Files uploaded; user can now trigger a run
   }
 

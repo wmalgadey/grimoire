@@ -1,6 +1,7 @@
 <script lang="ts">
   import { uploadFiles, type UploadResponse } from '../../services/ingestApi.js';
 
+  // eslint-disable-next-line no-unused-vars
   let { onUploaded }: { onUploaded?: (result: UploadResponse) => void } = $props();
 
   let files = $state<File[]>([]);

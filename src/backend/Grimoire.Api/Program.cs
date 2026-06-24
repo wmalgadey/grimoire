@@ -81,3 +81,6 @@ app.MapSubmitFeedback();
 await app.RunAsync();
 
 logger.LogInformation("grimoire.host.stopped environment={Environment}", environment);
+
+public partial class Program { }
+

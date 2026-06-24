@@ -1,5 +1,5 @@
 <script lang="ts">
-  import type { RunSummary, RunSummaryFile } from '../../services/ingestHub.js';
+  import type { RunSummary } from '../../services/ingestHub.js';
 
   let { summary, onDiscuss }: {
     summary: RunSummary | null;

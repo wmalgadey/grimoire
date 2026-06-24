@@ -8,10 +8,22 @@ import svelteParser from 'svelte-eslint-parser';
 export default [
   js.configs.recommended,
   {
+    languageOptions: {
+      globals: {
+        browser: true,
+        node: true,
+      },
+    },
+  },
+  {
     files: ['**/*.ts'],
     languageOptions: {
       parser: tsParser,
       parserOptions: { project: './tsconfig.app.json', extraFileExtensions: ['.svelte'] },
+      globals: {
+        browser: true,
+        node: true,
+      },
     },
     plugins: { '@typescript-eslint': tsPlugin },
     rules: {
@@ -23,6 +35,10 @@ export default [
     languageOptions: {
       parser: svelteParser,
       parserOptions: { parser: tsParser },
+      globals: {
+        browser: true,
+        node: true,
+      },
     },
     plugins: { svelte: sveltePlugin },
     rules: {
