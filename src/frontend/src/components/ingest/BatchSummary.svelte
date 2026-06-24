@@ -3,7 +3,7 @@
 
   let { summary, onDiscuss }: {
     summary: RunSummary | null;
-    onDiscuss: (conversationId: string, filePath: string) => void;
+    onDiscuss: (_conversationId: string, _filePath: string) => void;
   } = $props();
 
   function formatDuration(ms: number): string {

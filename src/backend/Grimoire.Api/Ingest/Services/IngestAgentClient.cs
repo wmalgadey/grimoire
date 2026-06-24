@@ -2,7 +2,7 @@ using System.Text.Json;
 
 namespace Grimoire.Api.Ingest.Services;
 
-public class IngestAgentClient
+public class IngestAgentClient : IIngestAgentClient
 {
     private readonly HttpClient _httpClient;
     private readonly ILogger<IngestAgentClient> _logger;

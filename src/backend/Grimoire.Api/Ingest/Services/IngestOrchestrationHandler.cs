@@ -9,13 +9,13 @@ namespace Grimoire.Api.Ingest.Services;
 
 public class IngestOrchestrationHandler
 {
-    private readonly IngestAgentClient _agentClient;
+    private readonly IIngestAgentClient _agentClient;
     private readonly IngestRepository _repository;
     private readonly IHubContext<IngestHub> _hubContext;
     private readonly ILogger<IngestOrchestrationHandler> _logger;
 
     public IngestOrchestrationHandler(
-        IngestAgentClient agentClient,
+        IIngestAgentClient agentClient,
         IngestRepository repository,
         IHubContext<IngestHub> hubContext,
         ILogger<IngestOrchestrationHandler> logger)

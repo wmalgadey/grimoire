@@ -14,8 +14,6 @@
     IngestConversationOpenedPayload,
     RunSummary,
   } from '../services/ingestHub.js';
-  import type { UploadResponse } from '../services/ingestApi.js';
-
   let currentRunId = $state<string | null>(null);
   let runActive = $state(false);
   let pendingFeedback = $state<IngestFeedbackRequestPayload | null>(null);

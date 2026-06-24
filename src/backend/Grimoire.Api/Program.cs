@@ -33,6 +33,7 @@ builder.Services.AddScoped<IAgentOrchestrationService, HubOrchestrationHandler>(
 
 var agentUrl = builder.Configuration["IngestAgent:BaseUrl"] ?? "http://localhost:5100";
 builder.Services.AddHttpClient<IngestAgentClient>(client => client.BaseAddress = new Uri(agentUrl));
+builder.Services.AddScoped<IIngestAgentClient>(sp => sp.GetRequiredService<IngestAgentClient>());
 builder.Services.AddSingleton(sp => new IngestRepository(connectionString));
 builder.Services.AddScoped<IngestOrchestrationHandler>();
 
