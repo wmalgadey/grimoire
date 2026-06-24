@@ -43,19 +43,19 @@
 
 ⚠️ **CRITICAL**: No user story work begins until this phase is complete.
 
-- [ ] T009 Implement `IngestAgentClient` in `src/backend/Grimoire.Api/Channels/Ingest/Services/IngestAgentClient.cs`: Typed HttpClient with methods for `TriggerRunAsync()`, `GetRunStatusAsync()`, `SubmitFeedbackAsync()`, `SubmitConversationTurnAsync()`; read agent URL from config/env
-- [ ] T010 Create `IngestHub` SignalR hub in `src/backend/Grimoire.Api/Channels/Ingest/Services/IngestHub.cs`: Methods to broadcast `IngestProgressAsync()`, `IngestFeedbackRequestAsync()`, `IngestConversationOpenedAsync()`, `IngestConversationTurnAsync()`, `IngestRunCompletedAsync()`
-- [ ] T011 Extend Hub's `Program.cs` to register `IngestHub` SignalR hub at `/hubs/ingest` and register `IngestAgentClient` as typed HttpClient
-- [ ] T012 [P] Create Hub-side data models in `src/backend/Grimoire.Api/Channels/Ingest/Models/`: `IngestRunRecord.cs`, `ConversationTurnRecord.cs` for SQLite persistence
-- [ ] T013 [P] Extend Hub's `grimoire.db` schema (via `AgentDbInitializer`) with `IngestRuns` and `ConversationTurns` tables per data-model.md
-- [ ] T014 Implement `IngestRepository` in `src/backend/Grimoire.Api/Channels/Ingest/Persistence/IngestRepository.cs`: CRUD methods for IngestRunRecord and ConversationTurnRecord using SQLite connection from config
-- [ ] T015 Create `IngestOrchestrationHandler` in `src/backend/Grimoire.Api/Channels/Ingest/Services/IngestOrchestrationHandler.cs`: Receives Hub ingest requests, delegates to `IngestAgentClient`, persists results via `IngestRepository`, broadcasts via `IngestHub`
-- [ ] T016 Implement agent-side `HubClient` in `src/agents/ingest/Hub/HubClient.cs`: Registers agent with Hub on startup (POST /api/agents), sends heartbeats, reads `INGEST_HUB_URL` from env; graceful fallback to standalone mode
-- [ ] T017 Implement agent-side `HubReporter` in `src/agents/ingest/Hub/HubReporter.cs`: POSTs progress updates, feedback requests, conversation events to Hub callback endpoints
-- [ ] T018 [P] Create agent-side models in `src/agents/ingest/Models/`: `IngestRecord.cs`, `IngestRun.cs`, `FeedbackRequest.cs`, `FeedbackResponse.cs`, `IngestConversation.cs` per data-model.md
-- [ ] T019 [P] Implement `IngestCacheRepository` in `src/agents/ingest/Cache/IngestCacheRepository.cs`: SQLite CRUD for IngestRecords, ConversationTurns, FeedbackRequests in `ingest-cache.db`
-- [ ] T020 Implement `IngestGitService` in `src/agents/ingest/Git/IngestGitService.cs`: Accepts file paths, stages via LibGit2Sharp, commits with formatted message per spec (file count, chunk count, ISO 8601 timestamp), reads Git config from env
-- [ ] T021 Set up agent-side OpenTelemetry in `src/agents/ingest/Program.cs`: Register `ActivitySource` for `Grimoire.Ingest`, configure meter for metrics; integrate logging/tracing in DI
+- [X] T009 Implement `IngestAgentClient` in `src/backend/Grimoire.Api/Channels/Ingest/Services/IngestAgentClient.cs`: Typed HttpClient with methods for `TriggerRunAsync()`, `GetRunStatusAsync()`, `SubmitFeedbackAsync()`, `SubmitConversationTurnAsync()`; read agent URL from config/env
+- [X] T010 Create `IngestHub` SignalR hub in `src/backend/Grimoire.Api/Channels/Ingest/Services/IngestHub.cs`: Methods to broadcast `IngestProgressAsync()`, `IngestFeedbackRequestAsync()`, `IngestConversationOpenedAsync()`, `IngestConversationTurnAsync()`, `IngestRunCompletedAsync()`
+- [X] T011 Extend Hub's `Program.cs` to register `IngestHub` SignalR hub at `/hubs/ingest` and register `IngestAgentClient` as typed HttpClient
+- [X] T012 [P] Create Hub-side data models in `src/backend/Grimoire.Api/Channels/Ingest/Models/`: `IngestRunRecord.cs`, `ConversationTurnRecord.cs` for SQLite persistence
+- [X] T013 [P] Extend Hub's `grimoire.db` schema (via `AgentDbInitializer`) with `IngestRuns` and `ConversationTurns` tables per data-model.md
+- [X] T014 Implement `IngestRepository` in `src/backend/Grimoire.Api/Channels/Ingest/Persistence/IngestRepository.cs`: CRUD methods for IngestRunRecord and ConversationTurnRecord using SQLite connection from config
+- [X] T015 Create `IngestOrchestrationHandler` in `src/backend/Grimoire.Api/Channels/Ingest/Services/IngestOrchestrationHandler.cs`: Receives Hub ingest requests, delegates to `IngestAgentClient`, persists results via `IngestRepository`, broadcasts via `IngestHub`
+- [X] T016 Implement agent-side `HubClient` in `src/agents/ingest/Hub/HubClient.cs`: Registers agent with Hub on startup (POST /api/agents), sends heartbeats, reads `INGEST_HUB_URL` from env; graceful fallback to standalone mode
+- [X] T017 Implement agent-side `HubReporter` in `src/agents/ingest/Hub/HubReporter.cs`: POSTs progress updates, feedback requests, conversation events to Hub callback endpoints
+- [X] T018 [P] Create agent-side models in `src/agents/ingest/Models/`: `IngestRecord.cs`, `IngestRun.cs`, `FeedbackRequest.cs`, `FeedbackResponse.cs`, `IngestConversation.cs` per data-model.md
+- [X] T019 [P] Implement `IngestCacheRepository` in `src/agents/ingest/Cache/IngestCacheRepository.cs`: SQLite CRUD for IngestRecords, ConversationTurns, FeedbackRequests in `ingest-cache.db`
+- [X] T020 Implement `IngestGitService` in `src/agents/ingest/Git/IngestGitService.cs`: Accepts file paths, stages via LibGit2Sharp, commits with formatted message per spec (file count, chunk count, ISO 8601 timestamp), reads Git config from env
+- [X] T021 Set up agent-side OpenTelemetry in `src/agents/ingest/Program.cs`: Register `ActivitySource` for `Grimoire.Ingest`, configure meter for metrics; integrate logging/tracing in DI
 
 **Checkpoint**: Hub-agent communication fully wired; database schema ready; bidirectional progress reporting working; agent can register/heartbeat/receive callbacks.
 
@@ -69,16 +69,16 @@
 
 ### Implementation for User Story 1
 
-- [ ] T022 Implement `SourceWatcher` in `src/agents/ingest/Watcher/SourceWatcher.cs`: Wraps `FileSystemWatcher`, monitors `raw/sources/` (env-configurable), debounces events (300ms), detects new/modified files (FR-001)
-- [ ] T023 Implement `Chunker` in `src/agents/ingest/Pipeline/Chunker.cs`: Reads file content, splits by Markdown headings (H1/H2), falls back to paragraphs, caps at 3000 chars per chunk; outputs list of chunks with metadata
-- [ ] T024 Implement `LlmAnalyzer` in `src/agents/ingest/Pipeline/LlmAnalyzer.cs`: Takes chunk + document path, calls Anthropic SDK with structured output schema (topics, entities, key_claims, summary), handles rate limiting with exponential backoff (3 retries), logs via OpenTelemetry (FR-003)
-- [ ] T025 Implement `Indexer` in `src/agents/ingest/Pipeline/Indexer.cs`: Assembles chunk analyses into Markdown document, writes YAML frontmatter (source, ingested_at, topics, entities, content_type, chunk_count), outputs to `wiki/{relative_path_without_extension}.md` (FR-003)
-- [ ] T026 Implement `IngestPipeline` in `src/agents/ingest/Pipeline/IngestPipeline.cs`: Orchestrates Chunker → LlmAnalyzer (per chunk) → Indexer; emits OpenTelemetry spans per stage; handles errors gracefully (FR-003)
-- [ ] T027 Implement `IngestCache.cs` in `src/agents/ingest/Cache/IngestCache.cs`: SHA256-based lookup logic, checks `IngestCacheRepository` for processed entries, returns `cached` or `needs_processing` (FR-002)
-- [ ] T028 Implement ingest run orchestration in `src/agents/ingest/Program.cs` or a new `IngestService` class: Watches for files via `SourceWatcher`, for each file: compute SHA256, check cache, if missed: run pipeline, persist `IngestRecord` with status `Processed`, on error: persist status `Failed`, run via `IngestGitService.CommitAsync()` after batch (FR-004, FR-005)
-- [ ] T029 Add file watcher setup to agent's `Program.cs`: Register `SourceWatcher` as `IHostedService`, start watching on startup, ensure `raw/sources/` exists or create it (edge case per spec)
-- [ ] T030 [P] Implement agent HTTP endpoints for US1 support in `src/agents/ingest/Api/`: `TriggerRunEndpoint.cs` (POST /ingest/runs), `HealthEndpoint.cs` (GET /health)
-- [ ] T031 Add OpenTelemetry instrumentation for US1: Log events `ingest.run_started`, `ingest.file_detected`, `ingest.file_processed`, `ingest.file_failed`, `ingest.git_commit` with mandatory fields per plan
+- [X] T022 Implement `SourceWatcher` in `src/agents/ingest/Watcher/SourceWatcher.cs`: Wraps `FileSystemWatcher`, monitors `raw/sources/` (env-configurable), debounces events (300ms), detects new/modified files (FR-001)
+- [X] T023 Implement `Chunker` in `src/agents/ingest/Pipeline/Chunker.cs`: Reads file content, splits by Markdown headings (H1/H2), falls back to paragraphs, caps at 3000 chars per chunk; outputs list of chunks with metadata
+- [X] T024 Implement `LlmAnalyzer` in `src/agents/ingest/Pipeline/LlmAnalyzer.cs`: Takes chunk + document path, calls Anthropic SDK with structured output schema (topics, entities, key_claims, summary), handles rate limiting with exponential backoff (3 retries), logs via OpenTelemetry (FR-003)
+- [X] T025 Implement `Indexer` in `src/agents/ingest/Pipeline/Indexer.cs`: Assembles chunk analyses into Markdown document, writes YAML frontmatter (source, ingested_at, topics, entities, content_type, chunk_count), outputs to `wiki/{relative_path_without_extension}.md` (FR-003)
+- [X] T026 Implement `IngestPipeline` in `src/agents/ingest/Pipeline/IngestPipeline.cs`: Orchestrates Chunker → LlmAnalyzer (per chunk) → Indexer; emits OpenTelemetry spans per stage; handles errors gracefully (FR-003)
+- [X] T027 Implement `IngestCache.cs` in `src/agents/ingest/Cache/IngestCache.cs`: SHA256-based lookup logic, checks `IngestCacheRepository` for processed entries, returns `cached` or `needs_processing` (FR-002)
+- [X] T028 Implement ingest run orchestration in `src/agents/ingest/Program.cs` or a new `IngestService` class: Watches for files via `SourceWatcher`, for each file: compute SHA256, check cache, if missed: run pipeline, persist `IngestRecord` with status `Processed`, on error: persist status `Failed`, run via `IngestGitService.CommitAsync()` after batch (FR-004, FR-005)
+- [X] T029 Add file watcher setup to agent's `Program.cs`: Register `SourceWatcher` as `IHostedService`, start watching on startup, ensure `raw/sources/` exists or create it (edge case per spec)
+- [X] T030 [P] Implement agent HTTP endpoints for US1 support in `src/agents/ingest/Api/`: `TriggerRunEndpoint.cs` (POST /ingest/runs), `HealthEndpoint.cs` (GET /health)
+- [X] T031 Add OpenTelemetry instrumentation for US1: Log events `ingest.run_started`, `ingest.file_detected`, `ingest.file_processed`, `ingest.file_failed`, `ingest.git_commit` with mandatory fields per plan
 
 **Checkpoint**: Agent autonomously detects, processes, commits files; cache prevents reprocessing; can run standalone without UI.
 
@@ -92,16 +92,16 @@
 
 ### Implementation for User Story 2
 
-- [ ] T032 Implement `UploadSourceEndpoint` in `src/backend/Grimoire.Api/Channels/Ingest/Endpoints/UploadSourceEndpoint.cs`: Accepts multipart form (files + optional subDirectory), writes to `raw/sources/{subDirectory}/`, returns 202 Accepted with file manifest (FR-014)
-- [ ] T033 Register upload endpoint in Hub's `Program.cs`: `MapPost("/api/ingest/upload", handler)` (FR-014)
-- [ ] T034 Implement agent-side progress reporting: Modify `IngestPipeline` to emit periodic `IngestProgress` events (file path, status, chunk count, duration) and POST to Hub callback via `HubReporter` (FR-016)
-- [ ] T035 Implement Hub-side callback handler in `src/backend/Grimoire.Api/Channels/Ingest/Endpoints/`: Receives agent progress POSTs, persists to `IngestRunRecord` via `IngestRepository`, broadcasts via `IngestHub.IngestProgressAsync()` (FR-016)
-- [ ] T036 Implement frontend `UploadForm.svelte`: File input, submit button, accept multiple files, POST to `/api/ingest/upload`, return 202 response with file list (FR-014)
-- [ ] T037 Implement frontend `StatusFeed.svelte`: Connect to SignalR `IngestHub`, listen for `IngestProgress` events, display current file, progress bar, scrollable log stream (updates on each event)
-- [ ] T038 Implement frontend `BatchSummary.svelte` table component: Display run results (file name, status, chunks, duration) in HTML table, include "Discuss" action button per row (for US5 conversation access)
-- [ ] T039 [P] Integrate components in frontend: Create `IngestPage.svelte` root component, compose UploadForm + TriggerButton + StatusFeed + BatchSummary; mount at `/` or Vite route
-- [ ] T040 Implement frontend SignalR service in `src/frontend/src/services/ingestHub.ts`: Initialize HubConnection to `/hubs/ingest`, handle auto-reconnect, manage event subscriptions, export as `ingestHub` singleton
-- [ ] T041 Add observability: Log events `hub.ingest.upload` on file upload, emit trace spans for file write and agent callback receipt
+- [X] T032 Implement `UploadSourceEndpoint` in `src/backend/Grimoire.Api/Channels/Ingest/Endpoints/UploadSourceEndpoint.cs`: Accepts multipart form (files + optional subDirectory), writes to `raw/sources/{subDirectory}/`, returns 202 Accepted with file manifest (FR-014)
+- [X] T033 Register upload endpoint in Hub's `Program.cs`: `MapPost("/api/ingest/upload", handler)` (FR-014)
+- [X] T034 Implement agent-side progress reporting: Modify `IngestPipeline` to emit periodic `IngestProgress` events (file path, status, chunk count, duration) and POST to Hub callback via `HubReporter` (FR-016)
+- [X] T035 Implement Hub-side callback handler in `src/backend/Grimoire.Api/Channels/Ingest/Endpoints/`: Receives agent progress POSTs, persists to `IngestRunRecord` via `IngestRepository`, broadcasts via `IngestHub.IngestProgressAsync()` (FR-016)
+- [X] T036 Implement frontend `UploadForm.svelte`: File input, submit button, accept multiple files, POST to `/api/ingest/upload`, return 202 response with file list (FR-014)
+- [X] T037 Implement frontend `StatusFeed.svelte`: Connect to SignalR `IngestHub`, listen for `IngestProgress` events, display current file, progress bar, scrollable log stream (updates on each event)
+- [X] T038 Implement frontend `BatchSummary.svelte` table component: Display run results (file name, status, chunks, duration) in HTML table, include "Discuss" action button per row (for US5 conversation access)
+- [X] T039 [P] Integrate components in frontend: Create `IngestPage.svelte` root component, compose UploadForm + TriggerButton + StatusFeed + BatchSummary; mount at `/` or Vite route
+- [X] T040 Implement frontend SignalR service in `src/frontend/src/services/ingestHub.ts`: Initialize HubConnection to `/hubs/ingest`, handle auto-reconnect, manage event subscriptions, export as `ingestHub` singleton
+- [X] T041 Add observability: Log events `hub.ingest.upload` on file upload, emit trace spans for file write and agent callback receipt
 
 **Checkpoint**: Browser upload works end-to-end; user sees real-time progress; batch summary displays completion; all P1 features accessible via UI.
 

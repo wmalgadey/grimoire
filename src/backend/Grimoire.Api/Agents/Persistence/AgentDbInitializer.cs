@@ -65,5 +65,28 @@ CREATE TABLE IF NOT EXISTS AgentJobs (
 );
 CREATE INDEX IF NOT EXISTS idx_AgentJobs_AgentId ON AgentJobs(AgentId);
 CREATE INDEX IF NOT EXISTS idx_AgentJobs_Status ON AgentJobs(Status);
-CREATE INDEX IF NOT EXISTS idx_AgentJobs_CreatedAt ON AgentJobs(CreatedAt);";
+CREATE INDEX IF NOT EXISTS idx_AgentJobs_CreatedAt ON AgentJobs(CreatedAt);
+CREATE TABLE IF NOT EXISTS IngestRuns (
+    RunId TEXT PRIMARY KEY,
+    Status TEXT NOT NULL,
+    StartedAt TEXT NOT NULL,
+    CompletedAt TEXT,
+    TotalFiles INTEGER NOT NULL DEFAULT 0,
+    ProcessedFiles INTEGER NOT NULL DEFAULT 0,
+    FailedFiles INTEGER NOT NULL DEFAULT 0,
+    SkippedFiles INTEGER NOT NULL DEFAULT 0,
+    DurationMs BIGINT NOT NULL DEFAULT 0,
+    ErrorMessage TEXT,
+    FileResults TEXT
+);
+CREATE TABLE IF NOT EXISTS ConversationTurns (
+    ConversationId TEXT NOT NULL,
+    TurnIndex INTEGER NOT NULL,
+    FilePath TEXT NOT NULL,
+    Role TEXT NOT NULL,
+    Message TEXT NOT NULL,
+    CreatedAt TEXT NOT NULL,
+    PRIMARY KEY (ConversationId, TurnIndex)
+);
+CREATE INDEX IF NOT EXISTS idx_ConversationTurns_ConversationId ON ConversationTurns(ConversationId);";
 }

@@ -323,3 +323,20 @@ Ein minimales Browser-Interface als primärer Interaktionskanal für den Ingest-
   - zuletzt erweitern, dass der human in the loop nicht nur bei problemen, sondern ggf. auch bei rückfragen oder zur diskussion der ingesten dokumente interagieren kann.
 
 - bleibt noch ein Problem, in adr-002 wird von einem "RemoteAgent" gesprochen, der die Kommunikation zwischen Hub und Agenten übernimmt. Sowas war eigentlich nicht geplant, habe ich aber im ADR übersehen!
+
+- ADR-002 und ADR-006 wurden jetzt mit ADR-010 ergänzt bzw. angepasst
+
+---
+
+Ich habe jetzt folgende Probleme:
+
+1. Ich verstehe den Code nicht ganz, wozu sind die ganzen Endpunkte notwendig? Ich hätte besser noch Swagger oder OpenAPI als ADR hinzugefügt
+   1. generell hätte ich die ADRs gerne sauber und würde sie gerne komplett überarbeiten
+   2. fehlende ADRs würde ich dann direkt ergänzen (OpenAPI z.B.)
+2. Mich beschleicht das Gefühl, dass ich evtl. zu groß angefangen habe. Evtl wäre es besser gewesen
+   1. grundlegende strukturen wie in specs/001 anzulegen
+   2. eine einzelne funktion zu implementieren, also z.B. nur das UI, dann dazu das backend und dann erst den agenten, oder auch erstmal nur den agenten.
+   3. Aktuell ist mir zu viel "connection"-code vorhanden.
+3. Ich weiß auch nicht genau, ob nicht evtl. wichtige Details gefehlt habe
+   1. Habe ich bereits erfasst, dass das Ergebnis des Inges div. Wiki-Dateien sind?
+   2. Und dass der agent die antwort vom LLM eben so umsetzen muss? also die Änderungen auf der Platte durchführen?
