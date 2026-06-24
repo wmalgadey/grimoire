@@ -8,56 +8,50 @@ public static class AgentCallbackEndpoint
     public static IEndpointRouteBuilder MapAgentCallback(this IEndpointRouteBuilder routes)
     {
         routes.MapPost("/api/ingest/callbacks/progress", async (
-            string runId,
             IngestProgress progress,
             IngestOrchestrationHandler handler) =>
         {
-            await handler.HandleProgressCallbackAsync(runId, progress);
+            await handler.HandleProgressCallbackAsync(progress.RunId, progress);
             return Results.Ok();
         });
 
         routes.MapPost("/api/ingest/callbacks/feedback-request", async (
-            string runId,
             IngestFeedbackRequest feedbackRequest,
             IngestOrchestrationHandler handler) =>
         {
-            await handler.HandleFeedbackRequestCallbackAsync(runId, feedbackRequest);
+            await handler.HandleFeedbackRequestCallbackAsync(feedbackRequest.RunId, feedbackRequest);
             return Results.Ok();
         });
 
         routes.MapPost("/api/ingest/callbacks/conversation-opened", async (
-            string conversationId,
             IngestConversationOpened payload,
             IngestOrchestrationHandler handler) =>
         {
-            await handler.HandleConversationOpenedCallbackAsync(conversationId, payload);
+            await handler.HandleConversationOpenedCallbackAsync(payload.ConversationId, payload);
             return Results.Ok();
         });
 
         routes.MapPost("/api/ingest/callbacks/conversation-turn", async (
-            string conversationId,
             IngestConversationTurn turn,
             IngestOrchestrationHandler handler) =>
         {
-            await handler.HandleConversationTurnCallbackAsync(conversationId, turn);
+            await handler.HandleConversationTurnCallbackAsync(turn.ConversationId, turn);
             return Results.Ok();
         });
 
         routes.MapPost("/api/ingest/callbacks/run-completed", async (
-            string runId,
             IngestRunCompleted completed,
             IngestOrchestrationHandler handler) =>
         {
-            await handler.HandleRunCompletedCallbackAsync(runId, completed);
+            await handler.HandleRunCompletedCallbackAsync(completed.RunId, completed);
             return Results.Ok();
         });
 
         routes.MapPost("/api/ingest/callbacks/log-entry", async (
-            string runId,
             IngestLogEntry logEntry,
             IngestOrchestrationHandler handler) =>
         {
-            await handler.HandleLogEntryCallbackAsync(runId, logEntry);
+            await handler.HandleLogEntryCallbackAsync(logEntry.RunId, logEntry);
             return Results.Ok();
         });
 
