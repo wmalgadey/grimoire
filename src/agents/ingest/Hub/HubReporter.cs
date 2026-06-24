@@ -71,18 +71,17 @@ public record IngestProgressPayload(
     string FilePath,
     string Status,
     int ChunkCount,
-    long DurationMs,
-    int ProcessedCount,
-    int FailedCount,
-    int SkippedCount,
-    int TotalFiles);
+    int DurationMs,
+    int ProcessedSoFar,
+    int TotalFiles,
+    string? ErrorMessage = null);
 
 public record IngestFeedbackPayload(
     string RequestId,
     string RunId,
     string FilePath,
     string Reason,
-    DateTimeOffset RaisedAt);
+    object[] Options);
 
 public record ConversationOpenedPayload(
     string ConversationId,
@@ -93,11 +92,6 @@ public record ConversationOpenedPayload(
 
 public record RunCompletedPayload(
     string RunId,
-    RunStatus Status,
-    DateTimeOffset StartedAt,
+    string Status,
     DateTimeOffset CompletedAt,
-    int TotalFiles,
-    int ProcessedCount,
-    int FailedCount,
-    int SkippedCount,
-    int TotalChunks);
+    object Summary);

@@ -180,14 +180,18 @@ public class IngestService
 
         await _hubReporter.PostRunCompletedAsync(new RunCompletedPayload(
             RunId: run.RunId,
-            Status: run.Status,
-            StartedAt: run.StartedAt,
+            Status: run.Status.ToString(),
             CompletedAt: run.CompletedAt.Value,
-            TotalFiles: run.TotalFiles,
-            ProcessedCount: run.ProcessedCount,
-            FailedCount: run.FailedCount,
-            SkippedCount: run.SkippedCount,
-            TotalChunks: run.TotalChunks));
+            Summary: new
+            {
+                totalFiles = run.TotalFiles,
+                processedCount = run.ProcessedCount,
+                failedCount = run.FailedCount,
+                skippedCount = run.SkippedCount,
+                totalChunks = run.TotalChunks,
+                durationMs = (int)Math.Min(sw.ElapsedMilliseconds, int.MaxValue),
+                files = run.FileResults
+            }));
 
         lock (_runLock)
             _activeRun = null;

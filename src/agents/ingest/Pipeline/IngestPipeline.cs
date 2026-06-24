@@ -178,10 +178,8 @@ public class IngestPipeline
             FilePath: filePath,
             Status: "Processed",
             ChunkCount: chunks.Count,
-            DurationMs: sw.ElapsedMilliseconds,
-            ProcessedCount: run.ProcessedCount + 1,
-            FailedCount: run.FailedCount,
-            SkippedCount: run.SkippedCount,
+            DurationMs: (int)Math.Min(sw.ElapsedMilliseconds, int.MaxValue),
+            ProcessedSoFar: run.ProcessedCount + 1,
             TotalFiles: run.TotalFiles));
 
         _metrics.RecordFile("processed");
@@ -236,7 +234,12 @@ public class IngestPipeline
             RunId: runId,
             FilePath: filePath,
             Reason: reason.ToString(),
-            RaisedAt: request.RaisedAt));
+            Options:
+            [
+                new { action = "process", label = "Process file" },
+                new { action = "skip", label = "Skip file" },
+                new { action = "tag", label = "Tag file" }
+            ]));
 
         var tcs = new TaskCompletionSource<FeedbackResponse>(TaskCreationOptions.RunContinuationsAsynchronously);
         _pendingFeedback[request.RequestId] = tcs;
