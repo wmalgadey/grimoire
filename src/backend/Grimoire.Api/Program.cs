@@ -3,6 +3,10 @@ using Grimoire.Api.Agents.Persistence;
 using Grimoire.Api.Agents.Services;
 using Grimoire.Api.Hubs.Endpoints;
 using Grimoire.Api.Hubs.Handlers;
+using Grimoire.Api.Ingest.Endpoints;
+using Grimoire.Api.Ingest.Hubs;
+using Grimoire.Api.Ingest.Persistence;
+using Grimoire.Api.Ingest.Services;
 using Grimoire.Api.Shared.Middleware;
 using Grimoire.Api.Shared.Observability;
 using OpenTelemetry;
@@ -26,6 +30,12 @@ builder.Services.AddSingleton<HubMetrics>();
 builder.Services.AddSingleton(sp => new AgentRepository(connectionString));
 builder.Services.AddSingleton(sp => new AgentDbInitializer(connectionString, sp.GetRequiredService<ILogger<AgentDbInitializer>>()));
 builder.Services.AddScoped<IAgentOrchestrationService, HubOrchestrationHandler>();
+
+var agentUrl = builder.Configuration["IngestAgent:BaseUrl"] ?? "http://localhost:5100";
+builder.Services.AddHttpClient<IngestAgentClient>(client => client.BaseAddress = new Uri(agentUrl));
+builder.Services.AddScoped<IIngestAgentClient>(sp => sp.GetRequiredService<IngestAgentClient>());
+builder.Services.AddSingleton(sp => new IngestRepository(connectionString));
+builder.Services.AddScoped<IngestOrchestrationHandler>();
 
 builder.Services.AddSignalR();
 builder.Services.AddOpenTelemetry()
@@ -53,6 +63,7 @@ logger.LogInformation("grimoire.host.started environment={Environment} version={
 
 app.MapGet("/", () => "Grimoire API");
 app.MapHub<AgentHub>("/hubs/agents");
+app.MapHub<IngestHub>("/hubs/ingest");
 
 app.MapRegisterAgent();
 app.MapListAgents();
@@ -61,6 +72,16 @@ app.MapStartAgent();
 app.MapStopAgent();
 app.MapHealth();
 
+app.MapUploadSource();
+app.MapTriggerIngest();
+app.MapAgentCallback();
+app.MapGetIngestRun();
+app.MapConversationEndpoints();
+app.MapSubmitFeedback();
+
 await app.RunAsync();
 
 logger.LogInformation("grimoire.host.stopped environment={Environment}", environment);
+
+public partial class Program { }
+

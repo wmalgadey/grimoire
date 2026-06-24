@@ -259,3 +259,84 @@ Refactoring hat eigentlich gut funktioniert (Codebase war ja auch noch klein), a
 ---
 
 - warum haben wir eigentlich .net 9 verwendet? .net 10 ist doch viel aktueller!?
+
+
+## 2026-06-24
+
+- ein vorheriger versuch, das nächste feature zu entwickeln habe ich resettet, da der Agent im Backend umgesetzt wurde, nicht als einzelner Prozess.
+
+```claude.ai
+/speckit-specify erstelle einen Ingest-Agent — Watch auf raw/sources/, Git-Commit nach Verarbeitung, SHA256-Cache für inkrementelles Processing. Das ist der kritischste Agent weil alle anderen auf ingested Content aufbauen. die vorlage ist die entsprechende funktion des [llm-wiki](https://gist.github.com/karpathy/442a6bf555914893e9891c11519de94f).
+außerdem ein Web-UI Channel für /ingest-agent, Minimales Form-UI, löst Ingest-Agent aus, zeigt Status. basis ist llm-wiki, und dort der ingest teil für diesen agenten. der agent soll das feedback aus dem ingest beim benutzer abfragen. benutzer sollen auch die möglichkeit haben eigene dateien per webupload zum ingesten hochzuladen.
+```
+
+```claude
+/speckit-specify
+
+Erstelle einen **Ingest-Agent** mit zugehörigem **Web-UI Channel**.
+
+## Was gebaut werden soll
+
+### Ingest-Agent
+
+Ein autonomer Agent, der neue Rohdateien erkennt, verarbeitet und versioniert.
+Referenzimplementierung für die Verarbeitungslogik: [llm-wiki Ingest-Funktion](https://gist.github.com/karpathy/442a6bf555914893e9891c11519de94f) — die dort umgesetzte Pipeline (Chunking, Embedding, Indexing) dient als Vorlage für die Verarbeitungsschritte dieses Agenten.
+
+**Deployment-Modell:**
+- Der Agent ist ein eigenständiger Prozess — kein eingebettetes Modul, keine Library
+- Er ist zukünftig containerisierbar: konfigurierbar über Umgebungsvariablen (Pfade, Git-Credentials, Embedding-Endpoint etc.)
+- Er wird über das Backend/Hub orchestriert: Start, Stop, Konfigurationsübergabe und Status-Reporting laufen über die Hub-Schnittstelle (Protokoll/API vom Hub vorgeben lassen oder als offenen Punkt markieren)
+- Der Agent registriert sich beim Start am Hub und meldet seinen Status periodisch (Heartbeat); der Hub kann den Agenten auch remote triggern
+- Lokaler Betrieb ohne Hub muss ebenfalls möglich sein (Fallback auf direkten CLI-Aufruf / Standalone-Modus), damit Entwicklung und Testing ohne die vollständige Plattform funktionieren
+
+**Kernverhalten:**
+- Watch auf `raw/sources/` — erkennt neue und geänderte Dateien (rekursiv)
+- SHA256-basierter Cache verhindert Wiederverarbeitung unveränderter Dateien; nur Diffs werden neu prozessiert
+- Nach erfolgreicher Verarbeitung: automatischer Git-Commit mit sprechendem Commit-Message (Dateiname, Zeitstempel, Anzahl verarbeiteter Chunks)
+- Verarbeitungsstatus pro Datei wird persistent gespeichert (erfolgreich / fehlgeschlagen / übersprungen)
+- Dieser Agent ist der kritischste im System — alle nachgelagerten Agenten bauen auf seinem Output auf; Fehlerbehandlung und Idempotenz haben höchste Priorität
+
+**Feedback-Loop mit dem Benutzer (Agent soll optimale Strategie vorschlagen):**
+- Nach Abschluss einer Ingest-Batch zeigt der Agent eine strukturierte Zusammenfassung: verarbeitete Dateien, Fehler, übersprungene Dateien, erzeugte Chunks
+- Bei mehrdeutigen oder potenziell problematischen Dateien (z.B. unbekannte Formate, sehr große Dateien, fehlende Metadaten) fragt der Agent interaktiv nach — entweder über den Web-UI Channel oder CLI-Prompt
+- Der Benutzer kann pro Datei entscheiden: verarbeiten / überspringen / manuell taggen
+- Feedback wird in den Cache geschrieben, um künftige Läufe zu steuern
+
+### Web-UI Channel für `/ingest-agent`
+
+Ein minimales Browser-Interface als primärer Interaktionskanal für den Ingest-Agenten.
+
+**Funktionen:**
+- **Upload-Form**: Datei-Upload direkt aus dem Browser; Dateien landen in `raw/sources/` und triggern den Agenten automatisch
+- **Trigger-Button**: manueller Start eines Ingest-Laufs auf dem aktuellen `raw/sources/`-Verzeichnis
+- **Status-Feed**: Echtzeit-Anzeige des Verarbeitungsfortschritts (aktuelle Datei, Fortschrittsbalken, Log-Stream)
+- **Feedback-Dialog**: Wenn der Agent bei einer Datei nachfragt (Ambiguität, Fehler, unbekanntes Format), öffnet sich im Web-UI ein Inline-Dialog — der Benutzer entscheidet und die Antwort wird an den laufenden Agenten übergeben
+- **Batch-Zusammenfassung**: Nach Abschluss kompakte Übersicht (Tabelle: Datei / Status / Chunks / Dauer)
+
+**Was das UI explizit nicht ist:** kein Dashboard, keine Konfigurationsoberfläche, keine Authentifizierung (im ersten Schritt).
+```
+
+- diesmal habe ich diese specs per rückfragen erweitert
+  - hinzufügen der tatsache dass der agent ein eigenständiger prozess ist, und nicht im backend eingebettet ist
+  - erweitern der info, dass das "embedding" mit einem LLM gemacht wird, und nicht mit einem embedding-service
+  - dazu wurde dann der adr 010 erstellt, der das beschreibt
+  - zuletzt erweitern, dass der human in the loop nicht nur bei problemen, sondern ggf. auch bei rückfragen oder zur diskussion der ingesten dokumente interagieren kann.
+
+- bleibt noch ein Problem, in adr-002 wird von einem "RemoteAgent" gesprochen, der die Kommunikation zwischen Hub und Agenten übernimmt. Sowas war eigentlich nicht geplant, habe ich aber im ADR übersehen!
+
+- ADR-002 und ADR-006 wurden jetzt mit ADR-010 ergänzt bzw. angepasst
+
+---
+
+Ich habe jetzt folgende Probleme:
+
+1. Ich verstehe den Code nicht ganz, wozu sind die ganzen Endpunkte notwendig? Ich hätte besser noch Swagger oder OpenAPI als ADR hinzugefügt
+   1. generell hätte ich die ADRs gerne sauber und würde sie gerne komplett überarbeiten
+   2. fehlende ADRs würde ich dann direkt ergänzen (OpenAPI z.B.)
+2. Mich beschleicht das Gefühl, dass ich evtl. zu groß angefangen habe. Evtl wäre es besser gewesen
+   1. grundlegende strukturen wie in specs/001 anzulegen
+   2. eine einzelne funktion zu implementieren, also z.B. nur das UI, dann dazu das backend und dann erst den agenten, oder auch erstmal nur den agenten.
+   3. Aktuell ist mir zu viel "connection"-code vorhanden.
+3. Ich weiß auch nicht genau, ob nicht evtl. wichtige Details gefehlt habe
+   1. Habe ich bereits erfasst, dass das Ergebnis des Inges div. Wiki-Dateien sind?
+   2. Und dass der agent die antwort vom LLM eben so umsetzen muss? also die Änderungen auf der Platte durchführen?
