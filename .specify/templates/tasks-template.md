@@ -45,15 +45,16 @@ description: "Task list template for feature implementation"
   ============================================================================
 -->
 
-## Phase 0: Architecture Enforcement (MANDATORY — Constitution Principle III)
+## Phase 0: Structural Boundary Enforcement (MANDATORY — Constitution Principle III)
 
-**Purpose**: Automated architecture tests must exist and FAIL before any feature code is written.
+**Purpose**: Write and verify structural boundary tests before any feature code is written.
 This phase MUST be the first phase in every tasks.md, regardless of feature scope.
+Enforce the structural rule from [ADR-XXX] before any feature code exists.
 
-**⚠️ NON-NEGOTIABLE**: No feature implementation can begin until the architecture test is RED.
+**⚠️ NON-NEGOTIABLE**: No feature implementation can begin until Phase 0 is complete.
 
 <!--
-  ACTION REQUIRED: Replace the placeholder below with the concrete architecture test
+  ACTION REQUIRED: Replace T000 below with the concrete structural boundary test
   for the ADR(s) referenced in plan.md § Architectural Constraints & ADRs.
   Use the appropriate tool for the tech stack:
   - Python: import-linter, pytest with ast inspection, or custom module boundary checks
@@ -61,13 +62,31 @@ This phase MUST be the first phase in every tasks.md, regardless of feature scop
   - .NET: NetArchTest.Rules or Roslyn Analyzers
   - Go: custom package dependency check
 
-  Example: "Implement ArchUnit rule in tests/arch/test_domain_isolation.py
-  asserting that src/domain/ has no imports from src/infrastructure/"
+  IMPORTANT: These are structural boundary tests only. Observability/instrumentation tests
+  (verifying metrics/spans are emitted) belong in the final phase — they require
+  production code to exist and cannot be written here.
 -->
 
-- [ ] T000 Implement automated architecture test enforcing ADR-[NNN] ([structural rule]) in [tests/arch/test_*.py or equivalent]
+- [ ] T000 Write and Verify Structural Boundary Tests for [ADR-XXX]
 
-**Checkpoint**: Architecture test EXISTS and FAILS (Red). Feature code may now begin.
+**Requirements**:
+- Use ArchUnit (Java), NetArchTest.Rules (C#), import-linter (Python), or equivalent
+- Document the rule: e.g., "src/domain/ MUST NOT import from src/infrastructure/"
+- Do NOT implement any feature code in this task
+
+**Red/Green probe** (required — confirms the test actually catches violations):
+1. Write the boundary rule
+2. Introduce a deliberately violating file (e.g., `domain/_probe_bad_import.py`)
+3. Run the test — it MUST fail
+4. Delete the violating file
+5. Run the test again — it MUST pass
+
+**Definition of Done**:
+- [ ] Rule written and committed
+- [ ] Red/Green probe completed (commit message documents the probe result)
+- [ ] Test passes in CI with no violations (probe file deleted)
+
+**Checkpoint**: Structural boundary is guarded. Feature code may now begin.
 
 ---
 

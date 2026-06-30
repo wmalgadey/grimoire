@@ -275,3 +275,13 @@ After producing the result, check if `.specify/extensions.yml` exists in the pro
     ```
 
 - If no hooks are registered or `.specify/extensions.yml` does not exist, skip silently
+
+## DoD Validation Checklist
+
+When converge runs, it should verify:
+- [ ] ADRs in plan.md exist in docs/adr/ (scan + report)
+- [ ] Architecture tests pass in CI (check last build)
+- [ ] OpenTelemetry imports present (grep codebase)
+- [ ] Metrics from plan.md are registered (scan for registration calls)
+- [ ] Log events from plan.md are emitted (grep for log.structured or similar)
+- [ ] All tests pass (CI status)
