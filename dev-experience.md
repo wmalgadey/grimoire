@@ -88,7 +88,7 @@ Offene Schmerzen:
 - Ingest-Output sind konkrete Wiki-Dateien
 - Agent muss LLM-Antworten real auf Dateisystem anwenden
 
-## Meta-Erkenntnisse aus dem bisherigen Verlauf
+## Erkenntnisse aus dem bisherigen Verlauf
 
 - Ich kann mit Spec-Kit schnell Struktur erzeugen, aber zu viel Struktur zu frueh erzeugt Overhead.
 - ADRs helfen stark, muessen aber regelmaessig konsolidiert und auf Widersprueche geprueft werden.
@@ -128,3 +128,20 @@ Das ist kein Scheitern, sondern ein kontrollierter Neustart mit besserem Fokus.
 - Welche Endpunkte sind fuer diesen kleinsten Flow wirklich zwingend?
 - Welche ADRs sind Pflicht fuer den Neustart, welche koennen spaeter folgen?
 - ADRs nochmal sauber aufsetzen, sie sind aktuell zu stark angepasst
+
+### 2026-07-01: Problemdomaene erkannt und Constitution geprüft
+
+Was ich gemacht habe:
+
+- ADRs als Arbeitswerkzeug genutzt, um Probleme und offene Fragen in ein zentrales Dokument zu ueberfuehren.
+- Dabei bewusst keine Entscheidungen und keine Pro/Contra-Listen festgehalten, sondern nur Problemdomaene, Kontext und Problemstatement.
+- Dieses Dokument mit KI gechallenged: Was uebersehe ich? Gibt es Duplikate? Passt es zur constitution.md?
+- Danach die Constitution aus dem Spec-Kit-GitHub-Projekt erneut in den Chatbot gegeben und nach einer Validierung gefragt.
+- Zusaetzlich gezielt nach einem sauberen Startvorgehen fuer ein Greenfield-Projekt mit Spec-Kit gefragt.
+
+Ergebnis:
+
+- Klarere Trennung zwischen Problemraum und Entscheidungsraum.
+- Besseres Gefuehl fuer Redundanzen und moegliche Luecken in den Problemstatements.
+- Schaerferes Verstaendnis, wie gut der aktuelle Problemfokus zur Constitution passt.
+- Praktischere Leitplanken fuer den Neustart als Greenfield-Projekt mit Spec-Kit.
