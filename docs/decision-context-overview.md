@@ -19,16 +19,17 @@ The result is a **persistent, compounding artifact**: a structured wiki of inter
 markdown files that grows more coherent and cross-referenced over time, rather than
 re-deriving everything from raw documents on every query.
 
-### Three Layers
+### Four Layers
 
 Every architectural decision in Grimoire must be evaluated against how well it serves
-these three layers:
+these layers:
 
 | Layer | Owner | Role |
 | --- | --- | --- |
 | **Raw Sources** | Human | Immutable, curated input documents. Single source of truth. Never modified by the system. |
 | **The Wiki** | LLM (Grimoire agents) | LLM-generated and maintained markdown: summaries, entity pages, concept pages, synthesis. The agents own this layer entirely. |
-| **The Schema** | Human + Constitution | Configuration and conventions (structure, naming, workflows) that make the LLM a disciplined maintainer rather than a generic chatbot. `constitution.md` and CLAUDE.md serve this role in Grimoire. |
+| **The Schema** | Authored by human, executed by the agent | Each agent (Ingest, Query, Lint) owns a dedicated `CLAUDE.md` file at `agents/<operation>/CLAUDE.md` that specifies its operational schema, guardrails, output formats, and tool scope. Schema files are for agent execution guidance, not harness/infrastructure configuration. |
+| **The Skills** | Authored by human, executed by the agent | Each agent owns a dedicated `SKILL.md` file at `agents/<operation>/SKILL.md` that specifies its capabilities and the specific process to execute. |
 
 ### Three Operations
 
@@ -36,7 +37,10 @@ Grimoire's agents exist to perform exactly three domain operations — no more, 
 Each new agent or feature must map to one of these, or the feature is out of scope:
 
 - **Ingest**: Process new source material. Extract key information, update relevant wiki
-  pages, maintain and extend cross-references. Triggered by the user adding a source.
+  pages, maintain and extend cross-references. MVP: triggered only by the user adding a
+  source. Later: may also trigger autonomously — a background job scanning a raw-source
+  directory (e.g. a Zettelkasten) for new files, on user request to scan that directory,
+  or via the agent periodically pulling a git remote.
 - **Query**: Answer questions by searching wiki pages and synthesising citations.
   High-value query results may themselves become new wiki pages, compounding knowledge.
 - **Lint**: Health-check the wiki for contradictions, stale claims, orphaned pages, and
@@ -47,46 +51,58 @@ Each new agent or feature must map to one of these, or the feature is out of sco
 The primary differentiator between Grimoire and a general-purpose local agent (e.g.
 OpenClaw or NanoClaw) running a LLM-wiki skill is **operational transparency**. A generic
 agent produces terminal output or a chat response and disappears. Grimoire materialises
-every operation as a persistent, structured **task artifact** — a markdown file with YAML
-frontmatter — that lives alongside the wiki in git and is fully browsable in Obsidian or
-any editor.
+every action the user should be aware of as a persistent, structured **task artifact** —
+a markdown file with YAML frontmatter — that lives alongside the wiki in git and is fully
+browsable in Obsidian or any editor.
 
 Each task file records two layers (following the note-per-task philosophy):
 
 - **Structured layer** (YAML frontmatter): machine-readable state — `type` (ingest /
-  query / lint), `status` (queued / running / completed / failed), `agent`, `started_at`,
-  `completed_at`, `sources` (list of input documents), `pages_touched` (wikilinks to the
-  pages the agent created or modified).
+  query / lint), `status` (queued / running / completed / failed / removed), `agent`,
+  `started_at`, `completed_at`, `sources` (list of input documents), `pages_touched`
+  (wikilinks to the pages the agent created or modified).
 - **Content layer** (markdown body): human-readable report — what the agent found, what
   decisions it made, what it changed, any uncertainties flagged for human review.
 
+**Tasks as Interaction & Visualization:** Tasks are not an intermediate layer between
+operations and output; they *are* an output. Each distinct action the user should be
+aware of becomes one task. For example, if a lint pass finds 5 problems, the lint agent
+creates 5 tasks (one per problem), not 1 aggregate task. Tasks serve two purposes:
+
+1. **Visualization**: Users see what the system is doing, what changed, and what feedback
+   is needed—without leaving Obsidian or their text editor.
+2. **Interaction**: Users can interact with tasks directly: drag a task to "in_progress"
+   to start work, remove a queued task, annotate it with context or feedback, ask the
+   agent follow-up questions via natural language. This keeps the human in the loop without
+   requiring a dedicated UI for every interaction — the file system is the interface of
+   last resort.
+
 Because task files use wikilinks to reference the wiki pages they touched, Obsidian's
 backlink and graph views automatically reveal which tasks produced which pages, and which
-pages were affected by which operations. The task graph is the audit trail.
-
-**Interactivity**: task files are writable by the human. A user can annotate a completed
-task, add context for a follow-up ingest, or mark an open finding as resolved. This keeps
-the human in the loop without requiring a dedicated UI for every interaction — the file
-system is the interface of last resort.
+pages were affected by which operations.
 
 This capability directly shapes the Web UI, which has three distinct surfaces — one per
 agent type — rather than a single generic dashboard:
 
-- **Ingest surface**: The user submits a source (URL, file, clipboard). The UI immediately
-  shows the resulting task with live progress streamed from the Ingest agent (pages
-  processed, cross-references updated). Completed tasks are the browsable ingest history.
-- **Query surface**: The user interacts via a chat interface. When the agent judges a
-  query result significant enough to persist, it creates a task that produces a new wiki
-  file. The chat thread and the resulting task are linked — the task is the durable
-  artifact, the chat is the transient interaction.
-- **Lint surface**: The user triggers a lint pass. The UI shows a task with live findings
-  streamed as the agent traverses the wiki. The result are single tasks of the lint report
-  — listing contradictions, stale claims, and orphaned pages for human review.
+- **Ingest surface**: The user submits a source (URL, file, clipboard). The UI shows the
+  resulting task with live progress streamed from the Ingest agent. MVP version: batch
+  processing (fire-and-forget with completed tasks as results). Future version: interactive
+  streaming with the ability to annotate and interrupt mid-process. Completed tasks are
+  the browsable ingest history.
+- **Query surface**: The user interacts via a chat interface. Ephemeral chat exchanges do
+  not create tasks. When a query result is significant enough to persist as new wiki pages,
+  the Query agent creates tasks for each new page, linking the chat thread to the resulting
+  wiki artifacts.
+- **Lint surface**: The user triggers a lint pass. The Lint agent creates one task per
+  finding (contradiction, stale claim, orphaned page, etc.). Each task represents an
+  opportunity for human decision-making: accept the finding, request corrections, ask for
+  detail, or decline the action. Lint agents can both read the wiki and modify pages
+  (read-write), with user interaction via task drag-and-drop or natural language feedback.
 
 The task artifact is the common thread: all three surfaces eventually produce tasks stored
 as markdown files in git. The surface shapes the *entry point* and *interaction mode*; the
-task shapes the *output and audit trail*. The streaming requirement from the backend is
-driven by showing real-time task progress across all three surfaces.
+task shapes the *output and audit trail*. The streaming requirement from the backend (in
+the interactive future) is driven by showing real-time task progress across all three surfaces.
 
 ### Architectural Implications
 
@@ -94,32 +110,47 @@ This vision directly constrains the decisions that follow in this document:
 
 1. **Backend & Frontend (§1)**: The Web UI has three agent-shaped surfaces: an Ingest
    surface (source submission + task progress), a Query surface (chat-first with optional
-   task creation for new wiki files), and a Lint surface (triggered pass + tasks per
-   findings). All three surfaces stream live task state from the backend. The frontend
-   routing and component model must reflect this three-surface structure rather than a
-   single generic view.
+   task creation for new wiki files), and a Lint surface (task creation per finding with
+   drag-to-action interaction). The MVP Ingest surface is batch-based (fire-and-forget),
+   with future evolution to interactive streaming. The frontend routing and component model
+   must reflect this three-surface structure rather than a single generic view.
 
 2. **Agent Execution (§2)**: Each agent is responsible for creating and updating its own
-   task file throughout its lifecycle — not just reporting a final result. The orchestrator
-   must relay task-state updates to all connected channels in real time. Ingest requires
+   task files throughout its lifecycle — not just reporting a final result. The orchestrator
+   must relay task-state updates to all connected channels in real time. Each agent (Ingest,
+   Query, Lint) has its own `agents/<operation>/CLAUDE.md` (schema, guardrails, output
+   formats, tool scope) and `agents/<operation>/SKILL.md` (capabilities and process) — one
+   dedicated pair of files per agent, regardless of runtime coupling. Ingest requires
    standalone operation due to its LLM pipeline; Query and Lint can be tighter-coupled to
-   the backend, but all three follow the same task-artifact contract.
+   the backend, but all three follow the same task-artifact contract and the same
+   per-agent config layout.
 
 3. **Channels & API (§3)**: Every channel must be able to trigger an operation and receive
    task-state updates. Telegram users should be able to start an ingest, get a task ID
    back, and receive a completion notification with a link to the task file. The task
-   artifact is the canonical result — channels are delivery mechanisms, not result stores.
+   artifacts are the canonical result — channels are delivery mechanisms, not result stores.
 
-4. **Repository & Code Structure (§4)**: Task files live in the wiki (e.g. `tasks/` or
-   collocated with sources). The repository structure must keep wiki content (including
-   tasks), agents, and the backend infrastructure independently navigable. The task schema
-   is part of the schema layer and belongs under `.specify/` or a dedicated `schema/`
-   folder.
+4. **Repository & Code Structure (§4)**: Task files live in a dedicated `tasks/` directory
+   (one markdown file per task, e.g. `tasks/<YYYY-MM-DD>-<operation>-<slug>.md`), alongside
+   the wiki content in git. Each agent's `CLAUDE.md` and `SKILL.md` live together under
+   `agents/<operation>/` (e.g. `agents/ingest/CLAUDE.md`, `agents/ingest/SKILL.md`) — the
+   same per-agent folder that also holds its runtime code where applicable. The repository
+   structure must keep wiki content (including tasks), agents, and the backend
+   infrastructure independently navigable.
 
-5. **Persistence (§5)**: Completed task files are domain state — they go in git alongside
-   the wiki. In-progress task state (status transitions, streaming progress) is operational
-   state and lives in the backend's ephemeral store. The handoff point is task completion:
-   once an agent finishes, the final task file is written to disk and committed.
+5. **Persistence (§5)**: Completed task files and all wiki content are domain state — they
+   go in git. `log.md` is the append-only chronological record of every action (ingest,
+   query, lint) with consistent parseable prefixes (e.g., `## [2026-04-02] ingest | Article Title`).
+   `index.md` is a content-oriented catalog organized by category, updated on every ingest.
+   In-progress task state (status transitions, streaming progress) is operational state and
+   lives in the backend's ephemeral store. The handoff point is task completion: once an
+   agent finishes, the final task file is written to disk and committed. log.md and index.md
+   are updated as part of the commit.
+
+6. **Agent Modification Scope (§2 & §7)**: Lint agents operate read-write on wiki pages,
+   not read-only. They can create, modify, and delete pages in response to findings. User
+   interaction with lint findings occurs via tasks (drag-to-do, natural language feedback)
+   or direct task annotation.
 
 ### What This Is Not
 
@@ -127,6 +158,14 @@ Grimoire is **not** a RAG system. RAG re-derives answers from raw documents on e
 query. Grimoire maintains a standing, curated, cross-referenced body of synthesised
 knowledge that improves with every ingest and lint pass. The wiki is the product; the
 agents are its caretakers.
+
+Task artifacts are **not** an intermediate layer between agent operations and the wiki.
+They are the primary output of agent operations. Each task represents one discrete action
+the user should be aware of: one ingest of a source, one query result that's significant
+enough to persist, one finding from a lint pass. If a lint pass finds 5 problems, the Lint
+agent creates 5 tasks (one per problem). Tasks are how users interact with agents: by
+dragging a task to "in_progress," requesting detail via natural language feedback, or
+declining a task. Task files live in git alongside the wiki as durable audit artifacts.
 
 ---
 
@@ -162,7 +201,12 @@ and auditable across all views without per-component ad-hoc overrides.
 Grimoire routes work to multiple specialized agents (Ingest, Query, Lint) with
 distinct responsibilities, and all user requests (Web UI, Telegram, future channels) must
 enter through a single backend entry point that dispatches to and collects results from
-those agents. Early thinking favored maximum isolation (container-per-agent, arbitrary
+those agents. Each agent operates according to a dedicated operational schema file
+(`CLAUDE.md`) that defines its guardrails, output formats, tool scope, and
+instructions. These per-agent schema files are separate from infrastructure configuration;
+they guide agent execution and are read at runtime.
+
+Early thinking favored maximum isolation (container-per-agent, arbitrary
 languages per agent), but the project is solo-developed and Spec-Kit-first, so operational
 overhead must stay proportional to scope while a migration path to stronger isolation
 remains open. In practice, agents do not all fit the same execution shape: most can run
@@ -172,14 +216,24 @@ decoupled from the backend — driven by its dependency on an LLM-based processi
 (no vector embedding infrastructure exists or is planned) that brings its own runtime and
 dependency chain. This raises both a general question (how does a central orchestrator
 coordinate heterogeneous agents) and a concrete instance of it (how does the first
-standalone, autonomously-triggered agent integrate with that orchestrator).
+standalone agent — user-triggered in the MVP, with autonomous triggering such as
+background raw-source scans or scheduled git pulls layered on later — integrate with
+that orchestrator).
+
+An additional constraint: agents must be able to create and update their own task files
+throughout their lifecycle, not just report a final result. The orchestrator must relay
+task-state updates (status, progress, pages touched) to all connected channels in real time,
+so users can see live progress (in future interactive modes) and interact with tasks
+as they complete.
 
 **Problem Statement:** How should agents be executed (in-process vs. standalone) and how
 should a central orchestrator coordinate request routing, work dispatch, result/status
 collection, and synchronous vs. asynchronous communication across agents with
 heterogeneous runtime and deployment needs — while keeping operational overhead
-proportional to a solo-developer project and leaving room for agents to grow more
-independent (different runtimes, autonomous triggers, eventual containerization)?
+proportional to a solo-developer project, leaving room for agents to grow more
+independent (different runtimes, autonomous triggers, eventual containerization), and
+ensuring agents can create and manage their own task artifacts and publish status updates
+in real time?
 
 ---
 
@@ -279,34 +333,59 @@ that are hard to detect and expensive to reverse. NanoClaw mitigates this throug
 isolation (container sandboxing limits what an agent can reach), but does not define an
 application-level output validation policy. Grimoire needs both layers: structural
 isolation (which §2 partially addresses) and application-level guardrails that validate
-agent output before it is written to disk. The Lint agent is a partial answer — it
-detects post-hoc wiki quality issues — but it does not prevent bad writes from entering
-the wiki in the first place. Prompt injection is a concrete threat: a source document
-submitted to Ingest could contain instructions designed to redirect the agent's behaviour,
-exfiltrate wiki content, or trigger tool calls outside its intended scope.
+agent output before it is written to disk.
+
+Each agent's per-agent schema file (`CLAUDE.md`) explicitly defines its
+operational scope: what tools it can call, what pages it can read and modify, what
+output formats it must produce. The Lint agent is explicitly read-write capable (it can
+create, modify, or delete wiki pages in response to findings), but its scope is constrained
+by its schema definition. Prompt injection is a concrete threat: a source document submitted
+to Ingest could contain instructions designed to redirect the agent's behaviour,
+exfiltrate wiki content, or trigger tool calls outside its intended scope. The per-agent
+schema file is the primary defense: it defines the agent's actual authority and must be
+treated as a security boundary.
+
+The Lint agent's read-write capability is mediated through task artifacts: when Lint
+detects a problem, it creates a task describing the finding. The user can then interact
+with that task (approve a suggested fix, request detail, or decline), keeping the human
+in the loop. Lint does not automatically correct the wiki; it proposes corrections that
+the user can accept via task interaction (drag-to-do, natural language feedback).
 
 **Problem Statement:** What application-level guardrails must be enforced before any
 agent output is committed to the wiki, how is prompt injection from untrusted source
 documents defended against, and how is each agent's tool-use scope constrained to prevent
-out-of-scope or destructive actions — without introducing so much overhead that the solo
-developer cannot maintain the guardrail layer alongside the agents themselves?
+out-of-scope or destructive actions — with the per-agent schema file serving as the
+operational security boundary and the definition of done?
 
 ---
 
-## 8. Observability Strategy
+## 8. Observability & Audit Trail Strategy
 
 The project constitution (Principle IV) mandates OpenTelemetry instrumentation for every
 plan — named spans, structured log events, and business metrics must be present before a
 feature is considered done; code lacking this instrumentation fails the Definition of Done
 and must not be merged. This is a non-negotiable code-level constraint, but it presupposes
 an infrastructure decision that has not yet been made: what is the OTel stack that
-receives, stores, and surfaces that telemetry? Grimoire's task artifacts cover domain-level
-audit (what the agent did, what pages it touched), but agent-internal execution — LLM
-latency, tool call counts, token usage, error rates — is currently invisible without a
-backend that ingests OTel signals. The decision must also cover the dev-time story: a
-developer running Grimoire locally must be able to inspect traces without deploying cloud
-infrastructure, since a locally unverifiable instrumentation requirement cannot be enforced
-at the Definition of Done gate.
+receives, stores, and surfaces that telemetry? 
+
+Separately, Grimoire's audit trail for domain operations has three canonical components:
+
+1. **log.md**: Append-only chronological record with parseable prefixes (e.g.,
+   `## [2026-04-02] ingest | Article Title`). Updated with every completed task.
+2. **index.md**: Content-oriented catalog of all wiki pages organized by category, with
+   one-line summaries and metadata. Updated on every ingest and lint pass.
+3. **Task files**: Detailed records of each discrete action (one per task), with YAML
+   frontmatter (status, agent, pages_touched) and markdown body (findings, decisions,
+   changes).
+
+These three work together: `log.md` shows "what happened and when," `index.md` shows
+"what exists in the wiki now," and task files show "how we got here for any specific action."
+
+Agent-internal execution — LLM latency, tool call counts, token usage, error rates — is
+currently invisible without a backend that ingests OTel signals. The decision must also
+cover the dev-time story: a developer running Grimoire locally must be able to inspect
+traces without deploying cloud infrastructure, since a locally unverifiable instrumentation
+requirement cannot be enforced at the Definition of Done gate.
 
 **Problem Statement:** Which OpenTelemetry collector, exporter, and backend (local and/or
 cloud) should Grimoire adopt so that the full instrumentation mandated by the constitution
@@ -363,6 +442,10 @@ two categories require different governance:
   §6 ADR, which owns the credential boundary decision. §10 does not duplicate that
   decision; it only asserts that whatever mechanism §6 selects must follow an open,
   well-documented pattern rather than a bespoke credential-passing scheme.
+- **Search infrastructure** — Not planned for MVP. At MVP scale, `index.md` (a content-oriented
+  catalog maintained by agents) provides sufficient navigation of the wiki. Future scale-up
+  beyond ~200 sources may warrant dedicated search tooling (e.g., qmd with BM25/vector
+  search), but this is optional and deferred pending demand signals.
 
 For the settled cases (observability), the simplicity budget (§9) cannot override the
 mandate. For the open cases, the simplicity budget is a valid input into the ADR that
