@@ -43,10 +43,11 @@ public sealed class IngestAgentDispatcher
         startInfo.ArgumentList.Add("--log-path");
         startInfo.ArgumentList.Add(request.LogPath);
 
-        var apiKey = _secretsLoader.GetAnthropicApiKey();
-        if (!string.IsNullOrWhiteSpace(apiKey))
+        var authToken = _secretsLoader.GetAnthropicAuthToken();
+        startInfo.Environment.Remove("ANTHROPIC_API_KEY");
+        if (!string.IsNullOrWhiteSpace(authToken))
         {
-            startInfo.Environment["ANTHROPIC_API_KEY"] = apiKey;
+            startInfo.Environment["ANTHROPIC_AUTH_TOKEN"] = authToken;
         }
 
         using var process = Process.Start(startInfo) ?? throw new InvalidOperationException("Failed to start ingest agent process.");
@@ -65,11 +66,8 @@ public sealed class IngestAgentDispatcher
         _ = await stdOutTask;
         var stdErr = await stdErrTask;
 
-        if (process.ExitCode > 1 && !string.IsNullOrWhiteSpace(stdErr))
-        {
-            throw new InvalidOperationException($"Ingest agent crashed: {stdErr}");
-        }
-
-        return process.ExitCode;
+        return process.ExitCode > 1 && !string.IsNullOrWhiteSpace(stdErr)
+            ? throw new InvalidOperationException($"Ingest agent crashed: {stdErr}")
+            : process.ExitCode;
     }
 }

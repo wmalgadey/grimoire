@@ -21,7 +21,8 @@ public sealed class TaskArtifactStore
     private static string BuildMarkdown(TaskArtifactDocument doc)
     {
         var completedAt = doc.CompletedAt.HasValue ? doc.CompletedAt.Value.ToString("O") : "null";
-        var failure = string.IsNullOrWhiteSpace(doc.FailureReason) ? "null" : $"\"{Escape(doc.FailureReason)}\"";
+        var failureFirstLine = string.IsNullOrWhiteSpace(doc.FailureReason) ? doc.FailureReason : doc.FailureReason.Split('\n')[0];
+        var failure = string.IsNullOrWhiteSpace(failureFirstLine) ? "null" : $"\"{Escape(failureFirstLine)}\"";
         var pages = doc.PagesTouched.Count == 0 ? "[]" : $"[{string.Join(", ", doc.PagesTouched.Select(p => $"\"{Escape(p)}\""))}]";
 
         return $"---\n" +

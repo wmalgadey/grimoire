@@ -9,7 +9,7 @@ public sealed class LocalSecretsLoader
         _envFilePath = envFilePath;
     }
 
-    public string? GetAnthropicApiKey()
+    public string? GetAnthropicAuthToken()
     {
         if (!File.Exists(_envFilePath))
         {
@@ -25,7 +25,7 @@ public sealed class LocalSecretsLoader
             }
 
             var parts = line.Split('=', 2, StringSplitOptions.TrimEntries);
-            if (parts.Length == 2 && parts[0] == "ANTHROPIC_API_KEY")
+            if (parts.Length == 2 && parts[0] == "ANTHROPIC_AUTH_TOKEN")
             {
                 return parts[1].Trim('"');
             }

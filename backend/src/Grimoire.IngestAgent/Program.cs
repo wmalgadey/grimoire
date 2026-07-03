@@ -68,7 +68,8 @@ try
 }
 catch (Exception ex)
 {
-	var safeMessage = SanitizeErrorMessage(ex.Message);
+	var safeMessage = SanitizeErrorText(ex.Message);
+	var safeExceptionDetails = SanitizeErrorText(ex.ToString());
 
 	await taskStore.WriteAsync(
 		options.TaskArtifactPath,
@@ -82,14 +83,14 @@ catch (Exception ex)
 			options.SourceRef,
 			[],
 			safeMessage,
-			$"Ingest failed: {safeMessage}"),
+			$"Ingest failed: {safeMessage}\n\n```text\n{safeExceptionDetails}\n```"),
 		CancellationToken.None);
 
 	await logAppender.AppendAsync(options.LogPath, "failed", options.SourceRef, $"error: {safeMessage}", options.TaskId, CancellationToken.None);
 	return 1;
 }
 
-static string SanitizeErrorMessage(string message)
+static string SanitizeErrorText(string message)
 {
 	if (string.IsNullOrWhiteSpace(message))
 	{
@@ -97,10 +98,10 @@ static string SanitizeErrorMessage(string message)
 	}
 
 	var sanitized = message;
-	var envApiKey = Environment.GetEnvironmentVariable("ANTHROPIC_API_KEY");
-	if (!string.IsNullOrWhiteSpace(envApiKey))
+	var envAuthToken = Environment.GetEnvironmentVariable("ANTHROPIC_AUTH_TOKEN");
+	if (!string.IsNullOrWhiteSpace(envAuthToken))
 	{
-		sanitized = sanitized.Replace(envApiKey, "[REDACTED]", StringComparison.Ordinal);
+		sanitized = sanitized.Replace(envAuthToken, "[REDACTED]", StringComparison.Ordinal);
 	}
 
 	// Redact common Anthropic API key token shape if present in exception text.

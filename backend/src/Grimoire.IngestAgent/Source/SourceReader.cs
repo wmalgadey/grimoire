@@ -25,32 +25,23 @@ public sealed class SourceReader
     private static async Task<ReadSourceResult> ReadFileAsync(string path, CancellationToken cancellationToken)
     {
         var content = await File.ReadAllTextAsync(path, cancellationToken);
-        if (string.IsNullOrWhiteSpace(content))
-        {
-            throw new InvalidOperationException("Source is empty.");
-        }
-
-        return new ReadSourceResult(content, path);
+        return string.IsNullOrWhiteSpace(content)
+            ? throw new InvalidOperationException("Source is empty.")
+            : new ReadSourceResult(content, path);
     }
 
     private async Task<ReadSourceResult> ReadUrlAsync(string url, CancellationToken cancellationToken)
     {
         var content = await _httpClient.GetStringAsync(url, cancellationToken);
-        if (string.IsNullOrWhiteSpace(content))
-        {
-            throw new InvalidOperationException("Source URL returned empty content.");
-        }
-
-        return new ReadSourceResult(content, url);
+        return string.IsNullOrWhiteSpace(content)
+            ? throw new InvalidOperationException("Source URL returned empty content.")
+            : new ReadSourceResult(content, url);
     }
 
     private static ReadSourceResult ReadPastedText(string sourceRef, string? pastedText)
     {
-        if (string.IsNullOrWhiteSpace(pastedText))
-        {
-            throw new InvalidOperationException("Pasted text source is empty.");
-        }
-
-        return new ReadSourceResult(pastedText, sourceRef);
+        return string.IsNullOrWhiteSpace(pastedText)
+            ? throw new InvalidOperationException("Pasted text source is empty.")
+            : new ReadSourceResult(pastedText, sourceRef);
     }
 }

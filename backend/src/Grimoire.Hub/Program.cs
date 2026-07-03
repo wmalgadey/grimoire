@@ -13,6 +13,11 @@ var dbPath = Path.Combine(repoRoot, "backend", "data", "operational-state.db");
 var envPath = Path.Combine(repoRoot, ".env");
 var agentProjectPath = Path.Combine(repoRoot, "backend", "src", "Grimoire.IngestAgent", "Grimoire.IngestAgent.csproj");
 
+if (!File.Exists(envPath))
+{
+	throw new FileNotFoundException($"Required .env file was not found at '{envPath}'.", envPath);
+}
+
 var contentRootDirName = ParseOption(args, "--content-root") ?? builder.Configuration["ContentRootDirName"] ?? "wiki";
 var contentPaths = ContentRootPaths.Resolve(repoRoot, contentRootDirName);
 
@@ -76,10 +81,7 @@ static string FindRepoRoot(string start)
 	var error = process.StandardError.ReadToEnd().Trim();
 	process.WaitForExit();
 
-	if (process.ExitCode != 0 || string.IsNullOrWhiteSpace(output))
-	{
-		throw new InvalidOperationException($"Could not locate repository root: {error}");
-	}
-
-	return output;
+    return process.ExitCode != 0 || string.IsNullOrWhiteSpace(output)
+        ? throw new InvalidOperationException($"Could not locate repository root: {error}")
+        : output;
 }
