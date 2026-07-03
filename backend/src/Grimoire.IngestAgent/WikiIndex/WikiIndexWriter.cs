@@ -19,14 +19,20 @@ public sealed class WikiIndexWriter
         }
 
         var entryLine = $"- [{title}]({pagePath.Replace('\\', '/')}): {summary}";
-        var existingEntryIndex = lines.FindIndex(l => l.StartsWith($"- [{title}]", StringComparison.OrdinalIgnoreCase));
+        var categoryIndex = lines.FindIndex(l => string.Equals(l.Trim(), categoryHeader, StringComparison.Ordinal));
+        var nextCategoryIndex = lines.FindIndex(categoryIndex + 1, l => l.TrimStart().StartsWith("## ", StringComparison.Ordinal));
+        var sectionEnd = nextCategoryIndex >= 0 ? nextCategoryIndex : lines.Count;
+
+        // Only match within this category's section to avoid moving entries across categories.
+        var existingEntryIndex = lines.FindIndex(categoryIndex + 1, sectionEnd - (categoryIndex + 1),
+            l => l.StartsWith($"- [{title}]", StringComparison.OrdinalIgnoreCase));
+
         if (existingEntryIndex >= 0)
         {
             lines[existingEntryIndex] = entryLine;
         }
         else
         {
-            var categoryIndex = lines.FindIndex(l => string.Equals(l.Trim(), categoryHeader, StringComparison.Ordinal));
             lines.Insert(categoryIndex + 1, entryLine);
         }
 
