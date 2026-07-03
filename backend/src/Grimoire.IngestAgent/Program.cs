@@ -6,6 +6,7 @@ using Grimoire.IngestAgent.Synthesis;
 using Grimoire.IngestAgent.TaskArtifact;
 using Grimoire.IngestAgent.WikiIndex;
 using Grimoire.IngestAgent.WikiWrite;
+using System.Text.RegularExpressions;
 
 using var telemetry = TelemetryBootstrap.Build();
 
@@ -46,7 +47,7 @@ try
 	var indexWriter = new WikiIndexWriter();
 	await indexWriter.UpdateAsync(options.IndexPath, synthesis.Category, synthesis.Title, wikiRelativePath, synthesis.Summary, CancellationToken.None);
 
-	await logAppender.AppendAsync(options.LogPath, "completed", options.TaskId, CancellationToken.None);
+	await logAppender.AppendAsync(options.LogPath, "completed", options.SourceRef, $"{decision.Action} {wikiRelativePath}", options.TaskId, CancellationToken.None);
 
 	await taskStore.WriteAsync(
 		options.TaskArtifactPath,
@@ -67,6 +68,8 @@ try
 }
 catch (Exception ex)
 {
+	var safeMessage = SanitizeErrorMessage(ex.Message);
+
 	await taskStore.WriteAsync(
 		options.TaskArtifactPath,
 		new TaskArtifactDocument(
@@ -78,12 +81,31 @@ catch (Exception ex)
 			DateTimeOffset.UtcNow,
 			options.SourceRef,
 			[],
-			ex.Message,
-			$"Ingest failed: {ex.Message}"),
+			safeMessage,
+			$"Ingest failed: {safeMessage}"),
 		CancellationToken.None);
 
-	await logAppender.AppendAsync(options.LogPath, "failed", options.TaskId, CancellationToken.None);
+	await logAppender.AppendAsync(options.LogPath, "failed", options.SourceRef, $"error: {safeMessage}", options.TaskId, CancellationToken.None);
 	return 1;
+}
+
+static string SanitizeErrorMessage(string message)
+{
+	if (string.IsNullOrWhiteSpace(message))
+	{
+		return "Unknown ingest error.";
+	}
+
+	var sanitized = message;
+	var envApiKey = Environment.GetEnvironmentVariable("ANTHROPIC_API_KEY");
+	if (!string.IsNullOrWhiteSpace(envApiKey))
+	{
+		sanitized = sanitized.Replace(envApiKey, "[REDACTED]", StringComparison.Ordinal);
+	}
+
+	// Redact common Anthropic API key token shape if present in exception text.
+	sanitized = Regex.Replace(sanitized, "sk-ant-[A-Za-z0-9_-]+", "[REDACTED]", RegexOptions.CultureInvariant);
+	return sanitized;
 }
 
 static AgentCliOptions ParseArgs(string[] args)
