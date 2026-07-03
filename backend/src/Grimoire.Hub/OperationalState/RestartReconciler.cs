@@ -45,7 +45,7 @@ public sealed class RestartReconciler
 
     private static async Task AppendReconciliationLogAsync(string logPath, string taskId, CancellationToken cancellationToken)
     {
-        var line = $"## [{DateTime.UtcNow:yyyy-MM-dd}] ingest | failed | task: {taskId} | reconciled on startup{Environment.NewLine}";
+        var line = $"## [{DateTime.UtcNow:yyyy-MM-dd}] ingest | failed | reconciled on startup | task: [[tasks/{taskId}.md]]{Environment.NewLine}";
         await File.AppendAllTextAsync(logPath, line, cancellationToken);
     }
 
