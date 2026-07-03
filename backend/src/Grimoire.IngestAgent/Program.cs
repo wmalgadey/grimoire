@@ -56,7 +56,7 @@ try
 			"ingest",
 			"completed",
 			"ingest",
-			DateTimeOffset.UtcNow,
+			(await taskStore.ReadAsync(options.TaskArtifactPath, CancellationToken.None)).StartedAt,
 			DateTimeOffset.UtcNow,
 			options.SourceRef,
 			[wikiRelativePath],
