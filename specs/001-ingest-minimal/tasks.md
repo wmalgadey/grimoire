@@ -67,8 +67,8 @@ Per plan.md § Project Structure (Option 2, web application + standalone agent):
 - [X] T008 Implement task artifact frontmatter+body reader/writer in `backend/src/Grimoire.IngestAgent/TaskArtifact/` per contracts/task-artifact-format.md, reading/writing `tasks/<YYYY-MM-DD>-ingest-<slug>.md` — depends on T007
 - [X] T009 [P] Implement the `OperationalTaskState` SQLite schema and repository in `backend/src/Grimoire.Hub/OperationalState/` per data-model.md (`task_id`, `status`, `process_id`, `updated_at`) — ADR-003
 - [X] T010 [P] Implement shared OpenTelemetry SDK bootstrap (OTLP exporter, resource attributes) in `backend/src/Grimoire.Hub/` and `backend/src/Grimoire.IngestAgent/` per ADR-005 (infra wiring only; no business metrics yet)
-- [X] T011 [P] Implement a secrets loader for `ANTHROPIC_API_KEY` from a git-ignored local file in `backend/src/Grimoire.Hub/AgentDispatch/` — ADR-004
-- [X] T012 Implement the Hub→Ingest-agent child process spawn mechanism in `backend/src/Grimoire.Hub/AgentDispatch/` per contracts/ingest-agent-cli.md (CLI args, stdin for `pasted_text`, `ANTHROPIC_API_KEY` injected only into the child process environment, exit-code handling) — depends on T009, T011
+- [X] T011 [P] Implement a secrets loader for `ANTHROPIC_AUTH_TOKEN` from a git-ignored local file in `backend/src/Grimoire.Hub/AgentDispatch/` — ADR-004
+- [X] T012 Implement the Hub→Ingest-agent child process spawn mechanism in `backend/src/Grimoire.Hub/AgentDispatch/` per contracts/ingest-agent-cli.md (CLI args, stdin for `pasted_text`, `ANTHROPIC_AUTH_TOKEN` injected only into the child process environment, exit-code handling) — depends on T009, T011
 - [X] T013 Implement the Hub `submit-source` CLI entry point in `backend/src/Grimoire.Hub/Submission/` (per quickstart.md) that creates the `OperationalTaskState` row and invokes `AgentDispatch` — depends on T009, T012
 
 **Checkpoint**: Foundation ready — user story implementation can now begin.

@@ -6,7 +6,7 @@ Validates that a submitted source produces a wiki page and a task artifact end-t
 ## Prerequisites
 
 - .NET 10 SDK installed
-- A local secrets file with `ANTHROPIC_API_KEY` set (git-ignored; see ADR-004) — the Hub
+- A local secrets file with `ANTHROPIC_AUTH_TOKEN` set (git-ignored; see ADR-004) — the Hub
   reads this and injects it only into the Ingest agent's child process
 - Repository checked out with an initialized content-root directory (default `wiki/`,
   configurable via the Hub's `ContentRootDirName` setting or `--content-root`), containing

@@ -28,7 +28,7 @@ agent itself has no knowledge of the content-root name or its configurability.
 
 | Variable | Notes |
 |---|---|
-| `ANTHROPIC_API_KEY` | Injected only into this child process's environment by the Hub (ADR-004); never present in the Hub's own process environment |
+| `ANTHROPIC_AUTH_TOKEN` | Injected only into this child process's environment by the Hub (ADR-004); never present in the Hub's own process environment |
 
 ## Responsibilities (agent-owned; Hub does not touch these files directly)
 
