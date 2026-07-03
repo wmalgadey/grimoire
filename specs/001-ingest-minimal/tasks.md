@@ -152,8 +152,7 @@ Per plan.md § Project Structure (Option 2, web application + standalone agent):
 - [ ] T036 [P] Observability test asserting structured log events (`ingest.task.created`, `ingest.task.status_changed`, `ingest.page.written`, `ingest.failed`, `ingest.task.reconciled`) with their mandatory fields in backend/tests/Grimoire.IntegrationTests/ObservabilityLogTests.cs
 - [ ] T037 [P] Observability test asserting the trace span hierarchy (`hub.ingest.submit` → `hub.ingest.spawn_agent` → `ingest_agent.process_source` → `ingest_agent.decide_page_target`/`write_wiki_page`/`update_index`/`append_log`) in backend/tests/Grimoire.IntegrationTests/ObservabilityTraceTests.cs
 - [ ] T038 Instrument production code with the metrics, log events, and trace spans asserted in T035-T037 across backend/src/Grimoire.Hub/ and backend/src/Grimoire.IngestAgent/ (constitution Principle IV) — depends on T035, T036, T037, T020, T028, T034
-- [ ] T039 [P] Security check verifying `ANTHROPIC_API_KEY` never appears in the Hub's own process environment, logs, or trace attributes (ADR-004 compliance) in backend/tests/Grimoire.IntegrationTests/CredentialScopingTests.cs
-- [ ] T040 Run full quickstart.md validation end-to-end (Scenarios 1-4 plus the Observability check) — depends on T038, T039
+- [ ] T039 [P] Security check verifying `ANTHROPIC_AUTH_TOKEN` never appears in the Hub's own process environment, logs, or trace attributes (ADR-004 compliance) in backend/tests/Grimoire.IntegrationTests/CredentialScopingTests.cs
 
 ---
 
