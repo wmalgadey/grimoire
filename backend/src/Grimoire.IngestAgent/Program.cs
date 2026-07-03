@@ -71,6 +71,10 @@ catch (Exception ex)
 	var safeMessage = SanitizeErrorText(ex.Message);
 	var safeExceptionDetails = SanitizeErrorText(ex.ToString());
 
+	var startedAt = DateTimeOffset.UtcNow;
+	try { startedAt = (await taskStore.ReadAsync(options.TaskArtifactPath, CancellationToken.None)).StartedAt; }
+	catch { /* running artifact may not exist if the exception occurred before it was written */ }
+
 	await taskStore.WriteAsync(
 		options.TaskArtifactPath,
 		new TaskArtifactDocument(
@@ -78,7 +82,7 @@ catch (Exception ex)
 			"ingest",
 			"failed",
 			"ingest",
-			DateTimeOffset.UtcNow,
+			startedAt,
 			DateTimeOffset.UtcNow,
 			options.SourceRef,
 			[],
