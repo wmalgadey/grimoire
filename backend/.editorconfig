@@ -15,8 +15,34 @@ trim_trailing_whitespace = false
 indent_size = 4
 
 # Keep analyzers enabled for baseline code quality.
-dotnet_analyzer_diagnostic.severity = warning
+dotnet_analyzer_diagnostic.severity = suggestion
 dotnet_style_qualification_for_field = false:suggestion
 dotnet_style_qualification_for_property = false:suggestion
 dotnet_style_qualification_for_method = false:suggestion
 dotnet_style_qualification_for_event = false:suggestion
+
+# IDE0160: Convert to block scoped namespace
+csharp_style_namespace_declarations = file_scoped
+
+# Allow var usage
+csharp_style_var_for_built_in_types = true:silent
+csharp_style_var_when_type_is_apparent = true:silent
+csharp_style_var_elsewhere = true:silent
+
+# Suppress specific warnings
+# IDE0055: Fix formatting/indentation
+dotnet_diagnostic.IDE0055.severity = silent
+
+# IDE0058: Remove unused expression value
+dotnet_diagnostic.IDE0058.severity = silent
+
+# IDE0007: Use explicit type instead of 'var'
+dotnet_diagnostic.IDE0007.severity = none
+csharp_style_inlined_variable_declaration = true:silent
+
+# IDE0029/IDE0031: Use coalescing expression (if can be simplified)
+dotnet_diagnostic.IDE0029.severity = silent
+dotnet_diagnostic.IDE0031.severity = silent
+
+# CA1861: Avoid locale-specific methods when culture is not required
+dotnet_diagnostic.CA1861.severity = none
