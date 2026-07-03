@@ -7,13 +7,6 @@ namespace Grimoire.IngestAgent.Synthesis;
 
 public sealed class ClaudeSynthesisService
 {
-    private readonly HttpClient _httpClient;
-
-    public ClaudeSynthesisService(HttpClient? httpClient = null)
-    {
-        _httpClient = httpClient ?? new HttpClient();
-    }
-
     public async Task<SynthesisResult> SynthesizeAsync(string sourceContent, CancellationToken cancellationToken)
     {
         var prompt = "Summarize this source into a JSON object with keys title, summary, category, content. " +
