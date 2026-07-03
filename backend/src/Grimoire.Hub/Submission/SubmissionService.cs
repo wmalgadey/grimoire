@@ -35,11 +35,10 @@ public sealed class SubmissionService
             PastedText: options.PastedText);
 
         var exitCode = await _dispatcher.DispatchAsync(request, cancellationToken);
-        var finalStatus = exitCode == 0 ? "completed" : "failed";
 
-        await _repository.UpsertAsync(
-            new OperationalTaskState(taskId, finalStatus, null, DateTimeOffset.UtcNow),
-            cancellationToken);
+        // Task has reached a terminal state; delete the row so the DB doesn't grow unboundedly.
+        // History is captured in the task artifact and log.md (ADR-003).
+        await _repository.DeleteAsync(taskId, cancellationToken);
 
         return taskId;
     }

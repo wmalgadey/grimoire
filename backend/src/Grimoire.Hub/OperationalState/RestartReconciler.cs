@@ -15,9 +15,9 @@ public sealed class RestartReconciler
         foreach (var state in running)
         {
             var reason = "Hub restarted while task was running.";
-            await _repository.UpsertAsync(
-                state with { Status = "failed", UpdatedAt = DateTimeOffset.UtcNow },
-                cancellationToken);
+
+            // Delete the stale row; task artifact + log.md are the durable record (ADR-003).
+            await _repository.DeleteAsync(state.TaskId, cancellationToken);
 
             await UpdateTaskArtifactAsync(tasksDir, state.TaskId, reason, cancellationToken);
             await AppendReconciliationLogAsync(logPath, state.TaskId, cancellationToken);
