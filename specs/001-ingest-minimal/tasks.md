@@ -35,7 +35,7 @@ Per plan.md § Project Structure (Option 2, web application + standalone agent):
 
 **Purpose**: Guard the Domain Core dependency-free rule (Principle I) before any feature code exists.
 
-- [ ] T001 Write and verify a NetArchTest.Rules structural boundary test in backend/tests/Grimoire.ArchTests/DomainDependencyRuleTests.cs asserting `Grimoire.Domain` does not reference `Grimoire.Hub`, `Grimoire.IngestAgent`, `Microsoft.AspNetCore.*`, or `Microsoft.Data.Sqlite`. Red/Green probe: add a temporary class in `Grimoire.Domain` that references one of the forbidden namespaces, confirm the test fails, delete the probe class, confirm the test passes. Commit message documents the probe result.
+- [X] T001 Write and verify a NetArchTest.Rules structural boundary test in backend/tests/Grimoire.ArchTests/DomainDependencyRuleTests.cs asserting `Grimoire.Domain` does not reference `Grimoire.Hub`, `Grimoire.IngestAgent`, `Microsoft.AspNetCore.*`, or `Microsoft.Data.Sqlite`. Red/Green probe: add a temporary class in `Grimoire.Domain` that references one of the forbidden namespaces, confirm the test fails, delete the probe class, confirm the test passes. Commit message documents the probe result.
 
 **Checkpoint**: Structural boundary is guarded. Feature code may now begin.
 
@@ -45,11 +45,11 @@ Per plan.md § Project Structure (Option 2, web application + standalone agent):
 
 **Purpose**: Project initialization per plan.md § Project Structure
 
-- [ ] T002 Create the directory skeleton per plan.md § Project Structure: `backend/src/Grimoire.Hub/{Submission,OperationalState,AgentDispatch}`, `backend/src/Grimoire.Domain/Ingest/`, `backend/src/Grimoire.IngestAgent/`, `backend/tests/{Grimoire.ArchTests,Grimoire.IntegrationTests,Grimoire.Domain.UnitTests}/`, `frontend/` (placeholder README noting ADR-001 stack, no scaffolding), and root `wiki/`, `tasks/` directories plus an empty `log.md`
-- [ ] T003 Initialize `backend/Grimoire.sln` and the six .NET 10 projects (`dotnet new classlib` for Domain, `dotnet new web` for Hub, `dotnet new console` for IngestAgent, `dotnet new xunit` for the three test projects) with project references: Hub→Domain, IngestAgent→Domain, ArchTests→Hub+Domain+IngestAgent, IntegrationTests→Hub+Domain, Domain.UnitTests→Domain
-- [ ] T004 [P] Add NuGet package references: ASP.NET Core Minimal APIs + SignalR + `Microsoft.Data.Sqlite` to `backend/src/Grimoire.Hub/`; Anthropic Claude API client to `backend/src/Grimoire.IngestAgent/`; OpenTelemetry .NET SDK + OTLP exporter to both `Grimoire.Hub` and `Grimoire.IngestAgent`; `NetArchTest.Rules` to `Grimoire.ArchTests`; `Testcontainers` to `Grimoire.IntegrationTests`
-- [ ] T005 [P] Add `.editorconfig` and `dotnet format`/analyzer configuration at `backend/.editorconfig`
-- [ ] T006 [P] Add `.gitignore` entries for the Hub's SQLite operational-state file (ADR-003) and the local `.env` secrets file (ADR-004) at repo root
+- [X] T002 Create the directory skeleton per plan.md § Project Structure: `backend/src/Grimoire.Hub/{Submission,OperationalState,AgentDispatch}`, `backend/src/Grimoire.Domain/Ingest/`, `backend/src/Grimoire.IngestAgent/`, `backend/tests/{Grimoire.ArchTests,Grimoire.IntegrationTests,Grimoire.Domain.UnitTests}/`, `frontend/` (placeholder README noting ADR-001 stack, no scaffolding), and root `wiki/`, `tasks/` directories plus an empty `log.md`
+- [X] T003 Initialize `backend/Grimoire.sln` and the six .NET 10 projects (`dotnet new classlib` for Domain, `dotnet new web` for Hub, `dotnet new console` for IngestAgent, `dotnet new xunit` for the three test projects) with project references: Hub→Domain, IngestAgent→Domain, ArchTests→Hub+Domain+IngestAgent, IntegrationTests→Hub+Domain, Domain.UnitTests→Domain
+- [X] T004 [P] Add NuGet package references: ASP.NET Core Minimal APIs + SignalR + `Microsoft.Data.Sqlite` to `backend/src/Grimoire.Hub/`; Anthropic Claude API client to `backend/src/Grimoire.IngestAgent/`; OpenTelemetry .NET SDK + OTLP exporter to both `Grimoire.Hub` and `Grimoire.IngestAgent`; `NetArchTest.Rules` to `Grimoire.ArchTests`; `Testcontainers` to `Grimoire.IntegrationTests`
+- [X] T005 [P] Add `.editorconfig` and `dotnet format`/analyzer configuration at `backend/.editorconfig`
+- [X] T006 [P] Add `.gitignore` entries for the Hub's SQLite operational-state file (ADR-003) and the local `.env` secrets file (ADR-004) at repo root
 
 **Checkpoint**: Solution builds empty; directory layout matches plan.md.
 
@@ -61,13 +61,13 @@ Per plan.md § Project Structure (Option 2, web application + standalone agent):
 
 **⚠️ CRITICAL**: No user story work can begin until this phase is complete.
 
-- [ ] T007 Create dependency-free domain entities in `backend/src/Grimoire.Domain/Ingest/` (`Source`, `IngestTask`, `WikiPage`, `WikiIndexEntry`, `IngestLogEntry`) per data-model.md, including `IngestTask`'s status state machine and validation rules (`completed_at` null while non-terminal, `pages_touched` non-empty iff completed, `failure_reason` non-null iff failed)
-- [ ] T008 Implement task artifact frontmatter+body reader/writer in `backend/src/Grimoire.IngestAgent/TaskArtifact/` per contracts/task-artifact-format.md, reading/writing `tasks/<YYYY-MM-DD>-ingest-<slug>.md` — depends on T007
-- [ ] T009 [P] Implement the `OperationalTaskState` SQLite schema and repository in `backend/src/Grimoire.Hub/OperationalState/` per data-model.md (`task_id`, `status`, `process_id`, `updated_at`) — ADR-003
-- [ ] T010 [P] Implement shared OpenTelemetry SDK bootstrap (OTLP exporter, resource attributes) in `backend/src/Grimoire.Hub/` and `backend/src/Grimoire.IngestAgent/` per ADR-005 (infra wiring only; no business metrics yet)
-- [ ] T011 [P] Implement a secrets loader for `ANTHROPIC_API_KEY` from a git-ignored local file in `backend/src/Grimoire.Hub/AgentDispatch/` — ADR-004
-- [ ] T012 Implement the Hub→Ingest-agent child process spawn mechanism in `backend/src/Grimoire.Hub/AgentDispatch/` per contracts/ingest-agent-cli.md (CLI args, stdin for `pasted_text`, `ANTHROPIC_API_KEY` injected only into the child process environment, exit-code handling) — depends on T009, T011
-- [ ] T013 Implement the Hub `submit-source` CLI entry point in `backend/src/Grimoire.Hub/Submission/` (per quickstart.md) that creates the `OperationalTaskState` row and invokes `AgentDispatch` — depends on T009, T012
+- [X] T007 Create dependency-free domain entities in `backend/src/Grimoire.Domain/Ingest/` (`Source`, `IngestTask`, `WikiPage`, `WikiIndexEntry`, `IngestLogEntry`) per data-model.md, including `IngestTask`'s status state machine and validation rules (`completed_at` null while non-terminal, `pages_touched` non-empty iff completed, `failure_reason` non-null iff failed)
+- [X] T008 Implement task artifact frontmatter+body reader/writer in `backend/src/Grimoire.IngestAgent/TaskArtifact/` per contracts/task-artifact-format.md, reading/writing `tasks/<YYYY-MM-DD>-ingest-<slug>.md` — depends on T007
+- [X] T009 [P] Implement the `OperationalTaskState` SQLite schema and repository in `backend/src/Grimoire.Hub/OperationalState/` per data-model.md (`task_id`, `status`, `process_id`, `updated_at`) — ADR-003
+- [X] T010 [P] Implement shared OpenTelemetry SDK bootstrap (OTLP exporter, resource attributes) in `backend/src/Grimoire.Hub/` and `backend/src/Grimoire.IngestAgent/` per ADR-005 (infra wiring only; no business metrics yet)
+- [X] T011 [P] Implement a secrets loader for `ANTHROPIC_API_KEY` from a git-ignored local file in `backend/src/Grimoire.Hub/AgentDispatch/` — ADR-004
+- [X] T012 Implement the Hub→Ingest-agent child process spawn mechanism in `backend/src/Grimoire.Hub/AgentDispatch/` per contracts/ingest-agent-cli.md (CLI args, stdin for `pasted_text`, `ANTHROPIC_API_KEY` injected only into the child process environment, exit-code handling) — depends on T009, T011
+- [X] T013 Implement the Hub `submit-source` CLI entry point in `backend/src/Grimoire.Hub/Submission/` (per quickstart.md) that creates the `OperationalTaskState` row and invokes `AgentDispatch` — depends on T009, T012
 
 **Checkpoint**: Foundation ready — user story implementation can now begin.
 
@@ -81,16 +81,16 @@ Per plan.md § Project Structure (Option 2, web application + standalone agent):
 
 ### Tests for User Story 1
 
-- [ ] T014 [P] [US1] Unit test for the update-vs-create semantic judgment logic in backend/tests/Grimoire.Domain.UnitTests/UpdateOrCreateDecisionTests.cs (FR-012)
-- [ ] T015 [P] [US1] Integration test for the git working-tree read/write contract (wiki page created/updated; source file byte-for-byte unchanged, FR-009) in backend/tests/Grimoire.IntegrationTests/WikiWriteContractTests.cs
+- [X] T014 [P] [US1] Unit test for the update-vs-create semantic judgment logic in backend/tests/Grimoire.Domain.UnitTests/UpdateOrCreateDecisionTests.cs (FR-012)
+- [X] T015 [P] [US1] Integration test for the git working-tree read/write contract (wiki page created/updated; source file byte-for-byte unchanged, FR-009) in backend/tests/Grimoire.IntegrationTests/WikiWriteContractTests.cs
 
 ### Implementation for User Story 1
 
-- [ ] T016 [US1] Implement the update-vs-create decision service in backend/src/Grimoire.Domain/Ingest/ (semantic judgment informed by index.md content, FR-012) — depends on T007, T014
-- [ ] T017 [US1] Implement the source reader (`file`/`url`/`pasted_text` per `--source-kind`) in backend/src/Grimoire.IngestAgent/Source/
-- [ ] T018 [US1] Implement the LLM synthesis pipeline call (Anthropic Claude client) to produce wiki page content in backend/src/Grimoire.IngestAgent/Synthesis/
-- [ ] T019 [US1] Implement the wiki page writer (create/update exactly one primary page under wiki/, FR-004) in backend/src/Grimoire.IngestAgent/WikiWrite/, guaranteeing the source file remains unmodified (FR-009) — depends on T016, T017, T018
-- [ ] T020 [US1] Wire the end-to-end submit-source flow (Hub spawns agent → agent reads source, decides target, writes wiki page) and validate against quickstart.md Scenarios 1 & 2 — depends on T013, T019
+- [X] T016 [US1] Implement the update-vs-create decision service in backend/src/Grimoire.Domain/Ingest/ (semantic judgment informed by index.md content, FR-012) — depends on T007, T014
+- [X] T017 [US1] Implement the source reader (`file`/`url`/`pasted_text` per `--source-kind`) in backend/src/Grimoire.IngestAgent/Source/
+- [X] T018 [US1] Implement the LLM synthesis pipeline call (Anthropic Claude client) to produce wiki page content in backend/src/Grimoire.IngestAgent/Synthesis/
+- [X] T019 [US1] Implement the wiki page writer (create/update exactly one primary page under wiki/, FR-004) in backend/src/Grimoire.IngestAgent/WikiWrite/, guaranteeing the source file remains unmodified (FR-009) — depends on T016, T017, T018
+- [X] T020 [US1] Wire the end-to-end submit-source flow (Hub spawns agent → agent reads source, decides target, writes wiki page) and validate against quickstart.md Scenarios 1 & 2 — depends on T013, T019
 
 **Checkpoint**: User Story 1 is fully functional and independently testable.
 
@@ -104,17 +104,17 @@ Per plan.md § Project Structure (Option 2, web application + standalone agent):
 
 ### Tests for User Story 2
 
-- [ ] T021 [P] [US2] Integration test for the Hub↔SQLite operational-state contract (row created on submit, updated on status change) in backend/tests/Grimoire.IntegrationTests/OperationalStateContractTests.cs
-- [ ] T022 [P] [US2] Integration test for the Hub→child-process spawn contract (correct CLI args/env passed to the agent, per contracts/ingest-agent-cli.md) in backend/tests/Grimoire.IntegrationTests/AgentSpawnContractTests.cs
+- [X] T021 [P] [US2] Integration test for the Hub↔SQLite operational-state contract (row created on submit, updated on status change) in backend/tests/Grimoire.IntegrationTests/OperationalStateContractTests.cs
+- [X] T022 [P] [US2] Integration test for the Hub→child-process spawn contract (correct CLI args/env passed to the agent, per contracts/ingest-agent-cli.md) in backend/tests/Grimoire.IntegrationTests/AgentSpawnContractTests.cs
 
 ### Implementation for User Story 2
 
-- [ ] T023 [US2] Implement task artifact status transitions (`queued`→`running`→`completed`) with `started_at`/`completed_at` timestamps in backend/src/Grimoire.IngestAgent/TaskArtifact/ (FR-002, FR-003) — depends on T008
-- [ ] T024 [US2] Implement `pages_touched` population and the FR-011 consistency validation (no `completed` status without an existing, referenced wiki page) in backend/src/Grimoire.IngestAgent/TaskArtifact/ — depends on T019, T023
-- [ ] T025 [US2] Implement human-readable narrative body generation for the task artifact (what was found, what changed, uncertainties) in backend/src/Grimoire.IngestAgent/TaskArtifact/ (FR-006) — depends on T023
-- [ ] T026 [P] [US2] Implement the index.md writer (create/update an entry grouped under a semantic category heading) in backend/src/Grimoire.IngestAgent/WikiIndex/ (FR-014)
-- [ ] T027 [P] [US2] Implement the log.md appender (chronological entry per operation) in backend/src/Grimoire.IngestAgent/IngestLog/ (FR-015)
-- [ ] T028 [US2] Wire Hub-side `OperationalTaskState` row updates to mirror task artifact status transitions in backend/src/Grimoire.Hub/OperationalState/ (ADR-003) — depends on T009, T023
+- [X] T023 [US2] Implement task artifact status transitions (`queued`→`running`→`completed`) with `started_at`/`completed_at` timestamps in backend/src/Grimoire.IngestAgent/TaskArtifact/ (FR-002, FR-003) — depends on T008
+- [X] T024 [US2] Implement `pages_touched` population and the FR-011 consistency validation (no `completed` status without an existing, referenced wiki page) in backend/src/Grimoire.IngestAgent/TaskArtifact/ — depends on T019, T023
+- [X] T025 [US2] Implement human-readable narrative body generation for the task artifact (what was found, what changed, uncertainties) in backend/src/Grimoire.IngestAgent/TaskArtifact/ (FR-006) — depends on T023
+- [X] T026 [P] [US2] Implement the index.md writer (create/update an entry grouped under a semantic category heading) in backend/src/Grimoire.IngestAgent/WikiIndex/ (FR-014)
+- [X] T027 [P] [US2] Implement the log.md appender (chronological entry per operation) in backend/src/Grimoire.IngestAgent/IngestLog/ (FR-015)
+- [X] T028 [US2] Wire Hub-side `OperationalTaskState` row updates to mirror task artifact status transitions in backend/src/Grimoire.Hub/OperationalState/ (ADR-003) — depends on T009, T023
 
 **Checkpoint**: Task artifact, index.md, and log.md are fully populated on success; US1 and US2 both independently testable.
 
@@ -128,15 +128,15 @@ Per plan.md § Project Structure (Option 2, web application + standalone agent):
 
 ### Tests for User Story 3
 
-- [ ] T029 [P] [US3] Integration test for the failure path: unreadable/empty source leaves wiki/ and index.md untouched, task artifact marked failed (FR-007, FR-008) in backend/tests/Grimoire.IntegrationTests/FailureSafetyContractTests.cs
-- [ ] T030 [P] [US3] Integration test for Hub restart reconciliation: a SQLite row with `status=running` is reconciled to `failed` with an interruption reason on Hub startup (FR-013) in backend/tests/Grimoire.IntegrationTests/RestartReconciliationTests.cs
+- [X] T029 [P] [US3] Integration test for the failure path: unreadable/empty source leaves wiki/ and index.md untouched, task artifact marked failed (FR-007, FR-008) in backend/tests/Grimoire.IntegrationTests/FailureSafetyContractTests.cs
+- [X] T030 [P] [US3] Integration test for Hub restart reconciliation: a SQLite row with `status=running` is reconciled to `failed` with an interruption reason on Hub startup (FR-013) in backend/tests/Grimoire.IntegrationTests/RestartReconciliationTests.cs
 
 ### Implementation for User Story 3
 
-- [ ] T031 [US3] Implement unreadable/empty source detection and a no-partial-write guarantee (transactional wiki/index writes) in backend/src/Grimoire.IngestAgent/Source/ and WikiWrite/ (FR-008) — depends on T017, T019
-- [ ] T032 [US3] Implement `failure_reason` narrative generation and the failed-status task artifact writer in backend/src/Grimoire.IngestAgent/TaskArtifact/ (FR-007) — depends on T023, T031
-- [ ] T033 [US3] Extend the log.md appender to record failed-outcome entries in backend/src/Grimoire.IngestAgent/IngestLog/ (FR-015) — depends on T027, T032
-- [ ] T034 [US3] Implement Hub startup reconciliation logic (query SQLite for `status=running`, mark the corresponding task artifact `failed` with an interruption reason, emit an `ingest.task.reconciled` log event, remove the row) in backend/src/Grimoire.Hub/OperationalState/ (FR-013, ADR-003) — depends on T009, T028
+- [X] T031 [US3] Implement unreadable/empty source detection and a no-partial-write guarantee (transactional wiki/index writes) in backend/src/Grimoire.IngestAgent/Source/ and WikiWrite/ (FR-008) — depends on T017, T019
+- [X] T032 [US3] Implement `failure_reason` narrative generation and the failed-status task artifact writer in backend/src/Grimoire.IngestAgent/TaskArtifact/ (FR-007) — depends on T023, T031
+- [X] T033 [US3] Extend the log.md appender to record failed-outcome entries in backend/src/Grimoire.IngestAgent/IngestLog/ (FR-015) — depends on T027, T032
+- [X] T034 [US3] Implement Hub startup reconciliation logic (query SQLite for `status=running`, mark the corresponding task artifact `failed` with an interruption reason, emit an `ingest.task.reconciled` log event, remove the row) in backend/src/Grimoire.Hub/OperationalState/ (FR-013, ADR-003) — depends on T009, T028
 
 **Checkpoint**: quickstart.md Scenarios 3 & 4 pass; all three user stories independently functional.
 
