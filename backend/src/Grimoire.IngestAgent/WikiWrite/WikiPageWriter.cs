@@ -19,6 +19,11 @@ public sealed class WikiPageWriter
 
         var fullPath = Path.GetFullPath(Path.Combine(pagesDir, normalized));
         var pagesRoot = Path.GetFullPath(pagesDir);
+        // Append separator so "/tmp/pages2" cannot match a root of "/tmp/pages"
+        if (!pagesRoot.EndsWith(Path.DirectorySeparatorChar))
+        {
+            pagesRoot += Path.DirectorySeparatorChar;
+        }
         if (!fullPath.StartsWith(pagesRoot, StringComparison.Ordinal))
         {
             throw new InvalidOperationException("Wiki page write attempted outside pages root.");
