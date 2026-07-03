@@ -1,4 +1,5 @@
 using Grimoire.Hub.AgentDispatch;
+using Grimoire.Hub.ContentRoot;
 using Grimoire.Hub.OperationalState;
 using Grimoire.Hub.Submission;
 using Grimoire.Hub;
@@ -12,11 +13,14 @@ var dbPath = Path.Combine(repoRoot, "backend", "data", "operational-state.db");
 var envPath = Path.Combine(repoRoot, ".env");
 var agentProjectPath = Path.Combine(repoRoot, "backend", "src", "Grimoire.IngestAgent", "Grimoire.IngestAgent.csproj");
 
+var contentRootDirName = ParseOption(args, "--content-root") ?? builder.Configuration["ContentRootDirName"] ?? "wiki";
+var contentPaths = ContentRootPaths.Resolve(repoRoot, contentRootDirName);
+
 var repository = new OperationalStateRepository(dbPath);
 await repository.InitializeAsync();
 
 var reconciler = new RestartReconciler(repository);
-await reconciler.ReconcileRunningTasksAsync(repoRoot);
+await reconciler.ReconcileRunningTasksAsync(contentPaths.TasksDir, contentPaths.LogPath);
 
 if (args.Length > 0 && string.Equals(args[0], "submit-source", StringComparison.OrdinalIgnoreCase))
 {
@@ -32,7 +36,7 @@ if (args.Length > 0 && string.Equals(args[0], "submit-source", StringComparison.
 	var dispatcher = new IngestAgentDispatcher(secretsLoader, agentProjectPath);
 	var service = new SubmissionService(repository, dispatcher);
 
-	var taskId = await service.SubmitAsync(new SubmitSourceOptions(sourcePath, sourceKind, pastedText), repoRoot);
+	var taskId = await service.SubmitAsync(new SubmitSourceOptions(sourcePath, sourceKind, pastedText), repoRoot, contentPaths);
 	Console.WriteLine($"Submitted ingest task: {taskId}");
 	return;
 }

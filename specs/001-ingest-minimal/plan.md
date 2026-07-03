@@ -158,18 +158,25 @@ backend/
 frontend/                            # Stack fixed by ADR-001 (SvelteKit); scaffolding and
                                       # screens are out of scope for 001-ingest-minimal
 
-wiki/                                 # Domain state (git-tracked): wiki pages, index.md
-tasks/                                 # Domain state (git-tracked): one task artifact per operation
-log.md                                 # Domain state (git-tracked): append-only ingest log
+wiki/                                 # Content root (git-tracked), name configurable via
+                                      #   Grimoire.Hub's ContentRootDirName setting / --content-root
+├── index.md                         #   Wiki index, category-grouped
+├── log.md                           #   Append-only ingest log
+├── pages/                           #   Wiki pages (one primary page per ingest)
+└── tasks/                           #   One task artifact per operation
 ```
 
 **Structure Decision**: Web-application layout (Option 2) split into a `backend/`
 solution with three projects — `Grimoire.Hub` (orchestrator, adapters), `Grimoire.Domain`
 (dependency-free Core Domain per constitution Principle I), and `Grimoire.IngestAgent`
 (standalone process per ADR-002) — plus a `frontend/` placeholder whose stack is fixed
-(ADR-001) but not implemented here. Domain content (`wiki/`, `tasks/`, `log.md`) lives at
-the repository root, git-tracked, separate from the `backend/`/`frontend/` code trees, per
-ADR-003's domain/operational state split.
+(ADR-001) but not implemented here. Domain content (`index.md`, `log.md`, `pages/`,
+`tasks/`) lives together under a single content-root directory at the repository root,
+git-tracked, separate from the `backend/`/`frontend/` code trees, per ADR-003's
+domain/operational state split. The content-root directory name defaults to `wiki` but is
+configurable (Hub `ContentRootDirName` appsettings.json key, overridable per-invocation via
+`--content-root`); the Hub resolves it to absolute paths and passes them to the Ingest
+agent, which remains unaware of the setting.
 
 ## Complexity Tracking
 

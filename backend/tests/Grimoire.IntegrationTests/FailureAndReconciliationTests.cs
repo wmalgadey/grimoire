@@ -9,11 +9,11 @@ public class FailureAndReconciliationTests
     public async Task FailurePath_LeavesWikiUntouched_AndMarksTaskFailed()
     {
         var root = Path.Combine(Path.GetTempPath(), $"grimoire-fail-{Guid.NewGuid():N}");
-        var wikiDir = Path.Combine(root, "wiki");
+        var pagesDir = Path.Combine(root, "pages");
         var tasksDir = Path.Combine(root, "tasks");
         var indexPath = Path.Combine(root, "index.md");
         var logPath = Path.Combine(root, "log.md");
-        Directory.CreateDirectory(wikiDir);
+        Directory.CreateDirectory(pagesDir);
         Directory.CreateDirectory(tasksDir);
         await File.WriteAllTextAsync(logPath, string.Empty);
 
@@ -27,14 +27,14 @@ public class FailureAndReconciliationTests
             TaskId: taskId,
             SourceRef: Path.Combine(root, "missing-source.md"),
             SourceKind: "file",
-            WikiDir: wikiDir,
+            PagesDir: pagesDir,
             TasksDir: tasksDir,
             IndexPath: indexPath,
             LogPath: logPath,
             PastedText: null));
 
         Assert.Equal(1, exitCode);
-        Assert.Empty(Directory.GetFiles(wikiDir));
+        Assert.Empty(Directory.GetFiles(pagesDir));
         Assert.False(File.Exists(indexPath));
 
         var taskArtifact = await File.ReadAllTextAsync(Path.Combine(tasksDir, $"{taskId}.md"));
@@ -46,11 +46,13 @@ public class FailureAndReconciliationTests
     public async Task RestartReconciliation_UpdatesTaskArtifactAndOperationalState()
     {
         var root = Path.Combine(Path.GetTempPath(), $"grimoire-reconcile-{Guid.NewGuid():N}");
-        Directory.CreateDirectory(Path.Combine(root, "tasks"));
-        await File.WriteAllTextAsync(Path.Combine(root, "log.md"), string.Empty);
+        var tasksDir = Path.Combine(root, "tasks");
+        var logPath = Path.Combine(root, "log.md");
+        Directory.CreateDirectory(tasksDir);
+        await File.WriteAllTextAsync(logPath, string.Empty);
 
         var taskId = $"task-{Guid.NewGuid():N}";
-        var taskPath = Path.Combine(root, "tasks", $"{taskId}.md");
+        var taskPath = Path.Combine(tasksDir, $"{taskId}.md");
         await File.WriteAllTextAsync(taskPath,
             "---\n" +
             $"task_id: {taskId}\n" +
@@ -70,7 +72,7 @@ public class FailureAndReconciliationTests
         await repository.UpsertAsync(new OperationalTaskState(taskId, "running", 100, DateTimeOffset.UtcNow));
 
         var reconciler = new RestartReconciler(repository);
-        var count = await reconciler.ReconcileRunningTasksAsync(root);
+        var count = await reconciler.ReconcileRunningTasksAsync(tasksDir, logPath);
 
         Assert.Equal(1, count);
 
@@ -81,7 +83,7 @@ public class FailureAndReconciliationTests
         var failed = await repository.GetByStatusAsync("failed");
         Assert.Contains(failed, x => x.TaskId == taskId);
 
-        var logText = await File.ReadAllTextAsync(Path.Combine(root, "log.md"));
+        var logText = await File.ReadAllTextAsync(logPath);
         Assert.Contains("reconciled on startup", logText);
     }
 

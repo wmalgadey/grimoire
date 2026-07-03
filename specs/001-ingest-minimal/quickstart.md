@@ -8,8 +8,10 @@ Validates that a submitted source produces a wiki page and a task artifact end-t
 - .NET 10 SDK installed
 - A local secrets file with `ANTHROPIC_API_KEY` set (git-ignored; see ADR-004) — the Hub
   reads this and injects it only into the Ingest agent's child process
-- Repository checked out with an initialized `wiki/`, `tasks/`, and `log.md` (empty is
-  fine for a first run)
+- Repository checked out with an initialized content-root directory (default `wiki/`,
+  configurable via the Hub's `ContentRootDirName` setting or `--content-root`), containing
+  `pages/`, `tasks/`, and an (optionally empty) `log.md`; `index.md` is created on first
+  successful ingest if it doesn't already exist
 
 ## Setup
 
@@ -26,10 +28,10 @@ dotnet run --project src/Grimoire.Hub -- \
 ```
 
 **Expected outcome**:
-- A file appears under `tasks/` with `status: completed` and a non-empty `pages_touched`.
-- A new file appears under `wiki/` whose content reflects `example-article.md`.
-- `index.md` has a new entry under some category, linking to the new wiki page.
-- `log.md` has a new `## [<date>] ingest | ...` line.
+- A file appears under `wiki/tasks/` with `status: completed` and a non-empty `pages_touched`.
+- A new file appears under `wiki/pages/` whose content reflects `example-article.md`.
+- `wiki/index.md` has a new entry under some category, linking to the new wiki page.
+- `wiki/log.md` has a new `## [<date>] ingest | ...` line.
 - The original `raw/sources/example-article.md` is byte-for-byte unchanged (FR-009).
 
 ## Scenario 2 — Happy path: existing topic updated
@@ -49,8 +51,8 @@ dotnet run --project src/Grimoire.Hub -- \
 
 **Expected outcome**:
 - A task artifact appears with `status: failed` and a human-readable `failure_reason`.
-- No new or modified files appear under `wiki/` or `index.md` (FR-008).
-- `log.md` still gets a new entry recording the failed attempt (FR-015).
+- No new or modified files appear under `wiki/pages/` or `wiki/index.md` (FR-008).
+- `wiki/log.md` still gets a new entry recording the failed attempt (FR-015).
 
 ## Scenario 4 — Restart reconciliation
 

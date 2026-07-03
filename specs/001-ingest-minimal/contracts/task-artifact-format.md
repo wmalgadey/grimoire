@@ -1,6 +1,6 @@
 # Contract: Task Artifact File Format
 
-Canonical shape for every `tasks/<YYYY-MM-DD>-ingest-<slug>.md` file (see
+Canonical shape for every `<content-root>/tasks/<YYYY-MM-DD>-ingest-<slug>.md` file (see
 `data-model.md ## IngestTask`). Both the Ingest agent (writer) and any future channel/UI
 (reader) MUST conform to this shape.
 
@@ -33,6 +33,6 @@ Free-form human-readable narrative. Minimum content by status:
 ## Consistency rules (validated by integration tests, per `plan.md`)
 
 - `status = completed` ⇒ `pages_touched` is non-empty and every listed page exists on
-  disk under `wiki/` (FR-011).
+  disk under `<content-root>/pages/` (FR-011).
 - `status = failed` ⇒ `failure_reason` is non-null and `pages_touched` is empty (FR-008).
 - `completed_at` is null while `status` is `queued`/`running`, non-null otherwise.

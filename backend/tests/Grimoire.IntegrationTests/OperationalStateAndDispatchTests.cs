@@ -30,11 +30,11 @@ public class OperationalStateAndDispatchTests
     public async Task Dispatcher_Spawns_Agent_And_Produces_Task_Artifact()
     {
         var root = Path.Combine(Path.GetTempPath(), $"grimoire-dispatch-{Guid.NewGuid():N}");
-        var wikiDir = Path.Combine(root, "wiki");
+        var pagesDir = Path.Combine(root, "pages");
         var tasksDir = Path.Combine(root, "tasks");
         var indexPath = Path.Combine(root, "index.md");
         var logPath = Path.Combine(root, "log.md");
-        Directory.CreateDirectory(wikiDir);
+        Directory.CreateDirectory(pagesDir);
         Directory.CreateDirectory(tasksDir);
         await File.WriteAllTextAsync(logPath, string.Empty);
 
@@ -53,7 +53,7 @@ public class OperationalStateAndDispatchTests
             TaskId: taskId,
             SourceRef: sourcePath,
             SourceKind: "file",
-            WikiDir: wikiDir,
+            PagesDir: pagesDir,
             TasksDir: tasksDir,
             IndexPath: indexPath,
             LogPath: logPath,

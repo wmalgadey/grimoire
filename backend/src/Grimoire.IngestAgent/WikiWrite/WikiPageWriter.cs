@@ -2,9 +2,9 @@ namespace Grimoire.IngestAgent.WikiWrite;
 
 public sealed class WikiPageWriter
 {
-    public async Task<string> WriteAsync(string wikiDir, string relativePath, string content, CancellationToken cancellationToken)
+    public async Task<string> WriteAsync(string pagesDir, string relativePath, string content, CancellationToken cancellationToken)
     {
-        Directory.CreateDirectory(wikiDir);
+        Directory.CreateDirectory(pagesDir);
 
         var normalized = relativePath.Replace('\\', '/');
         if (!normalized.EndsWith(".md", StringComparison.OrdinalIgnoreCase))
@@ -12,19 +12,19 @@ public sealed class WikiPageWriter
             normalized += ".md";
         }
 
-        if (normalized.StartsWith("wiki/", StringComparison.OrdinalIgnoreCase))
+        if (normalized.StartsWith("pages/", StringComparison.OrdinalIgnoreCase))
         {
-            normalized = normalized[5..];
+            normalized = normalized[6..];
         }
 
-        var fullPath = Path.GetFullPath(Path.Combine(wikiDir, normalized));
-        var wikiRoot = Path.GetFullPath(wikiDir);
-        if (!fullPath.StartsWith(wikiRoot, StringComparison.Ordinal))
+        var fullPath = Path.GetFullPath(Path.Combine(pagesDir, normalized));
+        var pagesRoot = Path.GetFullPath(pagesDir);
+        if (!fullPath.StartsWith(pagesRoot, StringComparison.Ordinal))
         {
-            throw new InvalidOperationException("Wiki write attempted outside wiki root.");
+            throw new InvalidOperationException("Wiki page write attempted outside pages root.");
         }
 
-        Directory.CreateDirectory(Path.GetDirectoryName(fullPath) ?? wikiDir);
+        Directory.CreateDirectory(Path.GetDirectoryName(fullPath) ?? pagesDir);
         await File.WriteAllTextAsync(fullPath, content, cancellationToken);
         return fullPath;
     }

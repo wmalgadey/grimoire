@@ -15,14 +15,14 @@ public class WikiWriteContractTests
         var sourceContent = "# Source\n\nThis is the source content.";
         await File.WriteAllTextAsync(sourcePath, sourceContent);
 
-        var wikiDir = Path.Combine(root, "wiki");
-        Directory.CreateDirectory(wikiDir);
+        var pagesDir = Path.Combine(root, "pages");
+        Directory.CreateDirectory(pagesDir);
 
         var sourceReader = new SourceReader();
         var source = await sourceReader.ReadAsync("file", sourcePath, null, CancellationToken.None);
 
         var writer = new WikiPageWriter();
-        var pagePath = await writer.WriteAsync(wikiDir, "source-summary", "# Summary\n\n" + source.Content, CancellationToken.None);
+        var pagePath = await writer.WriteAsync(pagesDir, "source-summary", "# Summary\n\n" + source.Content, CancellationToken.None);
 
         var sourceAfter = await File.ReadAllTextAsync(sourcePath);
 

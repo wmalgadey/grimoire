@@ -27,7 +27,7 @@ public sealed class UpdateOrCreateDecisionService
         var slug = Slugify(inferredTitle);
         return new PageDecision(
             PageDecisionAction.Create,
-            $"wiki/{slug}.md",
+            $"{slug}.md",
             "No semantic title match found in index.",
             "General");
     }

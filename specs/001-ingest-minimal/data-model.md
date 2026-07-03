@@ -20,7 +20,9 @@ No persistence — read-only, referenced by id from `IngestTask.source_ref`.
 
 One per ingest operation. Structured frontmatter (machine-readable) + markdown body
 (human-readable narrative), per `docs/decision-context-overview.md`'s task-artifact
-contract. Persisted as `tasks/<YYYY-MM-DD>-ingest-<slug>.md` (domain state, git-tracked).
+contract. Persisted as `<content-root>/tasks/<YYYY-MM-DD>-ingest-<slug>.md` (domain state,
+git-tracked; `<content-root>` defaults to `wiki/`, configurable — see `plan.md ## Project
+Structure`).
 
 | Field (frontmatter) | Type | Notes |
 |---|---|---|
@@ -54,7 +56,7 @@ LLM-authored markdown file representing synthesized knowledge. Owned entirely by
 
 | Field | Type | Notes |
 |---|---|---|
-| `path` | string | Location under `wiki/` |
+| `path` | string | Location under `<content-root>/pages/` |
 | `title` | string | Page title |
 | `category` | string | Ingest agent's semantic judgment (FR-014); no fixed taxonomy in this slice |
 | `content` | markdown body | Synthesized from one or more sources over time |
@@ -63,7 +65,7 @@ No fixed schema beyond what the Ingest agent's `CLAUDE.md`/`SKILL.md` (future wo
 out of scope for this feature) defines; this feature only requires that exactly one
 primary page is created or updated per ingest operation (FR-004).
 
-## WikiIndex (index.md)
+## WikiIndex (`<content-root>/index.md`)
 
 Singleton catalog, one row per `WikiPage`, grouped by `category`.
 
@@ -76,7 +78,7 @@ Singleton catalog, one row per `WikiPage`, grouped by `category`.
 **Validation rule**: Every successful ingest MUST result in exactly one entry (new or
 updated) under the correct category heading (SC-006).
 
-## IngestLogEntry (log.md line)
+## IngestLogEntry (`<content-root>/log.md` line)
 
 Append-only; one entry per ingest attempt, success or failure (FR-015).
 

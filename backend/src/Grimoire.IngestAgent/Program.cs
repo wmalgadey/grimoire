@@ -40,8 +40,8 @@ try
 	var decision = decisionService.Decide(synthesis.Title, indexMarkdown);
 
 	var writer = new WikiPageWriter();
-	var wikiFullPath = await writer.WriteAsync(options.WikiDir, decision.TargetPagePath, synthesis.Content, CancellationToken.None);
-	var wikiRelativePath = Path.GetRelativePath(Path.GetDirectoryName(options.IndexPath) ?? options.WikiDir, wikiFullPath).Replace('\\', '/');
+	var wikiFullPath = await writer.WriteAsync(options.PagesDir, decision.TargetPagePath, synthesis.Content, CancellationToken.None);
+	var wikiRelativePath = Path.GetRelativePath(Path.GetDirectoryName(options.IndexPath) ?? options.PagesDir, wikiFullPath).Replace('\\', '/');
 
 	var indexWriter = new WikiIndexWriter();
 	await indexWriter.UpdateAsync(options.IndexPath, synthesis.Category, synthesis.Title, wikiRelativePath, synthesis.Summary, CancellationToken.None);
@@ -114,7 +114,7 @@ static AgentCliOptions ParseArgs(string[] args)
 		TaskId: GetRequired("--task-id"),
 		SourceRef: GetRequired("--source-ref"),
 		SourceKind: sourceKind,
-		WikiDir: GetRequired("--wiki-dir"),
+		PagesDir: GetRequired("--pages-dir"),
 		TasksDir: GetRequired("--tasks-dir"),
 		IndexPath: GetRequired("--index-path"),
 		LogPath: GetRequired("--log-path"),

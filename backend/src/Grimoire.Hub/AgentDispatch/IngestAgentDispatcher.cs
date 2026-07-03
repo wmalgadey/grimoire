@@ -34,8 +34,8 @@ public sealed class IngestAgentDispatcher
         startInfo.ArgumentList.Add(request.SourceRef);
         startInfo.ArgumentList.Add("--source-kind");
         startInfo.ArgumentList.Add(request.SourceKind);
-        startInfo.ArgumentList.Add("--wiki-dir");
-        startInfo.ArgumentList.Add(request.WikiDir);
+        startInfo.ArgumentList.Add("--pages-dir");
+        startInfo.ArgumentList.Add(request.PagesDir);
         startInfo.ArgumentList.Add("--tasks-dir");
         startInfo.ArgumentList.Add(request.TasksDir);
         startInfo.ArgumentList.Add("--index-path");

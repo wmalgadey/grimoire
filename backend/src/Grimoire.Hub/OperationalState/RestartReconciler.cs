@@ -9,7 +9,7 @@ public sealed class RestartReconciler
         _repository = repository;
     }
 
-    public async Task<int> ReconcileRunningTasksAsync(string repoRoot, CancellationToken cancellationToken = default)
+    public async Task<int> ReconcileRunningTasksAsync(string tasksDir, string logPath, CancellationToken cancellationToken = default)
     {
         var running = await _repository.GetByStatusAsync("running", cancellationToken);
         foreach (var state in running)
@@ -19,16 +19,16 @@ public sealed class RestartReconciler
                 state with { Status = "failed", UpdatedAt = DateTimeOffset.UtcNow },
                 cancellationToken);
 
-            await UpdateTaskArtifactAsync(repoRoot, state.TaskId, reason, cancellationToken);
-            await AppendReconciliationLogAsync(repoRoot, state.TaskId, cancellationToken);
+            await UpdateTaskArtifactAsync(tasksDir, state.TaskId, reason, cancellationToken);
+            await AppendReconciliationLogAsync(logPath, state.TaskId, cancellationToken);
         }
 
         return running.Count;
     }
 
-    private static async Task UpdateTaskArtifactAsync(string repoRoot, string taskId, string reason, CancellationToken cancellationToken)
+    private static async Task UpdateTaskArtifactAsync(string tasksDir, string taskId, string reason, CancellationToken cancellationToken)
     {
-        var taskPath = Path.Combine(repoRoot, "tasks", $"{taskId}.md");
+        var taskPath = Path.Combine(tasksDir, $"{taskId}.md");
         if (!File.Exists(taskPath))
         {
             return;
@@ -43,9 +43,8 @@ public sealed class RestartReconciler
         await File.WriteAllTextAsync(taskPath, text, cancellationToken);
     }
 
-    private static async Task AppendReconciliationLogAsync(string repoRoot, string taskId, CancellationToken cancellationToken)
+    private static async Task AppendReconciliationLogAsync(string logPath, string taskId, CancellationToken cancellationToken)
     {
-        var logPath = Path.Combine(repoRoot, "log.md");
         var line = $"## [{DateTime.UtcNow:yyyy-MM-dd}] ingest | failed | task: {taskId} | reconciled on startup{Environment.NewLine}";
         await File.AppendAllTextAsync(logPath, line, cancellationToken);
     }

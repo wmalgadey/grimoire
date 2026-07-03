@@ -4,7 +4,7 @@ public sealed record AgentCliOptions(
     string TaskId,
     string SourceRef,
     string SourceKind,
-    string WikiDir,
+    string PagesDir,
     string TasksDir,
     string IndexPath,
     string LogPath,

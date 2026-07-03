@@ -1,4 +1,5 @@
 using Grimoire.Hub.AgentDispatch;
+using Grimoire.Hub.ContentRoot;
 using Grimoire.Hub.OperationalState;
 
 namespace Grimoire.Hub.Submission;
@@ -14,7 +15,7 @@ public sealed class SubmissionService
         _dispatcher = dispatcher;
     }
 
-    public async Task<string> SubmitAsync(SubmitSourceOptions options, string repoRoot, CancellationToken cancellationToken = default)
+    public async Task<string> SubmitAsync(SubmitSourceOptions options, string repoRoot, ContentRootPaths contentPaths, CancellationToken cancellationToken = default)
     {
         var taskId = $"{DateTime.UtcNow:yyyy-MM-dd}-ingest-{Guid.NewGuid():N}";
         var normalizedSourceRef = ResolveSourcePath(options.Path, repoRoot);
@@ -27,10 +28,10 @@ public sealed class SubmissionService
             TaskId: taskId,
             SourceRef: normalizedSourceRef,
             SourceKind: options.SourceKind,
-            WikiDir: System.IO.Path.Combine(repoRoot, "wiki"),
-            TasksDir: System.IO.Path.Combine(repoRoot, "tasks"),
-            IndexPath: System.IO.Path.Combine(repoRoot, "index.md"),
-            LogPath: System.IO.Path.Combine(repoRoot, "log.md"),
+            PagesDir: contentPaths.PagesDir,
+            TasksDir: contentPaths.TasksDir,
+            IndexPath: contentPaths.IndexPath,
+            LogPath: contentPaths.LogPath,
             PastedText: options.PastedText);
 
         var exitCode = await _dispatcher.DispatchAsync(request, cancellationToken);

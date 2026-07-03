@@ -26,7 +26,9 @@ Per plan.md § Project Structure (Option 2, web application + standalone agent):
 - `backend/src/Grimoire.Domain/` — dependency-free Core Domain (Ingest/)
 - `backend/src/Grimoire.IngestAgent/` — standalone console app (ADR-002)
 - `backend/tests/Grimoire.ArchTests/`, `backend/tests/Grimoire.IntegrationTests/`, `backend/tests/Grimoire.Domain.UnitTests/`
-- `wiki/`, `tasks/`, `log.md` — domain state at repo root, git-tracked
+- `wiki/{pages,tasks}/`, `wiki/index.md`, `wiki/log.md` — domain state at repo root under
+  a content-root directory, git-tracked; directory name defaults to `wiki` but is
+  configurable (Hub `ContentRootDirName` setting / `--content-root`)
 - `frontend/` — stack fixed by ADR-001, not scaffolded in this feature
 
 ---
@@ -45,7 +47,7 @@ Per plan.md § Project Structure (Option 2, web application + standalone agent):
 
 **Purpose**: Project initialization per plan.md § Project Structure
 
-- [X] T002 Create the directory skeleton per plan.md § Project Structure: `backend/src/Grimoire.Hub/{Submission,OperationalState,AgentDispatch}`, `backend/src/Grimoire.Domain/Ingest/`, `backend/src/Grimoire.IngestAgent/`, `backend/tests/{Grimoire.ArchTests,Grimoire.IntegrationTests,Grimoire.Domain.UnitTests}/`, `frontend/` (placeholder README noting ADR-001 stack, no scaffolding), and root `wiki/`, `tasks/` directories plus an empty `log.md`
+- [X] T002 Create the directory skeleton per plan.md § Project Structure: `backend/src/Grimoire.Hub/{Submission,OperationalState,AgentDispatch}`, `backend/src/Grimoire.Domain/Ingest/`, `backend/src/Grimoire.IngestAgent/`, `backend/tests/{Grimoire.ArchTests,Grimoire.IntegrationTests,Grimoire.Domain.UnitTests}/`, `frontend/` (placeholder README noting ADR-001 stack, no scaffolding), and a root content-root directory (default name `wiki/`, configurable) containing `pages/`, `tasks/` directories plus an empty `log.md`
 - [X] T003 Initialize `backend/Grimoire.sln` and the six .NET 10 projects (`dotnet new classlib` for Domain, `dotnet new web` for Hub, `dotnet new console` for IngestAgent, `dotnet new xunit` for the three test projects) with project references: Hub→Domain, IngestAgent→Domain, ArchTests→Hub+Domain+IngestAgent, IntegrationTests→Hub+Domain, Domain.UnitTests→Domain
 - [X] T004 [P] Add NuGet package references: ASP.NET Core Minimal APIs + SignalR + `Microsoft.Data.Sqlite` to `backend/src/Grimoire.Hub/`; Anthropic Claude API client to `backend/src/Grimoire.IngestAgent/`; OpenTelemetry .NET SDK + OTLP exporter to both `Grimoire.Hub` and `Grimoire.IngestAgent`; `NetArchTest.Rules` to `Grimoire.ArchTests`; `Testcontainers` to `Grimoire.IntegrationTests`
 - [X] T005 [P] Add `.editorconfig` and `dotnet format`/analyzer configuration at `backend/.editorconfig`

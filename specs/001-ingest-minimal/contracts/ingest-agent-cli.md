@@ -10,14 +10,19 @@ grimoire-ingest-agent \
   --task-id <task_id> \
   --source-ref <path-or-url-or-literal-marker> \
   --source-kind file|url|pasted_text \
-  --wiki-dir <path/to/wiki> \
-  --tasks-dir <path/to/tasks> \
-  --index-path <path/to/index.md> \
-  --log-path <path/to/log.md>
+  --pages-dir <path/to/content-root/pages> \
+  --tasks-dir <path/to/content-root/tasks> \
+  --index-path <path/to/content-root/index.md> \
+  --log-path <path/to/content-root/log.md>
 ```
 
 Pasted text is passed via stdin when `--source-kind pasted_text` is set (not as a CLI
 argument, to avoid shell-length/escaping limits).
+
+All four paths are absolute and resolved by the Hub before spawning the agent, from a
+single content-root directory (default name `wiki`, configurable via the Hub's
+`ContentRootDirName` setting or `--content-root`, see `plan.md ## Project Structure`); the
+agent itself has no knowledge of the content-root name or its configurability.
 
 ## Environment
 
@@ -38,7 +43,7 @@ argument, to avoid shell-length/escaping limits).
    (FR-014), append a `log.md` entry (FR-015), and update the task artifact to
    `status: completed` with `pages_touched` populated and a human-readable summary
    (FR-005, FR-006).
-5. On failure at any point: make no partial writes to `wiki/` or `index.md` (FR-008);
+5. On failure at any point: make no partial writes to `pages/` or `index.md` (FR-008);
    update the task artifact to `status: failed` with a human-readable `failure_reason`;
    append a `log.md` entry recording the failure (FR-015).
 
