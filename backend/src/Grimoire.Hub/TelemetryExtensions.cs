@@ -10,8 +10,12 @@ public static class TelemetryExtensions
     {
         services.AddOpenTelemetry()
             .ConfigureResource(resource => resource.AddService("Grimoire.Hub"))
-            .WithTracing(builder => builder.AddSource("Grimoire.Hub").AddOtlpExporter())
-            .WithMetrics(builder => builder.AddMeter("Grimoire.Hub").AddOtlpExporter());
+            .WithTracing(builder => builder
+                .AddSource("Grimoire.Hub")
+                .AddOtlpExporter())
+            .WithMetrics(builder => builder
+                .AddMeter("Grimoire.Hub")
+                .AddOtlpExporter());
 
         return services;
     }

@@ -37,6 +37,10 @@ public sealed class WikiIndexWriter
         }
 
         Directory.CreateDirectory(Path.GetDirectoryName(indexPath) ?? ".");
+
+        using var span = IngestAgentTracing.ActivitySource.StartActivity("ingest_agent.update_index");
+        span?.SetTag("category", category);
+
         await File.WriteAllTextAsync(indexPath, string.Join("\n", lines).TrimEnd() + "\n", cancellationToken);
     }
 }

@@ -14,6 +14,10 @@ var options = ParseArgs(args);
 var taskStore = new TaskArtifactStore();
 var logAppender = new IngestLogAppender();
 
+var startTime = DateTimeOffset.UtcNow;
+using var processSourceSpan = IngestAgentTracing.ActivitySource.StartActivity("ingest_agent.process_source");
+processSourceSpan?.SetTag("task_id", options.TaskId);
+
 try
 {
 	await taskStore.WriteAsync(
@@ -38,7 +42,13 @@ try
 	var synthesis = await new ClaudeSynthesisService().SynthesizeAsync(readSource.Content, CancellationToken.None);
 
 	var decisionService = new UpdateOrCreateDecisionService();
-	var decision = decisionService.Decide(synthesis.Title, indexMarkdown);
+	PageDecision decision;
+	using (var decideSpan = IngestAgentTracing.ActivitySource.StartActivity("ingest_agent.decide_page_target"))
+	{
+		decision = decisionService.Decide(synthesis.Title, indexMarkdown);
+		decideSpan?.SetTag("task_id", options.TaskId);
+		decideSpan?.SetTag("decision", decision.Action.ToString().ToLower());
+	}
 
 	var writer = new WikiPageWriter();
 	var wikiFullPath = await writer.WriteAsync(options.PagesDir, decision.TargetPagePath, synthesis.Content, CancellationToken.None);
@@ -64,6 +74,7 @@ try
 			$"Completed ingest. Page action: {decision.Action}. Updated {wikiRelativePath}."),
 		CancellationToken.None);
 
+	IngestAgentMetrics.RecordIngest("completed", 1, (DateTimeOffset.UtcNow - startTime).TotalSeconds);
 	return 0;
 }
 catch (Exception ex)
@@ -91,6 +102,7 @@ catch (Exception ex)
 		CancellationToken.None);
 
 	await logAppender.AppendAsync(options.LogPath, "failed", options.SourceRef, $"error: {safeMessage}", options.TaskId, CancellationToken.None);
+	IngestAgentMetrics.RecordIngest("failed", 0, (DateTimeOffset.UtcNow - startTime).TotalSeconds);
 	return 1;
 }
 

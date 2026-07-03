@@ -1,12 +1,17 @@
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
+
 namespace Grimoire.Hub.OperationalState;
 
 public sealed class RestartReconciler
 {
     private readonly OperationalStateRepository _repository;
+    private readonly ILogger<RestartReconciler> _logger;
 
-    public RestartReconciler(OperationalStateRepository repository)
+    public RestartReconciler(OperationalStateRepository repository, ILogger<RestartReconciler>? logger = null)
     {
         _repository = repository;
+        _logger = logger ?? NullLogger<RestartReconciler>.Instance;
     }
 
     public async Task<int> ReconcileRunningTasksAsync(string tasksDir, string logPath, CancellationToken cancellationToken = default)
@@ -21,6 +26,11 @@ public sealed class RestartReconciler
 
             await UpdateTaskArtifactAsync(tasksDir, state.TaskId, reason, cancellationToken);
             await AppendReconciliationLogAsync(logPath, state.TaskId, cancellationToken);
+
+            HubMetrics.RecordTaskReconciled();
+            _logger.LogWarning(new EventId(10, "ingest.task.reconciled"),
+                "Task {task_id} reconciled on Hub restart. Reason: {interruption_reason}",
+                state.TaskId, reason);
         }
 
         return running.Count;

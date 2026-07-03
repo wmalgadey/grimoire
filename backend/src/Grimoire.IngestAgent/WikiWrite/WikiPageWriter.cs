@@ -30,6 +30,10 @@ public sealed class WikiPageWriter
         }
 
         Directory.CreateDirectory(Path.GetDirectoryName(fullPath) ?? pagesDir);
+
+        using var span = IngestAgentTracing.ActivitySource.StartActivity("ingest_agent.write_wiki_page");
+        span?.SetTag("page_path", fullPath);
+
         await File.WriteAllTextAsync(fullPath, content, cancellationToken);
         return fullPath;
     }

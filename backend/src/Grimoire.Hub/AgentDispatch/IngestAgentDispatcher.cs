@@ -44,7 +44,12 @@ public sealed class IngestAgentDispatcher
         startInfo.ArgumentList.Add(request.LogPath);
 
         var authToken = _secretsLoader.GetAnthropicAuthToken();
+        // Explicitly remove both the legacy key name and the current token name so
+        // neither leaks into the child process from the parent environment (ADR-004).
+        // The token is only present in the child if it was explicitly loaded from the
+        // local secrets file.
         startInfo.Environment.Remove("ANTHROPIC_API_KEY");
+        startInfo.Environment.Remove("ANTHROPIC_AUTH_TOKEN");
         if (!string.IsNullOrWhiteSpace(authToken))
         {
             startInfo.Environment["ANTHROPIC_AUTH_TOKEN"] = authToken;
