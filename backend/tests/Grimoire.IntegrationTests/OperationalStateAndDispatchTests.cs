@@ -38,8 +38,9 @@ public class OperationalStateAndDispatchTests
         Directory.CreateDirectory(tasksDir);
         await File.WriteAllTextAsync(logPath, string.Empty);
 
-        var sourcePath = Path.Combine(root, "source.md");
-        await File.WriteAllTextAsync(sourcePath, "# Dispatch Test\n\nBody");
+        // Use a non-existent source path so the agent fails at source-read time,
+        // before any LLM call — keeps the test hermetic (no API key or network needed).
+        var sourcePath = Path.Combine(root, "nonexistent-source.md");
 
         var envPath = Path.Combine(root, ".env");
         var loader = new LocalSecretsLoader(envPath);
@@ -59,7 +60,10 @@ public class OperationalStateAndDispatchTests
             LogPath: logPath,
             PastedText: null));
 
-        Assert.True(exitCode is 0 or 1);
+        // Agent should fail (exit 1) due to missing source, without making any LLM call.
+        Assert.Equal(1, exitCode);
+        var taskArtifactPath = Path.Combine(tasksDir, $"{taskId}.md");
+        Assert.True(File.Exists(taskArtifactPath), "Task artifact must be written even on failure.");
     }
 
     private static string FindRepoRoot(string start)
