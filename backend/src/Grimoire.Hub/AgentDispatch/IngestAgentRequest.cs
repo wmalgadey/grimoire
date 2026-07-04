@@ -8,4 +8,6 @@ public sealed record IngestAgentRequest(
     string TasksDir,
     string IndexPath,
     string LogPath,
-    string? PastedText);
+    string? PastedText,
+    string InstructionsDir,
+    string PolicyPath);

@@ -43,7 +43,9 @@ public sealed class SubmissionService
             TasksDir: contentPaths.TasksDir,
             IndexPath: contentPaths.IndexPath,
             LogPath: contentPaths.LogPath,
-            PastedText: options.PastedText);
+            PastedText: options.PastedText,
+            InstructionsDir: contentPaths.InstructionsDir,
+            PolicyPath: contentPaths.PolicyPath);
 
         using (var spawnSpan = HubTracing.ActivitySource.StartActivity("hub.ingest.spawn_agent"))
         {

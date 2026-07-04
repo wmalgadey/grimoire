@@ -1,11 +1,9 @@
-﻿using Grimoire.Domain.Ingest;
 using Grimoire.IngestAgent;
+using Grimoire.IngestAgent.AgentCore;
+using Grimoire.IngestAgent.Guardrails;
 using Grimoire.IngestAgent.IngestLog;
 using Grimoire.IngestAgent.Source;
-using Grimoire.IngestAgent.Synthesis;
 using Grimoire.IngestAgent.TaskArtifact;
-using Grimoire.IngestAgent.WikiIndex;
-using Grimoire.IngestAgent.WikiWrite;
 using System.Text.RegularExpressions;
 
 using var telemetry = TelemetryBootstrap.Build();
@@ -13,142 +11,195 @@ using var telemetry = TelemetryBootstrap.Build();
 var options = ParseArgs(args);
 var taskStore = new TaskArtifactStore();
 var logAppender = new IngestLogAppender();
+var sourceReader = new SourceReader();
 
 var startTime = DateTimeOffset.UtcNow;
-using var processSourceSpan = IngestAgentTracing.ActivitySource.StartActivity("ingest_agent.process_source");
-processSourceSpan?.SetTag("task_id", options.TaskId);
+using var runSpan = IngestAgentTracing.ActivitySource.StartActivity("ingest_agent.run");
+runSpan?.SetTag("task_id", options.TaskId);
 
-// Track the wiki page path and original content for rollback on failure (FR-008).
-string? wikiRollbackPath = null;
-string? wikiRollbackContent = null;
+var repoRoot = FindRepoRoot(options.TasksDir);
+var journal = new WriteJournal();
 
 try
 {
 	await taskStore.WriteAsync(
 		options.TaskArtifactPath,
 		new TaskArtifactDocument(
-			options.TaskId,
-			"ingest",
-			"running",
-			"ingest",
-			DateTimeOffset.UtcNow,
-			null,
-			options.SourceRef,
-			[],
-			null,
-			"Ingest started and source is being processed."),
+			TaskId: options.TaskId,
+			Type: "ingest",
+			Status: "running",
+			Agent: "ingest",
+			StartedAt: DateTimeOffset.UtcNow,
+			CompletedAt: null,
+			SourceRef: options.SourceRef,
+			PagesTouched: [],
+			FailureReason: null,
+			Narrative: $"Ingest started for source: {options.SourceRef}"),
 		CancellationToken.None);
 
-	var sourceReader = new SourceReader();
-	var readSource = await sourceReader.ReadAsync(options.SourceKind, options.SourceRef, options.PastedText, CancellationToken.None);
-
-	var indexMarkdown = File.Exists(options.IndexPath) ? await File.ReadAllTextAsync(options.IndexPath) : string.Empty;
-	var synthesis = await new ClaudeSynthesisService().SynthesizeAsync(readSource.Content, CancellationToken.None);
-
-	var decisionService = new UpdateOrCreateDecisionService();
-	PageDecision decision;
-	using (var decideSpan = IngestAgentTracing.ActivitySource.StartActivity("ingest_agent.decide_page_target"))
+	var instructionLoader = new InstructionSetLoader();
+	var instructionResult = await instructionLoader.LoadAsync(options.InstructionsDir, CancellationToken.None);
+	if (instructionResult.IsSecond(out var instructionFailure))
 	{
-		decision = decisionService.Decide(synthesis.Title, indexMarkdown);
-		decideSpan?.SetTag("task_id", options.TaskId);
-		decideSpan?.SetTag("decision", decision.Action.ToString().ToLower());
+		IngestAgentMetrics.RecordInstructionLoadFailure("instructions");
+		await FinalizeFailedAsync(taskStore, options, startTime, instructionFailure.Reason, null, logAppender, false);
+		return 1;
+	}
+	instructionResult.IsFirst(out var instructionSet);
+
+	var policyLoader = new PolicyLoader(repoRoot);
+	var policyResult = await policyLoader.LoadAsync(options.PolicyPath, CancellationToken.None);
+	if (policyResult.IsSecond(out var policyFailure))
+	{
+		IngestAgentMetrics.RecordInstructionLoadFailure("policy");
+		await FinalizeFailedAsync(taskStore, options, startTime, policyFailure.Reason, null, logAppender, false);
+		return 1;
+	}
+	policyResult.IsFirst(out var loadedPolicy);
+
+	using var loadSpan = IngestAgentTracing.ActivitySource.StartActivity("ingest_agent.load_instructions");
+	loadSpan?.SetTag("task_id", options.TaskId);
+	loadSpan?.SetTag("file_count", instructionSet!.Files.Count);
+
+	var readSource = await sourceReader.ReadAsync(
+		options.SourceKind, options.SourceRef, options.PastedText, CancellationToken.None);
+
+	var executor = new GuardedToolExecutor(loadedPolicy!.Policy, journal, repoRoot);
+	var loop = new AgentLoop(new AnthropicModelClient(), executor);
+	var systemPrompt = instructionSet.BuildSystemPrompt();
+
+	AgentLoopResult loopResult;
+	try
+	{
+		loopResult = await loop.RunAsync(
+			systemPrompt, options.TaskId, options.SourceRef, readSource.Content, CancellationToken.None);
+	}
+	catch (AgentLoopCapException capEx)
+	{
+		var rollbackOutcome = await RollbackAsync(journal);
+		await FinalizeFailedAsync(taskStore, options, startTime, capEx.Message, journal, logAppender, rollbackOutcome, instructionSet, loadedPolicy);
+		return 1;
 	}
 
-	var writer = new WikiPageWriter();
-
-	// Read existing page content before overwriting so we can roll back on failure (FR-008).
-	wikiRollbackPath = writer.ResolvePath(options.PagesDir, decision.TargetPagePath);
-	wikiRollbackContent = File.Exists(wikiRollbackPath) ? await File.ReadAllTextAsync(wikiRollbackPath) : null;
-
-	var wikiFullPath = await writer.WriteAsync(options.PagesDir, decision.TargetPagePath, synthesis.Content, CancellationToken.None);
-	var wikiRelativePath = Path.GetRelativePath(Path.GetDirectoryName(options.IndexPath) ?? options.PagesDir, wikiFullPath).Replace('\\', '/');
-
-	var indexWriter = new WikiIndexWriter();
-	await indexWriter.UpdateAsync(options.IndexPath, synthesis.Category, synthesis.Title, wikiRelativePath, synthesis.Summary, CancellationToken.None);
-
-	await logAppender.AppendAsync(options.LogPath, "completed", options.SourceRef, $"{decision.Action} {wikiRelativePath}", options.TaskId, CancellationToken.None);
+	var touchedPaths = executor.TouchedPaths;
 
 	await taskStore.WriteAsync(
 		options.TaskArtifactPath,
 		new TaskArtifactDocument(
-			options.TaskId,
-			"ingest",
-			"completed",
-			"ingest",
-			(await taskStore.ReadAsync(options.TaskArtifactPath, CancellationToken.None)).StartedAt,
-			DateTimeOffset.UtcNow,
-			options.SourceRef,
-			[wikiRelativePath],
-			null,
-			$"Completed ingest. Page action: {decision.Action}. Updated {wikiRelativePath}."),
+			TaskId: options.TaskId,
+			Type: "ingest",
+			Status: "completed",
+			Agent: "ingest",
+			StartedAt: startTime,
+			CompletedAt: DateTimeOffset.UtcNow,
+			SourceRef: options.SourceRef,
+			PagesTouched: touchedPaths.Select(p => Path.GetRelativePath(repoRoot, p)).ToList(),
+			FailureReason: null,
+			Narrative: loopResult.Narrative,
+			PagesCreated: touchedPaths.Select(p => Path.GetRelativePath(repoRoot, p)).ToList(),
+			PagesUpdated: [],
+			PagesSuperseded: [],
+			DeniedActions: executor.Denials.Select(d => new DeniedActionEntry(d.Action, d.Target, d.Reason, d.Turn)).ToList(),
+			InstructionFiles: instructionSet.Files.Select(f => new InstructionFileRecord(f.Path, f.Sha256)).ToList(),
+			Policy: new PolicyRecord(loadedPolicy.Identity.Path, loadedPolicy.Identity.Version, loadedPolicy.Identity.Sha256),
+			Model: Environment.GetEnvironmentVariable("GRIMOIRE_INGEST_MODEL") ?? "claude-opus-4-8",
+			Turns: loopResult.TurnsUsed,
+			RolledBack: null),
 		CancellationToken.None);
 
-	var pageAction = decision.Action == PageDecisionAction.Update ? "updated" : "created";
-	IngestAgentMetrics.RecordIngest("completed", 1, pageAction, (DateTimeOffset.UtcNow - startTime).TotalSeconds);
+	await logAppender.EnsureLogEntryAsync(
+		options.LogPath, "completed", options.SourceRef, options.TaskId,
+		forceAppend: false, CancellationToken.None);
+
+	IngestAgentMetrics.RecordIngest("completed", touchedPaths.Count, "touched",
+		(DateTimeOffset.UtcNow - startTime).TotalSeconds);
+
 	return 0;
 }
 catch (Exception ex)
 {
 	var safeMessage = SanitizeErrorText(ex.Message);
-	var safeExceptionDetails = SanitizeErrorText(ex.ToString());
+	var rollbackOutcome = await RollbackAsync(journal);
+	await FinalizeFailedAsync(taskStore, options, startTime, safeMessage, journal, logAppender, rollbackOutcome);
+	return 1;
+}
 
-	// Attempt to roll back the wiki page write to preserve pre-ingest state (FR-008).
-	if (wikiRollbackPath is not null)
+static async Task<bool> RollbackAsync(WriteJournal journal)
+{
+	using var rollbackSpan = IngestAgentTracing.ActivitySource.StartActivity("ingest_agent.rollback");
+	try
 	{
-		try
-		{
-			if (wikiRollbackContent is not null)
-			{
-				await File.WriteAllTextAsync(wikiRollbackPath, wikiRollbackContent);
-			}
-			else if (File.Exists(wikiRollbackPath))
-			{
-				File.Delete(wikiRollbackPath);
-			}
-		}
-		catch { /* rollback is best-effort; task artifact records the failure */ }
+		var outcomes = await journal.RollbackAsync(CancellationToken.None);
+		var allOk = outcomes.Values.All(ok => ok);
+		IngestAgentMetrics.RecordRollback(allOk);
+		rollbackSpan?.SetTag("paths_restored", outcomes.Count);
+		return allOk;
 	}
+	catch
+	{
+		IngestAgentMetrics.RecordRollback(false);
+		return false;
+	}
+}
 
-	var startedAt = DateTimeOffset.UtcNow;
-	try { startedAt = (await taskStore.ReadAsync(options.TaskArtifactPath, CancellationToken.None)).StartedAt; }
-	catch { /* running artifact may not exist if the exception occurred before it was written */ }
+static async Task FinalizeFailedAsync(
+	TaskArtifactStore taskStore,
+	AgentCliOptions options,
+	DateTimeOffset startTime,
+	string failureReason,
+	WriteJournal? journal,
+	IngestLogAppender logAppender,
+	bool rolledBack,
+	LoadedInstructionSet? instructionSet = null,
+	LoadedPolicy? policy = null)
+{
+	using var finalizeSpan = IngestAgentTracing.ActivitySource.StartActivity("ingest_agent.finalize_artifact");
+	finalizeSpan?.SetTag("outcome", "failed");
 
 	await taskStore.WriteAsync(
 		options.TaskArtifactPath,
 		new TaskArtifactDocument(
-			options.TaskId,
-			"ingest",
-			"failed",
-			"ingest",
-			startedAt,
-			DateTimeOffset.UtcNow,
-			options.SourceRef,
-			[],
-			safeMessage,
-			$"Ingest failed: {safeMessage}\n\n```text\n{safeExceptionDetails}\n```"),
+			TaskId: options.TaskId,
+			Type: "ingest",
+			Status: "failed",
+			Agent: "ingest",
+			StartedAt: startTime,
+			CompletedAt: DateTimeOffset.UtcNow,
+			SourceRef: options.SourceRef,
+			PagesTouched: [],
+			FailureReason: failureReason,
+			Narrative: $"Ingest failed: {failureReason}",
+			PagesCreated: [],
+			PagesUpdated: [],
+			PagesSuperseded: [],
+			DeniedActions: [],
+			InstructionFiles: instructionSet?.Files.Select(f => new InstructionFileRecord(f.Path, f.Sha256)).ToList(),
+			Policy: policy is null ? null : new PolicyRecord(policy.Identity.Path, policy.Identity.Version, policy.Identity.Sha256),
+			Model: Environment.GetEnvironmentVariable("GRIMOIRE_INGEST_MODEL") ?? "claude-opus-4-8",
+			Turns: null,
+			RolledBack: journal is not null ? rolledBack : null),
 		CancellationToken.None);
 
-	await logAppender.AppendAsync(options.LogPath, "failed", options.SourceRef, $"error: {safeMessage}", options.TaskId, CancellationToken.None);
-	IngestAgentMetrics.RecordIngest("failed", 0, "none", (DateTimeOffset.UtcNow - startTime).TotalSeconds);
-	return 1;
+	await logAppender.EnsureLogEntryAsync(
+		options.LogPath, "failed", options.SourceRef, options.TaskId,
+		forceAppend: true, CancellationToken.None);
+
+	IngestAgentMetrics.RecordIngest("failed", 0, "none",
+		(DateTimeOffset.UtcNow - startTime).TotalSeconds);
 }
 
 static string SanitizeErrorText(string message)
 {
 	if (string.IsNullOrWhiteSpace(message))
-	{
 		return "Unknown ingest error.";
-	}
 
 	var sanitized = message;
 	var envAuthToken = Environment.GetEnvironmentVariable("ANTHROPIC_AUTH_TOKEN");
 	if (!string.IsNullOrWhiteSpace(envAuthToken))
-	{
 		sanitized = sanitized.Replace(envAuthToken, "[REDACTED]", StringComparison.Ordinal);
-	}
 
-	// Redact common Anthropic API key token shape if present in exception text.
-	sanitized = Regex.Replace(sanitized, "sk-ant-[A-Za-z0-9_-]+", "[REDACTED]", RegexOptions.CultureInvariant);
+	sanitized = Regex.Replace(sanitized, "sk-ant-[A-Za-z0-9_-]+", "[REDACTED]",
+		RegexOptions.CultureInvariant);
 	return sanitized;
 }
 
@@ -159,9 +210,7 @@ static AgentCliOptions ParseArgs(string[] args)
 	for (var i = 0; i < args.Length - 1; i += 2)
 	{
 		if (args[i].StartsWith("--", StringComparison.Ordinal))
-		{
 			options[args[i]] = args[i + 1];
-		}
 	}
 
 	string GetRequired(string name)
@@ -172,9 +221,7 @@ static AgentCliOptions ParseArgs(string[] args)
 	var sourceKind = GetRequired("--source-kind");
 	string? pastedText = null;
 	if (sourceKind == "pasted_text")
-	{
 		pastedText = Console.In.ReadToEnd();
-	}
 
 	return new AgentCliOptions(
 		TaskId: GetRequired("--task-id"),
@@ -184,5 +231,27 @@ static AgentCliOptions ParseArgs(string[] args)
 		TasksDir: GetRequired("--tasks-dir"),
 		IndexPath: GetRequired("--index-path"),
 		LogPath: GetRequired("--log-path"),
-		PastedText: pastedText);
+		PastedText: pastedText,
+		InstructionsDir: GetRequired("--instructions-dir"),
+		PolicyPath: GetRequired("--policy-path"));
+}
+
+static string FindRepoRoot(string startPath)
+{
+	var current = Path.GetFullPath(startPath);
+	while (true)
+	{
+		if (Directory.Exists(Path.Combine(current, ".specify")) &&
+			Directory.Exists(Path.Combine(current, "specs")))
+			return current;
+
+		if (Directory.Exists(Path.Combine(current, ".git")))
+			return current;
+
+		var parent = Directory.GetParent(current);
+		if (parent is null)
+			return Path.GetFullPath(Path.Combine(startPath, "..", ".."));
+
+		current = parent.FullName;
+	}
 }

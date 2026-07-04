@@ -50,6 +50,7 @@ public class OperationalStateAndDispatchTests
         var dispatcher = new IngestAgentDispatcher(loader, agentProjectPath);
 
         var taskId = $"test-{Guid.NewGuid():N}";
+        var repoRootForPaths = FindRepoRoot(Directory.GetCurrentDirectory());
         var exitCode = await dispatcher.DispatchAsync(new IngestAgentRequest(
             TaskId: taskId,
             SourceRef: sourcePath,
@@ -58,7 +59,9 @@ public class OperationalStateAndDispatchTests
             TasksDir: tasksDir,
             IndexPath: indexPath,
             LogPath: logPath,
-            PastedText: null));
+            PastedText: null,
+            InstructionsDir: Path.Combine(repoRootForPaths, "agents", "ingest"),
+            PolicyPath: Path.Combine(repoRootForPaths, "agents", "ingest", "policy.json")));
 
         // Agent should fail (exit 1) due to missing source, without making any LLM call.
         Assert.Equal(1, exitCode);

@@ -23,6 +23,7 @@ public class FailureAndReconciliationTests
         var dispatcher = new IngestAgentDispatcher(loader, agentProjectPath);
 
         var taskId = $"test-{Guid.NewGuid():N}";
+        var repoRootForPaths = FindRepoRoot(Directory.GetCurrentDirectory());
         var exitCode = await dispatcher.DispatchAsync(new IngestAgentRequest(
             TaskId: taskId,
             SourceRef: Path.Combine(root, "missing-source.md"),
@@ -31,7 +32,9 @@ public class FailureAndReconciliationTests
             TasksDir: tasksDir,
             IndexPath: indexPath,
             LogPath: logPath,
-            PastedText: null));
+            PastedText: null,
+            InstructionsDir: Path.Combine(repoRootForPaths, "agents", "ingest"),
+            PolicyPath: Path.Combine(repoRootForPaths, "agents", "ingest", "policy.json")));
 
         Assert.Equal(1, exitCode);
         Assert.Empty(Directory.GetFiles(pagesDir));

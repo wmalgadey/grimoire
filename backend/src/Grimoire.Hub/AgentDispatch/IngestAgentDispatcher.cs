@@ -42,8 +42,13 @@ public sealed class IngestAgentDispatcher
         startInfo.ArgumentList.Add(request.IndexPath);
         startInfo.ArgumentList.Add("--log-path");
         startInfo.ArgumentList.Add(request.LogPath);
+        startInfo.ArgumentList.Add("--instructions-dir");
+        startInfo.ArgumentList.Add(request.InstructionsDir);
+        startInfo.ArgumentList.Add("--policy-path");
+        startInfo.ArgumentList.Add(request.PolicyPath);
 
         var authToken = _secretsLoader.GetAnthropicAuthToken();
+        var ingestModel = _secretsLoader.GetIngestModel();
         // Build the child env by stripping credential keys from the parent env copy and
         // re-injecting only what was explicitly loaded from the secrets file (ADR-004).
         // Convert ProcessStartInfo.Environment (nullable values) to a non-nullable dict first.
@@ -54,7 +59,7 @@ public sealed class IngestAgentDispatcher
                 baseEnv[key] = value;
         }
 
-        var childEnv = BuildChildEnvironment(baseEnv, authToken);
+        var childEnv = BuildChildEnvironment(baseEnv, authToken, ingestModel);
         startInfo.Environment.Clear();
         foreach (var (key, value) in childEnv)
         {
@@ -91,7 +96,8 @@ public sealed class IngestAgentDispatcher
     /// </summary>
     public static Dictionary<string, string> BuildChildEnvironment(
         IDictionary<string, string> baseEnv,
-        string? authToken)
+        string? authToken,
+        string? ingestModel = null)
     {
         var env = new Dictionary<string, string>(baseEnv, StringComparer.OrdinalIgnoreCase);
         env.Remove("ANTHROPIC_API_KEY");
@@ -99,6 +105,12 @@ public sealed class IngestAgentDispatcher
         if (!string.IsNullOrWhiteSpace(authToken))
         {
             env["ANTHROPIC_AUTH_TOKEN"] = authToken;
+        }
+
+        env.Remove("GRIMOIRE_INGEST_MODEL");
+        if (!string.IsNullOrWhiteSpace(ingestModel))
+        {
+            env["GRIMOIRE_INGEST_MODEL"] = ingestModel;
         }
 
         return env;
