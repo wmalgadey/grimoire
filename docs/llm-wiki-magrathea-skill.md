@@ -1,6 +1,9 @@
 ---
-name: wiki
-description: Magrathea LLM Wiki — Ingest, Query, Lint operations over the Zettelkasten-backed knowledge base.
+role: source-material
+status: to-be-absorbed
+absorbed_into: agent instruction set of feature 002-agentic-ingest-core (pending implementation)
+binding: none — never cite as requirements; the agent's SKILL.md is the executable version
+description: Magrathea LLM Wiki skill — original wiki-maintenance conventions (page types, frontmatter, tag taxonomy, confidence scoring, supersession). Not an active skill in this repository.
 ---
 
 # Wiki Operations

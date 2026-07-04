@@ -11,33 +11,35 @@ All code, comments, documentation, and architectural artifacts must be written i
 
 Exception: Project-internal notes or personal development logs may use other languages if clearly marked, but all shared documentation, code comments, and specifications must be in English.
 
-## Claude Code Project Context
+## Document Map
 
-### Project Constitution
+The binding rules live in the constitution, imported into every session:
+@.specify/memory/constitution.md
 
-The project's core principles are documented in: @.specify/memory/constitution.md
+Every document has exactly one role. Binding statements flow one way:
+source material → decision context → constitution/ADR → specs. A statement is only
+enforceable once extracted into the constitution or an Accepted ADR.
 
-### Tech Stack
+| Artifact | Role | Binding for SDD? |
+| --- | --- | --- |
+| `.specify/memory/constitution.md` | Enforceable project rules | Yes — gates every plan |
+| `docs/adr/` | Architectural decisions incl. tech-stack rationale (MADR) | Yes, once Accepted (Principle III) |
+| `docs/decision-context-overview.md` | Problem space & product vision (North Star) | Only via extraction into constitution/ADRs; audited with `/drift-check` |
+| `specs/<feature>/` | Feature-scoped SDD artifacts | Yes, for that feature |
+| `docs/llm-wiki-*.md`, `docs/project-conversation.md` | Source material (absorbed) | No — never cite as requirements |
+| `dev-experience.md` | Personal learning log (German) | No — outside SDD; never cite in specs/plans/ADRs; updated via `/dev-log` |
 
-Reference: `docs/adr/` for detailed rationale on each decision.
+New documents require a declared reader (which process step consumes it?). If none
+exists, the content belongs in `dev-experience.md`, not in a new file.
 
 ## Spec-Driven Development (Spec Kit)
 
-This project uses **Spec-Driven Development (SDD)** methodology with the GitHub Spec Kit toolkit.
-
-### Available Commands
-
-Use these slash commands within Claude Code to guide development:
-
-- `/speckit-specify` — Create or update the detailed specification
-- `/speckit-plan` — Break down the spec into a step-by-step implementation plan
-- `/speckit-implement` — Implement the plan, creating code, tests, and documentation
-- `/speckit-analyze` — Analyze the codebase for gaps, inconsistencies, or improvements
-- `/speckit-clarify` — Clarify ambiguities in the specification
-- `/speckit-constitution` — Create or refine project governing principles
-- `/speckit-checklist` — Generate a domain-specific verification checklist
-- `/speckit-tasks` — Generate tasks from the plan
-- `/speckit-taskstoissues` — Convert tasks to GitHub issues
+This project uses **Spec-Driven Development (SDD)** with the GitHub Spec Kit toolkit.
+All feature work MUST go through the spec-kit workflow — its mandatory order and gates
+(specify → clarify → plan → ADR review → tasks → implement → converge) are defined in
+the constitution's "Spec-Kit Workflow Integration" section. Do not implement features
+ad hoc outside this workflow. The individual commands are available as auto-discovered
+`/speckit-*` skills.
 
 ## Spec-Kit Workflow
 

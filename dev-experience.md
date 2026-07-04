@@ -1,3 +1,11 @@
+---
+role: personal-learning-log
+status: living
+language: de (exempt from the English policy — clearly marked personal log)
+binding: none — outside the SDD flow; never cite in specs, plans, or ADRs
+sdd_usage: updated via /dev-log
+---
+
 # Dev Experience Log: Spec-Kit Lernreise in Grimoire
 
 ## Ziel dieses Dokuments
@@ -158,3 +166,48 @@ Ergebnis:
 ```claude
 /speckit-plan the first feature should define the tech stack, take a look into @file:decision-context-overview.md for guidance which tech stack is reasonable
 ```
+
+## 2026-07-04: Drift erkannt — das System wurde deterministisch statt agentisch
+
+Was ich gemacht habe:
+
+- Die Codebase gegen die Constitution und die ursprüngliche Idee (docs/decision-context-overview.md, docs/llm-wiki-magrathea-skill.md) analysieren lassen. (mit Fable 5!)
+- Nach Spec 002 fühlte sich das Ergebnis falsch an — zu viel deterministische Struktur, zu wenig agentische Funktionen.
+
+Was die Analyse ergab:
+
+- Der "Ingest-Agent" war kein Agent, sondern eine deterministische ETL-Pipeline: ein einziger LLM-Call (Text → JSON), danach deterministische Planner/Writer in C#.
+- CLAUDE.md/SKILL.md wurden geladen, gehasht und im Task-Artifact protokolliert — aber **nie an das LLM übergeben**. Die Anforderung "Instruktionen steuern den Run" war dem Buchstaben nach erfüllt, dem Sinn nach leer (Compliance-Theater).
+- Die gesamte Wiki-Intelligenz (update-vs-create, Supersession, Frontmatter, Tagging, Confidence) war als C#-Code reimplementiert — obwohl sie laut Vision im Skill/den Instruktionen leben soll.
+- Guardrails bewachten den falschen Akteur: Sie wrappten die Dateizugriffe des eigenen deterministischen Codes statt der Tool-Calls eines autonomen Agenten.
+- Wichtigster Einzelbefund: Die Drift begann nicht in Spec 002, sondern schon in der **Implementierung von Spec 001**. Dessen FR-012 verlangte explizit semantisches Agent-Urteil "without requiring a deterministic filename/title lookup rule" — geliefert wurde exakt ein Regex-Lookup. Unentdeckt, weil kein Test das prüfen durfte.
+
+Root Cause (die eigentliche Lektion):
+
+- **SDD optimiert, was die Constitution misst.** Meine Constitution kannte nur deterministische Prinzipien (ArchTests, Testcontainers, Observability) und verbot Live-LLM-Calls in allen Tests. Dazu 100%-Success-Criteria auf Ergebnisse, die eigentlich Agent-Urteile sind. Ein Coding-Agent löst das rational, indem er alles Testbare nach C# verlagert und das LLM auf einen mockbaren Call schrumpft — bei jeder Iteration ein Stück mehr.
+- Ein Spec kann richtig sein und die Implementierung trotzdem driften, wenn es für die Anforderung keine zulässige Testkategorie gibt. Unverifizierbare Anforderungen werden still verletzt.
+- Formulierungen in Success Criteria steuern Architektur: "100% der Runs …" auf einem Agent-Urteil erzwingt strukturell deterministischen Code.
+
+Was ich daraus gemacht habe:
+
+- **Constitution v1.1.0**: Neues Prinzip V "Agentic Core & Deterministic Harness" — Wiki-Urteilsvermögen MUSS in Instruction-Dateien leben, die real in den Agent-Kontext geladen werden; Backend besitzt nur den Harness; Guardrails am Tool-Boundary (deny-by-default). Prinzip II erweitert: Hermetik nur für Harness-Verträge, Agent-Verhalten wird per Eval-Tests mit Schwellwerten verifiziert; 100%-Kriterien auf Agent-Urteile sind jetzt offiziell ein Spec-Defekt. Beides in die Templates propagiert (Agentic-Boundary-Gate im Plan, SC-Split im Spec, Pflicht-Eval-Task in Phase N).
+- Neuer Spec **002-agentic-ingest-core**: Der Agent-Loop ersetzt die Pipeline; Wiki-Konventionen leben ausschließlich in den Instruktionen (Verhaltensänderung = Instruktions-Edit, keine Code-Änderung); Guardrails bekommen mit dem echten Agenten erstmals ihren richtigen Job.
+
+Erkenntnisse für die Spec-Kit-Lernreise:
+
+- Die Constitution ist der stärkste Hebel im ganzen SDD-Workflow — und damit auch die gefährlichste Stelle für blinde Flecken. Was sie nicht misst, existiert für den Coding-Agenten nicht.
+- Ein Framing kann Spezifikationsarbeit ersparen: Alt-002 wollte "Wiki-Struktur" als Systemfeature (viel Code). Sobald der Kern agentisch ist, ist dieselbe Fähigkeit nur noch Instruktions-Inhalt — der komplette Feature-Scope kollabierte in eine SKILL.md.
+- Positiv: Der Harness aus 001/002 (Hub-Dispatch, Credential-Scoping, Task-Artifacts, Restart-Reconciliation, Observability) war solide und bleibt — der kontrollierte Rückbau kostete fast nur den fehlgeleiteten Kern.
+- Regelmäßig gegen die Ursprungsidee (nicht nur gegen den letzten Spec) validieren. Drift fällt im Diff zweier Specs nicht auf; sie fällt auf, wenn man Code gegen die Vision hält.
+
+Nachtrag (gleiche Session): Dokumenten-Governance geklärt
+
+- Ich habe verstanden: Spec-Kit liefert bewusst kein Produkt-Gedächtnis über Features hinweg. Vision-/Problemraum-Dokumente füllen eine echte Lücke — aber ein Dokument, das kein Prozessschritt liest, existiert für SDD nicht und kann trotzdem falsche Verbindlichkeit ausstrahlen.
+- Meine Regel dagegen: Einbahnstraßen-Fluss Rohmaterial → Decision Context → Constitution/ADR → Specs. Verbindlich wird eine Aussage erst durch Extraktion nach unten (so ist heute Prinzip V entstanden). Jede Aussage wohnt an genau einem Ort.
+- Neue Dateien nur noch mit deklariertem Leser; reine Verständnis-Notizen gehören in dieses Log statt in neue Dokumente. Umgesetzt: Document Map in CLAUDE.md, Rollen-Frontmatter in allen docs/-Artefakten.
+- Bei Anpassungen an Dokumenten und an CLAUDE.md achte ich jetzt explizit auf Anti-Sabotage-Regeln: Selbst erzeugte Dokumente duerfen nie implizit verbindlich werden oder am SDD-Prozess vorbei Anforderungen einschleusen.
+- Den Decision Context habe ich um die fehlenden Leitplanken ergänzt: North Star Outcomes, Agentic Boundary, Autonomy Ladder, Scale-Annahmen, erweiterte Non-Goals und §11 (Agent-Evaluation & Modell-Lifecycle) — Formulierungen wie "LLM-based processing pipeline" in §2 waren aktive Drift-Keime und sind korrigiert.
+- Zwei wiederkehrende Skills angelegt, damit das Ritual nicht von meiner Disziplin abhängt: /dev-log (dieses Log pflegen) und /drift-check (Implementierung gegen Vision auditieren, Constitution früh nachschärfen).
+- Zusätzlich habe ich mir eigene Skills gebaut:
+  - /dev-log (Lernpfad festhalten) und 
+  - /drift-check (Umsetzung regelmaessig gegen Vision und Constitution pruefen).

@@ -1,3 +1,10 @@
+---
+role: source-material
+status: absorbed
+absorbed_into: docs/decision-context-overview.md (§0 Guiding Vision)
+binding: none — never cite as requirements
+---
+
 # LLM Wiki
 
 > Source: [karpathy/llm-wiki.md](https://gist.github.com/karpathy/442a6bf555914893e9891c11519de94f)
