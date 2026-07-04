@@ -196,6 +196,8 @@ Examples of foundational tasks (adjust based on your project):
 
 **Purpose**: Improvements that affect multiple user stories
 
+- [ ] TXXX Observability tests: verify all metrics, log events, and trace spans from plan.md ## Observability are emitted (MANDATORY — Constitution Principle IV)
+- [ ] TXXX Agent-behavior evaluation tests: verify every agent-judgment success criterion from spec.md at its defined threshold via sampled runs with real or recorded LLM output (MANDATORY for features with agentic behavior — Constitution Principles II & V)
 - [ ] TXXX [P] Documentation updates in docs/
 - [ ] TXXX Code cleanup and refactoring
 - [ ] TXXX Performance optimization across all stories

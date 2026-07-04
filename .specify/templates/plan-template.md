@@ -66,6 +66,24 @@
 
 **New ADR required?**: [Yes — draft docs/adr/ADR-NNN-[name].md before proceeding / No]
 
+## Agentic Boundary (Constitution Principle V)
+
+*GATE: Required whenever the feature touches wiki content or agent behavior.*
+
+<!--
+  ACTION REQUIRED: For every capability this feature introduces or changes, assign it
+  to exactly one side of the boundary. Wiki-content judgment (what pages exist, what
+  they say, update-vs-create, supersession, categorization, confidence, tagging) MUST
+  land in instruction files executed by an agent; backend code may only gain harness
+  capabilities (dispatch, guardrails, tools, task lifecycle, observability).
+  If the feature has no agentic surface, write: "No agentic surface — harness-only feature."
+-->
+
+| Capability                         | Side         | Where it lives                               |
+|------------------------------------|--------------|----------------------------------------------|
+| [e.g., update-vs-create decision]  | Agentic core | [e.g., agents/ingest/SKILL.md]               |
+| [e.g., write-path guardrail]       | Harness      | [e.g., Guardrails/GuardedFileOperations.cs]  |
+
 ## Observability
 
 *MANDATORY: Code without this instrumentation fails the Definition of Done.*
