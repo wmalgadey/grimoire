@@ -14,6 +14,10 @@
 
 - Q: Which metadata level should all non-source wiki pages require after ingest? → A: Standard frontmatter contract: tags (>=2), confidence, confidence_reason, inbound_links, last_reviewed; superseded_by/supersedes only when relevant.
 - Q: When should ingest be required to follow agent instructions from CLAUDE.md and SKILL.md? → A: For every ingest run, before wiki writes, using the active ingest agent CLAUDE.md and SKILL.md as governing instructions.
+- Q: For autonomous ingest runs, what guardrail scope should be mandatory for write actions? → A: Restrict writes to wiki/ and task-artifact outputs only; allow reads from approved project context files.
+- Q: If a tool action violates guardrails, what must happen? → A: Deny the violating action but continue ingest with remaining allowed actions.
+- Q: Which ingest execution model should be required? → A: Hybrid model: the agent performs direct tool actions and also emits a minimal structured task artifact for deterministic validation and audit.
+- Q: Where should approved read-context guardrails be defined? → A: In a versioned repository policy file consumed by ingest runtime/tool wrapper.
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -79,7 +83,7 @@ When a source would replace or refine existing knowledge, the user wants the wik
 - **FR-003**: The system MUST update the wiki catalog automatically as part of ingest so that every page created or changed by the operation is discoverable without manual catalog editing.
 - **FR-004**: The system MUST avoid creating duplicate pages for the same idea when an existing page already represents the topic well.
 - **FR-005**: When a source clearly replaces older content, the resulting wiki update MUST make that replacement obvious so users can distinguish current knowledge from superseded knowledge.
-- **FR-006**: The ingest outcome MUST record which wiki pages were created, updated, or superseded so a user can understand the scope of the change.
+- **FR-006**: The ingest outcome MUST include a minimal structured task artifact that records which wiki pages were created, updated, superseded, and denied by guardrails so validation and audit are deterministic.
 - **FR-007**: The user-facing result of ingest MUST make it clear what was added to the wiki and why those pages were the right ones to change.
 - **FR-008**: If ingest fails, the wiki MUST not be left with partial, orphaned, or contradictory pages from that attempt.
 - **FR-009**: The original source MUST remain unmodified by ingest.
@@ -87,6 +91,10 @@ When a source would replace or refine existing knowledge, the user wants the wik
 - **FR-011**: Every non-source wiki page created or updated by ingest MUST include frontmatter fields for tags (at least two), confidence, confidence_reason, inbound_links, and last_reviewed.
 - **FR-012**: superseded_by and supersedes MUST be present only when a page is explicitly superseded by, or supersedes, another page.
 - **FR-013**: Every ingest run MUST apply the active ingest-agent CLAUDE.md and SKILL.md instructions as governing rules before any wiki content is created or modified.
+- **FR-014**: Autonomous ingest execution MUST enforce tool-level guardrails so write operations are allowed only under wiki/ and task-artifact output paths, while read operations are limited to approved project context files required for ingest decisions.
+- **FR-015**: If an autonomous ingest tool action violates guardrails, the system MUST deny only that action, continue with remaining allowed actions, and record the denied action and reason in the ingest result.
+- **FR-016**: The ingest execution model MUST be hybrid: wiki updates are performed via approved tools during the run, and the same run MUST emit the structured task artifact used for validation and traceability.
+- **FR-017**: The approved read-context guardrail allowlist MUST be defined in a versioned repository policy file that is loaded by the ingest runtime or tool wrapper for enforcement.
 
 ### Key Entities *(include if feature involves data)*
 
@@ -95,7 +103,7 @@ When a source would replace or refine existing knowledge, the user wants the wik
 - **Entity Page**: A page for a real-world person, place, organization, or project that is relevant to the source.
 - **Concept Page**: A page for an idea, pattern, or theme that helps organize knowledge from the source.
 - **Wiki Catalog**: The browsable listing that helps users find pages created or updated by ingest.
-- **Task Artifact**: The record that explains what the ingest changed and which wiki pages were affected.
+- **Task Artifact**: A minimal structured record produced by the ingest run that explains what changed, what was denied by guardrails, and which wiki pages were affected.
 
 ## Success Criteria *(mandatory)*
 
@@ -108,6 +116,10 @@ When a source would replace or refine existing knowledge, the user wants the wik
 - **SC-005**: 100% of failed ingests leave no partial or orphaned wiki pages behind.
 - **SC-006**: 100% of non-source pages created or updated by successful ingest runs include required metadata fields (tags, confidence, confidence_reason, inbound_links, last_reviewed), with supersession fields present only when applicable.
 - **SC-007**: 100% of ingest runs that modify wiki content are executed under the active ingest-agent CLAUDE.md and SKILL.md instructions.
+- **SC-008**: 100% of autonomous ingest runs that perform wiki writes are executed with enforced tool-level path guardrails (writes only to wiki/ and task-artifact outputs).
+- **SC-009**: 100% of denied guardrail actions are captured in ingest output with action, target path, and denial reason while the run continues with allowed actions.
+- **SC-010**: 100% of successful ingest runs produce both wiki updates and a valid structured task artifact in the same operation.
+- **SC-011**: 100% of autonomous ingest runs load read-context guardrails from the versioned repository policy file, and policy changes are traceable in version history.
 
 ## Assumptions
 
