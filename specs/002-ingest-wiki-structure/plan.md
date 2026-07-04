@@ -61,7 +61,7 @@ Extend ingest from single-page synthesis into autonomous, guardrail-enforced wik
 | ADR-005 | Observability Backend (Local and CI) | Instrumentation must use OTel naming and be verifiable locally (Aspire Dashboard) and in CI via in-memory exporter assertions. |
 | ADR-006 | Autonomous Ingest Guardrails and Instruction Governance | Autonomous runs must load CLAUDE.md/SKILL.md context before writes, enforce deny-by-default policy-based action authorization, continue on denied actions, and record denials deterministically for audit. |
 
-**New ADR required?**: Yes — drafted `docs/adr/ADR-006-autonomous-ingest-guardrails-and-instruction-governance.md` (status: proposed; must be accepted before `/speckit-tasks`).
+**New ADR required?**: Yes — drafted `docs/adr/ADR-006-autonomous-ingest-guardrails-and-instruction-governance.md` (status: accepted).
 
 ## Observability
 
