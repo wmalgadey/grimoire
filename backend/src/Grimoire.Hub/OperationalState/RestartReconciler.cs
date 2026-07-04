@@ -21,11 +21,13 @@ public sealed class RestartReconciler
         {
             var reason = "Hub restarted while task was running.";
 
-            // Delete the stale row; task artifact + log.md are the durable record (ADR-003).
-            await _repository.DeleteAsync(state.TaskId, cancellationToken);
-
             await UpdateTaskArtifactAsync(tasksDir, state.TaskId, reason, cancellationToken);
             await AppendReconciliationLogAsync(logPath, state.TaskId, cancellationToken);
+
+            // Delete the stale row after durable writes succeed; task artifact + log.md are
+            // the permanent record (ADR-003). Deleting last keeps the row retryable if either
+            // write above fails on a transient IO error.
+            await _repository.DeleteAsync(state.TaskId, cancellationToken);
 
             HubMetrics.RecordTaskReconciled();
             _logger.LogWarning(new EventId(10, "ingest.task.reconciled"),

@@ -44,15 +44,21 @@ public sealed class IngestAgentDispatcher
         startInfo.ArgumentList.Add(request.LogPath);
 
         var authToken = _secretsLoader.GetAnthropicAuthToken();
-        // Explicitly remove both the legacy key name and the current token name so
-        // neither leaks into the child process from the parent environment (ADR-004).
-        // The token is only present in the child if it was explicitly loaded from the
-        // local secrets file.
-        startInfo.Environment.Remove("ANTHROPIC_API_KEY");
-        startInfo.Environment.Remove("ANTHROPIC_AUTH_TOKEN");
-        if (!string.IsNullOrWhiteSpace(authToken))
+        // Build the child env by stripping credential keys from the parent env copy and
+        // re-injecting only what was explicitly loaded from the secrets file (ADR-004).
+        // Convert ProcessStartInfo.Environment (nullable values) to a non-nullable dict first.
+        var baseEnv = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var (key, value) in startInfo.Environment)
         {
-            startInfo.Environment["ANTHROPIC_AUTH_TOKEN"] = authToken;
+            if (value is not null)
+                baseEnv[key] = value;
+        }
+
+        var childEnv = BuildChildEnvironment(baseEnv, authToken);
+        startInfo.Environment.Clear();
+        foreach (var (key, value) in childEnv)
+        {
+            startInfo.Environment[key] = value;
         }
 
         using var process = Process.Start(startInfo) ?? throw new InvalidOperationException("Failed to start ingest agent process.");
@@ -74,5 +80,27 @@ public sealed class IngestAgentDispatcher
         return process.ExitCode > 1 && !string.IsNullOrWhiteSpace(stdErr)
             ? throw new InvalidOperationException($"Ingest agent crashed: {stdErr}")
             : process.ExitCode;
+    }
+
+    /// <summary>
+    /// Builds the child-process environment from <paramref name="baseEnv"/> by removing
+    /// both legacy and current Anthropic credential keys, then re-injecting only if a
+    /// non-null <paramref name="authToken"/> was loaded from the secrets file (ADR-004).
+    /// Exposed internally so tests can assert the "no env inheritance leak" guarantee
+    /// without spawning a real process.
+    /// </summary>
+    public static Dictionary<string, string> BuildChildEnvironment(
+        IDictionary<string, string> baseEnv,
+        string? authToken)
+    {
+        var env = new Dictionary<string, string>(baseEnv, StringComparer.OrdinalIgnoreCase);
+        env.Remove("ANTHROPIC_API_KEY");
+        env.Remove("ANTHROPIC_AUTH_TOKEN");
+        if (!string.IsNullOrWhiteSpace(authToken))
+        {
+            env["ANTHROPIC_AUTH_TOKEN"] = authToken;
+        }
+
+        return env;
     }
 }

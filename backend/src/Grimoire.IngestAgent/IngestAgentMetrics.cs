@@ -19,11 +19,11 @@ public static class IngestAgentMetrics
             unit: "s",
             description: "Wall-clock duration of an ingest operation");
 
-    public static void RecordIngest(string outcome, int pagesTouched, double durationSeconds)
+    public static void RecordIngest(string outcome, int pagesTouched, string pageAction, double durationSeconds)
     {
         _operationsTotal.Add(1, new KeyValuePair<string, object?>("outcome", outcome));
         if (pagesTouched > 0)
-            _pagesTouchedTotal.Add(pagesTouched, new KeyValuePair<string, object?>("action", "created"));
+            _pagesTouchedTotal.Add(pagesTouched, new KeyValuePair<string, object?>("action", pageAction));
         _durationSeconds.Record(durationSeconds, new KeyValuePair<string, object?>("outcome", outcome));
     }
 }

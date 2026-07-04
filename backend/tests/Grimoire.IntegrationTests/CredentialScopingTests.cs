@@ -13,18 +13,36 @@ public class CredentialScopingTests
     [Fact]
     public void Dispatcher_ExplicitlyStrips_AuthToken_From_ChildEnv_WhenSecretsFileIsEmpty()
     {
-        // With an empty secrets file the token must NOT reach the child process,
-        // even if ANTHROPIC_AUTH_TOKEN happens to be set in the parent shell.
-        // We verify this by inspecting LocalSecretsLoader returning null.
-        var root = Path.Combine(Path.GetTempPath(), $"cred-test-{Guid.NewGuid():N}");
-        Directory.CreateDirectory(root);
-        var envPath = Path.Combine(root, ".env");
-        File.WriteAllText(envPath, "# no credentials here");
+        // Simulate a parent environment that contains ANTHROPIC_AUTH_TOKEN. Even when the
+        // token is present in the parent env, the dispatcher must remove it from the child
+        // env copy (ProcessStartInfo.Environment) and only re-inject from the secrets file.
+        var parentEnv = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["ANTHROPIC_AUTH_TOKEN"] = "sk-ant-inherited-from-parent",
+            ["ANTHROPIC_API_KEY"] = "sk-legacy-inherited-from-parent",
+            ["PATH"] = "/usr/bin",
+        };
 
-        var loader = new LocalSecretsLoader(envPath);
-        Assert.Null(loader.GetAnthropicAuthToken());
-        // The dispatcher calls Environment.Remove("ANTHROPIC_AUTH_TOKEN") before
-        // the conditional add, so null return = token stripped from child env.
+        // authToken=null simulates LocalSecretsLoader returning null (empty/absent secrets file).
+        var childEnv = IngestAgentDispatcher.BuildChildEnvironment(parentEnv, authToken: null);
+
+        Assert.False(childEnv.ContainsKey("ANTHROPIC_AUTH_TOKEN"),
+            "ANTHROPIC_AUTH_TOKEN must not be present in child env when secrets file returns null.");
+        Assert.False(childEnv.ContainsKey("ANTHROPIC_API_KEY"),
+            "ANTHROPIC_API_KEY must not be present in child env (legacy key stripped unconditionally).");
+    }
+
+    [Fact]
+    public void Dispatcher_InjectsAuthToken_IntoChildEnv_WhenSecretsFileProvides()
+    {
+        var parentEnv = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["PATH"] = "/usr/bin",
+        };
+
+        var childEnv = IngestAgentDispatcher.BuildChildEnvironment(parentEnv, authToken: "sk-ant-from-file");
+
+        Assert.Equal("sk-ant-from-file", childEnv["ANTHROPIC_AUTH_TOKEN"]);
     }
 
     [Fact]

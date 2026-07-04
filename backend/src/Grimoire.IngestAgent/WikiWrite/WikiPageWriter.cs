@@ -6,6 +6,23 @@ public sealed class WikiPageWriter
     {
         Directory.CreateDirectory(pagesDir);
 
+        var fullPath = ResolvePath(pagesDir, relativePath);
+
+        Directory.CreateDirectory(Path.GetDirectoryName(fullPath) ?? pagesDir);
+
+        using var span = IngestAgentTracing.ActivitySource.StartActivity("ingest_agent.write_wiki_page");
+        span?.SetTag("page_path", fullPath);
+
+        await File.WriteAllTextAsync(fullPath, content, cancellationToken);
+        return fullPath;
+    }
+
+    /// <summary>
+    /// Resolves and validates the full path for a wiki page without writing it.
+    /// Useful for reading existing content before overwriting (e.g. for rollback on failure).
+    /// </summary>
+    public string ResolvePath(string pagesDir, string relativePath)
+    {
         var normalized = relativePath.Replace('\\', '/');
         if (!normalized.EndsWith(".md", StringComparison.OrdinalIgnoreCase))
         {
@@ -29,12 +46,6 @@ public sealed class WikiPageWriter
             throw new InvalidOperationException("Wiki page write attempted outside pages root.");
         }
 
-        Directory.CreateDirectory(Path.GetDirectoryName(fullPath) ?? pagesDir);
-
-        using var span = IngestAgentTracing.ActivitySource.StartActivity("ingest_agent.write_wiki_page");
-        span?.SetTag("page_path", fullPath);
-
-        await File.WriteAllTextAsync(fullPath, content, cancellationToken);
         return fullPath;
     }
 }

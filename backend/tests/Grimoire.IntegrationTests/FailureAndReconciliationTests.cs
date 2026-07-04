@@ -80,11 +80,15 @@ public class FailureAndReconciliationTests
         Assert.Contains("status: failed", updatedTask);
         Assert.Contains("failure_reason: \"Hub restarted while task was running.\"", updatedTask);
 
-        var failed = await repository.GetByStatusAsync("failed");
-        Assert.Contains(failed, x => x.TaskId == taskId);
-
         var logText = await File.ReadAllTextAsync(logPath);
         Assert.Contains("reconciled on startup", logText);
+
+        // After successful reconciliation the stale operational-state row is deleted;
+        // the task artifact and log.md are the durable record (ADR-003).
+        var running = await repository.GetByStatusAsync("running");
+        Assert.DoesNotContain(running, x => x.TaskId == taskId);
+        var failed = await repository.GetByStatusAsync("failed");
+        Assert.DoesNotContain(failed, x => x.TaskId == taskId);
     }
 
     private static string FindRepoRoot(string start)

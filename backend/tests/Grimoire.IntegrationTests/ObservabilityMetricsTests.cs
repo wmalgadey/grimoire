@@ -51,7 +51,7 @@ public class ObservabilityMetricsTests
         });
         listener.Start();
 
-        IngestAgentMetrics.RecordIngest("completed", 1, 2.0);
+        IngestAgentMetrics.RecordIngest("completed", 1, "created", 2.0);
 
         Assert.Single(measurements);
         Assert.Equal(1L, measurements[0].Value);
@@ -79,7 +79,7 @@ public class ObservabilityMetricsTests
         });
         listener.Start();
 
-        IngestAgentMetrics.RecordIngest("completed", 2, 1.5);
+        IngestAgentMetrics.RecordIngest("completed", 2, "created", 1.5);
 
         Assert.Single(measurements);
         Assert.Equal(2L, measurements[0].Value);
@@ -103,7 +103,7 @@ public class ObservabilityMetricsTests
         listener.SetMeasurementEventCallback<double>((_, value, _, _) => measurements.Add(value));
         listener.Start();
 
-        IngestAgentMetrics.RecordIngest("failed", 0, 3.14);
+        IngestAgentMetrics.RecordIngest("failed", 0, "none", 3.14);
 
         Assert.Single(measurements);
         Assert.Equal(3.14, measurements[0], precision: 5);

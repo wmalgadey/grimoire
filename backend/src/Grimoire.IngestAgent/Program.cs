@@ -18,6 +18,10 @@ var startTime = DateTimeOffset.UtcNow;
 using var processSourceSpan = IngestAgentTracing.ActivitySource.StartActivity("ingest_agent.process_source");
 processSourceSpan?.SetTag("task_id", options.TaskId);
 
+// Track the wiki page path and original content for rollback on failure (FR-008).
+string? wikiRollbackPath = null;
+string? wikiRollbackContent = null;
+
 try
 {
 	await taskStore.WriteAsync(
@@ -51,6 +55,11 @@ try
 	}
 
 	var writer = new WikiPageWriter();
+
+	// Read existing page content before overwriting so we can roll back on failure (FR-008).
+	wikiRollbackPath = writer.ResolvePath(options.PagesDir, decision.TargetPagePath);
+	wikiRollbackContent = File.Exists(wikiRollbackPath) ? await File.ReadAllTextAsync(wikiRollbackPath) : null;
+
 	var wikiFullPath = await writer.WriteAsync(options.PagesDir, decision.TargetPagePath, synthesis.Content, CancellationToken.None);
 	var wikiRelativePath = Path.GetRelativePath(Path.GetDirectoryName(options.IndexPath) ?? options.PagesDir, wikiFullPath).Replace('\\', '/');
 
@@ -74,13 +83,31 @@ try
 			$"Completed ingest. Page action: {decision.Action}. Updated {wikiRelativePath}."),
 		CancellationToken.None);
 
-	IngestAgentMetrics.RecordIngest("completed", 1, (DateTimeOffset.UtcNow - startTime).TotalSeconds);
+	var pageAction = decision.Action == PageDecisionAction.Update ? "updated" : "created";
+	IngestAgentMetrics.RecordIngest("completed", 1, pageAction, (DateTimeOffset.UtcNow - startTime).TotalSeconds);
 	return 0;
 }
 catch (Exception ex)
 {
 	var safeMessage = SanitizeErrorText(ex.Message);
 	var safeExceptionDetails = SanitizeErrorText(ex.ToString());
+
+	// Attempt to roll back the wiki page write to preserve pre-ingest state (FR-008).
+	if (wikiRollbackPath is not null)
+	{
+		try
+		{
+			if (wikiRollbackContent is not null)
+			{
+				await File.WriteAllTextAsync(wikiRollbackPath, wikiRollbackContent);
+			}
+			else if (File.Exists(wikiRollbackPath))
+			{
+				File.Delete(wikiRollbackPath);
+			}
+		}
+		catch { /* rollback is best-effort; task artifact records the failure */ }
+	}
 
 	var startedAt = DateTimeOffset.UtcNow;
 	try { startedAt = (await taskStore.ReadAsync(options.TaskArtifactPath, CancellationToken.None)).StartedAt; }
@@ -102,7 +129,7 @@ catch (Exception ex)
 		CancellationToken.None);
 
 	await logAppender.AppendAsync(options.LogPath, "failed", options.SourceRef, $"error: {safeMessage}", options.TaskId, CancellationToken.None);
-	IngestAgentMetrics.RecordIngest("failed", 0, (DateTimeOffset.UtcNow - startTime).TotalSeconds);
+	IngestAgentMetrics.RecordIngest("failed", 0, "none", (DateTimeOffset.UtcNow - startTime).TotalSeconds);
 	return 1;
 }
 

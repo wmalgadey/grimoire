@@ -41,7 +41,7 @@ public sealed class TaskArtifactStore
 
     private static TaskArtifactDocument ParseMarkdown(string markdown)
     {
-        var sections = markdown.Split("---", StringSplitOptions.None);
+        var sections = markdown.Split("---", 3, StringSplitOptions.None);
         if (sections.Length < 3)
         {
             throw new InvalidOperationException("Task artifact markdown has invalid frontmatter.");
