@@ -79,7 +79,7 @@ editorial decisions to a colleague reviewing the run record.
 You have exactly three tools:
 
 | Tool | Use for |
-|------|---------|
+| ---- | ------- |
 | `list_files` | Explore wiki directories before deciding what to touch |
 | `read_file` | Read existing pages, the index, and this instruction set if needed |
 | `write_file` | Create or overwrite pages, update the index, append the log entry |
