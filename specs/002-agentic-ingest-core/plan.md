@@ -83,11 +83,11 @@ would move judgment into the harness. Still PASS.
 | ADR-003 | Domain vs. Operational State Persistence | Wiki pages, task artifacts, catalog, log stay git-tracked markdown; instruction set + policy file join the git-tracked plain-file category. Hub restart reconciliation via SQLite is retained unchanged (FR-015). |
 | ADR-004 | Credential Scoping | The Anthropic key continues to be injected only into the Ingest child's environment at spawn. `GRIMOIRE_INGEST_MODEL` uses the same injection point (research R3). No new credentials. |
 | ADR-005 | Observability Backend | All new signals below use the OTel .NET SDK → OTLP/Aspire locally, in-memory exporter assertions in CI. No collector infrastructure added. |
-| ADR-006 *(drafted)* | Agent Tool-Use Loop and Guarded Tool Boundary | Fixes the manual in-process tool-use loop, the three-file-tool guarded surface, the deny-by-default policy file, and the write-journal rollback as the structural boundary for all agentic execution. Drafted at `docs/adr/ADR-006-agent-tool-loop-guarded-boundary.md`. |
+| ADR-006 | Agent Tool-Use Loop and Guarded Tool Boundary | Fixes the manual in-process tool-use loop, the three-file-tool guarded surface, the deny-by-default policy file, and the write-journal rollback as the structural boundary for all agentic execution. Drafted at `docs/adr/ADR-006-agent-tool-loop-guarded-boundary.md`. |
 
-**New ADR required?**: **Yes — ADR-006 drafted** (`docs/adr/ADR-006-agent-tool-loop-guarded-boundary.md`,
-status: proposed). It MUST reach **Accepted** before `/speckit-tasks` is invoked
-(Constitution, Spec-Kit Workflow step 4).
+**New ADR required?**: **Yes — ADR-006 drafted and since Accepted**
+(`docs/adr/ADR-006-agent-tool-loop-guarded-boundary.md`, status: accepted). The
+workflow-step-4 gate is satisfied.
 
 ## Agentic Boundary (Constitution Principle V)
 
