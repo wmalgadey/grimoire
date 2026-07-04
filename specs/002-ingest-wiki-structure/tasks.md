@@ -9,9 +9,9 @@
 
 Purpose: Enforce ADR-006 and existing architecture boundaries before feature code.
 
-- [ ] T000 Write ADR-006 structural boundary test in backend/tests/Grimoire.ArchTests/AutonomousGuardrailBoundaryTests.cs
-- [ ] T001 Add red/green probe violating guardrail boundary in backend/tests/Grimoire.ArchTests/Probes/BadGuardrailBypassProbe.cs
-- [ ] T002 Execute failing/passing probe cycle and document result in backend/tests/Grimoire.ArchTests/README.md
+- [X] T000 Write ADR-006 structural boundary test in backend/tests/Grimoire.ArchTests/AutonomousGuardrailBoundaryTests.cs
+- [X] T001 Add red/green probe violating guardrail boundary in backend/tests/Grimoire.ArchTests/Probes/BadGuardrailBypassProbe.cs
+- [X] T002 Execute failing/passing probe cycle and document result in backend/tests/Grimoire.ArchTests/README.md
 
 ---
 
@@ -19,11 +19,11 @@ Purpose: Enforce ADR-006 and existing architecture boundaries before feature cod
 
 Purpose: Prepare project structure and dependency wiring.
 
-- [ ] T003 Create guardrail policy directory and baseline policy file in wiki/policy/ingest-guardrails.yml
-- [ ] T004 Add policy parser package using dotnet CLI in backend/src/Grimoire.IngestAgent/Grimoire.IngestAgent.csproj and backend/Directory.Packages.props
-- [ ] T005 [P] Add ingest guardrail contract types in backend/src/Grimoire.IngestAgent/Guardrails/GuardrailPolicy.cs
-- [ ] T006 [P] Add task artifact denied-action contract extensions in backend/src/Grimoire.IngestAgent/TaskArtifact/TaskArtifactDocument.cs
-- [ ] T007 Create ingest-agent-only instruction bundle in backend/src/Grimoire.IngestAgent/InstructionSet/CLAUDE.md and backend/src/Grimoire.IngestAgent/InstructionSet/.claude/skills/ingest-wiki-structure/SKILL.md, expose skill-name CLI option in backend/src/Grimoire.IngestAgent/AgentCliOptions.cs, and do not modify repository-root CLAUDE.md or .claude/skills/
+- [X] T003 Create guardrail policy directory and baseline policy file in wiki/policy/ingest-guardrails.yml
+- [X] T004 Add policy parser package using dotnet CLI in backend/src/Grimoire.IngestAgent/Grimoire.IngestAgent.csproj and backend/Directory.Packages.props
+- [X] T005 [P] Add ingest guardrail contract types in backend/src/Grimoire.IngestAgent/Guardrails/GuardrailPolicy.cs
+- [X] T006 [P] Add task artifact denied-action contract extensions in backend/src/Grimoire.IngestAgent/TaskArtifact/TaskArtifactDocument.cs
+- [X] T007 Create ingest-agent-only instruction bundle in backend/src/Grimoire.IngestAgent/InstructionSet/CLAUDE.md and backend/src/Grimoire.IngestAgent/InstructionSet/.claude/skills/ingest-wiki-structure/SKILL.md, expose skill-name CLI option in backend/src/Grimoire.IngestAgent/AgentCliOptions.cs, and do not modify repository-root CLAUDE.md or .claude/skills/
 
 ---
 
@@ -31,13 +31,13 @@ Purpose: Prepare project structure and dependency wiring.
 
 Purpose: Core guardrail and instruction-loading infrastructure required by all stories.
 
-- [ ] T008 Implement guardrail policy loader in backend/src/Grimoire.IngestAgent/Guardrails/GuardrailPolicyLoader.cs
-- [ ] T009 [P] Implement guardrail evaluator with allow/deny semantics in backend/src/Grimoire.IngestAgent/Guardrails/GuardrailEvaluator.cs
-- [ ] T010 [P] Implement instruction context loader resolving backend/src/Grimoire.IngestAgent/InstructionSet/CLAUDE.md and backend/src/Grimoire.IngestAgent/InstructionSet/.claude/skills/ingest-wiki-structure/SKILL.md in backend/src/Grimoire.IngestAgent/Instructions/InstructionContextLoader.cs
-- [ ] T011 Implement guarded file operation wrapper in backend/src/Grimoire.IngestAgent/Guardrails/GuardedFileOperations.cs
-- [ ] T012 Wire guardrail policy and instruction loader into ingest startup flow in backend/src/Grimoire.IngestAgent/Program.cs
-- [ ] T013 [P] Add foundational integration test for policy load and deny-by-default behavior in backend/tests/Grimoire.IntegrationTests/GuardrailPolicyTests.cs
-- [ ] T014 [P] Add foundational integration test for instruction context loading in backend/tests/Grimoire.IntegrationTests/InstructionContextTests.cs
+- [X] T008 Implement guardrail policy loader in backend/src/Grimoire.IngestAgent/Guardrails/GuardrailPolicyLoader.cs
+- [X] T009 [P] Implement guardrail evaluator with allow/deny semantics in backend/src/Grimoire.IngestAgent/Guardrails/GuardrailEvaluator.cs
+- [X] T010 [P] Implement instruction context loader resolving backend/src/Grimoire.IngestAgent/InstructionSet/CLAUDE.md and backend/src/Grimoire.IngestAgent/InstructionSet/.claude/skills/ingest-wiki-structure/SKILL.md in backend/src/Grimoire.IngestAgent/Instructions/InstructionContextLoader.cs
+- [X] T011 Implement guarded file operation wrapper in backend/src/Grimoire.IngestAgent/Guardrails/GuardedFileOperations.cs
+- [X] T012 Wire guardrail policy and instruction loader into ingest startup flow in backend/src/Grimoire.IngestAgent/Program.cs
+- [X] T013 [P] Add foundational integration test for policy load and deny-by-default behavior in backend/tests/Grimoire.IntegrationTests/GuardrailPolicyTests.cs
+- [X] T014 [P] Add foundational integration test for instruction context loading in backend/tests/Grimoire.IntegrationTests/InstructionContextTests.cs
 
 Checkpoint: No user story work starts before T000-T014 are complete.
 
@@ -51,18 +51,18 @@ Independent Test: Submit one source and verify connected source, entity, and con
 
 ### Tests for User Story 1
 
-- [ ] T015 [P] [US1] Add integration test for multi-page wiki structure output in backend/tests/Grimoire.IntegrationTests/WikiStructureGenerationTests.cs
-- [ ] T016 [P] [US1] Add integration test asserting required non-source frontmatter fields in backend/tests/Grimoire.IntegrationTests/WikiMetadataContractTests.cs
-- [ ] T017 [P] [US1] Add integration test asserting deterministic task artifact action lists in backend/tests/Grimoire.IntegrationTests/TaskArtifactDeterminismTests.cs
+- [X] T015 [P] [US1] Add integration test for multi-page wiki structure output in backend/tests/Grimoire.IntegrationTests/WikiStructureGenerationTests.cs
+- [X] T016 [P] [US1] Add integration test asserting required non-source frontmatter fields in backend/tests/Grimoire.IntegrationTests/WikiMetadataContractTests.cs
+- [X] T017 [P] [US1] Add integration test asserting deterministic task artifact action lists in backend/tests/Grimoire.IntegrationTests/TaskArtifactDeterminismTests.cs
 
 ### Implementation for User Story 1
 
-- [ ] T018 [P] [US1] Extend synthesis result model for multi-page action planning in backend/src/Grimoire.IngestAgent/Synthesis/SynthesisResult.cs
-- [ ] T019 [P] [US1] Implement wiki action planner for source/entity/concept pages in backend/src/Grimoire.IngestAgent/WikiWrite/WikiStructurePlanner.cs
-- [ ] T020 [US1] Implement required frontmatter builder for non-source pages in backend/src/Grimoire.IngestAgent/WikiWrite/WikiFrontmatterBuilder.cs
-- [ ] T021 [US1] Apply planned wiki writes through Claude SDK tool actions with guarded wrapper in backend/src/Grimoire.IngestAgent/WikiWrite/WikiPageWriter.cs
-- [ ] T022 [US1] Record created and updated actions in artifact writer in backend/src/Grimoire.IngestAgent/TaskArtifact/TaskArtifactStore.cs
-- [ ] T023 [US1] Return user-facing ingest summary and append run notes to wiki/tasks/<task-id>.md in backend/src/Grimoire.IngestAgent/Program.cs
+- [X] T018 [P] [US1] Extend synthesis result model for multi-page action planning in backend/src/Grimoire.IngestAgent/Synthesis/SynthesisResult.cs
+- [X] T019 [P] [US1] Implement wiki action planner for source/entity/concept pages in backend/src/Grimoire.IngestAgent/WikiWrite/WikiStructurePlanner.cs
+- [X] T020 [US1] Implement required frontmatter builder for non-source pages in backend/src/Grimoire.IngestAgent/WikiWrite/WikiFrontmatterBuilder.cs
+- [X] T021 [US1] Apply planned wiki writes through Claude SDK tool actions with guarded wrapper in backend/src/Grimoire.IngestAgent/WikiWrite/WikiPageWriter.cs
+- [X] T022 [US1] Record created and updated actions in artifact writer in backend/src/Grimoire.IngestAgent/TaskArtifact/TaskArtifactStore.cs
+- [X] T023 [US1] Return user-facing ingest summary and append run notes to wiki/tasks/<task-id>.md in backend/src/Grimoire.IngestAgent/Program.cs
 
 Checkpoint: User Story 1 is independently functional and testable.
 
@@ -76,14 +76,14 @@ Independent Test: After successful ingest, all created/updated pages are discove
 
 ### Tests for User Story 2
 
-- [ ] T024 [P] [US2] Add integration test for index inclusion of all touched pages in backend/tests/Grimoire.IntegrationTests/WikiIndexCoverageTests.cs
-- [ ] T025 [P] [US2] Add integration test for idempotent index refresh behavior in backend/tests/Grimoire.IntegrationTests/WikiIndexIdempotencyTests.cs
+- [X] T024 [P] [US2] Add integration test for index inclusion of all touched pages in backend/tests/Grimoire.IntegrationTests/WikiIndexCoverageTests.cs
+- [X] T025 [P] [US2] Add integration test for idempotent index refresh behavior in backend/tests/Grimoire.IntegrationTests/WikiIndexIdempotencyTests.cs
 
 ### Implementation for User Story 2
 
-- [ ] T026 [US2] Extend index writer to process full Claude SDK touched-page set in backend/src/Grimoire.IngestAgent/WikiIndex/WikiIndexWriter.cs
-- [ ] T027 [US2] Add catalog classification mapping for source/entity/concept entries in backend/src/Grimoire.IngestAgent/WikiIndex/WikiCatalogClassifier.cs
-- [ ] T028 [US2] Integrate planned write results with index update pipeline in backend/src/Grimoire.IngestAgent/Program.cs
+- [X] T026 [US2] Extend index writer to process full Claude SDK touched-page set in backend/src/Grimoire.IngestAgent/WikiIndex/WikiIndexWriter.cs
+- [X] T027 [US2] Add catalog classification mapping for source/entity/concept entries in backend/src/Grimoire.IngestAgent/WikiIndex/WikiCatalogClassifier.cs
+- [X] T028 [US2] Integrate planned write results with index update pipeline in backend/src/Grimoire.IngestAgent/Program.cs
 
 Checkpoint: User Stories 1 and 2 both pass independently.
 
@@ -97,16 +97,16 @@ Independent Test: Ingest overlapping source and verify update-in-place or supers
 
 ### Tests for User Story 3
 
-- [ ] T029 [P] [US3] Add integration test for duplicate-prevention update behavior in backend/tests/Grimoire.IntegrationTests/WikiDeduplicationTests.cs
-- [ ] T030 [P] [US3] Add integration test for supersession link contract in backend/tests/Grimoire.IntegrationTests/WikiSupersessionTests.cs
-- [ ] T031 [P] [US3] Add integration test for denial-continues-processing behavior in backend/tests/Grimoire.IntegrationTests/GuardrailContinuationTests.cs
+- [X] T029 [P] [US3] Add integration test for duplicate-prevention update behavior in backend/tests/Grimoire.IntegrationTests/WikiDeduplicationTests.cs
+- [X] T030 [P] [US3] Add integration test for supersession link contract in backend/tests/Grimoire.IntegrationTests/WikiSupersessionTests.cs
+- [X] T031 [P] [US3] Add integration test for denial-continues-processing behavior in backend/tests/Grimoire.IntegrationTests/GuardrailContinuationTests.cs
 
 ### Implementation for User Story 3
 
-- [ ] T032 [US3] Implement duplicate-target resolution strategy in backend/src/Grimoire.Domain/Ingest/UpdateOrCreateDecisionService.cs
-- [ ] T033 [US3] Implement supersession metadata writer in backend/src/Grimoire.IngestAgent/WikiWrite/WikiSupersessionService.cs
-- [ ] T034 [US3] Persist denied actions with reason/target path and user questions in wiki/tasks/<task-id>.md via backend/src/Grimoire.IngestAgent/TaskArtifact/TaskArtifactStore.cs
-- [ ] T035 [US3] Continue ingest execution after denied actions in backend/src/Grimoire.IngestAgent/Program.cs
+- [X] T032 [US3] Implement duplicate-target resolution strategy in backend/src/Grimoire.Domain/Ingest/UpdateOrCreateDecisionService.cs
+- [X] T033 [US3] Implement supersession metadata writer in backend/src/Grimoire.IngestAgent/WikiWrite/WikiSupersessionService.cs
+- [X] T034 [US3] Persist denied actions with reason/target path and user questions in wiki/tasks/<task-id>.md via backend/src/Grimoire.IngestAgent/TaskArtifact/TaskArtifactStore.cs
+- [X] T035 [US3] Continue ingest execution after denied actions in backend/src/Grimoire.IngestAgent/Program.cs
 
 Checkpoint: All user stories are independently functional and coherent.
 
@@ -116,12 +116,12 @@ Checkpoint: All user stories are independently functional and coherent.
 
 Purpose: Observability, hardening, and full validation.
 
-- [ ] T036 [P] Implement business metrics for guardrails/instruction load/wiki actions in backend/src/Grimoire.IngestAgent/IngestAgentMetrics.cs
-- [ ] T037 [P] Implement structured log events for denied actions and completion summary in backend/src/Grimoire.IngestAgent/IngestLog/IngestLogAppender.cs
-- [ ] T038 [P] Implement trace spans for instruction load, guardrail evaluation, and wiki apply stages in backend/src/Grimoire.IngestAgent/IngestAgentTracing.cs
-- [ ] T039 Add observability integration assertions in backend/tests/Grimoire.IntegrationTests/ObservabilityGuardrailTests.cs
-- [ ] T040 [P] Add quickstart validation script for feature 002 in specs/002-ingest-wiki-structure/quickstart.md
-- [ ] T041 Execute full backend test suite and capture results in backend/tests/Grimoire.IntegrationTests/TestRunNotes.md
+- [X] T036 [P] Implement business metrics for guardrails/instruction load/wiki actions in backend/src/Grimoire.IngestAgent/IngestAgentMetrics.cs
+- [X] T037 [P] Implement structured log events for denied actions and completion summary in backend/src/Grimoire.IngestAgent/IngestLog/IngestLogAppender.cs
+- [X] T038 [P] Implement trace spans for instruction load, guardrail evaluation, and wiki apply stages in backend/src/Grimoire.IngestAgent/IngestAgentTracing.cs
+- [X] T039 Add observability integration assertions in backend/tests/Grimoire.IntegrationTests/ObservabilityGuardrailTests.cs
+- [X] T040 [P] Add quickstart validation script for feature 002 in specs/002-ingest-wiki-structure/quickstart.md
+- [X] T041 Execute full backend test suite and capture results in backend/tests/Grimoire.IntegrationTests/TestRunNotes.md
 
 ---
 

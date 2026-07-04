@@ -25,6 +25,6 @@ public class UpdateOrCreateDecisionTests
         var decision = service.Decide("OpenTelemetry Basics", indexMarkdown);
 
         Assert.Equal(PageDecisionAction.Create, decision.Action);
-        Assert.Equal("opentelemetry-basics.md", decision.TargetPagePath);
+        Assert.Equal("sources/opentelemetry-basics.md", decision.TargetPagePath);
     }
 }

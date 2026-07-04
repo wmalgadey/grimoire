@@ -10,6 +10,7 @@ public sealed class ClaudeSynthesisService
     public async Task<SynthesisResult> SynthesizeAsync(string sourceContent, CancellationToken cancellationToken)
     {
         var prompt = "Summarize this source into a JSON object with keys title, summary, category, content. " +
+                     "Also include planned_pages as an array of objects with keys: kind (source|entity|concept), title, summary, category, content, inbound_links (string array). " +
                      "The content value must be markdown and must start with a single H1 title. " +
                      "Return only JSON with no code fences or extra text. Source:\n" +
                      sourceContent;
@@ -26,6 +27,7 @@ public sealed class ClaudeSynthesisService
                     Content = prompt,
                 },
             ],
+            Tools = BuildTools(),
         };
 
         Message? response = null;
@@ -70,22 +72,70 @@ public sealed class ClaudeSynthesisService
                 ex);
         }
 
-        return payload is null ||
+        if (payload is null ||
             string.IsNullOrWhiteSpace(payload.Title) ||
             string.IsNullOrWhiteSpace(payload.Summary) ||
             string.IsNullOrWhiteSpace(payload.Category) ||
-            string.IsNullOrWhiteSpace(payload.Content)
-            ? throw new InvalidOperationException(
-                "Claude SDK synthesis returned incomplete payload.\nPayload: " + payloadJson)
-            : new SynthesisResult(
+            string.IsNullOrWhiteSpace(payload.Content))
+        {
+            throw new InvalidOperationException(
+                "Claude SDK synthesis returned incomplete payload.\nPayload: " + payloadJson);
+        }
+
+        var plannedPages = payload.PlannedPages is { Count: > 0 }
+            ? payload.PlannedPages
+                .Where(page =>
+                    !string.IsNullOrWhiteSpace(page.Kind) &&
+                    !string.IsNullOrWhiteSpace(page.Title) &&
+                    !string.IsNullOrWhiteSpace(page.Summary) &&
+                    !string.IsNullOrWhiteSpace(page.Category) &&
+                    !string.IsNullOrWhiteSpace(page.Content))
+                .Select(page => new SynthesizedWikiPage(
+                    page.Kind!.Trim(),
+                    page.Title!.Trim(),
+                    page.Summary!.Trim(),
+                    page.Category!.Trim(),
+                    page.Content!.Trim(),
+                    (page.InboundLinks ?? []).Where(x => !string.IsNullOrWhiteSpace(x)).Select(x => x.Trim()).ToList()))
+                .ToList()
+            : [];
+
+        if (plannedPages.Count == 0)
+        {
+            plannedPages.Add(new SynthesizedWikiPage(
+                Kind: "source",
+                Title: payload.Title.Trim(),
+                Summary: payload.Summary.Trim(),
+                Category: payload.Category.Trim(),
+                Content: payload.Content.Trim(),
+                InboundLinks: []));
+        }
+
+        return new SynthesisResult(
             payload.Title.Trim(),
             payload.Summary.Trim(),
             payload.Category.Trim(),
-            payload.Content.Trim());
+            payload.Content.Trim(),
+            plannedPages);
     }
 
     private static string ExtractPayloadJson(Message response)
     {
+        foreach (var block in response.Content)
+        {
+            if (!block.TryPickToolUse(out var toolUseBlock))
+            {
+                continue;
+            }
+
+            if (!string.Equals(toolUseBlock.Name, "emit_synthesis_result", StringComparison.Ordinal))
+            {
+                continue;
+            }
+
+            return JsonSerializer.Serialize(toolUseBlock.Input);
+        }
+
         if (response.Content is null || response.Content.Count == 0)
         {
             throw new InvalidOperationException("Claude SDK synthesis returned no content blocks.");
@@ -132,12 +182,69 @@ public sealed class ClaudeSynthesisService
         return !firstLine.StartsWith("```", StringComparison.Ordinal) || lastLine != "```" ? trimmed : string.Join('\n', lines[1..^1]).Trim();
     }
 
+    private static IReadOnlyList<ToolUnion> BuildTools()
+    {
+        return
+        [
+            new Tool
+            {
+                Name = "emit_synthesis_result",
+                Description = "Emit normalized synthesis output for wiki writing, including planned source/entity/concept pages.",
+                Strict = true,
+                InputSchema = new InputSchema
+                {
+                    Properties = new Dictionary<string, JsonElement>
+                    {
+                        ["title"] = JsonSerializer.SerializeToElement(new { type = "string" }),
+                        ["summary"] = JsonSerializer.SerializeToElement(new { type = "string" }),
+                        ["category"] = JsonSerializer.SerializeToElement(new { type = "string" }),
+                        ["content"] = JsonSerializer.SerializeToElement(new { type = "string" }),
+                        ["planned_pages"] = JsonSerializer.SerializeToElement(new
+                        {
+                            type = "array",
+                            items = new
+                            {
+                                type = "object",
+                                properties = new
+                                {
+                                    kind = new { type = "string", @enum = new[] { "source", "entity", "concept" } },
+                                    title = new { type = "string" },
+                                    summary = new { type = "string" },
+                                    category = new { type = "string" },
+                                    content = new { type = "string" },
+                                    inbound_links = new
+                                    {
+                                        type = "array",
+                                        items = new { type = "string" },
+                                    },
+                                },
+                                required = new[] { "kind", "title", "summary", "category", "content", "inbound_links" },
+                            },
+                        }),
+                    },
+                    Required = ["title", "summary", "category", "content", "planned_pages"],
+                },
+            },
+        ];
+    }
+
     private sealed class SynthesisPayload
     {
         public string? Title { get; set; }
         public string? Summary { get; set; }
         public string? Category { get; set; }
         public string? Content { get; set; }
+        public List<PlannedPagePayload>? PlannedPages { get; set; }
+    }
+
+    private sealed class PlannedPagePayload
+    {
+        public string? Kind { get; set; }
+        public string? Title { get; set; }
+        public string? Summary { get; set; }
+        public string? Category { get; set; }
+        public string? Content { get; set; }
+        public List<string>? InboundLinks { get; set; }
     }
 
 }

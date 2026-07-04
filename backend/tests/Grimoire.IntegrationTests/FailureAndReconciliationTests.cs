@@ -31,7 +31,10 @@ public class FailureAndReconciliationTests
             TasksDir: tasksDir,
             IndexPath: indexPath,
             LogPath: logPath,
-            PastedText: null));
+            PastedText: null,
+            GuardrailPolicyPath: Path.Combine(repoRoot, "wiki", "policy", "ingest-guardrails.yml"),
+            InstructionsRoot: repoRoot,
+            SkillName: "ingest-wiki-structure"));
 
         Assert.Equal(1, exitCode);
         Assert.Empty(Directory.GetFiles(pagesDir));

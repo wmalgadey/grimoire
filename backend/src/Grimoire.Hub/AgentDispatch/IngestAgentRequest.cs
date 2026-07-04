@@ -8,4 +8,8 @@ public sealed record IngestAgentRequest(
     string TasksDir,
     string IndexPath,
     string LogPath,
-    string? PastedText);
+    string? PastedText,
+    string? GuardrailPolicyPath = null,
+    string? InstructionsRoot = null,
+    string? SkillName = null,
+    bool DryRun = false);

@@ -43,6 +43,26 @@ public sealed class IngestAgentDispatcher
         startInfo.ArgumentList.Add("--log-path");
         startInfo.ArgumentList.Add(request.LogPath);
 
+        var inferredRepoRoot = InferRepoRootFromPagesDir(request.PagesDir);
+        var guardrailPolicyPath = request.GuardrailPolicyPath
+            ?? Path.Combine(inferredRepoRoot, "wiki", "policy", "ingest-guardrails.yml");
+        var instructionsRoot = request.InstructionsRoot ?? inferredRepoRoot;
+
+        startInfo.ArgumentList.Add("--guardrail-policy-path");
+        startInfo.ArgumentList.Add(guardrailPolicyPath);
+        startInfo.ArgumentList.Add("--instructions-root");
+        startInfo.ArgumentList.Add(instructionsRoot);
+        if (!string.IsNullOrWhiteSpace(request.SkillName))
+        {
+            startInfo.ArgumentList.Add("--skill-name");
+            startInfo.ArgumentList.Add(request.SkillName);
+        }
+
+        if (request.DryRun)
+        {
+            startInfo.ArgumentList.Add("--dry-run");
+        }
+
         var authToken = _secretsLoader.GetAnthropicAuthToken();
         // Build the child env by stripping credential keys from the parent env copy and
         // re-injecting only what was explicitly loaded from the secrets file (ADR-004).
@@ -80,6 +100,14 @@ public sealed class IngestAgentDispatcher
         return process.ExitCode > 1 && !string.IsNullOrWhiteSpace(stdErr)
             ? throw new InvalidOperationException($"Ingest agent crashed: {stdErr}")
             : process.ExitCode;
+    }
+
+    private static string InferRepoRootFromPagesDir(string pagesDir)
+    {
+        var pages = Path.GetFullPath(pagesDir);
+        var wiki = Directory.GetParent(pages)?.FullName;
+        var root = wiki is null ? Directory.GetCurrentDirectory() : Directory.GetParent(wiki)?.FullName;
+        return root ?? Directory.GetCurrentDirectory();
     }
 
     /// <summary>

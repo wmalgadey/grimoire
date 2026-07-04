@@ -48,8 +48,12 @@ public sealed class RestartReconciler
 
         var text = await File.ReadAllTextAsync(taskPath, cancellationToken);
         text = ReplaceOrAppendFrontmatterValue(text, "status", "failed");
+        text = ReplaceOrAppendFrontmatterValue(text, "finished_at", DateTimeOffset.UtcNow.ToString("O"));
         text = ReplaceOrAppendFrontmatterValue(text, "completed_at", DateTimeOffset.UtcNow.ToString("O"));
         text = ReplaceOrAppendFrontmatterValue(text, "failure_reason", $"\"{reason}\"");
+        text = ReplaceOrAppendFrontmatterValue(text, "created_paths", "[]");
+        text = ReplaceOrAppendFrontmatterValue(text, "updated_paths", "[]");
+        text = ReplaceOrAppendFrontmatterValue(text, "superseded_paths", "[]");
         text = ReplaceOrAppendFrontmatterValue(text, "pages_touched", "[]");
 
         await File.WriteAllTextAsync(taskPath, text, cancellationToken);

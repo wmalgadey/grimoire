@@ -1,0 +1,17 @@
+version: "1"
+deny_by_default: true
+write_allow_prefixes:
+  - wiki/
+  - wiki/tasks/
+read_allow_paths:
+  - backend/src/Grimoire.IngestAgent/InstructionSet/CLAUDE.md
+  - backend/src/Grimoire.IngestAgent/InstructionSet/.claude/skills/
+  - specs/002-ingest-wiki-structure/spec.md
+  - specs/002-ingest-wiki-structure/plan.md
+  - docs/adr/
+rules:
+  - id: deny-env-secrets
+    action: read
+    path_prefix: .env
+    decision: deny
+    reason: secrets files are outside approved ingest context

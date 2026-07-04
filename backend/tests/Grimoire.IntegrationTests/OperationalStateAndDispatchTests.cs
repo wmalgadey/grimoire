@@ -58,7 +58,10 @@ public class OperationalStateAndDispatchTests
             TasksDir: tasksDir,
             IndexPath: indexPath,
             LogPath: logPath,
-            PastedText: null));
+            PastedText: null,
+            GuardrailPolicyPath: Path.Combine(repoRoot, "wiki", "policy", "ingest-guardrails.yml"),
+            InstructionsRoot: repoRoot,
+            SkillName: "ingest-wiki-structure"));
 
         // Agent should fail (exit 1) due to missing source, without making any LLM call.
         Assert.Equal(1, exitCode);

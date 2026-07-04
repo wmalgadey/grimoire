@@ -8,17 +8,27 @@ public sealed class UpdateOrCreateDecisionService
 
     public PageDecision Decide(string inferredTitle, string? indexMarkdown)
     {
+        var inferredSlug = Slugify(inferredTitle);
+
         if (!string.IsNullOrWhiteSpace(indexMarkdown))
         {
             foreach (Match match in IndexEntryRegex.Matches(indexMarkdown))
             {
-                var title = match.Groups["title"].Value;
-                if (string.Equals(title.Trim(), inferredTitle.Trim(), StringComparison.OrdinalIgnoreCase))
+                var title = match.Groups["title"].Value.Trim();
+                var path = match.Groups["path"].Value.Trim();
+
+                var titleMatch = string.Equals(title, inferredTitle.Trim(), StringComparison.OrdinalIgnoreCase);
+                var slugMatch = path.Contains($"/{inferredSlug}.md", StringComparison.OrdinalIgnoreCase)
+                    || path.EndsWith($"{inferredSlug}.md", StringComparison.OrdinalIgnoreCase);
+
+                if (titleMatch || slugMatch)
                 {
                     return new PageDecision(
                         PageDecisionAction.Update,
-                        match.Groups["path"].Value,
-                        "Matched existing page title in index.",
+                        path,
+                        titleMatch
+                            ? "Matched existing page title in index."
+                            : "Matched existing page slug in index.",
                         ExtractCategoryForMatch(indexMarkdown, match.Index));
                 }
             }
@@ -27,9 +37,9 @@ public sealed class UpdateOrCreateDecisionService
         var slug = Slugify(inferredTitle);
         return new PageDecision(
             PageDecisionAction.Create,
-            $"{slug}.md",
+                $"sources/{slug}.md",
             "No semantic title match found in index.",
-            "General");
+                "Sources");
     }
 
     private static string ExtractCategoryForMatch(string markdown, int index)
