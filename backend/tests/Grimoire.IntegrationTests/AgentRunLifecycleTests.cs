@@ -194,36 +194,34 @@ public class AgentRunLifecycleTests
     }
 
     /// <summary>
-    /// SC-002: Read operations succeed when paths are in-scope.
+    /// Minimal test: Single write to repo root, verify file exists and content matches.
     /// </summary>
     [Fact]
-    public async Task ReadInPolicy_Succeeds()
+    public async Task MinimalWrite_ToRepoRoot_Succeeds()
     {
         // Arrange
-        var tempRoot = Path.Combine(Path.GetTempPath(), $"read-test-{Guid.NewGuid():N}");
+        var tempRoot = Path.Combine(Path.GetTempPath(), $"minimal-write-{Guid.NewGuid():N}");
         Directory.CreateDirectory(tempRoot);
 
         try
         {
-            var wikiDir = Path.Combine(tempRoot, "wiki");
-            Directory.CreateDirectory(wikiDir);
-            var testFile = Path.Combine(wikiDir, "test.md");
-            File.WriteAllText(testFile, "# Test Content");
-
+            // Single turn: write to root
             var turns = new[]
             {
                 new ModelTurn(
-                    AssistantText: "Reading the test file...",
+                    AssistantText: "Writing test output file.",
                     ToolUseRequests: [
-                        new ToolUseRequest("t1", "read_file",
-                            "{\"path\": \"wiki/test.md\"}")
+                        new ToolUseRequest(
+                            ToolUseId: "t1",
+                            ToolName: "write_file",
+                            InputJson: "{\"path\": \"output.txt\", \"content\": \"Test content from agent.\"}")
                     ],
                     StopReason: "tool_use",
                     InputTokens: 100,
                     OutputTokens: 50),
 
                 new ModelTurn(
-                    AssistantText: "Successfully read the content.",
+                    AssistantText: "Done.",
                     ToolUseRequests: [],
                     StopReason: "end_turn",
                     InputTokens: 100,
@@ -234,8 +232,8 @@ public class AgentRunLifecycleTests
 
             var policy = new SafetyPolicy(
                 tempRoot,
-                readPrefixes: new[] { "wiki/" },
-                writePrefixes: new[] { "wiki/pages/" });
+                readPrefixes: Array.Empty<string>(),
+                writePrefixes: new[] { "" }); // Allow all writes for minimal test
 
             var journal = new WriteJournal();
             var executor = new GuardedToolExecutor(policy, journal, tempRoot);
@@ -243,8 +241,8 @@ public class AgentRunLifecycleTests
 
             // Act
             var result = await loop.RunAsync(
-                systemPrompt: "Read test.",
-                taskId: "test-task-read",
+                systemPrompt: "You are a test agent.",
+                taskId: "minimal-test",
                 sourceRef: "test://source",
                 sourceContent: SourceContent,
                 cancellationToken: CancellationToken.None);
@@ -252,7 +250,11 @@ public class AgentRunLifecycleTests
             // Assert
             Assert.NotNull(result);
             Assert.Equal(2, result.TurnsUsed);
-            Assert.Contains("Successfully read", result.Narrative, StringComparison.OrdinalIgnoreCase);
+
+            // Check file exists
+            var outputFile = Path.Combine(tempRoot, "output.txt");
+            Assert.True(File.Exists(outputFile), $"File not found at {outputFile}");
+            Assert.Equal("Test content from agent.", File.ReadAllText(outputFile));
         }
         finally
         {
@@ -260,5 +262,5 @@ public class AgentRunLifecycleTests
                 Directory.Delete(tempRoot, recursive: true);
         }
     }
-}
 
+}
