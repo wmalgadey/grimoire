@@ -1,0 +1,31 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "IngestAgent: direct (decision-context-overview)",
+      "type": "coreclr",
+      "request": "launch",
+      "program": "${workspaceFolder}/backend/src/Grimoire.IngestAgent/bin/Debug/net10.0/Grimoire.IngestAgent.dll",
+      "args": [
+        "--task-id",
+        "debug-ingest-001",
+        "--source-ref",
+        "./docs/decision-context-overview.md",
+        "--source-kind",
+        "file",
+        "--pages-dir",
+        "./wiki/pages",
+        "--tasks-dir",
+        "./wiki/tasks",
+        "--index-path",
+        "./wiki/index.md",
+        "--log-path",
+        "./wiki/log.md"
+      ],
+      "cwd": "${workspaceFolder}",
+      "envFile": "${workspaceFolder}/.env",
+      "console": "integratedTerminal",
+      "stopAtEntry": false
+    }
+  ]
+}

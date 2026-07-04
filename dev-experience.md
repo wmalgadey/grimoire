@@ -129,7 +129,7 @@ Das ist kein Scheitern, sondern ein kontrollierter Neustart mit besserem Fokus.
 - Welche ADRs sind Pflicht fuer den Neustart, welche koennen spaeter folgen?
 - ADRs nochmal sauber aufsetzen, sie sind aktuell zu stark angepasst
 
-### 2026-07-01: Problemdomaene erkannt und Constitution geprüft
+## 2026-07-01: Problemdomaene erkannt und Constitution geprüft
 
 Was ich gemacht habe:
 
@@ -145,3 +145,16 @@ Ergebnis:
 - Besseres Gefuehl fuer Redundanzen und moegliche Luecken in den Problemstatements.
 - Schaerferes Verstaendnis, wie gut der aktuelle Problemfokus zur Constitution passt.
 - Praktischere Leitplanken fuer den Neustart als Greenfield-Projekt mit Spec-Kit.
+
+## 2026-07-02: Original LLM-Wiki Idea gegen Problemcontext abgeglichen und erster spec
+
+- Als ersten Spec habe ich einen "Minimal Ingest MVP" geplant
+- Mit /speckit-clarify habe ich diesen gegen die LLM-Wiki Idee "gechallanged"
+- Parallel habe ich die Unstimmigkeiten zwischen dem Problemcontext und der original LLM-Wiki Idee "gechallenged"
+- Final habe ich dann nochmal /speckit-clarify gegen den Problemcontext abgeglichen
+
+## 2026-07-03: Plan des ersten Features
+
+```claude
+/speckit-plan the first feature should define the tech stack, take a look into @file:decision-context-overview.md for guidance which tech stack is reasonable
+```
