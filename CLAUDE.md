@@ -43,6 +43,5 @@ Use these slash commands within Claude Code to guide development:
 
 <!-- SPECKIT START -->
 For additional context about technologies to be used, project structure,
-shell commands, and other important information, read the current plan
-at `specs/001-ingest-minimal/plan.md`.
+shell commands, and other important information, read the current plan.
 <!-- SPECKIT END -->
