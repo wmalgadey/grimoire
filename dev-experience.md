@@ -209,7 +209,7 @@ Nachtrag (gleiche Session): Dokumenten-Governance geklärt
 - Den Decision Context habe ich um die fehlenden Leitplanken ergänzt: North Star Outcomes, Agentic Boundary, Autonomy Ladder, Scale-Annahmen, erweiterte Non-Goals und §11 (Agent-Evaluation & Modell-Lifecycle) — Formulierungen wie "LLM-based processing pipeline" in §2 waren aktive Drift-Keime und sind korrigiert.
 - Zwei wiederkehrende Skills angelegt, damit das Ritual nicht von meiner Disziplin abhängt: /dev-log (dieses Log pflegen) und /drift-check (Implementierung gegen Vision auditieren, Constitution früh nachschärfen).
 - Zusätzlich habe ich mir eigene Skills gebaut:
-  - /dev-log (Lernpfad festhalten) und 
+  - /dev-log (Lernpfad festhalten) und
   - /drift-check (Umsetzung regelmaessig gegen Vision und Constitution pruefen).
 
 ## 2026-07-05: quickstart.md und /speckit-implement Erkenntnisse
@@ -222,3 +222,11 @@ Nachtrag (gleiche Session): Dokumenten-Governance geklärt
 - Etwas, dass ich scheinbar auch beim "init" nicht bedacht habe:
   - Logging fehlt
   - Und zur Test-Coverage habe ich noch gar nichts geschrieben. Aktuell ist die Coverage nicht wirklich nützlich. Ich will aber auch nicht auf 100% wenn die Tests dazu dann nutzlos bzw. nicht den Anforderungen entsprechen.
+
+Per Chat Befunde und Remediation erarbeitet
+
+- [[docs/befunde-remediation-prompts.md]]
+
+und Prompts erzeugt, mit denen die Aufgaben umgesetzt werden können.
+
+- `/speckit-converge` sollte ich mir mal genauer anschauen!

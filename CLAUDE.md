@@ -26,6 +26,7 @@ enforceable once extracted into the constitution or an Accepted ADR.
 | `docs/adr/` | Architectural decisions incl. tech-stack rationale (MADR) | Yes, once Accepted (Principle III) |
 | `docs/decision-context-overview.md` | Problem space & product vision (North Star) | Only via extraction into constitution/ADRs; audited with `/drift-check` |
 | `specs/<feature>/` | Feature-scoped SDD artifacts | Yes, for that feature |
+| `docs/befunde-remediation-prompts.md` | Prompt library for remediation workflows | No — source material only; never cite as requirements in specs/plans/ADRs |
 | `docs/llm-wiki-*.md`, `docs/project-conversation.md` | Source material (absorbed) | No — never cite as requirements |
 | `dev-experience.md` | Personal learning log (German) | No — outside SDD; never cite in specs/plans/ADRs; updated via `/dev-log` |
 
