@@ -89,20 +89,37 @@ Submit a source containing e.g.:
 action, target, reason; the legitimate wiki update still completed; `ingest.tool.denied`
 events visible in the dashboard (FR-009, SC-010 harness half).
 
-## 5. Agent-behavior evaluations (final phase, gates DoD)
+## 5. Agent-behavior evaluations (local-only, final phase, gates DoD)
 
 ```bash
-GRIMOIRE_EVAL=1 dotnet test tests/Grimoire.AgentEvals
+cd backend
+set -a
+source ../.env
+set +a
+GRIMOIRE_EVAL=1 dotnet test tests/Grimoire.AgentEvals --configuration Release
 ```
 
-Opt-in (skipped without `GRIMOIRE_EVAL=1` + key). Runs sampled ingests against committed
-seed-wiki fixtures and scores against the spec thresholds: SC-006 ≥90%
-update-over-duplicate, SC-007 ≥95% convention adherence, SC-008 ≥95% catalog
-discoverability, SC-009 ≥90% instruction-change adoption, SC-010 100% denial + ≥90%
-completion under adversarial sources. Transcripts are recorded for review.
+Run this locally or on infrastructure you control. Do not store the Anthropic token in
+GitHub Actions for this feature. The eval suite is intentionally outside the default CI
+path and remains opt-in; without both `GRIMOIRE_EVAL=1` and a real
+`ANTHROPIC_AUTH_TOKEN`, the tests skip by design.
+
+Recommended local runbook:
+
+1. Keep `ANTHROPIC_AUTH_TOKEN` only in the repository-root `.env` on your machine.
+2. Load the variable into the current shell with `set -a && source ../.env && set +a`.
+3. Run `GRIMOIRE_EVAL=1 dotnet test tests/Grimoire.AgentEvals --configuration Release`.
+4. Review the recorded transcripts for any threshold failures before closing T039.
+
+The suite runs sampled ingests against committed seed-wiki fixtures and scores against
+the spec thresholds: SC-006 ≥90% update-over-duplicate, SC-007 ≥95% convention
+adherence, SC-008 ≥95% catalog discoverability, SC-009 ≥90% instruction-change
+adoption, SC-010 100% denial + ≥90% completion under adversarial sources. Transcripts
+are recorded for review.
 
 ## Definition of Done checkpoint
 
-Feature is DONE when: suites 1 and 5 pass at their required levels, ADR-006 is
+Feature is DONE when: suite 1 passes in deterministic CI, suite 5 passes from a local
+or otherwise self-controlled eval run with a real Anthropic token, ADR-006 is
 **Accepted**, observability assertions (in-memory exporter) cover every signal in
 `plan.md ## Observability`, and the constitution's DoD checklist holds.

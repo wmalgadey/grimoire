@@ -166,6 +166,8 @@ earlier.
 - [X] T039a Structured conversation content blocks: replace flattened pseudo-text tool protocol in `backend/src/Grimoire.IngestAgent/AgentCore/AgentLoop.cs` with typed `ConversationMessage` content blocks in `backend/src/Grimoire.IngestAgent/AgentCore/IModelClient.cs`, mapped in `backend/src/Grimoire.IngestAgent/AgentCore/AnthropicModelClient.cs` to SDK `ToolUseBlockParam` / `ToolResultBlockParam`; ensure exactly one `tool_result` per `tool_use_id` and all tool results for a turn are sent in one user message; keep hermetic tests green
 - [ ] T039 Run the full `specs/002-agentic-ingest-core/quickstart.md` validation (hermetic suite, live E2E, instruction-edit run, injection probe, eval suite) and verify every constitution Definition-of-Done checkbox for this feature
 
+  Completion notes (2026-07-05): local equivalents of the deterministic CI commands were executed for T040-T041. `dotnet build backend/Grimoire.slnx --configuration Release` succeeded, followed by `dotnet test backend/tests/Grimoire.ArchTests --configuration Release` (8 passed), `dotnet test backend/tests/Grimoire.Domain.UnitTests --configuration Release` (11 passed), and `dotnet test backend/tests/Grimoire.IntegrationTests --configuration Release` (26 passed) with `ANTHROPIC_AUTH_TOKEN` unset. `GRIMOIRE_EVAL=1 dotnet test backend/tests/Grimoire.AgentEvals --configuration Release` was also verified to skip cleanly without a token, confirming evals are excluded from default CI and must be run locally with a real token per `quickstart.md`.
+
 ---
 
 ## Dependencies & Execution Order
@@ -178,7 +180,8 @@ earlier.
 - **Phase 3 US1 (T016–T022)**: after Phase 2; T017→(T005, T010, T011), T018→(T009, T010, T012, T016, T017), T019/T020→T018, T021→(T018, T020), T022→T018
 - **Phase 4 US2 (T023–T025)**: after T018 (run pipeline exists); independent of US3
 - **Phase 5 US3 (T026–T029)**: after T018; T026–T028 exercise foundational executor behavior through the real run pipeline; independent of US2
-- **Phase 6 (T030–T039)**: T030–T032 after all stories; T033 after T018; T034–T038 after T033 (and T002/T029 content); T039a after T034–T038; T039 last
+- **Phase 6 (T030–T039)**: T030–T032 after all stories; T033 after T018; T034–T038 after T033 (and T002/T029 content); T039a after T034–T038; T039 remains the final DoD validation task but now depends on Phase 7 completion
+- **Phase 7 (T040–T042)**: T040 ∥ T041 after T039a; T042 after T040 and T041; T039 cannot be closed until T042 is complete
 
 ### User Story Dependencies
 
@@ -193,6 +196,7 @@ earlier.
 - T016 can start while T017 is in progress on the seam types
 - T023 ∥ T024 ∥ T025 (US2) and T026 ∥ T027 ∥ T028 ∥ T029 (US3); US2 and US3 phases can run fully in parallel
 - T030 ∥ T031 ∥ T032; T034–T038 all parallel after T033
+- T040 ∥ T041 after T039a; T042 after both workflows exist and have been validated once
 
 ## Parallel Example: User Story 3
 
@@ -231,3 +235,13 @@ Task: "Strengthen injection preamble in agents/ingest/CLAUDE.md"
 - Commit after each task; document the T001 Red/Green probe in its commit message
 - Wiki-content judgment belongs in `agents/ingest/**` files only — any temptation to
   encode page conventions in C# during T011/T017/T018 is a Principle V violation
+
+---
+
+## Phase 7: Convergence
+
+**Purpose**: Close the remaining CI/CD enforcement gap before final DoD validation.
+
+- [X] T040 Create the standard CI workflow at `.github/workflows/ci.yml` to run on push/PR with deterministic gates only: `dotnet build` for `backend/Grimoire.slnx` plus `dotnet test` for `backend/tests/Grimoire.ArchTests`, `backend/tests/Grimoire.Domain.UnitTests`, and hermetic `backend/tests/Grimoire.IntegrationTests` without setting `ANTHROPIC_AUTH_TOKEN`; keep this workflow green in environments with no API key per Constitution II and DoD CI/CD requirement
+- [X] T041 Exclude evals from the default CI path by ensuring `backend/tests/Grimoire.AgentEvals` is not executed in `ci.yml`, and document the opt-in local execution path in `specs/002-agentic-ingest-core/quickstart.md` so agent-behavior evals run only on developer-controlled infrastructure with a real token
+- [X] T042 Update `specs/002-agentic-ingest-core/tasks.md` dependency notes to require T040-T041 completion before T039 final DoD validation, then run the CI workflow(s) once and record pass evidence in the completion notes for T039
