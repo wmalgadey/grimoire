@@ -42,9 +42,8 @@ public sealed class IngestLogAppender
         span?.SetTag("task_id", taskId);
         span?.SetTag("outcome", outcome);
 
+        EnsureParentDirectory(logPath);
         await File.AppendAllTextAsync(logPath, line, cancellationToken);
-
-        IngestAgentMetrics.RecordIngest(outcome, 0, "none", 0);
     }
 
     /// <summary>
@@ -63,7 +62,16 @@ public sealed class IngestLogAppender
         using var span = IngestAgentTracing.ActivitySource.StartActivity("ingest_agent.append_log");
         span?.SetTag("outcome", outcome);
 
+        EnsureParentDirectory(logPath);
         await File.AppendAllTextAsync(logPath, line, cancellationToken);
     }
-}
 
+    private static void EnsureParentDirectory(string logPath)
+    {
+        var logDir = Path.GetDirectoryName(logPath);
+        if (!string.IsNullOrWhiteSpace(logDir))
+        {
+            Directory.CreateDirectory(logDir);
+        }
+    }
+}

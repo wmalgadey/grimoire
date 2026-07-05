@@ -5,6 +5,7 @@ namespace Grimoire.IngestAgent.Guardrails;
 /// </summary>
 public sealed record DeniedActionRecord(
     string Action,
-    string Target,
+    string RequestedTarget,
+    string CanonicalTarget,
     string Reason,
     int Turn);

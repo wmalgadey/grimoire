@@ -33,6 +33,20 @@ public class ObservabilityTraceTests
         Assert.Contains("ingest_agent.append_log", spanNames);
     }
 
+    [Fact]
+    public async Task IngestLogAppender_EnsureLogEntry_CreatesMissingDirectory()
+    {
+        var root = Path.Combine(Path.GetTempPath(), $"trace-test-{Guid.NewGuid():N}");
+        var logPath = Path.Combine(root, "wiki", "log.md");
+
+        var appender = new IngestLogAppender();
+        await appender.EnsureLogEntryAsync(logPath, "completed", "source.md", "task-001", forceAppend: false, CancellationToken.None);
+
+        Assert.True(File.Exists(logPath));
+        var content = await File.ReadAllTextAsync(logPath);
+        Assert.Contains("task-001", content, StringComparison.Ordinal);
+    }
+
     // Old WriteWikiPage span test removed as part of T020 - pipeline replacement
     // New trace tests for agent loop spans (ingest_agent.run, model_turn, tool_call, rollback)
     // will be added as part of T032 phase 6 implementation

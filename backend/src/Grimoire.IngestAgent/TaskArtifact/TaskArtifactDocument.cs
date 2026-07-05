@@ -13,7 +13,12 @@ public sealed record PolicyRecord(string Path, int Version, string Sha256);
 /// <summary>
 /// One policy denial recorded in the task artifact (FR-008, SC-002).
 /// </summary>
-public sealed record DeniedActionEntry(string Action, string Target, string Reason, int Turn);
+public sealed record DeniedActionEntry(
+    string Action,
+    string RequestedTarget,
+    string CanonicalTarget,
+    string Reason,
+    int Turn);
 
 /// <summary>
 /// Per-run task artifact document (v2 — agentic core).
@@ -42,4 +47,3 @@ public sealed record TaskArtifactDocument(
     string? Model = null,
     int? Turns = null,
     bool? RolledBack = null);
-

@@ -189,6 +189,9 @@ public class AgentRunLifecycleTests
             // Forbidden file should not exist
             var forbiddenFile = Path.Combine(tempRoot, "forbidden", "file.md");
             Assert.False(File.Exists(forbiddenFile));
+            Assert.Single(executor.Denials);
+            Assert.Equal("forbidden/file.md", executor.Denials[0].RequestedTarget);
+            Assert.Equal(forbiddenFile, executor.Denials[0].CanonicalTarget);
 
             // Allowed file should exist
             var allowedFile = Path.Combine(wikiDir, "pages", "allowed.md");

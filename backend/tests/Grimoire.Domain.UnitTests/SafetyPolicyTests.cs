@@ -146,4 +146,15 @@ public class SafetyPolicyTests
         Assert.False(decision.IsAllowed);
         Assert.Equal("traversal", decision.DenialReason);
     }
+
+    [Fact]
+    public void SiblingPathWithSharedPrefix_DeniedWithTraversalReason()
+    {
+        var policy = BuildPolicy(readPrefixes: ["/repo/wiki/"]);
+
+        var decision = policy.Evaluate("/repo2/wiki/index.md", isWrite: false);
+
+        Assert.False(decision.IsAllowed);
+        Assert.Equal("traversal", decision.DenialReason);
+    }
 }

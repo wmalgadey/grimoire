@@ -103,7 +103,7 @@ try
 			PagesCreated: touchedPaths.Select(p => Path.GetRelativePath(repoRoot, p)).ToList(),
 			PagesUpdated: [],
 			PagesSuperseded: [],
-			DeniedActions: executor.Denials.Select(d => new DeniedActionEntry(d.Action, d.Target, d.Reason, d.Turn)).ToList(),
+			DeniedActions: executor.Denials.Select(d => new DeniedActionEntry(d.Action, d.RequestedTarget, d.CanonicalTarget, d.Reason, d.Turn)).ToList(),
 			InstructionFiles: instructionSet.Files.Select(f => new InstructionFileRecord(f.Path, f.Sha256)).ToList(),
 			Policy: new PolicyRecord(loadedPolicy.Identity.Path, loadedPolicy.Identity.Version, loadedPolicy.Identity.Sha256),
 			Model: modelClient.ModelId,

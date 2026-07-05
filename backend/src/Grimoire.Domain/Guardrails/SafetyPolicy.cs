@@ -48,7 +48,7 @@ public sealed class SafetyPolicy
     {
         // Traversal check: if the canonical target escapes the repository root,
         // deny regardless of any allow rules.
-        if (!canonicalTarget.StartsWith(_repositoryRoot, StringComparison.Ordinal))
+        if (!IsWithinRepositoryRoot(canonicalTarget))
         {
             return PolicyDecision.Deny("traversal");
         }
@@ -64,5 +64,13 @@ public sealed class SafetyPolicy
         }
 
         return PolicyDecision.Deny(isWrite ? "out_of_scope" : "no_rule");
+    }
+
+    private bool IsWithinRepositoryRoot(string canonicalTarget)
+    {
+        var relative = Path.GetRelativePath(_repositoryRoot, canonicalTarget);
+        return !Path.IsPathRooted(relative) &&
+               !relative.Equals("..", StringComparison.Ordinal) &&
+               !relative.StartsWith($"..{Path.DirectorySeparatorChar}", StringComparison.Ordinal);
     }
 }

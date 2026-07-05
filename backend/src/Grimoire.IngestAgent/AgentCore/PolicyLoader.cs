@@ -100,15 +100,19 @@ public sealed class PolicyLoader
             if (string.IsNullOrWhiteSpace(rule.PathPrefix))
                 continue;
 
+            var platformPathPrefix = rule.PathPrefix
+                .Replace(Path.AltDirectorySeparatorChar, Path.DirectorySeparatorChar);
+
             // Resolve relative prefix against repository root.
-            var absolute = Path.IsPathRooted(rule.PathPrefix)
-                ? rule.PathPrefix
-                : Path.Combine(_repositoryRoot, rule.PathPrefix);
+            var absolute = Path.IsPathRooted(platformPathPrefix)
+                ? platformPathPrefix
+                : Path.Combine(_repositoryRoot, platformPathPrefix);
+            var canonical = Path.GetFullPath(absolute);
 
             // Ensure directory prefixes end with the directory separator so prefix
             // matching does not accidentally permit sibling paths.
-            var normalized = absolute;
-            if (rule.PathPrefix.EndsWith('/') || rule.PathPrefix.EndsWith(Path.DirectorySeparatorChar))
+            var normalized = canonical;
+            if (platformPathPrefix.EndsWith(Path.DirectorySeparatorChar))
             {
                 normalized = normalized.TrimEnd(Path.DirectorySeparatorChar) + Path.DirectorySeparatorChar;
             }

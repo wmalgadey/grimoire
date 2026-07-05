@@ -76,7 +76,7 @@ public sealed class GuardedToolExecutor
 
         if (!policyResult.IsAllowed)
         {
-            return RecordDenial(ToolRegistry.ListFiles, relativePath, policyResult.DenialReason!, turn);
+            return RecordDenial(ToolRegistry.ListFiles, relativePath, canonical, policyResult.DenialReason!, turn);
         }
 
         EmitAllowed(ToolRegistry.ListFiles, canonical, turn);
@@ -116,7 +116,7 @@ public sealed class GuardedToolExecutor
 
         if (!policyResult.IsAllowed)
         {
-            return RecordDenial(ToolRegistry.ReadFile, relativePath, policyResult.DenialReason!, turn);
+            return RecordDenial(ToolRegistry.ReadFile, relativePath, canonical, policyResult.DenialReason!, turn);
         }
 
         EmitAllowed(ToolRegistry.ReadFile, canonical, turn);
@@ -152,7 +152,7 @@ public sealed class GuardedToolExecutor
 
         if (!policyResult.IsAllowed)
         {
-            return RecordDenial(ToolRegistry.WriteFile, relativePath, policyResult.DenialReason!, turn);
+            return RecordDenial(ToolRegistry.WriteFile, relativePath, canonical, policyResult.DenialReason!, turn);
         }
 
         // Executor obligations (contract order):
@@ -192,15 +192,17 @@ public sealed class GuardedToolExecutor
 
     // ── helpers ──────────────────────────────────────────────────────────────────
 
-    private ToolExecutionResult RecordDenial(string action, string target, string reason, int turn)
+    private ToolExecutionResult RecordDenial(string action, string requestedTarget, string canonicalTarget, string reason, int turn)
     {
-        var record = new DeniedActionRecord(action, target, reason, turn);
+        var record = new DeniedActionRecord(action, requestedTarget, canonicalTarget, reason, turn);
         _denials.Add(record);
 
         using var span = IngestAgentTracing.ActivitySource.StartActivity("ingest_agent.tool_call");
         span?.SetTag("tool", action);
-        span?.SetTag("target", target);
+        span?.SetTag("target", canonicalTarget);
+        span?.SetTag("requested_target", requestedTarget);
         span?.SetTag("decision", "denied");
+        span?.SetTag("turn", turn);
 
         IngestAgentMetrics.RecordToolCall(action, "denied");
         IngestAgentMetrics.RecordActionDenied(action, reason);
