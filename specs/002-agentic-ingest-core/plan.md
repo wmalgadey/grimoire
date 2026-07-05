@@ -130,6 +130,14 @@ agentic core:
 | `wiki.ingest.runs_rolled_back_total` | Counter | Failed runs whose journal rollback executed (FR-013, SC-004) | `restored_ok=true\|false` |
 | `wiki.ingest.instruction_load_failures_total` | Counter | Runs aborted because instructions/policy could not load (FR-003) | `artifact=instructions\|policy` |
 | `wiki.ingest.model_tokens_total` | Counter | Input/output tokens reported by the API | `direction=input\|output` |
+| `wiki.ingest.model_tool_requests_total` | Counter | Tool requests returned by model turns (loop diagnostics) | `stop_reason` |
+| `wiki.ingest.no_tool_turns_total` | Counter | Model turns without tool requests, by loop outcome (terminal / continue / invalid — diagnoses loop-termination behavior) | `stop_reason`, `outcome=terminal\|continue\|invalid_tool_use\|invalid_stop_reason` |
+
+> Amendment (2026-07-05, convergence T052): the two loop-diagnostic counters were
+> introduced during implementation to make the agent loop's termination decisions
+> (end_turn vs. continue vs. invalid stop states) observable; they are covered by
+> deterministic assertions in `ObservabilityMetricsTests` and are recorded here per
+> Constitution IV so the plan table remains the complete metric inventory.
 
 ### Structured Log Events
 

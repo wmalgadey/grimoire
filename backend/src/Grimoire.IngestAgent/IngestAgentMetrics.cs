@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using System.Diagnostics.Metrics;
 using Grimoire.IngestAgent.AgentCore;
+using Grimoire.IngestAgent.Guardrails;
 
 namespace Grimoire.IngestAgent;
 
@@ -53,25 +54,37 @@ public static class IngestAgentMetrics
         Meter.CreateCounter<long>("wiki.ingest.no_tool_turns_total",
             description: "Model turns with zero tool requests, labeled by stop reason and loop outcome");
 
-    public static void RecordIngest(string outcome, int pagesTouched, string pageAction, double durationSeconds)
+    public static void RecordIngest(string outcome, double durationSeconds)
     {
         using var span = StartMetricSpan("wiki.ingest.operations_total");
         span?.SetTag("outcome", outcome);
-        span?.SetTag("pages_touched", pagesTouched);
-        span?.SetTag("page_action", pageAction);
 
         _operationsTotal.Add(1, new KeyValuePair<string, object?>("outcome", outcome));
-        if (pagesTouched > 0)
-            _pagesTouchedTotal.Add(pagesTouched, new KeyValuePair<string, object?>("action", pageAction));
         _durationSeconds.Record(durationSeconds, new KeyValuePair<string, object?>("outcome", outcome));
     }
 
-    public static void RecordPageTouched(string action)
+    /// <summary>
+    /// Records <c>wiki.ingest.pages_touched_total</c> with the plan-mandated
+    /// <c>action=created|updated|superseded</c> split derived from the
+    /// journal-backed run outcome.
+    /// </summary>
+    public static void RecordPagesTouched(WriteJournal journal)
     {
+        RecordPagesTouched("created", journal.CreatedPaths.Count);
+        RecordPagesTouched("updated", journal.UpdatedPaths.Count);
+        RecordPagesTouched("superseded", journal.SupersededPaths.Count);
+    }
+
+    public static void RecordPagesTouched(string action, int count)
+    {
+        if (count <= 0)
+            return;
+
         using var span = StartMetricSpan("wiki.ingest.pages_touched_total");
         span?.SetTag("action", action);
+        span?.SetTag("count", count);
 
-        _pagesTouchedTotal.Add(1, new KeyValuePair<string, object?>("action", action));
+        _pagesTouchedTotal.Add(count, new KeyValuePair<string, object?>("action", action));
     }
 
     public static void RecordAgentTurns(int turns, string outcome)

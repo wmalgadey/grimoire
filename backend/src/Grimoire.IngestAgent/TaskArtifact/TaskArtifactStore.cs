@@ -51,6 +51,22 @@ public sealed class TaskArtifactStore
         sb.AppendLine();
         sb.Append(doc.Narrative.TrimEnd());
         sb.AppendLine();
+
+        // Contract (task-artifact-format.md): completed artifacts with denials carry a
+        // human-readable body section mirroring the denied_actions frontmatter.
+        if (doc.Status == "completed" && doc.DeniedActions is { Count: > 0 })
+        {
+            sb.AppendLine();
+            sb.AppendLine("## Denied actions");
+            sb.AppendLine();
+            foreach (var denial in doc.DeniedActions)
+            {
+                sb.AppendLine(
+                    $"- `{denial.Action}` on `{denial.RequestedTarget}` " +
+                    $"(canonical: `{denial.CanonicalTarget}`) — denied: {denial.Reason} (turn {denial.Turn})");
+            }
+        }
+
         return sb.ToString();
     }
 

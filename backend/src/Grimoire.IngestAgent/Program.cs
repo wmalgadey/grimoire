@@ -164,7 +164,8 @@ try
         journal,
         executor.Denials.Count);
 
-    IngestAgentMetrics.RecordIngest("completed", touchedPaths.Count, "touched",
+    IngestAgentMetrics.RecordPagesTouched(journal);
+    IngestAgentMetrics.RecordIngest("completed",
         (DateTimeOffset.UtcNow - startTime).TotalSeconds);
 
     return 0;
@@ -242,7 +243,7 @@ static async Task FinalizeFailedAsync(
         options.LogPath, "failed", options.SourceRef, options.TaskId,
         forceAppend: true, CancellationToken.None);
 
-    IngestAgentMetrics.RecordIngest("failed", 0, "none",
+    IngestAgentMetrics.RecordIngest("failed",
         (DateTimeOffset.UtcNow - startTime).TotalSeconds);
 }
 
