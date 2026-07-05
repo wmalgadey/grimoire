@@ -230,3 +230,16 @@ Per Chat Befunde und Remediation erarbeitet
 und Prompts erzeugt, mit denen die Aufgaben umgesetzt werden können.
 
 - `/speckit-converge` sollte ich mir mal genauer anschauen!
+
+---
+
+Das zweite Feature hatte es dann auch in Sich!
+
+1. Agent-Loop hatte ich falsch im Spec definiert
+2. Div. Aussagen in der constitution.md führten unweigerlich dazu, dass der Code in Richtung ETL-Pipeline konvergierte
+3. Test-Coverage war nicht teil der constitution.md, bzw. nicht verbindlicher Teil des Contracts.
+4. Genauso Logging und Trace/Log-Spans in Otel
+
+---
+
+Dazu kommt, dass mein Github Copilot Abo bereits nach dieser Mega-Session auf 85% ist, und mit Fable klappt zwar die implementierung besser (am Beispiel Trace-Spans war das spürbar), aber mein Session-Limit ist damit auch in 20 Minuten weggeatmet.
