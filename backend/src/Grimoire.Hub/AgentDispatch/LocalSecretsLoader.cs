@@ -17,6 +17,12 @@ public sealed class LocalSecretsLoader
     /// </summary>
     public string? GetIngestModel() => ReadEnvVar("GRIMOIRE_INGEST_MODEL");
 
+    /// <summary>
+    /// Returns the ingest loop token cap override if set in the .env file, or null
+    /// if the agent default should be used.
+    /// </summary>
+    public string? GetIngestTokenCap() => ReadEnvVar("GRIMOIRE_INGEST_TOKEN_CAP");
+
     private string? ReadEnvVar(string varName)
     {
         if (!File.Exists(_envFilePath))

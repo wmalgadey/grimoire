@@ -49,6 +49,7 @@ public sealed class IngestAgentDispatcher
 
         var authToken = _secretsLoader.GetAnthropicAuthToken();
         var ingestModel = _secretsLoader.GetIngestModel();
+        var ingestTokenCap = _secretsLoader.GetIngestTokenCap();
         // Build the child env by stripping credential keys from the parent env copy and
         // re-injecting only what was explicitly loaded from the secrets file (ADR-004).
         // Convert ProcessStartInfo.Environment (nullable values) to a non-nullable dict first.
@@ -59,7 +60,7 @@ public sealed class IngestAgentDispatcher
                 baseEnv[key] = value;
         }
 
-        var childEnv = BuildChildEnvironment(baseEnv, authToken, ingestModel);
+        var childEnv = BuildChildEnvironment(baseEnv, authToken, ingestModel, ingestTokenCap);
         startInfo.Environment.Clear();
         foreach (var (key, value) in childEnv)
         {
@@ -97,7 +98,8 @@ public sealed class IngestAgentDispatcher
     public static Dictionary<string, string> BuildChildEnvironment(
         IDictionary<string, string> baseEnv,
         string? authToken,
-        string? ingestModel = null)
+        string? ingestModel = null,
+        string? ingestTokenCap = null)
     {
         var env = new Dictionary<string, string>(baseEnv, StringComparer.OrdinalIgnoreCase);
         env.Remove("ANTHROPIC_API_KEY");
@@ -107,10 +109,22 @@ public sealed class IngestAgentDispatcher
             env["ANTHROPIC_AUTH_TOKEN"] = authToken;
         }
 
+        var effectiveModel = !string.IsNullOrWhiteSpace(ingestModel)
+            ? ingestModel
+            : (baseEnv.TryGetValue("GRIMOIRE_INGEST_MODEL", out var inheritedModel) ? inheritedModel : null);
         env.Remove("GRIMOIRE_INGEST_MODEL");
-        if (!string.IsNullOrWhiteSpace(ingestModel))
+        if (!string.IsNullOrWhiteSpace(effectiveModel))
         {
-            env["GRIMOIRE_INGEST_MODEL"] = ingestModel;
+            env["GRIMOIRE_INGEST_MODEL"] = effectiveModel;
+        }
+
+        var effectiveTokenCap = !string.IsNullOrWhiteSpace(ingestTokenCap)
+            ? ingestTokenCap
+            : (baseEnv.TryGetValue("GRIMOIRE_INGEST_TOKEN_CAP", out var inheritedTokenCap) ? inheritedTokenCap : null);
+        env.Remove("GRIMOIRE_INGEST_TOKEN_CAP");
+        if (!string.IsNullOrWhiteSpace(effectiveTokenCap))
+        {
+            env["GRIMOIRE_INGEST_TOKEN_CAP"] = effectiveTokenCap;
         }
 
         return env;

@@ -108,4 +108,62 @@ public class ObservabilityMetricsTests
         Assert.Single(measurements);
         Assert.Equal(3.14, measurements[0], precision: 5);
     }
+
+    [Fact]
+    public void IngestAgentMetrics_RecordModelToolRequests_EmitsCount_WithStopReasonTag()
+    {
+        var measurements = new List<(long Value, string StopReason)>();
+
+        using var listener = new MeterListener();
+        listener.InstrumentPublished = (instrument, l) =>
+        {
+            if (instrument.Meter.Name == "Grimoire.IngestAgent" &&
+                instrument.Name == "wiki.ingest.model_tool_requests_total")
+            {
+                l.EnableMeasurementEvents(instrument);
+            }
+        };
+        listener.SetMeasurementEventCallback<long>((_, value, tags, _) =>
+        {
+            var stopReason = tags.ToArray().FirstOrDefault(t => t.Key == "stop_reason").Value?.ToString() ?? "";
+            measurements.Add((value, stopReason));
+        });
+        listener.Start();
+
+        IngestAgentMetrics.RecordModelToolRequests(3, "tool_use");
+
+        Assert.Single(measurements);
+        Assert.Equal(3L, measurements[0].Value);
+        Assert.Equal("tool_use", measurements[0].StopReason);
+    }
+
+    [Fact]
+    public void IngestAgentMetrics_RecordNoToolTurn_EmitsCounter_WithOutcomeAndStopReason()
+    {
+        var measurements = new List<(long Value, string StopReason, string Outcome)>();
+
+        using var listener = new MeterListener();
+        listener.InstrumentPublished = (instrument, l) =>
+        {
+            if (instrument.Meter.Name == "Grimoire.IngestAgent" &&
+                instrument.Name == "wiki.ingest.no_tool_turns_total")
+            {
+                l.EnableMeasurementEvents(instrument);
+            }
+        };
+        listener.SetMeasurementEventCallback<long>((_, value, tags, _) =>
+        {
+            var stopReason = tags.ToArray().FirstOrDefault(t => t.Key == "stop_reason").Value?.ToString() ?? "";
+            var outcome = tags.ToArray().FirstOrDefault(t => t.Key == "outcome").Value?.ToString() ?? "";
+            measurements.Add((value, stopReason, outcome));
+        });
+        listener.Start();
+
+        IngestAgentMetrics.RecordNoToolTurn("stop_sequence", "terminal");
+
+        Assert.Single(measurements);
+        Assert.Equal(1L, measurements[0].Value);
+        Assert.Equal("stop_sequence", measurements[0].StopReason);
+        Assert.Equal("terminal", measurements[0].Outcome);
+    }
 }

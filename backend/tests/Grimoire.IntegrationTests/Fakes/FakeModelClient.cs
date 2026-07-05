@@ -18,6 +18,8 @@ public sealed class FakeModelClient : IModelClient
         _script = new Queue<ModelTurn>(script);
     }
 
+    public string ModelId => "fake-model";
+
     /// <summary>All conversation payloads received by the fake, in call order.</summary>
     public IReadOnlyList<RecordedCall> Calls => _calls;
 

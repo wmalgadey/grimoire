@@ -49,14 +49,14 @@ integration suite must cover, via scripted `FakeModelClient` sequences:
 # Terminal 1 — OTel viewer (optional but recommended)
 docker run --rm -p 18888:18888 -p 4317:18889 mcr.microsoft.com/dotnet/aspire-dashboard
 
-# Terminal 2 — Hub
-dotnet run --project src/Grimoire.Hub
-
-# Terminal 3 — submit a source that overlaps an existing wiki page
-curl -X POST http://localhost:5000/ingest \
-  -H "Content-Type: application/json" \
-  -d '{"sourceKind":"pasted_text","content":"<text overlapping an existing page topic>"}'
+# Terminal 2 — Hub submit command (current contract)
+printf '%s\n' '<text overlapping an existing page topic>' \
+  | dotnet run --no-launch-profile --project src/Grimoire.Hub -- \
+    submit-source --source-kind pasted_text --path quickstart-live
 ```
+
+Note: The current Hub contract submits ingest runs through the `submit-source`
+command instead of an HTTP `/ingest` endpoint.
 
 **Expected outcome** (US1):
 

@@ -71,8 +71,13 @@ public class AgentRunLifecycleTests
             // Set up executor with deny-by-default policy
             var policy = new SafetyPolicy(
                 tempRoot,
-                readPrefixes: new[] { "wiki/" },
-                writePrefixes: new[] { "wiki/pages/", "wiki/index.md", "wiki/log.md" });
+                readPrefixes: new[] { Path.Combine(tempRoot, "wiki") + Path.DirectorySeparatorChar },
+                writePrefixes: new[]
+                {
+                    Path.Combine(tempRoot, "wiki", "pages") + Path.DirectorySeparatorChar,
+                    Path.Combine(tempRoot, "wiki", "index.md"),
+                    Path.Combine(tempRoot, "wiki", "log.md"),
+                });
 
             var journal = new WriteJournal();
             var executor = new GuardedToolExecutor(policy, journal, tempRoot);
@@ -158,8 +163,12 @@ public class AgentRunLifecycleTests
 
             var policy = new SafetyPolicy(
                 tempRoot,
-                readPrefixes: new[] { "wiki/" },
-                writePrefixes: new[] { "wiki/pages/", "wiki/index.md" });
+                readPrefixes: new[] { Path.Combine(tempRoot, "wiki") + Path.DirectorySeparatorChar },
+                writePrefixes: new[]
+                {
+                    Path.Combine(tempRoot, "wiki", "pages") + Path.DirectorySeparatorChar,
+                    Path.Combine(tempRoot, "wiki", "index.md"),
+                });
 
             var journal = new WriteJournal();
             var executor = new GuardedToolExecutor(policy, journal, tempRoot);
@@ -176,7 +185,7 @@ public class AgentRunLifecycleTests
             // Assert
             Assert.NotNull(result);
             Assert.Equal(3, result.TurnsUsed);
-            
+
             // Forbidden file should not exist
             var forbiddenFile = Path.Combine(tempRoot, "forbidden", "file.md");
             Assert.False(File.Exists(forbiddenFile));
@@ -233,7 +242,7 @@ public class AgentRunLifecycleTests
             var policy = new SafetyPolicy(
                 tempRoot,
                 readPrefixes: Array.Empty<string>(),
-                writePrefixes: new[] { "" }); // Allow all writes for minimal test
+                writePrefixes: new[] { tempRoot + Path.DirectorySeparatorChar }); // Allow all writes under the temp repo root
 
             var journal = new WriteJournal();
             var executor = new GuardedToolExecutor(policy, journal, tempRoot);
@@ -255,6 +264,212 @@ public class AgentRunLifecycleTests
             var outputFile = Path.Combine(tempRoot, "output.txt");
             Assert.True(File.Exists(outputFile), $"File not found at {outputFile}");
             Assert.Equal("Test content from agent.", File.ReadAllText(outputFile));
+        }
+        finally
+        {
+            if (Directory.Exists(tempRoot))
+                Directory.Delete(tempRoot, recursive: true);
+        }
+    }
+
+    [Fact]
+    public async Task NonTerminalTurnWithoutTools_DoesNotEmitEmptyUserMessage()
+    {
+        // Arrange
+        var tempRoot = Path.Combine(Path.GetTempPath(), $"no-empty-user-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(tempRoot);
+
+        try
+        {
+            var turns = new[]
+            {
+                new ModelTurn(
+                    AssistantText: "I need one more turn.",
+                    ToolUseRequests: [],
+                    StopReason: "max_tokens",
+                    InputTokens: 120,
+                    OutputTokens: 60),
+
+                new ModelTurn(
+                    AssistantText: "Done.",
+                    ToolUseRequests: [],
+                    StopReason: "end_turn",
+                    InputTokens: 80,
+                    OutputTokens: 40),
+            };
+
+            var fake = new FakeModelClient(turns);
+            var policy = new SafetyPolicy(
+                tempRoot,
+                readPrefixes: Array.Empty<string>(),
+                writePrefixes: Array.Empty<string>());
+            var journal = new WriteJournal();
+            var executor = new GuardedToolExecutor(policy, journal, tempRoot);
+            var loop = new AgentLoop(fake, executor);
+
+            // Act
+            var result = await loop.RunAsync(
+                systemPrompt: "Test.",
+                taskId: "test-task-no-empty-user",
+                sourceRef: "test://source",
+                sourceContent: SourceContent,
+                cancellationToken: CancellationToken.None);
+
+            // Assert
+            Assert.Equal(2, result.TurnsUsed);
+            Assert.Equal(2, fake.CallCount);
+
+            foreach (var call in fake.Calls)
+            {
+                foreach (var message in call.Conversation)
+                {
+                    if (string.Equals(message.Role, "user", StringComparison.OrdinalIgnoreCase))
+                    {
+                        Assert.False(string.IsNullOrWhiteSpace(message.Content));
+                    }
+                }
+            }
+        }
+        finally
+        {
+            if (Directory.Exists(tempRoot))
+                Directory.Delete(tempRoot, recursive: true);
+        }
+    }
+
+    [Fact]
+    public async Task PascalCaseEndTurn_StopsRunWithoutExtraTurns()
+    {
+        // Arrange
+        var tempRoot = Path.Combine(Path.GetTempPath(), $"pascal-endturn-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(tempRoot);
+
+        try
+        {
+            var turns = new[]
+            {
+                new ModelTurn(
+                    AssistantText: "Completed.",
+                    ToolUseRequests: [],
+                    StopReason: "EndTurn",
+                    InputTokens: 42,
+                    OutputTokens: 24),
+            };
+
+            var fake = new FakeModelClient(turns);
+            var policy = new SafetyPolicy(
+                tempRoot,
+                readPrefixes: Array.Empty<string>(),
+                writePrefixes: Array.Empty<string>());
+            var journal = new WriteJournal();
+            var executor = new GuardedToolExecutor(policy, journal, tempRoot);
+            var loop = new AgentLoop(fake, executor);
+
+            // Act
+            var result = await loop.RunAsync(
+                systemPrompt: "Test.",
+                taskId: "test-task-endturn-pascal",
+                sourceRef: "test://source",
+                sourceContent: SourceContent,
+                cancellationToken: CancellationToken.None);
+
+            // Assert
+            Assert.Equal(1, result.TurnsUsed);
+            Assert.Equal(1, fake.CallCount);
+            Assert.Contains("Completed", result.Narrative, StringComparison.OrdinalIgnoreCase);
+        }
+        finally
+        {
+            if (Directory.Exists(tempRoot))
+                Directory.Delete(tempRoot, recursive: true);
+        }
+    }
+
+    [Fact]
+    public async Task StopSequenceWithoutTools_CompletesRun()
+    {
+        // Arrange
+        var tempRoot = Path.Combine(Path.GetTempPath(), $"stop-sequence-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(tempRoot);
+
+        try
+        {
+            var turns = new[]
+            {
+                new ModelTurn(
+                    AssistantText: "Final response from stop sequence.",
+                    ToolUseRequests: [],
+                    StopReason: "stop_sequence",
+                    InputTokens: 30,
+                    OutputTokens: 20),
+            };
+
+            var fake = new FakeModelClient(turns);
+            var policy = new SafetyPolicy(
+                tempRoot,
+                readPrefixes: Array.Empty<string>(),
+                writePrefixes: Array.Empty<string>());
+            var journal = new WriteJournal();
+            var executor = new GuardedToolExecutor(policy, journal, tempRoot);
+            var loop = new AgentLoop(fake, executor);
+
+            // Act
+            var result = await loop.RunAsync(
+                systemPrompt: "Test.",
+                taskId: "test-task-stop-sequence",
+                sourceRef: "test://source",
+                sourceContent: SourceContent,
+                cancellationToken: CancellationToken.None);
+
+            // Assert
+            Assert.Equal(1, result.TurnsUsed);
+            Assert.Equal(1, fake.CallCount);
+            Assert.Contains("Final", result.Narrative, StringComparison.OrdinalIgnoreCase);
+        }
+        finally
+        {
+            if (Directory.Exists(tempRoot))
+                Directory.Delete(tempRoot, recursive: true);
+        }
+    }
+
+    [Fact]
+    public async Task ToolUseStopReasonWithoutToolBlocks_Throws()
+    {
+        // Arrange
+        var tempRoot = Path.Combine(Path.GetTempPath(), $"tool-use-without-blocks-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(tempRoot);
+
+        try
+        {
+            var turns = new[]
+            {
+                new ModelTurn(
+                    AssistantText: "Inconsistent stop reason.",
+                    ToolUseRequests: [],
+                    StopReason: "tool_use",
+                    InputTokens: 40,
+                    OutputTokens: 25),
+            };
+
+            var fake = new FakeModelClient(turns);
+            var policy = new SafetyPolicy(
+                tempRoot,
+                readPrefixes: Array.Empty<string>(),
+                writePrefixes: Array.Empty<string>());
+            var journal = new WriteJournal();
+            var executor = new GuardedToolExecutor(policy, journal, tempRoot);
+            var loop = new AgentLoop(fake, executor);
+
+            // Act / Assert
+            var ex = await Assert.ThrowsAsync<InvalidOperationException>(() => loop.RunAsync(
+                systemPrompt: "Test.",
+                taskId: "test-task-tool-use-no-blocks",
+                sourceRef: "test://source",
+                sourceContent: SourceContent,
+                cancellationToken: CancellationToken.None));
+
+            Assert.Contains("stop_reason=tool_use", ex.Message, StringComparison.OrdinalIgnoreCase);
         }
         finally
         {

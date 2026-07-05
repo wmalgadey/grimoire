@@ -7,20 +7,21 @@ namespace Grimoire.IngestAgent.AgentCore;
 /// <summary>
 /// Production <see cref="IModelClient"/> over the Anthropic C# SDK Messages API.
 /// Model ID comes from the <c>GRIMOIRE_INGEST_MODEL</c> environment variable
-/// (default <c>claude-opus-4-8</c>).
+/// (default <c>claude-sonnet-4-6</c>).
 /// </summary>
 public sealed class AnthropicModelClient : IModelClient
 {
-    private const string DefaultModel = "claude-opus-4-8";
+    private const string DefaultModel = "claude-sonnet-4-6";
 
     private readonly AnthropicClient _client;
-    private readonly string _modelId;
 
     public AnthropicModelClient()
     {
         _client = new AnthropicClient();
-        _modelId = Environment.GetEnvironmentVariable("GRIMOIRE_INGEST_MODEL") ?? DefaultModel;
+        ModelId = Environment.GetEnvironmentVariable("GRIMOIRE_INGEST_MODEL") ?? DefaultModel;
     }
+
+    public string ModelId { get; }
 
     public async Task<ModelTurn> NextTurnAsync(
         string systemPrompt,
@@ -41,34 +42,24 @@ public sealed class AnthropicModelClient : IModelClient
             });
         }
 
-        // Build tool definitions. Create Tool objects from JSON-serialized definitions.
-        // The Anthropic SDK's Tool type uses discriminated unions internally,
-        // so we construct them from the raw JSON schema dictionaries.
+        // Build tool definitions for the SDK's custom Tool variant.
         var toolsList = new List<ToolUnion>();
         foreach (var t in tools)
         {
-            using var jsonDoc = JsonDocument.Parse(t.InputSchemaJson);
-            var toolDict = new Dictionary<string, object?>
+            var schema = JsonSerializer.Deserialize<InputSchema>(t.InputSchemaJson)
+                ?? throw new InvalidOperationException($"Invalid tool schema for '{t.Name}'.");
+
+            toolsList.Add(new Tool
             {
-                { "type", "function" },
-                { "name", t.Name },
-                { "description", t.Description },
-                { "input_schema", jsonDoc.RootElement.GetRawText() },
-            };
-            
-            // Create Tool via reflection or use generic construction.
-            // For now, use dynamic construction via the SDK's internal factory pattern.
-            var toolJson = JsonSerializer.Serialize(toolDict);
-            var tool = JsonSerializer.Deserialize<Tool>(toolJson);
-            if (tool is not null)
-            {
-                toolsList.Add(tool);
-            }
+                Name = t.Name,
+                Description = t.Description,
+                InputSchema = schema,
+            });
         }
 
         var response = await _client.Messages.Create(new MessageCreateParams
         {
-            Model = _modelId,
+            Model = ModelId,
             MaxTokens = 8096,
             System = systemPrompt,
             Messages = messages,
@@ -86,62 +77,76 @@ public sealed class AnthropicModelClient : IModelClient
             }
             else if (block.TryPickToolUse(out var toolBlock))
             {
-                // ToolUseBlock is a union type with dynamic field access.
-                // Extract id, name, and input via reflection.
-                var toolId = GetToolUseFieldAsString(toolBlock, "id");
-                var toolName = GetToolUseFieldAsString(toolBlock, "name");
-                var toolInput = GetToolUseFieldAsString(toolBlock, "input");
+                var toolUseJson = JsonSerializer.Serialize(toolBlock);
+                using var toolUseDoc = JsonDocument.Parse(toolUseJson);
+                var root = toolUseDoc.RootElement;
+
+                var toolUseId = root.TryGetProperty("id", out var idProp) && idProp.ValueKind == JsonValueKind.String
+                    ? idProp.GetString() ?? "unknown"
+                    : "unknown";
+
+                var toolName = root.TryGetProperty("name", out var nameProp) && nameProp.ValueKind == JsonValueKind.String
+                    ? nameProp.GetString() ?? "unknown"
+                    : "unknown";
+
+                var inputJson = root.TryGetProperty("input", out var inputProp)
+                    ? inputProp.GetRawText()
+                    : "{}";
 
                 toolUseRequests.Add(new ToolUseRequest(
-                    ToolUseId: toolId ?? "unknown",
-                    ToolName: toolName ?? "unknown",
-                    InputJson: toolInput ?? "{}"));
+                    ToolUseId: toolUseId,
+                    ToolName: toolName,
+                    InputJson: inputJson));
             }
         }
 
         return new ModelTurn(
             AssistantText: assistantText,
             ToolUseRequests: toolUseRequests,
-            StopReason: response.StopReason?.ToString() ?? "end_turn",
+            StopReason: NormalizeStopReason(response.StopReason),
             InputTokens: (int)(response.Usage?.InputTokens ?? 0),
             OutputTokens: (int)(response.Usage?.OutputTokens ?? 0));
     }
 
-    /// <summary>
-    /// Extract a field from ToolUseBlock as a string value.
-    /// ToolUseBlock may store fields as JsonElement or other types.
-    /// </summary>
-    private static string? GetToolUseFieldAsString(ToolUseBlock toolBlock, string fieldName)
+    private static string NormalizeStopReason(object? stopReason)
     {
-        try
+        var raw = stopReason?.ToString();
+        if (string.IsNullOrWhiteSpace(raw))
         {
-            var prop = typeof(ToolUseBlock).GetProperty(
-                fieldName,
-                System.Reflection.BindingFlags.IgnoreCase | System.Reflection.BindingFlags.Public);
-            
-            if (prop?.GetValue(toolBlock) is JsonElement jsonElem)
-            {
-                return jsonElem.GetRawText();
-            }
-            
-            // Try accessing via indexer if it's a dictionary-like type
-            var indexerProp = typeof(ToolUseBlock).GetProperty(
-                "Item",
-                System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.IgnoreCase);
-            if (indexerProp != null)
-            {
-                var value = indexerProp.GetValue(toolBlock, new object[] { fieldName });
-                if (value is JsonElement jsonElem2)
-                {
-                    return jsonElem2.GetRawText();
-                }
-                return value?.ToString();
-            }
+            return "end_turn";
         }
-        catch
+
+        // SDK enum values are PascalCase; normalize to protocol-style snake_case.
+        if (string.Equals(raw, "EndTurn", StringComparison.OrdinalIgnoreCase))
         {
-            // Fall through to null return
+            return "end_turn";
         }
-        return null;
+
+        if (string.Equals(raw, "ToolUse", StringComparison.OrdinalIgnoreCase))
+        {
+            return "tool_use";
+        }
+
+        if (string.Equals(raw, "MaxTokens", StringComparison.OrdinalIgnoreCase))
+        {
+            return "max_tokens";
+        }
+
+        if (string.Equals(raw, "PauseTurn", StringComparison.OrdinalIgnoreCase))
+        {
+            return "pause_turn";
+        }
+
+        if (string.Equals(raw, "StopSequence", StringComparison.OrdinalIgnoreCase))
+        {
+            return "stop_sequence";
+        }
+
+        if (string.Equals(raw, "Refusal", StringComparison.OrdinalIgnoreCase))
+        {
+            return "refusal";
+        }
+
+        return raw;
     }
 }

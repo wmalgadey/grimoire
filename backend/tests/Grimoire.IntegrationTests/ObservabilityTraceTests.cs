@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Collections.Concurrent;
 using Grimoire.IngestAgent.IngestLog;
 
 namespace Grimoire.IntegrationTests;
@@ -12,12 +13,12 @@ public class ObservabilityTraceTests
     [Fact]
     public async Task IngestLogAppender_Creates_AppendLog_Span()
     {
-        var spanNames = new List<string>();
+        var spanNames = new ConcurrentQueue<string>();
         using var listener = new ActivityListener
         {
             ShouldListenTo = src => src.Name == "Grimoire.IngestAgent",
             Sample = (ref ActivityCreationOptions<ActivityContext> _) => ActivitySamplingResult.AllDataAndRecorded,
-            ActivityStopped = a => spanNames.Add(a.OperationName)
+            ActivityStopped = a => spanNames.Enqueue(a.OperationName)
         };
         ActivitySource.AddActivityListener(listener);
 
@@ -33,6 +34,6 @@ public class ObservabilityTraceTests
     }
 
     // Old WriteWikiPage span test removed as part of T020 - pipeline replacement
-    // New trace tests for agent loop spans (ingest_agent.run, model_turn, tool_call, rollback) 
+    // New trace tests for agent loop spans (ingest_agent.run, model_turn, tool_call, rollback)
     // will be added as part of T032 phase 6 implementation
 }

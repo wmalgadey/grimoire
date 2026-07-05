@@ -33,6 +33,9 @@ public sealed record ConversationMessage(string Role, string Content);
 /// </summary>
 public interface IModelClient
 {
+    /// <summary>The model identifier this client sends with every request.</summary>
+    string ModelId { get; }
+
     /// <summary>
     /// Sends the current conversation state to the model and returns the next turn.
     /// </summary>

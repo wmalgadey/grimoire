@@ -43,6 +43,14 @@ public static class IngestAgentMetrics
         Meter.CreateCounter<long>("wiki.ingest.model_tokens_total",
             description: "Input/output tokens reported by the API");
 
+    private static readonly Counter<long> _modelToolRequestsTotal =
+        Meter.CreateCounter<long>("wiki.ingest.model_tool_requests_total",
+            description: "Number of tool requests returned by model turns");
+
+    private static readonly Counter<long> _noToolTurnsTotal =
+        Meter.CreateCounter<long>("wiki.ingest.no_tool_turns_total",
+            description: "Model turns with zero tool requests, labeled by stop reason and loop outcome");
+
     public static void RecordIngest(string outcome, int pagesTouched, string pageAction, double durationSeconds)
     {
         _operationsTotal.Add(1, new KeyValuePair<string, object?>("outcome", outcome));
@@ -81,4 +89,13 @@ public static class IngestAgentMetrics
         _modelTokensTotal.Add(inputTokens, new KeyValuePair<string, object?>("direction", "input"));
         _modelTokensTotal.Add(outputTokens, new KeyValuePair<string, object?>("direction", "output"));
     }
+
+    public static void RecordModelToolRequests(int toolRequestCount, string stopReason)
+        => _modelToolRequestsTotal.Add(toolRequestCount,
+            new KeyValuePair<string, object?>("stop_reason", stopReason));
+
+    public static void RecordNoToolTurn(string stopReason, string outcome)
+        => _noToolTurnsTotal.Add(1,
+            new KeyValuePair<string, object?>("stop_reason", stopReason),
+            new KeyValuePair<string, object?>("outcome", outcome));
 }

@@ -19,9 +19,12 @@ runSpan?.SetTag("task_id", options.TaskId);
 
 var repoRoot = FindRepoRoot(options.TasksDir);
 var journal = new WriteJournal();
+AnthropicModelClient? modelClient = null;
 
 try
 {
+	modelClient = new AnthropicModelClient();
+
 	await taskStore.WriteAsync(
 		options.TaskArtifactPath,
 		new TaskArtifactDocument(
@@ -42,7 +45,7 @@ try
 	if (instructionResult.IsSecond(out var instructionFailure))
 	{
 		IngestAgentMetrics.RecordInstructionLoadFailure("instructions");
-		await FinalizeFailedAsync(taskStore, options, startTime, instructionFailure.Reason, null, logAppender, false);
+		await FinalizeFailedAsync(taskStore, options, startTime, instructionFailure.Reason, null, logAppender, false, modelId: modelClient.ModelId);
 		return 1;
 	}
 	instructionResult.IsFirst(out var instructionSet);
@@ -52,7 +55,7 @@ try
 	if (policyResult.IsSecond(out var policyFailure))
 	{
 		IngestAgentMetrics.RecordInstructionLoadFailure("policy");
-		await FinalizeFailedAsync(taskStore, options, startTime, policyFailure.Reason, null, logAppender, false);
+		await FinalizeFailedAsync(taskStore, options, startTime, policyFailure.Reason, null, logAppender, false, modelId: modelClient.ModelId);
 		return 1;
 	}
 	policyResult.IsFirst(out var loadedPolicy);
@@ -65,7 +68,8 @@ try
 		options.SourceKind, options.SourceRef, options.PastedText, CancellationToken.None);
 
 	var executor = new GuardedToolExecutor(loadedPolicy!.Policy, journal, repoRoot);
-	var loop = new AgentLoop(new AnthropicModelClient(), executor);
+	var tokenCap = ResolveTokenCapFromEnvironment();
+	var loop = new AgentLoop(modelClient, executor, tokenCap: tokenCap);
 	var systemPrompt = instructionSet.BuildSystemPrompt();
 
 	AgentLoopResult loopResult;
@@ -77,7 +81,7 @@ try
 	catch (AgentLoopCapException capEx)
 	{
 		var rollbackOutcome = await RollbackAsync(journal);
-		await FinalizeFailedAsync(taskStore, options, startTime, capEx.Message, journal, logAppender, rollbackOutcome, instructionSet, loadedPolicy);
+		await FinalizeFailedAsync(taskStore, options, startTime, capEx.Message, journal, logAppender, rollbackOutcome, instructionSet, loadedPolicy, modelClient.ModelId);
 		return 1;
 	}
 
@@ -102,7 +106,7 @@ try
 			DeniedActions: executor.Denials.Select(d => new DeniedActionEntry(d.Action, d.Target, d.Reason, d.Turn)).ToList(),
 			InstructionFiles: instructionSet.Files.Select(f => new InstructionFileRecord(f.Path, f.Sha256)).ToList(),
 			Policy: new PolicyRecord(loadedPolicy.Identity.Path, loadedPolicy.Identity.Version, loadedPolicy.Identity.Sha256),
-			Model: Environment.GetEnvironmentVariable("GRIMOIRE_INGEST_MODEL") ?? "claude-opus-4-8",
+			Model: modelClient.ModelId,
 			Turns: loopResult.TurnsUsed,
 			RolledBack: null),
 		CancellationToken.None);
@@ -120,7 +124,7 @@ catch (Exception ex)
 {
 	var safeMessage = SanitizeErrorText(ex.Message);
 	var rollbackOutcome = await RollbackAsync(journal);
-	await FinalizeFailedAsync(taskStore, options, startTime, safeMessage, journal, logAppender, rollbackOutcome);
+	await FinalizeFailedAsync(taskStore, options, startTime, safeMessage, journal, logAppender, rollbackOutcome, modelId: modelClient?.ModelId);
 	return 1;
 }
 
@@ -151,7 +155,8 @@ static async Task FinalizeFailedAsync(
 	IngestLogAppender logAppender,
 	bool rolledBack,
 	LoadedInstructionSet? instructionSet = null,
-	LoadedPolicy? policy = null)
+	LoadedPolicy? policy = null,
+	string? modelId = null)
 {
 	using var finalizeSpan = IngestAgentTracing.ActivitySource.StartActivity("ingest_agent.finalize_artifact");
 	finalizeSpan?.SetTag("outcome", "failed");
@@ -175,7 +180,7 @@ static async Task FinalizeFailedAsync(
 			DeniedActions: [],
 			InstructionFiles: instructionSet?.Files.Select(f => new InstructionFileRecord(f.Path, f.Sha256)).ToList(),
 			Policy: policy is null ? null : new PolicyRecord(policy.Identity.Path, policy.Identity.Version, policy.Identity.Sha256),
-			Model: Environment.GetEnvironmentVariable("GRIMOIRE_INGEST_MODEL") ?? "claude-opus-4-8",
+			Model: modelId,
 			Turns: null,
 			RolledBack: journal is not null ? rolledBack : null),
 		CancellationToken.None);
@@ -254,4 +259,16 @@ static string FindRepoRoot(string startPath)
 
 		current = parent.FullName;
 	}
+}
+
+static int ResolveTokenCapFromEnvironment()
+{
+	var raw = Environment.GetEnvironmentVariable("GRIMOIRE_INGEST_TOKEN_CAP");
+	if (string.IsNullOrWhiteSpace(raw))
+		return 200_000;
+
+	if (int.TryParse(raw, out var parsed) && parsed > 0)
+		return parsed;
+
+	return 200_000;
 }
