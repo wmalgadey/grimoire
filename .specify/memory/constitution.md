@@ -1,31 +1,25 @@
 <!--
 SYNC IMPACT REPORT
 ==================
-Version change: 1.0.0 → 1.1.0
+Version change: 1.1.0 → 1.1.1
 
-Principles modified:
-  - II. Pragmatic Testing Strategy — materially expanded: split between deterministic
-    harness contracts (hermetic, no live LLM calls) and agent behavior (evaluation-style
-    tests with thresholds); success-criteria split mandated for specs.
-  - III. ADR-Driven & Test-Enforced Architecture — third test category added
-    (agent-behavior evaluation tests, final phase).
+Principles modified: none
 
-Principles added:
-  - V. Agentic Core & Deterministic Harness
+Principles added: none
 
-Sections modified:
-  - Definition of Done — two new gates (agentic boundary respected, agent-judgment
-    criteria verified by evaluation runs).
+Sections modified: none
 
 Sections removed: none
 
 Templates updated:
-  - .specify/templates/plan-template.md ✅ (Agentic Boundary section added)
-  - .specify/templates/spec-template.md ✅ (success-criteria split guidance added)
-  - .specify/templates/tasks-template.md ✅ (agent-behavior evaluation task added to final phase)
+  - .specify/templates/tasks-template.md ✅ (removed optional-test wording so generated
+    tasks require the verification work already mandated by Principle II)
+  - .specify/templates/plan-template.md ✅ (added mandatory Test Strategy section mapping
+    each success criterion to hermetic tests or evaluation thresholds, including doubles
+    and fixtures)
 
-Rationale for MINOR bump: new principle added and existing principle materially
-expanded; no principle removed or redefined incompatibly.
+Rationale for PATCH bump: no principle changed; this sync only propagates existing
+constitutional requirements into dependent templates.
 
 Deferred TODOs: none
 -->
@@ -225,4 +219,4 @@ per semantic versioning (MAJOR: incompatible principle removals/redefinitions; M
 or materially expanded principles; PATCH: clarifications), update the Sync Impact Report,
 and propagate changes to the dependent templates in `.specify/templates/`.
 
-**Version**: 1.1.0 | **Ratified**: 2026-06-23 | **Last Amended**: 2026-07-04
+**Version**: 1.1.1 | **Ratified**: 2026-06-23 | **Last Amended**: 2026-07-05

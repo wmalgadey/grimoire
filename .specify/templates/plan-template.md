@@ -84,6 +84,26 @@
 | [e.g., update-vs-create decision]  | Agentic core | [e.g., agents/ingest/SKILL.md]               |
 | [e.g., write-path guardrail]       | Harness      | [e.g., Guardrails/GuardedFileOperations.cs]  |
 
+## Test Strategy
+
+*MANDATORY: Every success criterion in spec.md MUST map to its primary verification method before tasks are generated.*
+
+<!--
+  ACTION REQUIRED: Map each success criterion from spec.md to the test approach that
+  proves it. Deterministic harness guarantees MUST map to hermetic contract,
+  integration, or architecture tests. Agent-judgment outcomes MUST map to evaluation
+  runs with explicit thresholds.
+
+  Include the concrete doubles, fixtures, and recorded samples required to keep the
+  test suite reproducible. Hermetic tests MUST NOT require live LLM provider calls or
+  production credentials.
+-->
+
+| Success criterion | Category | Primary test type | Doubles / external dependencies | Fixtures / sampled data | Notes |
+|-------------------|----------|-------------------|----------------------------------|-------------------------|-------|
+| `[e.g., Submission is persisted atomically]` | Deterministic guarantee | Hermetic integration test | `[e.g., Testcontainers PostgreSQL, fake clock]` | `[e.g., valid submission payload, rollback scenario fixture]` | `[Why this test proves the criterion]` |
+| `[e.g., Agent chooses update over duplicate creation in >= 90% of sampled runs]` | Agent-judgment threshold | Evaluation with threshold | `[e.g., recorded LLM responses or approved live-eval gate]` | `[e.g., sampled wiki/source pairs, golden adjudication set]` | `[Threshold, scorer, retry policy]` |
+
 ## Observability
 
 *MANDATORY: Code without this instrumentation fails the Definition of Done.*
