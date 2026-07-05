@@ -1,4 +1,3 @@
-using System.Text;
 using Grimoire.IngestAgent.Guardrails;
 
 namespace Grimoire.IngestAgent.AgentCore;
@@ -49,7 +48,7 @@ public sealed class AgentLoop
 
         // Initial user message: task context + source as untrusted delimited data.
         var userMessage = BuildUserMessage(taskId, sourceRef, sourceContent);
-        conversation.Add(new ConversationMessage("user", userMessage));
+        conversation.Add(new ConversationMessage("user", [new ConversationTextBlock(userMessage)]));
 
         int turnsUsed = 0;
         int totalInputTokens = 0;
@@ -101,12 +100,11 @@ public sealed class AgentLoop
             }
 
             // Append assistant turn to conversation.
-            var assistantContent = BuildAssistantContent(turn);
-            if (string.IsNullOrWhiteSpace(assistantContent))
+            var assistantBlocks = BuildAssistantContentBlocks(turn);
+            if (assistantBlocks.Count > 0)
             {
-                assistantContent = "[assistant_turn]";
+                conversation.Add(new ConversationMessage("assistant", assistantBlocks));
             }
-            conversation.Add(new ConversationMessage("assistant", assistantContent));
 
             if (turn.ToolUseRequests.Count == 0)
             {
@@ -131,7 +129,7 @@ public sealed class AgentLoop
                     case ModelStopReason.MaxTokens or ModelStopReason.PauseTurn:
                         // Non-terminal no-tool stop reasons require another turn.
                         IngestAgentMetrics.RecordNoToolTurn(stopReason, "continue");
-                        conversation.Add(new ConversationMessage("user", ContinuePrompt));
+                        conversation.Add(new ConversationMessage("user", [new ConversationTextBlock(ContinuePrompt)]));
                         continue;
 
                     default:
@@ -145,21 +143,26 @@ public sealed class AgentLoop
 
             // Process tool calls and build tool_results user message.
 
-            var toolResults = new StringBuilder();
+            var toolResultBlocks = new List<ConversationContentBlock>();
             foreach (var toolUse in turn.ToolUseRequests)
             {
                 var result = await _executor.ExecuteAsync(
                     toolUse.ToolName, toolUse.InputJson, turnsUsed, cancellationToken);
 
-                // Append tool result to conversation as a user message continuation.
-                toolResults.AppendLine(
-                    BuildToolResultContent(toolUse.ToolUseId, result.IsError, result.Content));
+                toolResultBlocks.Add(new ConversationToolResultBlock(
+                    toolUse.ToolUseId,
+                    result.IsError,
+                    result.Content));
             }
 
-            var toolResultContent = toolResults.ToString().TrimEnd();
-            conversation.Add(new ConversationMessage(
-                "user",
-                string.IsNullOrWhiteSpace(toolResultContent) ? ContinuePrompt : toolResultContent));
+            if (toolResultBlocks.Count == 0)
+            {
+                conversation.Add(new ConversationMessage("user", [new ConversationTextBlock(ContinuePrompt)]));
+            }
+            else
+            {
+                conversation.Add(new ConversationMessage("user", toolResultBlocks));
+            }
         }
     }
 
@@ -181,26 +184,23 @@ public sealed class AgentLoop
             """;
     }
 
-    private static string BuildAssistantContent(ModelTurn turn)
+    private static List<ConversationContentBlock> BuildAssistantContentBlocks(ModelTurn turn)
     {
-        var sb = new StringBuilder();
+        var blocks = new List<ConversationContentBlock>();
         if (!string.IsNullOrWhiteSpace(turn.AssistantText))
         {
-            sb.AppendLine(turn.AssistantText);
+            blocks.Add(new ConversationTextBlock(turn.AssistantText));
         }
 
         foreach (var toolUse in turn.ToolUseRequests)
         {
-            sb.AppendLine($"[tool_use: {toolUse.ToolName} id={toolUse.ToolUseId}]");
-            sb.AppendLine(toolUse.InputJson);
+            blocks.Add(new ConversationToolUseBlock(
+                toolUse.ToolUseId,
+                toolUse.ToolName,
+                toolUse.InputJson));
         }
 
-        return sb.ToString().TrimEnd();
-    }
-
-    private static string BuildToolResultContent(string toolUseId, bool isError, string content)
-    {
-        return $"[tool_result id={toolUseId} is_error={isError}]\n{content}";
+        return blocks;
     }
 }
 

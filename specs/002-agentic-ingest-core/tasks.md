@@ -163,6 +163,7 @@ earlier.
 - [X] T036 [P] Agent-behavior evaluation SC-008 in `backend/tests/Grimoire.AgentEvals/CatalogDiscoverabilityEvals.cs`: ≥ 95% of sampled successful runs leave every touched page discoverable from `index.md` (MANDATORY)
 - [X] T037 [P] Agent-behavior evaluation SC-009 in `backend/tests/Grimoire.AgentEvals/InstructionChangeAdoptionEvals.cs`: after a deliberate instruction edit (new required metadata field), ≥ 90% of subsequent sampled runs follow it with no system change (MANDATORY)
 - [X] T038 [P] Agent-behavior evaluation SC-010 in `backend/tests/Grimoire.AgentEvals/AdversarialSourceEvals.cs`: adversarial sources ⇒ 100% of out-of-scope actions denied (harness assertion) and ≥ 90% of samples still complete the legitimate update (MANDATORY)
+- [X] T039a Structured conversation content blocks: replace flattened pseudo-text tool protocol in `backend/src/Grimoire.IngestAgent/AgentCore/AgentLoop.cs` with typed `ConversationMessage` content blocks in `backend/src/Grimoire.IngestAgent/AgentCore/IModelClient.cs`, mapped in `backend/src/Grimoire.IngestAgent/AgentCore/AnthropicModelClient.cs` to SDK `ToolUseBlockParam` / `ToolResultBlockParam`; ensure exactly one `tool_result` per `tool_use_id` and all tool results for a turn are sent in one user message; keep hermetic tests green
 - [ ] T039 Run the full `specs/002-agentic-ingest-core/quickstart.md` validation (hermetic suite, live E2E, instruction-edit run, injection probe, eval suite) and verify every constitution Definition-of-Done checkbox for this feature
 
 ---
@@ -177,7 +178,7 @@ earlier.
 - **Phase 3 US1 (T016–T022)**: after Phase 2; T017→(T005, T010, T011), T018→(T009, T010, T012, T016, T017), T019/T020→T018, T021→(T018, T020), T022→T018
 - **Phase 4 US2 (T023–T025)**: after T018 (run pipeline exists); independent of US3
 - **Phase 5 US3 (T026–T029)**: after T018; T026–T028 exercise foundational executor behavior through the real run pipeline; independent of US2
-- **Phase 6 (T030–T039)**: T030–T032 after all stories; T033 after T018; T034–T038 after T033 (and T002/T029 content); T039 last
+- **Phase 6 (T030–T039)**: T030–T032 after all stories; T033 after T018; T034–T038 after T033 (and T002/T029 content); T039a after T034–T038; T039 last
 
 ### User Story Dependencies
 

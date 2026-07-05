@@ -1,3 +1,5 @@
+using System.Linq;
+
 namespace Grimoire.IngestAgent.AgentCore;
 
 /// <summary>
@@ -82,7 +84,44 @@ public sealed record ModelTurn(
 /// One message in the conversation history, representing either a user turn
 /// (source context or tool results) or an assistant turn.
 /// </summary>
-public sealed record ConversationMessage(string Role, string Content);
+public sealed class ConversationMessage
+{
+    public ConversationMessage(string role, string content)
+        : this(role, [new ConversationTextBlock(content)])
+    {
+    }
+
+    public ConversationMessage(string role, IReadOnlyList<ConversationContentBlock> contentBlocks)
+    {
+        Role = role;
+        ContentBlocks = contentBlocks;
+    }
+
+    public string Role { get; }
+
+    public IReadOnlyList<ConversationContentBlock> ContentBlocks { get; }
+
+    // Kept for test/debug compatibility where only text blocks are asserted.
+    public string Content => string.Join(
+        "\n",
+        ContentBlocks
+            .OfType<ConversationTextBlock>()
+            .Select(static block => block.Text));
+}
+
+/// <summary>One typed content block in a conversation message.</summary>
+public abstract record ConversationContentBlock;
+
+/// <summary>Plain text block for user/assistant messages.</summary>
+public sealed record ConversationTextBlock(string Text) : ConversationContentBlock;
+
+/// <summary>Assistant-declared tool_use block.</summary>
+public sealed record ConversationToolUseBlock(string ToolUseId, string ToolName, string InputJson)
+    : ConversationContentBlock;
+
+/// <summary>User-returned tool_result block for a prior tool_use id.</summary>
+public sealed record ConversationToolResultBlock(string ToolUseId, bool IsError, string Content)
+    : ConversationContentBlock;
 
 /// <summary>
 /// Seam between the agent loop and the underlying model API. Implementations:

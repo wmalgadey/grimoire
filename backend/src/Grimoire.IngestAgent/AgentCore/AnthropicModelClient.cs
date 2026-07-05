@@ -38,12 +38,13 @@ public sealed class AnthropicModelClient : IModelClient
         var messages = new List<Anthropic.Models.Messages.MessageParam>();
         foreach (var msg in conversation)
         {
+            var contentBlocks = BuildContentBlocks(msg.ContentBlocks);
             messages.Add(new Anthropic.Models.Messages.MessageParam
             {
                 Role = string.Equals(msg.Role, "user", StringComparison.OrdinalIgnoreCase)
                     ? Role.User
                     : Role.Assistant,
-                Content = msg.Content,
+                Content = new MessageParamContent(contentBlocks, null),
             });
         }
 
@@ -107,6 +108,51 @@ public sealed class AnthropicModelClient : IModelClient
         }
 
         return toolsList;
+    }
+
+    private static IReadOnlyList<ContentBlockParam> BuildContentBlocks(
+        IReadOnlyList<ConversationContentBlock> blocks)
+    {
+        var contentBlocks = new List<ContentBlockParam>(blocks.Count);
+
+        foreach (var block in blocks)
+        {
+            switch (block)
+            {
+                case ConversationTextBlock textBlock:
+                    contentBlocks.Add(new ContentBlockParam(new TextBlockParam(textBlock.Text), null));
+                    break;
+
+                case ConversationToolUseBlock toolUseBlock:
+                    var inputMap = JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(toolUseBlock.InputJson)
+                        ?? throw new InvalidOperationException(
+                            $"Invalid tool_use input JSON for id '{toolUseBlock.ToolUseId}'.");
+
+                    var anthropicToolUse = new ToolUseBlockParam
+                    {
+                        ID = toolUseBlock.ToolUseId,
+                        Name = toolUseBlock.ToolName,
+                        Input = inputMap,
+                    };
+                    contentBlocks.Add(new ContentBlockParam(anthropicToolUse, null));
+                    break;
+
+                case ConversationToolResultBlock toolResultBlock:
+                    var anthropicToolResult = new ToolResultBlockParam(toolResultBlock.ToolUseId)
+                    {
+                        IsError = toolResultBlock.IsError,
+                        Content = new ToolResultBlockParamContent(toolResultBlock.Content, null),
+                    };
+                    contentBlocks.Add(new ContentBlockParam(anthropicToolResult, null));
+                    break;
+
+                default:
+                    throw new InvalidOperationException(
+                        $"Unsupported conversation block type: {block.GetType().Name}.");
+            }
+        }
+
+        return contentBlocks;
     }
 
 }
