@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Diagnostics.Metrics;
 using Grimoire.IngestAgent.AgentCore;
 
@@ -54,6 +55,11 @@ public static class IngestAgentMetrics
 
     public static void RecordIngest(string outcome, int pagesTouched, string pageAction, double durationSeconds)
     {
+        using var span = StartMetricSpan("wiki.ingest.operations_total");
+        span?.SetTag("outcome", outcome);
+        span?.SetTag("pages_touched", pagesTouched);
+        span?.SetTag("page_action", pageAction);
+
         _operationsTotal.Add(1, new KeyValuePair<string, object?>("outcome", outcome));
         if (pagesTouched > 0)
             _pagesTouchedTotal.Add(pagesTouched, new KeyValuePair<string, object?>("action", pageAction));
@@ -61,42 +67,99 @@ public static class IngestAgentMetrics
     }
 
     public static void RecordPageTouched(string action)
-        => _pagesTouchedTotal.Add(1, new KeyValuePair<string, object?>("action", action));
+    {
+        using var span = StartMetricSpan("wiki.ingest.pages_touched_total");
+        span?.SetTag("action", action);
+
+        _pagesTouchedTotal.Add(1, new KeyValuePair<string, object?>("action", action));
+    }
 
     public static void RecordAgentTurns(int turns, string outcome)
-        => _agentTurnsTotal.Add(turns,
+    {
+        using var span = StartMetricSpan("wiki.ingest.agent_turns_total");
+        span?.SetTag("turns", turns);
+        span?.SetTag("outcome", outcome);
+
+        _agentTurnsTotal.Add(turns,
             new KeyValuePair<string, object?>("outcome", outcome));
+    }
 
     public static void RecordToolCall(string tool, string decision)
-        => _toolCallsTotal.Add(1,
+    {
+        using var span = StartMetricSpan("wiki.ingest.tool_calls_total");
+        span?.SetTag("tool", tool);
+        span?.SetTag("decision", decision);
+
+        _toolCallsTotal.Add(1,
             new KeyValuePair<string, object?>("tool", tool),
             new KeyValuePair<string, object?>("decision", decision));
+    }
 
     public static void RecordActionDenied(string tool, string reason)
-        => _actionsDeniedTotal.Add(1,
+    {
+        using var span = StartMetricSpan("wiki.ingest.actions_denied_total");
+        span?.SetTag("tool", tool);
+        span?.SetTag("reason", reason);
+
+        _actionsDeniedTotal.Add(1,
             new KeyValuePair<string, object?>("tool", tool),
             new KeyValuePair<string, object?>("reason", reason));
+    }
 
     public static void RecordRollback(bool restoredOk)
-        => _runsRolledBackTotal.Add(1,
+    {
+        using var span = StartMetricSpan("wiki.ingest.runs_rolled_back_total");
+        span?.SetTag("restored_ok", restoredOk);
+
+        _runsRolledBackTotal.Add(1,
             new KeyValuePair<string, object?>("restored_ok", restoredOk ? "true" : "false"));
+    }
 
     public static void RecordInstructionLoadFailure(string artifact)
-        => _instructionLoadFailuresTotal.Add(1,
+    {
+        using var span = StartMetricSpan("wiki.ingest.instruction_load_failures_total");
+        span?.SetTag("artifact", artifact);
+
+        _instructionLoadFailuresTotal.Add(1,
             new KeyValuePair<string, object?>("artifact", artifact));
+    }
 
     public static void RecordModelTokens(int inputTokens, int outputTokens)
     {
+        using var span = StartMetricSpan("wiki.ingest.model_tokens_total");
+        span?.SetTag("input_tokens", inputTokens);
+        span?.SetTag("output_tokens", outputTokens);
+
         _modelTokensTotal.Add(inputTokens, new KeyValuePair<string, object?>("direction", "input"));
         _modelTokensTotal.Add(outputTokens, new KeyValuePair<string, object?>("direction", "output"));
     }
 
     public static void RecordModelToolRequests(int toolRequestCount, ModelStopReason stopReason)
-        => _modelToolRequestsTotal.Add(toolRequestCount,
+    {
+        using var span = StartMetricSpan("wiki.ingest.model_tool_requests_total");
+        span?.SetTag("tool_request_count", toolRequestCount);
+        span?.SetTag("stop_reason", stopReason.ToProtocolString());
+
+        _modelToolRequestsTotal.Add(toolRequestCount,
             new KeyValuePair<string, object?>("stop_reason", stopReason.ToProtocolString()));
+    }
 
     public static void RecordNoToolTurn(ModelStopReason stopReason, string outcome)
-        => _noToolTurnsTotal.Add(1,
+    {
+        using var span = StartMetricSpan("wiki.ingest.no_tool_turns_total");
+        span?.SetTag("stop_reason", stopReason.ToProtocolString());
+        span?.SetTag("outcome", outcome);
+
+        _noToolTurnsTotal.Add(1,
             new KeyValuePair<string, object?>("stop_reason", stopReason.ToProtocolString()),
             new KeyValuePair<string, object?>("outcome", outcome));
+    }
+
+    private static Activity? StartMetricSpan(string metricName)
+    {
+        var span = IngestAgentTracing.ActivitySource.StartActivity(metricName);
+        span?.SetTag("signal_type", "metric");
+        span?.SetTag("metric_name", metricName);
+        return span;
+    }
 }

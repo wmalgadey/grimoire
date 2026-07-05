@@ -1,5 +1,8 @@
 using System.Diagnostics;
 using System.Collections.Concurrent;
+using Grimoire.Hub.OperationalState;
+using Grimoire.IngestAgent;
+using Grimoire.IngestAgent.Guardrails;
 using Grimoire.IngestAgent.IngestLog;
 
 namespace Grimoire.IntegrationTests;
@@ -45,6 +48,63 @@ public class ObservabilityTraceTests
         Assert.True(File.Exists(logPath));
         var content = await File.ReadAllTextAsync(logPath);
         Assert.Contains("task-001", content, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task ObservabilitySignals_CreateChildSpans_ForLogsMetricsAndHubEvents()
+    {
+        var spanNames = new ConcurrentQueue<string>();
+        using var listener = new ActivityListener
+        {
+            ShouldListenTo = src => src.Name is "Grimoire.IngestAgent" or "Grimoire.Hub",
+            Sample = (ref ActivityCreationOptions<ActivityContext> _) => ActivitySamplingResult.AllDataAndRecorded,
+            ActivityStopped = activity => spanNames.Enqueue(activity.OperationName)
+        };
+        ActivitySource.AddActivityListener(listener);
+
+        var ingestLogger = new CaptureLogger<ObservabilityTraceTests>();
+        IngestAgentLogEvents.LogInstructionsLoaded(
+            ingestLogger,
+            taskId: "task-obs-1",
+            instructionFiles: "agents/ingest/CLAUDE.md:abc",
+            policyVersion: 1,
+            policySha256: "policy-sha");
+
+        IngestAgentMetrics.RecordToolCall("read_file", "allowed");
+
+        var root = Path.Combine(Path.GetTempPath(), $"trace-test-{Guid.NewGuid():N}");
+        var tasksDir = Path.Combine(root, "tasks");
+        var logPath = Path.Combine(root, "log.md");
+        Directory.CreateDirectory(tasksDir);
+        await File.WriteAllTextAsync(logPath, string.Empty);
+
+        var taskId = $"task-{Guid.NewGuid():N}";
+        var taskPath = Path.Combine(tasksDir, $"{taskId}.md");
+        await File.WriteAllTextAsync(taskPath,
+            "---\n" +
+            $"task_id: {taskId}\n" +
+            "type: ingest\n" +
+            "status: running\n" +
+            "agent: ingest\n" +
+            "started_at: 2026-07-04T00:00:00Z\n" +
+            "completed_at: null\n" +
+            "source_ref: \"source.md\"\n" +
+            "pages_touched: []\n" +
+            "failure_reason: null\n" +
+            "---\n\nRunning\n");
+
+        var dbPath = Path.Combine(root, "state.db");
+        var repository = new OperationalStateRepository(dbPath);
+        await repository.InitializeAsync();
+        await repository.UpsertAsync(new OperationalTaskState(taskId, "running", null, DateTimeOffset.UtcNow));
+
+        var reconciler = new RestartReconciler(repository);
+        await reconciler.ReconcileRunningTasksAsync(tasksDir, logPath);
+
+        Assert.Contains("ingest.instructions.loaded", spanNames);
+        Assert.Contains("wiki.ingest.tool_calls_total", spanNames);
+        Assert.Contains("ingest.task.reconciled", spanNames);
+        Assert.Contains("wiki.ingest.tasks_reconciled_total", spanNames);
     }
 
     // Old WriteWikiPage span test removed as part of T020 - pipeline replacement

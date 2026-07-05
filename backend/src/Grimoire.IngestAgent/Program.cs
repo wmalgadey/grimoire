@@ -8,7 +8,7 @@ using Microsoft.Extensions.Logging;
 using System.Text.RegularExpressions;
 
 using var telemetry = TelemetryBootstrap.Build();
-using var loggerFactory = LoggerFactory.Create(_ => { });
+var loggerFactory = telemetry.LoggerFactory;
 var logger = loggerFactory.CreateLogger("Grimoire.IngestAgent.Program");
 
 var options = ParseArgs(args);

@@ -30,6 +30,13 @@ public sealed class RestartReconciler
             await _repository.DeleteAsync(state.TaskId, cancellationToken);
 
             HubMetrics.RecordTaskReconciled();
+            using var reconciledSpan = HubTracing.ActivitySource.StartActivity("ingest.task.reconciled");
+            reconciledSpan?.SetTag("signal_type", "log");
+            reconciledSpan?.SetTag("event_name", "ingest.task.reconciled");
+            reconciledSpan?.SetTag("level", "Warning");
+            reconciledSpan?.SetTag("task_id", state.TaskId);
+            reconciledSpan?.SetTag("interruption_reason", reason);
+
             _logger.LogWarning(new EventId(10, "ingest.task.reconciled"),
                 "Task {task_id} reconciled on Hub restart. Reason: {interruption_reason}",
                 state.TaskId, reason);
