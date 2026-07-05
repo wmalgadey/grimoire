@@ -18,19 +18,12 @@ completed_at: null          # set once status is terminal
 source_ref: "raw/sources/example.md"
 
 # --- extended in 002 ---
-pages_created: []           # wikilinks, from the write journal
+pages_created: []           # repo-relative paths, from the write journal
 pages_updated: []
 pages_superseded: []
-denied_actions: []          # list of {action, target, reason, turn}
-instruction_files:          # FR-012 — governing instruction identities
-  - path: agents/ingest/CLAUDE.md
-    sha256: "…"
-  - path: agents/ingest/skills/wiki-maintenance/SKILL.md
-    sha256: "…"
-policy:                     # FR-012 — governing policy identity
-  path: agents/ingest/policy.json
-  version: 1
-  sha256: "…"
+denied_actions: [{"action":"write_file","requested_target":"../etc/passwd","canonical_target":"/etc/passwd","reason":"traversal","turn":2}]
+instruction_files: [{"path":"agents/ingest/CLAUDE.md","sha256":"…"},{"path":"agents/ingest/skills/wiki-maintenance/SKILL.md","sha256":"…"}]
+policy: {"path":"agents/ingest/policy.json","version":1,"sha256":"…"}
 model: claude-opus-4-8      # effective GRIMOIRE_INGEST_MODEL
 turns: null                 # model turns consumed, set at finalization
 rolled_back: null           # failure only: true/false = journal restore outcome
@@ -65,6 +58,7 @@ content by status:
   `running` with a loaded governance set; a load-failure artifact records what could not
   be loaded in `failure_reason` (FR-003, FR-012).
 - `denied_actions` in frontmatter is the complete denial record for the run (SC-002);
-  entries are never dropped on success.
+  each entry includes `action`, `requested_target`, `canonical_target`, `reason`,
+  and `turn`; entries are never dropped on success.
 - `completed_at` null while non-terminal, non-null otherwise; interrupted runs are
   reconciled to `failed` by the Hub on restart (unchanged, ADR-003).

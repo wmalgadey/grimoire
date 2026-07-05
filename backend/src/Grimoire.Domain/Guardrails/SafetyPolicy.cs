@@ -3,7 +3,7 @@ namespace Grimoire.Domain.Guardrails;
 /// <summary>
 /// Deny-by-default safety policy evaluated for every guarded tool call.
 /// All paths supplied to <see cref="Evaluate"/> MUST be pre-canonicalized
-/// absolute paths (symlinks and <c>..</c> already resolved by the caller).
+/// absolute paths with lexical normalization applied (<c>..</c> segments removed).
 /// This type is dependency-free and pure — no I/O, no logging.
 /// </summary>
 public sealed class SafetyPolicy
@@ -39,7 +39,7 @@ public sealed class SafetyPolicy
     /// Evaluates whether a canonicalized target path is permitted for the given tool scope.
     /// </summary>
     /// <param name="canonicalTarget">
-    /// The absolute, fully-resolved target path (no <c>..</c>, no symlinks).
+    /// The absolute, lexically-normalized target path (no <c>..</c> segments).
     /// </param>
     /// <param name="isWrite">
     /// <c>true</c> to check write-scope rules; <c>false</c> for read-scope rules.
@@ -57,7 +57,7 @@ public sealed class SafetyPolicy
 
         foreach (var prefix in prefixes)
         {
-            if (canonicalTarget.StartsWith(prefix, StringComparison.Ordinal))
+            if (PrefixMatches(prefix, canonicalTarget))
             {
                 return PolicyDecision.Allow();
             }
@@ -72,5 +72,15 @@ public sealed class SafetyPolicy
         return !Path.IsPathRooted(relative) &&
                !relative.Equals("..", StringComparison.Ordinal) &&
                !relative.StartsWith($"..{Path.DirectorySeparatorChar}", StringComparison.Ordinal);
+    }
+
+    private static bool PrefixMatches(string prefix, string canonicalTarget)
+    {
+        if (prefix.EndsWith(Path.DirectorySeparatorChar))
+        {
+            return canonicalTarget.StartsWith(prefix, StringComparison.Ordinal);
+        }
+
+        return canonicalTarget.Equals(prefix, StringComparison.Ordinal);
     }
 }

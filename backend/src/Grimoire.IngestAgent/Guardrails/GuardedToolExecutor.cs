@@ -236,7 +236,8 @@ public sealed class GuardedToolExecutor
 
     /// <summary>
     /// Resolves a repo-root-relative (or absolute) path to a canonical absolute path.
-    /// Handles <c>..</c> and symlinks via <see cref="Path.GetFullPath"/>.
+    /// Handles lexical normalization (for example <c>..</c>) via
+    /// <see cref="Path.GetFullPath"/>; symlinks are not resolved here.
     /// </summary>
     private string Canonicalize(string path) =>
         Path.IsPathRooted(path)

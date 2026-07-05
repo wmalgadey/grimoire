@@ -7,7 +7,7 @@ continues) or allow (journal for writes → execute → record). No other tools 
 filesystem access bypasses this layer (enforced by the Phase 0 structural test).
 
 Paths supplied by the model are interpreted relative to the repository root. The
-executor canonicalizes them (`Path.GetFullPath`, `..`/symlink traversal collapsed)
+executor canonicalizes them (`Path.GetFullPath`, lexical `..` normalization)
 before policy evaluation; the canonical path is what the policy sees.
 
 ## `list_files`

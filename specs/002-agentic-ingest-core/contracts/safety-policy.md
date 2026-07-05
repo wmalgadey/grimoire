@@ -41,8 +41,8 @@ empty).
 
 1. Resolve the declared prefixes once at load time against the actual content-root /
    agents directories supplied by the Hub, yielding canonical absolute prefixes.
-2. For each tool call: canonicalize the requested target (`Path.GetFullPath`; `..` and
-   symlink traversal collapsed) **before** any filesystem access.
+2. For each tool call: canonicalize the requested target with lexical normalization
+   (`Path.GetFullPath`; `..` segments removed) **before** any filesystem access.
 3. If the canonical target does not start with any allowed canonical prefix for the
    tool's scope (read vs. write) ⇒ **deny** with reason `no_rule` /
    `out_of_scope`; if canonicalization escaped the repository root ⇒ deny with reason

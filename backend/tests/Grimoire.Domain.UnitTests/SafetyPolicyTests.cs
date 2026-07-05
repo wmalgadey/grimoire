@@ -82,6 +82,16 @@ public class SafetyPolicyTests
         Assert.False(decision.IsAllowed);
     }
 
+    [Fact]
+    public void ExactFilePrefix_DeniesSuffixPath()
+    {
+        var policy = BuildPolicy(readPrefixes: ["/repo/wiki/index.md"]);
+
+        var decision = policy.Evaluate("/repo/wiki/index.md.tmp", isWrite: false);
+
+        Assert.False(decision.IsAllowed);
+    }
+
     // ── Read/write scope separation ───────────────────────────────────────────────
 
     [Fact]
