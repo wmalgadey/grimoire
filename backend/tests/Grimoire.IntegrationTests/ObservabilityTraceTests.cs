@@ -1,17 +1,20 @@
-using System.Diagnostics;
 using System.Collections.Concurrent;
+using System.Diagnostics;
+using Grimoire.Domain.Guardrails;
 using Grimoire.Hub.OperationalState;
+using Grimoire.IngestAgent.AgentCore;
 using Grimoire.IngestAgent;
 using Grimoire.IngestAgent.Guardrails;
 using Grimoire.IngestAgent.IngestLog;
+using Grimoire.IntegrationTests.Fakes;
 
 namespace Grimoire.IntegrationTests;
 
 /// <summary>T037 — Trace span emission via in-process ActivityListener (ADR-005).</summary>
 public class ObservabilityTraceTests
 {
-    // Old trace tests for deprecated WikiPageWriter/WikiIndexWriter removed as part of T020
-    // New trace tests for agent loop spans will be added in phase 6 (T032)
+    // Old trace tests for deprecated WikiPageWriter/WikiIndexWriter removed as part of T020.
+    // Agent loop span coverage is asserted below.
 
     [Fact]
     public async Task IngestLogAppender_Creates_AppendLog_Span()
@@ -107,7 +110,113 @@ public class ObservabilityTraceTests
         Assert.Contains("wiki.ingest.tasks_reconciled_total", spanNames);
     }
 
-    // Old WriteWikiPage span test removed as part of T020 - pipeline replacement
-    // New trace tests for agent loop spans (ingest_agent.run, model_turn, tool_call, rollback)
-    // will be added as part of T032 phase 6 implementation
+    [Fact]
+    public async Task AgenticIngestTraceSpans_EmitExpectedHierarchyAndAttributes()
+    {
+        var activities = new ConcurrentDictionary<string, Activity>();
+
+        using var listener = new ActivityListener
+        {
+            ShouldListenTo = src => src.Name == "Grimoire.IngestAgent",
+            Sample = (ref ActivityCreationOptions<ActivityContext> _) => ActivitySamplingResult.AllDataAndRecorded,
+            ActivityStopped = activity => activities[activity.OperationName] = activity
+        };
+        ActivitySource.AddActivityListener(listener);
+
+        var root = Path.Combine(Path.GetTempPath(), $"trace-contract-{Guid.NewGuid():N}");
+        var wikiDir = Path.Combine(root, "wiki");
+        var pagesDir = Path.Combine(wikiDir, "pages");
+        Directory.CreateDirectory(pagesDir);
+        await File.WriteAllTextAsync(Path.Combine(pagesDir, "existing.md"), "before");
+
+        var policy = new SafetyPolicy(
+            root,
+            readPrefixes: [wikiDir + Path.DirectorySeparatorChar],
+            writePrefixes: [pagesDir + Path.DirectorySeparatorChar]);
+        var journal = new WriteJournal();
+        var executor = new GuardedToolExecutor(policy, journal, root, taskId: "task-123");
+        var fakeModel = new FakeModelClient([
+            FakeModelClient.WriteFileTurn("tool-1", "wiki/pages/new.md", "# New page"),
+            FakeModelClient.FinalTurn("Trace contract run complete.")]);
+        var loop = new AgentLoop(fakeModel, executor);
+
+        using (var runSpan = IngestAgentTracing.ActivitySource.StartActivity("ingest_agent.run"))
+        {
+            runSpan?.SetTag("task_id", "task-123");
+            runSpan?.SetTag("model", fakeModel.ModelId);
+            runSpan?.SetTag("policy_version", 1);
+
+            using (var loadSpan = IngestAgentTracing.ActivitySource.StartActivity("ingest_agent.load_instructions"))
+            {
+                loadSpan?.SetTag("task_id", "task-123");
+                loadSpan?.SetTag("file_count", 2);
+            }
+
+            await loop.RunAsync(
+                systemPrompt: "You are a test agent.",
+                taskId: "task-123",
+                sourceRef: "source.md",
+                sourceContent: "# source\n\ncontent",
+                cancellationToken: CancellationToken.None);
+
+            var rollbackJournal = new WriteJournal();
+            var rollbackTarget = Path.Combine(root, "wiki", "pages", "rollback.md");
+            await File.WriteAllTextAsync(rollbackTarget, "before rollback");
+            await rollbackJournal.RecordAsync(rollbackTarget, CancellationToken.None);
+            await File.WriteAllTextAsync(rollbackTarget, "after rollback");
+
+            using (var rollbackSpan = IngestAgentTracing.ActivitySource.StartActivity("ingest_agent.rollback"))
+            {
+                rollbackSpan?.SetTag("task_id", "task-123");
+                var results = await rollbackJournal.RollbackAsync(CancellationToken.None);
+                rollbackSpan?.SetTag("paths_restored", results.Count);
+            }
+
+            using (var finalizeSpan = IngestAgentTracing.ActivitySource.StartActivity("ingest_agent.finalize_artifact"))
+            {
+                finalizeSpan?.SetTag("task_id", "task-123");
+                finalizeSpan?.SetTag("outcome", "completed");
+            }
+        }
+
+        var run = activities.Values.Single(activity => activity.OperationName == "ingest_agent.run");
+        var load = activities.Values.Single(activity => activity.OperationName == "ingest_agent.load_instructions");
+        var turn = activities.Values.Single(activity => activity.OperationName == "ingest_agent.model_turn");
+        var tool = activities.Values.Single(activity => activity.OperationName == "ingest_agent.tool_call");
+        var rollback = activities.Values.Single(activity => activity.OperationName == "ingest_agent.rollback");
+        var finalize = activities.Values.Single(activity => activity.OperationName == "ingest_agent.finalize_artifact");
+
+        Assert.Equal(run.SpanId.ToHexString(), load.ParentSpanId.ToHexString());
+        Assert.Equal(run.SpanId.ToHexString(), turn.ParentSpanId.ToHexString());
+        Assert.Equal(turn.SpanId.ToHexString(), tool.ParentSpanId.ToHexString());
+        Assert.Equal(run.SpanId.ToHexString(), rollback.ParentSpanId.ToHexString());
+        Assert.Equal(run.SpanId.ToHexString(), finalize.ParentSpanId.ToHexString());
+
+        Assert.Equal("task-123", GetTag(run, "task_id"));
+        Assert.Equal("fake-model", GetTag(run, "model"));
+        Assert.Equal("1", GetTag(run, "policy_version"));
+
+        Assert.Equal("task-123", GetTag(load, "task_id"));
+        Assert.Equal("2", GetTag(load, "file_count"));
+
+        Assert.Equal("task-123", GetTag(turn, "task_id"));
+        Assert.Equal("1", GetTag(turn, "turn"));
+        Assert.Equal("tool_use", GetTag(turn, "stop_reason"));
+        Assert.Equal("100", GetTag(turn, "input_tokens"));
+        Assert.Equal("50", GetTag(turn, "output_tokens"));
+
+        Assert.Equal("task-123", GetTag(tool, "task_id"));
+        Assert.Equal("write_file", GetTag(tool, "tool"));
+        Assert.Equal(Path.Combine(root, "wiki", "pages", "new.md"), GetTag(tool, "target"));
+        Assert.Equal("allowed", GetTag(tool, "decision"));
+
+        Assert.Equal("task-123", GetTag(rollback, "task_id"));
+        Assert.Equal("1", GetTag(rollback, "paths_restored"));
+
+        Assert.Equal("task-123", GetTag(finalize, "task_id"));
+        Assert.Equal("completed", GetTag(finalize, "outcome"));
+    }
+
+    private static string GetTag(Activity activity, string tagName)
+        => activity.TagObjects.FirstOrDefault(tag => tag.Key == tagName).Value?.ToString() ?? string.Empty;
 }

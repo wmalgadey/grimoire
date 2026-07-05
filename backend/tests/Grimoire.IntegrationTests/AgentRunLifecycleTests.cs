@@ -28,6 +28,9 @@ public class AgentRunLifecycleTests
             // Create initial wiki structure
             var wikiDir = Path.Combine(tempRoot, "wiki");
             Directory.CreateDirectory(wikiDir);
+            var existingPagePath = Path.Combine(wikiDir, "pages", "existing.md");
+            Directory.CreateDirectory(Path.GetDirectoryName(existingPagePath)!);
+            File.WriteAllText(existingPagePath, "# Existing\n\nOriginal content.");
             var indexPath = Path.Combine(wikiDir, "index.md");
             File.WriteAllText(indexPath, "# Wiki Index\n\nPages:\n");
 
@@ -47,10 +50,14 @@ public class AgentRunLifecycleTests
                     OutputTokens: 50),
 
                 new ModelTurn(
-                    AssistantText: "Creating new page from source.",
+                    AssistantText: "Updating the existing page and creating a new one.",
                     ToolUseRequests: [
                         new ToolUseRequest(
                             ToolUseId: "tool-2",
+                            ToolName: "write_file",
+                            InputJson: "{\"path\": \"wiki/pages/existing.md\", \"content\": \"# Existing\\n\\nUpdated content.\"}"),
+                        new ToolUseRequest(
+                            ToolUseId: "tool-3",
                             ToolName: "write_file",
                             InputJson: "{\"path\": \"wiki/pages/test-source.md\", \"content\": \"# Test\\n\\nProcessed from source.\"}")
                     ],
@@ -94,16 +101,21 @@ public class AgentRunLifecycleTests
 
             // Assert
             Assert.NotNull(result);
-            Assert.Equal(3, result.TurnsUsed); // read, write, end
+            Assert.Equal(3, result.TurnsUsed); // read, write turn, end
             Assert.True(result.TotalInputTokens > 0);
             Assert.True(result.TotalOutputTokens > 0);
             Assert.Contains("complete", result.Narrative, StringComparison.OrdinalIgnoreCase);
 
-            // Verify page was written
+            // Verify pages were written and journaled with the correct action split.
+            Assert.Contains(existingPagePath, journal.UpdatedPaths);
             var pagePath = Path.Combine(wikiDir, "pages", "test-source.md");
+            Assert.Contains(pagePath, journal.CreatedPaths);
             Assert.True(File.Exists(pagePath));
             var pageContent = File.ReadAllText(pagePath);
             Assert.Contains("Processed from source", pageContent);
+
+            var updatedContent = File.ReadAllText(existingPagePath);
+            Assert.Contains("Updated content", updatedContent);
         }
         finally
         {

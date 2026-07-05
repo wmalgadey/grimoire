@@ -116,7 +116,10 @@ try
         return 1;
     }
 
-    var touchedPaths = executor.TouchedPaths;
+    var touchedPaths = journal.TouchedPaths;
+    var pagesCreated = journal.CreatedPaths;
+    var pagesUpdated = journal.UpdatedPaths;
+    var pagesSuperseded = journal.SupersededPaths;
 
     await taskStore.WriteAsync(
         options.TaskArtifactPath,
@@ -131,9 +134,9 @@ try
             PagesTouched: touchedPaths.Select(p => Path.GetRelativePath(repoRoot, p)).ToList(),
             FailureReason: null,
             Narrative: loopResult.Narrative,
-            PagesCreated: touchedPaths.Select(p => Path.GetRelativePath(repoRoot, p)).ToList(),
-            PagesUpdated: [],
-            PagesSuperseded: [],
+            PagesCreated: pagesCreated.Select(p => Path.GetRelativePath(repoRoot, p)).ToList(),
+            PagesUpdated: pagesUpdated.Select(p => Path.GetRelativePath(repoRoot, p)).ToList(),
+            PagesSuperseded: pagesSuperseded.Select(p => Path.GetRelativePath(repoRoot, p)).ToList(),
             DeniedActions: executor.Denials.Select(d => new DeniedActionEntry(d.Action, d.RequestedTarget, d.CanonicalTarget, d.Reason, d.Turn)).ToList(),
             InstructionFiles: instructionSet.Files.Select(f => new InstructionFileRecord(f.Path, f.Sha256)).ToList(),
             Policy: new PolicyRecord(loadedPolicy.Identity.Path, loadedPolicy.Identity.Version, loadedPolicy.Identity.Sha256),

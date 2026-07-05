@@ -69,4 +69,27 @@ public sealed class WriteJournal
 
     /// <summary>All paths that have been journaled so far in this run.</summary>
     public IReadOnlyList<string> JournaledPaths => _entries.Select(e => e.Path).ToList();
+
+    /// <summary>All unique paths touched by the journal, in first-write order.</summary>
+    public IReadOnlyList<string> TouchedPaths => GetPrimaryEntries().Select(e => e.Path).ToList();
+
+    /// <summary>All unique paths that were created during the run.</summary>
+    public IReadOnlyList<string> CreatedPaths => GetPrimaryEntries()
+        .Where(e => !e.ExistedBefore)
+        .Select(e => e.Path)
+        .ToList();
+
+    /// <summary>All unique paths that were updated during the run.</summary>
+    public IReadOnlyList<string> UpdatedPaths => GetPrimaryEntries()
+        .Where(e => e.ExistedBefore)
+        .Select(e => e.Path)
+        .ToList();
+
+    /// <summary>No guarded write currently marks a path as superseded.</summary>
+    public IReadOnlyList<string> SupersededPaths => [];
+
+    private IEnumerable<WriteJournalEntry> GetPrimaryEntries() =>
+        _entries
+            .GroupBy(entry => entry.Path, StringComparer.Ordinal)
+            .Select(group => group.First());
 }
