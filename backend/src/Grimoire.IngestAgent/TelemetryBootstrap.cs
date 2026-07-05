@@ -30,6 +30,7 @@ public static class TelemetryBootstrap
         var loggerFactory = LoggerFactory.Create(builder =>
             builder.AddOpenTelemetry(logging =>
             {
+                logging.IncludeFormattedMessage = true;
                 logging.SetResourceBuilder(resource);
                 logging.AddOtlpExporter();
             }));
