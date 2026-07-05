@@ -1,25 +1,28 @@
 <!--
 SYNC IMPACT REPORT
 ==================
-Version change: 1.1.0 → 1.1.1
+Version change: 1.1.1 → 1.2.0
 
-Principles modified: none
+Principles modified:
+  - IV. Behavioral & Observable Engineering (added explicit logging-contract MUST rule)
 
 Principles added: none
 
-Sections modified: none
+Sections modified:
+  - Definition of Done (added explicit logging-contract completion gate)
 
 Sections removed: none
 
 Templates updated:
-  - .specify/templates/tasks-template.md ✅ (removed optional-test wording so generated
-    tasks require the verification work already mandated by Principle II)
-  - .specify/templates/plan-template.md ✅ (added mandatory Test Strategy section mapping
-    each success criterion to hermetic tests or evaluation thresholds, including doubles
-    and fixtures)
+  - .specify/templates/plan-template.md ✅ (added explicit derivation rule from each
+    Structured Log Events row to implementation tasks, deterministic integration
+    tests, and CI enforcement)
+  - .specify/templates/tasks-template.md ✅ (added mandatory logging-contract task
+    coverage for implementation, deterministic integration tests, and standard PR CI run)
 
-Rationale for PATCH bump: no principle changed; this sync only propagates existing
-constitutional requirements into dependent templates.
+Rationale for MINOR bump: this amendment introduces a new normative MUST requirement
+for logging-contract traceability from plan observability rows into tasks, tests,
+and standard PR CI enforcement.
 
 Deferred TODOs: none
 -->
@@ -140,6 +143,15 @@ explicitly enumerate:
 - **Distributed Trace Spans**: OpenTelemetry span names, their parent/child relationships,
   and the attributes they carry
 
+For every row in `plan.md ## Observability > Structured Log Events`, `tasks.md` MUST
+include all three of the following logging-contract task categories:
+
+- **Implementation tasks** that emit the event with a stable event name and the declared
+  mandatory fields
+- **Deterministic integration tests** that validate the event name, log level, and every
+  mandatory field for the relevant trigger
+- **CI enforcement tasks** that ensure these logging tests run in the standard PR pipeline
+
 Code submitted without the instrumentation specified in the Observability section fails
 the Definition of Done and MUST NOT be merged.
 
@@ -197,6 +209,7 @@ A feature increment is DONE when ALL of the following conditions hold:
 - [ ] All ADRs referenced in `plan.md` exist in `docs/adr/` and are in Accepted status
 - [ ] Structural boundary tests (Phase 0) pass in CI with no active violations
 - [ ] Observability tests (final phase) pass: all metrics, log events, and trace spans from `plan.md ## Observability` are emitted
+- [ ] Logging contract is complete for every row in `plan.md ## Observability > Structured Log Events`: implementation tasks define stable event names and mandatory fields, deterministic integration tests validate event name/level/mandatory fields, and these logging tests run in the standard PR CI pipeline
 - [ ] Agent-behavior evaluation tests (final phase) pass for every agent-judgment success criterion in the spec, at the thresholds the spec defines (only for features with agentic behavior)
 - [ ] The agentic boundary (Principle V) is respected: no wiki-content judgment is implemented as deterministic backend code, instruction files are loaded into the agent's context, and the guarded-tool structural test passes
 - [ ] Integration tests via Testcontainers cover all API boundaries introduced by the feature
@@ -219,4 +232,4 @@ per semantic versioning (MAJOR: incompatible principle removals/redefinitions; M
 or materially expanded principles; PATCH: clarifications), update the Sync Impact Report,
 and propagate changes to the dependent templates in `.specify/templates/`.
 
-**Version**: 1.1.1 | **Ratified**: 2026-06-23 | **Last Amended**: 2026-07-05
+**Version**: 1.2.0 | **Ratified**: 2026-06-23 | **Last Amended**: 2026-07-05

@@ -125,6 +125,13 @@
 |-------|-------|---------|-----------------|
 | `[event_name]` | INFO/WARN/ERROR | [When emitted] | `[field1, field2]` |
 
+**Derivation rule (MANDATORY)**: Every row in **Structured Log Events** MUST map to
+concrete work in `tasks.md` covering all three categories:
+
+1. Implementation task(s) with stable event name and mandatory fields.
+2. Deterministic integration test task(s) validating event name, level, and mandatory fields.
+3. CI task(s) ensuring those logging tests run in the standard PR pipeline.
+
 ### Distributed Trace Spans (OpenTelemetry)
 
 | Span name | Parent span | Attributes |

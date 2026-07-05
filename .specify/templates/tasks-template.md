@@ -11,6 +11,12 @@ description: "Task list template for feature implementation"
 
 **Tests**: The examples below include required test tasks. Every user story MUST include the deterministic and evaluation-style tests needed to verify its independent behavior, consistent with the feature spec, plan, and constitution.
 
+**Logging Contract (MANDATORY)**: For every Structured Log Events row in `plan.md ## Observability`, tasks MUST cover all three categories:
+
+- implementation task(s) with stable event name and mandatory fields,
+- deterministic integration test task(s) validating event name, level, and mandatory fields,
+- CI task(s) that run those logging tests in the standard PR pipeline.
+
 **Organization**: Tasks are grouped by user story to enable independent implementation and testing of each story.
 
 ## Format: `[ID] [P?] [Story] Description`
@@ -140,6 +146,8 @@ Examples of foundational tasks (adjust based on your project):
 - [ ] T015 [US1] Implement [endpoint/feature] in src/[location]/[file].py
 - [ ] T016 [US1] Add validation and error handling
 - [ ] T017 [US1] Add logging for user story 1 operations
+- [ ] T017a [US1] Implement structured log event(s) with stable names and mandatory fields defined in plan.md ## Observability
+- [ ] T017b [US1] Add deterministic integration test(s) that validate event name, level, and mandatory fields
 
 **Checkpoint**: At this point, User Story 1 should be fully functional and testable independently
 
@@ -197,6 +205,7 @@ Examples of foundational tasks (adjust based on your project):
 **Purpose**: Improvements that affect multiple user stories
 
 - [ ] TXXX Observability tests: verify all metrics, log events, and trace spans from plan.md ## Observability are emitted (MANDATORY — Constitution Principle IV)
+- [ ] TXXX Logging contract CI enforcement: ensure deterministic logging tests for all Structured Log Events rows run in the standard PR pipeline (MANDATORY — Constitution Principle IV)
 - [ ] TXXX Agent-behavior evaluation tests: verify every agent-judgment success criterion from spec.md at its defined threshold via sampled runs with real or recorded LLM output (MANDATORY for features with agentic behavior — Constitution Principles II & V)
 - [ ] TXXX [P] Documentation updates in docs/
 - [ ] TXXX Code cleanup and refactoring
