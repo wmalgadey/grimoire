@@ -13,7 +13,7 @@ public sealed class AgentLoop
     private const int DefaultTurnCap = 50;
     private const int DefaultTokenCap = 200_000;
     private static readonly string ContinuePrompt =
-        $"Continue the task. If you are finished, return your final summary with stop_reason={ModelStopReason.EndTurn.ToProtocolString()}.";
+        $"Continue the task.";
 
     private readonly IModelClient _modelClient;
     private readonly GuardedToolExecutor _executor;
