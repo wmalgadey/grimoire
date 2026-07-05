@@ -4,13 +4,16 @@ using Grimoire.IngestAgent.Guardrails;
 using Grimoire.IngestAgent.IngestLog;
 using Grimoire.IngestAgent.Source;
 using Grimoire.IngestAgent.TaskArtifact;
+using Microsoft.Extensions.Logging;
 using System.Text.RegularExpressions;
 
 using var telemetry = TelemetryBootstrap.Build();
+using var loggerFactory = LoggerFactory.Create(_ => { });
+var logger = loggerFactory.CreateLogger("Grimoire.IngestAgent.Program");
 
 var options = ParseArgs(args);
 var taskStore = new TaskArtifactStore();
-var logAppender = new IngestLogAppender();
+var logAppender = new IngestLogAppender(loggerFactory.CreateLogger<IngestLogAppender>());
 var sourceReader = new SourceReader();
 
 var startTime = DateTimeOffset.UtcNow;
@@ -45,6 +48,12 @@ try
     if (instructionResult.IsSecond(out var instructionFailure))
     {
         IngestAgentMetrics.RecordInstructionLoadFailure("instructions");
+        IngestAgentLogEvents.LogInstructionsLoadFailed(
+            logger,
+            options.TaskId,
+            "instructions",
+            options.InstructionsDir,
+            instructionFailure.Reason);
         await FinalizeFailedAsync(taskStore, options, startTime, instructionFailure.Reason, null, logAppender, false, modelId: modelClient.ModelId);
         return 1;
     }
@@ -55,10 +64,26 @@ try
     if (policyResult.IsSecond(out var policyFailure))
     {
         IngestAgentMetrics.RecordInstructionLoadFailure("policy");
+        IngestAgentLogEvents.LogInstructionsLoadFailed(
+            logger,
+            options.TaskId,
+            "policy",
+            options.PolicyPath,
+            policyFailure.Reason);
         await FinalizeFailedAsync(taskStore, options, startTime, policyFailure.Reason, null, logAppender, false, modelId: modelClient.ModelId);
         return 1;
     }
     policyResult.IsFirst(out var loadedPolicy);
+
+    var instructionFilesField = string.Join(
+        ";",
+        instructionSet!.Files.Select(f => $"{f.Path}:{f.Sha256}"));
+    IngestAgentLogEvents.LogInstructionsLoaded(
+        logger,
+        options.TaskId,
+        instructionFilesField,
+        loadedPolicy!.Identity.Version,
+        loadedPolicy.Identity.Sha256);
 
     using var loadSpan = IngestAgentTracing.ActivitySource.StartActivity("ingest_agent.load_instructions");
     loadSpan?.SetTag("task_id", options.TaskId);
@@ -67,7 +92,12 @@ try
     var readSource = await sourceReader.ReadAsync(
         options.SourceKind, options.SourceRef, options.PastedText, CancellationToken.None);
 
-    var executor = new GuardedToolExecutor(loadedPolicy!.Policy, journal, repoRoot);
+    var executor = new GuardedToolExecutor(
+        loadedPolicy!.Policy,
+        journal,
+        repoRoot,
+        options.TaskId,
+        loggerFactory.CreateLogger<GuardedToolExecutor>());
     var tokenCap = ResolveTokenCapFromEnvironment();
     var loop = new AgentLoop(modelClient, executor, tokenCap: tokenCap);
     var systemPrompt = instructionSet.BuildSystemPrompt();
@@ -80,7 +110,8 @@ try
     }
     catch (AgentLoopCapException capEx)
     {
-        var rollbackOutcome = await RollbackAsync(journal);
+        IngestAgentLogEvents.LogAgentCapExceeded(logger, options.TaskId, capEx.Cap, capEx.TurnsUsed);
+        var rollbackOutcome = await RollbackAsync(journal, options.TaskId, logger);
         await FinalizeFailedAsync(taskStore, options, startTime, capEx.Message, journal, logAppender, rollbackOutcome, instructionSet, loadedPolicy, modelClient.ModelId);
         return 1;
     }
@@ -115,6 +146,15 @@ try
         options.LogPath, "completed", options.SourceRef, options.TaskId,
         forceAppend: false, CancellationToken.None);
 
+    IngestAgentLogEvents.LogAgentCompleted(
+        logger,
+        options.TaskId,
+        loopResult.TurnsUsed,
+        touchedPaths.Count,
+        0,
+        0,
+        executor.Denials.Count);
+
     IngestAgentMetrics.RecordIngest("completed", touchedPaths.Count, "touched",
         (DateTimeOffset.UtcNow - startTime).TotalSeconds);
 
@@ -123,12 +163,12 @@ try
 catch (Exception ex)
 {
     var safeMessage = SanitizeErrorText(ex.Message);
-    var rollbackOutcome = await RollbackAsync(journal);
+    var rollbackOutcome = await RollbackAsync(journal, options.TaskId, logger);
     await FinalizeFailedAsync(taskStore, options, startTime, safeMessage, journal, logAppender, rollbackOutcome, modelId: modelClient?.ModelId);
     return 1;
 }
 
-static async Task<bool> RollbackAsync(WriteJournal journal)
+static async Task<bool> RollbackAsync(WriteJournal journal, string taskId, ILogger logger)
 {
     using var rollbackSpan = IngestAgentTracing.ActivitySource.StartActivity("ingest_agent.rollback");
     try
@@ -137,11 +177,13 @@ static async Task<bool> RollbackAsync(WriteJournal journal)
         var allOk = outcomes.Values.All(ok => ok);
         IngestAgentMetrics.RecordRollback(allOk);
         rollbackSpan?.SetTag("paths_restored", outcomes.Count);
+        IngestAgentLogEvents.LogRunRolledBack(logger, taskId, outcomes.Count, allOk);
         return allOk;
     }
     catch
     {
         IngestAgentMetrics.RecordRollback(false);
+        IngestAgentLogEvents.LogRunRolledBack(logger, taskId, 0, false);
         return false;
     }
 }

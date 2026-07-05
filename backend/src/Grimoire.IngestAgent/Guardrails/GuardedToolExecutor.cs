@@ -1,4 +1,6 @@
 using Grimoire.Domain.Guardrails;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using System.Text;
 using System.Text.Json;
 
@@ -22,14 +24,23 @@ public sealed class GuardedToolExecutor
     private readonly SafetyPolicy _policy;
     private readonly WriteJournal _journal;
     private readonly string _repositoryRoot;
+    private readonly string _taskId;
+    private readonly ILogger<GuardedToolExecutor> _logger;
     private readonly List<DeniedActionRecord> _denials = [];
     private readonly List<string> _touchedPaths = [];
 
-    public GuardedToolExecutor(SafetyPolicy policy, WriteJournal journal, string repositoryRoot)
+    public GuardedToolExecutor(
+        SafetyPolicy policy,
+        WriteJournal journal,
+        string repositoryRoot,
+        string? taskId = null,
+        ILogger<GuardedToolExecutor>? logger = null)
     {
         _policy = policy;
         _journal = journal;
         _repositoryRoot = repositoryRoot;
+        _taskId = taskId ?? string.Empty;
+        _logger = logger ?? NullLogger<GuardedToolExecutor>.Instance;
     }
 
     /// <summary>All policy denials that occurred during the run so far.</summary>
@@ -206,19 +217,21 @@ public sealed class GuardedToolExecutor
 
         IngestAgentMetrics.RecordToolCall(action, "denied");
         IngestAgentMetrics.RecordActionDenied(action, reason);
+        IngestAgentLogEvents.LogToolDenied(_logger, _taskId, action, canonicalTarget, reason, turn);
 
         return new ToolExecutionResult(
             true,
             $"denied: {reason}. This action is outside the safety policy; continue with your remaining allowed work.");
     }
 
-    private static void EmitAllowed(string tool, string target, int turn)
+    private void EmitAllowed(string tool, string target, int turn)
     {
         using var span = IngestAgentTracing.ActivitySource.StartActivity("ingest_agent.tool_call");
         span?.SetTag("tool", tool);
         span?.SetTag("target", target);
         span?.SetTag("decision", "allowed");
         span?.SetTag("turn", turn);
+        IngestAgentLogEvents.LogToolAllowed(_logger, _taskId, tool, target, turn);
     }
 
     /// <summary>

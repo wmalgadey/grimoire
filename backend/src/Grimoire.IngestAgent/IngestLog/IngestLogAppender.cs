@@ -1,3 +1,6 @@
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
+
 namespace Grimoire.IngestAgent.IngestLog;
 
 /// <summary>
@@ -8,6 +11,13 @@ namespace Grimoire.IngestAgent.IngestLog;
 /// </summary>
 public sealed class IngestLogAppender
 {
+    private readonly ILogger<IngestLogAppender> _logger;
+
+    public IngestLogAppender(ILogger<IngestLogAppender>? logger = null)
+    {
+        _logger = logger ?? NullLogger<IngestLogAppender>.Instance;
+    }
+
     /// <summary>
     /// Ensures a log entry exists for <paramref name="taskId"/>.
     /// Always appends on failure; on success only appends if the agent omitted the entry.
@@ -44,6 +54,7 @@ public sealed class IngestLogAppender
 
         EnsureParentDirectory(logPath);
         await File.AppendAllTextAsync(logPath, line, cancellationToken);
+        IngestAgentLogEvents.LogBackstopAppended(_logger, taskId, outcome);
     }
 
     /// <summary>
