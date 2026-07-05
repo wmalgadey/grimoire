@@ -1,14 +1,88 @@
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
+
 namespace Grimoire.IngestAgent.IngestLog;
 
+/// <summary>
+/// Harness backstop for the ingest log (R8). On success the agent is expected
+/// to append the log entry via <c>write_file</c>. This appender verifies that
+/// an entry for the task id exists; if absent — and always on failure — it
+/// appends a minimal factual entry and emits <c>ingest.log.backstop_appended</c>.
+/// </summary>
 public sealed class IngestLogAppender
 {
-    public async Task AppendAsync(string logPath, string outcome, string sourceRef, string detail, string taskId, CancellationToken cancellationToken)
+    private readonly ILogger<IngestLogAppender> _logger;
+
+    public IngestLogAppender(ILogger<IngestLogAppender>? logger = null)
+    {
+        _logger = logger ?? NullLogger<IngestLogAppender>.Instance;
+    }
+
+    /// <summary>
+    /// Ensures a log entry exists for <paramref name="taskId"/>.
+    /// Always appends on failure; on success only appends if the agent omitted the entry.
+    /// </summary>
+    public async Task EnsureLogEntryAsync(
+        string logPath,
+        string outcome,
+        string sourceRef,
+        string taskId,
+        bool forceAppend,
+        CancellationToken cancellationToken)
+    {
+        var backstopNeeded = forceAppend;
+
+        if (!backstopNeeded && File.Exists(logPath))
+        {
+            var logContent = await File.ReadAllTextAsync(logPath, cancellationToken);
+            backstopNeeded = !logContent.Contains(taskId, StringComparison.Ordinal);
+        }
+        else if (!backstopNeeded)
+        {
+            // log.md doesn't exist yet — backstop needed.
+            backstopNeeded = true;
+        }
+
+        if (!backstopNeeded)
+            return;
+
+        var line = $"## [{DateTime.UtcNow:yyyy-MM-dd}] ingest | {outcome} | source: {sourceRef} | backstop entry | task: [[tasks/{taskId}.md]]{Environment.NewLine}";
+
+        using var span = IngestAgentTracing.ActivitySource.StartActivity("ingest_agent.backstop_log");
+        span?.SetTag("task_id", taskId);
+        span?.SetTag("outcome", outcome);
+
+        EnsureParentDirectory(logPath);
+        await File.AppendAllTextAsync(logPath, line, cancellationToken);
+        IngestAgentLogEvents.LogBackstopAppended(_logger, taskId, outcome);
+    }
+
+    /// <summary>
+    /// Legacy overload for compatibility with Hub restart reconciliation path.
+    /// </summary>
+    public async Task AppendAsync(
+        string logPath,
+        string outcome,
+        string sourceRef,
+        string detail,
+        string taskId,
+        CancellationToken cancellationToken)
     {
         var line = $"## [{DateTime.UtcNow:yyyy-MM-dd}] ingest | {outcome} | source: {sourceRef} | {detail} | task: [[tasks/{taskId}.md]]{Environment.NewLine}";
 
         using var span = IngestAgentTracing.ActivitySource.StartActivity("ingest_agent.append_log");
         span?.SetTag("outcome", outcome);
 
+        EnsureParentDirectory(logPath);
         await File.AppendAllTextAsync(logPath, line, cancellationToken);
+    }
+
+    private static void EnsureParentDirectory(string logPath)
+    {
+        var logDir = Path.GetDirectoryName(logPath);
+        if (!string.IsNullOrWhiteSpace(logDir))
+        {
+            Directory.CreateDirectory(logDir);
+        }
     }
 }

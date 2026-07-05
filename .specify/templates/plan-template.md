@@ -66,6 +66,44 @@
 
 **New ADR required?**: [Yes — draft docs/adr/ADR-NNN-[name].md before proceeding / No]
 
+## Agentic Boundary (Constitution Principle V)
+
+*GATE: Required whenever the feature touches wiki content or agent behavior.*
+
+<!--
+  ACTION REQUIRED: For every capability this feature introduces or changes, assign it
+  to exactly one side of the boundary. Wiki-content judgment (what pages exist, what
+  they say, update-vs-create, supersession, categorization, confidence, tagging) MUST
+  land in instruction files executed by an agent; backend code may only gain harness
+  capabilities (dispatch, guardrails, tools, task lifecycle, observability).
+  If the feature has no agentic surface, write: "No agentic surface — harness-only feature."
+-->
+
+| Capability                         | Side         | Where it lives                               |
+|------------------------------------|--------------|----------------------------------------------|
+| [e.g., update-vs-create decision]  | Agentic core | [e.g., agents/ingest/SKILL.md]               |
+| [e.g., write-path guardrail]       | Harness      | [e.g., Guardrails/GuardedFileOperations.cs]  |
+
+## Test Strategy
+
+*MANDATORY: Every success criterion in spec.md MUST map to its primary verification method before tasks are generated.*
+
+<!--
+  ACTION REQUIRED: Map each success criterion from spec.md to the test approach that
+  proves it. Deterministic harness guarantees MUST map to hermetic contract,
+  integration, or architecture tests. Agent-judgment outcomes MUST map to evaluation
+  runs with explicit thresholds.
+
+  Include the concrete doubles, fixtures, and recorded samples required to keep the
+  test suite reproducible. Hermetic tests MUST NOT require live LLM provider calls or
+  production credentials.
+-->
+
+| Success criterion | Category | Primary test type | Doubles / external dependencies | Fixtures / sampled data | Notes |
+|-------------------|----------|-------------------|----------------------------------|-------------------------|-------|
+| `[e.g., Submission is persisted atomically]` | Deterministic guarantee | Hermetic integration test | `[e.g., Testcontainers PostgreSQL, fake clock]` | `[e.g., valid submission payload, rollback scenario fixture]` | `[Why this test proves the criterion]` |
+| `[e.g., Agent chooses update over duplicate creation in >= 90% of sampled runs]` | Agent-judgment threshold | Evaluation with threshold | `[e.g., recorded LLM responses or approved live-eval gate]` | `[e.g., sampled wiki/source pairs, golden adjudication set]` | `[Threshold, scorer, retry policy]` |
+
 ## Observability
 
 *MANDATORY: Code without this instrumentation fails the Definition of Done.*
@@ -87,11 +125,25 @@
 |-------|-------|---------|-----------------|
 | `[event_name]` | INFO/WARN/ERROR | [When emitted] | `[field1, field2]` |
 
+**Derivation rule (MANDATORY)**: Every row in **Structured Log Events** MUST map to
+concrete work in `tasks.md` covering all three categories:
+
+1. Implementation task(s) with stable event name and mandatory fields.
+2. Deterministic integration test task(s) validating event name, level, and mandatory fields.
+3. CI task(s) ensuring those logging tests run in the standard PR pipeline.
+
 ### Distributed Trace Spans (OpenTelemetry)
 
 | Span name | Parent span | Attributes |
 |-----------|-------------|-----------|
 | `[service.operation]` | `[parent or root]` | `[key=value]` |
+
+**Derivation rule (MANDATORY)**: Every row in **Distributed Trace Spans** MUST map to
+concrete work in `tasks.md` covering all three categories:
+
+1. Implementation task(s) that create the span with declared parent/child linkage and required attributes.
+2. Deterministic integration test task(s) validating span name, parent/child relationship, and correlation attributes.
+3. CI task(s) ensuring those trace tests run in the standard PR pipeline.
 
 ## Project Structure
 

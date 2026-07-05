@@ -9,7 +9,19 @@ description: "Task list template for feature implementation"
 
 **Prerequisites**: plan.md (required), spec.md (required for user stories), research.md, data-model.md, contracts/
 
-**Tests**: The examples below include test tasks. Tests are OPTIONAL - only include them if explicitly requested in the feature specification.
+**Tests**: The examples below include required test tasks. Every user story MUST include the deterministic and evaluation-style tests needed to verify its independent behavior, consistent with the feature spec, plan, and constitution.
+
+**Logging Contract (MANDATORY)**: For every Structured Log Events row in `plan.md ## Observability`, tasks MUST cover all three categories:
+
+- implementation task(s) with stable event name and mandatory fields,
+- deterministic integration test task(s) validating event name, level, and mandatory fields,
+- CI task(s) that run those logging tests in the standard PR pipeline.
+
+**Trace Contract (MANDATORY)**: For every Distributed Trace Spans row in `plan.md ## Observability`, tasks MUST cover all three categories:
+
+- implementation task(s) that create the span with declared parent/child linkage and required attributes,
+- deterministic integration test task(s) validating span name, parent/child relationship, and correlation attributes,
+- CI task(s) that run those trace tests in the standard PR pipeline.
 
 **Organization**: Tasks are grouped by user story to enable independent implementation and testing of each story.
 
@@ -125,7 +137,7 @@ Examples of foundational tasks (adjust based on your project):
 
 **Independent Test**: [How to verify this story works on its own]
 
-### Tests for User Story 1 (OPTIONAL - only if tests requested) ⚠️
+### Tests for User Story 1
 
 > **NOTE: Write these tests FIRST, ensure they FAIL before implementation**
 
@@ -140,6 +152,10 @@ Examples of foundational tasks (adjust based on your project):
 - [ ] T015 [US1] Implement [endpoint/feature] in src/[location]/[file].py
 - [ ] T016 [US1] Add validation and error handling
 - [ ] T017 [US1] Add logging for user story 1 operations
+- [ ] T017a [US1] Implement structured log event(s) with stable names and mandatory fields defined in plan.md ## Observability
+- [ ] T017b [US1] Add deterministic integration test(s) that validate event name, level, and mandatory fields
+- [ ] T017c [US1] Implement distributed trace span(s) with declared parent/child linkage and required attributes from plan.md ## Observability
+- [ ] T017d [US1] Add deterministic integration test(s) that validate span name, parent/child relationship, and correlation attributes
 
 **Checkpoint**: At this point, User Story 1 should be fully functional and testable independently
 
@@ -151,7 +167,7 @@ Examples of foundational tasks (adjust based on your project):
 
 **Independent Test**: [How to verify this story works on its own]
 
-### Tests for User Story 2 (OPTIONAL - only if tests requested) ⚠️
+### Tests for User Story 2
 
 - [ ] T018 [P] [US2] Contract test for [endpoint] in tests/contract/test_[name].py
 - [ ] T019 [P] [US2] Integration test for [user journey] in tests/integration/test_[name].py
@@ -173,7 +189,7 @@ Examples of foundational tasks (adjust based on your project):
 
 **Independent Test**: [How to verify this story works on its own]
 
-### Tests for User Story 3 (OPTIONAL - only if tests requested) ⚠️
+### Tests for User Story 3
 
 - [ ] T024 [P] [US3] Contract test for [endpoint] in tests/contract/test_[name].py
 - [ ] T025 [P] [US3] Integration test for [user journey] in tests/integration/test_[name].py
@@ -196,10 +212,14 @@ Examples of foundational tasks (adjust based on your project):
 
 **Purpose**: Improvements that affect multiple user stories
 
+- [ ] TXXX Observability tests: verify all metrics, log events, and trace spans from plan.md ## Observability are emitted (MANDATORY — Constitution Principle IV)
+- [ ] TXXX Logging contract CI enforcement: ensure deterministic logging tests for all Structured Log Events rows run in the standard PR pipeline (MANDATORY — Constitution Principle IV)
+- [ ] TXXX Trace contract CI enforcement: ensure deterministic trace tests for all Distributed Trace Spans rows run in the standard PR pipeline (MANDATORY — Constitution Principle IV)
+- [ ] TXXX Agent-behavior evaluation tests: verify every agent-judgment success criterion from spec.md at its defined threshold via sampled runs with real or recorded LLM output (MANDATORY for features with agentic behavior — Constitution Principles II & V)
 - [ ] TXXX [P] Documentation updates in docs/
 - [ ] TXXX Code cleanup and refactoring
 - [ ] TXXX Performance optimization across all stories
-- [ ] TXXX [P] Additional unit tests (if requested) in tests/unit/
+- [ ] TXXX [P] Additional unit tests for complex domain logic justified by the plan in tests/unit/
 - [ ] TXXX Security hardening
 - [ ] TXXX Run quickstart.md validation
 
@@ -224,7 +244,7 @@ Examples of foundational tasks (adjust based on your project):
 
 ### Within Each User Story
 
-- Tests (if included) MUST be written and FAIL before implementation
+- Required tests MUST be written and FAIL before implementation, except evaluation harness setup that defines post-implementation threshold verification
 - Models before services
 - Services before endpoints
 - Core implementation before integration
@@ -244,7 +264,7 @@ Examples of foundational tasks (adjust based on your project):
 ## Parallel Example: User Story 1
 
 ```bash
-# Launch all tests for User Story 1 together (if tests requested):
+# Launch all tests for User Story 1 together:
 Task: "Contract test for [endpoint] in tests/contract/test_[name].py"
 Task: "Integration test for [user journey] in tests/integration/test_[name].py"
 

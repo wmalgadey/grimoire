@@ -1,7 +1,10 @@
 ---
+role: source-material
+status: absorbed
+absorbed_into: docs/decision-context-overview.md
+binding: none — never cite as requirements
 dateCreated: 2026-06-21T11:30:00
 dateModified: 2026-06-22T10:06:26
-status: seedling
 title: LLM-Wiki AI-Harness — Konzept und Tool-Vergleich
 aliases:
   - LLM-Wiki Harness

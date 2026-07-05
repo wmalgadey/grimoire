@@ -108,14 +108,22 @@
 <!--
   ACTION REQUIRED: Define measurable success criteria.
   These must be technology-agnostic and measurable.
+
+  Constitution Principle II mandates a split:
+  - Harness/system outcomes (dispatch, artifacts, guardrails, persistence) are
+    deterministic guarantees — "100%" is appropriate.
+  - Agent-judgment outcomes (content decisions made by an LLM under instructions) MUST
+    be evaluation thresholds (e.g., "≥ 90% of sampled runs..."). Attaching a 100%
+    deterministic guarantee to agent judgment is a spec defect: it forces the
+    implementation to replace the agent with deterministic code.
 -->
 
 ### Measurable Outcomes
 
-- **SC-001**: [Measurable metric, e.g., "Users can complete account creation in under 2 minutes"]
-- **SC-002**: [Measurable metric, e.g., "System handles 1000 concurrent users without degradation"]
-- **SC-003**: [User satisfaction metric, e.g., "90% of users successfully complete primary task on first attempt"]
-- **SC-004**: [Business metric, e.g., "Reduce support tickets related to [X] by 50%"]
+- **SC-001**: [Deterministic harness guarantee, e.g., "100% of runs produce a task artifact"]
+- **SC-002**: [Deterministic harness guarantee, e.g., "100% of denied actions are recorded with a reason"]
+- **SC-003**: [Agent-judgment threshold, e.g., "≥ 90% of sampled ingests update the existing page instead of creating a duplicate"]
+- **SC-004**: [Agent-judgment threshold or business metric, e.g., "≥ 95% of sampled pages carry the required frontmatter"]
 
 ## Assumptions
 

@@ -1,22 +1,28 @@
 <!--
 SYNC IMPACT REPORT
 ==================
-Version change: template → 1.0.0
+Version change: 1.2.0 → 1.3.0
 
-Principles added:
-  - I. Domain Architecture & Strategic DDD
-  - II. Pragmatic Testing Strategy
-  - III. ADR-First & Test-Driven Architecture
-  - IV. Behavioral & Observable Engineering
+Principles modified:
+  - IV. Behavioral & Observable Engineering (added explicit trace-contract MUST rules)
 
-Sections added:
-  - Spec-Kit Workflow Integration
-  - Definition of Done (DoD)
+Principles added: none
+
+Sections modified:
+  - Definition of Done (added explicit trace-contract validation gate)
+
+Sections removed: none
 
 Templates updated:
-  - .specify/templates/plan-template.md ✅ (Architectural Constraints & ADRs + Observability sections added)
-  - .specify/templates/tasks-template.md ✅ (Phase 0 architecture test task added as mandatory first task)
-  - .specify/templates/spec-template.md ✅ (no structural changes required; existing format compatible)
+  - .specify/templates/plan-template.md ✅ (added mandatory trace-strategy derivation
+    from each Distributed Trace Spans row to implementation, deterministic validation,
+    and CI enforcement tasks)
+  - .specify/templates/tasks-template.md ✅ (added mandatory trace-contract task
+    coverage for implementation, deterministic integration tests, and standard PR CI run)
+
+Rationale for MINOR bump: this amendment introduces new normative MUST requirements
+for trace-chain implementation and explicit trace-contract propagation from plan
+observability rows into tasks, tests, and standard PR CI enforcement.
 
 Deferred TODOs: none
 -->
@@ -55,6 +61,25 @@ integration tests cover them implicitly.
 Dogmatic Red-Green-Refactor and excessive mocking are explicitly rejected. A test that
 mocks the database for a repository implementation is considered a false negative.
 
+**Harness contracts vs. agent behavior.** The two halves of the system defined by
+Principle V are tested differently, and conflating them is a violation in both directions:
+
+- **Harness contracts** (dispatch, credential scoping, guardrail enforcement,
+  task-artifact lifecycle, operational state, channels) are tested deterministically and
+  hermetically. Harness tests MUST NOT require live LLM provider calls or real API keys.
+- **Agent behavior** (judgment exercised by an LLM under instruction files) MUST be
+  verified by evaluation-style tests: sampled runs against real or recorded LLM output,
+  scored against defined quality thresholds. A feature whose value lies in agent judgment
+  and that ships with only hermetic tests is NOT covered — the hermetic-test mandate for
+  the harness MUST NOT be used as a reason to reimplement agent judgment as deterministic
+  code so it becomes unit-testable.
+
+**Success-criteria split.** Every spec MUST express harness success criteria as
+deterministic guarantees (100%) and agent-judgment success criteria as evaluation
+thresholds (e.g., "≥ 90% of sampled ingests choose update over duplicate creation").
+A 100% deterministic guarantee attached to an agent-judgment outcome is a spec defect:
+it structurally forces the implementation to replace the agent with deterministic code.
+
 ### III. ADR-Driven & Test-Enforced Architecture
 
 Before generating any `plan.md`, the agent MUST read all ADRs in `docs/adr/`. The resulting
@@ -66,7 +91,7 @@ concern not covered by existing ADRs, the agent MUST draft a new ADR in MADR for
 `docs/adr/` as part of the `/speckit-plan` output. The drafted ADR MUST reach **Accepted**
 status (via review or explicit author sign-off) before `/speckit-tasks` is invoked.
 
-Two distinct categories of tests enforce architectural rules, with different preconditions:
+Three distinct categories of tests enforce architectural rules, with different preconditions:
 
 **Structural boundary tests** (Phase 0 — before feature code):
 Tools: ArchUnit, NetArchTest.Rules, Roslyn Analyzers, import-linter, or equivalent.
@@ -83,11 +108,17 @@ as specified in `plan.md ## Observability`. They require production code to exis
 therefore MUST NOT be placed in Phase 0. They belong in the final polish phase of
 `tasks.md`, gating the DoD.
 
-The first task in every `tasks.md` MUST be a structural boundary test for the ADR(s)
-referenced in `plan.md ## Architectural Constraints & ADRs`. Observability tests MUST
-appear as a named task in the final phase.
+**Agent-behavior evaluation tests** (Phase N — after implementation):
+Where a feature includes agentic behavior (Principle V), evaluation tests verifying the
+agent-judgment success criteria from the spec likewise belong in the final phase and gate
+the DoD. They require the agent loop and its instruction files to exist and MUST NOT be
+placed in Phase 0.
 
-Order is non-negotiable: plan drafted → ADR accepted → Structural test verified (Red/Green probe) → Feature code → Observability tests pass → DoD met.
+The first task in every `tasks.md` MUST be a structural boundary test for the ADR(s)
+referenced in `plan.md ## Architectural Constraints & ADRs`. Observability tests and
+agent-behavior evaluation tests MUST each appear as a named task in the final phase.
+
+Order is non-negotiable: plan drafted → ADR accepted → Structural test verified (Red/Green probe) → Feature code → Observability and evaluation tests pass → DoD met.
 
 An ADR without a corresponding automated structural enforcement test MUST NOT be
 referenced as an active architectural constraint.
@@ -112,8 +143,64 @@ explicitly enumerate:
 - **Distributed Trace Spans**: OpenTelemetry span names, their parent/child relationships,
   and the attributes they carry
 
+For every row in `plan.md ## Observability > Structured Log Events`, `tasks.md` MUST
+include all three of the following logging-contract task categories:
+
+- **Implementation tasks** that emit the event with a stable event name and the declared
+  mandatory fields
+- **Deterministic integration tests** that validate the event name, log level, and every
+  mandatory field for the relevant trigger
+- **CI enforcement tasks** that ensure these logging tests run in the standard PR pipeline
+
+For every row in `plan.md ## Observability > Distributed Trace Spans`, `tasks.md` MUST
+include all three of the following trace-contract task categories:
+
+- **Implementation tasks** that create the declared span with the declared parent/child
+  relationship and required attributes
+- **Deterministic integration tests** that validate span name, parent/child linkage,
+  and required correlation attributes
+- **CI enforcement tasks** that ensure these trace tests run in the standard PR pipeline
+
+Distributed trace spans MUST be implemented as an end-to-end, observable trace chain in
+code, not only documented in planning artifacts. Logs and metrics MUST be emitted within
+the active span context and be correlatable to spans through shared identifiers
+(for example `task_id`).
+
 Code submitted without the instrumentation specified in the Observability section fails
 the Definition of Done and MUST NOT be merged.
+
+### V. Agentic Core & Deterministic Harness
+
+Grimoire is an LLM harness whose product is a wiki maintained by agents. The intelligence
+that maintains the wiki MUST live in the agents and their instructions, not in backend
+code. This boundary is architectural and non-negotiable:
+
+**Agentic core.** Judgment about wiki content — which pages exist, what they say,
+update-vs-create decisions, supersession, categorization, confidence scoring, tagging,
+cross-referencing, and index/log content — MUST be exercised by an LLM agent operating
+under versioned instruction files (agent `CLAUDE.md` / `SKILL.md`) that are actually
+loaded into the agent's working context at runtime. Loading, hashing, or recording
+instruction files without them governing the agent's context does NOT satisfy this
+requirement. Reimplementing such judgment as deterministic backend code (string matching,
+rule tables, classifiers, templating of page content) is an architectural violation.
+
+**Deterministic harness.** Backend code owns only the harness: request dispatch and agent
+lifecycle, credential scoping, guardrail enforcement at the agent's tool boundary,
+task-artifact lifecycle and persistence, operational state, channels, and observability.
+The harness orchestrates and constrains; it does not decide wiki content.
+
+**Guardrails at the tool boundary.** Agent write and read capabilities MUST be mediated
+by guarded tools enforcing a versioned, deny-by-default policy at the moment the agent
+invokes the tool — not as post-hoc validation of pipeline output. Denied actions are
+recorded with reasons; the run continues with allowed actions.
+
+**Boundary smell test.** A change to wiki-maintenance behavior that requires backend code
+changes — other than adding new tools or guardrail rules — indicates a boundary
+violation. Wiki behavior changes are instruction-file changes.
+
+**Structural enforcement.** An automated architecture test MUST verify that agent-side
+code performs no wiki writes outside the guarded tool layer. Per Principle III, this rule
+requires a Red/Green probe to prove it detects violations.
 
 ## Spec-Kit Workflow Integration
 
@@ -129,7 +216,6 @@ The Spec-Kit command workflow enforces this constitution through a strict sequen
 6. `/speckit-implement` → Implement features (Red → Green → Refactor)
 7. `/speckit-converge` → Validate DoD
 
-
 ## Definition of Done
 
 A feature increment is DONE when ALL of the following conditions hold:
@@ -137,6 +223,10 @@ A feature increment is DONE when ALL of the following conditions hold:
 - [ ] All ADRs referenced in `plan.md` exist in `docs/adr/` and are in Accepted status
 - [ ] Structural boundary tests (Phase 0) pass in CI with no active violations
 - [ ] Observability tests (final phase) pass: all metrics, log events, and trace spans from `plan.md ## Observability` are emitted
+- [ ] Logging contract is complete for every row in `plan.md ## Observability > Structured Log Events`: implementation tasks define stable event names and mandatory fields, deterministic integration tests validate event name/level/mandatory fields, and these logging tests run in the standard PR CI pipeline
+- [ ] Trace contract is complete for every row in `plan.md ## Observability > Distributed Trace Spans`: implementation tasks define span names, parent/child relationships, and required attributes; deterministic integration tests validate span names, parent/child relationships, and correlation attributes (including shared IDs such as `task_id`); and these trace tests run in the standard PR CI pipeline
+- [ ] Agent-behavior evaluation tests (final phase) pass for every agent-judgment success criterion in the spec, at the thresholds the spec defines (only for features with agentic behavior)
+- [ ] The agentic boundary (Principle V) is respected: no wiki-content judgment is implemented as deterministic backend code, instruction files are loaded into the agent's context, and the guarded-tool structural test passes
 - [ ] Integration tests via Testcontainers cover all API boundaries introduced by the feature
 - [ ] CI/CD pipeline passes: architecture tests, integration tests, linting, build
 - [ ] No unapproved infrastructure was introduced
@@ -149,6 +239,12 @@ A feature increment is DONE when ALL of the following conditions hold:
 
 **Compliance**: Every PR review MUST verify that the implementation does not violate any
 principle in this constitution. Reviewers MUST reject PRs that introduce architectural
-violations, missing instrumentation, or unapproved infrastructure.
+violations, missing instrumentation, unapproved infrastructure, or wiki-content judgment
+implemented in backend code (Principle V).
 
-**Version**: 1.0.0 | **Ratified**: 2026-06-23 | **Last Amended**: 2026-06-23
+**Amendment procedure**: Amendments are made via `/speckit-constitution`, bump the version
+per semantic versioning (MAJOR: incompatible principle removals/redefinitions; MINOR: new
+or materially expanded principles; PATCH: clarifications), update the Sync Impact Report,
+and propagate changes to the dependent templates in `.specify/templates/`.
+
+**Version**: 1.3.0 | **Ratified**: 2026-06-23 | **Last Amended**: 2026-07-05

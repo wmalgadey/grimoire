@@ -1,5 +1,8 @@
 ---
-status: accepted
+role: problem-space-and-product-vision
+status: living
+binding: only via extraction into .specify/memory/constitution.md or docs/adr/ (see CLAUDE.md Document Map)
+sdd_usage: human reference and input to /speckit-constitution and ADR problem statements; audited against the implementation with /drift-check
 ---
 
 # Decision Context Overview, Context and Problem Statements
@@ -19,6 +22,21 @@ The result is a **persistent, compounding artifact**: a structured wiki of inter
 markdown files that grows more coherent and cross-referenced over time, rather than
 re-deriving everything from raw documents on every query.
 
+### North Star Outcomes
+
+Grimoire is working when, in routine use, all of the following hold. Every feature must
+move at least one of these outcomes; a feature that adds structure without moving an
+outcome is drift, however well-built (see `dev-experience.md`, 2026-07-04):
+
+1. **Answers come from the wiki.** Questions are answered from synthesized wiki pages
+   instead of re-reading raw sources.
+2. **Ingest is nearly free for the human.** Adding a source costs the user well under a
+   minute of personal effort — submitting it and skimming the resulting task record.
+3. **The wiki compounds.** New sources link into existing pages; contradictions and
+   orphans trend downward across lint passes rather than accumulating.
+4. **Autonomy is earned by transparency.** The user trusts guardrails and task records
+   enough to let operations run unattended and review them afterwards.
+
 ### Four Layers
 
 Every architectural decision in Grimoire must be evaluated against how well it serves
@@ -28,8 +46,33 @@ these layers:
 | --- | --- | --- |
 | **Raw Sources** | Human | Immutable, curated input documents. Single source of truth. Never modified by the system. |
 | **The Wiki** | LLM (Grimoire agents) | LLM-generated and maintained markdown: summaries, entity pages, concept pages, synthesis. The agents own this layer entirely. |
-| **The Schema** | Authored by human, executed by the agent | Each agent (Ingest, Query, Lint) owns a dedicated `CLAUDE.md` file at `agents/<operation>/CLAUDE.md` that specifies its operational schema, guardrails, output formats, and tool scope. Schema files are for agent execution guidance, not harness/infrastructure configuration. |
+| **The Schema** | Authored by human, executed by the agent | Each agent (Ingest, Query, Lint) owns a dedicated `CLAUDE.md` file at `agents/<operation>/CLAUDE.md` that specifies its operational schema, guardrails, output formats, and tool scope. Schema files are for agent execution guidance, not harness/infrastructure configuration — and they are executable behavior: they MUST be loaded into the agent's working context at runtime; recording or hashing them without them governing the agent does not satisfy this layer. |
 | **The Skills** | Authored by human, executed by the agent | Each agent owns a dedicated `SKILL.md` file at `agents/<operation>/SKILL.md` that specifies its capabilities and the specific process to execute. |
+
+### The Agentic Boundary — Harness vs. Agent
+
+An *agent* in Grimoire is an LLM operating in a loop: its instruction files (the Schema
+and Skills layers above) are loaded into its working context, it explores the wiki
+through read tools, decides with its own judgment what to change, and applies every
+change through guarded write tools. This definition is operational, not aspirational —
+a single structured LLM call embedded in a deterministic pipeline is not an agent, even
+if the surrounding code is labelled one.
+
+The system therefore has exactly two kinds of parts, with a hard boundary between them
+(mirrored by constitution Principle V):
+
+- **The agentic core** owns all judgment about wiki content: which pages exist, what
+  they say, update-vs-create, supersession, categorization, confidence, tagging, and
+  index/log content. This judgment lives in instruction files and is exercised by the
+  agent at runtime.
+- **The deterministic harness** owns everything around that judgment: dispatch and
+  lifecycle, credential scoping, guardrail enforcement at the agent's tool boundary,
+  task-artifact persistence, operational state, and observability. The harness
+  orchestrates and constrains; it never decides wiki content.
+
+Litmus test for every future design: a change to wiki-maintenance behavior must be an
+instruction-file edit. If it requires backend code changes beyond adding new tools or
+guardrail rules, the boundary has been violated.
 
 ### Three Operations
 
@@ -45,6 +88,27 @@ Each new agent or feature must map to one of these, or the feature is out of sco
   High-value query results may themselves become new wiki pages, compounding knowledge.
 - **Lint**: Health-check the wiki for contradictions, stale claims, orphaned pages, and
   broken or missing cross-references. The quality gate for the compounding artifact.
+
+### Autonomy Ladder
+
+Each operation has an explicit autonomy level — what the agent may do without asking,
+and where the human is required. Expanding an operation's autonomy is an architectural
+decision (ADR), not an implementation detail:
+
+- **Ingest** — autonomous within guardrails: explores the wiki; creates, updates, and
+  supersedes pages; maintains index and log. The human curates and submits sources and
+  reviews each run afterwards via its task record.
+- **Query** — autonomous for answering: reads the wiki and synthesizes cited answers.
+  Persisting an answer as a new wiki page requires the user's go-ahead.
+- **Lint** — propose-only: reads the wiki and creates one task per finding with a
+  suggested fix. Fixes are applied only after the user accepts them through task
+  interaction; Lint never silently corrects the wiki.
+
+The interaction model evolves along a ladder — **observed** (batch runs,
+fire-and-forget, reviewed after the fact) → **interruptible** (streamed progress,
+cancel/annotate mid-run) → **conversational** (the agent pauses to ask clarifying
+questions). The MVP operates at "observed"; each step up the ladder is a deliberate,
+per-operation decision.
 
 ### Transparent Operations — Tasks as First-Class Artifacts
 
@@ -152,6 +216,30 @@ This vision directly constrains the decisions that follow in this document:
    interaction with lint findings occurs via tasks (drag-to-do, natural language feedback)
    or direct task annotation.
 
+7. **Agentic Boundary & Evaluation (§2, §7 & §11)**: The execution model in §2 must
+   realize an agent loop, not a processing pipeline; guardrails in §7 attach to the
+   agent's tool boundary; and because agent judgment cannot be verified by deterministic
+   tests alone, §11 owns the evaluation and model-lifecycle question.
+
+### Scale & Usage Assumptions
+
+These assumptions bound every design decision below; specs may cite them as
+out-of-scope justification. Revisiting one of them is an explicit decision, not a side
+effect:
+
+- A single trusted user — the solo developer is also the sole operator. No
+  multi-tenancy, and no authentication beyond channel-level access, until a channel
+  demands it.
+- One operation at a time — a single concurrent ingest/lint run; queueing is
+  acceptable, parallel execution is not required.
+- Wiki scale of hundreds of pages and roughly 100–200 sources before search tooling is
+  reconsidered (§10); `index.md` is sufficient navigation until then.
+- Local-first execution: everything runs on the developer's machine; no cloud
+  deployment is required for the MVP.
+- LLM usage has real cost and latency: designs must state their expected calls per
+  operation, and evaluation strategies (§11) must work within a solo developer's
+  budget.
+
 ### What This Is Not
 
 Grimoire is **not** a RAG system. RAG re-derives answers from raw documents on every
@@ -166,6 +254,15 @@ enough to persist, one finding from a lint pass. If a lint pass finds 5 problems
 agent creates 5 tasks (one per problem). Tasks are how users interact with agents: by
 dragging a task to "in_progress," requesting detail via natural language feedback, or
 declining a task. Task files live in git alongside the wiki as durable audit artifacts.
+
+Grimoire is **not** a deterministic content pipeline. An implementation in which wiki
+judgment (what to write, where, and why) is compiled into backend code contradicts this
+vision regardless of output quality — this is the failure mode that forced the
+2026-07-04 restart, and the Agentic Boundary above exists to prevent its return.
+
+It is also **not** a general-purpose agent platform, a multi-user product, or a chat
+assistant with a wiki attached. There is exactly one domain (the LLM-wiki), three
+operations, and one user; generalization beyond that is out of scope by design.
 
 ---
 
@@ -212,9 +309,9 @@ overhead must stay proportional to scope while a migration path to stronger isol
 remains open. In practice, agents do not all fit the same execution shape: most can run
 safely in-process, passively dispatched by a central orchestrator, but at least one agent
 (Ingest) requires standalone CLI operation, independent containerizability, and a lifecycle
-decoupled from the backend — driven by its dependency on an LLM-based processing pipeline
-(no vector embedding infrastructure exists or is planned) that brings its own runtime and
-dependency chain. This raises both a general question (how does a central orchestrator
+decoupled from the backend — driven by its nature as an agent loop: an LLM iteratively
+exploring the wiki and applying changes through guarded tools, which brings its own
+runtime and dependency chain (no vector embedding infrastructure exists or is planned). This raises both a general question (how does a central orchestrator
 coordinate heterogeneous agents) and a concrete instance of it (how does the first
 standalone agent — user-triggered in the MVP, with autonomous triggering such as
 background raw-source scans or scheduled git pulls layered on later — integrate with
@@ -332,8 +429,10 @@ source document, or calls a tool outside its intended scope can corrupt the wiki
 that are hard to detect and expensive to reverse. NanoClaw mitigates this through process
 isolation (container sandboxing limits what an agent can reach), but does not define an
 application-level output validation policy. Grimoire needs both layers: structural
-isolation (which §2 partially addresses) and application-level guardrails that validate
-agent output before it is written to disk.
+isolation (which §2 partially addresses) and application-level guardrails enforced at
+the agent's tool boundary — every read or write the agent attempts is evaluated against
+a deny-by-default policy at the moment the tool is invoked, not validated after a
+pipeline has already produced its output.
 
 Each agent's per-agent schema file (`CLAUDE.md`) explicitly defines its
 operational scope: what tools it can call, what pages it can read and modify, what
@@ -351,11 +450,11 @@ with that task (approve a suggested fix, request detail, or decline), keeping th
 in the loop. Lint does not automatically correct the wiki; it proposes corrections that
 the user can accept via task interaction (drag-to-do, natural language feedback).
 
-**Problem Statement:** What application-level guardrails must be enforced before any
-agent output is committed to the wiki, how is prompt injection from untrusted source
-documents defended against, and how is each agent's tool-use scope constrained to prevent
-out-of-scope or destructive actions — with the per-agent schema file serving as the
-operational security boundary and the definition of done?
+**Problem Statement:** What guardrails must be enforced at the agent's tool boundary so
+that no out-of-scope change reaches the wiki, how is prompt injection from untrusted
+source documents defended against, and how is each agent's tool-use scope constrained to
+prevent out-of-scope or destructive actions — with the per-agent schema file serving as
+the operational security boundary and the definition of done?
 
 ---
 
@@ -460,6 +559,37 @@ any new cross-cutting concern introduced by a spec requires an ADR drafted befor
 finalization, enforced by an automated architecture test. §10's ADR must enumerate the
 open standards adopted as constraints and record the explicit rationale for any case where
 an available open standard was considered and rejected.
+
+---
+
+## 11. Agent Behavior Evaluation & Model Lifecycle
+
+The constitution (Principles II & V) splits verification into two regimes: harness
+contracts are tested deterministically and hermetically, while agent judgment — the
+actual value of the system — can only be verified by evaluation: sampled runs whose
+outcomes are scored against thresholds (e.g., "≥ 90% of runs on an already-covered
+topic update the existing page rather than create a duplicate"). No infrastructure or
+methodology decision exists for this regime yet. Open aspects: what evaluation datasets
+look like (seed wikis plus curated sources, including adversarial prompt-injection
+samples), whether evaluation runs are live or recorded/replayed, when evaluations
+execute (per PR, nightly, on demand) given a solo developer's cost and time budget, and
+how evaluation results are stored and compared over time.
+
+A second, related concern is the model lifecycle. An agent system's behavior shifts
+when its underlying model changes — through provider-side updates, deprecations, or
+deliberate upgrades — even when instructions and code stay identical. Task artifacts
+already record which instruction files and safety policy governed a run; the model
+identity belongs in that record too. Instruction-file changes raise the same question
+at smaller scale: an edited `SKILL.md` can regress behavior that previously passed
+evaluation, so behavior-affecting changes need a defined re-evaluation trigger.
+
+**Problem Statement:** What evaluation harness, datasets, sampling strategy, and
+thresholds should verify agent judgment; which events (instruction edits, model
+upgrades, policy changes) must trigger re-evaluation before they take effect; how is
+the governing model identity pinned and recorded per run alongside instruction and
+policy versions; and what cost and latency budget governs live-LLM evaluation locally
+and in CI — so that the constitution's evaluation mandate stays enforceable rather than
+aspirational?
 
 ---
 

@@ -1,36 +1,68 @@
+using Microsoft.Extensions.Logging;
+using OpenTelemetry.Logs;
 using OpenTelemetry.Metrics;
 using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
+using OpenTelemetry;
 
 namespace Grimoire.IngestAgent;
 
 public static class TelemetryBootstrap
 {
-    public static IDisposable Build()
+    public static TelemetryBootstrapHandle Build()
     {
-        var provider = OpenTelemetry.Sdk.CreateTracerProviderBuilder()
+        var resource = ResourceBuilder.CreateDefault().AddService("Grimoire.IngestAgent");
+
+        // Console agent process has no generic host lifecycle. Build providers explicitly
+        // so ActivitySource listeners are active immediately.
+        var tracerProvider = Sdk.CreateTracerProviderBuilder()
+            .SetResourceBuilder(resource)
             .AddSource("Grimoire.IngestAgent")
-            .ConfigureResource(resource => resource.AddService("Grimoire.IngestAgent"))
             .AddOtlpExporter()
             .Build();
 
-        var meterProvider = OpenTelemetry.Sdk.CreateMeterProviderBuilder()
+        var meterProvider = Sdk.CreateMeterProviderBuilder()
+            .SetResourceBuilder(resource)
             .AddMeter("Grimoire.IngestAgent")
-            .ConfigureResource(resource => resource.AddService("Grimoire.IngestAgent"))
             .AddOtlpExporter()
             .Build();
 
-        return new CompositeDisposable(provider, meterProvider);
+        var loggerFactory = LoggerFactory.Create(builder =>
+            builder.AddOpenTelemetry(logging =>
+            {
+                logging.IncludeFormattedMessage = true;
+                logging.SetResourceBuilder(resource);
+                logging.AddOtlpExporter();
+            }));
+
+        return new TelemetryBootstrapHandle(
+            loggerFactory,
+            tracerProvider,
+            meterProvider);
     }
 
-    private sealed class CompositeDisposable(params IDisposable[] disposables) : IDisposable
+    public sealed class TelemetryBootstrapHandle : IDisposable
     {
+        private readonly TracerProvider _tracerProvider;
+        private readonly MeterProvider _meterProvider;
+
+        public TelemetryBootstrapHandle(
+            ILoggerFactory loggerFactory,
+            TracerProvider tracerProvider,
+            MeterProvider meterProvider)
+        {
+            LoggerFactory = loggerFactory;
+            _tracerProvider = tracerProvider;
+            _meterProvider = meterProvider;
+        }
+
+        public ILoggerFactory LoggerFactory { get; }
+
         public void Dispose()
         {
-            foreach (var disposable in disposables)
-            {
-                disposable.Dispose();
-            }
+            LoggerFactory.Dispose();
+            _meterProvider.Dispose();
+            _tracerProvider.Dispose();
         }
     }
 }

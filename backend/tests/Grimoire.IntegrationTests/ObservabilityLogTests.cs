@@ -1,4 +1,10 @@
+using Grimoire.Domain.Guardrails;
 using Grimoire.Hub.OperationalState;
+using Grimoire.IngestAgent;
+using Grimoire.IngestAgent.AgentCore;
+using Grimoire.IngestAgent.Guardrails;
+using Grimoire.IngestAgent.IngestLog;
+using Grimoire.IntegrationTests.Fakes;
 using Microsoft.Extensions.Logging;
 
 namespace Grimoire.IntegrationTests;
@@ -6,6 +12,140 @@ namespace Grimoire.IntegrationTests;
 /// <summary>T036 — Structured log event emission (ADR-005).</summary>
 public class ObservabilityLogTests
 {
+    [Fact]
+    public void IngestAgentStructuredEvents_EmitExpectedNamesLevelsAndFields()
+    {
+        var logger = new CaptureLogger<ObservabilityLogTests>();
+
+        IngestAgentLogEvents.LogInstructionsLoaded(
+            logger,
+            taskId: "task-1",
+            instructionFiles: "agents/ingest/CLAUDE.md:abc;agents/ingest/skills/wiki-maintenance/SKILL.md:def",
+            policyVersion: 1,
+            policySha256: "policy-sha");
+
+        IngestAgentLogEvents.LogInstructionsLoadFailed(
+            logger,
+            taskId: "task-2",
+            artifact: "instructions",
+            path: "agents/ingest/CLAUDE.md",
+            reason: "missing");
+
+        IngestAgentLogEvents.LogToolAllowed(
+            logger,
+            taskId: "task-3",
+            tool: "read_file",
+            target: "wiki/index.md",
+            turn: 2);
+
+        IngestAgentLogEvents.LogToolDenied(
+            logger,
+            taskId: "task-4",
+            tool: "write_file",
+            target: "../secret.txt",
+            reason: "traversal",
+            turn: 3);
+
+        IngestAgentLogEvents.LogRunRolledBack(
+            logger,
+            taskId: "task-5",
+            pathsRestored: 4,
+            restoredOk: true);
+
+        IngestAgentLogEvents.LogBackstopAppended(
+            logger,
+            taskId: "task-6",
+            outcome: "failed");
+
+        IngestAgentLogEvents.LogAgentCompleted(
+            logger,
+            taskId: "task-7",
+            turns: 8,
+            pagesCreated: 2,
+            pagesUpdated: 1,
+            pagesSuperseded: 1,
+            denials: 3);
+
+        IngestAgentLogEvents.LogAgentCapExceeded(
+            logger,
+            taskId: "task-8",
+            cap: "turns",
+            turns: 50);
+
+        AssertEvent(logger.Entries, "ingest.instructions.loaded", LogLevel.Information, ["task_id", "instruction_files", "policy_version", "policy_sha256"]);
+        AssertEvent(logger.Entries, "ingest.instructions.load_failed", LogLevel.Error, ["task_id", "artifact", "path", "reason"]);
+        AssertEvent(logger.Entries, "ingest.tool.allowed", LogLevel.Information, ["task_id", "tool", "target", "turn"]);
+        AssertEvent(logger.Entries, "ingest.tool.denied", LogLevel.Warning, ["task_id", "tool", "target", "reason", "turn"]);
+        AssertEvent(logger.Entries, "ingest.run.rolled_back", LogLevel.Warning, ["task_id", "paths_restored", "restored_ok"]);
+        AssertEvent(logger.Entries, "ingest.log.backstop_appended", LogLevel.Warning, ["task_id", "outcome"]);
+        AssertEvent(logger.Entries, "ingest.agent.completed", LogLevel.Information, ["task_id", "turns", "pages_created", "pages_updated", "pages_superseded", "denials"]);
+        AssertEvent(logger.Entries, "ingest.agent.cap_exceeded", LogLevel.Error, ["task_id", "cap", "turns"]);
+    }
+
+    [Fact]
+    public async Task AgentCompletedEvent_ReportsJournalDerivedCounts_ForMixedCreateUpdateRun()
+    {
+        var root = Path.Combine(Path.GetTempPath(), $"log-completed-{Guid.NewGuid():N}");
+        var wikiDir = Path.Combine(root, "wiki");
+        var pagesDir = Path.Combine(wikiDir, "pages");
+        Directory.CreateDirectory(pagesDir);
+        var existingPage = Path.Combine(pagesDir, "existing.md");
+        await File.WriteAllTextAsync(existingPage, "before");
+
+        var policy = new SafetyPolicy(
+            root,
+            readPrefixes: [wikiDir + Path.DirectorySeparatorChar],
+            writePrefixes: [pagesDir + Path.DirectorySeparatorChar]);
+        var journal = new WriteJournal();
+        var executor = new GuardedToolExecutor(policy, journal, root, taskId: "task-mixed");
+        var fake = new FakeModelClient([
+            FakeModelClient.WriteFileTurn("tool-1", "wiki/pages/existing.md", "after"),
+            FakeModelClient.WriteFileTurn("tool-2", "wiki/pages/new.md", "# New page"),
+            FakeModelClient.FinalTurn("Mixed create/update run complete.")]);
+        var loop = new AgentLoop(fake, executor);
+
+        var result = await loop.RunAsync(
+            systemPrompt: "You are a test agent.",
+            taskId: "task-mixed",
+            sourceRef: "source.md",
+            sourceContent: "# source",
+            cancellationToken: CancellationToken.None);
+
+        var logger = new CaptureLogger<ObservabilityLogTests>();
+        IngestAgentLogEvents.LogAgentCompleted(
+            logger, "task-mixed", result.TurnsUsed, journal, executor.Denials.Count);
+
+        var entry = Assert.Single(logger.Entries.Where(e => e.EventName == "ingest.agent.completed"));
+        Assert.Equal(LogLevel.Information, entry.Level);
+        Assert.Equal("task-mixed", entry.Fields["task_id"]?.ToString());
+        Assert.Equal("3", entry.Fields["turns"]?.ToString());
+        Assert.Equal("1", entry.Fields["pages_created"]?.ToString());
+        Assert.Equal("1", entry.Fields["pages_updated"]?.ToString());
+        Assert.Equal("0", entry.Fields["pages_superseded"]?.ToString());
+        Assert.Equal("0", entry.Fields["denials"]?.ToString());
+    }
+
+    [Fact]
+    public async Task IngestLogBackstop_EmitsEvent_WhenEntryIsAppended()
+    {
+        var root = Path.Combine(Path.GetTempPath(), $"log-backstop-{Guid.NewGuid():N}");
+        var logPath = Path.Combine(root, "log.md");
+        Directory.CreateDirectory(root);
+
+        var logger = new CaptureLogger<IngestLogAppender>();
+        var appender = new IngestLogAppender(logger);
+
+        await appender.EnsureLogEntryAsync(
+            logPath,
+            outcome: "failed",
+            sourceRef: "source.md",
+            taskId: "task-backstop",
+            forceAppend: true,
+            CancellationToken.None);
+
+        AssertEvent(logger.Entries, "ingest.log.backstop_appended", LogLevel.Warning, ["task_id", "outcome"]);
+    }
+
     [Fact]
     public async Task RestartReconciler_Emits_ReconciliationLogEvent_WithMandatoryFields()
     {
@@ -76,14 +216,27 @@ public class ObservabilityLogTests
         Assert.Single(logger.Entries);
         Assert.Contains("Hub restarted", logger.Entries[0].Message);
     }
+
+    private static void AssertEvent(
+        List<CaptureLoggerEntry> entries,
+        string eventName,
+        LogLevel level,
+        string[] requiredFields)
+    {
+        var entry = Assert.Single(entries.Where(e => e.EventName == eventName));
+        Assert.Equal(level, entry.Level);
+
+        foreach (var field in requiredFields)
+        {
+            Assert.True(entry.Fields.ContainsKey(field), $"Missing field '{field}' for event '{eventName}'.");
+        }
+    }
 }
 
 /// <summary>Test helper: captures ILogger entries for assertion.</summary>
 public sealed class CaptureLogger<T> : ILogger<T>
 {
-    public record LogEntry(LogLevel Level, string EventName, string Message);
-
-    public List<LogEntry> Entries { get; } = new();
+    public List<CaptureLoggerEntry> Entries { get; } = new();
 
     public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
 
@@ -92,6 +245,26 @@ public sealed class CaptureLogger<T> : ILogger<T>
     public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception,
         Func<TState, Exception?, string> formatter)
     {
-        Entries.Add(new LogEntry(logLevel, eventId.Name ?? string.Empty, formatter(state, exception)));
+        var fields = new Dictionary<string, object?>(StringComparer.Ordinal);
+        if (state is IEnumerable<KeyValuePair<string, object?>> structured)
+        {
+            foreach (var pair in structured)
+            {
+                if (pair.Key == "{OriginalFormat}")
+                {
+                    continue;
+                }
+
+                fields[pair.Key] = pair.Value;
+            }
+        }
+
+        Entries.Add(new CaptureLoggerEntry(logLevel, eventId.Name ?? string.Empty, formatter(state, exception), fields));
     }
 }
+
+public sealed record CaptureLoggerEntry(
+    LogLevel Level,
+    string EventName,
+    string Message,
+    IReadOnlyDictionary<string, object?> Fields);

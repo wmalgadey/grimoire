@@ -8,7 +8,9 @@ public sealed record AgentCliOptions(
     string TasksDir,
     string IndexPath,
     string LogPath,
-    string? PastedText)
+    string? PastedText,
+    string InstructionsDir,
+    string PolicyPath)
 {
     public string TaskArtifactPath => Path.Combine(TasksDir, $"{TaskId}.md");
 }

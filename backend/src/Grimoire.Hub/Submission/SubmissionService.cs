@@ -28,6 +28,13 @@ public sealed class SubmissionService
         submitSpan?.SetTag("task_id", taskId);
         submitSpan?.SetTag("source_ref", normalizedSourceRef);
 
+        using var taskCreatedSpan = HubTracing.ActivitySource.StartActivity("ingest.task.created");
+        taskCreatedSpan?.SetTag("signal_type", "log");
+        taskCreatedSpan?.SetTag("event_name", "ingest.task.created");
+        taskCreatedSpan?.SetTag("level", "Information");
+        taskCreatedSpan?.SetTag("task_id", taskId);
+        taskCreatedSpan?.SetTag("source_ref", normalizedSourceRef);
+
         _logger.LogInformation(new EventId(1, "ingest.task.created"),
             "Ingest task created: {task_id}, source: {source_ref}", taskId, normalizedSourceRef);
 
@@ -43,7 +50,9 @@ public sealed class SubmissionService
             TasksDir: contentPaths.TasksDir,
             IndexPath: contentPaths.IndexPath,
             LogPath: contentPaths.LogPath,
-            PastedText: options.PastedText);
+            PastedText: options.PastedText,
+            InstructionsDir: contentPaths.InstructionsDir,
+            PolicyPath: contentPaths.PolicyPath);
 
         using (var spawnSpan = HubTracing.ActivitySource.StartActivity("hub.ingest.spawn_agent"))
         {
