@@ -15,6 +15,11 @@ public sealed class AnthropicModelClient : IModelClient
 
     private readonly AnthropicClient _client;
 
+    // Tool definitions are static per run; cache the SDK conversion instead of
+    // re-deserializing every schema on every turn.
+    private IReadOnlyList<ToolDefinition>? _cachedToolSource;
+    private List<ToolUnion>? _cachedTools;
+
     public AnthropicModelClient()
     {
         _client = new AnthropicClient();
@@ -42,20 +47,13 @@ public sealed class AnthropicModelClient : IModelClient
             });
         }
 
-        // Build tool definitions for the SDK's custom Tool variant.
-        var toolsList = new List<ToolUnion>();
-        foreach (var t in tools)
+        if (!ReferenceEquals(_cachedToolSource, tools))
         {
-            var schema = JsonSerializer.Deserialize<InputSchema>(t.InputSchemaJson)
-                ?? throw new InvalidOperationException($"Invalid tool schema for '{t.Name}'.");
-
-            toolsList.Add(new Tool
-            {
-                Name = t.Name,
-                Description = t.Description,
-                InputSchema = schema,
-            });
+            _cachedTools = BuildTools(tools);
+            _cachedToolSource = tools;
         }
+
+        var toolsList = _cachedTools!;
 
         var response = await _client.Messages.Create(new MessageCreateParams
         {
@@ -77,76 +75,38 @@ public sealed class AnthropicModelClient : IModelClient
             }
             else if (block.TryPickToolUse(out var toolBlock))
             {
-                var toolUseJson = JsonSerializer.Serialize(toolBlock);
-                using var toolUseDoc = JsonDocument.Parse(toolUseJson);
-                var root = toolUseDoc.RootElement;
-
-                var toolUseId = root.TryGetProperty("id", out var idProp) && idProp.ValueKind == JsonValueKind.String
-                    ? idProp.GetString() ?? "unknown"
-                    : "unknown";
-
-                var toolName = root.TryGetProperty("name", out var nameProp) && nameProp.ValueKind == JsonValueKind.String
-                    ? nameProp.GetString() ?? "unknown"
-                    : "unknown";
-
-                var inputJson = root.TryGetProperty("input", out var inputProp)
-                    ? inputProp.GetRawText()
-                    : "{}";
-
                 toolUseRequests.Add(new ToolUseRequest(
-                    ToolUseId: toolUseId,
-                    ToolName: toolName,
-                    InputJson: inputJson));
+                    ToolUseId: toolBlock.ID,
+                    ToolName: toolBlock.Name,
+                    InputJson: JsonSerializer.Serialize(toolBlock.Input)));
             }
         }
 
         return new ModelTurn(
             AssistantText: assistantText,
             ToolUseRequests: toolUseRequests,
-            StopReason: NormalizeStopReason(response.StopReason),
+            StopReason: ModelStopReasonContract.FromRawValue(response.StopReason),
             InputTokens: (int)(response.Usage?.InputTokens ?? 0),
             OutputTokens: (int)(response.Usage?.OutputTokens ?? 0));
     }
 
-    private static string NormalizeStopReason(object? stopReason)
+    private static List<ToolUnion> BuildTools(IReadOnlyList<ToolDefinition> tools)
     {
-        var raw = stopReason?.ToString();
-        if (string.IsNullOrWhiteSpace(raw))
+        var toolsList = new List<ToolUnion>();
+        foreach (var t in tools)
         {
-            return "end_turn";
+            var schema = JsonSerializer.Deserialize<InputSchema>(t.InputSchemaJson)
+                ?? throw new InvalidOperationException($"Invalid tool schema for '{t.Name}'.");
+
+            toolsList.Add(new Tool
+            {
+                Name = t.Name,
+                Description = t.Description,
+                InputSchema = schema,
+            });
         }
 
-        // SDK enum values are PascalCase; normalize to protocol-style snake_case.
-        if (string.Equals(raw, "EndTurn", StringComparison.OrdinalIgnoreCase))
-        {
-            return "end_turn";
-        }
-
-        if (string.Equals(raw, "ToolUse", StringComparison.OrdinalIgnoreCase))
-        {
-            return "tool_use";
-        }
-
-        if (string.Equals(raw, "MaxTokens", StringComparison.OrdinalIgnoreCase))
-        {
-            return "max_tokens";
-        }
-
-        if (string.Equals(raw, "PauseTurn", StringComparison.OrdinalIgnoreCase))
-        {
-            return "pause_turn";
-        }
-
-        if (string.Equals(raw, "StopSequence", StringComparison.OrdinalIgnoreCase))
-        {
-            return "stop_sequence";
-        }
-
-        if (string.Equals(raw, "Refusal", StringComparison.OrdinalIgnoreCase))
-        {
-            return "refusal";
-        }
-
-        return raw;
+        return toolsList;
     }
+
 }

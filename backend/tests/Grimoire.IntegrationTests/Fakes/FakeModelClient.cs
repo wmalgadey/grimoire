@@ -52,7 +52,7 @@ public sealed class FakeModelClient : IModelClient
         => new(
             AssistantText: null,
             ToolUseRequests: [new ToolUseRequest(toolUseId, toolName, inputJson)],
-            StopReason: "tool_use",
+            StopReason: ModelStopReason.ToolUse,
             InputTokens: 100,
             OutputTokens: 50);
 
@@ -61,7 +61,7 @@ public sealed class FakeModelClient : IModelClient
         => new(
             AssistantText: narrative,
             ToolUseRequests: [],
-            StopReason: "end_turn",
+            StopReason: ModelStopReason.EndTurn,
             InputTokens: 200,
             OutputTokens: 100);
 

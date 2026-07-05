@@ -1,5 +1,4 @@
 using System.Text;
-using System.Text.Json;
 using Grimoire.IngestAgent.Guardrails;
 
 namespace Grimoire.IngestAgent.AgentCore;
@@ -14,7 +13,8 @@ public sealed class AgentLoop
 {
     private const int DefaultTurnCap = 50;
     private const int DefaultTokenCap = 200_000;
-    private const string ContinuePrompt = "Continue the task. If you are finished, return your final summary with stop_reason=end_turn.";
+    private static readonly string ContinuePrompt =
+        $"Continue the task. If you are finished, return your final summary with stop_reason={ModelStopReason.EndTurn.ToProtocolString()}.";
 
     private readonly IModelClient _modelClient;
     private readonly GuardedToolExecutor _executor;
@@ -75,7 +75,7 @@ public sealed class AgentLoop
                 turn = await _modelClient.NextTurnAsync(
                     systemPrompt, conversation, ToolRegistry.All, cancellationToken);
 
-                span?.SetTag("stop_reason", turn.StopReason);
+                span?.SetTag("stop_reason", turn.StopReason.ToProtocolString());
                 span?.SetTag("tool_request_count", turn.ToolUseRequests.Count);
                 span?.SetTag("input_tokens", turn.InputTokens);
                 span?.SetTag("output_tokens", turn.OutputTokens);
@@ -84,10 +84,12 @@ public sealed class AgentLoop
             turnsUsed++;
             totalInputTokens += turn.InputTokens;
             totalOutputTokens += turn.OutputTokens;
+
+            var stopReason = turn.StopReason;
+            var stopReasonLabel = stopReason.ToProtocolString();
+
             IngestAgentMetrics.RecordModelTokens(turn.InputTokens, turn.OutputTokens);
-            IngestAgentMetrics.RecordModelToolRequests(
-                turn.ToolUseRequests.Count,
-                NormalizeStopReason(turn.StopReason));
+            IngestAgentMetrics.RecordModelToolRequests(turn.ToolUseRequests.Count, stopReason);
 
             if (totalInputTokens + totalOutputTokens > _tokenCap)
             {
@@ -108,32 +110,37 @@ public sealed class AgentLoop
 
             if (turn.ToolUseRequests.Count == 0)
             {
-                var normalizedStopReason = NormalizeStopReason(turn.StopReason);
-
-                if (IsToolUseStopReason(turn.StopReason))
+                switch (stopReason)
                 {
-                    IngestAgentMetrics.RecordNoToolTurn(normalizedStopReason, "invalid_tool_use");
-                    throw new InvalidOperationException(
-                        "Model returned stop_reason=tool_use but no tool_use blocks were parsed.");
+                    case ModelStopReason.ToolUse:
+                        IngestAgentMetrics.RecordNoToolTurn(stopReason, "invalid_tool_use");
+                        throw new InvalidOperationException(
+                            $"Model returned stop_reason={stopReasonLabel} but no tool_use blocks were parsed.");
+
+                    case ModelStopReason.EndTurn:
+                        // Run completes only on explicit end_turn (per contract).
+                        IngestAgentMetrics.RecordNoToolTurn(stopReason, "terminal");
+                        IngestAgentMetrics.RecordAgentTurns(turnsUsed, "completed");
+
+                        return new AgentLoopResult(
+                            Narrative: turn.AssistantText ?? string.Empty,
+                            TurnsUsed: turnsUsed,
+                            TotalInputTokens: totalInputTokens,
+                            TotalOutputTokens: totalOutputTokens);
+
+                    case ModelStopReason.MaxTokens or ModelStopReason.PauseTurn:
+                        // Non-terminal no-tool stop reasons require another turn.
+                        IngestAgentMetrics.RecordNoToolTurn(stopReason, "continue");
+                        conversation.Add(new ConversationMessage("user", ContinuePrompt));
+                        continue;
+
+                    default:
+                        IngestAgentMetrics.RecordNoToolTurn(stopReason, "invalid_stop_reason");
+                        throw new InvalidOperationException(
+                            $"Model returned unexpected stop_reason='{stopReasonLabel}' without tool_use blocks. " +
+                            $"Expected {ModelStopReason.EndTurn.ToProtocolString()} to complete, " +
+                            $"or {ModelStopReason.MaxTokens.ToProtocolString()}/{ModelStopReason.PauseTurn.ToProtocolString()} to continue.");
                 }
-
-                if (!RequiresContinuation(turn.StopReason))
-                {
-                    // Run complete for terminal no-tool stop reasons (e.g. end_turn, stop_sequence).
-                    IngestAgentMetrics.RecordNoToolTurn(normalizedStopReason, "terminal");
-                    IngestAgentMetrics.RecordAgentTurns(turnsUsed, "completed");
-
-                    return new AgentLoopResult(
-                        Narrative: turn.AssistantText ?? string.Empty,
-                        TurnsUsed: turnsUsed,
-                        TotalInputTokens: totalInputTokens,
-                        TotalOutputTokens: totalOutputTokens);
-                }
-
-                // Non-terminal no-tool stop reasons (e.g. max_tokens, pause_turn) require another turn.
-                IngestAgentMetrics.RecordNoToolTurn(normalizedStopReason, "continue");
-                conversation.Add(new ConversationMessage("user", ContinuePrompt));
-                continue;
             }
 
             // Process tool calls and build tool_results user message.
@@ -194,40 +201,6 @@ public sealed class AgentLoop
     private static string BuildToolResultContent(string toolUseId, bool isError, string content)
     {
         return $"[tool_result id={toolUseId} is_error={isError}]\n{content}";
-    }
-
-    private static bool RequiresContinuation(string? stopReason)
-    {
-        if (string.IsNullOrWhiteSpace(stopReason))
-        {
-            return false;
-        }
-
-        return string.Equals(stopReason, "max_tokens", StringComparison.OrdinalIgnoreCase)
-            || string.Equals(stopReason, "MaxTokens", StringComparison.OrdinalIgnoreCase)
-            || string.Equals(stopReason, "pause_turn", StringComparison.OrdinalIgnoreCase)
-            || string.Equals(stopReason, "PauseTurn", StringComparison.OrdinalIgnoreCase);
-    }
-
-    private static bool IsToolUseStopReason(string? stopReason)
-    {
-        if (string.IsNullOrWhiteSpace(stopReason))
-        {
-            return false;
-        }
-
-        return string.Equals(stopReason, "tool_use", StringComparison.OrdinalIgnoreCase)
-            || string.Equals(stopReason, "ToolUse", StringComparison.OrdinalIgnoreCase);
-    }
-
-    private static string NormalizeStopReason(string? stopReason)
-    {
-        if (string.IsNullOrWhiteSpace(stopReason))
-        {
-            return "unknown";
-        }
-
-        return stopReason;
     }
 }
 

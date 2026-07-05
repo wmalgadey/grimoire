@@ -337,7 +337,7 @@ public sealed record RecordedEvalTurn(
     string SystemPromptSha256,
     IReadOnlyList<RecordedMessage> Conversation,
     IReadOnlyList<string> ToolNames,
-    string StopReason,
+    ModelStopReason StopReason,
     IReadOnlyList<RecordedToolUse> ToolUses,
     string? AssistantText,
     int InputTokens,

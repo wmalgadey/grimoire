@@ -1,4 +1,5 @@
 using System.Diagnostics.Metrics;
+using Grimoire.IngestAgent.AgentCore;
 
 namespace Grimoire.IngestAgent;
 
@@ -90,12 +91,12 @@ public static class IngestAgentMetrics
         _modelTokensTotal.Add(outputTokens, new KeyValuePair<string, object?>("direction", "output"));
     }
 
-    public static void RecordModelToolRequests(int toolRequestCount, string stopReason)
+    public static void RecordModelToolRequests(int toolRequestCount, ModelStopReason stopReason)
         => _modelToolRequestsTotal.Add(toolRequestCount,
-            new KeyValuePair<string, object?>("stop_reason", stopReason));
+            new KeyValuePair<string, object?>("stop_reason", stopReason.ToProtocolString()));
 
-    public static void RecordNoToolTurn(string stopReason, string outcome)
+    public static void RecordNoToolTurn(ModelStopReason stopReason, string outcome)
         => _noToolTurnsTotal.Add(1,
-            new KeyValuePair<string, object?>("stop_reason", stopReason),
+            new KeyValuePair<string, object?>("stop_reason", stopReason.ToProtocolString()),
             new KeyValuePair<string, object?>("outcome", outcome));
 }

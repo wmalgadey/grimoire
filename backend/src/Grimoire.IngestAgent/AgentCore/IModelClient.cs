@@ -9,12 +9,72 @@ public sealed record ToolUseRequest(
     string InputJson);
 
 /// <summary>
+/// Canonical stop reasons returned by the model contract.
+/// </summary>
+public enum ModelStopReason
+{
+    Unknown = 0,
+    EndTurn,
+    ToolUse,
+    MaxTokens,
+    PauseTurn,
+    StopSequence,
+    Refusal,
+}
+
+/// <summary>
+/// Normalization helpers for converting between SDK values and protocol values.
+/// </summary>
+public static class ModelStopReasonContract
+{
+    public static string ToProtocolString(this ModelStopReason stopReason)
+        => stopReason switch
+        {
+            ModelStopReason.EndTurn => "end_turn",
+            ModelStopReason.ToolUse => "tool_use",
+            ModelStopReason.MaxTokens => "max_tokens",
+            ModelStopReason.PauseTurn => "pause_turn",
+            ModelStopReason.StopSequence => "stop_sequence",
+            ModelStopReason.Refusal => "refusal",
+            _ => "unknown",
+        };
+
+    public static ModelStopReason FromRawValue(object? stopReason)
+    {
+        var raw = stopReason?.ToString();
+        if (string.IsNullOrWhiteSpace(raw))
+        {
+            return ModelStopReason.Unknown;
+        }
+
+        if (Enum.TryParse<ModelStopReason>(raw, ignoreCase: true, out var parsed))
+        {
+            return parsed;
+        }
+
+        var normalized = raw.Trim().Replace('-', '_');
+        return normalized.ToLowerInvariant() switch
+        {
+            "endturn" or "end_turn" => ModelStopReason.EndTurn,
+            "tooluse" or "tool_use" => ModelStopReason.ToolUse,
+            "maxtokens" or "max_tokens" => ModelStopReason.MaxTokens,
+            "pauseturn" or "pause_turn" => ModelStopReason.PauseTurn,
+            "stopsequence" or "stop_sequence" => ModelStopReason.StopSequence,
+            "refusal" => ModelStopReason.Refusal,
+            _ => ModelStopReason.Unknown,
+        };
+    }
+}
+
+/// <summary>
 /// One turn response from the model.
+/// <see cref="StopReason"/> is always a normalized enum value with protocol
+/// conversion handled by <see cref="ModelStopReasonContract"/>.
 /// </summary>
 public sealed record ModelTurn(
     string? AssistantText,
     IReadOnlyList<ToolUseRequest> ToolUseRequests,
-    string StopReason,
+    ModelStopReason StopReason,
     int InputTokens,
     int OutputTokens);
 

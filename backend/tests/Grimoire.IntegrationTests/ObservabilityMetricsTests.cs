@@ -1,6 +1,7 @@
 using System.Diagnostics.Metrics;
 using Grimoire.Hub;
 using Grimoire.IngestAgent;
+using Grimoire.IngestAgent.AgentCore;
 
 namespace Grimoire.IntegrationTests;
 
@@ -130,7 +131,7 @@ public class ObservabilityMetricsTests
         });
         listener.Start();
 
-        IngestAgentMetrics.RecordModelToolRequests(3, "tool_use");
+        IngestAgentMetrics.RecordModelToolRequests(3, ModelStopReason.ToolUse);
 
         Assert.Single(measurements);
         Assert.Equal(3L, measurements[0].Value);
@@ -159,7 +160,7 @@ public class ObservabilityMetricsTests
         });
         listener.Start();
 
-        IngestAgentMetrics.RecordNoToolTurn("stop_sequence", "terminal");
+        IngestAgentMetrics.RecordNoToolTurn(ModelStopReason.StopSequence, "terminal");
 
         Assert.Single(measurements);
         Assert.Equal(1L, measurements[0].Value);

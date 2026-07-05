@@ -42,7 +42,7 @@ public class AgentRunLifecycleTests
                             ToolName: "read_file",
                             InputJson: "{\"path\": \"wiki/index.md\"}")
                     ],
-                    StopReason: "tool_use",
+                    StopReason: ModelStopReason.ToolUse,
                     InputTokens: 100,
                     OutputTokens: 50),
 
@@ -54,14 +54,14 @@ public class AgentRunLifecycleTests
                             ToolName: "write_file",
                             InputJson: "{\"path\": \"wiki/pages/test-source.md\", \"content\": \"# Test\\n\\nProcessed from source.\"}")
                     ],
-                    StopReason: "tool_use",
+                    StopReason: ModelStopReason.ToolUse,
                     InputTokens: 150,
                     OutputTokens: 75),
 
                 new ModelTurn(
                     AssistantText: "Run complete. Processed one source into one page.",
                     ToolUseRequests: [],
-                    StopReason: "end_turn",
+                    StopReason: ModelStopReason.EndTurn,
                     InputTokens: 100,
                     OutputTokens: 40)
             };
@@ -137,7 +137,7 @@ public class AgentRunLifecycleTests
                         new ToolUseRequest("t1", "write_file",
                             "{\"path\": \"forbidden/file.md\", \"content\": \"Bad content\"}")
                     ],
-                    StopReason: "tool_use",
+                    StopReason: ModelStopReason.ToolUse,
                     InputTokens: 100,
                     OutputTokens: 50),
 
@@ -147,14 +147,14 @@ public class AgentRunLifecycleTests
                         new ToolUseRequest("t2", "write_file",
                             "{\"path\": \"wiki/pages/allowed.md\", \"content\": \"Good content\"}")
                     ],
-                    StopReason: "tool_use",
+                    StopReason: ModelStopReason.ToolUse,
                     InputTokens: 100,
                     OutputTokens: 50),
 
                 new ModelTurn(
                     AssistantText: "Done.",
                     ToolUseRequests: [],
-                    StopReason: "end_turn",
+                    StopReason: ModelStopReason.EndTurn,
                     InputTokens: 100,
                     OutputTokens: 40)
             };
@@ -225,14 +225,14 @@ public class AgentRunLifecycleTests
                             ToolName: "write_file",
                             InputJson: "{\"path\": \"output.txt\", \"content\": \"Test content from agent.\"}")
                     ],
-                    StopReason: "tool_use",
+                    StopReason: ModelStopReason.ToolUse,
                     InputTokens: 100,
                     OutputTokens: 50),
 
                 new ModelTurn(
                     AssistantText: "Done.",
                     ToolUseRequests: [],
-                    StopReason: "end_turn",
+                    StopReason: ModelStopReason.EndTurn,
                     InputTokens: 100,
                     OutputTokens: 40)
             };
@@ -286,14 +286,14 @@ public class AgentRunLifecycleTests
                 new ModelTurn(
                     AssistantText: "I need one more turn.",
                     ToolUseRequests: [],
-                    StopReason: "max_tokens",
+                    StopReason: ModelStopReason.MaxTokens,
                     InputTokens: 120,
                     OutputTokens: 60),
 
                 new ModelTurn(
                     AssistantText: "Done.",
                     ToolUseRequests: [],
-                    StopReason: "end_turn",
+                    StopReason: ModelStopReason.EndTurn,
                     InputTokens: 80,
                     OutputTokens: 40),
             };
@@ -338,55 +338,15 @@ public class AgentRunLifecycleTests
     }
 
     [Fact]
-    public async Task PascalCaseEndTurn_StopsRunWithoutExtraTurns()
+    public void RawStopReasonParser_NormalizesPascalCaseAndSnakeCaseValues()
     {
-        // Arrange
-        var tempRoot = Path.Combine(Path.GetTempPath(), $"pascal-endturn-{Guid.NewGuid():N}");
-        Directory.CreateDirectory(tempRoot);
-
-        try
-        {
-            var turns = new[]
-            {
-                new ModelTurn(
-                    AssistantText: "Completed.",
-                    ToolUseRequests: [],
-                    StopReason: "EndTurn",
-                    InputTokens: 42,
-                    OutputTokens: 24),
-            };
-
-            var fake = new FakeModelClient(turns);
-            var policy = new SafetyPolicy(
-                tempRoot,
-                readPrefixes: Array.Empty<string>(),
-                writePrefixes: Array.Empty<string>());
-            var journal = new WriteJournal();
-            var executor = new GuardedToolExecutor(policy, journal, tempRoot);
-            var loop = new AgentLoop(fake, executor);
-
-            // Act
-            var result = await loop.RunAsync(
-                systemPrompt: "Test.",
-                taskId: "test-task-endturn-pascal",
-                sourceRef: "test://source",
-                sourceContent: SourceContent,
-                cancellationToken: CancellationToken.None);
-
-            // Assert
-            Assert.Equal(1, result.TurnsUsed);
-            Assert.Equal(1, fake.CallCount);
-            Assert.Contains("Completed", result.Narrative, StringComparison.OrdinalIgnoreCase);
-        }
-        finally
-        {
-            if (Directory.Exists(tempRoot))
-                Directory.Delete(tempRoot, recursive: true);
-        }
+        Assert.Equal(ModelStopReason.EndTurn, ModelStopReasonContract.FromRawValue("EndTurn"));
+        Assert.Equal(ModelStopReason.EndTurn, ModelStopReasonContract.FromRawValue("end_turn"));
+        Assert.Equal(ModelStopReason.ToolUse, ModelStopReasonContract.FromRawValue("ToolUse"));
     }
 
     [Fact]
-    public async Task StopSequenceWithoutTools_CompletesRun()
+    public async Task StopSequenceWithoutTools_ThrowsForUnexpectedStopReason()
     {
         // Arrange
         var tempRoot = Path.Combine(Path.GetTempPath(), $"stop-sequence-{Guid.NewGuid():N}");
@@ -399,7 +359,7 @@ public class AgentRunLifecycleTests
                 new ModelTurn(
                     AssistantText: "Final response from stop sequence.",
                     ToolUseRequests: [],
-                    StopReason: "stop_sequence",
+                    StopReason: ModelStopReason.StopSequence,
                     InputTokens: 30,
                     OutputTokens: 20),
             };
@@ -413,18 +373,16 @@ public class AgentRunLifecycleTests
             var executor = new GuardedToolExecutor(policy, journal, tempRoot);
             var loop = new AgentLoop(fake, executor);
 
-            // Act
-            var result = await loop.RunAsync(
+            // Act / Assert
+            var ex = await Assert.ThrowsAsync<InvalidOperationException>(() => loop.RunAsync(
                 systemPrompt: "Test.",
                 taskId: "test-task-stop-sequence",
                 sourceRef: "test://source",
                 sourceContent: SourceContent,
-                cancellationToken: CancellationToken.None);
+                cancellationToken: CancellationToken.None));
 
-            // Assert
-            Assert.Equal(1, result.TurnsUsed);
-            Assert.Equal(1, fake.CallCount);
-            Assert.Contains("Final", result.Narrative, StringComparison.OrdinalIgnoreCase);
+            Assert.Contains("unexpected stop_reason", ex.Message, StringComparison.OrdinalIgnoreCase);
+            Assert.Contains("stop_sequence", ex.Message, StringComparison.OrdinalIgnoreCase);
         }
         finally
         {
@@ -447,7 +405,7 @@ public class AgentRunLifecycleTests
                 new ModelTurn(
                     AssistantText: "Inconsistent stop reason.",
                     ToolUseRequests: [],
-                    StopReason: "tool_use",
+                    StopReason: ModelStopReason.ToolUse,
                     InputTokens: 40,
                     OutputTokens: 25),
             };
@@ -470,6 +428,52 @@ public class AgentRunLifecycleTests
                 cancellationToken: CancellationToken.None));
 
             Assert.Contains("stop_reason=tool_use", ex.Message, StringComparison.OrdinalIgnoreCase);
+        }
+        finally
+        {
+            if (Directory.Exists(tempRoot))
+                Directory.Delete(tempRoot, recursive: true);
+        }
+    }
+
+    [Fact]
+    public async Task EmptyStopReasonWithoutTools_ThrowsForMissingRuntimeStopCondition()
+    {
+        // Arrange
+        var tempRoot = Path.Combine(Path.GetTempPath(), $"empty-stop-reason-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(tempRoot);
+
+        try
+        {
+            var turns = new[]
+            {
+                new ModelTurn(
+                    AssistantText: "No explicit stop condition.",
+                    ToolUseRequests: [],
+                    StopReason: ModelStopReason.Unknown,
+                    InputTokens: 11,
+                    OutputTokens: 7),
+            };
+
+            var fake = new FakeModelClient(turns);
+            var policy = new SafetyPolicy(
+                tempRoot,
+                readPrefixes: Array.Empty<string>(),
+                writePrefixes: Array.Empty<string>());
+            var journal = new WriteJournal();
+            var executor = new GuardedToolExecutor(policy, journal, tempRoot);
+            var loop = new AgentLoop(fake, executor);
+
+            // Act / Assert
+            var ex = await Assert.ThrowsAsync<InvalidOperationException>(() => loop.RunAsync(
+                systemPrompt: "Test.",
+                taskId: "test-task-empty-stop-reason",
+                sourceRef: "test://source",
+                sourceContent: SourceContent,
+                cancellationToken: CancellationToken.None));
+
+            Assert.Contains("unexpected stop_reason", ex.Message, StringComparison.OrdinalIgnoreCase);
+            Assert.Contains("unknown", ex.Message, StringComparison.OrdinalIgnoreCase);
         }
         finally
         {
