@@ -32,7 +32,7 @@ public sealed class FakeModelClient : IModelClient
         IReadOnlyList<ToolDefinition> tools,
         CancellationToken cancellationToken)
     {
-        _calls.Add(new RecordedCall(_turnIndex, systemPrompt, [..conversation], [..tools]));
+        _calls.Add(new RecordedCall(_turnIndex, systemPrompt, [.. conversation], [.. tools]));
         _turnIndex++;
 
         if (_script.Count == 0)

@@ -1,4 +1,4 @@
-﻿namespace Grimoire.Domain;
+namespace Grimoire.Domain;
 
 public sealed class DomainAssemblyMarker
 {

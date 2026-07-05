@@ -27,6 +27,9 @@ jobs:
       - name: Build solution
         run: dotnet build backend/Grimoire.slnx --configuration Release --no-restore
 
+      - name: Run linting and formatting checks
+        run: dotnet format backend/Grimoire.slnx --verify-no-changes --no-restore --verbosity minimal
+
       - name: Run architecture tests
         run: dotnet test backend/tests/Grimoire.ArchTests --configuration Release --no-build
 
