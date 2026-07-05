@@ -1,28 +1,28 @@
 <!--
 SYNC IMPACT REPORT
 ==================
-Version change: 1.1.1 → 1.2.0
+Version change: 1.2.0 → 1.3.0
 
 Principles modified:
-  - IV. Behavioral & Observable Engineering (added explicit logging-contract MUST rule)
+  - IV. Behavioral & Observable Engineering (added explicit trace-contract MUST rules)
 
 Principles added: none
 
 Sections modified:
-  - Definition of Done (added explicit logging-contract completion gate)
+  - Definition of Done (added explicit trace-contract validation gate)
 
 Sections removed: none
 
 Templates updated:
-  - .specify/templates/plan-template.md ✅ (added explicit derivation rule from each
-    Structured Log Events row to implementation tasks, deterministic integration
-    tests, and CI enforcement)
-  - .specify/templates/tasks-template.md ✅ (added mandatory logging-contract task
+  - .specify/templates/plan-template.md ✅ (added mandatory trace-strategy derivation
+    from each Distributed Trace Spans row to implementation, deterministic validation,
+    and CI enforcement tasks)
+  - .specify/templates/tasks-template.md ✅ (added mandatory trace-contract task
     coverage for implementation, deterministic integration tests, and standard PR CI run)
 
-Rationale for MINOR bump: this amendment introduces a new normative MUST requirement
-for logging-contract traceability from plan observability rows into tasks, tests,
-and standard PR CI enforcement.
+Rationale for MINOR bump: this amendment introduces new normative MUST requirements
+for trace-chain implementation and explicit trace-contract propagation from plan
+observability rows into tasks, tests, and standard PR CI enforcement.
 
 Deferred TODOs: none
 -->
@@ -152,6 +152,20 @@ include all three of the following logging-contract task categories:
   mandatory field for the relevant trigger
 - **CI enforcement tasks** that ensure these logging tests run in the standard PR pipeline
 
+For every row in `plan.md ## Observability > Distributed Trace Spans`, `tasks.md` MUST
+include all three of the following trace-contract task categories:
+
+- **Implementation tasks** that create the declared span with the declared parent/child
+  relationship and required attributes
+- **Deterministic integration tests** that validate span name, parent/child linkage,
+  and required correlation attributes
+- **CI enforcement tasks** that ensure these trace tests run in the standard PR pipeline
+
+Distributed trace spans MUST be implemented as an end-to-end, observable trace chain in
+code, not only documented in planning artifacts. Logs and metrics MUST be emitted within
+the active span context and be correlatable to spans through shared identifiers
+(for example `task_id`).
+
 Code submitted without the instrumentation specified in the Observability section fails
 the Definition of Done and MUST NOT be merged.
 
@@ -210,6 +224,7 @@ A feature increment is DONE when ALL of the following conditions hold:
 - [ ] Structural boundary tests (Phase 0) pass in CI with no active violations
 - [ ] Observability tests (final phase) pass: all metrics, log events, and trace spans from `plan.md ## Observability` are emitted
 - [ ] Logging contract is complete for every row in `plan.md ## Observability > Structured Log Events`: implementation tasks define stable event names and mandatory fields, deterministic integration tests validate event name/level/mandatory fields, and these logging tests run in the standard PR CI pipeline
+- [ ] Trace contract is complete for every row in `plan.md ## Observability > Distributed Trace Spans`: implementation tasks define span names, parent/child relationships, and required attributes; deterministic integration tests validate span names, parent/child relationships, and correlation attributes (including shared IDs such as `task_id`); and these trace tests run in the standard PR CI pipeline
 - [ ] Agent-behavior evaluation tests (final phase) pass for every agent-judgment success criterion in the spec, at the thresholds the spec defines (only for features with agentic behavior)
 - [ ] The agentic boundary (Principle V) is respected: no wiki-content judgment is implemented as deterministic backend code, instruction files are loaded into the agent's context, and the guarded-tool structural test passes
 - [ ] Integration tests via Testcontainers cover all API boundaries introduced by the feature
@@ -232,4 +247,4 @@ per semantic versioning (MAJOR: incompatible principle removals/redefinitions; M
 or materially expanded principles; PATCH: clarifications), update the Sync Impact Report,
 and propagate changes to the dependent templates in `.specify/templates/`.
 
-**Version**: 1.2.0 | **Ratified**: 2026-06-23 | **Last Amended**: 2026-07-05
+**Version**: 1.3.0 | **Ratified**: 2026-06-23 | **Last Amended**: 2026-07-05

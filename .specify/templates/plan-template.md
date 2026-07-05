@@ -138,6 +138,13 @@ concrete work in `tasks.md` covering all three categories:
 |-----------|-------------|-----------|
 | `[service.operation]` | `[parent or root]` | `[key=value]` |
 
+**Derivation rule (MANDATORY)**: Every row in **Distributed Trace Spans** MUST map to
+concrete work in `tasks.md` covering all three categories:
+
+1. Implementation task(s) that create the span with declared parent/child linkage and required attributes.
+2. Deterministic integration test task(s) validating span name, parent/child relationship, and correlation attributes.
+3. CI task(s) ensuring those trace tests run in the standard PR pipeline.
+
 ## Project Structure
 
 ### Documentation (this feature)
