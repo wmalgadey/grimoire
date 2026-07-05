@@ -35,6 +35,8 @@ public class AgentRunLifecycleTests
             File.WriteAllText(indexPath, "# Wiki Index\n\nPages:\n");
 
             // Create scripted model client turns
+            const string finalNarrative = "Run complete. Processed one source into one page.";
+
             var turns = new[]
             {
                 new ModelTurn(
@@ -66,7 +68,7 @@ public class AgentRunLifecycleTests
                     OutputTokens: 75),
 
                 new ModelTurn(
-                    AssistantText: "Run complete. Processed one source into one page.",
+                    AssistantText: finalNarrative,
                     ToolUseRequests: [],
                     StopReason: ModelStopReason.EndTurn,
                     InputTokens: 100,
@@ -104,7 +106,7 @@ public class AgentRunLifecycleTests
             Assert.Equal(3, result.TurnsUsed); // read, write turn, end
             Assert.True(result.TotalInputTokens > 0);
             Assert.True(result.TotalOutputTokens > 0);
-            Assert.Contains("complete", result.Narrative, StringComparison.OrdinalIgnoreCase);
+            Assert.Equal(finalNarrative, result.Narrative);
 
             // Verify pages were written and journaled with the correct action split.
             Assert.Contains(existingPagePath, journal.UpdatedPaths);
@@ -122,6 +124,109 @@ public class AgentRunLifecycleTests
             // Cleanup
             if (Directory.Exists(tempRoot))
                 Directory.Delete(tempRoot, recursive: true);
+        }
+    }
+
+    [Fact]
+    public async Task MidRunFailureAfterTwoWrites_RollbackRestoresUpdatedAndCreatedPaths()
+    {
+        var root = Path.Combine(Path.GetTempPath(), $"rollback-mid-run-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(root);
+
+        try
+        {
+            var existingPath = Path.Combine(root, "wiki", "pages", "existing.md");
+            Directory.CreateDirectory(Path.GetDirectoryName(existingPath)!);
+            await File.WriteAllTextAsync(existingPath, "original");
+
+            var createdPath = Path.Combine(root, "wiki", "pages", "new.md");
+
+            var turns = new[]
+            {
+                FakeModelClient.WriteFileTurn("w1", "wiki/pages/existing.md", "updated"),
+                FakeModelClient.WriteFileTurn("w2", "wiki/pages/new.md", "created"),
+                // Unexpected stop reason after writes to force failure.
+                new ModelTurn("bad", [], ModelStopReason.Unknown, 1, 1),
+            };
+
+            var fake = new FakeModelClient(turns);
+            var policy = new SafetyPolicy(
+                root,
+                readPrefixes: [Path.Combine(root, "wiki") + Path.DirectorySeparatorChar],
+                writePrefixes: [Path.Combine(root, "wiki", "pages") + Path.DirectorySeparatorChar]);
+            var journal = new WriteJournal();
+            var executor = new GuardedToolExecutor(policy, journal, root);
+            var loop = new AgentLoop(fake, executor);
+
+            await Assert.ThrowsAsync<InvalidOperationException>(() => loop.RunAsync(
+                "prompt",
+                "task-midrun-failure",
+                "source.md",
+                "source",
+                CancellationToken.None));
+
+            var rollback = await journal.RollbackAsync(CancellationToken.None);
+            Assert.All(rollback.Values, Assert.True);
+
+            Assert.Equal("original", await File.ReadAllTextAsync(existingPath));
+            Assert.False(File.Exists(createdPath));
+        }
+        finally
+        {
+            if (Directory.Exists(root))
+            {
+                Directory.Delete(root, recursive: true);
+            }
+        }
+    }
+
+    [Fact]
+    public async Task TurnCapBreach_ThrowsAgentLoopCapException_AndRollbackRestoresWiki()
+    {
+        var root = Path.Combine(Path.GetTempPath(), $"rollback-cap-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(root);
+
+        try
+        {
+            var existingPath = Path.Combine(root, "wiki", "pages", "existing.md");
+            Directory.CreateDirectory(Path.GetDirectoryName(existingPath)!);
+            await File.WriteAllTextAsync(existingPath, "before-cap");
+
+            var turns = new[]
+            {
+                FakeModelClient.WriteFileTurn("w1", "wiki/pages/existing.md", "during-cap"),
+                FakeModelClient.WriteFileTurn("w2", "wiki/pages/new.md", "new"),
+            };
+
+            var fake = new FakeModelClient(turns);
+            var policy = new SafetyPolicy(
+                root,
+                readPrefixes: [Path.Combine(root, "wiki") + Path.DirectorySeparatorChar],
+                writePrefixes: [Path.Combine(root, "wiki", "pages") + Path.DirectorySeparatorChar]);
+            var journal = new WriteJournal();
+            var executor = new GuardedToolExecutor(policy, journal, root);
+            var loop = new AgentLoop(fake, executor, turnCap: 1);
+
+            var ex = await Assert.ThrowsAsync<AgentLoopCapException>(() => loop.RunAsync(
+                "prompt",
+                "task-cap",
+                "source.md",
+                "source",
+                CancellationToken.None));
+
+            Assert.Equal("turns", ex.Cap);
+
+            var rollback = await journal.RollbackAsync(CancellationToken.None);
+            Assert.All(rollback.Values, Assert.True);
+            Assert.Equal("before-cap", await File.ReadAllTextAsync(existingPath));
+            Assert.False(File.Exists(Path.Combine(root, "wiki", "pages", "new.md")));
+        }
+        finally
+        {
+            if (Directory.Exists(root))
+            {
+                Directory.Delete(root, recursive: true);
+            }
         }
     }
 

@@ -22,6 +22,7 @@ runSpan?.SetTag("task_id", options.TaskId);
 
 var repoRoot = FindRepoRoot(options.TasksDir);
 var journal = new WriteJournal();
+GuardedToolExecutor? executor = null;
 AnthropicModelClient? modelClient = null;
 
 try
@@ -96,7 +97,7 @@ try
     var readSource = await sourceReader.ReadAsync(
         options.SourceKind, options.SourceRef, options.PastedText, CancellationToken.None);
 
-    var executor = new GuardedToolExecutor(
+    executor = new GuardedToolExecutor(
         loadedPolicy!.Policy,
         journal,
         repoRoot,
@@ -116,7 +117,25 @@ try
     {
         IngestAgentLogEvents.LogAgentCapExceeded(logger, options.TaskId, capEx.Cap, capEx.TurnsUsed);
         var rollbackOutcome = await RollbackAsync(journal, options.TaskId, logger);
-        await FinalizeFailedAsync(taskStore, options, startTime, capEx.Message, journal, logAppender, rollbackOutcome, instructionSet, loadedPolicy, modelClient.ModelId);
+        await FinalizeFailedAsync(taskStore, options, startTime, capEx.Message, journal, logAppender, rollbackOutcome, instructionSet, loadedPolicy, modelClient.ModelId, executor.Denials);
+        return 1;
+    }
+
+    if (journal.TouchedPaths.Count == 0 && executor.Denials.Count > 0)
+    {
+        const string allDeniedReason = "All attempted write actions were denied by the safety policy; no result was produced.";
+        await FinalizeFailedAsync(
+            taskStore,
+            options,
+            startTime,
+            allDeniedReason,
+            journal,
+            logAppender,
+            rolledBack: false,
+            instructionSet,
+            loadedPolicy,
+            modelClient.ModelId,
+            executor.Denials);
         return 1;
     }
 
@@ -174,7 +193,7 @@ catch (Exception ex)
 {
     var safeMessage = SanitizeErrorText(ex.Message);
     var rollbackOutcome = await RollbackAsync(journal, options.TaskId, logger);
-    await FinalizeFailedAsync(taskStore, options, startTime, safeMessage, journal, logAppender, rollbackOutcome, modelId: modelClient?.ModelId);
+    await FinalizeFailedAsync(taskStore, options, startTime, safeMessage, journal, logAppender, rollbackOutcome, modelId: modelClient?.ModelId, deniedActions: executor?.Denials);
     return 1;
 }
 
@@ -209,7 +228,8 @@ static async Task FinalizeFailedAsync(
     bool rolledBack,
     LoadedInstructionSet? instructionSet = null,
     LoadedPolicy? policy = null,
-    string? modelId = null)
+    string? modelId = null,
+    IReadOnlyList<DeniedActionRecord>? deniedActions = null)
 {
     using var finalizeSpan = IngestAgentTracing.ActivitySource.StartActivity("ingest_agent.finalize_artifact");
     finalizeSpan?.SetTag("task_id", options.TaskId);
@@ -231,7 +251,7 @@ static async Task FinalizeFailedAsync(
             PagesCreated: [],
             PagesUpdated: [],
             PagesSuperseded: [],
-            DeniedActions: [],
+            DeniedActions: deniedActions?.Select(d => new DeniedActionEntry(d.Action, d.RequestedTarget, d.CanonicalTarget, d.Reason, d.Turn)).ToList() ?? [],
             InstructionFiles: instructionSet?.Files.Select(f => new InstructionFileRecord(f.Path, f.Sha256)).ToList(),
             Policy: policy is null ? null : new PolicyRecord(policy.Identity.Path, policy.Identity.Version, policy.Identity.Sha256),
             Model: modelId,

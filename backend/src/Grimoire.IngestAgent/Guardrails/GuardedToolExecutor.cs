@@ -238,13 +238,94 @@ public sealed class GuardedToolExecutor
 
     /// <summary>
     /// Resolves a repo-root-relative (or absolute) path to a canonical absolute path.
-    /// Handles lexical normalization (for example <c>..</c>) via
-    /// <see cref="Path.GetFullPath"/>; symlinks are not resolved here.
+    /// Applies lexical normalization and resolves symbolic links for existing
+    /// path segments so policy evaluation is performed on the physical target.
     /// </summary>
-    private string Canonicalize(string path) =>
-        Path.IsPathRooted(path)
+    private string Canonicalize(string path)
+    {
+        var fullPath = Path.IsPathRooted(path)
             ? Path.GetFullPath(path)
             : Path.GetFullPath(Path.Combine(_repositoryRoot, path));
+
+        return ResolvePhysicalPathInRepository(fullPath);
+    }
+
+    private string ResolvePhysicalPathInRepository(string fullPath)
+    {
+        var canonical = Path.GetFullPath(fullPath);
+
+        if (!IsWithinRepositoryRoot(canonical))
+        {
+            return canonical;
+        }
+
+        var relative = Path.GetRelativePath(_repositoryRoot, canonical);
+        var parts = relative.Split(Path.DirectorySeparatorChar, StringSplitOptions.RemoveEmptyEntries);
+
+        var current = _repositoryRoot;
+        for (var i = 0; i < parts.Length; i++)
+        {
+            current = Path.Combine(current, parts[i]);
+
+            if (!TryResolveLinkTarget(current, out var targetPath))
+            {
+                continue;
+            }
+
+            current = targetPath;
+            for (var j = i + 1; j < parts.Length; j++)
+            {
+                current = Path.Combine(current, parts[j]);
+            }
+
+            break;
+        }
+
+        return Path.GetFullPath(current);
+    }
+
+    private bool IsWithinRepositoryRoot(string canonicalTarget)
+    {
+        var relative = Path.GetRelativePath(_repositoryRoot, canonicalTarget);
+        return !Path.IsPathRooted(relative) &&
+               !relative.Equals("..", StringComparison.Ordinal) &&
+               !relative.StartsWith($"..{Path.DirectorySeparatorChar}", StringComparison.Ordinal);
+    }
+
+    private static bool TryResolveLinkTarget(string path, out string resolvedTarget)
+    {
+        resolvedTarget = string.Empty;
+
+        if (!File.Exists(path) && !Directory.Exists(path))
+        {
+            return false;
+        }
+
+        try
+        {
+            FileSystemInfo info = Directory.Exists(path)
+                ? new DirectoryInfo(path)
+                : new FileInfo(path);
+
+            if ((info.Attributes & FileAttributes.ReparsePoint) == 0)
+            {
+                return false;
+            }
+
+            var target = info.ResolveLinkTarget(returnFinalTarget: true);
+            if (target is null)
+            {
+                return false;
+            }
+
+            resolvedTarget = Path.GetFullPath(target.FullName);
+            return true;
+        }
+        catch
+        {
+            return false;
+        }
+    }
 
     private static bool TryGetStringProperty(string json, string propertyName, out string value)
     {

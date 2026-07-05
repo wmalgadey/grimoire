@@ -73,4 +73,95 @@ public class AgentTaskArtifactTests
 
         Assert.DoesNotContain("## Denied actions", content, StringComparison.Ordinal);
     }
+
+    [Fact]
+    public async Task FailedArtifact_PreservesDeniedActionsInFrontmatter()
+    {
+        var root = Path.Combine(Path.GetTempPath(), $"artifact-failed-denials-{Guid.NewGuid():N}");
+        var artifactPath = Path.Combine(root, "tasks", "task-artifact-2.md");
+        var denial = new DeniedActionEntry(
+            "write_file", "../secret.md", "/etc/secret.md", "traversal", 4);
+
+        var store = new TaskArtifactStore();
+        await store.WriteAsync(
+            artifactPath,
+            new TaskArtifactDocument(
+                TaskId: "task-artifact-2",
+                Type: "ingest",
+                Status: "failed",
+                Agent: "ingest",
+                StartedAt: DateTimeOffset.Parse("2026-07-05T11:00:00Z"),
+                CompletedAt: DateTimeOffset.Parse("2026-07-05T11:01:00Z"),
+                SourceRef: "source.md",
+                PagesTouched: [],
+                FailureReason: "run failed",
+                Narrative: "Ingest failed: run failed",
+                PagesCreated: [],
+                PagesUpdated: [],
+                PagesSuperseded: [],
+                DeniedActions: [denial],
+                InstructionFiles: [new InstructionFileRecord("agents/ingest/CLAUDE.md", "abc")],
+                Policy: new PolicyRecord("agents/ingest/policy.json", 1, "def"),
+                Model: "fake-model",
+                Turns: null,
+                RolledBack: true),
+            CancellationToken.None);
+
+        var parsed = await store.ReadAsync(artifactPath, CancellationToken.None);
+        Assert.NotNull(parsed.DeniedActions);
+        Assert.Single(parsed.DeniedActions!);
+        Assert.Equal("write_file", parsed.DeniedActions![0].Action);
+        Assert.Equal("traversal", parsed.DeniedActions[0].Reason);
+    }
+
+    [Fact]
+    public async Task CompletedArtifact_NarrativeMatches_AndListedPagesExistOnDisk()
+    {
+        var root = Path.Combine(Path.GetTempPath(), $"artifact-consistency-{Guid.NewGuid():N}");
+        var updatedPage = Path.Combine(root, "wiki", "pages", "existing.md");
+        var createdPage = Path.Combine(root, "wiki", "pages", "new.md");
+        Directory.CreateDirectory(Path.GetDirectoryName(updatedPage)!);
+        await File.WriteAllTextAsync(updatedPage, "existing");
+        await File.WriteAllTextAsync(createdPage, "new");
+
+        var artifactPath = Path.Combine(root, "wiki", "tasks", "task-artifact-3.md");
+        var narrative = "Final narrative copied verbatim from model.";
+
+        var store = new TaskArtifactStore();
+        await store.WriteAsync(
+            artifactPath,
+            new TaskArtifactDocument(
+                TaskId: "task-artifact-3",
+                Type: "ingest",
+                Status: "completed",
+                Agent: "ingest",
+                StartedAt: DateTimeOffset.Parse("2026-07-05T12:00:00Z"),
+                CompletedAt: DateTimeOffset.Parse("2026-07-05T12:02:00Z"),
+                SourceRef: "source.md",
+                PagesTouched: [
+                    Path.GetRelativePath(root, updatedPage).Replace('\\', '/'),
+                    Path.GetRelativePath(root, createdPage).Replace('\\', '/'),
+                ],
+                FailureReason: null,
+                Narrative: narrative,
+                PagesCreated: [Path.GetRelativePath(root, createdPage).Replace('\\', '/')],
+                PagesUpdated: [Path.GetRelativePath(root, updatedPage).Replace('\\', '/')],
+                PagesSuperseded: [],
+                DeniedActions: [],
+                InstructionFiles: [new InstructionFileRecord("agents/ingest/CLAUDE.md", "abc")],
+                Policy: new PolicyRecord("agents/ingest/policy.json", 1, "def"),
+                Model: "fake-model",
+                Turns: 2,
+                RolledBack: null),
+            CancellationToken.None);
+
+        var parsed = await store.ReadAsync(artifactPath, CancellationToken.None);
+        Assert.Equal(narrative, parsed.Narrative);
+
+        foreach (var relativePath in parsed.PagesCreated!.Concat(parsed.PagesUpdated!))
+        {
+            var absolutePath = Path.Combine(root, relativePath.Replace('/', Path.DirectorySeparatorChar));
+            Assert.True(File.Exists(absolutePath), $"Expected listed page to exist: {relativePath}");
+        }
+    }
 }
