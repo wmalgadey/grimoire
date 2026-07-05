@@ -1,5 +1,6 @@
-using System.Diagnostics;
+using Grimoire.IngestAgent.Guardrails;
 using Microsoft.Extensions.Logging;
+using System.Diagnostics;
 
 namespace Grimoire.IngestAgent;
 
@@ -121,6 +122,25 @@ public static class IngestAgentLogEvents
             taskId,
             outcome);
     }
+
+    /// <summary>
+    /// Emits <c>ingest.agent.completed</c> with the page counts derived from the
+    /// journal-backed run outcome (created/updated/superseded split, not a collapsed total).
+    /// </summary>
+    public static void LogAgentCompleted(
+        ILogger logger,
+        string taskId,
+        int turns,
+        WriteJournal journal,
+        int denials)
+        => LogAgentCompleted(
+            logger,
+            taskId,
+            turns,
+            pagesCreated: journal.CreatedPaths.Count,
+            pagesUpdated: journal.UpdatedPaths.Count,
+            pagesSuperseded: journal.SupersededPaths.Count,
+            denials: denials);
 
     public static void LogAgentCompleted(
         ILogger logger,

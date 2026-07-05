@@ -1,6 +1,10 @@
+using Grimoire.Domain.Guardrails;
 using Grimoire.Hub.OperationalState;
 using Grimoire.IngestAgent;
+using Grimoire.IngestAgent.AgentCore;
+using Grimoire.IngestAgent.Guardrails;
 using Grimoire.IngestAgent.IngestLog;
+using Grimoire.IntegrationTests.Fakes;
 using Microsoft.Extensions.Logging;
 
 namespace Grimoire.IntegrationTests;
@@ -76,6 +80,49 @@ public class ObservabilityLogTests
         AssertEvent(logger.Entries, "ingest.log.backstop_appended", LogLevel.Warning, ["task_id", "outcome"]);
         AssertEvent(logger.Entries, "ingest.agent.completed", LogLevel.Information, ["task_id", "turns", "pages_created", "pages_updated", "pages_superseded", "denials"]);
         AssertEvent(logger.Entries, "ingest.agent.cap_exceeded", LogLevel.Error, ["task_id", "cap", "turns"]);
+    }
+
+    [Fact]
+    public async Task AgentCompletedEvent_ReportsJournalDerivedCounts_ForMixedCreateUpdateRun()
+    {
+        var root = Path.Combine(Path.GetTempPath(), $"log-completed-{Guid.NewGuid():N}");
+        var wikiDir = Path.Combine(root, "wiki");
+        var pagesDir = Path.Combine(wikiDir, "pages");
+        Directory.CreateDirectory(pagesDir);
+        var existingPage = Path.Combine(pagesDir, "existing.md");
+        await File.WriteAllTextAsync(existingPage, "before");
+
+        var policy = new SafetyPolicy(
+            root,
+            readPrefixes: [wikiDir + Path.DirectorySeparatorChar],
+            writePrefixes: [pagesDir + Path.DirectorySeparatorChar]);
+        var journal = new WriteJournal();
+        var executor = new GuardedToolExecutor(policy, journal, root, taskId: "task-mixed");
+        var fake = new FakeModelClient([
+            FakeModelClient.WriteFileTurn("tool-1", "wiki/pages/existing.md", "after"),
+            FakeModelClient.WriteFileTurn("tool-2", "wiki/pages/new.md", "# New page"),
+            FakeModelClient.FinalTurn("Mixed create/update run complete.")]);
+        var loop = new AgentLoop(fake, executor);
+
+        var result = await loop.RunAsync(
+            systemPrompt: "You are a test agent.",
+            taskId: "task-mixed",
+            sourceRef: "source.md",
+            sourceContent: "# source",
+            cancellationToken: CancellationToken.None);
+
+        var logger = new CaptureLogger<ObservabilityLogTests>();
+        IngestAgentLogEvents.LogAgentCompleted(
+            logger, "task-mixed", result.TurnsUsed, journal, executor.Denials.Count);
+
+        var entry = Assert.Single(logger.Entries.Where(e => e.EventName == "ingest.agent.completed"));
+        Assert.Equal(LogLevel.Information, entry.Level);
+        Assert.Equal("task-mixed", entry.Fields["task_id"]?.ToString());
+        Assert.Equal("3", entry.Fields["turns"]?.ToString());
+        Assert.Equal("1", entry.Fields["pages_created"]?.ToString());
+        Assert.Equal("1", entry.Fields["pages_updated"]?.ToString());
+        Assert.Equal("0", entry.Fields["pages_superseded"]?.ToString());
+        Assert.Equal("0", entry.Fields["denials"]?.ToString());
     }
 
     [Fact]

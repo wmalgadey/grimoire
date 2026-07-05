@@ -113,13 +113,13 @@ public class ObservabilityTraceTests
     [Fact]
     public async Task AgenticIngestTraceSpans_EmitExpectedHierarchyAndAttributes()
     {
-        var activities = new ConcurrentDictionary<string, Activity>();
+        var activities = new ConcurrentQueue<Activity>();
 
         using var listener = new ActivityListener
         {
             ShouldListenTo = src => src.Name == "Grimoire.IngestAgent",
             Sample = (ref ActivityCreationOptions<ActivityContext> _) => ActivitySamplingResult.AllDataAndRecorded,
-            ActivityStopped = activity => activities[activity.OperationName] = activity
+            ActivityStopped = activity => activities.Enqueue(activity)
         };
         ActivitySource.AddActivityListener(listener);
 
@@ -179,15 +179,24 @@ public class ObservabilityTraceTests
             }
         }
 
-        var run = activities.Values.Single(activity => activity.OperationName == "ingest_agent.run");
-        var load = activities.Values.Single(activity => activity.OperationName == "ingest_agent.load_instructions");
-        var turn = activities.Values.Single(activity => activity.OperationName == "ingest_agent.model_turn");
-        var tool = activities.Values.Single(activity => activity.OperationName == "ingest_agent.tool_call");
-        var rollback = activities.Values.Single(activity => activity.OperationName == "ingest_agent.rollback");
-        var finalize = activities.Values.Single(activity => activity.OperationName == "ingest_agent.finalize_artifact");
+        // Other test classes run in parallel and emit spans on the same
+        // ActivitySource; only this test's trace is under assertion.
+        var run = activities.Single(activity => activity.OperationName == "ingest_agent.run");
+        var all = activities.Where(activity => activity.TraceId == run.TraceId).ToList();
+        var load = all.Single(activity => activity.OperationName == "ingest_agent.load_instructions");
+        var turns = all.Where(activity => activity.OperationName == "ingest_agent.model_turn").ToList();
+        var tool = all.Single(activity => activity.OperationName == "ingest_agent.tool_call");
+        var rollback = all.Single(activity => activity.OperationName == "ingest_agent.rollback");
+        var finalize = all.Single(activity => activity.OperationName == "ingest_agent.finalize_artifact");
+
+        // One turn requested the write, one ended the run.
+        Assert.Equal(2, turns.Count);
+        var turn = turns.Single(activity => GetTag(activity, "stop_reason") == "tool_use");
+        var finalTurn = turns.Single(activity => GetTag(activity, "stop_reason") == "end_turn");
 
         Assert.Equal(run.SpanId.ToHexString(), load.ParentSpanId.ToHexString());
-        Assert.Equal(run.SpanId.ToHexString(), turn.ParentSpanId.ToHexString());
+        Assert.All(turns, activity =>
+            Assert.Equal(run.SpanId.ToHexString(), activity.ParentSpanId.ToHexString()));
         Assert.Equal(turn.SpanId.ToHexString(), tool.ParentSpanId.ToHexString());
         Assert.Equal(run.SpanId.ToHexString(), rollback.ParentSpanId.ToHexString());
         Assert.Equal(run.SpanId.ToHexString(), finalize.ParentSpanId.ToHexString());
@@ -204,6 +213,11 @@ public class ObservabilityTraceTests
         Assert.Equal("tool_use", GetTag(turn, "stop_reason"));
         Assert.Equal("100", GetTag(turn, "input_tokens"));
         Assert.Equal("50", GetTag(turn, "output_tokens"));
+
+        Assert.Equal("task-123", GetTag(finalTurn, "task_id"));
+        Assert.Equal("2", GetTag(finalTurn, "turn"));
+        Assert.Equal("200", GetTag(finalTurn, "input_tokens"));
+        Assert.Equal("100", GetTag(finalTurn, "output_tokens"));
 
         Assert.Equal("task-123", GetTag(tool, "task_id"));
         Assert.Equal("write_file", GetTag(tool, "tool"));

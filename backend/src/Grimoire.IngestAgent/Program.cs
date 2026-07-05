@@ -85,9 +85,13 @@ try
         loadedPolicy!.Identity.Version,
         loadedPolicy.Identity.Sha256);
 
-    using var loadSpan = IngestAgentTracing.ActivitySource.StartActivity("ingest_agent.load_instructions");
-    loadSpan?.SetTag("task_id", options.TaskId);
-    loadSpan?.SetTag("file_count", instructionSet!.Files.Count);
+    // Block-scoped so the span closes here; later model_turn spans must parent
+    // to ingest_agent.run, not to load_instructions.
+    using (var loadSpan = IngestAgentTracing.ActivitySource.StartActivity("ingest_agent.load_instructions"))
+    {
+        loadSpan?.SetTag("task_id", options.TaskId);
+        loadSpan?.SetTag("file_count", instructionSet!.Files.Count);
+    }
 
     var readSource = await sourceReader.ReadAsync(
         options.SourceKind, options.SourceRef, options.PastedText, CancellationToken.None);
@@ -121,6 +125,10 @@ try
     var pagesUpdated = journal.UpdatedPaths;
     var pagesSuperseded = journal.SupersededPaths;
 
+    using var finalizeSpan = IngestAgentTracing.ActivitySource.StartActivity("ingest_agent.finalize_artifact");
+    finalizeSpan?.SetTag("task_id", options.TaskId);
+    finalizeSpan?.SetTag("outcome", "completed");
+
     await taskStore.WriteAsync(
         options.TaskArtifactPath,
         new TaskArtifactDocument(
@@ -153,9 +161,7 @@ try
         logger,
         options.TaskId,
         loopResult.TurnsUsed,
-        touchedPaths.Count,
-        0,
-        0,
+        journal,
         executor.Denials.Count);
 
     IngestAgentMetrics.RecordIngest("completed", touchedPaths.Count, "touched",
@@ -174,6 +180,7 @@ catch (Exception ex)
 static async Task<bool> RollbackAsync(WriteJournal journal, string taskId, ILogger logger)
 {
     using var rollbackSpan = IngestAgentTracing.ActivitySource.StartActivity("ingest_agent.rollback");
+    rollbackSpan?.SetTag("task_id", taskId);
     try
     {
         var outcomes = await journal.RollbackAsync(CancellationToken.None);
@@ -204,6 +211,7 @@ static async Task FinalizeFailedAsync(
     string? modelId = null)
 {
     using var finalizeSpan = IngestAgentTracing.ActivitySource.StartActivity("ingest_agent.finalize_artifact");
+    finalizeSpan?.SetTag("task_id", options.TaskId);
     finalizeSpan?.SetTag("outcome", "failed");
 
     await taskStore.WriteAsync(

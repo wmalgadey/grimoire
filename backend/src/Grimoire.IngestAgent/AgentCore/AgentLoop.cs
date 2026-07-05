@@ -65,20 +65,19 @@ public sealed class AgentLoop
                     turnsUsed: turnsUsed);
             }
 
-            ModelTurn turn;
-            using (var span = IngestAgentTracing.ActivitySource.StartActivity("ingest_agent.model_turn"))
-            {
-                span?.SetTag("task_id", taskId);
-                span?.SetTag("turn", turnsUsed + 1);
+            // The span stays open across tool dispatch below so every
+            // ingest_agent.tool_call span is a child of this model turn.
+            using var span = IngestAgentTracing.ActivitySource.StartActivity("ingest_agent.model_turn");
+            span?.SetTag("task_id", taskId);
+            span?.SetTag("turn", turnsUsed + 1);
 
-                turn = await _modelClient.NextTurnAsync(
-                    systemPrompt, conversation, ToolRegistry.All, cancellationToken);
+            var turn = await _modelClient.NextTurnAsync(
+                systemPrompt, conversation, ToolRegistry.All, cancellationToken);
 
-                span?.SetTag("stop_reason", turn.StopReason.ToProtocolString());
-                span?.SetTag("tool_request_count", turn.ToolUseRequests.Count);
-                span?.SetTag("input_tokens", turn.InputTokens);
-                span?.SetTag("output_tokens", turn.OutputTokens);
-            }
+            span?.SetTag("stop_reason", turn.StopReason.ToProtocolString());
+            span?.SetTag("tool_request_count", turn.ToolUseRequests.Count);
+            span?.SetTag("input_tokens", turn.InputTokens);
+            span?.SetTag("output_tokens", turn.OutputTokens);
 
             turnsUsed++;
             totalInputTokens += turn.InputTokens;

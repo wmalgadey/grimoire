@@ -209,6 +209,7 @@ public sealed class GuardedToolExecutor
         _denials.Add(record);
 
         using var span = IngestAgentTracing.ActivitySource.StartActivity("ingest_agent.tool_call");
+        span?.SetTag("task_id", _taskId);
         span?.SetTag("tool", action);
         span?.SetTag("target", canonicalTarget);
         span?.SetTag("requested_target", requestedTarget);
@@ -227,6 +228,7 @@ public sealed class GuardedToolExecutor
     private void EmitAllowed(string tool, string target, int turn)
     {
         using var span = IngestAgentTracing.ActivitySource.StartActivity("ingest_agent.tool_call");
+        span?.SetTag("task_id", _taskId);
         span?.SetTag("tool", tool);
         span?.SetTag("target", target);
         span?.SetTag("decision", "allowed");
