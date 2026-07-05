@@ -211,3 +211,14 @@ Nachtrag (gleiche Session): Dokumenten-Governance geklärt
 - Zusätzlich habe ich mir eigene Skills gebaut:
   - /dev-log (Lernpfad festhalten) und 
   - /drift-check (Umsetzung regelmaessig gegen Vision und Constitution pruefen).
+
+## 2026-07-05: quickstart.md und /speckit-implement Erkenntnisse
+
+- Quickstart.md ist zentral relevant. Auch wenn das in den Tasks als teil der Implementierung auftaucht, macht es absolut Sinn sich den Inhalt selbst anzuschauen und auszuführen.
+- Der AgentLoop wurde nicht vollständig getestet. Mal davon abgesehen, dass ich Probleme mit dem Model hatte (nur Haiku lief durch) und ich nicht "mitbekommen" habe, dass ein Turn und Token Limit eingebaut wurde (was war jetzt API Rückmeldung und was haben wir selbst implementiert?).
+- In der task.md steht unter Umständen sowas wie `STOP and VALIDATE`! Das macht das LLM dann auch!
+- Den AgentLoop habe ich dann selbst nochmal mit Claudes `/simplify`-Skill geprüft und die Magic-Strings durch einen Enum ersetzen lassen. Der Code sah mir zu sehr nach Redundantem Verhalten aus.
+- aus irgendeinem grund macht /speckit-implement die Haken nicht in die Tasks!? ->  /speckit-implement ohne weiteren prompt ausgeführt! danach wurde anhand der tests auch faktisch geprüft, ob der "contract" erfüllt wurde!
+- Etwas, dass ich scheinbar auch beim "init" nicht bedacht habe:
+  - Logging fehlt
+  - Und zur Test-Coverage habe ich noch gar nichts geschrieben. Aktuell ist die Coverage nicht wirklich nützlich. Ich will aber auch nicht auf 100% wenn die Tests dazu dann nutzlos bzw. nicht den Anforderungen entsprechen.

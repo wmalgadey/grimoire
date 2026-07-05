@@ -7,11 +7,11 @@ namespace Grimoire.IngestAgent.AgentCore;
 /// <summary>
 /// Production <see cref="IModelClient"/> over the Anthropic C# SDK Messages API.
 /// Model ID comes from the <c>GRIMOIRE_INGEST_MODEL</c> environment variable
-/// (default <c>claude-sonnet-4-6</c>).
+/// (default <c>claude-opus-4-8</c>).
 /// </summary>
 public sealed class AnthropicModelClient : IModelClient
 {
-    private const string DefaultModel = "claude-sonnet-4-6";
+    private const string DefaultModel = "claude-opus-4-8";
 
     private readonly AnthropicClient _client;
 

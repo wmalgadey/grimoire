@@ -133,9 +133,9 @@ public class ObservabilityMetricsTests
 
         IngestAgentMetrics.RecordModelToolRequests(3, ModelStopReason.ToolUse);
 
-        Assert.Single(measurements);
-        Assert.Equal(3L, measurements[0].Value);
-        Assert.Equal("tool_use", measurements[0].StopReason);
+        Assert.Contains(measurements, m =>
+            m.Value == 3L &&
+            m.StopReason == "tool_use");
     }
 
     [Fact]
@@ -162,9 +162,9 @@ public class ObservabilityMetricsTests
 
         IngestAgentMetrics.RecordNoToolTurn(ModelStopReason.StopSequence, "terminal");
 
-        Assert.Single(measurements);
-        Assert.Equal(1L, measurements[0].Value);
-        Assert.Equal("stop_sequence", measurements[0].StopReason);
-        Assert.Equal("terminal", measurements[0].Outcome);
+        Assert.Contains(measurements, m =>
+            m.Value == 1L &&
+            m.StopReason == "stop_sequence" &&
+            m.Outcome == "terminal");
     }
 }

@@ -55,7 +55,40 @@ public static class ModelStopReasonContract
         }
 
         var normalized = raw.Trim().Replace('-', '_');
-        return normalized.ToLowerInvariant() switch
+        var lower = normalized.ToLowerInvariant();
+
+        // Be defensive: SDK unions can stringify to wrapper/object forms.
+        if (lower.Contains("end_turn") || lower.Contains("endturn"))
+        {
+            return ModelStopReason.EndTurn;
+        }
+
+        if (lower.Contains("tool_use") || lower.Contains("tooluse"))
+        {
+            return ModelStopReason.ToolUse;
+        }
+
+        if (lower.Contains("max_tokens") || lower.Contains("maxtokens"))
+        {
+            return ModelStopReason.MaxTokens;
+        }
+
+        if (lower.Contains("pause_turn") || lower.Contains("pauseturn"))
+        {
+            return ModelStopReason.PauseTurn;
+        }
+
+        if (lower.Contains("stop_sequence") || lower.Contains("stopsequence"))
+        {
+            return ModelStopReason.StopSequence;
+        }
+
+        if (lower.Contains("refusal"))
+        {
+            return ModelStopReason.Refusal;
+        }
+
+        return lower switch
         {
             "endturn" or "end_turn" => ModelStopReason.EndTurn,
             "tooluse" or "tool_use" => ModelStopReason.ToolUse,
