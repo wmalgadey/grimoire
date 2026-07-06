@@ -1,6 +1,6 @@
 # Feature Specification: Ingest Intake Web UI
 
-**Feature Branch**: `claude/ingest-agent-webui-teq68l`
+**Feature Branch**: `003-ingest-intake-webui`
 
 **Created**: 2026-07-06
 
