@@ -54,6 +54,10 @@ intake/conversion/task-visibility flow is in scope."
   submission time, converts/normalizes it to Markdown, and persists it as a local raw
   source file. The Ingest agent is triggered against that stored file (not by re-fetching
   the URL later).
+- Q: Why not name everything simply "ingest" instead of mixing "intake" and
+  "submission"? → A: Use a mixed model: `ingest` remains the umbrella term for the
+  end-to-end capability, while the pre-agent user-facing step is named `ingest
+  submission`; the agent execution from `queued` onward remains the `ingest run`.
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -203,7 +207,8 @@ and no stored Markdown file for that submission.
 - **FR-003**: The system MUST validate the submitted source's format before accepting
   it, and MUST reject unsupported formats with a clear, actionable message without
   creating a task.
-- **FR-004**: For URL submissions, the Hub intake flow MUST fetch the URL content at
+- **FR-004**: For URL submissions, the Hub ingest-submission flow MUST fetch the URL
+  content at
   submission time and convert/normalize it into a Markdown representation. For accepted
   uploaded non-Markdown documents, the system MUST convert them into Markdown as well.
 - **FR-005**: The system MUST store the resulting Markdown file in the project's
@@ -243,7 +248,17 @@ and no stored Markdown file for that submission.
 
 ### Key Entities
 
-- **Source Submission**: A single user-provided input to the intake flow — a URL or one
+### Terminology
+
+- **Ingest**: The umbrella capability from user-provided source through terminal task
+  outcome (`received -> converting -> queued -> running -> completed|failed`).
+- **Ingest Submission**: The pre-agent, user-facing part of ingest (`received ->
+  converting -> queued`).
+- **Ingest Run**: The Ingest-agent-owned execution from `queued` onward (`queued ->
+  running -> completed|failed`).
+
+- **Ingest Submission (formerly referred to as "Source Submission")**: A single
+  user-provided input to the ingest-submission flow — a URL or one
   uploaded document (Markdown, PDF, or Office format) — together with its declared or
   detected kind. Distinct from, and a precursor to, the existing project-wide "Source"
   concept once conversion has completed. For URL submissions, this entity is transient:
