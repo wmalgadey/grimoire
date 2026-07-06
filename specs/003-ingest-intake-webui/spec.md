@@ -49,6 +49,11 @@ intake/conversion/task-visibility flow is in scope."
   Task Artifact for details — the board does not render or summarize wiki-content
   decisions (pages created/updated/superseded) itself, consistent with Principle V (the
   UI observes, it does not interpret agent judgment).
+- Q: For user-submitted URLs, who fetches the URL content and what artifact is persisted
+  for downstream ingest? → A: The Hub intake flow fetches URL content immediately at
+  submission time, converts/normalizes it to Markdown, and persists it as a local raw
+  source file. The Ingest agent is triggered against that stored file (not by re-fetching
+  the URL later).
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -198,8 +203,9 @@ and no stored Markdown file for that submission.
 - **FR-003**: The system MUST validate the submitted source's format before accepting
   it, and MUST reject unsupported formats with a clear, actionable message without
   creating a task.
-- **FR-004**: The system MUST convert every accepted, non-Markdown source into a
-  Markdown representation of its content.
+- **FR-004**: For URL submissions, the Hub intake flow MUST fetch the URL content at
+  submission time and convert/normalize it into a Markdown representation. For accepted
+  uploaded non-Markdown documents, the system MUST convert them into Markdown as well.
 - **FR-005**: The system MUST store the resulting Markdown file in the project's
   designated raw-source location, and that stored file MUST remain unmodified once
   written.
@@ -218,7 +224,8 @@ and no stored Markdown file for that submission.
   user, and MUST NOT leave a partial or corrupt file in the raw-source location.
 - **FR-010**: Once a Task Artifact reaches `queued`, the system MUST automatically
   trigger the Ingest agent against the specific stored raw-source file, with no further
-  action required from the user.
+  action required from the user. The triggered run MUST use the persisted file as its
+  input and MUST NOT perform a fresh URL fetch for that submission.
 - **FR-011**: A Task Artifact's stage and outcome MUST remain visible on the board after
   the submission completes and independent of the user's browser session (e.g., after a
   page reload or in a later visit).
@@ -239,7 +246,9 @@ and no stored Markdown file for that submission.
 - **Source Submission**: A single user-provided input to the intake flow — a URL or one
   uploaded document (Markdown, PDF, or Office format) — together with its declared or
   detected kind. Distinct from, and a precursor to, the existing project-wide "Source"
-  concept once conversion has completed.
+  concept once conversion has completed. For URL submissions, this entity is transient:
+  after immediate Hub-side fetch and conversion, the persisted local Raw Source File is
+  the canonical downstream ingest input.
 - **Task Artifact**: The existing project-wide record (per 001-ingest-minimal)
   representing one ingest operation's lifecycle end-to-end — no new task entity is
   introduced by this feature. This feature creates the Task Artifact at the moment a
@@ -293,6 +302,9 @@ and no stored Markdown file for that submission.
   reaches `queued`, reusing however the agent is already invoked elsewhere in the
   project, including its existing single-concurrent-run constraint — no new agent
   orchestration model is introduced.
+- URL submissions are not processed in a bookmark-only mode in this feature: the Hub
+  fetches and persists URL content during intake, and downstream ingest consumes the
+  persisted file.
 - This feature shifts Task Artifact creation earlier: the Hub creates the record when a
   submission is accepted, rather than the Ingest agent creating it on its own startup.
   The Hub then triggers the agent itself once the record reaches `queued`; the agent
