@@ -32,25 +32,45 @@ intake/conversion/task-visibility flow is in scope."
   status; the subsequent `queued → running → completed | failed` transitions are
   unchanged from 001/002 and remain owned by the Ingest agent once a later feature
   triggers it.
+- Q: Should the user interaction also trigger the actual ingest run (against the specific
+  file now stored in `raw/sources`) once conversion completes, rather than leaving that
+  hand-off to a later feature? → A: Yes — this feature now owns triggering the Ingest
+  agent automatically, the moment a Task Artifact reaches `queued`, reusing however the
+  agent is already invoked elsewhere in the project, with no additional user action
+  required. The earlier assumption that this hand-off belongs to "a subsequent feature"
+  is superseded.
+- Q: Should the Kanban board visualize the agent-owned lifecycle stages (`running →
+  completed | failed`) live, or stop at `queued`? → A: The board MUST show the complete
+  lifecycle end to end (`received → converting → queued → running → completed | failed`)
+  so processing stays transparent through the entire operation, not just the pre-agent
+  part.
+- Q: What level of detail should a completed/failed card show? → A: Only the terminal
+  status plus, for `failed`, the human-readable `failure_reason`, with a link to the full
+  Task Artifact for details — the board does not render or summarize wiki-content
+  decisions (pages created/updated/superseded) itself, consistent with Principle V (the
+  UI observes, it does not interpret agent judgment).
 
 ## User Scenarios & Testing *(mandatory)*
 
-### User Story 1 - Submit a source and see it accepted (Priority: P1)
+### User Story 1 - Submit a source and see it ingested end to end (Priority: P1)
 
 A user opens the Web UI and submits a source to the Hub — either a URL, or a single
 Markdown, PDF, or Office document. The moment the submission is sent, the UI confirms it
-was accepted and shows that processing has started. As conversion completes, the user
-sees the status change to reflect that a Markdown version of the source now exists,
-without having to inspect any files or logs themselves.
+was accepted and shows that processing has started. As conversion completes and the
+resulting Markdown file is stored, the system automatically triggers the Ingest agent
+against that specific file — no further action from the user is required. The user sees
+the status progress all the way through to the agent's own outcome (completed or
+failed), without having to inspect any files or logs themselves.
 
 **Why this priority**: This closes the trust gap between "I sent something" and "the
-system is doing something with it." Without this, users have no way to know whether a
-submission worked, is still running, or was silently lost — which is the minimum bar for
-a usable intake surface.
+system is doing something with it," end to end. Without this, users have no way to know
+whether a submission worked, is still running, or was silently lost — which is the
+minimum bar for a usable submission surface that actually results in a wiki update.
 
 **Independent Test**: Submit a single Markdown file through the UI and verify that an
-acknowledgment and a non-terminal task status appear immediately, followed by a status
-change once the corresponding Markdown file is stored — without querying the filesystem.
+acknowledgment and a non-terminal task status appear immediately, followed by status
+changes through conversion, storage, and the triggered ingest run, ending in a completed
+or failed outcome — without querying the filesystem.
 
 **Acceptance Scenarios**:
 
@@ -62,16 +82,21 @@ change once the corresponding Markdown file is stored — without querying the f
    same way as a file submission.
 3. **Given** an accepted submission that is being converted, **When** conversion finishes
    successfully, **Then** the task's displayed status changes to reflect that the
-   resulting Markdown file has been stored, with no action required from the user.
+   resulting Markdown file has been stored, and the Ingest agent is automatically
+   triggered against that file with no action required from the user.
+4. **Given** a triggered ingest run, **When** the Ingest agent finishes successfully,
+   **Then** the task's displayed status changes to "completed" with no action required
+   from the user.
 
 ---
 
 ### User Story 2 - Track all submissions on a Kanban board (Priority: P2)
 
 A user opens a Kanban-style board that lists every source they have submitted, grouped by
-its current lifecycle stage (`received`, `converting`, `queued`, or `failed`). This gives them a
-single place to see the state of all their submissions — past and in progress — instead
-of having to remember or re-check each one individually.
+its current lifecycle stage (`received`, `converting`, `queued`, `running`, `completed`,
+or `failed`). This gives them a single place to see the state of all their submissions —
+past and in progress, including the triggered ingest run itself — instead of having to
+remember or re-check each one individually.
 
 **Why this priority**: Once individual submissions are trustworthy (User Story 1), users
 need an overview when they submit more than one source, or return later to check on
@@ -97,10 +122,12 @@ stage, with the board reflecting stage changes as they happen.
 
 ### User Story 3 - See clearly when a submission fails (Priority: P3)
 
-A user submits a source that cannot be processed — for example, an unreadable document or
-an unreachable URL. The board shows the corresponding task as failed, with a plain-
-language explanation of what went wrong, instead of the task silently disappearing or
-being stuck in a processing state forever.
+A user submits a source that cannot be processed — for example, an unreadable document,
+an unreachable URL, or a source the Ingest agent itself cannot successfully process once
+triggered. The board shows the corresponding task as failed, with a plain-language
+explanation of what went wrong, instead of the task silently disappearing or being stuck
+in a processing state forever, regardless of whether the failure happened during
+conversion or during the triggered ingest run.
 
 **Why this priority**: Failure visibility protects trust in the system once it is
 already in use for successful cases; it is less critical than the core happy path but
@@ -120,6 +147,11 @@ and no stored Markdown file for that submission.
    fetch failure.
 3. **Given** any failed submission, **When** the user checks the raw-source storage
    location, **Then** no partial or corrupt file exists there for that submission.
+4. **Given** a source that was successfully converted and stored, **When** the
+   automatically triggered Ingest agent run itself fails, **Then** the task's stage on
+   the board shows "failed" together with the human-readable `failure_reason` already
+   recorded on the Task Artifact by the agent — this feature does not define new failure
+   semantics for the agent phase, only displays them.
 
 ---
 
@@ -143,6 +175,14 @@ and no stored Markdown file for that submission.
 - What happens when multiple submissions are in flight at the same time? Each MUST
   progress independently and be individually visible on the board; one submission's
   processing MUST NOT block or delay another's acceptance.
+- What happens when a Task Artifact becomes `queued` (ready to trigger the Ingest agent)
+  while another ingest run is already in progress? Per the existing single-concurrent-
+  ingest constraint, it MUST wait in `queued` and trigger automatically, with no further
+  user action, once the prior run finishes.
+- What happens when the automatically triggered Ingest agent run itself fails (e.g.,
+  guardrail denial, turn/token cap, crash)? The board MUST show the task as `failed` with
+  the `failure_reason` the agent already records on the Task Artifact; this feature does
+  not introduce new failure semantics for the agent phase.
 - What happens if the user closes or reloads the browser while a submission is still
   processing? The task's status MUST still be visible and correct when the user reopens
   the board — status is not held only in the browser session.
@@ -169,23 +209,30 @@ and no stored Markdown file for that submission.
   on its own startup.
 - **FR-007**: Every Task Artifact created by this feature MUST be visible on a
   Kanban-style board, grouped by its current lifecycle stage: `received`, `converting`,
-  `queued`, or `failed`.
+  `queued`, `running`, `completed`, or `failed`.
 - **FR-008**: The board MUST reflect a Task Artifact's stage changes as processing
   proceeds, without requiring the user to resubmit the source or manually refresh the
   underlying data.
 - **FR-009**: If conversion or fetching fails for any reason, the system MUST mark the
   corresponding Task Artifact as `failed`, present a human-readable failure reason to the
   user, and MUST NOT leave a partial or corrupt file in the raw-source location.
-- **FR-010**: The system MUST NOT trigger or otherwise invoke the Ingest agent as part of
-  this submission flow; within this feature, a Task Artifact reaches a terminal state of
-  `queued` (success) or `failed` (failure). The subsequent `queued → running →
-  completed | failed` transitions remain exactly as already specified elsewhere and are
-  owned by the Ingest agent once a later feature triggers it against the same record.
+- **FR-010**: Once a Task Artifact reaches `queued`, the system MUST automatically
+  trigger the Ingest agent against the specific stored raw-source file, with no further
+  action required from the user.
 - **FR-011**: A Task Artifact's stage and outcome MUST remain visible on the board after
   the submission completes and independent of the user's browser session (e.g., after a
   page reload or in a later visit).
-- **FR-012**: The system MUST allow multiple submissions to be accepted and processed
-  without one submission's processing blocking another's acceptance.
+- **FR-012**: The system MUST allow multiple submissions to be accepted and converted
+  without one submission's conversion blocking another's acceptance.
+- **FR-013**: The system MUST respect the project's existing single-concurrent-ingest-run
+  constraint: if an Ingest agent run is already in progress, an additional `queued` Task
+  Artifact MUST wait and trigger automatically, with no user action required, once the
+  prior run reaches a terminal state.
+- **FR-014**: When a Task Artifact reaches `completed` or `failed`, the board MUST
+  display that terminal status and, for `failed`, the human-readable `failure_reason`,
+  together with a link to the full Task Artifact for details. The board MUST NOT render
+  or reinterpret the agent's wiki-content decisions (e.g., pages created, updated, or
+  superseded) itself.
 
 ### Key Entities
 
@@ -195,12 +242,13 @@ and no stored Markdown file for that submission.
   concept once conversion has completed.
 - **Task Artifact**: The existing project-wide record (per 001-ingest-minimal)
   representing one ingest operation's lifecycle end-to-end — no new task entity is
-  introduced by this feature. This feature is responsible for creating the Task Artifact
-  at the moment a submission is accepted, and driving it through two new pre-agent
-  stages, `received` and `converting`, into the already-defined `queued` status (ready
-  for a future feature to trigger the Ingest agent) or `failed`. The subsequent `queued →
-  running → completed | failed` transitions remain exactly as already specified and stay
-  owned by the Ingest agent once a later feature invokes it against this same record.
+  introduced by this feature. This feature creates the Task Artifact at the moment a
+  submission is accepted, drives it through two new pre-agent stages, `received` and
+  `converting`, into the already-defined `queued` status (or `failed`), and then
+  automatically triggers the Ingest agent against the stored raw-source file. From that
+  point, the already-specified `queued → running → completed | failed` transitions
+  proceed exactly as defined in 001/002, owned by the Ingest agent, updating this same
+  record rather than a new one.
 - **Raw Source File**: The Markdown file resulting from conversion (or the original
   content, already in Markdown form), stored immutably in the project's raw-source
   location — the same immutable "Source" ubiquitous-language entity used elsewhere in the
@@ -224,6 +272,11 @@ and no stored Markdown file for that submission.
   tool.
 - **SC-005**: Users can distinguish a successful submission from a failed one within a
   few seconds of opening the board, for 100% of completed tasks.
+- **SC-006**: 100% of Task Artifacts that reach `queued` automatically proceed to a
+  triggered ingest run, without any additional user action.
+- **SC-007**: Users can observe a submission's full journey — from acceptance through
+  conversion, storage, and the triggered ingest run to its completed or failed outcome —
+  entirely from the board, for 100% of submissions.
 
 ## Assumptions
 
@@ -236,12 +289,18 @@ and no stored Markdown file for that submission.
 - This feature continues the existing single-user, no-authentication scope already
   assumed by the project; this feature does not introduce user accounts or access
   control.
-- Handing the stored Markdown source off to actually run the Ingest agent is explicitly
-  out of scope for this feature; it is expected to be connected in a subsequent feature.
+- This feature owns triggering the Ingest agent automatically once a Task Artifact
+  reaches `queued`, reusing however the agent is already invoked elsewhere in the
+  project, including its existing single-concurrent-run constraint — no new agent
+  orchestration model is introduced.
 - This feature shifts Task Artifact creation earlier: the Hub creates the record when a
   submission is accepted, rather than the Ingest agent creating it on its own startup.
-  When a later feature triggers the agent against a `queued` Task Artifact, the agent
-  continues updating that same record rather than creating a new one.
+  The Hub then triggers the agent itself once the record reaches `queued`; the agent
+  continues updating that same record (`running → completed | failed`) rather than
+  creating a new one.
+- Live lifecycle updates on the board (through `running`/`completed`/`failed`) rely on
+  real-time update capability already available in the project; this feature does not
+  introduce new infrastructure to achieve this.
 - Reasonable default limits on upload size and request rate apply to keep the intake
   flow reliable; exact thresholds are a planning-level detail.
 - The raw-source storage location referenced here is the same one existing ingest specs
