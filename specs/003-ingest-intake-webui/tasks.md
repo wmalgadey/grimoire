@@ -529,3 +529,20 @@ require, found during manual end-to-end testing of the already-"complete" featur
   `dark:text-slate-100`/light `text-slate-900` classes) and give the page container in
   `frontend/src/routes/+page.svelte` a consistent light/dark background, so input text stays
   legible under a dark OS color-scheme, per research.md Decision 4/5 (contradicts)
+
+---
+
+## Phase 7: Convergence
+
+**Purpose**: Close the remaining gap found by assessing the implemented codebase against
+spec.md/plan.md/tasks.md after the Phase 6 convergence tasks were completed.
+
+- [X] T074 Add frontend tests for the client-side lifecycle event application in
+  `frontend/src/lib/services/ingestLifecycleClient.ts`, in a Node-project test file (e.g.
+  `frontend/src/lib/services/ingestLifecycleClient.test.ts`, picked up by the existing vitest
+  "server" project): cover `applyLifecycleEvent` idempotency by `(eventId, taskId)`,
+  stale/out-of-order event rejection by timestamp, and `createBoardLifecycleStream`'s
+  bootstrap-then-live-event card movement plus the reconnect-then-refresh flow — the T041 test
+  only re-renders `KanbanColumn` with new props and never exercises an arriving
+  `taskLifecycleChanged` event, leaving the rules mandated by
+  `contracts/ingest-lifecycle-events.md ## Rules` untested, per US2/AC2 and T041/T044 (partial)
