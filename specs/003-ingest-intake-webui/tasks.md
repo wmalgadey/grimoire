@@ -52,7 +52,7 @@ dependency-free boundary and `Grimoire.IngestAgent`'s internal write namespaces)
 
 **⚠️ NON-NEGOTIABLE**: No feature implementation can begin until Phase 0 is complete.
 
-- [ ] T001 Write and verify a NetArchTest rule enforcing ADR-002 in
+- [X] T001 Write and verify a NetArchTest rule enforcing ADR-002 in
   `backend/tests/Grimoire.ArchTests/HubAgentDispatchBoundaryRuleTests.cs`: assert
   `Types.InAssembly(typeof(Grimoire.Hub.HubTracing).Assembly).ShouldNot().HaveDependencyOn("Grimoire.IngestAgent")`
   (Hub must only ever invoke the Ingest agent via the child-process dispatcher in
@@ -68,9 +68,9 @@ dependency-free boundary and `Grimoire.IngestAgent`'s internal write namespaces)
   5. Run the test again — it MUST pass.
 
   **Definition of Done**:
-  - [ ] Rule written and committed
-  - [ ] Red/Green probe completed (commit message documents the probe result)
-  - [ ] Test passes in CI with no violations (probe reverted)
+  - [X] Rule written and committed
+  - [X] Red/Green probe completed (commit message documents the probe result)
+  - [X] Test passes in CI with no violations (probe reverted)
 
 **Checkpoint**: Structural boundary is guarded. Feature code may now begin.
 
