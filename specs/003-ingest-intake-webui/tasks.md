@@ -487,3 +487,44 @@ With multiple developers:
 - Commit after each task or logical group
 - Stop at any checkpoint to validate a story independently
 - Avoid: vague tasks, same-file conflicts, cross-story dependencies that break independence
+
+---
+
+## Phase 6: Convergence
+
+**Purpose**: Close gaps between what was implemented and what spec.md/plan.md/the constitution
+require, found during manual end-to-end testing of the already-"complete" feature.
+
+- [ ] T068 Propagate W3C trace context from the Hub's `hub.ingest_run.trigger` span into the
+  dispatched Ingest agent child process (inject `traceparent`/`tracestate` into
+  `IngestAgentDispatcher.DispatchAsync`'s child environment in
+  `backend/src/Grimoire.Hub/AgentDispatch/IngestAgentDispatcher.cs`) and have
+  `backend/src/Grimoire.IngestAgent/Program.cs` start `ingest_agent.run` as a child of that remote
+  context (e.g. via `Activity.SetParentId`/`ActivityContext.Parse`), so the Hub-to-agent trace is a
+  single end-to-end chain instead of two disconnected trace trees per Constitution Principle IV
+  (contradicts)
+- [ ] T069 Detect authentication-wall / non-article responses in `UrlContentFetcher.FetchAsync`
+  (`backend/src/Grimoire.Hub/Conversion/UrlContentFetcher.cs`) — e.g. a 2xx response that is
+  actually a login page (LinkedIn and similar sites) — and fail the task with a human-readable
+  "requires authentication" reason instead of silently converting and storing the wrong content,
+  per spec.md Edge Cases / FR-009 (missing)
+- [ ] T070 Add a `preview.proxy` block to `frontend/vite.config.ts` mirroring the existing
+  `server.proxy` (`/api`, `/hubs` → Hub origin) so `npm run build && npm run preview` also reaches
+  the Hub instead of silently dropping all Hub/SignalR traffic, per plan.md Project Structure
+  (missing)
+- [ ] T071 Add an "Observability Verification" setup step to
+  `specs/003-ingest-intake-webui/quickstart.md` instructing how to start the local OTel backend
+  (.NET Aspire Dashboard via `docker run ... mcr.microsoft.com/dotnet/aspire-dashboard`, matching
+  the OTLP port the Hub's `AddOtlpExporter()` targets), consistent with
+  `specs/001-ingest-minimal/quickstart.md` and `specs/002-agentic-ingest-core/quickstart.md`, per
+  ADR-005 (partial)
+- [ ] T072 Add explicit MarkItDown install command(s) and a "Run Frontend" section
+  (`cd frontend && npm run dev -- --open`) to
+  `specs/003-ingest-intake-webui/quickstart.md ## Prerequisites`, so the documented quickstart is
+  sufficient to run the feature end-to-end without consulting `frontend/README.md` separately
+  (partial)
+- [ ] T073 Fix dark-mode contrast on `SubmissionForm.svelte`'s URL/select inputs in
+  `frontend/src/lib/components/SubmissionForm.svelte` (add matching
+  `dark:text-slate-100`/light `text-slate-900` classes) and give the page container in
+  `frontend/src/routes/+page.svelte` a consistent light/dark background, so input text stays
+  legible under a dark OS color-scheme, per research.md Decision 4/5 (contradicts)
