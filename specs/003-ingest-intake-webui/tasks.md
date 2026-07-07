@@ -295,35 +295,35 @@ stored Markdown file for that submission.
 
 ### Tests for User Story 3
 
-- [ ] T051 [P] [US3] Integration test: a corrupted file or an unreachable URL leads to `failed` with
+- [X] T051 [P] [US3] Integration test: a corrupted file or an unreachable URL leads to `failed` with
   a human-readable reason and no partial normalized artifact, in
   `backend/tests/Grimoire.IntegrationTests/IngestSubmissionFailureTests.cs` (SC-003, Acceptance
   Scenarios 1-2, Edge Cases)
-- [ ] T052 [P] [US3] Integration test: once the triggered Ingest agent run itself fails, the board
+- [X] T052 [P] [US3] Integration test: once the triggered Ingest agent run itself fails, the board
   surfaces the agent's existing `failure_reason` unchanged, introducing no new failure semantics, in
   `backend/tests/Grimoire.IntegrationTests/IngestRunFailureVisibilityTests.cs` (Acceptance Scenario 4)
-- [ ] T053 [P] [US3] Frontend component test: a failed `TaskCard` renders the reason and a link to
+- [X] T053 [P] [US3] Frontend component test: a failed `TaskCard` renders the reason and a link to
   the full Task Artifact, visually distinct from a completed card, within a few seconds of opening
   the board (SC-005) in `frontend/tests/TaskCard.test.ts`
 
 ### Implementation for User Story 3
 
-- [ ] T054 [US3] Implement `ConversionFailureClassifier` in
+- [X] T054 [US3] Implement `ConversionFailureClassifier` in
   `backend/src/Grimoire.Hub/Conversion/ConversionFailureClassifier.cs`: maps fetch/conversion faults
   to human-readable reasons (FR-009, Edge Cases) — depends on T012, T013
-- [ ] T055 [US3] Guarantee cleanup of any partial normalized artifact on the failure path in
+- [X] T055 [US3] Guarantee cleanup of any partial normalized artifact on the failure path in
   `SourceArtifactStore` (T011) (FR-009, SC-003)
-- [ ] T056 [US3] Wire `failed` transitions — both pipeline-originated (T054) and agent-run-originated
+- [X] T056 [US3] Wire `failed` transitions — both pipeline-originated (T054) and agent-run-originated
   (passthrough of the agent's own `failure_reason`) — into `HubTaskArtifactWriter` and the board
   projection (FR-014, Acceptance Scenario 4) — depends on T010, T015, T054
-- [ ] T057 [US3] Implement failed-state styling, `failure_reason` rendering, and the task-detail link
+- [X] T057 [US3] Implement failed-state styling, `failure_reason` rendering, and the task-detail link
   (to `GET /api/ingest-submissions/{taskId}`, T043) in `TaskCard.svelte` (FR-014) — depends on T018, T045
-- [ ] T058 [US3] Implement the `ingest.submission.url_fetch.failed` (WARN) structured log event with
+- [X] T058 [US3] Implement the `ingest.submission.url_fetch.failed` (WARN) structured log event with
   mandatory fields `task_id`, `url`, `failure_reason`, `http_status` in `UrlContentFetcher` (T013)
-- [ ] T059 [US3] Implement the `ingest.submission.conversion.failed` (ERROR) structured log event
+- [X] T059 [US3] Implement the `ingest.submission.conversion.failed` (ERROR) structured log event
   with mandatory fields `task_id`, `source_kind`, `failure_reason` in `MarkItDownConverter`/
   `IngestSubmissionPipeline` (T012, T026)
-- [ ] T060 [P] [US3] Deterministic integration test validating event name, level, and mandatory
+- [X] T060 [P] [US3] Deterministic integration test validating event name, level, and mandatory
   fields for the two events in T058-T059, in
   `backend/tests/Grimoire.IntegrationTests/IngestSubmissionFailureLogEventTests.cs`
 
