@@ -546,3 +546,59 @@ spec.md/plan.md/tasks.md after the Phase 6 convergence tasks were completed.
   only re-renders `KanbanColumn` with new props and never exercises an arriving
   `taskLifecycleChanged` event, leaving the rules mandated by
   `contracts/ingest-lifecycle-events.md ## Rules` untested, per US2/AC2 and T041/T044 (partial)
+
+---
+
+## Phase 8: Convergence
+
+**Purpose**: Close gaps found during manual end-to-end testing against a live Aspire Dashboard
+and a dark-OS browser: Hub traces are never exported (sampler drops them), the Hub-to-agent
+trace fragments into one trace per agent turn, the UI is illegible on a dark OS, and the
+frontend 404s on `/favicon.ico`. (The `/feed`, `/rss`, `/blog/feed.xml`… 404s observed at
+frontend start are browser-extension feed-autodiscovery probes, not caused by this codebase —
+no task.)
+
+- [ ] T075 CRITICAL — Export Hub traces by adding ASP.NET Core (and HttpClient) tracing
+  instrumentation: add `OpenTelemetry.Instrumentation.AspNetCore` and
+  `OpenTelemetry.Instrumentation.Http` package references to
+  `backend/src/Grimoire.Hub/Grimoire.Hub.csproj` (and the central package-version file if the
+  repo uses one) and register `.AddAspNetCoreInstrumentation()` and
+  `.AddHttpClientInstrumentation()` in `WithTracing` in
+  `backend/src/Grimoire.Hub/TelemetryExtensions.cs`. Root cause: ASP.NET Core creates an
+  unsampled request activity for every HTTP request; without the instrumentation the default
+  `ParentBased(AlwaysOn)` sampler treats every request-path Hub span
+  (`hub.ingest_submission.*`, `hub.ingest_run.trigger`, `hub.ingest_lifecycle.publish_update`)
+  as the child of an unsampled parent and drops it — the Aspire Dashboard shows no Hub traces,
+  and the trace id stamped on Hub log records links to a trace that was never exported
+  ("Ablaufverfolgung ... wurde nicht gefunden"). Add/extend a deterministic integration test
+  that exercises `POST /api/ingest-submissions` through real HTTP hosting with the production
+  telemetry registration (ParentBased sampler, not a test-only AlwaysOn provider) and asserts
+  the Hub spans are recorded/exported, per Constitution IV and ADR-005 (contradicts)
+- [ ] T076 Stop propagating an unsampled trace context to the Ingest agent: in
+  `backend/src/Grimoire.Hub/AgentDispatch/IngestAgentDispatcher.cs` (`BuildChildEnvironment`),
+  set `TRACEPARENT`/`TRACESTATE` only when `currentActivity.Recorded` is true. A `00`-flagged
+  parent makes the agent's `ParentBased` sampler drop `ingest_agent.run`
+  (`IngestAgentTracing.StartRunActivity` returns null), so `Activity.Current` is null in the
+  loop and every `ingest_agent.model_turn`/`ingest_agent.tool_call` span becomes its own root —
+  observed as multiple disconnected traces per turn instead of one end-to-end trace. With no
+  `TRACEPARENT` the agent falls back to a self-contained sampled root, which is the correct
+  degraded behavior. Extend
+  `backend/tests/Grimoire.IntegrationTests/TraceContextPropagationTests.cs` with the
+  unrecorded-parent case (asserts `TRACEPARENT` is absent), per Constitution IV / T068 intent
+  (contradicts)
+- [ ] T077 Build a dedicated light-only stylesheet so the UI renders legibly regardless of the
+  OS color scheme (user decision from manual testing: light-only is acceptable, no dark mode):
+  in `frontend/src/app.css`, force `color-scheme: light` on `:root` (fixes black-on-black
+  native `<select>`/`<option>` popups) and disable Tailwind's `prefers-color-scheme`-driven
+  `dark:` variant by redefining it as a class-scoped custom variant that is never applied
+  (Tailwind v4 `@custom-variant dark`); give form controls and status/acknowledgment text
+  explicit light colors (e.g. `bg-white text-slate-900`); then remove the now-inert `dark:`
+  classes from `frontend/src/lib/components/SubmissionForm.svelte`, `StatusBadge.svelte`,
+  `TaskCard.svelte`, `KanbanColumn.svelte`, `frontend/src/routes/+page.svelte`,
+  `frontend/src/routes/board/+page.svelte`, and `+layout.svelte`. This supersedes T073's
+  dark-variant approach, which still left the select options and the Hub acceptance message
+  black-on-black on a dark OS, per SC-004/SC-005 and research.md Decision 4/5 (contradicts)
+- [ ] T078 Add a favicon to the frontend so every page load stops 404ing on `/favicon.ico`:
+  place an asset in `frontend/static/` (e.g. `favicon.svg`) and reference it from
+  `frontend/src/app.html` via `<link rel="icon" ...>`, per plan: frontend scaffold / T002
+  (missing)
