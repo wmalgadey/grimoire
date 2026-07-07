@@ -164,17 +164,17 @@ the filesystem.
 
 > **NOTE: Write these tests FIRST, ensure they FAIL before implementation**
 
-- [ ] T019 [P] [US1] Contract test for `POST /api/ingest-submissions` (URL JSON body and multipart
+- [X] T019 [P] [US1] Contract test for `POST /api/ingest-submissions` (URL JSON body and multipart
   file variants, 202/400/415/422 responses) in
   `backend/tests/Grimoire.IntegrationTests/IngestSubmissionApiTests.cs`
   (`contracts/ingest-submission-api.md`)
-- [ ] T020 [P] [US1] Integration test: full lifecycle `received→converting→queued→running→completed`
+- [X] T020 [P] [US1] Integration test: full lifecycle `received→converting→queued→running→completed`
   proceeds automatically with no user action, using a fake dispatcher, in
   `backend/tests/Grimoire.IntegrationTests/IngestSubmissionLifecycleTests.cs` (SC-001, SC-006, SC-007)
-- [ ] T021 [P] [US1] Integration test: URL submission is fetched, converted, and persisted as both
+- [X] T021 [P] [US1] Integration test: URL submission is fetched, converted, and persisted as both
   original (`raw/originals/...`) and normalized (`raw/sources/...`) artifacts in
   `backend/tests/Grimoire.IntegrationTests/SourceArtifactPersistenceTests.cs` (SC-002)
-- [ ] T022 [P] [US1] Integration test: a second submission reaching `queued` while a run is in
+- [X] T022 [P] [US1] Integration test: a second submission reaching `queued` while a run is in
   progress waits and auto-triggers with no user action once the prior run reaches a terminal state,
   in `backend/tests/Grimoire.IntegrationTests/IngestQueueSerializationTests.cs` (FR-012, FR-013,
   SC-006, quickstart.md Scenario 4)
@@ -184,47 +184,47 @@ the filesystem.
 
 ### Implementation for User Story 1
 
-- [ ] T024 [US1] Implement `IngestSubmissionValidator` in
+- [X] T024 [US1] Implement `IngestSubmissionValidator` in
   `backend/src/Grimoire.Hub/IngestSubmission/IngestSubmissionValidator.cs`: enforce exactly one
   source per submission and reject unsupported kinds before task creation (FR-001, FR-003) —
   depends on T009
-- [ ] T025 [US1] Implement `POST /api/ingest-submissions` in
+- [X] T025 [US1] Implement `POST /api/ingest-submissions` in
   `backend/src/Grimoire.Hub/IngestSubmission/IngestSubmissionEndpoints.cs`: validate (T024), create
   the Task Artifact at `received` (T010), return 202 Accepted immediately (FR-002, FR-006) —
   depends on T010, T024
-- [ ] T026 [US1] Implement `IngestSubmissionPipeline` in
+- [X] T026 [US1] Implement `IngestSubmissionPipeline` in
   `backend/src/Grimoire.Hub/IngestSubmission/IngestSubmissionPipeline.cs`: drive
   `received→converting` (URL fetch via T013 or file conversion via T012), persist artifacts (T011),
   then `converting→queued` (FR-004, FR-005) — depends on T025, T011, T012, T013
-- [ ] T027 [US1] Implement auto-trigger on `queued` by reusing the existing
+- [X] T027 [US1] Implement auto-trigger on `queued` by reusing the existing
   `IngestAgentDispatcher` (`backend/src/Grimoire.Hub/AgentDispatch/IngestAgentDispatcher.cs`,
   ADR-002 child-process model), respecting the single-concurrent-run constraint (FR-010, FR-013) —
   depends on T026
-- [ ] T028 [US1] Wire every `IngestSubmissionPipeline` transition to `IngestLifecyclePublisher` (T014)
+- [X] T028 [US1] Wire every `IngestSubmissionPipeline` transition to `IngestLifecyclePublisher` (T014)
   so each stage change emits a realtime event — depends on T014, T026, T027
 - [ ] T029 [P] [US1] Implement `SubmissionForm.svelte` in `frontend/src/lib/components/SubmissionForm.svelte`,
   posting through `ingestSubmissionsApi` (T017) and rendering immediate acceptance + non-terminal
   state — depends on T017
 - [ ] T030 [US1] Implement the submission route `frontend/src/routes/+page.svelte` composing
   `SubmissionForm` with a single-task status view — depends on T029
-- [ ] T031 [US1] Add validation/error-handling for unsupported formats with a clear, actionable
+- [X] T031 [US1] Add validation/error-handling for unsupported formats with a clear, actionable
   rejection message and no task created (Edge Case: unsupported file type) — depends on T024, T025
-- [ ] T032 [US1] Implement the `ingest.submission.accepted` (INFO) structured log event with
+- [X] T032 [US1] Implement the `ingest.submission.accepted` (INFO) structured log event with
   mandatory fields `task_id`, `source_kind`, `submitted_at` in T025
-- [ ] T033 [US1] Implement the `ingest.submission.original.persisted` (INFO) structured log event
+- [X] T033 [US1] Implement the `ingest.submission.original.persisted` (INFO) structured log event
   with mandatory fields `task_id`, `original_path`, `size_bytes`, `content_type` in T011
-- [ ] T034 [US1] Implement the `ingest.submission.conversion.completed` (INFO) structured log event
+- [X] T034 [US1] Implement the `ingest.submission.conversion.completed` (INFO) structured log event
   with mandatory fields `task_id`, `source_kind`, `normalized_path`, `duration_ms` in T026
-- [ ] T035 [US1] Implement the `ingest.run.triggered` (INFO) structured log event with mandatory
+- [X] T035 [US1] Implement the `ingest.run.triggered` (INFO) structured log event with mandatory
   fields `task_id`, `queued_duration_ms` in T027
-- [ ] T036 [P] [US1] Deterministic integration test validating event name, level, and mandatory
+- [X] T036 [P] [US1] Deterministic integration test validating event name, level, and mandatory
   fields for the four events in T032-T035, in
   `backend/tests/Grimoire.IntegrationTests/IngestSubmissionLogEventTests.cs`
-- [ ] T037 [US1] Implement the `hub.ingest_submission.submit` (root), `hub.ingest_submission.fetch_url`,
+- [X] T037 [US1] Implement the `hub.ingest_submission.submit` (root), `hub.ingest_submission.fetch_url`,
   `hub.ingest_submission.store_original`, `hub.ingest_submission.convert_to_markdown`,
   `hub.ingest_submission.store_normalized`, and `hub.ingest_run.trigger` spans with the declared
   parent/child linkage and attributes, across T025-T027
-- [ ] T038 [P] [US1] Deterministic integration test validating span name, parent/child relationship,
+- [X] T038 [P] [US1] Deterministic integration test validating span name, parent/child relationship,
   and correlation attributes for the six spans in T037, in
   `backend/tests/Grimoire.IntegrationTests/IngestSubmissionTraceTests.cs`
 

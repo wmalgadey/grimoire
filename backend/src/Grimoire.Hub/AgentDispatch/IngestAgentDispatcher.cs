@@ -2,7 +2,7 @@ using System.Diagnostics;
 
 namespace Grimoire.Hub.AgentDispatch;
 
-public sealed class IngestAgentDispatcher
+public sealed class IngestAgentDispatcher : IIngestAgentDispatcher
 {
     private readonly LocalSecretsLoader _secretsLoader;
     private readonly string _agentProjectPath;

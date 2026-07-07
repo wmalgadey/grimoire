@@ -37,6 +37,13 @@ builder.Services.AddSingleton<IngestLifecyclePublisher>();
 
 var repository = new OperationalStateRepository(dbPath);
 await repository.InitializeAsync();
+builder.Services.AddSingleton(repository);
+builder.Services.AddSingleton(contentPaths);
+builder.Services.AddSingleton(new LocalSecretsLoader(envPath));
+builder.Services.AddSingleton<IIngestAgentDispatcher>(sp => new IngestAgentDispatcher(sp.GetRequiredService<LocalSecretsLoader>(), agentProjectPath));
+builder.Services.AddSingleton<IngestRunGate>();
+builder.Services.AddSingleton<IngestSubmissionValidator>();
+builder.Services.AddSingleton<IngestSubmissionPipeline>();
 
 var reconciler = new RestartReconciler(repository);
 await reconciler.ReconcileRunningTasksAsync(contentPaths.TasksDir, contentPaths.LogPath);
@@ -63,7 +70,7 @@ if (args.Length > 0 && string.Equals(args[0], "submit-source", StringComparison.
 var app = builder.Build();
 app.MapGet("/", () => "Grimoire Hub");
 app.MapHub<IngestLifecycleHub>("/hubs/ingest-lifecycle");
-app.MapGroup("/api/ingest-submissions").MapIngestSubmissionEndpoints(repoRoot, contentPaths, envPath, agentProjectPath);
+app.MapGroup("/api/ingest-submissions").MapIngestSubmissionEndpoints();
 app.Run();
 
 static string? ParseOption(string[] args, string option)

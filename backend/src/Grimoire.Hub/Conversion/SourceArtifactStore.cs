@@ -20,22 +20,34 @@ public sealed class SourceArtifactStore
         _paths = paths;
     }
 
-    public async Task<SourceArtifactSet> PersistAsync(
+    /// <summary>
+    /// Persists the original payload only (step 1). Returns the path so it can be used as the
+    /// MarkItDown conversion input; the metadata sidecar is written once <see cref="PersistNormalizedAsync"/>
+    /// completes, so a manifest never references a normalized artifact that doesn't exist yet.
+    /// </summary>
+    public async Task<string> PersistOriginalAsync(
+        string taskId, string extension, byte[] originalBytes, CancellationToken cancellationToken = default)
+    {
+        Directory.CreateDirectory(_paths.OriginalsDir);
+        var originalPath = _paths.OriginalPathFor(taskId, extension);
+        await File.WriteAllBytesAsync(originalPath, originalBytes, cancellationToken);
+        return originalPath;
+    }
+
+    /// <summary>
+    /// Persists the normalized markdown (step 2) and writes the SourceArtifactSet manifest
+    /// (data-model.md SourceArtifactSet, contracts/source-artifact-reference.md).
+    /// </summary>
+    public async Task<SourceArtifactSet> PersistNormalizedAsync(
         string taskId,
-        string extension,
+        string originalPath,
         string originalContentType,
-        byte[] originalBytes,
+        long originalSizeBytes,
         string normalizedMarkdown,
         CancellationToken cancellationToken = default)
     {
-        Directory.CreateDirectory(_paths.OriginalsDir);
         Directory.CreateDirectory(_paths.SourcesDir);
-
-        var originalPath = _paths.OriginalPathFor(taskId, extension);
         var normalizedPath = _paths.NormalizedMarkdownPathFor(taskId);
-
-        await File.WriteAllBytesAsync(originalPath, originalBytes, cancellationToken);
-
         var checksum = Convert.ToHexString(SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(normalizedMarkdown))).ToLowerInvariant();
 
         try
@@ -45,10 +57,7 @@ public sealed class SourceArtifactStore
         catch
         {
             // FR-009/SC-003: a failed write must not leave a partial normalized artifact behind.
-            if (File.Exists(normalizedPath))
-            {
-                File.Delete(normalizedPath);
-            }
+            DeletePartialNormalizedArtifact(taskId);
             throw;
         }
 
@@ -56,7 +65,7 @@ public sealed class SourceArtifactStore
             TaskId: taskId,
             OriginalPath: originalPath,
             OriginalContentType: originalContentType,
-            OriginalSizeBytes: originalBytes.LongLength,
+            OriginalSizeBytes: originalSizeBytes,
             NormalizedMarkdownPath: normalizedPath,
             NormalizedChecksum: checksum,
             CreatedAt: DateTimeOffset.UtcNow);
