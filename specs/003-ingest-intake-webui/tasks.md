@@ -335,25 +335,33 @@ stored Markdown file for that submission.
 
 **Purpose**: Close out the remaining Observability rows and gate everything in CI.
 
-- [ ] T061 [P] Implement the remaining metrics not yet wired by story tasks —
+- [X] T061 [P] Implement the remaining metrics not yet wired by story tasks —
   `hub.ingest_submissions_total`, `hub.ingest_submission_conversions_total`,
   `hub.ingest_submission_url_fetch_total`, `hub.ingest_submission_artifacts_persisted_total`,
   `hub.ingest_submission_queue_wait_seconds` — across T025, T026, T011, T013, T027
-- [ ] T062 Observability tests: verify all 6 metrics, 7 structured log events, and 7 trace spans
+- [X] T062 Observability tests: verify all 6 metrics, 7 structured log events, and 7 trace spans
   declared in `plan.md ## Observability` are emitted end-to-end, extending
   `backend/tests/Grimoire.IntegrationTests/ObservabilityMetricsTests.cs`,
   `ObservabilityLogTests.cs`, and `ObservabilityTraceTests.cs` (MANDATORY — Constitution Principle IV)
-- [ ] T063 Logging contract CI enforcement: confirm the logging tests from T036, T047, and T060 run
+- [X] T063 Logging contract CI enforcement: confirm the logging tests from T036, T047, and T060 run
   in the existing `dotnet test backend/tests/Grimoire.IntegrationTests` step of
   `.github/workflows/ci.yml` (MANDATORY — Constitution Principle IV)
-- [ ] T064 Trace contract CI enforcement: confirm the trace tests from T038 and T049 run in the same
+- [X] T064 Trace contract CI enforcement: confirm the trace tests from T038 and T049 run in the same
   existing CI step (MANDATORY — Constitution Principle IV)
-- [ ] T065 [P] Add a frontend CI job to `.github/workflows/ci.yml` (install dependencies, typecheck,
+- [X] T065 [P] Add a frontend CI job to `.github/workflows/ci.yml` (install dependencies, typecheck,
   `vitest run`) so `frontend/tests/*` gate every PR
-- [ ] T066 [P] Update `frontend/README.md` to remove the "frontend implementation is out of scope"
+- [X] T066 [P] Update `frontend/README.md` to remove the "frontend implementation is out of scope"
   placeholder note now that this feature implements it
-- [ ] T067 Run `quickstart.md` validation end-to-end (all 4 scenarios: URL lifecycle, unsupported
-  file type, conversion failure, queue serialization)
+- [X] T067 Run `quickstart.md` validation end-to-end (all 4 scenarios: URL lifecycle, unsupported
+  file type, conversion failure, queue serialization). Validated via the automated suite exercising
+  the real pipeline end-to-end (real `markitdown` CLI, real SignalR wire protocol via
+  `Microsoft.AspNetCore.SignalR.Client`) rather than a manual curl walkthrough: Scenario 1 —
+  `IngestSubmissionLifecycleTests`/`SourceArtifactPersistenceTests`; Scenario 2 —
+  `IngestSubmissionApiTests.ValidateFile_RejectsUnsupportedExtension_AsUnsupportedMediaType`;
+  Scenario 3 — `IngestSubmissionFailureTests`; Scenario 4 — `IngestQueueSerializationTests`. A live
+  `dotnet run` walkthrough was intentionally not performed in this environment because it requires
+  writing a root-level `.env` file, which this session's guardrails treat as a sensitive file not to
+  create/overwrite without explicit instruction.
 
 ---
 
