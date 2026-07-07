@@ -503,7 +503,7 @@ require, found during manual end-to-end testing of the already-"complete" featur
   context (e.g. via `Activity.SetParentId`/`ActivityContext.Parse`), so the Hub-to-agent trace is a
   single end-to-end chain instead of two disconnected trace trees per Constitution Principle IV
   (contradicts)
-- [ ] T069 Detect authentication-wall / non-article responses in `UrlContentFetcher.FetchAsync`
+- [X] T069 Detect authentication-wall / non-article responses in `UrlContentFetcher.FetchAsync`
   (`backend/src/Grimoire.Hub/Conversion/UrlContentFetcher.cs`) — e.g. a 2xx response that is
   actually a login page (LinkedIn and similar sites) — and fail the task with a human-readable
   "requires authentication" reason instead of silently converting and storing the wrong content,
