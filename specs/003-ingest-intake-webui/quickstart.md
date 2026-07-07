@@ -8,7 +8,10 @@ Validates ingest submission, conversion/persistence, auto-trigger, and realtime 
 - Repository root at `/workspaces/grimoire`
 - `.env` present with required runtime values for hub/agent dispatch
 - Content root initialized (`wiki/` by default) with tasks/log paths available
-- Frontend dependencies installed after SvelteKit scaffolding for this feature
+- Frontend dependencies installed (`cd frontend && npm install`)
+- The `markitdown` CLI installed and resolvable on `PATH` (or configure
+  `MarkItDown:ExecutablePath` / `MarkItDown:TimeoutSeconds` in Hub configuration) —
+  see [MarkItDown](https://github.com/microsoft/markitdown)
 
 ## Build Backend
 

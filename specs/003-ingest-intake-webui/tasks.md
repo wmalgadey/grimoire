@@ -80,22 +80,22 @@ dependency-free boundary and `Grimoire.IngestAgent`'s internal write namespaces)
 
 **Purpose**: Project initialization for the new frontend app and backend scaffolding this feature needs.
 
-- [ ] T002 Scaffold the SvelteKit app in `frontend/` (TypeScript): `package.json`, `svelte.config.js`,
+- [X] T002 Scaffold the SvelteKit app in `frontend/` (TypeScript): `package.json`, `svelte.config.js`,
   `vite.config.ts`, `tsconfig.json`, `src/app.html`, `src/routes/+layout.svelte` — replacing the
   `frontend/README.md` placeholder note that frontend work is out of scope (ADR-001)
-- [ ] T003 [P] Configure Tailwind CSS + a project design-token layer in `frontend/tailwind.config.ts`,
+- [X] T003 [P] Configure Tailwind CSS + a project design-token layer in `frontend/tailwind.config.ts`,
   `frontend/postcss.config.js`, `frontend/src/app.css` (research.md Decision 5)
-- [ ] T004 [P] Configure Vitest + Testing Library in `frontend/vitest.config.ts` and
+- [X] T004 [P] Configure Vitest + Testing Library in `frontend/vitest.config.ts` and
   `frontend/tests/setup.ts` (plan.md Testing)
-- [ ] T005 [P] Add the MarkItDown execution-adapter configuration surface in
+- [X] T005 [P] Add the MarkItDown execution-adapter configuration surface in
   `backend/src/Grimoire.Hub/Conversion/MarkItDownOptions.cs` (executable path/timeout options; no
   conversion logic yet) and document the local MarkItDown prerequisite in
   `specs/003-ingest-intake-webui/quickstart.md ## Prerequisites`
-- [ ] T006 [P] Implement raw-storage path resolution in
+- [X] T006 [P] Implement raw-storage path resolution in
   `backend/src/Grimoire.Hub/ContentRoot/RawStoragePaths.cs`, resolving `raw/originals/` and
   `raw/sources/` at the repository root (sibling to the content root), per
   `contracts/source-artifact-reference.md ## Path Conventions`
-- [ ] T007 [P] Add the backend package references this feature needs (SignalR client test package
+- [X] T007 [P] Add the backend package references this feature needs (SignalR client test package
   for integration tests) to `backend/src/Grimoire.Hub/Grimoire.Hub.csproj` and
   `backend/tests/Grimoire.IntegrationTests/Grimoire.IntegrationTests.csproj`
 
