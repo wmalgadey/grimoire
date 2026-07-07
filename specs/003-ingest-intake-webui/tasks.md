@@ -508,22 +508,23 @@ require, found during manual end-to-end testing of the already-"complete" featur
   actually a login page (LinkedIn and similar sites) — and fail the task with a human-readable
   "requires authentication" reason instead of silently converting and storing the wrong content,
   per spec.md Edge Cases / FR-009 (missing)
-- [ ] T070 Add a `preview.proxy` block to `frontend/vite.config.ts` mirroring the existing
+- [X] T070 Add a `preview.proxy` block to `frontend/vite.config.ts` mirroring the existing
   `server.proxy` (`/api`, `/hubs` → Hub origin) so `npm run build && npm run preview` also reaches
   the Hub instead of silently dropping all Hub/SignalR traffic, per plan.md Project Structure
-  (missing)
-- [ ] T071 Add an "Observability Verification" setup step to
+  (missing) — note: `vite.config.ts` actually had no proxy config at all (not even for `server`),
+  contrary to the task's premise; added both `server.proxy` and `preview.proxy`
+- [X] T071 Add an "Observability Verification" setup step to
   `specs/003-ingest-intake-webui/quickstart.md` instructing how to start the local OTel backend
   (.NET Aspire Dashboard via `docker run ... mcr.microsoft.com/dotnet/aspire-dashboard`, matching
   the OTLP port the Hub's `AddOtlpExporter()` targets), consistent with
   `specs/001-ingest-minimal/quickstart.md` and `specs/002-agentic-ingest-core/quickstart.md`, per
   ADR-005 (partial)
-- [ ] T072 Add explicit MarkItDown install command(s) and a "Run Frontend" section
+- [X] T072 Add explicit MarkItDown install command(s) and a "Run Frontend" section
   (`cd frontend && npm run dev -- --open`) to
   `specs/003-ingest-intake-webui/quickstart.md ## Prerequisites`, so the documented quickstart is
   sufficient to run the feature end-to-end without consulting `frontend/README.md` separately
   (partial)
-- [ ] T073 Fix dark-mode contrast on `SubmissionForm.svelte`'s URL/select inputs in
+- [X] T073 Fix dark-mode contrast on `SubmissionForm.svelte`'s URL/select inputs in
   `frontend/src/lib/components/SubmissionForm.svelte` (add matching
   `dark:text-slate-100`/light `text-slate-900` classes) and give the page container in
   `frontend/src/routes/+page.svelte` a consistent light/dark background, so input text stays

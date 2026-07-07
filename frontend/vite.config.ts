@@ -14,6 +14,22 @@ const preinstalledChromium = process.env.PLAYWRIGHT_BROWSERS_PATH
 const chromiumExecutablePath =
 	preinstalledChromium && existsSync(preinstalledChromium) ? preinstalledChromium : undefined;
 
+// The Hub (backend/src/Grimoire.Hub) listens on its own port (5255 by the http launch profile);
+// the frontend dev/preview server proxies /api and /hubs to it so relative-path fetch() calls and
+// the SignalR client (frontend/src/lib/services/*) reach the Hub without a separate reverse proxy.
+const hubOrigin = process.env.VITE_HUB_ORIGIN ?? 'http://localhost:5255';
+const hubProxy = {
+	'/api': {
+		target: hubOrigin,
+		changeOrigin: true
+	},
+	'/hubs': {
+		target: hubOrigin,
+		changeOrigin: true,
+		ws: true
+	}
+};
+
 export default defineConfig({
 	plugins: [
 		tailwindcss(),
@@ -30,6 +46,14 @@ export default defineConfig({
 			adapter: adapter()
 		})
 	],
+	server: {
+		proxy: hubProxy
+	},
+	// Vite's `server.proxy` does not carry over to `vite preview` (npm run build && npm run
+	// preview) — it needs its own, otherwise that workflow silently drops all Hub/SignalR traffic.
+	preview: {
+		proxy: hubProxy
+	},
 	test: {
 		expect: { requireAssertions: true },
 		projects: [
