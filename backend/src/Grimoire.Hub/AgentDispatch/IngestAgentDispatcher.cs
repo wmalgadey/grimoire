@@ -60,7 +60,7 @@ public sealed class IngestAgentDispatcher : IIngestAgentDispatcher
                 baseEnv[key] = value;
         }
 
-        var childEnv = BuildChildEnvironment(baseEnv, authToken, ingestModel, ingestTokenCap);
+        var childEnv = BuildChildEnvironment(baseEnv, authToken, ingestModel, ingestTokenCap, Activity.Current);
         startInfo.Environment.Clear();
         foreach (var (key, value) in childEnv)
         {
@@ -92,14 +92,17 @@ public sealed class IngestAgentDispatcher : IIngestAgentDispatcher
     /// Builds the child-process environment from <paramref name="baseEnv"/> by removing
     /// both legacy and current Anthropic credential keys, then re-injecting only if a
     /// non-null <paramref name="authToken"/> was loaded from the secrets file (ADR-004).
-    /// Exposed internally so tests can assert the "no env inheritance leak" guarantee
-    /// without spawning a real process.
+    /// Also propagates the current W3C trace context (<paramref name="currentActivity"/>, typically
+    /// the Hub's `hub.ingest_run.trigger` span) via `TRACEPARENT`/`TRACESTATE`, so the Ingest agent
+    /// process can parent its own root span to it (Constitution IV: end-to-end trace chain).
+    /// Exposed internally so tests can assert both guarantees without spawning a real process.
     /// </summary>
     public static Dictionary<string, string> BuildChildEnvironment(
         IDictionary<string, string> baseEnv,
         string? authToken,
         string? ingestModel = null,
-        string? ingestTokenCap = null)
+        string? ingestTokenCap = null,
+        Activity? currentActivity = null)
     {
         var env = new Dictionary<string, string>(baseEnv, StringComparer.OrdinalIgnoreCase);
         env.Remove("ANTHROPIC_API_KEY");
@@ -125,6 +128,17 @@ public sealed class IngestAgentDispatcher : IIngestAgentDispatcher
         if (!string.IsNullOrWhiteSpace(effectiveTokenCap))
         {
             env["GRIMOIRE_INGEST_TOKEN_CAP"] = effectiveTokenCap;
+        }
+
+        env.Remove("TRACEPARENT");
+        env.Remove("TRACESTATE");
+        if (currentActivity is not null)
+        {
+            env["TRACEPARENT"] = $"00-{currentActivity.TraceId}-{currentActivity.SpanId}-{(currentActivity.Recorded ? "01" : "00")}";
+            if (!string.IsNullOrEmpty(currentActivity.TraceStateString))
+            {
+                env["TRACESTATE"] = currentActivity.TraceStateString;
+            }
         }
 
         return env;

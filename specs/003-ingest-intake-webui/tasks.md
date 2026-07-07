@@ -495,7 +495,7 @@ With multiple developers:
 **Purpose**: Close gaps between what was implemented and what spec.md/plan.md/the constitution
 require, found during manual end-to-end testing of the already-"complete" feature.
 
-- [ ] T068 Propagate W3C trace context from the Hub's `hub.ingest_run.trigger` span into the
+- [X] T068 Propagate W3C trace context from the Hub's `hub.ingest_run.trigger` span into the
   dispatched Ingest agent child process (inject `traceparent`/`tracestate` into
   `IngestAgentDispatcher.DispatchAsync`'s child environment in
   `backend/src/Grimoire.Hub/AgentDispatch/IngestAgentDispatcher.cs`) and have
