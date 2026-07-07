@@ -25,6 +25,7 @@ public sealed class IngestSubmissionPipelineFixture : IDisposable
     public IngestSubmissionPipeline Pipeline { get; }
     public IngestSubmissionValidator Validator { get; } = new();
     public List<RealtimeLifecycleEvent> PublishedEvents { get; } = [];
+    public CaptureLogger<IngestSubmissionPipeline> Logger { get; } = new();
 
     public IngestSubmissionPipelineFixture(
         FakeIngestAgentDispatcher? dispatcher = null,
@@ -66,7 +67,8 @@ public sealed class IngestSubmissionPipelineFixture : IDisposable
             Dispatcher,
             new IngestRunGate(),
             repository,
-            ContentPaths);
+            ContentPaths,
+            Logger);
     }
 
     public string TaskArtifactPathFor(string taskId) => Path.Combine(ContentPaths.TasksDir, $"{taskId}.md");

@@ -134,8 +134,8 @@ public sealed class IngestSubmissionPipeline
                 }
 
                 var extension = ExtensionFromContentType(fetchResult.ContentType);
-                originalPath = await PersistOriginalAsync(taskId, extension, fetchResult.Content!, cancellationToken);
                 originalContentType = fetchResult.ContentType ?? "application/octet-stream";
+                originalPath = await PersistOriginalAsync(taskId, extension, fetchResult.Content!, originalContentType, cancellationToken);
                 originalSize = fetchResult.Content!.LongLength;
 
                 var conversion = await ConvertAsync(context, input.Kind, originalPath, cancellationToken);
@@ -148,8 +148,8 @@ public sealed class IngestSubmissionPipeline
             else if (input.Kind == IngestSubmissionKind.MarkdownFile)
             {
                 var extension = Path.GetExtension(input.FileName) is { Length: > 0 } ext ? ext : ".md";
-                originalPath = await PersistOriginalAsync(taskId, extension, input.FileBytes!, cancellationToken);
                 originalContentType = input.FileContentType ?? "text/markdown";
+                originalPath = await PersistOriginalAsync(taskId, extension, input.FileBytes!, originalContentType, cancellationToken);
                 originalSize = input.FileBytes!.LongLength;
                 // Markdown is already the canonical format: pass through, never routed through MarkItDown (FR-004).
                 normalizedMarkdown = System.Text.Encoding.UTF8.GetString(input.FileBytes!);
@@ -157,8 +157,8 @@ public sealed class IngestSubmissionPipeline
             else
             {
                 var extension = Path.GetExtension(input.FileName) ?? string.Empty;
-                originalPath = await PersistOriginalAsync(taskId, extension, input.FileBytes!, cancellationToken);
                 originalContentType = input.FileContentType ?? "application/octet-stream";
+                originalPath = await PersistOriginalAsync(taskId, extension, input.FileBytes!, originalContentType, cancellationToken);
                 originalSize = input.FileBytes!.LongLength;
 
                 var conversion = await ConvertAsync(context, input.Kind, originalPath, cancellationToken);
@@ -181,7 +181,7 @@ public sealed class IngestSubmissionPipeline
 
             HubMetrics.RecordIngestSubmissionArtifactPersisted("normalized_markdown");
             HubMetrics.RecordIngestSubmissionConversion(KindLabel(input.Kind), "completed");
-            var durationMs = Stopwatch.GetElapsedTime(conversionStarted).Milliseconds;
+            var durationMs = (long)Stopwatch.GetElapsedTime(conversionStarted).TotalMilliseconds;
             IngestSubmissionLogEvents.LogConversionCompleted(_logger, taskId, KindLabel(input.Kind), artifactSet.NormalizedMarkdownPath, durationMs);
 
             var queuedAt = DateTimeOffset.UtcNow;
@@ -216,7 +216,7 @@ public sealed class IngestSubmissionPipeline
         return conversion.Markdown;
     }
 
-    private async Task<string> PersistOriginalAsync(string taskId, string extension, byte[] bytes, CancellationToken cancellationToken)
+    private async Task<string> PersistOriginalAsync(string taskId, string extension, byte[] bytes, string contentType, CancellationToken cancellationToken)
     {
         using var storeOriginalSpan = HubTracing.ActivitySource.StartActivity("hub.ingest_submission.store_original");
         storeOriginalSpan?.SetTag("task_id", taskId);
@@ -226,8 +226,7 @@ public sealed class IngestSubmissionPipeline
         storeOriginalSpan?.SetTag("size_bytes", bytes.LongLength);
 
         HubMetrics.RecordIngestSubmissionArtifactPersisted("original");
-        IngestSubmissionLogEvents.LogOriginalPersisted(_logger, taskId, originalPath, bytes.LongLength,
-            Path.GetExtension(originalPath));
+        IngestSubmissionLogEvents.LogOriginalPersisted(_logger, taskId, originalPath, bytes.LongLength, contentType);
         return originalPath;
     }
 
@@ -259,7 +258,23 @@ public sealed class IngestSubmissionPipeline
                 InstructionsDir: _contentPaths.InstructionsDir,
                 PolicyPath: _contentPaths.PolicyPath);
 
-            await _dispatcher.DispatchAsync(request, cancellationToken);
+            try
+            {
+                await _dispatcher.DispatchAsync(request, cancellationToken);
+            }
+            catch (Exception ex)
+            {
+                // TriggerAsync is fire-and-forget (called via `_ = TriggerAsync(...)`); if the
+                // dispatch itself throws (e.g. the child process could not be started/crashed
+                // before writing its own terminal artifact), swallow here so the exception isn't
+                // unobserved, and make sure the task doesn't appear stuck in `running` forever.
+                await _repository.DeleteAsync(taskId, cancellationToken);
+                await WriteStageAsync(context, "failed", artifactSet.NormalizedMarkdownPath, artifactSet.OriginalPath,
+                    $"Ingest run could not be completed: {ex.Message}", $"Ingest run could not be completed: {ex.Message}", cancellationToken);
+                await _publisher.PublishAsync(taskId, "running", "failed", $"Ingest run could not be completed: {ex.Message}", cancellationToken);
+                return true;
+            }
+
             await _repository.DeleteAsync(taskId, cancellationToken);
 
             if (File.Exists(context.TaskArtifactPath))

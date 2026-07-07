@@ -26,8 +26,16 @@ export function createIngestLifecycleClient(hubUrl: string = HUB_PATH): IngestLi
 			return () => connection.off('taskLifecycleChanged', handler);
 		},
 		onReconnected(handler) {
-			connection.onreconnected(handler);
-			return () => connection.off('reconnected', handler);
+			// @microsoft/signalr has no unregister API for onreconnected callbacks (unlike
+			// `on`/`off`, which only apply to server-invoked hub methods). Gate the handler
+			// behind a local flag instead, so the returned unsubscribe is actually effective.
+			let active = true;
+			connection.onreconnected(() => {
+				if (active) handler();
+			});
+			return () => {
+				active = false;
+			};
 		}
 	};
 }

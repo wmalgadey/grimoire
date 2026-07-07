@@ -12,21 +12,28 @@ public sealed class FakeIngestAgentDispatcher : IIngestAgentDispatcher
     private readonly string _terminalStatus;
     private readonly string? _failureReason;
     private readonly TimeSpan _simulatedRunDuration;
+    private readonly Exception? _throwOnDispatch;
 
     public List<IngestAgentRequest> Requests { get; } = [];
     public List<(DateTimeOffset Started, DateTimeOffset Finished)> RunWindows { get; } = [];
 
-    public FakeIngestAgentDispatcher(string terminalStatus = "completed", string? failureReason = null, TimeSpan? simulatedRunDuration = null)
+    public FakeIngestAgentDispatcher(string terminalStatus = "completed", string? failureReason = null, TimeSpan? simulatedRunDuration = null, Exception? throwOnDispatch = null)
     {
         _terminalStatus = terminalStatus;
         _failureReason = failureReason;
         _simulatedRunDuration = simulatedRunDuration ?? TimeSpan.Zero;
+        _throwOnDispatch = throwOnDispatch;
     }
 
     public async Task<int> DispatchAsync(IngestAgentRequest request, CancellationToken cancellationToken = default)
     {
         Requests.Add(request);
         var started = DateTimeOffset.UtcNow;
+
+        if (_throwOnDispatch is not null)
+        {
+            throw _throwOnDispatch;
+        }
 
         var taskArtifactPath = Path.Combine(request.TasksDir, $"{request.TaskId}.md");
         await WriteArtifactAsync(taskArtifactPath, request, "running", null);

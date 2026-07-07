@@ -37,8 +37,8 @@ public sealed class MarkItDownConverter
         {
             process.Start();
 
-            var stdoutTask = process.StandardOutput.ReadToEndAsync(cancellationToken);
-            var stderrTask = process.StandardError.ReadToEndAsync(cancellationToken);
+            var stdoutTask = process.StandardOutput.ReadToEndAsync(timeoutCts.Token);
+            var stderrTask = process.StandardError.ReadToEndAsync(timeoutCts.Token);
 
             await process.WaitForExitAsync(timeoutCts.Token);
             var stdout = await stdoutTask;

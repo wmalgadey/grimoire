@@ -37,6 +37,10 @@ public class SourceArtifactPersistenceTests
         // The dispatched agent request must reference the persisted normalized artifact, not the URL (FR-010).
         var request = Assert.Single(fixture.Dispatcher.Requests);
         Assert.Equal(artifactSet.NormalizedMarkdownPath, request.SourceRef);
+
+        // Regression (review finding): `content_type` must be an actual MIME type, not a file extension.
+        var persistedEntry = Assert.Single(fixture.Logger.Entries, e => e.EventName == "ingest.submission.original.persisted");
+        Assert.Equal("text/html", persistedEntry.Fields["content_type"]);
     }
 
     private sealed class StaticResponseHandler(string body, string mediaType) : HttpMessageHandler
