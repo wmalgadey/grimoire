@@ -37,6 +37,7 @@ export default defineConfig({
 				extends: './vite.config.ts',
 				test: {
 					name: 'client',
+					setupFiles: ['vitest-browser-svelte'],
 					browser: {
 						enabled: true,
 						provider: playwright(

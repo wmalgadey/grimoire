@@ -178,7 +178,7 @@ the filesystem.
   progress waits and auto-triggers with no user action once the prior run reaches a terminal state,
   in `backend/tests/Grimoire.IntegrationTests/IngestQueueSerializationTests.cs` (FR-012, FR-013,
   SC-006, quickstart.md Scenario 4)
-- [ ] T023 [P] [US1] Frontend component test: submitting via `SubmissionForm` shows an immediate
+- [X] T023 [P] [US1] Frontend component test: submitting via `SubmissionForm` shows an immediate
   acceptance message and a non-terminal task state, for both file and URL submissions, in
   `frontend/tests/SubmissionForm.test.ts` (Acceptance Scenarios 1-2)
 
@@ -202,10 +202,10 @@ the filesystem.
   depends on T026
 - [X] T028 [US1] Wire every `IngestSubmissionPipeline` transition to `IngestLifecyclePublisher` (T014)
   so each stage change emits a realtime event — depends on T014, T026, T027
-- [ ] T029 [P] [US1] Implement `SubmissionForm.svelte` in `frontend/src/lib/components/SubmissionForm.svelte`,
+- [X] T029 [P] [US1] Implement `SubmissionForm.svelte` in `frontend/src/lib/components/SubmissionForm.svelte`,
   posting through `ingestSubmissionsApi` (T017) and rendering immediate acceptance + non-terminal
   state — depends on T017
-- [ ] T030 [US1] Implement the submission route `frontend/src/routes/+page.svelte` composing
+- [X] T030 [US1] Implement the submission route `frontend/src/routes/+page.svelte` composing
   `SubmissionForm` with a single-task status view — depends on T029
 - [X] T031 [US1] Add validation/error-handling for unsupported formats with a clear, actionable
   rejection message and no task created (Edge Case: unsupported file type) — depends on T024, T025
