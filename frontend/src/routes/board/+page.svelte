@@ -38,7 +38,7 @@
 	<title>Ingest board — Grimoire</title>
 </svelte:head>
 
-<main class="flex flex-col gap-4 p-6">
+<main class="flex min-h-screen flex-col gap-4 bg-white p-6 dark:bg-slate-950">
 	<header>
 		<h1 class="text-lg font-semibold text-slate-900 dark:text-slate-100">Ingest board</h1>
 		<p class="text-sm text-slate-500 dark:text-slate-400">
