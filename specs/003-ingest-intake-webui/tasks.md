@@ -107,41 +107,41 @@ dependency-free boundary and `Grimoire.IngestAgent`'s internal write namespaces)
 
 **⚠️ CRITICAL**: No user story work can begin until this phase is complete.
 
-- [ ] T008 Extend `IngestTaskStatus` in `backend/src/Grimoire.Domain/Ingest/IngestTaskStatus.cs` with
+- [X] T008 Extend `IngestTaskStatus` in `backend/src/Grimoire.Domain/Ingest/IngestTaskStatus.cs` with
   the two new pre-agent stages `Received` and `Converting` (data-model.md TaskArtifact; existing
   `Queued|Running|Completed|Failed` values and their agent-owned semantics are unchanged)
-- [ ] T009 [P] Create the `IngestSubmissionKind` enum (`Url`, `MarkdownFile`, `PdfFile`, `OfficeFile`)
+- [X] T009 [P] Create the `IngestSubmissionKind` enum (`Url`, `MarkdownFile`, `PdfFile`, `OfficeFile`)
   in `backend/src/Grimoire.Domain/Ingest/IngestSubmissionKind.cs` (data-model.md IngestSubmission)
-- [ ] T010 [P] Implement `HubTaskArtifactWriter` in `backend/src/Grimoire.Hub/TaskArtifact/HubTaskArtifactWriter.cs`:
+- [X] T010 [P] Implement `HubTaskArtifactWriter` in `backend/src/Grimoire.Hub/TaskArtifact/HubTaskArtifactWriter.cs`:
   creates/updates the existing task-artifact markdown file (same frontmatter contract as
   `contracts/task-artifact-format.md`) for the Hub-owned `received/converting/queued/failed` stages,
   without any dependency on `Grimoire.IngestAgent` (respects the T001 boundary)
-- [ ] T011 [P] Implement `SourceArtifactStore` in `backend/src/Grimoire.Hub/Conversion/SourceArtifactStore.cs`:
+- [X] T011 [P] Implement `SourceArtifactStore` in `backend/src/Grimoire.Hub/Conversion/SourceArtifactStore.cs`:
   persists the original payload to `raw/originals/{task_id}{ext}` and the normalized markdown to
   `raw/sources/{task_id}.md` (via T006), computes the SHA-256 checksum, and guarantees no partial
   normalized file remains after a failed write (data-model.md SourceArtifactSet)
-- [ ] T012 [P] Implement `MarkItDownConverter` in `backend/src/Grimoire.Hub/Conversion/MarkItDownConverter.cs`:
+- [X] T012 [P] Implement `MarkItDownConverter` in `backend/src/Grimoire.Hub/Conversion/MarkItDownConverter.cs`:
   process-invocation adapter converting PDF/Office/fetched-URL content to Markdown (research.md
   Decision 1, using T005's options)
-- [ ] T013 [P] Implement `UrlContentFetcher` in `backend/src/Grimoire.Hub/Conversion/UrlContentFetcher.cs`:
+- [X] T013 [P] Implement `UrlContentFetcher` in `backend/src/Grimoire.Hub/Conversion/UrlContentFetcher.cs`:
   fetches URL content at submission time with timeout/error classification (research.md Decision 3)
-- [ ] T014 Implement `IngestLifecyclePublisher` and the SignalR hub in
+- [X] T014 Implement `IngestLifecyclePublisher` and the SignalR hub in
   `backend/src/Grimoire.Hub/Realtime/IngestLifecyclePublisher.cs` and
   `backend/src/Grimoire.Hub/Realtime/IngestLifecycleHub.cs`, at route `/hubs/ingest-lifecycle` with
   event channel `taskLifecycleChanged`, emitting `RealtimeLifecycleEvent` payloads (data-model.md
   RealtimeLifecycleEvent; `contracts/ingest-lifecycle-events.md`) — depends on T008
-- [ ] T015 Implement `KanbanBoardProjectionStore` in
+- [X] T015 Implement `KanbanBoardProjectionStore` in
   `backend/src/Grimoire.Hub/IngestSubmission/KanbanBoardProjectionStore.cs`, maintaining the
   `KanbanBoardProjection` read model from Task Artifact state (data-model.md KanbanBoardProjection)
   — depends on T008, T010
-- [ ] T016 Wire the `/api/ingest-submissions` minimal-API routing group and the SignalR hub mapping
+- [X] T016 Wire the `/api/ingest-submissions` minimal-API routing group and the SignalR hub mapping
   (plumbing only, no endpoint logic yet) into `backend/src/Grimoire.Hub/Program.cs` — depends on
   T014, T015
-- [ ] T017 [P] Implement frontend service adapters in `frontend/src/lib/services/ingestSubmissionsApi.ts`
+- [X] T017 [P] Implement frontend service adapters in `frontend/src/lib/services/ingestSubmissionsApi.ts`
   (REST client for `contracts/ingest-submission-api.md`) and
   `frontend/src/lib/services/ingestLifecycleClient.ts` (SignalR client wrapper for
   `contracts/ingest-lifecycle-events.md`)
-- [ ] T018 [P] Implement shared reusable component skeletons in `frontend/src/lib/components/`:
+- [X] T018 [P] Implement shared reusable component skeletons in `frontend/src/lib/components/`:
   `StatusBadge.svelte`, `KanbanColumn.svelte`, `TaskCard.svelte` (research.md Decision 4; behavior is
   filled in by the user-story phases below)
 
