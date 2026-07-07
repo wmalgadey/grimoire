@@ -243,40 +243,40 @@ board reflecting stage changes as they happen.
 
 ### Tests for User Story 2
 
-- [ ] T039 [P] [US2] Contract test for `GET /api/ingest-submissions` board projection (every task
+- [X] T039 [P] [US2] Contract test for `GET /api/ingest-submissions` board projection (every task
   appears exactly once, grouped by stage) in
   `backend/tests/Grimoire.IntegrationTests/KanbanBoardApiTests.cs` (Acceptance Scenario 1)
-- [ ] T040 [P] [US2] Integration test: a connected SignalR client receives ordered
+- [X] T040 [P] [US2] Integration test: a connected SignalR client receives ordered
   `taskLifecycleChanged` events and the board projection reflects the new stage without a resubmit
   or manual refresh, in `backend/tests/Grimoire.IntegrationTests/IngestLifecycleRealtimeTests.cs`
   (SC-004, Acceptance Scenario 2)
-- [ ] T041 [P] [US2] Frontend integration test: `KanbanBoard` groups multiple in-flight tasks by
+- [X] T041 [P] [US2] Frontend integration test: `KanbanBoard` groups multiple in-flight tasks by
   stage and moves a card live when a stage-change event arrives, in
   `frontend/tests/KanbanBoard.test.ts`
 
 ### Implementation for User Story 2
 
-- [ ] T042 [US2] Implement `GET /api/ingest-submissions` in `IngestSubmissionEndpoints.cs` (T025's
+- [X] T042 [US2] Implement `GET /api/ingest-submissions` in `IngestSubmissionEndpoints.cs` (T025's
   file) returning the `KanbanBoardProjection` list (FR-007) — depends on T015, T025
-- [ ] T043 [US2] Implement `GET /api/ingest-submissions/{taskId}` detail endpoint in the same file,
+- [X] T043 [US2] Implement `GET /api/ingest-submissions/{taskId}` detail endpoint in the same file,
   per the detail response shape in `contracts/ingest-submission-api.md` — depends on T042
-- [ ] T044 [US2] Implement idempotent client-side event application `(eventId, taskId)` and the
+- [X] T044 [US2] Implement idempotent client-side event application `(eventId, taskId)` and the
   reconnect-then-refresh flow in `ingestLifecycleClient.ts` (T017), per
   `contracts/ingest-lifecycle-events.md ## Rules` — depends on T017
-- [ ] T045 [US2] Implement `frontend/src/routes/board/+page.svelte` composing `KanbanColumn`/`TaskCard`
+- [X] T045 [US2] Implement `frontend/src/routes/board/+page.svelte` composing `KanbanColumn`/`TaskCard`
   (T018) grouped by stage, backed by the board API (T042) and the realtime client (T044) (FR-007,
   FR-008, FR-011) — depends on T018, T044
-- [ ] T046 [US2] Implement the `ingest.lifecycle.published` (INFO) structured log event with
+- [X] T046 [US2] Implement the `ingest.lifecycle.published` (INFO) structured log event with
   mandatory fields `task_id`, `from_stage`, `to_stage` in `IngestLifecyclePublisher` (T014)
-- [ ] T047 [P] [US2] Deterministic integration test validating event name, level, and mandatory
+- [X] T047 [P] [US2] Deterministic integration test validating event name, level, and mandatory
   fields for `ingest.lifecycle.published` in
   `backend/tests/Grimoire.IntegrationTests/IngestLifecycleLogEventTests.cs`
-- [ ] T048 [US2] Implement the `hub.ingest_lifecycle.publish_update` span (parent:
+- [X] T048 [US2] Implement the `hub.ingest_lifecycle.publish_update` span (parent:
   `hub.ingest_submission.submit`) with `task_id`, `stage` attributes in `IngestLifecyclePublisher` (T014)
-- [ ] T049 [P] [US2] Deterministic integration test validating span name, parent/child relationship,
+- [X] T049 [P] [US2] Deterministic integration test validating span name, parent/child relationship,
   and correlation attributes for `hub.ingest_lifecycle.publish_update` in
   `backend/tests/Grimoire.IntegrationTests/IngestLifecycleTraceTests.cs`
-- [ ] T050 [US2] Implement the `hub.ingest_lifecycle_updates_total` counter (label: `stage`)
+- [X] T050 [US2] Implement the `hub.ingest_lifecycle_updates_total` counter (label: `stage`)
   alongside T046
 
 **Checkpoint**: At this point, User Stories 1 AND 2 should both work independently.
