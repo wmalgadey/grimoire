@@ -5,13 +5,23 @@ Validates ingest submission, conversion/persistence, auto-trigger, and realtime 
 ## Prerequisites
 
 - .NET 10 SDK
+- Node.js 20+ (frontend tooling requires it; `nvm use 20` or later if your default is older)
+- Docker running (only needed for the Observability Verification section below — the local
+  OTel backend, ADR-005)
 - Repository root at `/workspaces/grimoire`
 - `.env` present with required runtime values for hub/agent dispatch
 - Content root initialized (`wiki/` by default) with tasks/log paths available
 - Frontend dependencies installed (`cd frontend && npm install`)
-- The `markitdown` CLI installed and resolvable on `PATH` (or configure
-  `MarkItDown:ExecutablePath` / `MarkItDown:TimeoutSeconds` in Hub configuration) —
-  see [MarkItDown](https://github.com/microsoft/markitdown)
+- The `markitdown` CLI installed and resolvable on `PATH`:
+
+  ```bash
+  pipx install 'markitdown[all]'
+  # or: pip install 'markitdown[all]'
+  ```
+
+  Alternatively, configure `MarkItDown:ExecutablePath` / `MarkItDown:TimeoutSeconds` in Hub
+  configuration to point at an existing install — see
+  [MarkItDown](https://github.com/microsoft/markitdown)
 
 ## Build Backend
 
@@ -30,6 +40,21 @@ dotnet run --project src/Grimoire.Hub
 Expected outcome:
 - Hub starts without startup reconciliation errors.
 - Ingest-submission endpoints and ingest-lifecycle stream endpoint are available (see contracts).
+- By default the Hub listens at `http://localhost:5255` (`Properties/launchSettings.json`).
+
+## Run Frontend
+
+```bash
+cd /workspaces/grimoire/frontend
+npm run dev -- --open
+```
+
+Expected outcome:
+
+- SvelteKit dev server starts (default `http://localhost:5173`) and opens the submission UI.
+- `/api/*` and `/hubs/*` requests are proxied to the Hub (`frontend/vite.config.ts`); set
+  `VITE_HUB_ORIGIN` if the Hub isn't at the default `http://localhost:5255`.
+- The board is at `/board`.
 
 ## Scenario 1: Submit URL and observe lifecycle
 
@@ -78,10 +103,21 @@ Expected outcome:
 
 ## Observability Verification
 
-With local OTel backend configured per ADR-005, verify:
+Start the local OTel backend (.NET Aspire Dashboard, ADR-005) before running the Hub, so the
+Hub's `AddOtlpExporter()` calls have a receiver to send to:
+
+```bash
+# Terminal 1 — OTel viewer
+docker run --rm -p 18888:18888 -p 4317:18889 mcr.microsoft.com/dotnet/aspire-dashboard
+```
+
+Then open `http://localhost:18888` and, after running Scenario 1, verify:
+
 - Metric increments for submission/fetch/conversion/publish/trigger.
 - Structured logs include mandatory fields for each declared event.
-- Distributed trace chain includes `hub.ingest_submission.submit` and child spans.
+- A single distributed trace chain includes `hub.ingest_submission.submit`, its Hub-side child
+  spans, `hub.ingest_run.trigger`, and — as its child, via propagated `TRACEPARENT` — the
+  triggered `ingest_agent.run` span (not a second, disconnected trace).
 
 ## Contract References
 
