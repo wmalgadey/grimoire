@@ -54,7 +54,7 @@ Expected outcome:
 - SvelteKit dev server starts (default `http://localhost:5173`) and opens the submission UI.
 - `/api/*` and `/hubs/*` requests are proxied to the Hub (`frontend/vite.config.ts`); set
   `VITE_HUB_ORIGIN` if the Hub isn't at the default `http://localhost:5255`.
-- The board is at `/board`.
+- The submission form and the Kanban board are both on `/`; `/board` redirects there.
 
 ## Scenario 1: Submit URL and observe lifecycle
 

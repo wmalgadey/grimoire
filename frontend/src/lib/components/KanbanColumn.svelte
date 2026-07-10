@@ -20,12 +20,12 @@
 </script>
 
 <section
-	class="flex min-w-64 flex-1 flex-col gap-3 rounded-lg bg-slate-50 p-3 dark:bg-slate-900"
+	class="flex min-w-64 flex-1 flex-col gap-3 rounded-lg bg-slate-50 p-3"
 	data-testid="kanban-column"
 	data-stage={stage}
 >
 	<header class="flex items-center justify-between">
-		<h2 class="text-sm font-semibold text-slate-700 dark:text-slate-300">{titles[stage]}</h2>
+		<h2 class="text-sm font-semibold text-slate-700">{titles[stage]}</h2>
 		<span class="text-xs text-slate-400" data-testid="kanban-column-count">{tasks.length}</span>
 	</header>
 

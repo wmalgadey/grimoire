@@ -69,14 +69,14 @@
 		<input
 			type="url"
 			placeholder="https://example.com/article"
-			class="rounded border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 dark:placeholder:text-slate-500"
+			class="rounded border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400"
 			bind:value={url}
 			data-testid="submission-url-input"
 		/>
 	{:else}
 		<div class="flex flex-col gap-2">
 			<select
-				class="rounded border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
+				class="rounded border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900"
 				bind:value={fileKind}
 				data-testid="submission-kind-select"
 			>

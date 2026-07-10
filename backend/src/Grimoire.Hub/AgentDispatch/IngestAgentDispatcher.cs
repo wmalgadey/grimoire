@@ -132,9 +132,14 @@ public sealed class IngestAgentDispatcher : IIngestAgentDispatcher
 
         env.Remove("TRACEPARENT");
         env.Remove("TRACESTATE");
-        if (currentActivity is not null)
+        // Only propagate a Recorded (sampled) parent: an unsampled TRACEPARENT makes the agent's
+        // own ParentBased sampler drop `ingest_agent.run` (StartRunActivity returns null), leaving
+        // Activity.Current null for the whole run and fragmenting every subsequent span into its
+        // own disconnected root trace. Omitting TRACEPARENT entirely lets the agent fall back to a
+        // fresh, sampled root trace instead (T076, Convergence).
+        if (currentActivity is not null && currentActivity.Recorded)
         {
-            env["TRACEPARENT"] = $"00-{currentActivity.TraceId}-{currentActivity.SpanId}-{(currentActivity.Recorded ? "01" : "00")}";
+            env["TRACEPARENT"] = $"00-{currentActivity.TraceId}-{currentActivity.SpanId}-01";
             if (!string.IsNullOrEmpty(currentActivity.TraceStateString))
             {
                 env["TRACESTATE"] = currentActivity.TraceStateString;

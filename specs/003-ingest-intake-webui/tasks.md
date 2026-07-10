@@ -558,7 +558,7 @@ frontend 404s on `/favicon.ico`. (The `/feed`, `/rss`, `/blog/feed.xml`… 404s 
 frontend start are browser-extension feed-autodiscovery probes, not caused by this codebase —
 no task.)
 
-- [ ] T075 CRITICAL — Export Hub traces by adding ASP.NET Core (and HttpClient) tracing
+- [X] T075 CRITICAL — Export Hub traces by adding ASP.NET Core (and HttpClient) tracing
   instrumentation: add `OpenTelemetry.Instrumentation.AspNetCore` and
   `OpenTelemetry.Instrumentation.Http` package references to
   `backend/src/Grimoire.Hub/Grimoire.Hub.csproj` (and the central package-version file if the
@@ -574,7 +574,7 @@ no task.)
   that exercises `POST /api/ingest-submissions` through real HTTP hosting with the production
   telemetry registration (ParentBased sampler, not a test-only AlwaysOn provider) and asserts
   the Hub spans are recorded/exported, per Constitution IV and ADR-005 (contradicts)
-- [ ] T076 Stop propagating an unsampled trace context to the Ingest agent: in
+- [X] T076 Stop propagating an unsampled trace context to the Ingest agent: in
   `backend/src/Grimoire.Hub/AgentDispatch/IngestAgentDispatcher.cs` (`BuildChildEnvironment`),
   set `TRACEPARENT`/`TRACESTATE` only when `currentActivity.Recorded` is true. A `00`-flagged
   parent makes the agent's `ParentBased` sampler drop `ingest_agent.run`
@@ -586,7 +586,7 @@ no task.)
   `backend/tests/Grimoire.IntegrationTests/TraceContextPropagationTests.cs` with the
   unrecorded-parent case (asserts `TRACEPARENT` is absent), per Constitution IV / T068 intent
   (contradicts)
-- [ ] T077 Build a dedicated light-only stylesheet so the UI renders legibly regardless of the
+- [X] T077 Build a dedicated light-only stylesheet so the UI renders legibly regardless of the
   OS color scheme (user decision from manual testing: light-only is acceptable, no dark mode):
   in `frontend/src/app.css`, force `color-scheme: light` on `:root` (fixes black-on-black
   native `<select>`/`<option>` popups) and disable Tailwind's `prefers-color-scheme`-driven
@@ -598,7 +598,7 @@ no task.)
   `frontend/src/routes/board/+page.svelte`, and `+layout.svelte`. This supersedes T073's
   dark-variant approach, which still left the select options and the Hub acceptance message
   black-on-black on a dark OS, per SC-004/SC-005 and research.md Decision 4/5 (contradicts)
-- [ ] T078 Add a favicon to the frontend so every page load stops 404ing on `/favicon.ico`:
+- [X] T078 Add a favicon to the frontend so every page load stops 404ing on `/favicon.ico`:
   place an asset in `frontend/static/` (e.g. `favicon.svg`) and reference it from
   `frontend/src/app.html` via `<link rel="icon" ...>`, per plan: frontend scaffold / T002
   (missing)
@@ -611,7 +611,7 @@ no task.)
 request to see the ingest form and the Kanban board together, so the board is visible
 immediately when submitting a new source instead of requiring a separate page visit.
 
-- [ ] T079 HIGH — Merge the ingest-submission view and the Kanban board into a single route so
+- [X] T079 HIGH — Merge the ingest-submission view and the Kanban board into a single route so
   the board is visible immediately after submitting, without navigating away: fold
   `frontend/src/routes/board/+page.svelte`'s content (the `stages`/`tasksByStage` derivation,
   the `createBoardLifecycleStream` subscription in `onMount`/`onDestroy`, and the

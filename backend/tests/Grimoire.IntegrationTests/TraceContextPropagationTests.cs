@@ -46,6 +46,31 @@ public class TraceContextPropagationTests
         Assert.False(childEnv.ContainsKey("TRACEPARENT"));
     }
 
+    /// <summary>
+    /// T076 (Convergence) - an unsampled (not Recorded) parent must not be propagated: a
+    /// `00`-flagged TRACEPARENT makes the agent's ParentBased sampler drop `ingest_agent.run`
+    /// entirely (StartRunActivity returns null), fragmenting the rest of the run into disconnected
+    /// per-turn root traces instead of a single end-to-end trace. Built via the legacy `new
+    /// Activity(...)` constructor (not `ActivitySource.StartActivity`) so the Recorded flag is
+    /// deterministic and unaffected by other test classes' global `ActivitySource.AddActivityListener`
+    /// registrations running concurrently on the same "Grimoire.Hub" source.
+    /// </summary>
+    [Fact]
+    public void BuildChildEnvironment_OmitsTraceParent_WhenCurrentActivityIsNotRecorded()
+    {
+        using var unsampledActivity = new Activity("hub.ingest_run.trigger") { ActivityTraceFlags = ActivityTraceFlags.None };
+        unsampledActivity.Start();
+        Assert.False(unsampledActivity.Recorded);
+
+        var childEnv = IngestAgentDispatcher.BuildChildEnvironment(
+            new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase),
+            authToken: null,
+            currentActivity: unsampledActivity);
+
+        Assert.False(childEnv.ContainsKey("TRACEPARENT"));
+        Assert.False(childEnv.ContainsKey("TRACESTATE"));
+    }
+
     [Fact]
     public void StartRunActivity_ParentsToPropagatedTraceParent_FromHub()
     {

@@ -1,6 +1,18 @@
 @import 'tailwindcss';
 
 /*
+ * T077 (Convergence) - the UI is light-only (user decision from manual testing): force
+ * color-scheme so native controls (e.g. <select>/<option> popups) render with light chrome
+ * regardless of the OS theme, and redefine the `dark:` variant to only match a `.dark`
+ * ancestor class we never apply, so it's inert instead of following prefers-color-scheme.
+ */
+@custom-variant dark (&:where(.dark, .dark *));
+
+:root {
+	color-scheme: light;
+}
+
+/*
  * Design tokens for the Ingest Intake Web UI (research.md Decision 4/5).
  * Components consume these via Tailwind's theme-extension syntax rather than
  * duplicating stage colors as literals.
