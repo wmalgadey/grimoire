@@ -602,3 +602,29 @@ no task.)
   place an asset in `frontend/static/` (e.g. `favicon.svg`) and reference it from
   `frontend/src/app.html` via `<link rel="icon" ...>`, per plan: frontend scaffold / T002
   (missing)
+
+---
+
+## Phase 9: Convergence
+
+**Purpose**: Close the gap found by assessing the implemented UI against US1/US2 after a user
+request to see the ingest form and the Kanban board together, so the board is visible
+immediately when submitting a new source instead of requiring a separate page visit.
+
+- [ ] T079 HIGH — Merge the ingest-submission view and the Kanban board into a single route so
+  the board is visible immediately after submitting, without navigating away: fold
+  `frontend/src/routes/board/+page.svelte`'s content (the `stages`/`tasksByStage` derivation,
+  the `createBoardLifecycleStream` subscription in `onMount`/`onDestroy`, and the
+  `KanbanColumn` row) into `frontend/src/routes/+page.svelte` alongside the existing
+  `SubmissionForm`, reusing the same components/services as-is (no new architecture — this is
+  route-level composition, already anticipated by research.md's "route-level composition"
+  decision and plan.md's ADR policy note that UI composition needs no new ADR). Keep `/board`
+  as a redirect to `/` (or remove the route and update any internal links/tests that reference
+  `/board`, e.g. the "board" link in the current `+page.svelte` header and
+  `frontend/src/routes/board/+page.svelte`'s existing test coverage) so no dead route remains.
+  Currently `+page.svelte` only shows the one-time `SubmissionAcceptedResponse` from the POST
+  and never subscribes to lifecycle updates, so a user must manually open the separate
+  `/board` route to see conversion/run progress — contradicting US1 AC3/AC4 ("the task's
+  displayed status changes to reflect..." / "...with no action required from the user") and
+  SC-004/SC-007 (the board is meant to be where the full journey is observed, not a page the
+  user has to remember to click into), per US1/AC3 (partial)
