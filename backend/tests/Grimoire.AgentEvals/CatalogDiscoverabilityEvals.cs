@@ -13,7 +13,12 @@ public class CatalogDiscoverabilityEvals
         {
             var result = await runner.RunAsync(
                 fixtureName: "empty-topic",
-                sourceContent: "Create one wiki page about evaluation harnesses and keep the catalog discoverable.",
+                sourceContent: "Evaluation harnesses are frameworks that automate running a system (an agent, " +
+                    "model, or pipeline) against a fixed set of scenarios and scoring its output against a " +
+                    "defined threshold, rather than a human manually eyeballing behavior. They typically sample " +
+                    "multiple runs per scenario to account for LLM non-determinism, separate deterministic " +
+                    "harness checks from evaluation-style judgment scoring, and gate a definition of done on the " +
+                    "aggregate pass rate rather than any single run.",
                 runLabel: $"sc008-{i + 1}",
                 mutateSkillFile: null,
                 cancellationToken: CancellationToken.None);
@@ -34,10 +39,12 @@ public class CatalogDiscoverabilityEvals
 
     private static bool IsDiscoverable(string indexContent, string pagePath)
     {
-        var fileName = Path.GetFileName(pagePath);
-        var relativeSuffix = $"pages/{fileName}";
+        // Index entries use the extensionless wiki-link convention from SKILL.md:
+        // "- [[pages/<slug>]] — <summary>", not the literal filename.
+        var slug = Path.GetFileNameWithoutExtension(pagePath);
+        var relativeSuffix = $"pages/{slug}";
 
-        return indexContent.Contains(fileName, StringComparison.OrdinalIgnoreCase)
-            || indexContent.Contains(relativeSuffix, StringComparison.OrdinalIgnoreCase);
+        return indexContent.Contains(relativeSuffix, StringComparison.OrdinalIgnoreCase)
+            || indexContent.Contains(slug, StringComparison.OrdinalIgnoreCase);
     }
 }

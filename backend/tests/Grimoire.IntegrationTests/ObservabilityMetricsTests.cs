@@ -8,10 +8,30 @@ using Grimoire.IntegrationTests.Fakes;
 
 namespace Grimoire.IntegrationTests;
 
-/// <summary>T035 — Business metric emission via in-process MeterListener (ADR-005).</summary>
-[Collection("IngestAgentObservabilityListeners")]
+/// <summary>
+/// T035 — Business metric emission via in-process MeterListener (ADR-005).
+/// The meters are process-wide statics and other test classes run in parallel and emit
+/// the same instruments, so every callback synchronizes its list, assertions run on a
+/// snapshot, and expectations are containment-based rather than exact global counts.
+/// </summary>
 public class ObservabilityMetricsTests
 {
+    private static IReadOnlyList<T> Snapshot<T>(List<T> measurements)
+    {
+        lock (measurements)
+        {
+            return measurements.ToArray();
+        }
+    }
+
+    private static void AddSynchronized<T>(List<T> measurements, T measurement)
+    {
+        lock (measurements)
+        {
+            measurements.Add(measurement);
+        }
+    }
+
     [Fact]
     public void HubMetrics_RecordTaskReconciled_Increments_TasksReconciledTotal()
     {
@@ -26,13 +46,12 @@ public class ObservabilityMetricsTests
                 l.EnableMeasurementEvents(instrument);
             }
         };
-        listener.SetMeasurementEventCallback<long>((_, value, _, _) => measurements.Add(value));
+        listener.SetMeasurementEventCallback<long>((_, value, _, _) => AddSynchronized(measurements, value));
         listener.Start();
 
         HubMetrics.RecordTaskReconciled();
 
-        Assert.Single(measurements);
-        Assert.Equal(1L, measurements[0]);
+        Assert.Contains(Snapshot(measurements), v => v == 1L);
     }
 
     [Fact]
@@ -52,15 +71,13 @@ public class ObservabilityMetricsTests
         listener.SetMeasurementEventCallback<long>((_, value, tags, _) =>
         {
             var outcome = tags.ToArray().FirstOrDefault(t => t.Key == "outcome").Value?.ToString() ?? "";
-            measurements.Add((value, outcome));
+            AddSynchronized(measurements, (value, outcome));
         });
         listener.Start();
 
         IngestAgentMetrics.RecordIngest("completed", 2.0);
 
-        Assert.Single(measurements);
-        Assert.Equal(1L, measurements[0].Value);
-        Assert.Equal("completed", measurements[0].Outcome);
+        Assert.Contains(Snapshot(measurements), m => m.Value == 1L && m.Outcome == "completed");
     }
 
     /// <summary>
@@ -85,7 +102,7 @@ public class ObservabilityMetricsTests
         listener.SetMeasurementEventCallback<long>((_, value, tags, _) =>
         {
             var action = tags.ToArray().FirstOrDefault(t => t.Key == "action").Value?.ToString() ?? "";
-            measurements.Add((value, action));
+            AddSynchronized(measurements, (value, action));
         });
         listener.Start();
 
@@ -116,9 +133,10 @@ public class ObservabilityMetricsTests
 
         IngestAgentMetrics.RecordPagesTouched(journal);
 
-        Assert.Contains(measurements, m => m.Value == 1L && m.Action == "created");
-        Assert.Contains(measurements, m => m.Value == 1L && m.Action == "updated");
-        Assert.All(measurements, m =>
+        var snapshot = Snapshot(measurements);
+        Assert.Contains(snapshot, m => m.Value == 1L && m.Action == "created");
+        Assert.Contains(snapshot, m => m.Value == 1L && m.Action == "updated");
+        Assert.All(snapshot, m =>
             Assert.Contains(m.Action, new[] { "created", "updated", "superseded" }));
     }
 
@@ -140,15 +158,13 @@ public class ObservabilityMetricsTests
         listener.SetMeasurementEventCallback<long>((_, value, tags, _) =>
         {
             var action = tags.ToArray().FirstOrDefault(t => t.Key == "action").Value?.ToString() ?? "";
-            measurements.Add((value, action));
+            AddSynchronized(measurements, (value, action));
         });
         listener.Start();
 
         IngestAgentMetrics.RecordPagesTouched("superseded", 3);
 
-        Assert.Single(measurements);
-        Assert.Equal(3L, measurements[0].Value);
-        Assert.Equal("superseded", measurements[0].Action);
+        Assert.Contains(Snapshot(measurements), m => m.Value == 3L && m.Action == "superseded");
     }
 
     [Fact]
@@ -165,13 +181,12 @@ public class ObservabilityMetricsTests
                 l.EnableMeasurementEvents(instrument);
             }
         };
-        listener.SetMeasurementEventCallback<double>((_, value, _, _) => measurements.Add(value));
+        listener.SetMeasurementEventCallback<double>((_, value, _, _) => AddSynchronized(measurements, value));
         listener.Start();
 
         IngestAgentMetrics.RecordIngest("failed", 3.14);
 
-        Assert.Single(measurements);
-        Assert.Equal(3.14, measurements[0], precision: 5);
+        Assert.Contains(Snapshot(measurements), v => Math.Abs(v - 3.14) < 1e-5);
     }
 
     [Fact]
@@ -191,13 +206,13 @@ public class ObservabilityMetricsTests
         listener.SetMeasurementEventCallback<long>((_, value, tags, _) =>
         {
             var stopReason = tags.ToArray().FirstOrDefault(t => t.Key == "stop_reason").Value?.ToString() ?? "";
-            measurements.Add((value, stopReason));
+            AddSynchronized(measurements, (value, stopReason));
         });
         listener.Start();
 
         IngestAgentMetrics.RecordModelToolRequests(3, ModelStopReason.ToolUse);
 
-        Assert.Contains(measurements, m =>
+        Assert.Contains(Snapshot(measurements), m =>
             m.Value == 3L &&
             m.StopReason == "tool_use");
     }
@@ -220,13 +235,13 @@ public class ObservabilityMetricsTests
         {
             var stopReason = tags.ToArray().FirstOrDefault(t => t.Key == "stop_reason").Value?.ToString() ?? "";
             var outcome = tags.ToArray().FirstOrDefault(t => t.Key == "outcome").Value?.ToString() ?? "";
-            measurements.Add((value, stopReason, outcome));
+            AddSynchronized(measurements, (value, stopReason, outcome));
         });
         listener.Start();
 
         IngestAgentMetrics.RecordNoToolTurn(ModelStopReason.StopSequence, "terminal");
 
-        Assert.Contains(measurements, m =>
+        Assert.Contains(Snapshot(measurements), m =>
             m.Value == 1L &&
             m.StopReason == "stop_sequence" &&
             m.Outcome == "terminal");

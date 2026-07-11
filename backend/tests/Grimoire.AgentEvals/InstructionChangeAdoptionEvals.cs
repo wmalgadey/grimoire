@@ -13,12 +13,21 @@ public class InstructionChangeAdoptionEvals
         {
             var result = await runner.RunAsync(
                 fixtureName: "empty-topic",
-                sourceContent: "Create a wiki page on ingest governance and follow every required frontmatter field.",
+                sourceContent: "Ingest governance is the set of rules and processes that control how external " +
+                    "sources are admitted into a managed knowledge system. It typically defines who or what " +
+                    "(a human editor or an autonomous agent) is authorized to write, which sources are trusted " +
+                    "versus treated as untrusted data, how conflicting or duplicate information is resolved " +
+                    "(update, supersede, or flag a contradiction), and what audit trail is kept for every " +
+                    "ingest decision so the reasoning behind a page's current state can be reconstructed later.",
                 runLabel: $"sc009-{i + 1}",
                 mutateSkillFile: AddReviewedFieldRequirement,
                 cancellationToken: CancellationToken.None);
 
+            // The "reviewed: false" requirement only applies to wiki pages — SKILL.md
+            // exempts index.md and log.md from the frontmatter standard entirely.
             var touchedFiles = result.Artifact.PagesTouched
+                .Where(rel => !string.Equals(Path.GetFileName(rel), "index.md", StringComparison.OrdinalIgnoreCase)
+                    && !string.Equals(Path.GetFileName(rel), "log.md", StringComparison.OrdinalIgnoreCase))
                 .Select(rel => Path.Combine(result.SandboxRoot, rel))
                 .Where(File.Exists)
                 .ToList();
