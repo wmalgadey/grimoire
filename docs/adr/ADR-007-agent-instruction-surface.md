@@ -1,5 +1,5 @@
 ---
-status: proposed
+status: accepted
 ---
 
 # ADR-007: Agent Instruction Surface — Single System Prompt and Versioned Default User Prompt

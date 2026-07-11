@@ -1,5 +1,5 @@
 ---
-status: proposed
+status: accepted
 ---
 
 # ADR-008: Agent Event Channel, Run Supervision, and Persistent Run Queue
