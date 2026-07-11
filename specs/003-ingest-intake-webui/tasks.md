@@ -628,3 +628,44 @@ immediately when submitting a new source instead of requiring a separate page vi
   displayed status changes to reflect..." / "...with no action required from the user") and
   SC-004/SC-007 (the board is meant to be where the full journey is observed, not a page the
   user has to remember to click into), per US1/AC3 (partial)
+
+---
+
+## Phase 10: Convergence
+
+**Purpose**: Close gaps found by assessing the codebase after the T075-T079 convergence pass:
+the merged submission+board route (T079) has no test coverage of its own, and two integration
+tests are intermittently flaky under full-suite parallel execution.
+
+- [ ] T080 HIGH — Add test coverage for the merged submission+board route composition introduced
+  by T079: create `frontend/src/routes/+page.svelte.test.ts` (picked up by the existing vitest
+  "client" project, `src/**/*.svelte.{test,spec}.ts`) that mounts `+page.svelte` with a
+  stubbed/mocked `createBoardLifecycleStream` (matching the mocking pattern already used by
+  `KanbanColumn.svelte.test.ts`/`SubmissionForm.svelte.test.ts`) and asserts: both
+  `[data-testid="submission-form"]` and `[data-testid="kanban-board"]` render on the same page,
+  and a simulated lifecycle stream update correctly buckets a task into its `tasksByStage`
+  column. Also add a test asserting `frontend/src/routes/board/+page.ts`'s `load()` throws
+  SvelteKit's `redirect(308, '/')`. Currently only the constituent components and the pure
+  `applyLifecycleEvent`/`createBoardLifecycleStream` helpers are tested in isolation — the
+  route-level wiring that actually satisfies US2/AC1 and the "observe the full journey from the
+  board" guarantee in SC-004/SC-007 has zero coverage, so a future edit could silently break the
+  `onMount` subscription or the `/board` redirect without CI catching it, per US2/AC1, SC-004,
+  SC-007 (missing)
+- [ ] T081 HIGH — Fix intermittent timeouts in
+  `IngestSubmissionMetricsTests.UrlSubmission_EmitsUrlFetchCounter`
+  (`backend/tests/Grimoire.IntegrationTests/IngestSubmissionMetricsTests.cs`) and
+  `IngestSubmissionTraceTests.UrlSubmission_EmitsExpectedSpans_WithSubmitAsParent`
+  (`backend/tests/Grimoire.IntegrationTests/IngestSubmissionTraceTests.cs`): both wait on
+  `IngestSubmissionPipelineFixture.WaitForStatusAsync`'s hard-coded 10-second deadline
+  (`backend/tests/Grimoire.IntegrationTests/Fakes/IngestSubmissionPipelineFixture.cs:76-95`)
+  while the pipeline shells out to the real `markitdown` CLI per submission with no fake/stub
+  for conversion (`IngestSubmissionPipelineFixture.cs:59`); when xUnit runs the full
+  `Grimoire.IntegrationTests` class set in parallel, subprocess/CPU contention occasionally
+  pushes conversion past that window, failing a test that is supposed to deterministically
+  verify the `hub.ingest_submission_url_fetch_total` metric and the `hub.ingest_submission.submit`
+  trace span (plan.md Observability). Either give these two signal-focused tests (which only
+  need conversion to complete, not to verify MarkItDown's actual output) a fake `MarkItDownConverter`
+  double so they don't depend on real subprocess timing, or raise their `WaitForStatusAsync`
+  timeout to a value with real headroom under full-suite parallel load. Per Constitution II
+  (harness/integration tests MUST be deterministic) and plan.md Observability rows
+  `hub.ingest_submission_url_fetch_total` / `hub.ingest_submission.submit` (contradicts)
