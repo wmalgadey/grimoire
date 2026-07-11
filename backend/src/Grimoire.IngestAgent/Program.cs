@@ -17,8 +17,7 @@ var logAppender = new IngestLogAppender(loggerFactory.CreateLogger<IngestLogAppe
 var sourceReader = new SourceReader();
 
 var startTime = DateTimeOffset.UtcNow;
-using var runSpan = IngestAgentTracing.ActivitySource.StartActivity("ingest_agent.run");
-runSpan?.SetTag("task_id", options.TaskId);
+using var runSpan = IngestAgentTracing.StartRunActivity(options.TaskId);
 
 var repoRoot = FindRepoRoot(options.TasksDir);
 var journal = new WriteJournal();

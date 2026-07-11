@@ -1,12 +1,22 @@
 using Grimoire.Hub.AgentDispatch;
 using Grimoire.Hub.ContentRoot;
+using Grimoire.Hub.Conversion;
+using Grimoire.Hub.IngestSubmission;
 using Grimoire.Hub.OperationalState;
+using Grimoire.Hub.Realtime;
 using Grimoire.Hub.Submission;
+using Grimoire.Hub.TaskArtifact;
 using Grimoire.Hub;
 using System.Diagnostics;
 
 var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddHubTelemetry();
+builder.Services.AddSignalR();
+builder.Services.AddHttpClient<UrlContentFetcher>();
+builder.Services.AddSingleton(sp => MarkItDownOptions.FromConfiguration(sp.GetRequiredService<IConfiguration>()));
+builder.Services.AddSingleton<MarkItDownConverter>();
+builder.Services.AddSingleton<HubTaskArtifactWriter>();
+builder.Services.AddSingleton<KanbanBoardProjectionStore>();
 
 var repoRoot = FindRepoRoot(Directory.GetCurrentDirectory());
 var dbPath = Path.Combine(repoRoot, "backend", "data", "operational-state.db");
@@ -20,9 +30,20 @@ if (!File.Exists(envPath))
 
 var contentRootDirName = ParseOption(args, "--content-root") ?? builder.Configuration["ContentRootDirName"] ?? "wiki";
 var contentPaths = ContentRootPaths.Resolve(repoRoot, contentRootDirName);
+var rawStoragePaths = RawStoragePaths.Resolve(repoRoot);
+builder.Services.AddSingleton(rawStoragePaths);
+builder.Services.AddSingleton<SourceArtifactStore>();
+builder.Services.AddSingleton<IngestLifecyclePublisher>();
 
 var repository = new OperationalStateRepository(dbPath);
 await repository.InitializeAsync();
+builder.Services.AddSingleton(repository);
+builder.Services.AddSingleton(contentPaths);
+builder.Services.AddSingleton(new LocalSecretsLoader(envPath));
+builder.Services.AddSingleton<IIngestAgentDispatcher>(sp => new IngestAgentDispatcher(sp.GetRequiredService<LocalSecretsLoader>(), agentProjectPath));
+builder.Services.AddSingleton<IngestRunGate>();
+builder.Services.AddSingleton<IngestSubmissionValidator>();
+builder.Services.AddSingleton<IngestSubmissionPipeline>();
 
 var reconciler = new RestartReconciler(repository);
 await reconciler.ReconcileRunningTasksAsync(contentPaths.TasksDir, contentPaths.LogPath);
@@ -48,6 +69,8 @@ if (args.Length > 0 && string.Equals(args[0], "submit-source", StringComparison.
 
 var app = builder.Build();
 app.MapGet("/", () => "Grimoire Hub");
+app.MapHub<IngestLifecycleHub>("/hubs/ingest-lifecycle");
+app.MapGroup("/api/ingest-submissions").MapIngestSubmissionEndpoints();
 app.Run();
 
 static string? ParseOption(string[] args, string option)

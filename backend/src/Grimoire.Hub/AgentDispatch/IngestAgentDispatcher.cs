@@ -2,7 +2,7 @@ using System.Diagnostics;
 
 namespace Grimoire.Hub.AgentDispatch;
 
-public sealed class IngestAgentDispatcher
+public sealed class IngestAgentDispatcher : IIngestAgentDispatcher
 {
     private readonly LocalSecretsLoader _secretsLoader;
     private readonly string _agentProjectPath;
@@ -60,7 +60,7 @@ public sealed class IngestAgentDispatcher
                 baseEnv[key] = value;
         }
 
-        var childEnv = BuildChildEnvironment(baseEnv, authToken, ingestModel, ingestTokenCap);
+        var childEnv = BuildChildEnvironment(baseEnv, authToken, ingestModel, ingestTokenCap, Activity.Current);
         startInfo.Environment.Clear();
         foreach (var (key, value) in childEnv)
         {
@@ -92,14 +92,17 @@ public sealed class IngestAgentDispatcher
     /// Builds the child-process environment from <paramref name="baseEnv"/> by removing
     /// both legacy and current Anthropic credential keys, then re-injecting only if a
     /// non-null <paramref name="authToken"/> was loaded from the secrets file (ADR-004).
-    /// Exposed internally so tests can assert the "no env inheritance leak" guarantee
-    /// without spawning a real process.
+    /// Also propagates the current W3C trace context (<paramref name="currentActivity"/>, typically
+    /// the Hub's `hub.ingest_run.trigger` span) via `TRACEPARENT`/`TRACESTATE`, so the Ingest agent
+    /// process can parent its own root span to it (Constitution IV: end-to-end trace chain).
+    /// Exposed internally so tests can assert both guarantees without spawning a real process.
     /// </summary>
     public static Dictionary<string, string> BuildChildEnvironment(
         IDictionary<string, string> baseEnv,
         string? authToken,
         string? ingestModel = null,
-        string? ingestTokenCap = null)
+        string? ingestTokenCap = null,
+        Activity? currentActivity = null)
     {
         var env = new Dictionary<string, string>(baseEnv, StringComparer.OrdinalIgnoreCase);
         env.Remove("ANTHROPIC_API_KEY");
@@ -125,6 +128,22 @@ public sealed class IngestAgentDispatcher
         if (!string.IsNullOrWhiteSpace(effectiveTokenCap))
         {
             env["GRIMOIRE_INGEST_TOKEN_CAP"] = effectiveTokenCap;
+        }
+
+        env.Remove("TRACEPARENT");
+        env.Remove("TRACESTATE");
+        // Only propagate a Recorded (sampled) parent: an unsampled TRACEPARENT makes the agent's
+        // own ParentBased sampler drop `ingest_agent.run` (StartRunActivity returns null), leaving
+        // Activity.Current null for the whole run and fragmenting every subsequent span into its
+        // own disconnected root trace. Omitting TRACEPARENT entirely lets the agent fall back to a
+        // fresh, sampled root trace instead (T076, Convergence).
+        if (currentActivity is not null && currentActivity.Recorded)
+        {
+            env["TRACEPARENT"] = $"00-{currentActivity.TraceId}-{currentActivity.SpanId}-01";
+            if (!string.IsNullOrEmpty(currentActivity.TraceStateString))
+            {
+                env["TRACESTATE"] = currentActivity.TraceStateString;
+            }
         }
 
         return env;

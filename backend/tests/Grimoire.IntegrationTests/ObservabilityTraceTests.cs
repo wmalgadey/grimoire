@@ -11,6 +11,7 @@ using Grimoire.IntegrationTests.Fakes;
 namespace Grimoire.IntegrationTests;
 
 /// <summary>T037 — Trace span emission via in-process ActivityListener (ADR-005).</summary>
+[Collection("IngestAgentObservabilityListeners")]
 public class ObservabilityTraceTests
 {
     // Old trace tests for deprecated WikiPageWriter/WikiIndexWriter removed as part of T020.
