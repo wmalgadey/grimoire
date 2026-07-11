@@ -27,6 +27,29 @@ markitdown) aktivieren oder deaktivieren können"
   source before it is stored and handed to the agent. Currently there is exactly one:
   document-to-Markdown conversion (introduced in feature 003). The model must
   accommodate additional steps later.
+- **Agent Run Event**: A message the running Ingest agent sends to the Hub during a
+  run: lifecycle signals (`started`, `completed` with summary, `failed` with reason),
+  periodic `heartbeat` liveness signals, and agent-loop activity updates (e.g., number
+  of tool calls used, number of model turns, current loop action). Events describe
+  loop mechanics, never wiki-content judgment.
+- **Run Queue**: The persistent, first-in-first-out order of accepted submissions
+  waiting for the single agent slot. Only one agent runs at any time; the queue
+  advances automatically when the slot frees during normal operation.
+
+## Clarifications
+
+### Session 2026-07-11
+
+- Q: How does the Hub detect an aborted agent run once it no longer blocks on the
+  process return code? → A: Heartbeat events + timeout — the agent emits periodic
+  heartbeats; if no event arrives within the configured liveness window, the Hub marks
+  the run failed.
+- Q: What happens to queued submissions when the Hub restarts? → A: The queue is
+  persistent; queued tasks remain visible after a restart but are only started again
+  by explicit user re-trigger (no auto-resume after restart).
+- Q: Which events must the agent send to the Hub during a run? → A: Lifecycle events
+  plus agent-loop activity updates — what the loop is actively doing, e.g. "x tools
+  used", "x model turns", and similar loop-level actions (no content-level detail).
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -147,6 +170,48 @@ the task artifact records the chosen step configuration in both cases.
 
 ---
 
+### User Story 4 - Non-blocking agent runs with live loop activity (Priority: P4)
+
+A user submits several sources in a row. The Hub accepts each one immediately — it
+never blocks waiting for a running agent to finish. Exactly one agent runs at a time;
+the other submissions line up in a visible queue and start automatically as the slot
+frees. While a run is active, the user sees what the agent loop is currently doing
+("x tools used", "x model turns", current action) and the Hub notices by itself —
+via missing heartbeats — when a run has died, marking it failed instead of leaving it
+stuck.
+
+**Why this priority**: This decouples submission throughput from run duration and
+replaces silent hangs with detected failures. It is independent infrastructure that
+can ship in any order relative to User Stories 2 and 3, but it changes how every run
+is supervised, so it is sequenced after the instruction-surface and submission-surface
+changes it builds on.
+
+**Independent Test**: Submit three sources in quick succession; verify all three are
+acknowledged immediately, exactly one agent process runs at any moment, the other two
+tasks queue and start automatically in acceptance order, live loop-activity counters
+update during each run, and killing the agent process mid-run leads to a `failed` task
+within the liveness window without any user action.
+
+**Acceptance Scenarios**:
+
+1. **Given** a running agent, **When** a user submits another source, **Then** the
+   submission is accepted immediately, its task enters the queue in `queued` state,
+   and the acceptance response does not wait for the running agent.
+2. **Given** a run in progress, **When** the agent loop performs work, **Then** the
+   task's detail view shows current loop activity (tools used, model turns, current
+   action) updating as events arrive.
+3. **Given** a running agent that stops sending events (crash or hang), **When** the
+   configured liveness window elapses without a heartbeat, **Then** the Hub marks the
+   run `failed` with a liveness reason, terminates any leftover agent process, and
+   starts the next queued task.
+4. **Given** queued tasks and a completing run, **When** the agent slot frees, **Then**
+   the next task starts automatically in first-in-first-out order with no user action.
+5. **Given** queued tasks, **When** the Hub restarts, **Then** the queued tasks are
+   still visible in `queued` state after the restart and each can be explicitly
+   re-triggered by the user; none starts automatically after a restart.
+
+---
+
 ### Edge Cases
 
 - What happens if both the new System Prompt Document and leftover retired instruction
@@ -175,6 +240,19 @@ the task artifact records the chosen step configuration in both cases.
 - What happens when future additional Convert Steps are introduced? The per-submission
   configuration model must accommodate multiple named steps without redesign; this
   feature ships with the single existing conversion step.
+- What happens when the agent process is still alive but hung (no events, no exit)?
+  After the liveness window elapses, the run is marked `failed` and the Hub terminates
+  the leftover process before starting the next queued task — the single-agent
+  invariant must never be violated by a zombie process.
+- What happens when events arrive after a run was already marked failed (late or
+  out-of-order events)? They are recorded for diagnostics but change nothing: a
+  terminal state is final.
+- What happens when the Hub restarts while a run is active? The interrupted run is
+  reconciled to `failed` (existing behavior); queued tasks remain `queued` and wait
+  for explicit user re-trigger.
+- What happens when a user re-triggers a queued task while another run is active?
+  The task stays in the queue in its position; re-trigger after restart re-arms
+  automatic processing, it does not jump the queue or start a second agent.
 
 ## Requirements *(mandatory)*
 
@@ -237,6 +315,32 @@ the task artifact records the chosen step configuration in both cases.
   prompt) MUST behave exactly as specified in feature 003 — this feature adds options,
   not changes to the default path.
 
+**Event-based agent supervision & run queue**
+
+- **FR-016**: The Hub MUST start the Ingest agent without blocking on its process
+  return code; accepting further submissions and serving status MUST NOT wait for a
+  running agent to finish.
+- **FR-017**: The running agent MUST send Agent Run Events to the Hub: `started` at run
+  begin, periodic `heartbeat` liveness signals, agent-loop activity updates (tools
+  used, model turns, current loop action), `completed` with the final summary, and
+  `failed` with a human-readable reason. Events carry the task identifier and MUST NOT
+  carry wiki-content judgment beyond the agent's own summary text.
+- **FR-018**: The Hub MUST derive the task's lifecycle state and board/detail display
+  from these events (integrating with feature 003's realtime propagation), including
+  live loop-activity counters in the task detail view.
+- **FR-019**: Exactly one agent MUST run at any time. Additional accepted submissions
+  MUST enter the Run Queue in first-in-first-out order of acceptance and start
+  automatically, without user action, when the slot frees during normal operation.
+- **FR-020**: If no event (including heartbeats) arrives for a running task within the
+  configured liveness window, the Hub MUST mark the run `failed` with a liveness
+  reason, terminate any leftover agent process, and advance the queue.
+- **FR-021**: The Run Queue MUST survive a Hub restart: queued tasks remain visible in
+  `queued` state. After a restart, queued tasks MUST NOT start automatically; the user
+  MUST be able to explicitly re-trigger them (per task or as a whole), after which
+  normal automatic queue processing resumes.
+- **FR-022**: Events arriving for a task already in a terminal state MUST be recorded
+  for diagnostics and MUST NOT change the task's state.
+
 ### Key Entities
 
 - **System Prompt Document**: The single versioned instruction document governing the
@@ -253,6 +357,14 @@ the task artifact records the chosen step configuration in both cases.
 - **Task Artifact (extended)**: The existing run record, extended to also record the
   effective User Prompt and the applied Convert Step Configuration, alongside the
   already-recorded instruction identity and hash.
+- **Agent Run Event**: A message from the running agent to the Hub. Attributes: task
+  identifier, event type (`started`, `heartbeat`, `activity`, `completed`, `failed`),
+  timestamp, and type-specific payload (activity counters such as tools used and model
+  turns; completion summary; failure reason).
+- **Run Queue**: The persistent set of accepted-but-not-started tasks in
+  first-in-first-out acceptance order. Attributes: task identifier, queue position,
+  accepted-at timestamp. Survives Hub restarts; post-restart processing requires
+  explicit user re-trigger.
 
 ## Success Criteria *(mandatory)*
 
@@ -272,6 +384,17 @@ the task artifact records the chosen step configuration in both cases.
   conversion disabled are rejected before a task is created.
 - **SC-005**: 100% of runs enforce the same guardrail policy regardless of User Prompt
   content — no sampled or tested run shows a prompt-induced widening of write scope.
+- **SC-008**: 100% of submissions made while an agent is running are acknowledged
+  without waiting for that run to finish, and at no point do two agent processes run
+  concurrently.
+- **SC-009**: 100% of runs whose events stop (crash, hang, kill) are marked `failed`
+  with a liveness reason within the configured liveness window, with no task ever left
+  indefinitely in `running`.
+- **SC-010**: 100% of tasks queued at Hub shutdown are still visible as `queued` after
+  restart and can be re-triggered by the user; none starts without that re-trigger.
+- **SC-011**: Live loop-activity updates (tools used, model turns, current action) are
+  visible in the task detail view within 2 seconds (p95) of the corresponding event,
+  consistent with feature 003's propagation targets.
 
 **Agent-judgment evaluation thresholds**
 
@@ -311,3 +434,12 @@ the task artifact records the chosen step configuration in both cases.
 - **Existing evaluation thresholds are the parity baseline**: The agent-behavior
   thresholds defined in feature 002's spec serve as the regression baseline for SC-006;
   no new convention thresholds are introduced for consolidation itself.
+- **Queue order is FIFO by acceptance time**: No priorities, no reordering, no queue
+  jumping; duplicates remain independent tasks (per 003).
+- **Liveness window default**: 60 seconds without any event marks a run failed; the
+  window and heartbeat interval are configurable. The concrete event transport is a
+  design decision for the plan (and expected to revise the ADR-002 "wait for exit
+  code" wording).
+- **Event scope stays loop-mechanical**: Activity events report harness-observable
+  loop facts (counts, current action); they never require the backend to interpret
+  wiki content (Principle V).
