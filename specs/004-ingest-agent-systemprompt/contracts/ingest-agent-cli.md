@@ -17,9 +17,18 @@ arguments only.
 | `--system-prompt-path` | yes | Path to `agents/ingest/system-prompt.md` |
 | `--default-user-prompt-path` | yes | Path to `agents/ingest/default-user-prompt.md` |
 | `--user-prompt` | no | Custom steering text (≤ 8,000 chars, already validated by Hub); when present it overrides the default file's content |
+| `--heartbeat-seconds` | no | Heartbeat emission interval; default 10 |
 
 All other arguments (`--task-id`, `--source-ref`, `--source-kind`, path arguments,
 `--policy-path`, …) are unchanged.
+
+## Event channel (new)
+
+The agent emits NDJSON Agent Run Events on stdout per
+[agent-run-events.md](./agent-run-events.md); human-readable logging moves to stderr.
+The Hub starts the process **without awaiting its exit code** for run outcome; run
+completion/failure is derived from terminal events or the liveness window (ADR-008).
+The exit code remains set for manual CLI use and diagnostics.
 
 ## Fail-closed rules (exit code ≠ 0 before any wiki write)
 

@@ -67,6 +67,35 @@ Contracts referenced: [ingest-submission-api-extension.md](./contracts/ingest-su
    response additionally carries `userPromptSource: "default"` and
    `convertSteps: { "markitdown": true }`.
 
+## Scenario 8 — Non-blocking dispatch and FIFO queue (US4)
+
+1. Submit three Markdown files in quick succession.
+2. **Expect**: all three are acknowledged immediately (no request waits for a run);
+   exactly one agent process exists at any time (`pgrep -f Grimoire.IngestAgent`);
+   the board shows one `running` task and two `queued` tasks with `queuePosition`
+   1 and 2; as each run completes, the next starts automatically in acceptance order.
+
+## Scenario 9 — Live loop activity and liveness failure (US4)
+
+1. During a run, open the task detail view.
+2. **Expect**: activity counters (model turns, tool calls, current action) update
+   live as the run progresses.
+3. Kill the agent process mid-run (`kill -9 <pid>`).
+4. **Expect**: within the liveness window (default 60 s) the task turns `failed` with
+   a liveness reason, no task is left `running`, and the next queued task starts
+   automatically.
+
+## Scenario 10 — Persistent queue with manual re-trigger after restart (US4)
+
+1. With one run active and two tasks queued, stop the Hub, then start it again.
+2. **Expect**: the interrupted run is reconciled to `failed` (existing behavior); both
+   queued tasks are still visible as `queued`; the board shows the queue as paused;
+   nothing starts automatically.
+3. `POST /api/ingest-queue/resume` (or re-trigger a single task via
+   `POST /api/ingest-submissions/{taskId}/retrigger`).
+4. **Expect**: processing resumes in FIFO order; from then on the queue advances
+   automatically again.
+
 ## Automated verification
 
 - Hermetic integration tests: `dotnet test backend/tests/Grimoire.IntegrationTests`

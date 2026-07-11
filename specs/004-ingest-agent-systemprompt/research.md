@@ -170,7 +170,96 @@ the same gates passing under the new instruction surface.
 - *Deterministic string checks on outputs for steering*: reimplements judgment as
   string matching — exactly what Principle II forbids as false coverage. Rejected.
 
-## R9: Constitution wording touch-up
+## R9: Event transport — NDJSON over the agent's stdout
+
+**Decision**: The agent emits Agent Run Events as newline-delimited JSON on its
+**stdout**; the Hub, which already spawns and owns the child process (ADR-002), reads
+the pipe line-by-line and dispatches events. Non-JSON stdout lines are tolerated and
+logged as diagnostics. The agent's human-readable logging stays on stderr.
+
+**Rationale**: Zero new infrastructure (Principle IV): no network endpoint, no auth,
+no broker. It stays inside the ADR-002 child-process contract — the pipe exists
+already. Hermetic tests are trivial (feed scripted lines to the parser; fake agent
+executable for end-to-end dispatch tests). Credential scoping (ADR-004) is untouched.
+Containerizing later still works: container runtimes expose stdout streams.
+
+**Alternatives considered**:
+- *HTTP callbacks from agent to a Hub endpoint*: introduces a network surface,
+  loopback auth, and retry semantics for what is a parent↔child relationship.
+  Rejected as disproportionate.
+- *SignalR client inside the agent*: heaviest option; couples the agent to Hub
+  hosting details. Rejected.
+- *File-based event journal (Hub tails a file)*: survives a Hub restart, but the
+  interrupted-run case is already reconciled to `failed` by existing ADR-003 restart
+  logic, so that benefit is moot; tailing adds fsync/rotation complexity. Rejected.
+
+## R10: Liveness supervision — event-silence window as the sole failure authority
+
+**Decision**: The agent emits a `heartbeat` event every **10 seconds** (background
+timer, independent of model latency) plus activity events as the loop works. The Hub
+tracks last-event-received per running task; if **60 seconds** (configurable) pass
+without any event, it marks the run `failed` with a liveness reason, terminates any
+leftover process, and advances the queue. Process exit does not by itself fail the
+run — a crashed process simply stops producing events, so the same single mechanism
+covers crash, hang, and kill (clarification Q1: heartbeat + timeout chosen over
+process-exit backstop). Terminal events (`completed`/`failed`) end supervision
+immediately; late events after a terminal state are recorded and ignored (FR-022).
+
+**Rationale**: One failure-detection authority instead of two racing ones keeps state
+transitions unambiguous and matches the clarified spec. 10 s/60 s gives 6 missed
+beats before failure — tolerant of GC pauses and slow filesystems, still far below
+run duration.
+
+**Alternatives considered**:
+- *Process-exit backstop in addition to the window*: faster crash detection but two
+  competing authorities; explicitly not chosen in clarification. Rejected.
+- *Model-turn-based liveness (no timer)*: a long model call would look dead. Rejected.
+
+## R11: Run queue — SQLite operational state with paused-after-restart flag
+
+**Decision**: The Run Queue lives in the existing SQLite operational-state store
+(ADR-003): accepted tasks get a queue row (task id, accepted-at); order is FIFO by
+accepted-at. A single `queue_paused` flag is set on Hub startup when queued rows
+exist (restart detected); while paused, nothing auto-starts. `POST
+/api/ingest-queue/resume` (whole queue) or `POST
+/api/ingest-submissions/{taskId}/retrigger` (single task) clears/paces processing per
+clarification Q2 (persistent queue, explicit re-trigger after restart). During normal
+operation the dispatcher starts the next queued task automatically on each terminal
+event. 003's `IngestRunGate` (in-process semaphore awaiting dispatch) is replaced by
+this queue-driven dispatcher; the single-agent invariant moves from "callers block on
+a gate" to "one supervisor starts at most one process".
+
+**Rationale**: Queue membership/order is operational bookkeeping, exactly what
+ADR-003 assigns to SQLite; the domain-visible state remains the task artifact's
+`queued` status. No new infrastructure; restart behavior is a natural flag rather
+than fragile in-memory reconstruction.
+
+**Alternatives considered**:
+- *Derive the queue purely from task artifacts in `queued` state*: no explicit order
+  authority (file mtimes are unreliable), and no place for the paused flag. Rejected.
+- *Auto-resume after restart*: explicitly not chosen in clarification Q2. Rejected.
+
+## R12: Loop-activity events — harness-observable counters only
+
+**Decision**: The agent loop emits an `activity` event on each loop step with
+loop-mechanical facts: model turns so far, tool calls so far (total and per tool
+name), and the current action (`model_turn`, `tool_call:<tool>`, `finalizing`).
+Payloads never include page content or editorial rationale; the `completed` event
+carries the agent's final summary text verbatim (already harness-recorded in the task
+artifact). The task detail view renders these counters live; the Kanban card stays
+status-only (003 contract unchanged).
+
+**Rationale**: Matches clarification Q3 ("x tools used, x model turns, current
+action") and keeps Principle V intact: the backend transports counts, it interprets
+no wiki content. AgentLoop already tracks turns/tool requests for metrics, so the
+event payload reuses existing counters.
+
+**Alternatives considered**:
+- *Content-level progress ("writing page X")*: leaks content semantics into
+  harness display contracts and tempts backend interpretation. Rejected for now
+  (extendable later via a new event type without breaking the contract).
+
+## R13: Constitution wording touch-up
 
 **Decision**: Propose (outside this feature's gate) a PATCH amendment via
 `/speckit-constitution` changing Principle V's parenthetical example "agent `CLAUDE.md`

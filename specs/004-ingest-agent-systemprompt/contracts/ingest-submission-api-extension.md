@@ -83,10 +83,62 @@ The task detail representation additionally exposes:
 {
   "userPromptSource": "custom",
   "userPrompt": "Focus on the security claims; ignore marketing content.",
-  "convertSteps": { "markitdown": false }
+  "convertSteps": { "markitdown": false },
+  "runActivity": {
+    "modelTurns": 3,
+    "toolCalls": 5,
+    "toolCallsByName": { "read_file": 3, "write_file": 2 },
+    "currentAction": "tool_call:write_file",
+    "lastEventAt": "2026-07-11T09:00:00Z"
+  }
 }
 ```
 
-Tasks created before this feature return `userPromptSource: null`,
+`runActivity` is non-null only while the task is `running` (last received `activity`
+snapshot). Tasks created before this feature return `userPromptSource: null`,
 `userPrompt: null`, `convertSteps: null` — clients render these as
 "defaults of their time".
+
+## GET /api/ingest-submissions (extended)
+
+Board entries for `queued` tasks additionally expose their FIFO position and the
+queue's paused state:
+
+```json
+{
+  "tasks": [ { "taskId": "...", "status": "queued", "queuePosition": 2, "...": "..." } ],
+  "queuePaused": true
+}
+```
+
+`queuePaused` is `true` only after a Hub restart with queued tasks, until the user
+resumes (FR-021).
+
+## POST /api/ingest-queue/resume (new)
+
+Resumes automatic queue processing after a Hub restart (whole queue).
+
+- `200 OK` `{ "queuePaused": false, "queuedTasks": 3 }` — idempotent; also `200` when
+  the queue was not paused.
+
+## POST /api/ingest-submissions/{taskId}/retrigger (new)
+
+Re-arms a single queued task after a Hub restart.
+
+- `200 OK` — task keeps its FIFO position; processing resumes for it (and starts
+  immediately if the agent slot is free and no earlier re-armed task waits).
+- `404 Not Found` — unknown task.
+- `409 Conflict` — task is not in `queued` state.
+
+## Realtime lifecycle events (003 SignalR channel, extended)
+
+The existing lifecycle stream additionally publishes run-activity updates while a task
+is `running`:
+
+```json
+{ "kind": "run_activity", "taskId": "t-1",
+  "modelTurns": 3, "toolCalls": 5, "currentAction": "tool_call:write_file" }
+```
+
+Kanban cards remain status-only (003 contract unchanged); the detail view consumes
+`run_activity`.
