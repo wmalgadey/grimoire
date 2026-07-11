@@ -13,7 +13,14 @@ public class ConventionAdherenceEvals
         {
             var result = await runner.RunAsync(
                 fixtureName: "empty-topic",
-                sourceContent: "Create a concise wiki page about offline embedding refresh jobs.",
+                sourceContent: "Offline embedding refresh jobs are scheduled batch processes that regenerate " +
+                    "vector embeddings for a corpus when the underlying embedding model changes or source " +
+                    "documents update in bulk. They typically run on a fixed cadence rather than on demand, " +
+                    "re-embed the full or incremental document set, and swap the new vectors into the retrieval " +
+                    "index atomically to avoid serving mixed-model results mid-transition. Key operational " +
+                    "concerns include versioning the embedding model per batch, monitoring drift between old and " +
+                    "new vectors, and staging the swap behind a blue/green index so a quality regression can be " +
+                    "rolled back.",
                 runLabel: $"sc007-{i + 1}",
                 mutateSkillFile: null,
                 cancellationToken: CancellationToken.None);
@@ -40,8 +47,11 @@ public class ConventionAdherenceEvals
             return false;
         }
 
-        return content.Contains("\ntitle:", StringComparison.OrdinalIgnoreCase)
-            && content.Contains("\ntags:", StringComparison.OrdinalIgnoreCase)
-            && content.Contains("\nconfidence:", StringComparison.OrdinalIgnoreCase);
+        // Required fields per SKILL.md's Frontmatter Standard — note there is no "title" field.
+        return content.Contains("\ntags:", StringComparison.OrdinalIgnoreCase)
+            && content.Contains("\nconfidence:", StringComparison.OrdinalIgnoreCase)
+            && content.Contains("\nconfidence_reason:", StringComparison.OrdinalIgnoreCase)
+            && content.Contains("\ninbound_links:", StringComparison.OrdinalIgnoreCase)
+            && content.Contains("\nlast_reviewed:", StringComparison.OrdinalIgnoreCase);
     }
 }

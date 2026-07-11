@@ -13,7 +13,11 @@ public class UpdateOverDuplicateEvals
         {
             var result = await runner.RunAsync(
                 fixtureName: "overlapping-topic",
-                sourceContent: "Update the existing Retrieval Patterns page with a new hybrid retrieval section and avoid creating duplicate pages.",
+                sourceContent: "Hybrid retrieval combines sparse lexical search (e.g. BM25) with dense vector " +
+                    "search, then merges the two ranked result sets, often via reciprocal rank fusion, to " +
+                    "capture both exact term matches and semantic similarity. It consistently outperforms either " +
+                    "method alone on queries mixing rare identifiers (error codes, product SKUs) with natural " +
+                    "language intent, and has become the default retrieval pattern in production RAG systems.",
                 runLabel: $"sc006-{i + 1}",
                 mutateSkillFile: null,
                 cancellationToken: CancellationToken.None);
