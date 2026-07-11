@@ -637,7 +637,7 @@ immediately when submitting a new source instead of requiring a separate page vi
 the merged submission+board route (T079) has no test coverage of its own, and two integration
 tests are intermittently flaky under full-suite parallel execution.
 
-- [ ] T080 HIGH — Add test coverage for the merged submission+board route composition introduced
+- [X] T080 HIGH — Add test coverage for the merged submission+board route composition introduced
   by T079: create `frontend/src/routes/+page.svelte.test.ts` (picked up by the existing vitest
   "client" project, `src/**/*.svelte.{test,spec}.ts`) that mounts `+page.svelte` with a
   stubbed/mocked `createBoardLifecycleStream` (matching the mocking pattern already used by
@@ -651,7 +651,7 @@ tests are intermittently flaky under full-suite parallel execution.
   board" guarantee in SC-004/SC-007 has zero coverage, so a future edit could silently break the
   `onMount` subscription or the `/board` redirect without CI catching it, per US2/AC1, SC-004,
   SC-007 (missing)
-- [ ] T081 HIGH — Fix intermittent timeouts in
+- [X] T081 HIGH — Fix intermittent timeouts in
   `IngestSubmissionMetricsTests.UrlSubmission_EmitsUrlFetchCounter`
   (`backend/tests/Grimoire.IntegrationTests/IngestSubmissionMetricsTests.cs`) and
   `IngestSubmissionTraceTests.UrlSubmission_EmitsExpectedSpans_WithSubmitAsParent`

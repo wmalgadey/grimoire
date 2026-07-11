@@ -31,7 +31,12 @@ public class IngestSubmissionTraceTests
         var taskId = await fixture.Pipeline.AcceptAsync(
             new IngestSubmissionInput(IngestSubmissionKind.Url, "https://example.test/article", null, null, null));
 
-        await fixture.WaitForStatusAsync(taskId, s => s is "completed" or "failed");
+        // T081 (Convergence) - the fixture's real `markitdown` subprocess is itself allowed up to
+        // 30s (MarkItDownOptions.Timeout in IngestSubmissionPipelineFixture), which exceeds
+        // WaitForStatusAsync's 10s default; under xUnit's full-suite parallelism the resulting
+        // subprocess/CPU contention intermittently pushed conversion past that 10s window. Give
+        // this wait real headroom instead of racing the converter's own timeout.
+        await fixture.WaitForStatusAsync(taskId, s => s is "completed" or "failed", TimeSpan.FromSeconds(30));
         // Allow the fire-and-forget trigger continuation's spans to finish stopping.
         await Task.Delay(200);
 
