@@ -51,6 +51,16 @@ public class IngestSubmissionTraceTests
         AssertChildOf(byName, submit, "hub.ingest_submission.convert_to_markdown");
         AssertChildOf(byName, submit, "hub.ingest_submission.store_normalized");
         AssertChildOf(byName, submit, "hub.ingest_run.trigger");
+
+        // C1 (analysis remediation) - every lifecycle publish for this submission stays within the
+        // single submit trace tree (Constitution IV: one end-to-end, observable trace chain), never
+        // fragmenting into orphan roots. The pre-run publishes nest directly under submit; the
+        // run-phase publishes nest under the trigger span, which is itself a child of submit — all
+        // one trace. (Asserts over captured spans, so it never races the terminal publish's timing.)
+        var publishSpans = byName["hub.ingest_lifecycle.publish_update"].ToList();
+        Assert.NotEmpty(publishSpans);
+        Assert.All(publishSpans, publish =>
+            Assert.Equal(submit.TraceId.ToHexString(), publish.TraceId.ToHexString()));
     }
 
     private static void AssertChildOf(ILookup<string, Activity> byName, Activity expectedParent, string childSpanName)

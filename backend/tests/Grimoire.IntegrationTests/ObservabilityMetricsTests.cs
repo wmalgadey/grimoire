@@ -9,6 +9,7 @@ using Grimoire.IntegrationTests.Fakes;
 namespace Grimoire.IntegrationTests;
 
 /// <summary>T035 — Business metric emission via in-process MeterListener (ADR-005).</summary>
+[Collection("IngestAgentObservabilityListeners")]
 public class ObservabilityMetricsTests
 {
     [Fact]

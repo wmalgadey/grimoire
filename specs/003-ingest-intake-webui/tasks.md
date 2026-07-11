@@ -669,3 +669,46 @@ tests are intermittently flaky under full-suite parallel execution.
   timeout to a value with real headroom under full-suite parallel load. Per Constitution II
   (harness/integration tests MUST be deterministic) and plan.md Observability rows
   `hub.ingest_submission_url_fetch_total` / `hub.ingest_submission.submit` (contradicts)
+
+---
+
+## Phase 11: Analysis Remediation
+
+**Purpose**: Remediate findings from `/speckit-analyze`, plus two latent determinism/robustness
+defects uncovered while adding the C1 test (the added parallel load surfaced them).
+
+- [X] T082 Validate the parent/child linkage of the `hub.ingest_lifecycle.publish_update` trace
+  span deterministically (analyze finding C1): the standalone `IngestLifecycleTraceTests` only
+  asserted the span name + `stage` tag with no ambient parent, and `IngestSubmissionTraceTests`
+  omitted `publish_update` from its `AssertChildOf` checks — leaving the plan.md-declared parent
+  (`hub.ingest_submission.submit`) untested, contrary to Constitution IV / the DoD ("deterministic
+  integration test validates ... parent/child relationship" for every trace row). Added
+  `IngestLifecycleTraceTests.PublishAsync_NestsPublishUpdateSpan_UnderTheAmbientSpan` (asserts the
+  span nests under the ambient submit span, Red/Green-probed with a foreign parent context) and an
+  end-to-end assertion in `IngestSubmissionTraceTests` that every `publish_update` span for the
+  submission shares the submit span's TraceId (one trace chain). Implementation was already correct;
+  this closes the test-coverage gap, per Constitution IV / plan.md Observability (partial)
+- [X] T083 Make the listener-based observability tests deterministic under parallel load
+  (Constitution II): `ObservabilityMetricsTests` and `ObservabilityTraceTests` subscribe
+  process-global `MeterListener`/`ActivityListener` instances to the shared `Grimoire.IngestAgent`
+  meter/activity source and assert by counting (`Assert.Single(ingest_agent.run)` etc.), so a
+  concurrently-running test emitting the same signal perturbs them non-deterministically (surfaced
+  intermittently once the C1 test raised parallel load). Isolated both into a new
+  `DisableParallelization` xUnit collection (`IngestAgentObservabilityCollection`) so no other test
+  runs alongside them, per Constitution II (contradicts)
+- [X] T084 Make Task Artifact writes atomic to prevent torn reads by the board projection
+  (FR-007/FR-008): `HubTaskArtifactWriter.WriteAsync` used `File.WriteAllText`, which truncates in
+  place; `KanbanBoardProjectionStore` reads the same files while the pipeline concurrently rewrites
+  a stage, so a torn read makes `TaskArtifactFrontmatter.TryParse` return null and the task
+  transiently vanishes from `GET /api/ingest-submissions` (skipped) or 404s on the detail endpoint —
+  violating "every submission appears exactly once" and "the board reflects stage changes". Changed
+  the writer to write a sibling temp file then atomically rename it over the target, so every reader
+  sees either the whole old or the whole new file. This also removed the last intermittent
+  full-suite failure (`IngestSubmissionLifecycleTests`), per FR-007/FR-008 / Constitution II
+  (contradicts)
+- [ ] T085 Add an explicit test for FR-005 normalized-artifact immutability (analyze finding U1,
+  deferred): assert that a persisted `raw/sources/{taskId}.md` re-reads to exactly the checksum
+  `SourceArtifactStore` recorded at write time. Deferred from this pass as optional/low-value — the
+  existing `SourceArtifactPersistenceTests` already round-trips and asserts the normalized content,
+  and the complementary "agent never writes into raw-source location" guarantee is enforced
+  structurally by the guarded-tool boundary (002-agentic-ingest-core), per FR-005 (missing)

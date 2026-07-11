@@ -13,9 +13,31 @@ public sealed class HubTaskArtifactWriter
 {
     public async Task WriteAsync(string filePath, HubTaskArtifactDocument document, CancellationToken cancellationToken = default)
     {
-        Directory.CreateDirectory(Path.GetDirectoryName(filePath) ?? ".");
+        var directory = Path.GetDirectoryName(filePath) ?? ".";
+        Directory.CreateDirectory(directory);
         var content = BuildMarkdown(document);
-        await File.WriteAllTextAsync(filePath, content, Encoding.UTF8, cancellationToken);
+
+        // Write to a sibling temp file, then atomically rename it over the target. The board
+        // projection (KanbanBoardProjectionStore) reads these task-artifact files while the pipeline
+        // concurrently rewrites a stage; File.WriteAllText truncates in place, so a reader can catch
+        // a half-written file, TryParse to null, and transiently drop the task from the board or 404
+        // its detail (FR-007/FR-008). An atomic rename guarantees every reader sees either the whole
+        // previous file or the whole new one — never a torn read. The temp name starts with '.' and
+        // ends in '.tmp' so it is never picked up by the projection's "*.md" enumeration.
+        var tempPath = Path.Combine(directory, $".{Path.GetFileName(filePath)}.{Guid.NewGuid():N}.tmp");
+        try
+        {
+            await File.WriteAllTextAsync(tempPath, content, Encoding.UTF8, cancellationToken);
+            File.Move(tempPath, filePath, overwrite: true);
+        }
+        catch
+        {
+            if (File.Exists(tempPath))
+            {
+                try { File.Delete(tempPath); } catch { /* best-effort cleanup */ }
+            }
+            throw;
+        }
     }
 
     private static string BuildMarkdown(HubTaskArtifactDocument doc)
