@@ -1,4 +1,5 @@
 using Grimoire.Domain.Guardrails;
+using Grimoire.Hub.IngestSubmission;
 using Grimoire.Hub.OperationalState;
 using Grimoire.IngestAgent;
 using Grimoire.IngestAgent.AgentCore;
@@ -81,6 +82,60 @@ public class ObservabilityLogTests
         AssertEvent(logger.Entries, "ingest.log.backstop_appended", LogLevel.Warning, ["task_id", "outcome"]);
         AssertEvent(logger.Entries, "ingest.agent.completed", LogLevel.Information, ["task_id", "turns", "pages_created", "pages_updated", "pages_superseded", "denials"]);
         AssertEvent(logger.Entries, "ingest.agent.cap_exceeded", LogLevel.Error, ["task_id", "cap", "turns"]);
+    }
+
+    /// <summary>
+    /// T046 — plan.md ## Observability > Structured Log Events (004). Found untested by
+    /// /speckit-converge's observability audit: emitted in code, no assertion anywhere.
+    /// </summary>
+    [Fact]
+    public void IngestAgentUserPromptResolvedEvent_EmitsExpectedNameLevelAndFields()
+    {
+        var logger = new CaptureLogger<ObservabilityLogTests>();
+
+        IngestAgentLogEvents.LogUserPromptResolved(
+            logger,
+            taskId: "task-9",
+            promptSource: "custom",
+            promptLength: 42);
+
+        AssertEvent(logger.Entries, "ingest.agent.user_prompt_resolved", LogLevel.Information, ["task_id", "prompt_source", "prompt_length"]);
+    }
+
+    /// <summary>T046 — Hub-side 004 log events (plan.md ## Observability > Structured Log Events).</summary>
+    [Fact]
+    public void HubSubmissionStructuredEvents_EmitExpectedNamesLevelsAndFields()
+    {
+        var logger = new CaptureLogger<ObservabilityLogTests>();
+
+        IngestSubmissionLogEvents.LogConfigRejected(
+            logger,
+            sourceKind: "url",
+            reason: "user_prompt_too_long");
+
+        IngestSubmissionLogEvents.LogQueueEnqueued(
+            logger,
+            taskId: "task-queue-1",
+            queuePosition: 2);
+
+        IngestSubmissionLogEvents.LogQueueAdvanced(
+            logger,
+            taskId: "task-queue-1");
+
+        IngestSubmissionLogEvents.LogQueuePausedAfterRestart(
+            logger,
+            queuedCount: 3);
+
+        IngestSubmissionLogEvents.LogQueueResumed(
+            logger,
+            taskId: "task-queue-1",
+            scope: "task");
+
+        AssertEvent(logger.Entries, "ingest.submission.config_rejected", LogLevel.Warning, ["source_kind", "reason"]);
+        AssertEvent(logger.Entries, "ingest.queue.enqueued", LogLevel.Information, ["task_id", "queue_position"]);
+        AssertEvent(logger.Entries, "ingest.queue.advanced", LogLevel.Information, ["task_id"]);
+        AssertEvent(logger.Entries, "ingest.queue.paused_after_restart", LogLevel.Warning, ["queued_count"]);
+        AssertEvent(logger.Entries, "ingest.queue.resumed", LogLevel.Information, ["task_id", "scope"]);
     }
 
     [Fact]

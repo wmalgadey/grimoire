@@ -50,10 +50,25 @@ public class IngestSubmissionTraceTests
         AssertChildOf(byName, submit, "hub.ingest_submission.store_original");
         AssertChildOf(byName, submit, "hub.ingest_submission.convert_to_markdown");
         AssertChildOf(byName, submit, "hub.ingest_submission.store_normalized");
+        // T046 (004 observability audit) — this span already fired here (markitdown applies
+        // to url and defaults to enabled) but had no assertion.
+        AssertChildOf(byName, submit, "ingest_submission.apply_convert_config");
         // ADR-008: the blocking hub.ingest_run.trigger span is gone; the run phase is
         // carried by the coordinator's ingest_hub.run_supervision span in the same trace.
         var supervision = Assert.Single(byName["ingest_hub.run_supervision"]);
         Assert.Equal(submit.TraceId.ToHexString(), supervision.TraceId.ToHexString());
+
+        // T046 (004 observability audit) — ingest_hub.handle_run_event had no assertion:
+        // the fake agent's `started` and `completed` events each produce a child span of
+        // run_supervision, carrying task_id and event_type correlation attributes.
+        var runEvents = byName["ingest_hub.handle_run_event"].ToList();
+        Assert.Contains(runEvents, e => (string?)e.GetTagItem("event_type") == "started");
+        Assert.Contains(runEvents, e => (string?)e.GetTagItem("event_type") == "completed");
+        Assert.All(runEvents, e =>
+        {
+            Assert.Equal(taskId, e.GetTagItem("task_id"));
+            Assert.Equal(supervision.SpanId.ToHexString(), e.ParentSpanId.ToHexString());
+        });
 
         // C1 (analysis remediation) - every lifecycle publish for this submission stays within the
         // single submit trace tree (Constitution IV: one end-to-end, observable trace chain), never
