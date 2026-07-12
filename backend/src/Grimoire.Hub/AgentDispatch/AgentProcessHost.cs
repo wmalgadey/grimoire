@@ -231,6 +231,12 @@ public sealed class AgentProcessHost : IAgentProcessLauncher
                 {
                     yield break;
                 }
+                catch (ObjectDisposedException)
+                {
+                    // The handle was disposed (e.g. right after a terminal event) while this
+                    // background drain was still in flight; nothing left to read.
+                    yield break;
+                }
 
                 if (line is null)
                 {

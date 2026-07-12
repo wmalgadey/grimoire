@@ -148,6 +148,22 @@ public sealed class FakeAgentProcessLauncher : IAgentProcessLauncher
         Directory.CreateDirectory(Path.GetDirectoryName(path)!);
         var failure = failureReason is null ? "null" : $"\"{failureReason}\"";
         var userPromptSource = request.UserPrompt is null ? "default" : "custom";
+
+        // Mirrors the real agent's Program.cs behavior (004 FR-014): convert-step
+        // configuration is Hub-owned, so carry forward whatever the Hub already wrote
+        // instead of dropping it when this fake "takes over" the artifact.
+        var convertStepsLine = "null";
+        if (File.Exists(path))
+        {
+            var existing = Grimoire.Hub.IngestSubmission.TaskArtifactFrontmatter.TryParse(await File.ReadAllTextAsync(path));
+            if (existing?.ConvertSteps is { Count: > 0 } steps)
+            {
+                var entries = steps.OrderBy(s => s.Key, StringComparer.Ordinal)
+                    .Select(s => $"\"{s.Key}\": {(s.Value ? "enabled" : "disabled")}");
+                convertStepsLine = "{" + string.Join(", ", entries) + "}";
+            }
+        }
+
         var content =
             $"""
             ---
@@ -169,6 +185,7 @@ public sealed class FakeAgentProcessLauncher : IAgentProcessLauncher
             turns: null
             rolled_back: null
             user_prompt_source: {userPromptSource}
+            convert_steps: {convertStepsLine}
             failure_reason: {failure}
             ---
 

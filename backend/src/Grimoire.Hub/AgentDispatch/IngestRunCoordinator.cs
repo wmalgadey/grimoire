@@ -249,6 +249,10 @@ public sealed class IngestRunCoordinator
             }
         }, null, checkInterval, checkInterval);
 
+        // Keeps draining stdout past the terminal event (not returning early): events
+        // that arrive after this task's terminal state are still recorded as
+        // diagnostics via HandleEventAsync's late-event check (FR-022). The loop ends
+        // naturally when the pipe closes.
         var readLoop = Task.Run(async () =>
         {
             await foreach (var line in handle.ReadStdoutLinesAsync(cancellationToken))
@@ -259,17 +263,21 @@ public sealed class IngestRunCoordinator
                     continue;
                 }
 
-                Interlocked.Exchange(ref lastEventTicks, _timeProvider.GetUtcNow().UtcTicks);
-                lastEventType = runEvent.Type;
+                if (!terminal.Task.IsCompleted)
+                {
+                    Interlocked.Exchange(ref lastEventTicks, _timeProvider.GetUtcNow().UtcTicks);
+                    lastEventType = runEvent.Type;
+                }
+
                 await HandleEventAsync(taskId, runEvent, cancellationToken);
 
                 if (runEvent.IsTerminal)
                 {
                     terminal.TrySetResult(runEvent);
-                    return;
                 }
             }
-            // Pipe closed without a terminal event: no transition — the watchdog decides.
+            // Pipe closed (with or without a terminal event already seen): no further
+            // transition — the watchdog decides for the no-terminal-ever case.
         }, cancellationToken);
 
         var terminalEvent = await terminal.Task;

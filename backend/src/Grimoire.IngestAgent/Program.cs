@@ -26,6 +26,25 @@ var journal = new WriteJournal();
 GuardedToolExecutor? executor = null;
 AnthropicModelClient? modelClient = null;
 
+// 004 FR-014: convert-step configuration is Hub-owned and set at submission time.
+// Read it from whatever the Hub already wrote before this process's first write
+// overwrites the file, then carry it forward verbatim into every subsequent write
+// so it survives the agent taking over the artifact.
+IReadOnlyDictionary<string, bool>? convertSteps = null;
+if (File.Exists(options.TaskArtifactPath))
+{
+    try
+    {
+        var preExisting = await taskStore.ReadAsync(options.TaskArtifactPath, CancellationToken.None);
+        convertSteps = preExisting.ConvertSteps;
+    }
+    catch
+    {
+        // Not yet a valid artifact (e.g. manual CLI run with no prior Hub write) — no
+        // convert-step configuration to carry forward.
+    }
+}
+
 try
 {
     modelClient = new AnthropicModelClient();
@@ -42,7 +61,8 @@ try
             SourceRef: options.SourceRef,
             PagesTouched: [],
             FailureReason: null,
-            Narrative: $"Ingest started for source: {options.SourceRef}"),
+            Narrative: $"Ingest started for source: {options.SourceRef}",
+            ConvertSteps: convertSteps),
         CancellationToken.None);
 
     var promptLoader = new SystemPromptLoader();
@@ -56,7 +76,7 @@ try
             "instructions",
             options.SystemPromptPath,
             systemPromptFailure.Reason);
-        await FinalizeFailedAsync(taskStore, options, startTime, systemPromptFailure.Reason, null, logAppender, false, modelId: modelClient.ModelId);
+        await FinalizeFailedAsync(taskStore, options, startTime, systemPromptFailure.Reason, null, logAppender, false, modelId: modelClient.ModelId, convertSteps: convertSteps);
         runEvents.EmitFailed(systemPromptFailure.Reason);
         return 1;
     }
@@ -84,7 +104,7 @@ try
                 "default_user_prompt",
                 options.DefaultUserPromptPath,
                 defaultPromptFailure.Reason);
-            await FinalizeFailedAsync(taskStore, options, startTime, defaultPromptFailure.Reason, null, logAppender, false, modelId: modelClient.ModelId);
+            await FinalizeFailedAsync(taskStore, options, startTime, defaultPromptFailure.Reason, null, logAppender, false, modelId: modelClient.ModelId, convertSteps: convertSteps);
             runEvents.EmitFailed(defaultPromptFailure.Reason);
             return 1;
         }
@@ -104,7 +124,7 @@ try
             "policy",
             options.PolicyPath,
             policyFailure.Reason);
-        await FinalizeFailedAsync(taskStore, options, startTime, policyFailure.Reason, null, logAppender, false, modelId: modelClient.ModelId);
+        await FinalizeFailedAsync(taskStore, options, startTime, policyFailure.Reason, null, logAppender, false, modelId: modelClient.ModelId, convertSteps: convertSteps);
         runEvents.EmitFailed(policyFailure.Reason);
         return 1;
     }
@@ -161,7 +181,7 @@ try
     {
         IngestAgentLogEvents.LogAgentCapExceeded(logger, options.TaskId, capEx.Cap, capEx.TurnsUsed);
         var rollbackOutcome = await RollbackAsync(journal, options.TaskId, logger);
-        await FinalizeFailedAsync(taskStore, options, startTime, capEx.Message, journal, logAppender, rollbackOutcome, loadedSystemPrompt, loadedPolicy, modelClient.ModelId, executor.Denials, userPromptSource, effectiveUserPrompt);
+        await FinalizeFailedAsync(taskStore, options, startTime, capEx.Message, journal, logAppender, rollbackOutcome, loadedSystemPrompt, loadedPolicy, modelClient.ModelId, executor.Denials, userPromptSource, effectiveUserPrompt, convertSteps);
         runEvents.EmitFailed(capEx.Message);
         return 1;
     }
@@ -182,7 +202,8 @@ try
             modelClient.ModelId,
             executor.Denials,
             userPromptSource,
-            effectiveUserPrompt);
+            effectiveUserPrompt,
+            convertSteps);
         runEvents.EmitFailed(allDeniedReason);
         return 1;
     }
@@ -219,7 +240,8 @@ try
             Turns: loopResult.TurnsUsed,
             RolledBack: null,
             UserPromptSource: userPromptSource,
-            UserPrompt: effectiveUserPrompt),
+            UserPrompt: effectiveUserPrompt,
+            ConvertSteps: convertSteps),
         CancellationToken.None);
 
     await logAppender.EnsureLogEntryAsync(
@@ -244,7 +266,7 @@ catch (Exception ex)
 {
     var safeMessage = SanitizeErrorText(ex.Message);
     var rollbackOutcome = await RollbackAsync(journal, options.TaskId, logger);
-    await FinalizeFailedAsync(taskStore, options, startTime, safeMessage, journal, logAppender, rollbackOutcome, modelId: modelClient?.ModelId, deniedActions: executor?.Denials);
+    await FinalizeFailedAsync(taskStore, options, startTime, safeMessage, journal, logAppender, rollbackOutcome, modelId: modelClient?.ModelId, deniedActions: executor?.Denials, convertSteps: convertSteps);
     runEvents.EmitFailed(safeMessage);
     return 1;
 }
@@ -283,7 +305,8 @@ static async Task FinalizeFailedAsync(
     string? modelId = null,
     IReadOnlyList<DeniedActionRecord>? deniedActions = null,
     string? userPromptSource = null,
-    string? userPrompt = null)
+    string? userPrompt = null,
+    IReadOnlyDictionary<string, bool>? convertSteps = null)
 {
     using var finalizeSpan = IngestAgentTracing.ActivitySource.StartActivity("ingest_agent.finalize_artifact");
     finalizeSpan?.SetTag("task_id", options.TaskId);
@@ -312,7 +335,8 @@ static async Task FinalizeFailedAsync(
             Turns: null,
             RolledBack: journal is not null ? rolledBack : null,
             UserPromptSource: userPromptSource,
-            UserPrompt: userPrompt),
+            UserPrompt: userPrompt,
+            ConvertSteps: convertSteps),
         CancellationToken.None);
 
     await logAppender.EnsureLogEntryAsync(

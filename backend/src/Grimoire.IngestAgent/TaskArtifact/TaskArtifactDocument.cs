@@ -49,4 +49,8 @@ public sealed record TaskArtifactDocument(
     bool? RolledBack = null,
     // 004 fields: effective per-run steering prompt (FR-009)
     string? UserPromptSource = null,
-    string? UserPrompt = null);
+    string? UserPrompt = null,
+    // 004 field: Hub-owned convert-step configuration, carried forward verbatim
+    // across every write this process makes so it survives the agent taking over
+    // the artifact from the Hub (FR-014).
+    IReadOnlyDictionary<string, bool>? ConvertSteps = null);

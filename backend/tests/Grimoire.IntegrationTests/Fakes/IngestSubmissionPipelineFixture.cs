@@ -30,6 +30,8 @@ public sealed class IngestSubmissionPipelineFixture : IDisposable
     public List<RealtimeLifecycleEvent> PublishedEvents { get; } = [];
     public List<(string Method, object? Payload, DateTimeOffset ReceivedAt)> PublishedActivity { get; } = [];
     public CaptureLogger<IngestSubmissionPipeline> Logger { get; } = new();
+    public CaptureLogger<IngestRunCoordinator> CoordinatorLogger { get; } = new();
+    public IngestLifecyclePublisher Publisher { get; private set; } = null!;
 
     public IngestSubmissionPipelineFixture(
         FakeAgentProcessLauncher? launcher = null,
@@ -61,6 +63,7 @@ public sealed class IngestSubmissionPipelineFixture : IDisposable
 
         var hubContext = new RecordingHubContext(PublishedEvents, PublishedActivity);
         var publisher = new IngestLifecyclePublisher(hubContext);
+        Publisher = publisher;
 
         Coordinator = new IngestRunCoordinator(
             Repository,
@@ -69,7 +72,8 @@ public sealed class IngestSubmissionPipelineFixture : IDisposable
             new HubTaskArtifactWriter(),
             ContentPaths,
             timeProvider,
-            livenessWindow ?? TimeSpan.FromSeconds(60));
+            livenessWindow ?? TimeSpan.FromSeconds(60),
+            CoordinatorLogger);
         Coordinator.InitializeAsync().GetAwaiter().GetResult();
 
         var httpClient = new HttpClient(urlFetchHandler ?? new NotFoundHandler());
