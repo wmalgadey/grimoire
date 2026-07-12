@@ -126,6 +126,7 @@ public sealed class AgentProcessHost : IAgentProcessLauncher
 
         var authToken = _secretsLoader.GetAnthropicAuthToken();
         var ingestModel = _secretsLoader.GetIngestModel();
+        var ingestBaseUrl = _secretsLoader.GetIngestBase();
         var ingestTokenCap = _secretsLoader.GetIngestTokenCap();
         // Build the child env by stripping credential keys from the parent env copy and
         // re-injecting only what was explicitly loaded from the secrets file (ADR-004).
@@ -137,7 +138,7 @@ public sealed class AgentProcessHost : IAgentProcessLauncher
                 baseEnv[key] = value;
         }
 
-        var childEnv = BuildChildEnvironment(baseEnv, authToken, ingestModel, ingestTokenCap, Activity.Current);
+        var childEnv = BuildChildEnvironment(baseEnv, authToken, ingestBaseUrl, ingestModel, ingestTokenCap, Activity.Current);
         startInfo.Environment.Clear();
         foreach (var (key, value) in childEnv)
         {
@@ -159,6 +160,7 @@ public sealed class AgentProcessHost : IAgentProcessLauncher
     public static Dictionary<string, string> BuildChildEnvironment(
         IDictionary<string, string> baseEnv,
         string? authToken,
+        string? ingestBaseUrl = null,
         string? ingestModel = null,
         string? ingestTokenCap = null,
         Activity? currentActivity = null)
@@ -177,7 +179,18 @@ public sealed class AgentProcessHost : IAgentProcessLauncher
         env.Remove("GRIMOIRE_INGEST_MODEL");
         if (!string.IsNullOrWhiteSpace(effectiveModel))
         {
+            Console.WriteLine($"Using GRIMOIRE_INGEST_MODEL={effectiveModel} for Ingest agent process.");
             env["GRIMOIRE_INGEST_MODEL"] = effectiveModel;
+        }
+
+        var effectiveBaseUrl = !string.IsNullOrWhiteSpace(ingestBaseUrl)
+            ? ingestBaseUrl
+            : (baseEnv.TryGetValue("GRIMOIRE_INGEST_BASE_URL", out var inheritedBaseUrl) ? inheritedBaseUrl : null);
+        env.Remove("GRIMOIRE_INGEST_BASE_URL");
+        if (!string.IsNullOrWhiteSpace(effectiveBaseUrl))
+        {
+            Console.WriteLine($"Using GRIMOIRE_INGEST_BASE_URL={effectiveBaseUrl} for Ingest agent process.");
+            env["GRIMOIRE_INGEST_BASE_URL"] = effectiveBaseUrl;
         }
 
         var effectiveTokenCap = !string.IsNullOrWhiteSpace(ingestTokenCap)

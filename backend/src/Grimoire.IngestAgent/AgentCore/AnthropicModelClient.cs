@@ -1,5 +1,6 @@
 using Anthropic;
 using Anthropic.Models.Messages;
+using Microsoft.Extensions.Logging;
 using System.Text.Json;
 
 namespace Grimoire.IngestAgent.AgentCore;
@@ -20,10 +21,24 @@ public sealed class AnthropicModelClient : IModelClient
     private IReadOnlyList<ToolDefinition>? _cachedToolSource;
     private List<ToolUnion>? _cachedTools;
 
-    public AnthropicModelClient()
+    public AnthropicModelClient(ILogger<AnthropicModelClient> logger = null!)
     {
-        _client = new AnthropicClient();
+        var baseUrl = Environment.GetEnvironmentVariable("GRIMOIRE_INGEST_BASE_URL");
+
+        _client = string.IsNullOrWhiteSpace(baseUrl)
+            ? new AnthropicClient()
+        {
+            Handlers = [new LoggingHandler(logger)],
+        }
+            : new AnthropicClient()
+            {
+                BaseUrl = baseUrl,
+                Handlers = [new LoggingHandler(logger)],
+            };
+
         ModelId = Environment.GetEnvironmentVariable("GRIMOIRE_INGEST_MODEL") ?? DefaultModel;
+
+        logger?.LogInformation("AnthropicModelClient initialized with model {ModelId} and base URL {BaseUrl}.", ModelId, _client.BaseUrl);
     }
 
     public string ModelId { get; }
@@ -155,4 +170,59 @@ public sealed class AnthropicModelClient : IModelClient
         return contentBlocks;
     }
 
+    private class LoggingHandler : DelegatingHandler
+    {
+        private ILogger<AnthropicModelClient> _logger;
+
+        public LoggingHandler(ILogger<AnthropicModelClient> logger)
+        {
+            this._logger = logger;
+        }
+
+        protected override HttpResponseMessage Send(HttpRequestMessage request, CancellationToken cancellationToken)
+        {
+            _logger?.LogInformation("Anthropic request: {Method} {Url}", request.Method, request.RequestUri);
+
+            if (request.Content != null)
+            {
+                var requestBody = request.Content.ReadAsStringAsync(cancellationToken).GetAwaiter().GetResult();
+                _logger?.LogInformation("Anthropic request body: {RequestBody}", requestBody);
+            }
+
+            var response = base.Send(request, cancellationToken);
+
+            _logger?.LogInformation("Anthropic response: {StatusCode}", response.StatusCode);
+
+            if (response.Content != null)
+            {
+                var responseBody = response.Content.ReadAsStringAsync(cancellationToken).GetAwaiter().GetResult();
+                _logger?.LogInformation("Anthropic response body: {ResponseBody}", responseBody);
+            }
+
+            return response;
+        }
+
+        override protected async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+        {
+            _logger?.LogInformation("Anthropic request: {Method} {Url}", request.Method, request.RequestUri);
+
+            if (request.Content != null)
+            {
+                var requestBody = await request.Content.ReadAsStringAsync(cancellationToken);
+                _logger?.LogInformation("Anthropic request body: {RequestBody}", requestBody);
+            }
+
+            var response = await base.SendAsync(request, cancellationToken);
+
+            _logger?.LogInformation("Anthropic response: {StatusCode}", response.StatusCode);
+
+            if (response.Content != null)
+            {
+                var responseBody = await response.Content.ReadAsStringAsync(cancellationToken);
+                _logger?.LogInformation("Anthropic response body: {ResponseBody}", responseBody);
+            }
+
+            return response;
+        }
+    }
 }

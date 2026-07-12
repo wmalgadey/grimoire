@@ -47,7 +47,7 @@ if (File.Exists(options.TaskArtifactPath))
 
 try
 {
-    modelClient = new AnthropicModelClient();
+    modelClient = new AnthropicModelClient(loggerFactory.CreateLogger<AnthropicModelClient>());
 
     await taskStore.WriteAsync(
         options.TaskArtifactPath,
@@ -264,6 +264,8 @@ try
 }
 catch (Exception ex)
 {
+    logger.LogError(ex, "Ingest agent failed for task {TaskId}.", options.TaskId);
+
     var safeMessage = SanitizeErrorText(ex.Message);
     var rollbackOutcome = await RollbackAsync(journal, options.TaskId, logger);
     await FinalizeFailedAsync(taskStore, options, startTime, safeMessage, journal, logAppender, rollbackOutcome, modelId: modelClient?.ModelId, deniedActions: executor?.Denials, convertSteps: convertSteps);
