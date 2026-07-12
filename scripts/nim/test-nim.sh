@@ -11,7 +11,7 @@ if [ -z "$NVIDIA_API_KEY" ]; then
 fi
 
 PROMPT="${1:-Erkläre Kubernetes in einem Satz.}"
-MODEL=${MODEL_NAME:-"meta/llama-3.1-8b-instruct"}
+MODEL=${NVIDIA_MODEL:-"meta/llama-3.1-8b-instruct"}
 ENDPOINT="https://integrate.api.nvidia.com/v1/chat/completions"
 
 # Sicheres JSON-Payload-Building
