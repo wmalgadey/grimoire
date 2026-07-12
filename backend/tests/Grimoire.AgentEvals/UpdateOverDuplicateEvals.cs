@@ -19,7 +19,7 @@ public class UpdateOverDuplicateEvals
                     "method alone on queries mixing rare identifiers (error codes, product SKUs) with natural " +
                     "language intent, and has become the default retrieval pattern in production RAG systems.",
                 runLabel: $"sc006-{i + 1}",
-                mutateSkillFile: null,
+                mutateSystemPrompt: null,
                 cancellationToken: CancellationToken.None);
 
             var pageCount = result.PageFiles.Count;

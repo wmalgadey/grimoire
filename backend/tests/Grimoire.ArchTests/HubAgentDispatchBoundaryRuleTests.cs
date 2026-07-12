@@ -4,7 +4,7 @@ namespace Grimoire.ArchTests;
 
 /// <summary>
 /// Structural boundary rule for ADR-002: the Ingest agent is invoked exclusively as a
-/// standalone child process (Grimoire.Hub.AgentDispatch.IngestAgentDispatcher), never as an
+/// standalone child process (Grimoire.Hub.AgentDispatch.AgentProcessHost), never as an
 /// in-process library call. Feature 003 substantially grows Hub's submission/task-artifact
 /// responsibilities, which is exactly the pressure that could tempt an in-process shortcut.
 /// </summary>

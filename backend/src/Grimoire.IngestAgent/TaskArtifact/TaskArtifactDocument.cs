@@ -46,4 +46,7 @@ public sealed record TaskArtifactDocument(
     PolicyRecord? Policy = null,
     string? Model = null,
     int? Turns = null,
-    bool? RolledBack = null);
+    bool? RolledBack = null,
+    // 004 fields: effective per-run steering prompt (FR-009)
+    string? UserPromptSource = null,
+    string? UserPrompt = null);

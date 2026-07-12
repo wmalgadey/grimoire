@@ -20,7 +20,7 @@ public class CatalogDiscoverabilityEvals
                     "harness checks from evaluation-style judgment scoring, and gate a definition of done on the " +
                     "aggregate pass rate rather than any single run.",
                 runLabel: $"sc008-{i + 1}",
-                mutateSkillFile: null,
+                mutateSystemPrompt: null,
                 cancellationToken: CancellationToken.None);
 
             var pass = string.Equals(result.Status, "completed", StringComparison.OrdinalIgnoreCase)

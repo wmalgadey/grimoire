@@ -9,13 +9,13 @@ namespace Grimoire.Hub.Submission;
 public sealed class SubmissionService
 {
     private readonly OperationalStateRepository _repository;
-    private readonly IngestAgentDispatcher _dispatcher;
+    private readonly AgentProcessHost _processHost;
     private readonly ILogger<SubmissionService> _logger;
 
-    public SubmissionService(OperationalStateRepository repository, IngestAgentDispatcher dispatcher, ILogger<SubmissionService>? logger = null)
+    public SubmissionService(OperationalStateRepository repository, AgentProcessHost processHost, ILogger<SubmissionService>? logger = null)
     {
         _repository = repository;
-        _dispatcher = dispatcher;
+        _processHost = processHost;
         _logger = logger ?? NullLogger<SubmissionService>.Instance;
     }
 
@@ -51,14 +51,17 @@ public sealed class SubmissionService
             IndexPath: contentPaths.IndexPath,
             LogPath: contentPaths.LogPath,
             PastedText: options.PastedText,
-            InstructionsDir: contentPaths.InstructionsDir,
+            SystemPromptPath: contentPaths.SystemPromptPath,
+            DefaultUserPromptPath: contentPaths.DefaultUserPromptPath,
             PolicyPath: contentPaths.PolicyPath);
 
         using (var spawnSpan = HubTracing.ActivitySource.StartActivity("hub.ingest.spawn_agent"))
         {
             spawnSpan?.SetTag("task_id", taskId);
             spawnSpan?.SetTag("agent", "ingest");
-            await _dispatcher.DispatchAsync(request, cancellationToken);
+            // Manual CLI path: run-to-exit is explicitly permitted here (ADR-008 exit-code
+            // note); the web dispatch path goes through IngestRunCoordinator instead.
+            await _processHost.RunToExitAsync(request, cancellationToken);
         }
 
         // Task has reached a terminal state; delete the row so the DB doesn't grow unboundedly.

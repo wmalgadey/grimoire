@@ -126,6 +126,7 @@ public class ObservabilityMetricsTests
 
         await loop.RunAsync(
             systemPrompt: "You are a test agent.",
+            userPrompt: "Integrate the source.",
             taskId: "task-metrics",
             sourceRef: "source.md",
             sourceContent: "# source",

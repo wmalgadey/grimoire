@@ -40,8 +40,15 @@ await repository.InitializeAsync();
 builder.Services.AddSingleton(repository);
 builder.Services.AddSingleton(contentPaths);
 builder.Services.AddSingleton(new LocalSecretsLoader(envPath));
-builder.Services.AddSingleton<IIngestAgentDispatcher>(sp => new IngestAgentDispatcher(sp.GetRequiredService<LocalSecretsLoader>(), agentProjectPath));
-builder.Services.AddSingleton<IngestRunGate>();
+builder.Services.AddSingleton<AgentProcessHost>(sp => new AgentProcessHost(sp.GetRequiredService<LocalSecretsLoader>(), agentProjectPath));
+builder.Services.AddSingleton<IAgentProcessLauncher>(sp => sp.GetRequiredService<AgentProcessHost>());
+builder.Services.AddSingleton<IngestRunCoordinator>(sp => new IngestRunCoordinator(
+    sp.GetRequiredService<OperationalStateRepository>(),
+    sp.GetRequiredService<IAgentProcessLauncher>(),
+    sp.GetRequiredService<IngestLifecyclePublisher>(),
+    sp.GetRequiredService<HubTaskArtifactWriter>(),
+    sp.GetRequiredService<ContentRootPaths>(),
+    logger: sp.GetRequiredService<ILogger<IngestRunCoordinator>>()));
 builder.Services.AddSingleton<IngestSubmissionValidator>();
 builder.Services.AddSingleton<IngestSubmissionPipeline>();
 
@@ -59,8 +66,8 @@ if (args.Length > 0 && string.Equals(args[0], "submit-source", StringComparison.
     }
 
     var secretsLoader = new LocalSecretsLoader(envPath);
-    var dispatcher = new IngestAgentDispatcher(secretsLoader, agentProjectPath);
-    var service = new SubmissionService(repository, dispatcher);
+    var processHost = new AgentProcessHost(secretsLoader, agentProjectPath);
+    var service = new SubmissionService(repository, processHost);
 
     var taskId = await service.SubmitAsync(new SubmitSourceOptions(sourcePath, sourceKind, pastedText), repoRoot, contentPaths);
     Console.WriteLine($"Submitted ingest task: {taskId}");
@@ -68,9 +75,15 @@ if (args.Length > 0 && string.Equals(args[0], "submit-source", StringComparison.
 }
 
 var app = builder.Build();
+
+// FR-021: queued rows surviving a restart pause the queue until explicit user resume.
+var coordinator = app.Services.GetRequiredService<IngestRunCoordinator>();
+await coordinator.InitializeAsync();
+
 app.MapGet("/", () => "Grimoire Hub");
 app.MapHub<IngestLifecycleHub>("/hubs/ingest-lifecycle");
 app.MapGroup("/api/ingest-submissions").MapIngestSubmissionEndpoints();
+app.MapGroup("/api/ingest-queue").MapIngestQueueEndpoints();
 app.Run();
 
 static string? ParseOption(string[] args, string option)

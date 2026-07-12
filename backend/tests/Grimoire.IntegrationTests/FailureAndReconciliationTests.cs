@@ -20,11 +20,11 @@ public class FailureAndReconciliationTests
         var loader = new LocalSecretsLoader(Path.Combine(root, ".env"));
         var repoRoot = FindRepoRoot(Directory.GetCurrentDirectory());
         var agentProjectPath = Path.Combine(repoRoot, "backend", "src", "Grimoire.IngestAgent", "Grimoire.IngestAgent.csproj");
-        var dispatcher = new IngestAgentDispatcher(loader, agentProjectPath);
+        var processHost = new AgentProcessHost(loader, agentProjectPath);
 
         var taskId = $"test-{Guid.NewGuid():N}";
         var repoRootForPaths = FindRepoRoot(Directory.GetCurrentDirectory());
-        var exitCode = await dispatcher.DispatchAsync(new IngestAgentRequest(
+        var exitCode = await processHost.RunToExitAsync(new IngestAgentRequest(
             TaskId: taskId,
             SourceRef: Path.Combine(root, "missing-source.md"),
             SourceKind: "file",
@@ -33,7 +33,8 @@ public class FailureAndReconciliationTests
             IndexPath: indexPath,
             LogPath: logPath,
             PastedText: null,
-            InstructionsDir: Path.Combine(repoRootForPaths, "agents", "ingest"),
+            SystemPromptPath: Path.Combine(repoRootForPaths, "agents", "ingest", "system-prompt.md"),
+            DefaultUserPromptPath: Path.Combine(repoRootForPaths, "agents", "ingest", "default-user-prompt.md"),
             PolicyPath: Path.Combine(repoRootForPaths, "agents", "ingest", "policy.json")));
 
         Assert.Equal(1, exitCode);

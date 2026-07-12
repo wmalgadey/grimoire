@@ -87,7 +87,7 @@ public class PolicyMisconfigurationTests
             ]);
 
             var loop = new AgentLoop(fake, executor);
-            var result = await loop.RunAsync("prompt", "task-policy-1", "source.md", "src", CancellationToken.None);
+            var result = await loop.RunAsync("prompt", "Integrate the source.", "task-policy-1", "source.md", "src", CancellationToken.None);
 
             Assert.Equal(3, result.TurnsUsed);
             Assert.Equal(2, executor.Denials.Count);

@@ -46,11 +46,22 @@ public sealed class TaskArtifactStore
         sb.AppendLine($"model: {(doc.Model is null ? "null" : $"\"{Escape(doc.Model)}\"")}");
         sb.AppendLine($"turns: {(doc.Turns.HasValue ? doc.Turns.Value.ToString() : "null")}");
         sb.AppendLine($"rolled_back: {(doc.RolledBack.HasValue ? (doc.RolledBack.Value ? "true" : "false") : "null")}");
+        sb.AppendLine($"user_prompt_source: {(doc.UserPromptSource is null ? "null" : doc.UserPromptSource)}");
         sb.AppendLine($"failure_reason: {failure}");
         sb.AppendLine("---");
         sb.AppendLine();
         sb.Append(doc.Narrative.TrimEnd());
         sb.AppendLine();
+
+        // 004 (FR-009): the effective steering prompt is recorded verbatim as a body
+        // section so task details can display it without frontmatter size limits.
+        if (!string.IsNullOrWhiteSpace(doc.UserPrompt))
+        {
+            sb.AppendLine();
+            sb.AppendLine("## User Prompt");
+            sb.AppendLine();
+            sb.AppendLine(doc.UserPrompt.TrimEnd());
+        }
 
         // Contract (task-artifact-format.md): completed artifacts with denials carry a
         // human-readable body section mirroring the denied_actions frontmatter.
@@ -136,6 +147,13 @@ public sealed class TaskArtifactStore
             ? string.Equals(rbRaw, "true", StringComparison.OrdinalIgnoreCase)
             : null;
 
+        var userPromptSource = frontmatter.TryGetValue("user_prompt_source", out var upsRaw) && !string.Equals(upsRaw, "null", StringComparison.OrdinalIgnoreCase)
+            ? Unquote(upsRaw)
+            : null;
+
+        var body = sections[2];
+        var userPrompt = ExtractSection(body, "## User Prompt");
+
         // Denied actions and instruction_files are stored as JSON; parse inline.
         IReadOnlyList<DeniedActionEntry>? deniedActions = null;
         if (frontmatter.TryGetValue("denied_actions", out var daRaw) && !string.Equals(daRaw, "[]", StringComparison.OrdinalIgnoreCase))
@@ -168,7 +186,7 @@ public sealed class TaskArtifactStore
             SourceRef: Unquote(frontmatter["source_ref"]),
             PagesTouched: pagesTouched,
             FailureReason: failureReason,
-            Narrative: sections[2].Trim(),
+            Narrative: NarrativeWithoutUserPromptSection(body),
             PagesCreated: pagesCreated,
             PagesUpdated: pagesUpdated,
             PagesSuperseded: pagesSuperseded,
@@ -177,7 +195,33 @@ public sealed class TaskArtifactStore
             Policy: policy,
             Model: model,
             Turns: turns,
-            RolledBack: rolledBack);
+            RolledBack: rolledBack,
+            UserPromptSource: userPromptSource,
+            UserPrompt: userPrompt);
+    }
+
+    private static string NarrativeWithoutUserPromptSection(string body)
+    {
+        var idx = body.IndexOf("## User Prompt", StringComparison.Ordinal);
+        return (idx < 0 ? body : body[..idx]).Trim();
+    }
+
+    /// <summary>Extracts the content of one `## Heading` body section, up to the next `## ` heading.</summary>
+    private static string? ExtractSection(string body, string heading)
+    {
+        var start = body.IndexOf(heading + "\n", StringComparison.Ordinal);
+        if (start < 0)
+        {
+            start = body.IndexOf(heading + "\r\n", StringComparison.Ordinal);
+            if (start < 0)
+                return null;
+        }
+
+        var contentStart = start + heading.Length;
+        var next = body.IndexOf("\n## ", contentStart, StringComparison.Ordinal);
+        var section = next < 0 ? body[contentStart..] : body[contentStart..next];
+        var trimmed = section.Trim();
+        return trimmed.Length == 0 ? null : trimmed;
     }
 
     private static IReadOnlyList<string> ParseStringList(Dictionary<string, string> fm, string key)

@@ -20,7 +20,8 @@ public class ObservabilityLogTests
         IngestAgentLogEvents.LogInstructionsLoaded(
             logger,
             taskId: "task-1",
-            instructionFiles: "agents/ingest/CLAUDE.md:abc;agents/ingest/skills/wiki-maintenance/SKILL.md:def",
+            path: "agents/ingest/system-prompt.md",
+            sha256: "abc",
             policyVersion: 1,
             policySha256: "policy-sha");
 
@@ -28,7 +29,7 @@ public class ObservabilityLogTests
             logger,
             taskId: "task-2",
             artifact: "instructions",
-            path: "agents/ingest/CLAUDE.md",
+            path: "agents/ingest/system-prompt.md",
             reason: "missing");
 
         IngestAgentLogEvents.LogToolAllowed(
@@ -72,7 +73,7 @@ public class ObservabilityLogTests
             cap: "turns",
             turns: 50);
 
-        AssertEvent(logger.Entries, "ingest.instructions.loaded", LogLevel.Information, ["task_id", "instruction_files", "policy_version", "policy_sha256"]);
+        AssertEvent(logger.Entries, "ingest.instructions.loaded", LogLevel.Information, ["task_id", "path", "sha256", "policy_version", "policy_sha256"]);
         AssertEvent(logger.Entries, "ingest.instructions.load_failed", LogLevel.Error, ["task_id", "artifact", "path", "reason"]);
         AssertEvent(logger.Entries, "ingest.tool.allowed", LogLevel.Information, ["task_id", "tool", "target", "turn"]);
         AssertEvent(logger.Entries, "ingest.tool.denied", LogLevel.Warning, ["task_id", "tool", "target", "reason", "turn"]);
@@ -106,6 +107,7 @@ public class ObservabilityLogTests
 
         var result = await loop.RunAsync(
             systemPrompt: "You are a test agent.",
+            userPrompt: "Integrate the source.",
             taskId: "task-mixed",
             sourceRef: "source.md",
             sourceContent: "# source",

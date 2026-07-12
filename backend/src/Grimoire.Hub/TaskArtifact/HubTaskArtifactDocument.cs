@@ -17,4 +17,8 @@ public sealed record HubTaskArtifactDocument(
     string? SourceRef,
     string? OriginalRef,
     string? FailureReason,
-    string Narrative);
+    string Narrative,
+    // 004: effective steering prompt + applied convert-step configuration (FR-009, FR-014)
+    string? UserPromptSource = null,
+    string? UserPrompt = null,
+    IReadOnlyDictionary<string, bool>? ConvertSteps = null);

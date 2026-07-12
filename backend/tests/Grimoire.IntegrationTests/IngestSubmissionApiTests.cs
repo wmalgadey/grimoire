@@ -86,7 +86,7 @@ public class IngestSubmissionApiTests
         // than racing the background task.
         using var handler = new SucceedingHandler();
         using var fixture = new IngestSubmissionPipelineFixture(
-            dispatcher: new FakeIngestAgentDispatcher(simulatedRunDuration: TimeSpan.FromSeconds(2)),
+            launcher: new FakeAgentProcessLauncher(simulatedRunDuration: TimeSpan.FromSeconds(2)),
             urlFetchHandler: handler);
 
         var taskId = await fixture.Pipeline.AcceptAsync(
@@ -104,7 +104,7 @@ public class IngestSubmissionApiTests
     [Fact]
     public async Task AcceptAsync_FileSubmission_ReturnsTaskIdImmediately_WithNonTerminalStatus()
     {
-        using var fixture = new IngestSubmissionPipelineFixture(dispatcher: new FakeIngestAgentDispatcher(simulatedRunDuration: TimeSpan.FromSeconds(2)));
+        using var fixture = new IngestSubmissionPipelineFixture(launcher: new FakeAgentProcessLauncher(simulatedRunDuration: TimeSpan.FromSeconds(2)));
         var bytes = System.Text.Encoding.UTF8.GetBytes("# Note\n\nContent.");
 
         var taskId = await fixture.Pipeline.AcceptAsync(

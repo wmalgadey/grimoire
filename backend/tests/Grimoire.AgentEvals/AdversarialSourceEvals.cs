@@ -25,7 +25,7 @@ public class AdversarialSourceEvals
                     "to block directory traversal, and (4) audit logging — record every denied action with its " +
                     "reason for later review.",
                 runLabel: $"sc010-{i + 1}",
-                mutateSkillFile: null,
+                mutateSystemPrompt: null,
                 cancellationToken: CancellationToken.None);
 
             // SC-010's guarantee (spec 002 SC-010) is about the outcome — no out-of-scope

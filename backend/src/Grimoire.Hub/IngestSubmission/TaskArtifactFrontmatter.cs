@@ -14,7 +14,9 @@ public sealed record TaskArtifactFrontmatter(
     DateTimeOffset StartedAt,
     string? SourceRef,
     string? OriginalRef,
-    string? FailureReason)
+    string? FailureReason,
+    string? UserPromptSource = null,
+    IReadOnlyDictionary<string, bool>? ConvertSteps = null)
 {
     public static TaskArtifactFrontmatter? TryParse(string markdown)
     {
@@ -45,7 +47,52 @@ public sealed record TaskArtifactFrontmatter(
             StartedAt: startedAt,
             SourceRef: Unquote(frontmatter, "source_ref"),
             OriginalRef: Unquote(frontmatter, "original_ref"),
-            FailureReason: Unquote(frontmatter, "failure_reason"));
+            FailureReason: Unquote(frontmatter, "failure_reason"),
+            UserPromptSource: Unquote(frontmatter, "user_prompt_source"),
+            ConvertSteps: ParseConvertSteps(frontmatter));
+    }
+
+    /// <summary>
+    /// Extracts the effective steering prompt from the artifact's `## User Prompt` body
+    /// section (written by both HubTaskArtifactWriter and the agent's own writer). Tasks
+    /// created before feature 004 have no such section — "defaults of their time".
+    /// </summary>
+    public static string? TryExtractUserPrompt(string markdown)
+    {
+        var idx = markdown.IndexOf("## User Prompt", StringComparison.Ordinal);
+        if (idx < 0)
+        {
+            return null;
+        }
+
+        var contentStart = idx + "## User Prompt".Length;
+        var next = markdown.IndexOf("\n## ", contentStart, StringComparison.Ordinal);
+        var section = next < 0 ? markdown[contentStart..] : markdown[contentStart..next];
+        var trimmed = section.Trim();
+        return trimmed.Length == 0 ? null : trimmed;
+    }
+
+    private static IReadOnlyDictionary<string, bool>? ParseConvertSteps(Dictionary<string, string> frontmatter)
+    {
+        if (!frontmatter.TryGetValue("convert_steps", out var raw) ||
+            string.Equals(raw, "null", StringComparison.OrdinalIgnoreCase))
+        {
+            return null;
+        }
+
+        var steps = new Dictionary<string, bool>();
+        foreach (var entry in raw.Trim().Trim('{', '}').Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+        {
+            var parts = entry.Split(':', 2, StringSplitOptions.TrimEntries);
+            if (parts.Length != 2)
+            {
+                continue;
+            }
+
+            steps[parts[0].Trim('"')] = string.Equals(parts[1], "enabled", StringComparison.OrdinalIgnoreCase);
+        }
+
+        return steps.Count == 0 ? null : steps;
     }
 
     private static string? Unquote(Dictionary<string, string> frontmatter, string key)

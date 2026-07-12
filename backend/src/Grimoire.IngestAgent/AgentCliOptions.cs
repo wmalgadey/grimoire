@@ -9,8 +9,11 @@ public sealed record AgentCliOptions(
     string IndexPath,
     string LogPath,
     string? PastedText,
-    string InstructionsDir,
-    string PolicyPath)
+    string SystemPromptPath,
+    string DefaultUserPromptPath,
+    string? UserPrompt,
+    string PolicyPath,
+    int HeartbeatSeconds = 10)
 {
     public string TaskArtifactPath => Path.Combine(TasksDir, $"{TaskId}.md");
 }

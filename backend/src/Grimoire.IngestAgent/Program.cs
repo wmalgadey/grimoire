@@ -12,6 +12,8 @@ var loggerFactory = telemetry.LoggerFactory;
 var logger = loggerFactory.CreateLogger("Grimoire.IngestAgent.Program");
 
 var options = ParseArgs(args);
+// Stdout is the NDJSON event channel (ADR-008); all logging goes to stderr/OTLP.
+using var runEvents = new RunEventEmitter(Console.Out, options.TaskId);
 var taskStore = new TaskArtifactStore();
 var logAppender = new IngestLogAppender(loggerFactory.CreateLogger<IngestLogAppender>());
 var sourceReader = new SourceReader();
@@ -43,21 +45,53 @@ try
             Narrative: $"Ingest started for source: {options.SourceRef}"),
         CancellationToken.None);
 
-    var instructionLoader = new InstructionSetLoader();
-    var instructionResult = await instructionLoader.LoadAsync(options.InstructionsDir, CancellationToken.None);
-    if (instructionResult.IsSecond(out var instructionFailure))
+    var promptLoader = new SystemPromptLoader();
+    var systemPromptResult = await promptLoader.LoadAsync(options.SystemPromptPath, CancellationToken.None);
+    if (systemPromptResult.IsSecond(out var systemPromptFailure))
     {
         IngestAgentMetrics.RecordInstructionLoadFailure("instructions");
         IngestAgentLogEvents.LogInstructionsLoadFailed(
             logger,
             options.TaskId,
             "instructions",
-            options.InstructionsDir,
-            instructionFailure.Reason);
-        await FinalizeFailedAsync(taskStore, options, startTime, instructionFailure.Reason, null, logAppender, false, modelId: modelClient.ModelId);
+            options.SystemPromptPath,
+            systemPromptFailure.Reason);
+        await FinalizeFailedAsync(taskStore, options, startTime, systemPromptFailure.Reason, null, logAppender, false, modelId: modelClient.ModelId);
+        runEvents.EmitFailed(systemPromptFailure.Reason);
         return 1;
     }
-    instructionResult.IsFirst(out var instructionSet);
+    systemPromptResult.IsFirst(out var loadedSystemPrompt);
+
+    // Effective user prompt: explicit --user-prompt override, else the versioned
+    // default-user-prompt document. No override + missing/empty default ⇒ fail closed
+    // (ADR-007).
+    string effectiveUserPrompt;
+    string userPromptSource;
+    if (!string.IsNullOrWhiteSpace(options.UserPrompt))
+    {
+        effectiveUserPrompt = options.UserPrompt.Trim();
+        userPromptSource = "custom";
+    }
+    else
+    {
+        var defaultPromptResult = await promptLoader.LoadAsync(options.DefaultUserPromptPath, CancellationToken.None);
+        if (defaultPromptResult.IsSecond(out var defaultPromptFailure))
+        {
+            IngestAgentMetrics.RecordInstructionLoadFailure("default_user_prompt");
+            IngestAgentLogEvents.LogInstructionsLoadFailed(
+                logger,
+                options.TaskId,
+                "default_user_prompt",
+                options.DefaultUserPromptPath,
+                defaultPromptFailure.Reason);
+            await FinalizeFailedAsync(taskStore, options, startTime, defaultPromptFailure.Reason, null, logAppender, false, modelId: modelClient.ModelId);
+            runEvents.EmitFailed(defaultPromptFailure.Reason);
+            return 1;
+        }
+        defaultPromptResult.IsFirst(out var loadedDefaultPrompt);
+        effectiveUserPrompt = loadedDefaultPrompt!.Content.Trim();
+        userPromptSource = "default";
+    }
 
     var policyLoader = new PolicyLoader(repoRoot);
     var policyResult = await policyLoader.LoadAsync(options.PolicyPath, CancellationToken.None);
@@ -71,27 +105,38 @@ try
             options.PolicyPath,
             policyFailure.Reason);
         await FinalizeFailedAsync(taskStore, options, startTime, policyFailure.Reason, null, logAppender, false, modelId: modelClient.ModelId);
+        runEvents.EmitFailed(policyFailure.Reason);
         return 1;
     }
     policyResult.IsFirst(out var loadedPolicy);
 
-    var instructionFilesField = string.Join(
-        ";",
-        instructionSet!.Files.Select(f => $"{f.Path}:{f.Sha256}"));
     IngestAgentLogEvents.LogInstructionsLoaded(
         logger,
         options.TaskId,
-        instructionFilesField,
+        loadedSystemPrompt!.Path,
+        loadedSystemPrompt.Sha256,
         loadedPolicy!.Identity.Version,
         loadedPolicy.Identity.Sha256);
+
+    IngestAgentLogEvents.LogUserPromptResolved(
+        logger,
+        options.TaskId,
+        userPromptSource,
+        effectiveUserPrompt.Length);
 
     // Block-scoped so the span closes here; later model_turn spans must parent
     // to ingest_agent.run, not to load_instructions.
     using (var loadSpan = IngestAgentTracing.ActivitySource.StartActivity("ingest_agent.load_instructions"))
     {
         loadSpan?.SetTag("task_id", options.TaskId);
-        loadSpan?.SetTag("file_count", instructionSet!.Files.Count);
+        loadSpan?.SetTag("system_prompt_sha256", loadedSystemPrompt.Sha256);
+        loadSpan?.SetTag("prompt_source", userPromptSource);
     }
+
+    // Event channel goes live once instructions and policy are loaded (contract: started
+    // first, then heartbeats independent of model latency).
+    runEvents.EmitStarted();
+    runEvents.StartHeartbeat(TimeSpan.FromSeconds(options.HeartbeatSeconds));
 
     var readSource = await sourceReader.ReadAsync(
         options.SourceKind, options.SourceRef, options.PastedText, CancellationToken.None);
@@ -103,20 +148,21 @@ try
         options.TaskId,
         loggerFactory.CreateLogger<GuardedToolExecutor>());
     var tokenCap = ResolveTokenCapFromEnvironment();
-    var loop = new AgentLoop(modelClient, executor, tokenCap: tokenCap);
-    var systemPrompt = instructionSet.BuildSystemPrompt();
+    var loop = new AgentLoop(modelClient, executor, tokenCap: tokenCap, eventEmitter: runEvents);
+    var systemPrompt = loadedSystemPrompt.Content;
 
     AgentLoopResult loopResult;
     try
     {
         loopResult = await loop.RunAsync(
-            systemPrompt, options.TaskId, options.SourceRef, readSource.Content, CancellationToken.None);
+            systemPrompt, effectiveUserPrompt, options.TaskId, options.SourceRef, readSource.Content, CancellationToken.None);
     }
     catch (AgentLoopCapException capEx)
     {
         IngestAgentLogEvents.LogAgentCapExceeded(logger, options.TaskId, capEx.Cap, capEx.TurnsUsed);
         var rollbackOutcome = await RollbackAsync(journal, options.TaskId, logger);
-        await FinalizeFailedAsync(taskStore, options, startTime, capEx.Message, journal, logAppender, rollbackOutcome, instructionSet, loadedPolicy, modelClient.ModelId, executor.Denials);
+        await FinalizeFailedAsync(taskStore, options, startTime, capEx.Message, journal, logAppender, rollbackOutcome, loadedSystemPrompt, loadedPolicy, modelClient.ModelId, executor.Denials, userPromptSource, effectiveUserPrompt);
+        runEvents.EmitFailed(capEx.Message);
         return 1;
     }
 
@@ -131,10 +177,13 @@ try
             journal,
             logAppender,
             rolledBack: false,
-            instructionSet,
+            loadedSystemPrompt,
             loadedPolicy,
             modelClient.ModelId,
-            executor.Denials);
+            executor.Denials,
+            userPromptSource,
+            effectiveUserPrompt);
+        runEvents.EmitFailed(allDeniedReason);
         return 1;
     }
 
@@ -164,11 +213,13 @@ try
             PagesUpdated: pagesUpdated.Select(p => Path.GetRelativePath(repoRoot, p)).ToList(),
             PagesSuperseded: pagesSuperseded.Select(p => Path.GetRelativePath(repoRoot, p)).ToList(),
             DeniedActions: executor.Denials.Select(d => new DeniedActionEntry(d.Action, d.RequestedTarget, d.CanonicalTarget, d.Reason, d.Turn)).ToList(),
-            InstructionFiles: instructionSet.Files.Select(f => new InstructionFileRecord(f.Path, f.Sha256)).ToList(),
+            InstructionFiles: [new InstructionFileRecord(loadedSystemPrompt.Path, loadedSystemPrompt.Sha256)],
             Policy: new PolicyRecord(loadedPolicy.Identity.Path, loadedPolicy.Identity.Version, loadedPolicy.Identity.Sha256),
             Model: modelClient.ModelId,
             Turns: loopResult.TurnsUsed,
-            RolledBack: null),
+            RolledBack: null,
+            UserPromptSource: userPromptSource,
+            UserPrompt: effectiveUserPrompt),
         CancellationToken.None);
 
     await logAppender.EnsureLogEntryAsync(
@@ -186,6 +237,7 @@ try
     IngestAgentMetrics.RecordIngest("completed",
         (DateTimeOffset.UtcNow - startTime).TotalSeconds);
 
+    runEvents.EmitCompleted(loopResult.Narrative);
     return 0;
 }
 catch (Exception ex)
@@ -193,6 +245,7 @@ catch (Exception ex)
     var safeMessage = SanitizeErrorText(ex.Message);
     var rollbackOutcome = await RollbackAsync(journal, options.TaskId, logger);
     await FinalizeFailedAsync(taskStore, options, startTime, safeMessage, journal, logAppender, rollbackOutcome, modelId: modelClient?.ModelId, deniedActions: executor?.Denials);
+    runEvents.EmitFailed(safeMessage);
     return 1;
 }
 
@@ -225,10 +278,12 @@ static async Task FinalizeFailedAsync(
     WriteJournal? journal,
     IngestLogAppender logAppender,
     bool rolledBack,
-    LoadedInstructionSet? instructionSet = null,
+    LoadedSystemPrompt? systemPrompt = null,
     LoadedPolicy? policy = null,
     string? modelId = null,
-    IReadOnlyList<DeniedActionRecord>? deniedActions = null)
+    IReadOnlyList<DeniedActionRecord>? deniedActions = null,
+    string? userPromptSource = null,
+    string? userPrompt = null)
 {
     using var finalizeSpan = IngestAgentTracing.ActivitySource.StartActivity("ingest_agent.finalize_artifact");
     finalizeSpan?.SetTag("task_id", options.TaskId);
@@ -251,11 +306,13 @@ static async Task FinalizeFailedAsync(
             PagesUpdated: [],
             PagesSuperseded: [],
             DeniedActions: deniedActions?.Select(d => new DeniedActionEntry(d.Action, d.RequestedTarget, d.CanonicalTarget, d.Reason, d.Turn)).ToList() ?? [],
-            InstructionFiles: instructionSet?.Files.Select(f => new InstructionFileRecord(f.Path, f.Sha256)).ToList(),
+            InstructionFiles: systemPrompt is null ? null : [new InstructionFileRecord(systemPrompt.Path, systemPrompt.Sha256)],
             Policy: policy is null ? null : new PolicyRecord(policy.Identity.Path, policy.Identity.Version, policy.Identity.Sha256),
             Model: modelId,
             Turns: null,
-            RolledBack: journal is not null ? rolledBack : null),
+            RolledBack: journal is not null ? rolledBack : null,
+            UserPromptSource: userPromptSource,
+            UserPrompt: userPrompt),
         CancellationToken.None);
 
     await logAppender.EnsureLogEntryAsync(
@@ -301,6 +358,13 @@ static AgentCliOptions ParseArgs(string[] args)
     if (sourceKind == "pasted_text")
         pastedText = Console.In.ReadToEnd();
 
+    string? GetOptional(string name)
+        => options.TryGetValue(name, out var value) && !string.IsNullOrWhiteSpace(value) ? value : null;
+
+    var heartbeatSeconds = int.TryParse(GetOptional("--heartbeat-seconds"), out var parsedHeartbeat) && parsedHeartbeat > 0
+        ? parsedHeartbeat
+        : 10;
+
     return new AgentCliOptions(
         TaskId: GetRequired("--task-id"),
         SourceRef: GetRequired("--source-ref"),
@@ -310,8 +374,11 @@ static AgentCliOptions ParseArgs(string[] args)
         IndexPath: GetRequired("--index-path"),
         LogPath: GetRequired("--log-path"),
         PastedText: pastedText,
-        InstructionsDir: GetRequired("--instructions-dir"),
-        PolicyPath: GetRequired("--policy-path"));
+        SystemPromptPath: GetRequired("--system-prompt-path"),
+        DefaultUserPromptPath: GetRequired("--default-user-prompt-path"),
+        UserPrompt: GetOptional("--user-prompt"),
+        PolicyPath: GetRequired("--policy-path"),
+        HeartbeatSeconds: heartbeatSeconds);
 }
 
 static string FindRepoRoot(string startPath)

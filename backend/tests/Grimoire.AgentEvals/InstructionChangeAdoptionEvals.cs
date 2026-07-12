@@ -20,7 +20,7 @@ public class InstructionChangeAdoptionEvals
                     "(update, supersede, or flag a contradiction), and what audit trail is kept for every " +
                     "ingest decision so the reasoning behind a page's current state can be reconstructed later.",
                 runLabel: $"sc009-{i + 1}",
-                mutateSkillFile: AddReviewedFieldRequirement,
+                mutateSystemPrompt: AddReviewedFieldRequirement,
                 cancellationToken: CancellationToken.None);
 
             // The "reviewed: false" requirement only applies to wiki pages — SKILL.md
