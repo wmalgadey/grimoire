@@ -1,5 +1,5 @@
 import * as signalR from '@microsoft/signalr';
-import type { BoardTask, LifecycleEvent } from '$lib/types';
+import type { BoardTask, LifecycleEvent, RunActivityEvent } from '$lib/types';
 import { listBoard } from './ingestSubmissionsApi';
 
 const HUB_PATH = '/hubs/ingest-lifecycle';
@@ -8,10 +8,14 @@ export interface IngestLifecycleClient {
 	start(): Promise<void>;
 	stop(): Promise<void>;
 	onLifecycleChanged(handler: (event: LifecycleEvent) => void): () => void;
+	onRunActivityChanged(handler: (event: RunActivityEvent) => void): () => void;
 	onReconnected(handler: () => void): () => void;
 }
 
-/** Thin wrapper around the `taskLifecycleChanged` SignalR channel (contracts/ingest-lifecycle-events.md). */
+/**
+ * Thin wrapper around the `taskLifecycleChanged` and `runActivityChanged` SignalR
+ * channels (contracts/ingest-lifecycle-events.md, 004 contracts/ingest-submission-api-extension.md).
+ */
 export function createIngestLifecycleClient(hubUrl: string = HUB_PATH): IngestLifecycleClient {
 	const connection = new signalR.HubConnectionBuilder()
 		.withUrl(hubUrl)
@@ -24,6 +28,10 @@ export function createIngestLifecycleClient(hubUrl: string = HUB_PATH): IngestLi
 		onLifecycleChanged(handler) {
 			connection.on('taskLifecycleChanged', handler);
 			return () => connection.off('taskLifecycleChanged', handler);
+		},
+		onRunActivityChanged(handler) {
+			connection.on('runActivityChanged', handler);
+			return () => connection.off('runActivityChanged', handler);
 		},
 		onReconnected(handler) {
 			// @microsoft/signalr has no unregister API for onreconnected callbacks (unlike
@@ -88,10 +96,17 @@ export interface BoardLifecycleStream {
  * Bootstraps the board from `GET /api/ingest-submissions`, then applies live
  * `taskLifecycleChanged` events on top, idempotently. On reconnect, refreshes from the REST
  * endpoint before resuming the stream (contracts/ingest-lifecycle-events.md `## Rules`).
+ * Also forwards live `runActivityChanged` events (004 FR-018) so callers can render loop
+ * activity for the currently running task without a separate detail page.
  */
 export function createBoardLifecycleStream(
 	onTasksChanged: (tasks: BoardTask[]) => void,
-	options?: { hubUrl?: string; fetchImpl?: typeof fetch; client?: IngestLifecycleClient }
+	options?: {
+		hubUrl?: string;
+		fetchImpl?: typeof fetch;
+		client?: IngestLifecycleClient;
+		onRunActivityChanged?: (event: RunActivityEvent) => void;
+	}
 ): BoardLifecycleStream {
 	let tasks: BoardTask[] = [];
 	const seenEventKeys = new Set<string>();
@@ -106,6 +121,9 @@ export function createBoardLifecycleStream(
 		tasks = applyLifecycleEvent(tasks, event, seenEventKeys);
 		onTasksChanged(tasks);
 	});
+	if (options?.onRunActivityChanged) {
+		client.onRunActivityChanged(options.onRunActivityChanged);
+	}
 	client.onReconnected(() => {
 		void refresh();
 	});

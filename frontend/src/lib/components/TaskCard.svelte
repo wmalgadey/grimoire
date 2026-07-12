@@ -1,12 +1,13 @@
 <script lang="ts">
-	import type { BoardTask } from '$lib/types';
+	import type { BoardTask, RunActivity } from '$lib/types';
 	import StatusBadge from './StatusBadge.svelte';
 
 	interface Props {
 		task: BoardTask;
+		runActivity?: RunActivity | null;
 	}
 
-	let { task }: Props = $props();
+	let { task, runActivity = null }: Props = $props();
 </script>
 
 <article
@@ -20,6 +21,18 @@
 		</h3>
 		<StatusBadge status={task.status} />
 	</div>
+
+	{#if task.status === 'queued' && task.queuePosition != null}
+		<p class="text-xs text-slate-500" data-testid="task-card-queue-position">
+			Position {task.queuePosition} in queue
+		</p>
+	{/if}
+
+	{#if task.status === 'running' && runActivity}
+		<p class="text-xs text-slate-500" data-testid="task-card-run-activity">
+			{runActivity.modelTurns} model turns · {runActivity.toolCalls} tool calls · {runActivity.currentAction}
+		</p>
+	{/if}
 
 	{#if task.status === 'failed' && task.failureReason}
 		<p class="text-sm text-stage-failed" data-testid="task-card-failure-reason">

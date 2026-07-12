@@ -64,7 +64,8 @@ function createFakeClient() {
 			return () => {
 				reconnectedHandler = undefined;
 			};
-		})
+		}),
+		onRunActivityChanged: vi.fn(() => () => {})
 	};
 
 	return {

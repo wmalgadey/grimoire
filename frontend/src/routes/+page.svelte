@@ -3,7 +3,8 @@
 	import KanbanColumn from '$lib/components/KanbanColumn.svelte';
 	import SubmissionForm from '$lib/components/SubmissionForm.svelte';
 	import { createBoardLifecycleStream } from '$lib/services/ingestLifecycleClient';
-	import type { BoardTask, LifecycleStage } from '$lib/types';
+	import { getBoard, resumeQueue } from '$lib/services/ingestSubmissionsApi';
+	import type { BoardTask, LifecycleStage, RunActivity, RunActivityEvent } from '$lib/types';
 
 	const stages: LifecycleStage[] = [
 		'received',
@@ -16,6 +17,12 @@
 
 	let tasks: BoardTask[] = $state([]);
 	let stream: ReturnType<typeof createBoardLifecycleStream> | undefined;
+	// 004 FR-018: live loop-activity, keyed by taskId, layered onto the board without a
+	// separate detail page.
+	let runActivityByTaskId: Record<string, RunActivity> = $state({});
+	// 004 FR-021: queued tasks survive a Hub restart but wait for explicit resume.
+	let queuePaused = $state(false);
+	let resuming = $state(false);
 
 	const tasksByStage = $derived(
 		Object.fromEntries(
@@ -23,11 +30,49 @@
 		) as Record<LifecycleStage, BoardTask[]>
 	);
 
+	async function refreshQueueState() {
+		try {
+			const board = await getBoard();
+			queuePaused = board.queuePaused ?? false;
+		} catch {
+			// Non-critical: the board still renders from the lifecycle stream even if this
+			// supplementary call fails.
+		}
+	}
+
+	async function handleResume() {
+		resuming = true;
+		try {
+			await resumeQueue();
+			queuePaused = false;
+		} catch {
+			// Leave the banner visible; the user can retry.
+		} finally {
+			resuming = false;
+		}
+	}
+
 	onMount(() => {
-		stream = createBoardLifecycleStream((updated) => {
-			tasks = updated;
-		});
+		stream = createBoardLifecycleStream(
+			(updated) => {
+				tasks = updated;
+			},
+			{
+				onRunActivityChanged: (event: RunActivityEvent) => {
+					runActivityByTaskId = {
+						...runActivityByTaskId,
+						[event.taskId]: {
+							modelTurns: event.modelTurns,
+							toolCalls: event.toolCalls,
+							toolCallsByName: event.toolCallsByName,
+							currentAction: event.currentAction
+						}
+					};
+				}
+			}
+		);
 		void stream.start();
+		void refreshQueueState();
 	});
 
 	onDestroy(() => {
@@ -50,9 +95,29 @@
 
 	<SubmissionForm />
 
+	{#if queuePaused}
+		<div
+			class="flex items-center justify-between rounded border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-800"
+			data-testid="queue-paused-banner"
+		>
+			<span
+				>Queue processing is paused after a restart. Queued tasks will not start automatically.</span
+			>
+			<button
+				type="button"
+				class="rounded bg-amber-600 px-3 py-1 text-xs font-medium text-white disabled:opacity-50"
+				onclick={handleResume}
+				disabled={resuming}
+				data-testid="queue-resume-button"
+			>
+				{resuming ? 'Resuming…' : 'Resume queue'}
+			</button>
+		</div>
+	{/if}
+
 	<div class="flex gap-4 overflow-x-auto" data-testid="kanban-board">
 		{#each stages as stage (stage)}
-			<KanbanColumn {stage} tasks={tasksByStage[stage]} />
+			<KanbanColumn {stage} tasks={tasksByStage[stage]} {runActivityByTaskId} />
 		{/each}
 	</div>
 </main>
