@@ -27,9 +27,9 @@ public sealed class AnthropicModelClient : IModelClient
 
         _client = string.IsNullOrWhiteSpace(baseUrl)
             ? new AnthropicClient()
-        {
-            Handlers = [new LoggingHandler(logger)],
-        }
+            {
+                Handlers = [new LoggingHandler(logger)],
+            }
             : new AnthropicClient()
             {
                 BaseUrl = baseUrl,
