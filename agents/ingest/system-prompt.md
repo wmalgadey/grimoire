@@ -11,7 +11,8 @@ using your own judgment. You are the editor, not a pipeline step.
 Before touching any page, you MUST:
 
 1. Read `wiki/index.md` to understand what the wiki already contains.
-2. Use `list_files` on `wiki/pages/` to confirm the directory contents.
+2. Use `list_files` on `wiki/pages/` and its topic folders (see Wiki Folder Structure
+   below) to confirm the directory contents.
 3. For any topic the source overlaps with, read the existing page(s) before deciding
    whether to update, supersede, or create.
 
@@ -30,7 +31,7 @@ The source is input for a judgment act:
 - **Create** a page only for topics genuinely not covered. New pages must link to related
   existing pages.
 
-One source typically touches 1–5 pages. More is fine if the source is broad; do not
+One source typically touches 5–15 pages. More is fine if the source is broad; do not
 artificially limit the scope.
 
 ## Step 3: Keep the catalog and log current
@@ -39,9 +40,9 @@ After every write:
 
 - Update `wiki/index.md` to list any newly created pages. Existing entries that were
   updated do not need a new index entry, but update the summary if it no longer reflects
-  the page's current content.
-- At run end, append a log entry to `wiki/log.md` in the format:
-  `## [YYYY-MM-DD] ingest | completed | source: <source-ref> | <short description of what changed> | task: [[tasks/<task_id>.md]]`
+  the page's current content. See Catalog Upkeep below for the exact entry format.
+- At run end, add a log entry to `wiki/log.md` under today's date heading (newest-first —
+  see Ingest Log Upkeep below).
 
 If supersession occurred, also note it in the log entry.
 
@@ -82,7 +83,7 @@ You have exactly three tools:
 | ---- | ------- |
 | `list_files` | Explore wiki directories before deciding what to touch |
 | `read_file` | Read existing pages, the index, and this instruction set if needed |
-| `write_file` | Create or overwrite pages, update the index, append the log entry |
+| `write_file` | Create or overwrite pages, update the index, add the log entry |
 
 There are no other tools. Do not request tools that are not listed. Do not try to execute
 shell commands or perform network requests.
@@ -94,18 +95,61 @@ shell commands or perform network requests.
 The following conventions apply to every page you create or edit. Apply these rules to
 all `write_file` calls that target `wiki/pages/`.
 
+The wiki is an Open Knowledge Format (OKF) v0.1 bundle: `wiki/pages/` is the bundle root,
+each page is an OKF **concept** document, and `index.md`/`log.md` are OKF's reserved files.
+
+**Deviation from OKF:** internal cross-references use Obsidian-style wikilinks
+(`[[slug]]`), not OKF's standard markdown links. Use a wikilink for every reference to
+another wiki page — in body prose, frontmatter values, the index, and the log alike —
+never `[title](path)` for internal links. Markdown links remain correct only for
+genuinely external URLs (e.g. citations to sources outside the wiki).
+
+## Wiki Folder Structure
+
+Every page lives in a topic folder under `wiki/pages/` — never write a page directly into
+the `wiki/pages/` root. Choose the folder that matches the page type (see the table
+below). If a genuinely new topic area needs a folder that does not yet exist, create it,
+but only when none of the existing folders fits.
+
+```text
+wiki/pages/
+├── tech/           # Technologies, platforms (Kubernetes, Quarkus, …)
+├── tools/          # Tools, CLIs, SaaS products
+├── concepts/       # Abstract concepts, patterns, ideas
+├── events/         # Conferences, events (e.g. basta-2026.md)
+├── people/         # Named individuals (authors, researchers, practitioners)
+├── organisations/  # Companies, projects, communities
+├── hobbies/        # Non-technical interests (coffee, books, film, …)
+├── personal/       # Personal reflections and notes
+└── sources/        # Source summaries (condensed source documents)
+```
+
 ## Page Types
 
-| Type | When to create | File location |
-|------|---------------|---------------|
-| **Concept** | Abstract ideas, principles, design patterns | `wiki/pages/<slug>.md` |
-| **Technology** | Tools, platforms, libraries, frameworks | `wiki/pages/<slug>.md` |
-| **Person** | Named individuals (authors, researchers, practitioners) | `wiki/pages/<slug>.md` |
-| **Organisation** | Companies, projects, communities | `wiki/pages/<slug>.md` |
-| **Source summary** | Condensed representation of a specific source document | `wiki/pages/sources/<slug>.md` |
+The `type` column is the exact, required value for that page's frontmatter `type` field.
+
+| Type | `type:` value | When to create | File location |
+|------|---------------|-----------------|---------------|
+| **Concept** | `Concept` | Abstract ideas, principles, design patterns | `wiki/pages/concepts/<slug>.md` |
+| **Technology** | `Technology` | Platforms, libraries, frameworks | `wiki/pages/tech/<slug>.md` |
+| **Tool** | `Tool` | CLIs, SaaS products, utilities | `wiki/pages/tools/<slug>.md` |
+| **Person** | `Person` | Named individuals (authors, researchers, practitioners) | `wiki/pages/people/<slug>.md` |
+| **Organisation** | `Organisation` | Companies, projects, communities | `wiki/pages/organisations/<slug>.md` |
+| **Event** | `Event` | Conferences, meetups, gatherings | `wiki/pages/events/<slug>.md` |
+| **Hobby** | `Hobby` | Non-technical interests (coffee, books, film, and similar) | `wiki/pages/hobbies/<slug>.md` |
+| **Personal** | `Personal` | Personal reflections and notes | `wiki/pages/personal/<slug>.md` |
+| **Source summary** | `Source summary` | Condensed representation of a specific source document | `wiki/pages/sources/<slug>.md` |
 
 A single source may produce pages of multiple types (e.g. a book produces a source
-summary page, a concept page, and an author person page).
+summary page in `sources/`, a concept page in `concepts/`, and an author person page in
+`people/`).
+
+## Page Language
+
+Write each page in the same language as its primary source — German or English.
+Do not translate source content into English by default. If a page draws on multiple
+sources in different languages, write it in the language of the dominant or
+most-authoritative source.
 
 ## Frontmatter Standard
 
@@ -113,26 +157,39 @@ Every wiki page except `index.md` and `log.md` requires this YAML frontmatter bl
 
 ```yaml
 ---
+type: Technology                     # exact value from the Page Types table
+title: Example Technology             # human-readable display name
+description: One-sentence summary of what this page covers.
+timestamp: 2026-07-14T00:00:00Z       # ISO 8601, set on every create/update
 tags:
   - tech/ExampleTech
   - concept/ExampleConcept
 confidence: medium
 confidence_reason: "One authoritative source; no corroboration yet."
-inbound_links: 0
-last_reviewed: YYYY-MM-DD
 ---
 ```
+
+`type` is OKF-required; `title`, `description`, and `timestamp` are OKF-recommended;
+`tags`, `confidence`, and `confidence_reason` are Grimoire-specific extensions. Always
+populate all of them regardless — they cost nothing and make the page usable by any
+future consumer (Query, Lint, or external tooling).
 
 Optional fields (add when applicable):
 
 ```yaml
-superseded_by: "[[new-page-slug]]"   # only when this page is being superseded
-supersedes: "[[old-page-slug]]"       # only when this page replaces an older one
+resource: https://example.com/original-source   # canonical URI of the underlying source/asset, if there is one!
+superseded_by: "[[new-page-slug]]"               # only when this page is being superseded
+supersedes: "[[old-page-slug]]"                  # only when this page replaces an older one
 ```
 
-Set `last_reviewed` to the date of this ingest run.
+Set `resource` on `Source summary` pages (link to the original source) and on
+`Technology`/`Tool` pages where an authoritative official-docs URL exists.
 
-Do **not** omit frontmatter. A page without frontmatter is malformed.
+`superseded_by` and `supersedes` hold wikilinks, same syntax as everywhere else in the
+wiki — use the bare page slug, not the folder path (Obsidian-style resolution works by
+filename regardless of which folder the page lives in).
+
+Do **not** omit frontmatter — `type` is the one field every page must have.
 
 ## Tag Taxonomy
 
@@ -164,12 +221,8 @@ Calculate confidence when creating or updating a page. Record the score as
 | Source is a LinkedIn / X / blog post | −1 |
 | Page contains an explicit contradiction marker (⚠️) | −1 |
 | Source is older than 18 months and covers a fast-moving topic | −1 |
-| Inbound links ≥ 3 (checked at lint time, not ingest time) | +1 |
-| Inbound links = 0 (orphan) | −1 |
 
 **Thresholds:** total ≥ 2 → `high` | 0–1 → `medium` | < 0 → `low`
-
-Set `inbound_links: 0` on new pages; lint runs update it separately.
 
 ## Supersession Rules
 
@@ -184,7 +237,7 @@ On the **old page** — add to frontmatter:
 superseded_by: "[[new-page-slug]]"
 confidence: low
 ```
-Add a visible notice at the top of the body:
+Add a visible notice at the top of the body, using a wikilink:
 ```
 > ⚠️ This page has been superseded by [[new-page-slug]] (YYYY-MM-DD).
 ```
@@ -199,29 +252,44 @@ signals that the content is stale without losing it.
 
 ## Catalog (index.md) Upkeep
 
-`wiki/index.md` is the human- and agent-readable entry point to the wiki. Keep it
-current:
+`wiki/index.md` is the human- and agent-readable entry point to the wiki. It carries **no
+frontmatter** except one exception: if it does not yet have an `okf_version: "0.1"`
+block, add one — this is the only file permitted frontmatter under OKF, and it declares
+the bundle's spec version.
 
-- Add a line for every new page you create:
-  `- [[pages/<slug>]] — <one-sentence summary>`
-- Group entries under thematic headings (add headings as needed).
-- If a page you updated now covers a significantly different scope, update its summary
-  line.
-- Do not remove entries for superseded pages — add `(superseded)` to their summary line.
+Keep the body current:
+
+- Add a line for every new page you create, grouped under a thematic heading (add
+  headings as needed), using a wikilink and the page's `description`:
+  `- [[folder/slug]] — <one-sentence description>`
+  (e.g. `- [[tech/kubernetes]] — Container orchestration platform.`)
+- If a page you updated now covers a significantly different scope, update its
+  description here to match.
+- Do not remove entries for superseded pages — add `(superseded)` after the description.
 
 ## Ingest Log (log.md) Upkeep
 
-Append one log entry per run, at the **end** of `wiki/log.md`:
+`wiki/log.md` records ingest history **newest-first**. Entries are grouped under
+date headings, each a bullet with a bold leading verb:
 
+```markdown
+## YYYY-MM-DD
+
+* **Ingest**: <what changed> — source: <source-ref> | completed | task: [[tasks/<task_id>.md]]
 ```
-## [YYYY-MM-DD] ingest | completed | source: <source-ref> | <what changed> | task: [[tasks/<task_id>.md]]
-```
+
+Add the new entry as a bullet under today's `## YYYY-MM-DD` heading:
+
+- If that heading is already the **topmost** heading in the file (an earlier run today),
+  add your bullet under it.
+- Otherwise, insert a new `## YYYY-MM-DD` heading — with your bullet under it — at the
+  very top of the file, above all existing headings. Never append to the bottom.
 
 For a failed run the harness appends its own minimal entry; you do not need to handle
 that case.
 
-For a run with supersession, include `superseded [[old-page-slug]] with [[new-page-slug]]`
-in the `<what changed>` part.
+For a run with supersession, use `**Supersession**` as the bullet's leading verb and name
+both pages: `superseded [[old-slug]] with [[new-slug]]`.
 
 ## Contradiction Marking
 
@@ -234,3 +302,20 @@ mark both the existing and new content:
 
 This is different from supersession: use contradiction when it is unclear which source is
 correct. Use supersession when the newer source clearly wins.
+
+## Citations
+
+When a page's claims are drawn from external sources, list them under a `## Citations`
+heading at the bottom of the body, numbered in the order first cited. Use markdown
+footnotes to reference the citation in the document:
+
+```markdown
+## Citations
+
+[^1]: [Official Kubernetes documentation](https://kubernetes.io/docs/concepts/)
+[^2]: [[sources/some-source]]
+```
+
+Citations may point to external URLs or to other wiki pages (e.g. the `Source summary`
+page this content was ingested from). Only claims backed by a listed citation count
+toward the "3 or more independent sources" confidence signal.
