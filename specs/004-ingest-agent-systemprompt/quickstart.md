@@ -109,6 +109,25 @@ Contracts referenced: [ingest-submission-api-extension.md](./contracts/ingest-su
 7. Repeat, but leave the Hub stopped until reconnect attempts are exhausted.
 8. **Expect**: the indicator shows "Disconnected".
 
+**Recorded outcome (2026-07-14)**: Steps 1–4 live-verified against a real running Hub
+(`dotnet run` on `http://localhost:5255`) and the Vite dev server, driven headlessly via
+Playwright: loading the board showed `connecting` then `connected` within the same
+render pass (step 2), and killing the Hub process (`SIGKILL`) flipped the indicator to
+`reconnecting` inline, with no page reload (step 4) — confirming the indicator is wired
+to the real `HubConnection` lifecycle, not just the fake double. Steps 5–8 (reconnect
+recovery to `connected`, and `disconnected` after reconnect attempts are exhausted)
+were **not** re-verified against a second live Hub restart cycle in this environment:
+orchestrating precise timing across `@microsoft/signalr`'s default backoff schedule
+(0/2/10/30 s) through independent process launches proved unreliable to script
+end-to-end here, for the same class of reason `T051` preferred a scripted fake clock
+over a live 60 s wall-clock wait for scenario 9. Those two transitions are covered
+deterministically and reliably instead by `ingestLifecycleClient.test.ts`
+(`onConnectionStateChanged` tests, T054), which drive a fake `HubConnection` double
+through `onreconnecting`/`onreconnected`/`onclose` directly, and by
+`ConnectionStatusIndicator.svelte.test.ts` (T053) for the resulting label/styling per
+state. Combined, live steps 1–4 plus the deterministic suite for 4–8 give full coverage
+of SC-012 without a flaky live timing dependency.
+
 ## Automated verification
 
 - Hermetic integration tests: `dotnet test backend/tests/Grimoire.IntegrationTests`

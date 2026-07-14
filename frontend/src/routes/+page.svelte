@@ -1,10 +1,17 @@
 <script lang="ts">
 	import { onDestroy, onMount } from 'svelte';
+	import ConnectionStatusIndicator from '$lib/components/ConnectionStatusIndicator.svelte';
 	import KanbanColumn from '$lib/components/KanbanColumn.svelte';
 	import SubmissionForm from '$lib/components/SubmissionForm.svelte';
 	import { createBoardLifecycleStream } from '$lib/services/ingestLifecycleClient';
 	import { getBoard, resumeQueue } from '$lib/services/ingestSubmissionsApi';
-	import type { BoardTask, LifecycleStage, RunActivity, RunActivityEvent } from '$lib/types';
+	import type {
+		BoardTask,
+		ConnectionState,
+		LifecycleStage,
+		RunActivity,
+		RunActivityEvent
+	} from '$lib/types';
 
 	const stages: LifecycleStage[] = [
 		'received',
@@ -23,6 +30,9 @@
 	// 004 FR-021: queued tasks survive a Hub restart but wait for explicit resume.
 	let queuePaused = $state(false);
 	let resuming = $state(false);
+	// 004 FR-023: persistent connection-health indicator, projected from the board's own
+	// SignalR connection lifecycle callbacks.
+	let connectionState: ConnectionState = $state('connecting');
 
 	const tasksByStage = $derived(
 		Object.fromEntries(
@@ -68,6 +78,9 @@
 							currentAction: event.currentAction
 						}
 					};
+				},
+				onConnectionStateChanged: (state: ConnectionState) => {
+					connectionState = state;
 				}
 			}
 		);
@@ -85,8 +98,11 @@
 </svelte:head>
 
 <main class="mx-auto flex min-h-screen max-w-5xl flex-col gap-6 bg-white p-6">
-	<header class="flex flex-col gap-1">
-		<h1 class="text-lg font-semibold text-slate-900">Submit a source</h1>
+	<header class="sticky top-0 z-10 flex flex-col gap-1 bg-white/95 py-2 backdrop-blur">
+		<div class="flex items-center justify-between gap-2">
+			<h1 class="text-lg font-semibold text-slate-900">Submit a source</h1>
+			<ConnectionStatusIndicator state={connectionState} />
+		</div>
 		<p class="text-sm text-slate-500">
 			Submit a URL, Markdown, PDF, or Office document to ingest into the wiki. Its progress appears
 			on the board below as soon as it's accepted.

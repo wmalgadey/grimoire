@@ -1,5 +1,5 @@
 import * as signalR from '@microsoft/signalr';
-import type { BoardTask, LifecycleEvent, RunActivityEvent } from '$lib/types';
+import type { BoardTask, ConnectionState, LifecycleEvent, RunActivityEvent } from '$lib/types';
 import { listBoard } from './ingestSubmissionsApi';
 
 const HUB_PATH = '/hubs/ingest-lifecycle';
@@ -10,6 +10,7 @@ export interface IngestLifecycleClient {
 	onLifecycleChanged(handler: (event: LifecycleEvent) => void): () => void;
 	onRunActivityChanged(handler: (event: RunActivityEvent) => void): () => void;
 	onReconnected(handler: () => void): () => void;
+	onConnectionStateChanged(handler: (state: ConnectionState) => void): () => void;
 }
 
 /**
@@ -22,8 +23,24 @@ export function createIngestLifecycleClient(hubUrl: string = HUB_PATH): IngestLi
 		.withAutomaticReconnect()
 		.build();
 
+	// 004 FR-023: project the connection's own lifecycle callbacks into a single
+	// connecting|connected|reconnecting|disconnected state for the board's indicator.
+	let connectionStateHandler: ((state: ConnectionState) => void) | undefined;
+	connection.onreconnecting(() => connectionStateHandler?.('reconnecting'));
+	connection.onreconnected(() => connectionStateHandler?.('connected'));
+	connection.onclose(() => connectionStateHandler?.('disconnected'));
+
 	return {
-		start: () => connection.start(),
+		async start() {
+			connectionStateHandler?.('connecting');
+			try {
+				await connection.start();
+				connectionStateHandler?.('connected');
+			} catch (err) {
+				connectionStateHandler?.('disconnected');
+				throw err;
+			}
+		},
 		stop: () => connection.stop(),
 		onLifecycleChanged(handler) {
 			connection.on('taskLifecycleChanged', handler);
@@ -43,6 +60,14 @@ export function createIngestLifecycleClient(hubUrl: string = HUB_PATH): IngestLi
 			});
 			return () => {
 				active = false;
+			};
+		},
+		onConnectionStateChanged(handler) {
+			connectionStateHandler = handler;
+			return () => {
+				if (connectionStateHandler === handler) {
+					connectionStateHandler = undefined;
+				}
 			};
 		}
 	};
@@ -106,6 +131,7 @@ export function createBoardLifecycleStream(
 		fetchImpl?: typeof fetch;
 		client?: IngestLifecycleClient;
 		onRunActivityChanged?: (event: RunActivityEvent) => void;
+		onConnectionStateChanged?: (state: ConnectionState) => void;
 	}
 ): BoardLifecycleStream {
 	let tasks: BoardTask[] = [];
@@ -123,6 +149,9 @@ export function createBoardLifecycleStream(
 	});
 	if (options?.onRunActivityChanged) {
 		client.onRunActivityChanged(options.onRunActivityChanged);
+	}
+	if (options?.onConnectionStateChanged) {
+		client.onConnectionStateChanged(options.onConnectionStateChanged);
 	}
 	client.onReconnected(() => {
 		void refresh();

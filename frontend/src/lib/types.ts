@@ -90,3 +90,7 @@ export interface RunActivityEvent extends RunActivity {
 	kind: 'run_activity';
 	taskId: string;
 }
+
+// 004 (FR-023): client-only projection of the board's SignalR connection lifecycle —
+// not a domain entity, purely a display state for ConnectionStatusIndicator.svelte.
+export type ConnectionState = 'connecting' | 'connected' | 'reconnecting' | 'disconnected';

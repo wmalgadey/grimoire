@@ -425,23 +425,25 @@ transition.
 
 ### Tests for this addition (write first, must fail before implementation)
 
-- [ ] T053 [P] [US4] New frontend test
+- [X] T053 [P] [US4] New frontend test
       `frontend/src/lib/components/ConnectionStatusIndicator.svelte.test.ts`: renders
       Connected/Reconnecting/Disconnected per prop state with distinct styling and a
       stable `data-testid`/`data-connection-state` attribute (mirroring
       `StatusBadge.svelte`'s pattern).
-- [ ] T054 [P] [US4] New frontend test
+- [X] T054 [P] [US4] New frontend test
       `frontend/src/lib/services/ingestLifecycleClient.svelte.test.ts` (or extend the
       existing lifecycle-client test file): using a fake `HubConnection`-shaped double
       (no real network), assert `onConnectionStateChanged` fires `connecting` before
       `start()` resolves, `connected` once it resolves, `reconnecting` on the
       connection's `onreconnecting` callback, `connected` again on `onreconnected`, and
       `disconnected` on `onclose` (SC-012's scripted connection-lifecycle fixture per
-      plan.md Test Strategy).
+      plan.md Test Strategy). Extended the existing
+      `frontend/src/lib/services/ingestLifecycleClient.test.ts` (plain, non-`.svelte`
+      test — no component rendering involved) rather than adding a new file.
 
 ### Implementation for this addition
 
-- [ ] T055 [US4] Extend `IngestLifecycleClient` in
+- [X] T055 [US4] Extend `IngestLifecycleClient` in
       `frontend/src/lib/services/ingestLifecycleClient.ts`: add
       `onConnectionStateChanged(handler: (state: ConnectionState) => void): () => void`
       wired to the connection's `onreconnecting`/`onreconnected`/`onclose` callbacks
@@ -452,15 +454,15 @@ transition.
       'disconnected'`) to `frontend/src/lib/types.ts`. Thread an
       `onConnectionStateChanged` option through `createBoardLifecycleStream` alongside
       the existing `onRunActivityChanged` option (FR-023, research R14).
-- [ ] T056 [US4] Create `frontend/src/lib/components/ConnectionStatusIndicator.svelte`:
+- [X] T056 [US4] Create `frontend/src/lib/components/ConnectionStatusIndicator.svelte`:
       a small badge component taking a `state: ConnectionState` prop, labelled
       "Connected"/"Reconnecting…"/"Disconnected", color-coded consistent with
       `StatusBadge.svelte`'s `colorClasses` pattern (FR-023).
-- [ ] T057 [US4] Wire the indicator into `frontend/src/routes/+page.svelte`: track
+- [X] T057 [US4] Wire the indicator into `frontend/src/routes/+page.svelte`: track
       `connectionState` via the `onConnectionStateChanged` option added in T055,
       render `ConnectionStatusIndicator` near the page header (persistent, visible
       regardless of scroll position) (FR-023, SC-012).
-- [ ] T058 [P] Update `specs/004-ingest-agent-systemprompt/quickstart.md` Scenario 11
+- [X] T058 [P] Update `specs/004-ingest-agent-systemprompt/quickstart.md` Scenario 11
       manual steps to record actual outcomes once run end-to-end (mirrors T051's
       treatment of scenarios 8/10 — live-verified where a real Hub start/stop is
       needed; the deterministic state-transition assertions stay in T054).
