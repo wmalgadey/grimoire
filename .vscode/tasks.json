@@ -1,0 +1,137 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "setup: markitdown",
+            "type": "shell",
+            "command": "pipx install markitdown",
+            "presentation": {
+                "panel": "dedicated",
+                "reveal": "always",
+                "clear": true
+            },
+            "problemMatcher": []
+        },
+        {
+            "label": "claude-nim",
+            "type": "shell",
+            "command": "cd ${workspaceFolder}/scripts/nim/ && ./run-claude-nim-proxy.sh",
+            "isBackground": true,
+            "problemMatcher": {
+                "owner": "claude-nim",
+                "pattern": {
+                    "regexp": "^$"
+                },
+                "background": {
+                    "activeOnStart": true,
+                    "beginsPattern": "^INFO:\\s+Started server process",
+                    "endsPattern": "^INFO:\\s+Uvicorn running on"
+                }
+            },
+            "presentation": {
+                "reveal": "always",
+                "panel": "dedicated"
+            }
+        },
+        {
+            "label": "litellm",
+            "type": "shell",
+            "command": "cd ${workspaceFolder}/scripts/nim/ && ./run-litellm-proxy.sh",
+            "isBackground": true,
+            "problemMatcher": {
+                "owner": "litellm",
+                "pattern": {
+                    "regexp": "^$"
+                },
+                "background": {
+                    "activeOnStart": true,
+                    "beginsPattern": "^INFO:\\s+Started server process",
+                    "endsPattern": "^INFO:\\s+Uvicorn running on"
+                }
+            },
+            "presentation": {
+                "reveal": "always",
+                "panel": "dedicated"
+            }
+        },
+        {
+            "label": "hub",
+            "type": "shell",
+            "command": "cd ${workspaceFolder}/backend && dotnet build . && dotnet run --project src/Grimoire.Hub/",
+            "isBackground": true,
+            "dependsOn": [
+                "litellm"
+            ],
+            "presentation": {
+                "panel": "dedicated",
+                "reveal": "always"
+            },
+            "problemMatcher": {
+                "owner": "hub",
+                "pattern": {
+                    "regexp": "."
+                },
+                "background": {
+                    "activeOnStart": true,
+                    "beginsPattern": "^.*[Bb]uilding.*$",
+                    "endsPattern": "^.*Now listening on:.*$"
+                }
+            }
+        },
+        {
+            "label": "frontend",
+            "type": "shell",
+            "command": "cd ${workspaceFolder}/frontend && bun run dev",
+            "isBackground": true,
+            "dependsOn": [
+                "hub"
+            ],
+            "presentation": {
+                "panel": "dedicated",
+                "reveal": "always"
+            },
+            "problemMatcher": {
+                "owner": "frontend",
+                "pattern": {
+                    "regexp": "."
+                },
+                "background": {
+                    "activeOnStart": true,
+                    "beginsPattern": "^.*starting.*$",
+                    "endsPattern": "^.*(ready in|Local:).*$"
+                }
+            }
+        },
+        {
+            "label": "Run all",
+            "dependsOn": [
+                "litellm",
+                "hub",
+                "frontend"
+            ],
+            "dependsOrder": "sequence",
+            "problemMatcher": []
+        },
+        {
+            "label": "aspire-dashboard",
+            "type": "shell",
+            "command": "docker run --rm -p 18888:18888 -p 4317:18889 mcr.microsoft.com/dotnet/aspire-dashboard",
+            "isBackground": true,
+            "problemMatcher": {
+                "owner": "aspire-dashboard",
+                "pattern": {
+                    "regexp": "^$"
+                },
+                "background": {
+                    "activeOnStart": true,
+                    "beginsPattern": "^.*docker.*",
+                    "endsPattern": "^\\s*Login to the dashboard at.*$"
+                }
+            },
+            "presentation": {
+                "reveal": "silent",
+                "panel": "dedicated"
+            }
+        }
+    ]
+}
