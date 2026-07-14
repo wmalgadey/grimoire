@@ -1,6 +1,6 @@
 # Implementation Plan: Single Agent System Prompt & Configurable Ingest Submission
 
-**Branch**: `claude/ingest-agent-systemprompt-dclhyu` | **Date**: 2026-07-11 (updated after clarification session) | **Spec**: [spec.md](./spec.md)
+**Branch**: `claude/ingest-agent-systemprompt-dclhyu` | **Date**: 2026-07-14 (updated after 2026-07-14 clarification session — connection-health indicator) | **Spec**: [spec.md](./spec.md)
 
 **Input**: Feature specification from `/specs/004-ingest-agent-systemprompt/spec.md`
 
@@ -18,7 +18,11 @@ events over its stdout, the Hub supervises runs via an event-silence liveness wi
 and accepted submissions wait in a persistent FIFO queue (single concurrent agent;
 manual re-trigger after Hub restart). Fail-closed loading, SHA-256 traceability,
 guardrails, and ADR-002's spawn model are preserved; ADR-002's result-reporting aspect
-is amended by ADR-008. Design details in [research.md](./research.md) (R1–R13).
+is amended by ADR-008. Per the 2026-07-14 clarification session, the board page also
+gains a persistent connection-health indicator (Connected/Reconnecting/Disconnected)
+projected client-side from the existing SignalR connection's own lifecycle callbacks —
+a small, harness-only frontend addition with no new backend surface. Design details in
+[research.md](./research.md) (R1–R14).
 
 ## Technical Context
 
@@ -74,7 +78,17 @@ or replaced here are 003 code; implementation tasks assume 003 is merged.
 
 No violations. `## Complexity Tracking` remains empty.
 
-**Post-Phase-1 re-check**: research (R1–R13), data model, contracts, and quickstart
+**2026-07-14 re-check (FR-023/SC-012 addition)**: Connection-health indicator is a
+pure client-side projection of the existing SignalR connection object (`Principle I`:
+no new Ubiquitous Language terms — "Connection Health State" is explicitly scoped in
+spec.md as client-only display state, not a domain entity; `Principle II`: covered by
+a hermetic frontend unit test, no live LLM/network involved; `Principle III`: no new
+structural boundary, no new ADR required — reuses ADR-001's stack; `Principle IV`: no
+new backend metric/log/span — nothing to instrument server-side, since no backend
+code changes; `Principle V`: harness-only, no wiki-content or agent-judgment
+surface). Still PASS, no violations.
+
+**Post-Phase-1 re-check**: research (R1–R14), data model, contracts, and quickstart
 introduce no boundaries beyond ADR-007/ADR-008; guardrail policy, tool surface, and
 rollback are untouched. PASS.
 
@@ -97,8 +111,15 @@ rollback are untouched. PASS.
 [docs/adr/ADR-007-agent-instruction-surface.md](../../docs/adr/ADR-007-agent-instruction-surface.md)
 and
 [docs/adr/ADR-008-agent-event-channel-run-supervision.md](../../docs/adr/ADR-008-agent-event-channel-run-supervision.md)
-(both status: proposed). **Both must reach Accepted (author sign-off) before
-`/speckit-tasks`.**
+(both status: Accepted).
+
+**2026-07-14 addition (FR-023/SC-012, connection-health indicator)**: No new ADR.
+The indicator is derived entirely from the existing SignalR `HubConnection` already
+established by `ingestLifecycleClient.ts` (ADR-001) — it adds a client-side state
+projection (`connecting|connected|reconnecting|disconnected`) over that connection's own
+`onreconnecting`/`onreconnected`/`onclose` callbacks, with no new endpoint, no new
+persistence, and no backend change. This is a harness-side frontend addition per the
+Agentic Boundary table below, squarely within ADR-001's existing scope.
 
 ## Agentic Boundary (Constitution Principle V)
 
@@ -117,6 +138,7 @@ and
 | Persistent FIFO queue + paused-after-restart + resume/re-trigger | Harness | Hub `AgentDispatch/` + `OperationalState/` (replaces 003 `IngestRunGate`) |
 | Guardrail policy enforcement | Harness (unchanged) | `Guardrails/GuardedToolExecutor` + `agents/ingest/policy.json` |
 | Form UI: prompt editor + step toggles; detail view: live activity; board: queue positions, resume | Harness | `frontend/src/lib/` (extends 003 components/services) |
+| Board-page connection-health indicator (Connected/Reconnecting/Disconnected) | Harness | `frontend/src/lib/` — pure client-side projection of the existing SignalR connection's lifecycle callbacks; no wiki-content or agent-judgment involved |
 
 ## Test Strategy
 
@@ -133,6 +155,7 @@ and
 | SC-009 event silence ⇒ failed within window | Deterministic guarantee | Hermetic integration test | scripted NDJSON stream + controllable fake clock | streams: silence after `started`; silence after `activity`; kill mid-run | Assert `failed` with liveness reason at window expiry, leftover process terminated, queue advanced; no task left `running`. |
 | SC-010 queue survives restart; manual re-trigger only | Deterministic guarantee | Hermetic integration test | SQLite temp store; simulated Hub restart (host rebuild) | queue with 2 rows fixture | After restart: rows intact, `queue_paused = true`, nothing starts; resume/re-trigger re-arms FIFO processing. |
 | SC-011 activity visible ≤ 2 s p95 | Deterministic guarantee | Integration test over real SignalR wire (003 pattern) | fake agent executable emitting scripted `activity` events | timed event fixture | Measure event→client latency; assert p95 ≤ 2 s across repeated events. |
+| SC-012 connection-health indicator reflects actual state ≤ 1 s | Deterministic guarantee | Frontend Vitest component/unit test | fake `HubConnection`-shaped test double (no real network) driving `onreconnecting`/`onreconnected`/`onclose` callbacks | scripted connection-lifecycle fixture (connect → drop → reconnect; connect → drop → give up) | Assert indicator state transitions Connected → Reconnecting → Connected\|Disconnected match the fake connection's callback sequence within 1 s (fake timers); purely client-side, no Hub-side test needed. |
 | SC-006 convention parity under consolidated prompt | Agent-judgment threshold | Evaluation run (`Grimoire.AgentEvals`) | live/recorded LLM per 002 eval setup | 002's convention-adherence + instruction-change-adoption suites, fixtures updated to edit `system-prompt.md` | Same thresholds as 002 (≥ 95% frontmatter/tags etc.); regression gate. |
 | SC-007 ≥ 90% steered runs reflect the steer | Agent-judgment threshold | Evaluation run with LLM-judge rubric | live/recorded LLM | ≥ 10 source/steer pairs with adjudication rubric | New eval class; threshold 90%, judge scores summary + touched pages vs. steer. |
 
@@ -194,7 +217,7 @@ correlated via `task_id`.
 ```text
 specs/004-ingest-agent-systemprompt/
 ├── plan.md              # This file
-├── research.md          # Phase 0 output (R1–R13)
+├── research.md          # Phase 0 output (R1–R14)
 ├── data-model.md        # Phase 1 output
 ├── quickstart.md        # Phase 1 output (scenarios 1–10)
 ├── contracts/
@@ -240,7 +263,11 @@ frontend/src/lib/
 ├── components/SubmissionForm.svelte   # (003) prompt editor + step toggles
 ├── components/                        # (003) detail view: live activity; board: queue position,
 │                                      # paused banner + resume action
-└── services/                          # defaults fetch, retrigger/resume calls, run_activity events
+├── components/ConnectionStatusIndicator.svelte  # NEW (FR-023) — badge near page header;
+│                                                 # connected|reconnecting|disconnected
+└── services/                          # defaults fetch, retrigger/resume calls, run_activity events;
+                                        # ingestLifecycleClient.ts extended with
+                                        # onConnectionStateChanged (NEW, FR-023)
 ```
 
 **Structure Decision**: No new projects or top-level directories beyond the two

@@ -51,6 +51,13 @@ markitdown) aktivieren oder deaktivieren können"
   plus agent-loop activity updates — what the loop is actively doing, e.g. "x tools
   used", "x model turns", and similar loop-level actions (no content-level detail).
 
+### Session 2026-07-14
+
+- Q: What connection states must the health indicator distinguish, and where should it
+  live on the page? → A: Connected / Reconnecting / Disconnected, mapping directly to
+  the realtime channel's own connection lifecycle, shown as a small persistent badge
+  near the page header, visible regardless of scroll position.
+
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - Maintain agent behavior in one honest place (Priority: P1)
@@ -209,6 +216,12 @@ within the liveness window without any user action.
 5. **Given** queued tasks, **When** the Hub restarts, **Then** the queued tasks are
    still visible in `queued` state after the restart and each can be explicitly
    re-triggered by the user; none starts automatically after a restart.
+6. **Given** the board page is open, **When** the realtime connection to the Hub is
+   active, **Then** a persistent connection-health indicator near the page header shows
+   "Connected"; **When** the connection drops and the client is automatically
+   reconnecting, **Then** the indicator shows "Reconnecting"; **When** reconnection
+   attempts are exhausted or the connection is closed, **Then** the indicator shows
+   "Disconnected" — all without a page reload.
 
 ---
 
@@ -253,6 +266,12 @@ within the liveness window without any user action.
 - What happens when a user re-triggers a queued task while another run is active?
   The task stays in the queue in its position; re-trigger after restart re-arms
   automatic processing, it does not jump the queue or start a second agent.
+- What happens when the browser's realtime connection to the Hub drops? The
+  connection-health indicator immediately reflects the change (Reconnecting, then
+  Connected or Disconnected); board data already loaded remains visible, and once
+  reconnected the client refreshes it from the REST endpoint (existing
+  reconnect-then-refresh behavior) — so the indicator, not silently stale data, is the
+  user's signal that something is wrong.
 
 ## Requirements *(mandatory)*
 
@@ -340,6 +359,11 @@ within the liveness window without any user action.
   normal automatic queue processing resumes.
 - **FR-022**: Events arriving for a task already in a terminal state MUST be recorded
   for diagnostics and MUST NOT change the task's state.
+- **FR-023**: The ingest board's single page MUST display a persistent
+  connection-health indicator, near the page header and visible regardless of scroll
+  position, reflecting the live state of the browser-to-Hub realtime channel. It MUST
+  distinguish at least Connected, Reconnecting, and Disconnected states and MUST update
+  without a page reload.
 
 ### Key Entities
 
@@ -365,6 +389,10 @@ within the liveness window without any user action.
   first-in-first-out acceptance order. Attributes: task identifier, queue position,
   accepted-at timestamp. Survives Hub restarts; post-restart processing requires
   explicit user re-trigger.
+- **Connection Health State**: Client-only, ephemeral display state (Connected,
+  Reconnecting, or Disconnected) derived from the browser's realtime-channel
+  connection lifecycle. Not persisted, not recorded on the Task Artifact, and not part
+  of the Run Queue or Agent Run Event model.
 
 ## Success Criteria *(mandatory)*
 
@@ -395,6 +423,9 @@ within the liveness window without any user action.
 - **SC-011**: Live loop-activity updates (tools used, model turns, current action) are
   visible in the task detail view within 2 seconds (p95) of the corresponding event,
   consistent with feature 003's propagation targets.
+- **SC-012**: 100% of the time, the board page's connection-health indicator reflects
+  the realtime channel's actual state (Connected, Reconnecting, or Disconnected) within
+  1 second of a state change, verified via a scripted connection-lifecycle test.
 
 **Agent-judgment evaluation thresholds**
 

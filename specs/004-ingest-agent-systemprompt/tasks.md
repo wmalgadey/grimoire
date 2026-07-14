@@ -412,6 +412,65 @@ advances; restart → queue intact, paused, manual resume.
 
 ---
 
+## Phase 8: User Story 4 addition — Board connection-health indicator (2026-07-14 clarification, FR-023/SC-012)
+
+**Goal**: A persistent Connected/Reconnecting/Disconnected badge near the board page's
+header, projected client-side from the existing SignalR connection's own lifecycle
+callbacks (research R14; plan.md 2026-07-14 addition) — no new backend surface.
+
+**Independent Test**: quickstart Scenario 11 — indicator shows Connected while the Hub
+is reachable, Reconnecting while the client's automatic reconnect is in flight,
+Disconnected once reconnect attempts are exhausted; no page reload required at any
+transition.
+
+### Tests for this addition (write first, must fail before implementation)
+
+- [ ] T053 [P] [US4] New frontend test
+      `frontend/src/lib/components/ConnectionStatusIndicator.svelte.test.ts`: renders
+      Connected/Reconnecting/Disconnected per prop state with distinct styling and a
+      stable `data-testid`/`data-connection-state` attribute (mirroring
+      `StatusBadge.svelte`'s pattern).
+- [ ] T054 [P] [US4] New frontend test
+      `frontend/src/lib/services/ingestLifecycleClient.svelte.test.ts` (or extend the
+      existing lifecycle-client test file): using a fake `HubConnection`-shaped double
+      (no real network), assert `onConnectionStateChanged` fires `connecting` before
+      `start()` resolves, `connected` once it resolves, `reconnecting` on the
+      connection's `onreconnecting` callback, `connected` again on `onreconnected`, and
+      `disconnected` on `onclose` (SC-012's scripted connection-lifecycle fixture per
+      plan.md Test Strategy).
+
+### Implementation for this addition
+
+- [ ] T055 [US4] Extend `IngestLifecycleClient` in
+      `frontend/src/lib/services/ingestLifecycleClient.ts`: add
+      `onConnectionStateChanged(handler: (state: ConnectionState) => void): () => void`
+      wired to the connection's `onreconnecting`/`onreconnected`/`onclose` callbacks
+      (`onReconnected` stays as-is for the existing board-refresh behavior); emit
+      `connecting` synchronously before `start()` is called and `connected`/
+      `disconnected` based on whether `start()` resolves or rejects. Add the
+      `ConnectionState` type (`'connecting' | 'connected' | 'reconnecting' |
+      'disconnected'`) to `frontend/src/lib/types.ts`. Thread an
+      `onConnectionStateChanged` option through `createBoardLifecycleStream` alongside
+      the existing `onRunActivityChanged` option (FR-023, research R14).
+- [ ] T056 [US4] Create `frontend/src/lib/components/ConnectionStatusIndicator.svelte`:
+      a small badge component taking a `state: ConnectionState` prop, labelled
+      "Connected"/"Reconnecting…"/"Disconnected", color-coded consistent with
+      `StatusBadge.svelte`'s `colorClasses` pattern (FR-023).
+- [ ] T057 [US4] Wire the indicator into `frontend/src/routes/+page.svelte`: track
+      `connectionState` via the `onConnectionStateChanged` option added in T055,
+      render `ConnectionStatusIndicator` near the page header (persistent, visible
+      regardless of scroll position) (FR-023, SC-012).
+- [ ] T058 [P] Update `specs/004-ingest-agent-systemprompt/quickstart.md` Scenario 11
+      manual steps to record actual outcomes once run end-to-end (mirrors T051's
+      treatment of scenarios 8/10 — live-verified where a real Hub start/stop is
+      needed; the deterministic state-transition assertions stay in T054).
+
+**Checkpoint**: Board connection-health indicator functional; quickstart Scenario 11
+passes; SC-012 covered by a hermetic frontend test (no backend/CI contract rows —
+plan.md's 2026-07-14 Constitution re-check notes no new metric/log/span applies here).
+
+---
+
 ## Observability contract map (audit reference for T046/T047)
 
 | Plan row | Impl task | Test task | CI task |
@@ -455,6 +514,12 @@ advances; restart → queue intact, paused, manual resume.
   T038 touches `AgentLoop.cs` (also US2 T018): coordinate or sequence
 - **Phase 7 (T046–T052)**: after all desired stories; T048/T049 require the full
   agent loop + instruction files
+- **Phase 8 (T053–T058)**: independent of Phase 7 and of T033–T045's backend content;
+  only touches `frontend/src/lib/services/ingestLifecycleClient.ts`,
+  `frontend/src/lib/components/`, `frontend/src/routes/+page.svelte`, and
+  `frontend/src/lib/types.ts` — safe to run any time after Phase 2 (does not depend on
+  US1–US3 or on T033–T045 landing first, since it only extends the lifecycle client
+  already present from feature 003)
 
 ### Within Each User Story
 
@@ -469,6 +534,8 @@ advances; restart → queue intact, paused, manual resume.
 - Within US3: T025 first, then T026–T031 sequential (shared pipeline files), T032 ∥
 - Within US4: T034 ∥ T035 ∥ T036 after T033; T037/T038 (agent) ∥ T039–T042 (hub);
   T045 ∥ backend tasks
+- Within Phase 8: T053 ∥ T054 (different test files); T055 before T056/T057 (T056
+  depends on the `ConnectionState` type from T055); T058 ∥ everything else
 - Different stories in parallel only with coordination on `AgentLoop.cs`,
   `SubmissionForm.svelte`, `IngestSubmissionEndpoints.cs` (shared files)
 
@@ -484,3 +551,8 @@ channel + queue; the largest slice — includes replacing `IngestRunGate`). Each
 closes with its checkpoint validation before the next begins. Phase 7 gates the DoD:
 observability audit, CI enforcement, and both eval suites (SC-006 parity, SC-007
 steering) must pass before the feature is DONE.
+
+**2026-07-14 addition**: Phase 8 (T053–T058, board connection-health indicator,
+FR-023/SC-012) is a small, independent, frontend-only slice — it can be implemented
+at any point after Phase 2 and does not block or get blocked by Phase 7's DoD gates,
+but the feature is not fully converged against the updated spec/plan until it lands.

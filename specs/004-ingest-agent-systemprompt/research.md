@@ -259,6 +259,44 @@ event payload reuses existing counters.
   harness display contracts and tempts backend interpretation. Rejected for now
   (extendable later via a new event type without breaking the contract).
 
+**Superseded note (2026-07-14 convergence check)**: The "Kanban card stays
+status-only" line above was superseded during implementation — `TaskCard.svelte`
+was built to render `runActivity` (model turns, tool calls, current action) for
+`running` tasks too, not only the detail view. This is a stricter reading of FR-018's
+"board/detail display" than R12 originally scoped, verified present in code; no
+regression, just a research-vs-build drift worth recording here rather than silently
+leaving the contradiction.
+
+## R14: Board connection-health indicator (2026-07-14 clarification, FR-023/SC-012)
+
+**Decision**: Project a small client-side state machine —
+`connecting | connected | reconnecting | disconnected` — directly from the existing
+`HubConnection` (`ingestLifecycleClient.ts`, ADR-001) already used for lifecycle/
+run-activity events. Wire it off the SignalR client's own `onreconnecting`,
+`onreconnected`, and `onclose` callbacks (only `onreconnected` was previously
+consumed); expose it as `onConnectionStateChanged` from
+`createIngestLifecycleClient`/`createBoardLifecycleStream`, alongside the initial
+state set once `connection.start()` resolves. Render it as a persistent badge near
+the page header in `frontend/src/routes/+page.svelte`, via a new
+`ConnectionStatusIndicator.svelte` component.
+
+**Rationale**: The SignalR client library already tracks this state internally and
+exposes exactly these three lifecycle callbacks — no new transport, endpoint, or
+backend change is needed. Keeping the projection in the existing lifecycle client
+(rather than a new service) avoids a second connection object and keeps one source
+of truth for connection state, consistent with how `onReconnected` already triggers a
+board refresh.
+
+**Alternatives considered**:
+- *Poll a Hub health endpoint from the browser*: adds a new backend endpoint and a
+  polling timer for information the client already has for free via its existing
+  SignalR connection object. Rejected as redundant.
+- *Derive health indirectly from lifecycle/event staleness (e.g., "no event in N
+  seconds")*: conflates two different failure modes (agent liveness, which is a Hub-
+  side concern per ADR-008/R10, vs. browser-to-Hub transport health) and would give
+  false positives when a task is simply idle in `queued`. Rejected — connection state
+  must come from the transport itself, not from event cadence.
+
 ## R13: Constitution wording touch-up
 
 **Decision**: Propose (outside this feature's gate) a PATCH amendment via

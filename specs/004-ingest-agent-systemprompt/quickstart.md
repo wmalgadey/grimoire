@@ -96,12 +96,27 @@ Contracts referenced: [ingest-submission-api-extension.md](./contracts/ingest-su
 4. **Expect**: processing resumes in FIFO order; from then on the queue advances
    automatically again.
 
+## Scenario 11 — Board connection-health indicator (2026-07-14 addition, FR-023/SC-012)
+
+1. Open the board page with the Hub reachable.
+2. **Expect**: the connection-health indicator near the page header shows "Connected".
+3. Stop the Hub process (or block the SignalR endpoint) without reloading the page.
+4. **Expect**: the indicator switches to "Reconnecting" while the client's automatic
+   reconnect attempts are in flight.
+5. Restart the Hub within the reconnect attempts window.
+6. **Expect**: the indicator returns to "Connected" and the board refreshes from the
+   REST endpoint (existing reconnect-then-refresh behavior); no page reload needed.
+7. Repeat, but leave the Hub stopped until reconnect attempts are exhausted.
+8. **Expect**: the indicator shows "Disconnected".
+
 ## Automated verification
 
 - Hermetic integration tests: `dotnet test backend/tests/Grimoire.IntegrationTests`
   (covers scenarios 1–7 deterministically with `FakeModelClient` / fake dispatcher).
 - Architecture tests: `dotnet test backend/tests/Grimoire.ArchTests` (guarded-write
   boundary unchanged).
-- Frontend: `npx vitest run` in `frontend/` (form prompt editor + toggles).
+- Frontend: `npx vitest run` in `frontend/` (form prompt editor + toggles; connection
+  status indicator's state transitions, scenario 11, via a fake `HubConnection`
+  double — no real Hub start/stop needed for the deterministic test).
 - Agent evals (SC-006/SC-007, requires eval credentials):
   `dotnet test backend/tests/Grimoire.AgentEvals`.
