@@ -15,8 +15,8 @@ public class IngestRunFailureVisibilityTests
     public async Task AgentRunFailure_PassesThroughAgentsOwnFailureReason_Unchanged()
     {
         const string agentFailureReason = "Guardrail denial: write_file outside allowed policy scope";
-        var dispatcher = new FakeIngestAgentDispatcher(terminalStatus: "failed", failureReason: agentFailureReason);
-        using var fixture = new IngestSubmissionPipelineFixture(dispatcher: dispatcher);
+        var dispatcher = new FakeAgentProcessLauncher(terminalStatus: "failed", failureReason: agentFailureReason);
+        using var fixture = new IngestSubmissionPipelineFixture(launcher: dispatcher);
 
         var bytes = System.Text.Encoding.UTF8.GetBytes("# Note\n\nContent.");
         var taskId = await fixture.Pipeline.AcceptAsync(
@@ -49,8 +49,8 @@ public class IngestRunFailureVisibilityTests
     [Fact]
     public async Task DispatcherThrows_StillReachesFailed_AndCleansUpOperationalState()
     {
-        var dispatcher = new FakeIngestAgentDispatcher(throwOnDispatch: new InvalidOperationException("Failed to start ingest agent process."));
-        using var fixture = new IngestSubmissionPipelineFixture(dispatcher: dispatcher);
+        var dispatcher = new FakeAgentProcessLauncher(throwOnStart: new InvalidOperationException("Failed to start ingest agent process."));
+        using var fixture = new IngestSubmissionPipelineFixture(launcher: dispatcher);
 
         var bytes = System.Text.Encoding.UTF8.GetBytes("# Note\n\nContent.");
         var taskId = await fixture.Pipeline.AcceptAsync(

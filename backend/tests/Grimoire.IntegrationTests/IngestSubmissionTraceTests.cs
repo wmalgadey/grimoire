@@ -25,8 +25,8 @@ public class IngestSubmissionTraceTests
         ActivitySource.AddActivityListener(listener);
 
         using var handler = new StaticHtmlHandler();
-        var dispatcher = new FakeIngestAgentDispatcher();
-        using var fixture = new IngestSubmissionPipelineFixture(dispatcher: dispatcher, urlFetchHandler: handler);
+        var dispatcher = new FakeAgentProcessLauncher();
+        using var fixture = new IngestSubmissionPipelineFixture(launcher: dispatcher, urlFetchHandler: handler);
 
         var taskId = await fixture.Pipeline.AcceptAsync(
             new IngestSubmissionInput(IngestSubmissionKind.Url, "https://example.test/article", null, null, null));
@@ -50,13 +50,32 @@ public class IngestSubmissionTraceTests
         AssertChildOf(byName, submit, "hub.ingest_submission.store_original");
         AssertChildOf(byName, submit, "hub.ingest_submission.convert_to_markdown");
         AssertChildOf(byName, submit, "hub.ingest_submission.store_normalized");
-        AssertChildOf(byName, submit, "hub.ingest_run.trigger");
+        // T046 (004 observability audit) — this span already fired here (markitdown applies
+        // to url and defaults to enabled) but had no assertion.
+        AssertChildOf(byName, submit, "ingest_submission.apply_convert_config");
+        // ADR-008: the blocking hub.ingest_run.trigger span is gone; the run phase is
+        // carried by the coordinator's ingest_hub.run_supervision span in the same trace.
+        var supervision = Assert.Single(byName["ingest_hub.run_supervision"]);
+        Assert.Equal(submit.TraceId.ToHexString(), supervision.TraceId.ToHexString());
+
+        // T046 (004 observability audit) — ingest_hub.handle_run_event had no assertion:
+        // the fake agent's `started` and `completed` events each produce a child span of
+        // run_supervision, carrying task_id and event_type correlation attributes.
+        var runEvents = byName["ingest_hub.handle_run_event"].ToList();
+        Assert.Contains(runEvents, e => (string?)e.GetTagItem("event_type") == "started");
+        Assert.Contains(runEvents, e => (string?)e.GetTagItem("event_type") == "completed");
+        Assert.All(runEvents, e =>
+        {
+            Assert.Equal(taskId, e.GetTagItem("task_id"));
+            Assert.Equal(supervision.SpanId.ToHexString(), e.ParentSpanId.ToHexString());
+        });
 
         // C1 (analysis remediation) - every lifecycle publish for this submission stays within the
         // single submit trace tree (Constitution IV: one end-to-end, observable trace chain), never
         // fragmenting into orphan roots. The pre-run publishes nest directly under submit; the
-        // run-phase publishes nest under the trigger span, which is itself a child of submit — all
-        // one trace. (Asserts over captured spans, so it never races the terminal publish's timing.)
+        // run-phase publishes nest under the coordinator's supervision flow, which starts inside
+        // the submit context — all one trace. (Asserts over captured spans, so it never races the
+        // terminal publish's timing.)
         var publishSpans = byName["hub.ingest_lifecycle.publish_update"].ToList();
         Assert.NotEmpty(publishSpans);
         Assert.All(publishSpans, publish =>

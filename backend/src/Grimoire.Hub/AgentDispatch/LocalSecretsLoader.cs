@@ -23,6 +23,8 @@ public sealed class LocalSecretsLoader
     /// </summary>
     public string? GetIngestTokenCap() => ReadEnvVar("GRIMOIRE_INGEST_TOKEN_CAP");
 
+    internal string? GetIngestBase() => ReadEnvVar("GRIMOIRE_INGEST_BASE_URL");
+
     private string? ReadEnvVar(string varName)
     {
         if (!File.Exists(_envFilePath))

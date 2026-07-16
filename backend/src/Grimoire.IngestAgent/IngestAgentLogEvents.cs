@@ -14,27 +14,50 @@ public static class IngestAgentLogEvents
     private static readonly EventId BackstopAppendedEvent = new(6, "ingest.log.backstop_appended");
     private static readonly EventId AgentCompletedEvent = new(7, "ingest.agent.completed");
     private static readonly EventId AgentCapExceededEvent = new(8, "ingest.agent.cap_exceeded");
+    private static readonly EventId UserPromptResolvedEvent = new(9, "ingest.agent.user_prompt_resolved");
 
     public static void LogInstructionsLoaded(
         ILogger logger,
         string taskId,
-        string instructionFiles,
+        string path,
+        string sha256,
         int policyVersion,
         string policySha256)
     {
         using var span = StartLogEventSpan(InstructionsLoadedEvent.Name ?? "ingest.instructions.loaded", "Information");
         span?.SetTag("task_id", taskId);
-        span?.SetTag("instruction_files", instructionFiles);
+        span?.SetTag("path", path);
+        span?.SetTag("sha256", sha256);
         span?.SetTag("policy_version", policyVersion);
         span?.SetTag("policy_sha256", policySha256);
 
         logger.LogInformation(
             InstructionsLoadedEvent,
-            "Instructions and policy loaded for task {task_id}. instruction_files={instruction_files} policy_version={policy_version} policy_sha256={policy_sha256}",
+            "System prompt and policy loaded for task {task_id}. path={path} sha256={sha256} policy_version={policy_version} policy_sha256={policy_sha256}",
             taskId,
-            instructionFiles,
+            path,
+            sha256,
             policyVersion,
             policySha256);
+    }
+
+    public static void LogUserPromptResolved(
+        ILogger logger,
+        string taskId,
+        string promptSource,
+        int promptLength)
+    {
+        using var span = StartLogEventSpan(UserPromptResolvedEvent.Name ?? "ingest.agent.user_prompt_resolved", "Information");
+        span?.SetTag("task_id", taskId);
+        span?.SetTag("prompt_source", promptSource);
+        span?.SetTag("prompt_length", promptLength);
+
+        logger.LogInformation(
+            UserPromptResolvedEvent,
+            "Effective user prompt resolved for task {task_id}. prompt_source={prompt_source} prompt_length={prompt_length}",
+            taskId,
+            promptSource,
+            promptLength);
     }
 
     public static void LogInstructionsLoadFailed(

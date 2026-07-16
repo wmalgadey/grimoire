@@ -24,7 +24,7 @@ public class CredentialScopingTests
         };
 
         // authToken=null simulates LocalSecretsLoader returning null (empty/absent secrets file).
-        var childEnv = IngestAgentDispatcher.BuildChildEnvironment(parentEnv, authToken: null);
+        var childEnv = AgentProcessHost.BuildChildEnvironment(parentEnv, authToken: null);
 
         Assert.False(childEnv.ContainsKey("ANTHROPIC_AUTH_TOKEN"),
             "ANTHROPIC_AUTH_TOKEN must not be present in child env when secrets file returns null.");
@@ -40,7 +40,7 @@ public class CredentialScopingTests
             ["PATH"] = "/usr/bin",
         };
 
-        var childEnv = IngestAgentDispatcher.BuildChildEnvironment(parentEnv, authToken: "sk-ant-from-file");
+        var childEnv = AgentProcessHost.BuildChildEnvironment(parentEnv, authToken: "sk-ant-from-file");
 
         Assert.Equal("sk-ant-from-file", childEnv["ANTHROPIC_AUTH_TOKEN"]);
     }

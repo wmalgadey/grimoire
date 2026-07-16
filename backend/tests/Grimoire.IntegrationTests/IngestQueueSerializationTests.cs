@@ -14,8 +14,8 @@ public class IngestQueueSerializationTests
     [Fact]
     public async Task SecondSubmission_WaitsForFirstRunToFinish_ThenAutoTriggers()
     {
-        var dispatcher = new FakeIngestAgentDispatcher(simulatedRunDuration: TimeSpan.FromMilliseconds(300));
-        using var fixture = new IngestSubmissionPipelineFixture(dispatcher: dispatcher);
+        var dispatcher = new FakeAgentProcessLauncher(simulatedRunDuration: TimeSpan.FromMilliseconds(300));
+        using var fixture = new IngestSubmissionPipelineFixture(launcher: dispatcher);
 
         var bytesA = System.Text.Encoding.UTF8.GetBytes("# First\n\nFirst content.");
         var bytesB = System.Text.Encoding.UTF8.GetBytes("# Second\n\nSecond content.");

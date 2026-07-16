@@ -3,14 +3,18 @@ using Grimoire.IngestAgent.AgentCore;
 using Grimoire.IngestAgent.Guardrails;
 using Grimoire.IntegrationTests.Fakes;
 using System.Security.Cryptography;
-using System.Text;
 
 namespace Grimoire.IntegrationTests;
 
+/// <summary>
+/// 004 US1 (SC-001, ADR-007): the single System Prompt Document is the agent's entire
+/// system prompt — byte-exact, no concatenation, no header injection — and the SHA-256
+/// recorded per run matches the document on disk.
+/// </summary>
 public class InstructionContextTests
 {
     [Fact]
-    public async Task SystemPrompt_ContainsInstructionFilesVerbatim_AndHashesMatchPromptContent()
+    public async Task SystemPrompt_IsExactlyTheDocumentContent_AndHashMatchesDisk()
     {
         var root = Path.Combine(Path.GetTempPath(), $"instruction-context-{Guid.NewGuid():N}");
         Directory.CreateDirectory(root);
@@ -18,27 +22,22 @@ public class InstructionContextTests
         try
         {
             var instructionsDir = Path.Combine(root, "agents", "ingest");
-            var skillOneDir = Path.Combine(instructionsDir, "skills", "wiki-maintenance");
-            var skillTwoDir = Path.Combine(instructionsDir, "skills", "taxonomy");
-            Directory.CreateDirectory(skillOneDir);
-            Directory.CreateDirectory(skillTwoDir);
+            Directory.CreateDirectory(instructionsDir);
+            var systemPromptPath = Path.Combine(instructionsDir, "system-prompt.md");
 
-            var claudeContent = "Rule A\nRule B\n";
-            var skillOneContent = "Skill One\nDo X\n";
-            var skillTwoContent = "Skill Two\nDo Y\n";
+            var promptContent = "# Operating rules\nRule A\nRule B\n\n# Conventions\nDo X\nDo Y\n";
+            await File.WriteAllTextAsync(systemPromptPath, promptContent);
 
-            await File.WriteAllTextAsync(Path.Combine(instructionsDir, "CLAUDE.md"), claudeContent);
-            await File.WriteAllTextAsync(Path.Combine(skillOneDir, "SKILL.md"), skillOneContent);
-            await File.WriteAllTextAsync(Path.Combine(skillTwoDir, "SKILL.md"), skillTwoContent);
-
-            var loader = new InstructionSetLoader();
-            var loadResult = await loader.LoadAsync(instructionsDir, CancellationToken.None);
+            var loader = new SystemPromptLoader();
+            var loadResult = await loader.LoadAsync(systemPromptPath, CancellationToken.None);
             Assert.True(loadResult.IsFirst(out var loaded));
 
-            var systemPrompt = loaded!.BuildSystemPrompt();
-            Assert.Contains(claudeContent.TrimEnd(), systemPrompt, StringComparison.Ordinal);
-            Assert.Contains(skillOneContent.TrimEnd(), systemPrompt, StringComparison.Ordinal);
-            Assert.Contains(skillTwoContent.TrimEnd(), systemPrompt, StringComparison.Ordinal);
+            // Verbatim single document — the loaded content IS the system prompt.
+            Assert.Equal(promptContent, loaded!.Content);
+
+            var expectedHash = Convert.ToHexStringLower(
+                SHA256.HashData(await File.ReadAllBytesAsync(systemPromptPath)));
+            Assert.Equal(expectedHash, loaded.Sha256);
 
             var fake = new FakeModelClient([
                 new ModelTurn("final narrative", [], ModelStopReason.EndTurn, 1, 1)
@@ -48,18 +47,11 @@ public class InstructionContextTests
             var executor = new GuardedToolExecutor(policy, new WriteJournal(), root);
             var loop = new AgentLoop(fake, executor);
 
-            _ = await loop.RunAsync(systemPrompt, "task-ctx-1", "source.md", "source", CancellationToken.None);
+            _ = await loop.RunAsync(loaded.Content, "Integrate the source.", "task-ctx-1", "source.md", "source", CancellationToken.None);
 
             Assert.Equal(1, fake.CallCount);
-            var sentPrompt = fake.Calls[0].SystemPrompt;
-
-            foreach (var file in loaded.Files)
-            {
-                Assert.Contains($"<!-- {file.Path} -->", sentPrompt, StringComparison.Ordinal);
-                Assert.Contains(file.Content.TrimEnd('\r', '\n'), sentPrompt, StringComparison.Ordinal);
-                var extractedHash = Convert.ToHexStringLower(SHA256.HashData(Encoding.UTF8.GetBytes(file.Content)));
-                Assert.Equal(file.Sha256, extractedHash);
-            }
+            // Byte-exact: the model receives exactly the file content, nothing added.
+            Assert.Equal(promptContent, fake.Calls[0].SystemPrompt);
         }
         finally
         {
@@ -70,4 +62,39 @@ public class InstructionContextTests
         }
     }
 
+    [Fact]
+    public async Task LeftoverLegacyInstructionFiles_AreIgnored_OnlyTheSystemPromptIsLoaded()
+    {
+        var root = Path.Combine(Path.GetTempPath(), $"instruction-legacy-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(root);
+
+        try
+        {
+            // Incomplete-migration scenario (spec edge case): legacy CLAUDE.md and
+            // skills/*/SKILL.md still on disk — they must not reach the prompt.
+            var instructionsDir = Path.Combine(root, "agents", "ingest");
+            var legacySkillDir = Path.Combine(instructionsDir, "skills", "wiki-maintenance");
+            Directory.CreateDirectory(legacySkillDir);
+            await File.WriteAllTextAsync(Path.Combine(instructionsDir, "CLAUDE.md"), "LEGACY-CLAUDE-CONTENT");
+            await File.WriteAllTextAsync(Path.Combine(legacySkillDir, "SKILL.md"), "LEGACY-SKILL-CONTENT");
+
+            var systemPromptPath = Path.Combine(instructionsDir, "system-prompt.md");
+            await File.WriteAllTextAsync(systemPromptPath, "Only this document governs the agent.\n");
+
+            var loader = new SystemPromptLoader();
+            var loadResult = await loader.LoadAsync(systemPromptPath, CancellationToken.None);
+            Assert.True(loadResult.IsFirst(out var loaded));
+
+            Assert.DoesNotContain("LEGACY-CLAUDE-CONTENT", loaded!.Content, StringComparison.Ordinal);
+            Assert.DoesNotContain("LEGACY-SKILL-CONTENT", loaded.Content, StringComparison.Ordinal);
+            Assert.Equal("Only this document governs the agent.\n", loaded.Content);
+        }
+        finally
+        {
+            if (Directory.Exists(root))
+            {
+                Directory.Delete(root, recursive: true);
+            }
+        }
+    }
 }

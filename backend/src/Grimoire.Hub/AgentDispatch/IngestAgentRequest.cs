@@ -9,5 +9,7 @@ public sealed record IngestAgentRequest(
     string IndexPath,
     string LogPath,
     string? PastedText,
-    string InstructionsDir,
-    string PolicyPath);
+    string SystemPromptPath,
+    string DefaultUserPromptPath,
+    string PolicyPath,
+    string? UserPrompt = null);

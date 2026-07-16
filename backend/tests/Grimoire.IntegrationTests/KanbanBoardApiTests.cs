@@ -13,8 +13,8 @@ public class KanbanBoardApiTests
     [Fact]
     public async Task GetAll_ListsEveryAcceptedTask_ExactlyOnce_GroupedByStage()
     {
-        var dispatcher = new FakeIngestAgentDispatcher();
-        using var fixture = new IngestSubmissionPipelineFixture(dispatcher: dispatcher);
+        var dispatcher = new FakeAgentProcessLauncher();
+        using var fixture = new IngestSubmissionPipelineFixture(launcher: dispatcher);
 
         var taskA = await fixture.Pipeline.AcceptAsync(new IngestSubmissionInput(
             IngestSubmissionKind.MarkdownFile, null, "a.md", System.Text.Encoding.UTF8.GetBytes("# A"), "text/markdown"));

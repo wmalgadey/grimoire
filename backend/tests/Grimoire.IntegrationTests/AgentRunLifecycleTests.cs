@@ -96,6 +96,7 @@ public class AgentRunLifecycleTests
             // Act
             var result = await loop.RunAsync(
                 systemPrompt: "You are a test agent.",
+                userPrompt: "Integrate the source.",
                 taskId: "test-task-1",
                 sourceRef: "test://source",
                 sourceContent: SourceContent,
@@ -160,6 +161,7 @@ public class AgentRunLifecycleTests
 
             await Assert.ThrowsAsync<InvalidOperationException>(() => loop.RunAsync(
                 "prompt",
+                "Integrate the source.",
                 "task-midrun-failure",
                 "source.md",
                 "source",
@@ -209,6 +211,7 @@ public class AgentRunLifecycleTests
 
             var ex = await Assert.ThrowsAsync<AgentLoopCapException>(() => loop.RunAsync(
                 "prompt",
+                "Integrate the source.",
                 "task-cap",
                 "source.md",
                 "source",
@@ -294,6 +297,7 @@ public class AgentRunLifecycleTests
             // Act
             var result = await loop.RunAsync(
                 systemPrompt: "Test.",
+                userPrompt: "Integrate the source.",
                 taskId: "test-task-3",
                 sourceRef: "test://source",
                 sourceContent: SourceContent,
@@ -371,6 +375,7 @@ public class AgentRunLifecycleTests
             // Act
             var result = await loop.RunAsync(
                 systemPrompt: "You are a test agent.",
+                userPrompt: "Integrate the source.",
                 taskId: "minimal-test",
                 sourceRef: "test://source",
                 sourceContent: SourceContent,
@@ -430,6 +435,7 @@ public class AgentRunLifecycleTests
             // Act
             var result = await loop.RunAsync(
                 systemPrompt: "Test.",
+                userPrompt: "Integrate the source.",
                 taskId: "test-task-no-empty-user",
                 sourceRef: "test://source",
                 sourceContent: SourceContent,
@@ -496,6 +502,7 @@ public class AgentRunLifecycleTests
             // Act / Assert
             var ex = await Assert.ThrowsAsync<InvalidOperationException>(() => loop.RunAsync(
                 systemPrompt: "Test.",
+                userPrompt: "Integrate the source.",
                 taskId: "test-task-stop-sequence",
                 sourceRef: "test://source",
                 sourceContent: SourceContent,
@@ -542,6 +549,7 @@ public class AgentRunLifecycleTests
             // Act / Assert
             var ex = await Assert.ThrowsAsync<InvalidOperationException>(() => loop.RunAsync(
                 systemPrompt: "Test.",
+                userPrompt: "Integrate the source.",
                 taskId: "test-task-tool-use-no-blocks",
                 sourceRef: "test://source",
                 sourceContent: SourceContent,
@@ -587,6 +595,7 @@ public class AgentRunLifecycleTests
             // Act / Assert
             var ex = await Assert.ThrowsAsync<InvalidOperationException>(() => loop.RunAsync(
                 systemPrompt: "Test.",
+                userPrompt: "Integrate the source.",
                 taskId: "test-task-empty-stop-reason",
                 sourceRef: "test://source",
                 sourceContent: SourceContent,

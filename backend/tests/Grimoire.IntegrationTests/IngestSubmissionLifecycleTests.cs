@@ -38,7 +38,7 @@ public class IngestSubmissionLifecycleTests
         Assert.Equal("completed", final!.Status);
 
         // The agent was triggered against the persisted normalized markdown, not re-fetched (FR-010).
-        var request = Assert.Single(fixture.Dispatcher.Requests);
+        var request = Assert.Single(fixture.Launcher.Requests);
         Assert.Equal(taskId, request.TaskId);
         Assert.Equal("file", request.SourceKind);
         Assert.True(File.Exists(request.SourceRef));
@@ -68,6 +68,6 @@ public class IngestSubmissionLifecycleTests
         Assert.NotNull(final.FailureReason);
 
         // The agent must never be triggered for a submission that failed before reaching queued.
-        Assert.Empty(fixture.Dispatcher.Requests);
+        Assert.Empty(fixture.Launcher.Requests);
     }
 }

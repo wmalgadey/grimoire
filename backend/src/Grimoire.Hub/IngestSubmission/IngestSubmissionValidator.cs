@@ -73,6 +73,69 @@ public sealed class IngestSubmissionValidator
         return IngestSubmissionValidationResult.Valid;
     }
 
+    /// <summary>Maximum accepted user-prompt length after trim (FR-010, contracts: userPromptMaxLength).</summary>
+    public const int UserPromptMaxLength = 8000;
+
+    /// <summary>
+    /// Validates the optional per-submission steering prompt (FR-007, FR-010).
+    /// Empty/whitespace means "use the default" and normalizes to null.
+    /// </summary>
+    public IngestSubmissionValidationResult ValidateUserPrompt(string? userPrompt, out string? normalizedPrompt)
+    {
+        normalizedPrompt = string.IsNullOrWhiteSpace(userPrompt) ? null : userPrompt.Trim();
+        if (normalizedPrompt is not null && normalizedPrompt.Length > UserPromptMaxLength)
+        {
+            normalizedPrompt = null;
+            return new IngestSubmissionValidationResult(false,
+                $"user_prompt_too_long: The user prompt exceeds the maximum of {UserPromptMaxLength} characters.",
+                IngestSubmissionValidationErrorKind.BadRequest);
+        }
+
+        return IngestSubmissionValidationResult.Valid;
+    }
+
+    /// <summary>
+    /// Validates the optional per-submission convert-step configuration against the
+    /// registry (FR-011, FR-013): unknown step → 400, step not applicable to the
+    /// submitted kind → 400, required step disabled → 422. All before task creation.
+    /// </summary>
+    public IngestSubmissionValidationResult ValidateConvertSteps(
+        string kindLabel, IReadOnlyDictionary<string, bool>? requestedSteps)
+    {
+        if (requestedSteps is null || requestedSteps.Count == 0)
+        {
+            return IngestSubmissionValidationResult.Valid;
+        }
+
+        foreach (var (name, enabled) in requestedSteps)
+        {
+            var step = ConvertStepRegistry.TryGet(name);
+            if (step is null)
+            {
+                return new IngestSubmissionValidationResult(false,
+                    $"unknown_convert_step: '{name}' is not a registered convert step.",
+                    IngestSubmissionValidationErrorKind.BadRequest);
+            }
+
+            if (!step.AppliesTo.Contains(kindLabel))
+            {
+                return new IngestSubmissionValidationResult(false,
+                    $"convert_step_not_applicable: step '{name}' does not apply to {kindLabel} submissions.",
+                    IngestSubmissionValidationErrorKind.BadRequest);
+            }
+
+            if (!enabled && step.RequiredFor.Contains(kindLabel))
+            {
+                return new IngestSubmissionValidationResult(false,
+                    $"convert_step_required: step '{name}' cannot be disabled for {kindLabel} submissions — " +
+                    "binary formats must be converted to Markdown to be usable by the agent.",
+                    IngestSubmissionValidationErrorKind.UnprocessableEntity);
+            }
+        }
+
+        return IngestSubmissionValidationResult.Valid;
+    }
+
     public static bool TryParseKind(string? rawKind, out IngestSubmissionKind kind)
     {
         kind = default;

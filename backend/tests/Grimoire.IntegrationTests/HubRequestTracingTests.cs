@@ -74,6 +74,7 @@ public class HubRequestTracingTests
                     services.AddSingleton(fixture.BoardStore);
                     services.AddSingleton(fixture.ContentPaths);
                     services.AddSingleton(fixture.SourceArtifactStore);
+                    services.AddSingleton(fixture.Coordinator);
                 });
                 webHost.Configure(app =>
                 {

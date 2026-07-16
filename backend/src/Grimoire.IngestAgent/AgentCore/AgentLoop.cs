@@ -3,10 +3,12 @@ using Grimoire.IngestAgent.Guardrails;
 namespace Grimoire.IngestAgent.AgentCore;
 
 /// <summary>
-/// Manual tool-use loop. System prompt = instruction files verbatim. User message =
-/// task context + source wrapped in &lt;source&gt; delimiters. Loops
-/// NextTurnAsync → dispatch each tool_use through GuardedToolExecutor → return
-/// tool_results until end_turn or cap breach (turn/token cap ⇒ run failure).
+/// Manual tool-use loop. System prompt = the System Prompt Document verbatim (ADR-007).
+/// User message = harness-owned scaffold (task context, &lt;source&gt; delimiters,
+/// injection framing) wrapping the effective user prompt — the scaffold is not
+/// user-editable (FR-008). Loops NextTurnAsync → dispatch each tool_use through
+/// GuardedToolExecutor → return tool_results until end_turn or cap breach
+/// (turn/token cap ⇒ run failure).
 /// </summary>
 public sealed class AgentLoop
 {
@@ -19,17 +21,20 @@ public sealed class AgentLoop
     private readonly GuardedToolExecutor _executor;
     private readonly int _turnCap;
     private readonly int _tokenCap;
+    private readonly RunEventEmitter? _eventEmitter;
 
     public AgentLoop(
         IModelClient modelClient,
         GuardedToolExecutor executor,
         int turnCap = DefaultTurnCap,
-        int tokenCap = DefaultTokenCap)
+        int tokenCap = DefaultTokenCap,
+        RunEventEmitter? eventEmitter = null)
     {
         _modelClient = modelClient;
         _executor = executor;
         _turnCap = turnCap;
         _tokenCap = tokenCap;
+        _eventEmitter = eventEmitter;
     }
 
     /// <summary>
@@ -39,6 +44,7 @@ public sealed class AgentLoop
     /// </summary>
     public async Task<AgentLoopResult> RunAsync(
         string systemPrompt,
+        string userPrompt,
         string taskId,
         string sourceRef,
         string sourceContent,
@@ -46,13 +52,15 @@ public sealed class AgentLoop
     {
         var conversation = new List<ConversationMessage>();
 
-        // Initial user message: task context + source as untrusted delimited data.
-        var userMessage = BuildUserMessage(taskId, sourceRef, sourceContent);
+        // Initial user message: scaffold + effective user prompt + source as untrusted delimited data.
+        var userMessage = BuildUserMessage(taskId, sourceRef, userPrompt, sourceContent);
         conversation.Add(new ConversationMessage("user", [new ConversationTextBlock(userMessage)]));
 
         int turnsUsed = 0;
         int totalInputTokens = 0;
         int totalOutputTokens = 0;
+        int toolCallsTotal = 0;
+        var toolCallsByName = new Dictionary<string, int>(StringComparer.Ordinal);
 
         while (true)
         {
@@ -82,6 +90,9 @@ public sealed class AgentLoop
             turnsUsed++;
             totalInputTokens += turn.InputTokens;
             totalOutputTokens += turn.OutputTokens;
+
+            // Loop-activity event (ADR-008): counters and the current loop action only.
+            _eventEmitter?.EmitActivity(turnsUsed, toolCallsTotal, toolCallsByName, "model_turn");
 
             var stopReason = turn.StopReason;
             var stopReasonLabel = stopReason.ToProtocolString();
@@ -118,6 +129,7 @@ public sealed class AgentLoop
                         // Run completes only on explicit end_turn (per contract).
                         IngestAgentMetrics.RecordNoToolTurn(stopReason, "terminal");
                         IngestAgentMetrics.RecordAgentTurns(turnsUsed, "completed");
+                        _eventEmitter?.EmitActivity(turnsUsed, toolCallsTotal, toolCallsByName, "finalizing");
 
                         return new AgentLoopResult(
                             Narrative: turn.AssistantText ?? string.Empty,
@@ -145,6 +157,10 @@ public sealed class AgentLoop
             var toolResultBlocks = new List<ConversationContentBlock>();
             foreach (var toolUse in turn.ToolUseRequests)
             {
+                toolCallsTotal++;
+                toolCallsByName[toolUse.ToolName] = toolCallsByName.TryGetValue(toolUse.ToolName, out var count) ? count + 1 : 1;
+                _eventEmitter?.EmitActivity(turnsUsed, toolCallsTotal, toolCallsByName, $"tool_call:{toolUse.ToolName}");
+
                 var result = await _executor.ExecuteAsync(
                     toolUse.ToolName, toolUse.InputJson, turnsUsed, cancellationToken);
 
@@ -165,14 +181,13 @@ public sealed class AgentLoop
         }
     }
 
-    private static string BuildUserMessage(string taskId, string sourceRef, string sourceContent)
+    private static string BuildUserMessage(string taskId, string sourceRef, string userPrompt, string sourceContent)
     {
         return $"""
             Task ID: {taskId}
             Source reference: {sourceRef}
 
-            Please integrate the following source into the wiki. First explore the wiki state,
-            then apply your judgment to create, update, or supersede pages as appropriate.
+            {userPrompt.Trim()}
 
             <source>
             {sourceContent}

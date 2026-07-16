@@ -70,7 +70,8 @@ public class ObservabilityTraceTests
         IngestAgentLogEvents.LogInstructionsLoaded(
             ingestLogger,
             taskId: "task-obs-1",
-            instructionFiles: "agents/ingest/CLAUDE.md:abc",
+            path: "agents/ingest/system-prompt.md",
+            sha256: "abc",
             policyVersion: 1,
             policySha256: "policy-sha");
 
@@ -155,6 +156,7 @@ public class ObservabilityTraceTests
 
             await loop.RunAsync(
                 systemPrompt: "You are a test agent.",
+                userPrompt: "Integrate the source.",
                 taskId: "task-123",
                 sourceRef: "source.md",
                 sourceContent: "# source\n\ncontent",

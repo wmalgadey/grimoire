@@ -16,13 +16,10 @@ public class GovernanceIdentityTests
         try
         {
             var instructionsDir = Path.Combine(root, "agents", "ingest");
-            var skillsDir = Path.Combine(instructionsDir, "skills", "wiki-maintenance");
-            Directory.CreateDirectory(skillsDir);
+            Directory.CreateDirectory(instructionsDir);
 
-            var claudePath = Path.Combine(instructionsDir, "CLAUDE.md");
-            var skillPath = Path.Combine(skillsDir, "SKILL.md");
-            await File.WriteAllTextAsync(claudePath, "You are ingest-agent.");
-            await File.WriteAllTextAsync(skillPath, "version: 1");
+            var systemPromptPath = Path.Combine(instructionsDir, "system-prompt.md");
+            await File.WriteAllTextAsync(systemPromptPath, "You are ingest-agent.\nversion: 1");
 
             var policyPath = Path.Combine(instructionsDir, "policy.json");
             await File.WriteAllTextAsync(
@@ -36,20 +33,17 @@ public class GovernanceIdentityTests
                 }
                 """);
 
-            var instructionLoader = new InstructionSetLoader();
-            var firstInstructionsResult = await instructionLoader.LoadAsync(instructionsDir, CancellationToken.None);
+            var instructionLoader = new SystemPromptLoader();
+            var firstInstructionsResult = await instructionLoader.LoadAsync(systemPromptPath, CancellationToken.None);
             Assert.True(firstInstructionsResult.IsFirst(out var firstInstructions));
 
             var policyLoader = new PolicyLoader(root);
             var policyResult = await policyLoader.LoadAsync(policyPath, CancellationToken.None);
             Assert.True(policyResult.IsFirst(out var loadedPolicy));
 
-            foreach (var file in firstInstructions!.Files)
-            {
-                var fileBytes = await File.ReadAllBytesAsync(file.Path);
-                var expected = Convert.ToHexStringLower(SHA256.HashData(fileBytes));
-                Assert.Equal(expected, file.Sha256);
-            }
+            var promptBytes = await File.ReadAllBytesAsync(firstInstructions!.Path);
+            var expectedHash = Convert.ToHexStringLower(SHA256.HashData(promptBytes));
+            Assert.Equal(expectedHash, firstInstructions.Sha256);
 
             var artifactPath = Path.Combine(root, "wiki", "tasks", "task-1.md");
             var store = new TaskArtifactStore();
@@ -70,7 +64,7 @@ public class GovernanceIdentityTests
                     PagesUpdated: [],
                     PagesSuperseded: [],
                     DeniedActions: [],
-                    InstructionFiles: firstInstructions.Files.Select(f => new InstructionFileRecord(f.Path, f.Sha256)).ToList(),
+                    InstructionFiles: [new InstructionFileRecord(firstInstructions.Path, firstInstructions.Sha256)],
                     Policy: new PolicyRecord(loadedPolicy!.Identity.Path, loadedPolicy.Identity.Version, loadedPolicy.Identity.Sha256),
                     Model: "fake",
                     Turns: 1,
@@ -80,18 +74,18 @@ public class GovernanceIdentityTests
             var parsed = await store.ReadAsync(artifactPath, CancellationToken.None);
             Assert.NotNull(parsed.InstructionFiles);
             Assert.NotNull(parsed.Policy);
-            Assert.Equal(firstInstructions.Files.Count, parsed.InstructionFiles!.Count);
+            Assert.Single(parsed.InstructionFiles!);
+            Assert.Equal(firstInstructions.Sha256, parsed.InstructionFiles![0].Sha256);
             Assert.Equal(loadedPolicy!.Identity.Sha256, parsed.Policy!.Sha256);
             Assert.Equal(loadedPolicy.Identity.Version, parsed.Policy.Version);
 
-            var firstSkillHash = firstInstructions.Files.Single(f => f.Path.EndsWith("SKILL.md", StringComparison.Ordinal)).Sha256;
+            var firstHash = firstInstructions.Sha256;
 
-            await File.WriteAllTextAsync(skillPath, "version: 2");
-            var secondInstructionsResult = await instructionLoader.LoadAsync(instructionsDir, CancellationToken.None);
+            await File.WriteAllTextAsync(systemPromptPath, "You are ingest-agent.\nversion: 2");
+            var secondInstructionsResult = await instructionLoader.LoadAsync(systemPromptPath, CancellationToken.None);
             Assert.True(secondInstructionsResult.IsFirst(out var secondInstructions));
-            var secondSkillHash = secondInstructions!.Files.Single(f => f.Path.EndsWith("SKILL.md", StringComparison.Ordinal)).Sha256;
 
-            Assert.NotEqual(firstSkillHash, secondSkillHash);
+            Assert.NotEqual(firstHash, secondInstructions!.Sha256);
         }
         finally
         {

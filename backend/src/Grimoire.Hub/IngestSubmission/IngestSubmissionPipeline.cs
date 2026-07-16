@@ -3,7 +3,6 @@ using Grimoire.Domain.Ingest;
 using Grimoire.Hub.AgentDispatch;
 using Grimoire.Hub.ContentRoot;
 using Grimoire.Hub.Conversion;
-using Grimoire.Hub.OperationalState;
 using Grimoire.Hub.Realtime;
 using Grimoire.Hub.TaskArtifact;
 using Microsoft.Extensions.Logging;
@@ -13,21 +12,26 @@ namespace Grimoire.Hub.IngestSubmission;
 
 /// <summary>
 /// One accepted source submission: URL, or a single uploaded file
-/// (data-model.md IngestSubmission).
+/// (data-model.md IngestSubmission), optionally carrying a custom steering prompt and
+/// per-step convert overrides (004 FR-006, FR-011). The caller validates before
+/// constructing this input.
 /// </summary>
 public sealed record IngestSubmissionInput(
     IngestSubmissionKind Kind,
     string? Url,
     string? FileName,
     byte[]? FileBytes,
-    string? FileContentType);
+    string? FileContentType,
+    string? UserPrompt = null,
+    IReadOnlyDictionary<string, bool>? ConvertSteps = null);
 
 /// <summary>
 /// Orchestrates the ingest-submission phase end to end (FR-002, FR-004, FR-005, FR-006, FR-010):
 /// creates the Task Artifact at `received`, drives it through `converting` (fetch/convert +
-/// persist artifacts) to `queued` or `failed`, then auto-triggers the Ingest agent once queued,
-/// respecting the single-concurrent-run constraint (FR-013). Every stage transition is published
-/// to the board over <see cref="IngestLifecyclePublisher"/>.
+/// persist artifacts) to `queued` or `failed`, then hands the task to the
+/// <see cref="IngestRunCoordinator"/> — non-blocking, queue-driven, event-supervised
+/// (ADR-008; 004 FR-016/FR-019). Every stage transition is published to the board over
+/// <see cref="IngestLifecyclePublisher"/>.
 /// </summary>
 public sealed class IngestSubmissionPipeline
 {
@@ -36,9 +40,7 @@ public sealed class IngestSubmissionPipeline
     private readonly MarkItDownConverter _converter;
     private readonly UrlContentFetcher _urlFetcher;
     private readonly IngestLifecyclePublisher _publisher;
-    private readonly IIngestAgentDispatcher _dispatcher;
-    private readonly IngestRunGate _runGate;
-    private readonly OperationalStateRepository _repository;
+    private readonly IngestRunCoordinator _coordinator;
     private readonly ContentRootPaths _contentPaths;
     private readonly ILogger<IngestSubmissionPipeline> _logger;
 
@@ -48,9 +50,7 @@ public sealed class IngestSubmissionPipeline
         MarkItDownConverter converter,
         UrlContentFetcher urlFetcher,
         IngestLifecyclePublisher publisher,
-        IIngestAgentDispatcher dispatcher,
-        IngestRunGate runGate,
-        OperationalStateRepository repository,
+        IngestRunCoordinator coordinator,
         ContentRootPaths contentPaths,
         ILogger<IngestSubmissionPipeline>? logger = null)
     {
@@ -59,9 +59,7 @@ public sealed class IngestSubmissionPipeline
         _converter = converter;
         _urlFetcher = urlFetcher;
         _publisher = publisher;
-        _dispatcher = dispatcher;
-        _runGate = runGate;
-        _repository = repository;
+        _coordinator = coordinator;
         _contentPaths = contentPaths;
         _logger = logger ?? NullLogger<IngestSubmissionPipeline>.Instance;
     }
@@ -81,7 +79,9 @@ public sealed class IngestSubmissionPipeline
         var taskArtifactPath = Path.Combine(_contentPaths.TasksDir, $"{taskId}.md");
         var submittedAt = DateTimeOffset.UtcNow;
 
-        var context = new PipelineContext(taskId, taskArtifactPath, submittedAt);
+        var promptSource = input.UserPrompt is null ? "default" : "custom";
+        var effectiveSteps = ConvertStepRegistry.ResolveEffective(KindLabel(input.Kind), input.ConvertSteps);
+        var context = new PipelineContext(taskId, taskArtifactPath, submittedAt, promptSource, input.UserPrompt, effectiveSteps);
 
         await WriteStageAsync(context, "received", null, null, null,
             $"Ingest submission received ({KindLabel(input.Kind)}).", cancellationToken);
@@ -89,6 +89,18 @@ public sealed class IngestSubmissionPipeline
 
         HubMetrics.RecordIngestSubmission(KindLabel(input.Kind), "accepted");
         IngestSubmissionLogEvents.LogSubmissionAccepted(_logger, taskId, KindLabel(input.Kind), submittedAt);
+
+        // 004 prompt/convert configuration is recorded at acceptance (SC-003).
+        HubMetrics.RecordUserPrompt(promptSource);
+        IngestSubmissionLogEvents.LogPromptConfig(_logger, taskId, promptSource, input.UserPrompt?.Length ?? 0);
+        foreach (var (step, enabled) in effectiveSteps)
+        {
+            IngestSubmissionLogEvents.LogConvertConfig(_logger, taskId, step, enabled);
+            if (!enabled)
+            {
+                HubMetrics.RecordConvertStepDisabled(step);
+            }
+        }
 
         // Fire-and-forget: the HTTP response returns now; ExecutionContext flow keeps this task's
         // spans correctly parented under hub.ingest_submission.submit even after it disposes.
@@ -107,10 +119,12 @@ public sealed class IngestSubmissionPipeline
             await _publisher.PublishAsync(taskId, "received", "converting", cancellationToken: cancellationToken);
 
             var conversionStarted = Stopwatch.GetTimestamp();
+            var markItDownEnabled = ApplyConvertConfig(context, ConvertStepRegistry.MarkItDown);
+
             string originalPath;
             string originalContentType;
             long originalSize;
-            string normalizedMarkdown;
+            SourceArtifactSet artifactSet;
 
             if (input.Kind == IngestSubmissionKind.Url)
             {
@@ -138,12 +152,21 @@ public sealed class IngestSubmissionPipeline
                 originalPath = await PersistOriginalAsync(taskId, extension, fetchResult.Content!, originalContentType, cancellationToken);
                 originalSize = fetchResult.Content!.LongLength;
 
-                var conversion = await ConvertAsync(context, input.Kind, originalPath, cancellationToken);
-                if (conversion is null)
+                if (markItDownEnabled)
                 {
-                    return;
+                    var conversion = await ConvertAsync(context, input.Kind, originalPath, cancellationToken);
+                    if (conversion is null)
+                    {
+                        return;
+                    }
+                    artifactSet = await PersistNormalizedAsync(taskId, originalPath, originalContentType, originalSize, conversion, cancellationToken);
                 }
-                normalizedMarkdown = conversion;
+                else
+                {
+                    // Convert step disabled (FR-012): store the fetched content exactly as
+                    // received — byte-identical, checksum over the unmodified bytes (SC-004).
+                    artifactSet = await PersistNormalizedBytesAsync(taskId, originalPath, originalContentType, originalSize, fetchResult.Content!, cancellationToken);
+                }
             }
             else if (input.Kind == IngestSubmissionKind.MarkdownFile)
             {
@@ -151,11 +174,14 @@ public sealed class IngestSubmissionPipeline
                 originalContentType = input.FileContentType ?? "text/markdown";
                 originalPath = await PersistOriginalAsync(taskId, extension, input.FileBytes!, originalContentType, cancellationToken);
                 originalSize = input.FileBytes!.LongLength;
-                // Markdown is already the canonical format: pass through, never routed through MarkItDown (FR-004).
-                normalizedMarkdown = System.Text.Encoding.UTF8.GetString(input.FileBytes!);
+                // Markdown is already the canonical format: pass through byte-identical,
+                // never routed through MarkItDown (FR-004; 004 FR-015).
+                artifactSet = await PersistNormalizedBytesAsync(taskId, originalPath, originalContentType, originalSize, input.FileBytes!, cancellationToken);
             }
             else
             {
+                // PDF/Office: the convert step is required (FR-013) — the validator rejected
+                // any disabled configuration before a task was created.
                 var extension = Path.GetExtension(input.FileName) ?? string.Empty;
                 originalContentType = input.FileContentType ?? "application/octet-stream";
                 originalPath = await PersistOriginalAsync(taskId, extension, input.FileBytes!, originalContentType, cancellationToken);
@@ -166,17 +192,7 @@ public sealed class IngestSubmissionPipeline
                 {
                     return;
                 }
-                normalizedMarkdown = conversion;
-            }
-
-            SourceArtifactSet artifactSet;
-            using (var storeNormalizedSpan = HubTracing.ActivitySource.StartActivity("hub.ingest_submission.store_normalized"))
-            {
-                storeNormalizedSpan?.SetTag("task_id", taskId);
-
-                artifactSet = await _sourceArtifactStore.PersistNormalizedAsync(
-                    taskId, originalPath, originalContentType, originalSize, normalizedMarkdown, cancellationToken);
-                storeNormalizedSpan?.SetTag("normalized_path", artifactSet.NormalizedMarkdownPath);
+                artifactSet = await PersistNormalizedAsync(taskId, originalPath, originalContentType, originalSize, conversion, cancellationToken);
             }
 
             HubMetrics.RecordIngestSubmissionArtifactPersisted("normalized_markdown");
@@ -184,17 +200,33 @@ public sealed class IngestSubmissionPipeline
             var durationMs = (long)Stopwatch.GetElapsedTime(conversionStarted).TotalMilliseconds;
             IngestSubmissionLogEvents.LogConversionCompleted(_logger, taskId, KindLabel(input.Kind), artifactSet.NormalizedMarkdownPath, durationMs);
 
-            var queuedAt = DateTimeOffset.UtcNow;
             await WriteStageAsync(context, "queued", artifactSet.NormalizedMarkdownPath, artifactSet.OriginalPath, null,
                 "Queued for ingest.", cancellationToken);
             await _publisher.PublishAsync(taskId, "converting", "queued", cancellationToken: cancellationToken);
 
-            _ = TriggerAsync(context, artifactSet, queuedAt, cancellationToken);
+            // Non-blocking hand-off (ADR-008): the coordinator owns queueing, the single
+            // agent slot, event supervision, and terminal transitions from here on.
+            await _coordinator.EnqueueAsync(taskId, artifactSet.NormalizedMarkdownPath, context.UserPrompt, cancellationToken);
         }
         catch (Exception ex)
         {
             await FailAsync(context, $"Unexpected ingest-submission error: {ex.Message}", cancellationToken);
         }
+    }
+
+    private bool ApplyConvertConfig(PipelineContext context, string stepName)
+    {
+        if (!context.ConvertSteps.TryGetValue(stepName, out var enabled))
+        {
+            // Step not applicable to this kind (e.g. markdown_file): nothing to apply.
+            return true;
+        }
+
+        using var span = HubTracing.ActivitySource.StartActivity("ingest_submission.apply_convert_config");
+        span?.SetTag("task_id", context.TaskId);
+        span?.SetTag("step", stepName);
+        span?.SetTag("enabled", enabled);
+        return enabled;
     }
 
     private async Task<string?> ConvertAsync(PipelineContext context, IngestSubmissionKind kind, string originalPath, CancellationToken cancellationToken)
@@ -216,6 +248,30 @@ public sealed class IngestSubmissionPipeline
         return conversion.Markdown;
     }
 
+    private async Task<SourceArtifactSet> PersistNormalizedAsync(
+        string taskId, string originalPath, string originalContentType, long originalSize, string normalizedMarkdown, CancellationToken cancellationToken)
+    {
+        using var storeNormalizedSpan = HubTracing.ActivitySource.StartActivity("hub.ingest_submission.store_normalized");
+        storeNormalizedSpan?.SetTag("task_id", taskId);
+
+        var artifactSet = await _sourceArtifactStore.PersistNormalizedAsync(
+            taskId, originalPath, originalContentType, originalSize, normalizedMarkdown, cancellationToken);
+        storeNormalizedSpan?.SetTag("normalized_path", artifactSet.NormalizedMarkdownPath);
+        return artifactSet;
+    }
+
+    private async Task<SourceArtifactSet> PersistNormalizedBytesAsync(
+        string taskId, string originalPath, string originalContentType, long originalSize, byte[] normalizedBytes, CancellationToken cancellationToken)
+    {
+        using var storeNormalizedSpan = HubTracing.ActivitySource.StartActivity("hub.ingest_submission.store_normalized");
+        storeNormalizedSpan?.SetTag("task_id", taskId);
+
+        var artifactSet = await _sourceArtifactStore.PersistNormalizedBytesAsync(
+            taskId, originalPath, originalContentType, originalSize, normalizedBytes, cancellationToken);
+        storeNormalizedSpan?.SetTag("normalized_path", artifactSet.NormalizedMarkdownPath);
+        return artifactSet;
+    }
+
     private async Task<string> PersistOriginalAsync(string taskId, string extension, byte[] bytes, string contentType, CancellationToken cancellationToken)
     {
         using var storeOriginalSpan = HubTracing.ActivitySource.StartActivity("hub.ingest_submission.store_original");
@@ -228,67 +284,6 @@ public sealed class IngestSubmissionPipeline
         HubMetrics.RecordIngestSubmissionArtifactPersisted("original");
         IngestSubmissionLogEvents.LogOriginalPersisted(_logger, taskId, originalPath, bytes.LongLength, contentType);
         return originalPath;
-    }
-
-    private async Task TriggerAsync(PipelineContext context, SourceArtifactSet artifactSet, DateTimeOffset queuedAt, CancellationToken cancellationToken)
-    {
-        var taskId = context.TaskId;
-        await _runGate.RunExclusiveAsync(async () =>
-        {
-            using var triggerSpan = HubTracing.ActivitySource.StartActivity("hub.ingest_run.trigger");
-            triggerSpan?.SetTag("task_id", taskId);
-            triggerSpan?.SetTag("dispatcher", "child_process");
-
-            var queuedDurationMs = (long)(DateTimeOffset.UtcNow - queuedAt).TotalMilliseconds;
-            HubMetrics.RecordIngestSubmissionQueueWait(taskId, queuedDurationMs / 1000.0);
-
-            await _repository.UpsertAsync(new OperationalTaskState(taskId, "running", null, DateTimeOffset.UtcNow), cancellationToken);
-            await _publisher.PublishAsync(taskId, "queued", "running", cancellationToken: cancellationToken);
-            IngestSubmissionLogEvents.LogRunTriggered(_logger, taskId, queuedDurationMs);
-
-            var request = new IngestAgentRequest(
-                TaskId: taskId,
-                SourceRef: artifactSet.NormalizedMarkdownPath,
-                SourceKind: "file",
-                PagesDir: _contentPaths.PagesDir,
-                TasksDir: _contentPaths.TasksDir,
-                IndexPath: _contentPaths.IndexPath,
-                LogPath: _contentPaths.LogPath,
-                PastedText: null,
-                InstructionsDir: _contentPaths.InstructionsDir,
-                PolicyPath: _contentPaths.PolicyPath);
-
-            try
-            {
-                await _dispatcher.DispatchAsync(request, cancellationToken);
-            }
-            catch (Exception ex)
-            {
-                // TriggerAsync is fire-and-forget (called via `_ = TriggerAsync(...)`); if the
-                // dispatch itself throws (e.g. the child process could not be started/crashed
-                // before writing its own terminal artifact), swallow here so the exception isn't
-                // unobserved, and make sure the task doesn't appear stuck in `running` forever.
-                await _repository.DeleteAsync(taskId, cancellationToken);
-                await WriteStageAsync(context, "failed", artifactSet.NormalizedMarkdownPath, artifactSet.OriginalPath,
-                    $"Ingest run could not be completed: {ex.Message}", $"Ingest run could not be completed: {ex.Message}", cancellationToken);
-                await _publisher.PublishAsync(taskId, "running", "failed", $"Ingest run could not be completed: {ex.Message}", cancellationToken);
-                return true;
-            }
-
-            await _repository.DeleteAsync(taskId, cancellationToken);
-
-            if (File.Exists(context.TaskArtifactPath))
-            {
-                var finalMarkdown = await File.ReadAllTextAsync(context.TaskArtifactPath, cancellationToken);
-                var final = TaskArtifactFrontmatter.TryParse(finalMarkdown);
-                if (final is not null)
-                {
-                    await _publisher.PublishAsync(taskId, "running", final.Status, final.FailureReason, cancellationToken: cancellationToken);
-                }
-            }
-
-            return true;
-        }, cancellationToken);
     }
 
     private async Task FailAsync(PipelineContext context, string failureReason, CancellationToken cancellationToken)
@@ -309,7 +304,10 @@ public sealed class IngestSubmissionPipeline
             SourceRef: sourceRef,
             OriginalRef: originalRef,
             FailureReason: failureReason,
-            Narrative: narrative);
+            Narrative: narrative,
+            UserPromptSource: context.PromptSource,
+            UserPrompt: context.UserPrompt,
+            ConvertSteps: context.ConvertSteps);
 
         await _taskArtifactWriter.WriteAsync(context.TaskArtifactPath, document, cancellationToken);
     }
@@ -335,5 +333,11 @@ public sealed class IngestSubmissionPipeline
 
     private static string? TryGetHost(string? url) => Uri.TryCreate(url, UriKind.Absolute, out var uri) ? uri.Host : null;
 
-    private sealed record PipelineContext(string TaskId, string TaskArtifactPath, DateTimeOffset SubmittedAt);
+    private sealed record PipelineContext(
+        string TaskId,
+        string TaskArtifactPath,
+        DateTimeOffset SubmittedAt,
+        string PromptSource,
+        string? UserPrompt,
+        IReadOnlyDictionary<string, bool> ConvertSteps);
 }

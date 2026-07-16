@@ -68,12 +68,33 @@ public sealed class HubTaskArtifactWriter
         sb.AppendLine("model: null");
         sb.AppendLine("turns: null");
         sb.AppendLine("rolled_back: null");
+        sb.AppendLine($"user_prompt_source: {(doc.UserPromptSource is null ? "null" : doc.UserPromptSource)}");
+        sb.AppendLine($"convert_steps: {BuildConvertSteps(doc.ConvertSteps)}");
         sb.AppendLine($"failure_reason: {failure}");
         sb.AppendLine("---");
         sb.AppendLine();
         sb.Append(doc.Narrative.TrimEnd());
         sb.AppendLine();
+
+        // 004 (FR-009): effective steering prompt verbatim as a body section, mirroring
+        // the agent's own writer, so task details display it in every stage.
+        if (!string.IsNullOrWhiteSpace(doc.UserPrompt))
+        {
+            sb.AppendLine();
+            sb.AppendLine("## User Prompt");
+            sb.AppendLine();
+            sb.AppendLine(doc.UserPrompt.TrimEnd());
+        }
+
         return sb.ToString();
+    }
+
+    private static string BuildConvertSteps(IReadOnlyDictionary<string, bool>? steps)
+    {
+        if (steps is null || steps.Count == 0) return "null";
+        var entries = steps.OrderBy(s => s.Key, StringComparer.Ordinal)
+            .Select(s => $"\"{Escape(s.Key)}\": {(s.Value ? "enabled" : "disabled")}");
+        return "{" + string.Join(", ", entries) + "}";
     }
 
     private static string Escape(string value) => value.Replace("\\", "\\\\").Replace("\"", "\\\"");

@@ -75,6 +75,46 @@ public sealed class SourceArtifactStore
     }
 
     /// <summary>
+    /// Persists the received content byte-identical as the normalized artifact — the
+    /// pass-through path when the document-to-Markdown convert step is disabled
+    /// (004 FR-012, SC-004). Checksum is computed over the unmodified bytes.
+    /// </summary>
+    public async Task<SourceArtifactSet> PersistNormalizedBytesAsync(
+        string taskId,
+        string originalPath,
+        string originalContentType,
+        long originalSizeBytes,
+        byte[] normalizedBytes,
+        CancellationToken cancellationToken = default)
+    {
+        Directory.CreateDirectory(_paths.SourcesDir);
+        var normalizedPath = _paths.NormalizedMarkdownPathFor(taskId);
+        var checksum = Convert.ToHexString(SHA256.HashData(normalizedBytes)).ToLowerInvariant();
+
+        try
+        {
+            await File.WriteAllBytesAsync(normalizedPath, normalizedBytes, cancellationToken);
+        }
+        catch
+        {
+            DeletePartialNormalizedArtifact(taskId);
+            throw;
+        }
+
+        var set = new SourceArtifactSet(
+            TaskId: taskId,
+            OriginalPath: originalPath,
+            OriginalContentType: originalContentType,
+            OriginalSizeBytes: originalSizeBytes,
+            NormalizedMarkdownPath: normalizedPath,
+            NormalizedChecksum: checksum,
+            CreatedAt: DateTimeOffset.UtcNow);
+
+        await WriteMetadataAsync(taskId, set, cancellationToken);
+        return set;
+    }
+
+    /// <summary>
     /// Removes any normalized artifact left behind by a failed conversion/fetch (FR-009, SC-003).
     /// Safe to call even if no file was ever written.
     /// </summary>

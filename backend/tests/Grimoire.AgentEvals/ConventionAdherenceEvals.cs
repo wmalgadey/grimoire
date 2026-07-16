@@ -22,7 +22,7 @@ public class ConventionAdherenceEvals
                     "new vectors, and staging the swap behind a blue/green index so a quality regression can be " +
                     "rolled back.",
                 runLabel: $"sc007-{i + 1}",
-                mutateSkillFile: null,
+                mutateSystemPrompt: null,
                 cancellationToken: CancellationToken.None);
 
             var allPagesFollowConvention = result.PageFiles.Count > 0 && result.PageFiles.All(PageHasBasicConventions);

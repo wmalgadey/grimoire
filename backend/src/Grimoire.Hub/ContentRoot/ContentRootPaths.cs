@@ -6,7 +6,8 @@ public sealed record ContentRootPaths(
     string TasksDir,
     string IndexPath,
     string LogPath,
-    string InstructionsDir,
+    string SystemPromptPath,
+    string DefaultUserPromptPath,
     string PolicyPath)
 {
     public static ContentRootPaths Resolve(string repoRoot, string contentRootDirName)
@@ -18,7 +19,8 @@ public sealed record ContentRootPaths(
             TasksDir: Path.Combine(root, "tasks"),
             IndexPath: Path.Combine(root, "index.md"),
             LogPath: Path.Combine(root, "log.md"),
-            InstructionsDir: Path.Combine(repoRoot, "agents", "ingest"),
+            SystemPromptPath: Path.Combine(repoRoot, "agents", "ingest", "system-prompt.md"),
+            DefaultUserPromptPath: Path.Combine(repoRoot, "agents", "ingest", "default-user-prompt.md"),
             PolicyPath: Path.Combine(repoRoot, "agents", "ingest", "policy.json"));
     }
 }

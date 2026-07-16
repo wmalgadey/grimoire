@@ -1,11 +1,15 @@
 import type {
+	BoardResponse,
 	BoardTask,
+	ConvertStepConfig,
+	IngestSubmissionDefaults,
 	IngestSubmissionKind,
 	SubmissionAcceptedResponse,
 	TaskDetail
 } from '$lib/types';
 
 const BASE_PATH = '/api/ingest-submissions';
+const QUEUE_BASE_PATH = '/api/ingest-queue';
 
 export class IngestSubmissionApiError extends Error {
 	constructor(
@@ -27,14 +31,28 @@ async function parseErrorMessage(response: Response): Promise<string> {
 	return `Request failed with status ${response.status}`;
 }
 
+// 004: optional per-submission steering prompt and convert-step overrides (FR-006, FR-011).
+// Both stay optional so a caller that doesn't touch either reproduces feature 003 exactly.
+export interface SubmissionOptions {
+	userPrompt?: string;
+	convertSteps?: ConvertStepConfig;
+	fetchImpl?: typeof fetch;
+}
+
 export async function submitUrl(
 	url: string,
-	fetchImpl: typeof fetch = fetch
+	options: SubmissionOptions = {}
 ): Promise<SubmissionAcceptedResponse> {
+	const fetchImpl = options.fetchImpl ?? fetch;
 	const response = await fetchImpl(BASE_PATH, {
 		method: 'POST',
 		headers: { 'Content-Type': 'application/json' },
-		body: JSON.stringify({ kind: 'url', url })
+		body: JSON.stringify({
+			kind: 'url',
+			url,
+			...(options.userPrompt ? { userPrompt: options.userPrompt } : {}),
+			...(options.convertSteps ? { convertSteps: options.convertSteps } : {})
+		})
 	});
 
 	if (!response.ok) {
@@ -47,11 +65,14 @@ export async function submitUrl(
 export async function submitFile(
 	kind: Exclude<IngestSubmissionKind, 'url'>,
 	file: File,
-	fetchImpl: typeof fetch = fetch
+	options: SubmissionOptions = {}
 ): Promise<SubmissionAcceptedResponse> {
+	const fetchImpl = options.fetchImpl ?? fetch;
 	const formData = new FormData();
 	formData.set('kind', kind);
 	formData.set('file', file);
+	if (options.userPrompt) formData.set('userPrompt', options.userPrompt);
+	if (options.convertSteps) formData.set('convertSteps', JSON.stringify(options.convertSteps));
 
 	const response = await fetchImpl(BASE_PATH, { method: 'POST', body: formData });
 
@@ -68,8 +89,18 @@ export async function listBoard(fetchImpl: typeof fetch = fetch): Promise<BoardT
 		throw new IngestSubmissionApiError(await parseErrorMessage(response), response.status);
 	}
 
-	const body: { tasks: BoardTask[] } = await response.json();
+	const body: BoardResponse = await response.json();
 	return body.tasks;
+}
+
+/** Board projection including the queue-paused flag (004 FR-021). */
+export async function getBoard(fetchImpl: typeof fetch = fetch): Promise<BoardResponse> {
+	const response = await fetchImpl(BASE_PATH);
+	if (!response.ok) {
+		throw new IngestSubmissionApiError(await parseErrorMessage(response), response.status);
+	}
+
+	return response.json();
 }
 
 export async function getTaskDetail(
@@ -82,4 +113,37 @@ export async function getTaskDetail(
 	}
 
 	return response.json();
+}
+
+/** 004: single source of truth for the submission form's prompt editor and step toggles. */
+export async function getSubmissionDefaults(
+	fetchImpl: typeof fetch = fetch
+): Promise<IngestSubmissionDefaults> {
+	const response = await fetchImpl(`${BASE_PATH}/defaults`);
+	if (!response.ok) {
+		throw new IngestSubmissionApiError(await parseErrorMessage(response), response.status);
+	}
+
+	return response.json();
+}
+
+/** 004 FR-021: re-arms a single queued task after a Hub restart. */
+export async function retriggerTask(
+	taskId: string,
+	fetchImpl: typeof fetch = fetch
+): Promise<void> {
+	const response = await fetchImpl(`${BASE_PATH}/${encodeURIComponent(taskId)}/retrigger`, {
+		method: 'POST'
+	});
+	if (!response.ok) {
+		throw new IngestSubmissionApiError(await parseErrorMessage(response), response.status);
+	}
+}
+
+/** 004 FR-021: resumes automatic queue processing after a Hub restart (whole queue). */
+export async function resumeQueue(fetchImpl: typeof fetch = fetch): Promise<void> {
+	const response = await fetchImpl(`${QUEUE_BASE_PATH}/resume`, { method: 'POST' });
+	if (!response.ok) {
+		throw new IngestSubmissionApiError(await parseErrorMessage(response), response.status);
+	}
 }

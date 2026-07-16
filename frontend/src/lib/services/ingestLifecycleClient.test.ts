@@ -2,15 +2,61 @@ import { expect, test, vi } from 'vitest';
 import {
 	applyLifecycleEvent,
 	createBoardLifecycleStream,
+	createIngestLifecycleClient,
 	type IngestLifecycleClient
 } from './ingestLifecycleClient';
-import type { BoardTask, LifecycleEvent } from '$lib/types';
+import type { BoardTask, ConnectionState, LifecycleEvent } from '$lib/types';
 
 // T074 (US2, convergence): exercises the rules mandated by
 // contracts/ingest-lifecycle-events.md ## Rules that the component-level KanbanColumn test
 // (T041) never drives through the actual client: idempotent event application by
 // (eventId, taskId), stale/out-of-order rejection, live event application on top of the
 // bootstrapped board, and the reconnect-then-refresh flow.
+
+// T054 (004 US4, FR-023/SC-012): exercises createIngestLifecycleClient's connection-state
+// projection against a fake HubConnection double (no real network) — connecting before
+// start() settles, connected once it resolves or reconnects, reconnecting on the
+// connection's own onreconnecting callback, disconnected on start() rejection or onclose.
+
+const { createFakeConnection, getLastFakeConnection } = vi.hoisted(() => {
+	let last: ReturnType<typeof build> | undefined;
+
+	function build() {
+		return {
+			start: vi.fn(),
+			stop: vi.fn(),
+			on: vi.fn(),
+			off: vi.fn(),
+			onreconnecting: vi.fn(),
+			onreconnected: vi.fn(),
+			onclose: vi.fn()
+		};
+	}
+
+	function createFakeConnection() {
+		last = build();
+		return last;
+	}
+
+	function getLastFakeConnection() {
+		if (!last) throw new Error('no fake connection created yet');
+		return last;
+	}
+
+	return { createFakeConnection, getLastFakeConnection };
+});
+
+vi.mock('@microsoft/signalr', () => ({
+	HubConnectionBuilder: vi.fn().mockImplementation(function FakeHubConnectionBuilder(this: {
+		withUrl: () => unknown;
+		withAutomaticReconnect: () => unknown;
+		build: () => unknown;
+	}) {
+		this.withUrl = () => this;
+		this.withAutomaticReconnect = () => this;
+		this.build = () => createFakeConnection();
+	})
+}));
 
 vi.mock('$lib/services/ingestSubmissionsApi', async () => {
 	const actual = await vi.importActual<typeof import('$lib/services/ingestSubmissionsApi')>(
@@ -64,7 +110,9 @@ function createFakeClient() {
 			return () => {
 				reconnectedHandler = undefined;
 			};
-		})
+		}),
+		onRunActivityChanged: vi.fn(() => () => {}),
+		onConnectionStateChanged: vi.fn(() => () => {})
 	};
 
 	return {
@@ -158,4 +206,52 @@ test('createBoardLifecycleStream refreshes the board from the REST API on reconn
 	expect(onTasksChanged).toHaveBeenLastCalledWith([
 		expect.objectContaining({ taskId: 'task-1', status: 'queued' })
 	]);
+});
+
+test('onConnectionStateChanged reflects connecting, connected, reconnecting, and back to connected', async () => {
+	const client = createIngestLifecycleClient();
+	const connection = getLastFakeConnection();
+	connection.start.mockResolvedValue(undefined);
+
+	const states: ConnectionState[] = [];
+	client.onConnectionStateChanged((state) => states.push(state));
+
+	const startPromise = client.start();
+	expect(states).toEqual(['connecting']);
+
+	await startPromise;
+	expect(states).toEqual(['connecting', 'connected']);
+
+	const reconnecting = connection.onreconnecting.mock.calls[0][0] as () => void;
+	reconnecting();
+	expect(states).toEqual(['connecting', 'connected', 'reconnecting']);
+
+	const reconnected = connection.onreconnected.mock.calls[0][0] as () => void;
+	reconnected();
+	expect(states).toEqual(['connecting', 'connected', 'reconnecting', 'connected']);
+});
+
+test('onConnectionStateChanged emits disconnected on onclose', () => {
+	const client = createIngestLifecycleClient();
+	const connection = getLastFakeConnection();
+
+	const states: ConnectionState[] = [];
+	client.onConnectionStateChanged((state) => states.push(state));
+
+	const closed = connection.onclose.mock.calls[0][0] as () => void;
+	closed();
+
+	expect(states).toEqual(['disconnected']);
+});
+
+test('onConnectionStateChanged emits disconnected when start() rejects', async () => {
+	const client = createIngestLifecycleClient();
+	const connection = getLastFakeConnection();
+	connection.start.mockRejectedValue(new Error('boom'));
+
+	const states: ConnectionState[] = [];
+	client.onConnectionStateChanged((state) => states.push(state));
+
+	await expect(client.start()).rejects.toThrow('boom');
+	expect(states).toEqual(['connecting', 'disconnected']);
 });

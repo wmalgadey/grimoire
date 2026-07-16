@@ -72,4 +72,51 @@ public static class HubMetrics
     {
         _ingestSubmissionQueueWaitSeconds.Record(seconds, new KeyValuePair<string, object?>("task_id", taskId));
     }
+
+    // --- 004-ingest-agent-systemprompt (plan.md ## Observability > Business Metrics) ---
+
+    private static readonly Counter<long> _userPromptTotal =
+        Meter.CreateCounter<long>("wiki.ingest.user_prompt_total",
+            description: "Accepted submissions by prompt origin");
+
+    public static void RecordUserPrompt(string source)
+    {
+        _userPromptTotal.Add(1, new KeyValuePair<string, object?>("source", source));
+    }
+
+    private static readonly Counter<long> _convertStepDisabledTotal =
+        Meter.CreateCounter<long>("wiki.ingest.convert_step_disabled_total",
+            description: "Accepted submissions that disabled a convert step");
+
+    public static void RecordConvertStepDisabled(string step)
+    {
+        _convertStepDisabledTotal.Add(1, new KeyValuePair<string, object?>("step", step));
+    }
+
+    private static readonly Counter<long> _runEventsTotal =
+        Meter.CreateCounter<long>("wiki.ingest.run_events_total",
+            description: "Agent Run Events received by the Hub");
+
+    public static void RecordRunEvent(string eventType)
+    {
+        _runEventsTotal.Add(1, new KeyValuePair<string, object?>("event_type", eventType));
+    }
+
+    private static readonly Counter<long> _livenessFailuresTotal =
+        Meter.CreateCounter<long>("wiki.ingest.liveness_failures_total",
+            description: "Runs failed by liveness-window expiry");
+
+    public static void RecordLivenessFailure()
+    {
+        _livenessFailuresTotal.Add(1);
+    }
+
+    private static readonly Gauge<long> _queueDepth =
+        Meter.CreateGauge<long>("wiki.ingest.queue_depth",
+            description: "Tasks currently waiting in the Run Queue");
+
+    public static void RecordQueueDepth(long depth)
+    {
+        _queueDepth.Record(depth);
+    }
 }

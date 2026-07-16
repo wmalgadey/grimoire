@@ -1,13 +1,14 @@
 <script lang="ts">
-	import type { BoardTask, LifecycleStage } from '$lib/types';
+	import type { BoardTask, LifecycleStage, RunActivity } from '$lib/types';
 	import TaskCard from './TaskCard.svelte';
 
 	interface Props {
 		stage: LifecycleStage;
 		tasks: BoardTask[];
+		runActivityByTaskId?: Record<string, RunActivity>;
 	}
 
-	let { stage, tasks }: Props = $props();
+	let { stage, tasks, runActivityByTaskId = {} }: Props = $props();
 
 	const titles: Record<LifecycleStage, string> = {
 		received: 'Received',
@@ -31,7 +32,7 @@
 
 	<div class="flex flex-col gap-2">
 		{#each tasks as task (task.taskId)}
-			<TaskCard {task} />
+			<TaskCard {task} runActivity={runActivityByTaskId[task.taskId] ?? null} />
 		{/each}
 	</div>
 </section>

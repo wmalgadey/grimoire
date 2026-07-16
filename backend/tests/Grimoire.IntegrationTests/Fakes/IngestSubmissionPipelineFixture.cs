@@ -11,8 +11,9 @@ namespace Grimoire.IntegrationTests.Fakes;
 
 /// <summary>
 /// Builds an <see cref="IngestSubmissionPipeline"/> wired to a temp content root and raw-storage
-/// location, with a swappable <see cref="IIngestAgentDispatcher"/> fake and HTTP handler for the
-/// URL fetcher, so US1/US2/US3 tests can exercise the real pipeline hermetically.
+/// location, with a swappable <see cref="IAgentProcessLauncher"/> fake and HTTP handler for the
+/// URL fetcher, so pipeline tests can exercise the real submission + coordinator flow
+/// hermetically (ADR-008).
 /// </summary>
 public sealed class IngestSubmissionPipelineFixture : IDisposable
 {
@@ -21,38 +22,59 @@ public sealed class IngestSubmissionPipelineFixture : IDisposable
     public RawStoragePaths RawPaths { get; }
     public SourceArtifactStore SourceArtifactStore { get; }
     public KanbanBoardProjectionStore BoardStore { get; } = new();
-    public FakeIngestAgentDispatcher Dispatcher { get; }
+    public FakeAgentProcessLauncher Launcher { get; }
+    public OperationalStateRepository Repository { get; }
+    public IngestRunCoordinator Coordinator { get; }
     public IngestSubmissionPipeline Pipeline { get; }
     public IngestSubmissionValidator Validator { get; } = new();
     public List<RealtimeLifecycleEvent> PublishedEvents { get; } = [];
+    public List<(string Method, object? Payload, DateTimeOffset ReceivedAt)> PublishedActivity { get; } = [];
     public CaptureLogger<IngestSubmissionPipeline> Logger { get; } = new();
+    public CaptureLogger<IngestRunCoordinator> CoordinatorLogger { get; } = new();
+    public IngestLifecyclePublisher Publisher { get; private set; } = null!;
 
     public IngestSubmissionPipelineFixture(
-        FakeIngestAgentDispatcher? dispatcher = null,
+        FakeAgentProcessLauncher? launcher = null,
         HttpMessageHandler? urlFetchHandler = null,
-        string markItDownExecutablePath = "markitdown")
+        string markItDownExecutablePath = "markitdown",
+        TimeSpan? livenessWindow = null,
+        TimeProvider? timeProvider = null)
     {
         Root = Path.Combine(Path.GetTempPath(), $"grimoire-ingest-submission-{Guid.NewGuid():N}");
         Directory.CreateDirectory(Root);
 
-        var wikiRoot = Path.Combine(Root, "wiki");
         ContentPaths = ContentRootPaths.Resolve(Root, "wiki");
         Directory.CreateDirectory(ContentPaths.PagesDir);
         Directory.CreateDirectory(ContentPaths.TasksDir);
         File.WriteAllText(ContentPaths.IndexPath, "# Index\n");
         File.WriteAllText(ContentPaths.LogPath, string.Empty);
+        Directory.CreateDirectory(Path.GetDirectoryName(ContentPaths.SystemPromptPath)!);
+        File.WriteAllText(ContentPaths.SystemPromptPath, "# Test system prompt\nRules.\n");
+        File.WriteAllText(ContentPaths.DefaultUserPromptPath, "Please integrate the source.\n");
 
         RawPaths = RawStoragePaths.Resolve(Root);
         SourceArtifactStore = new SourceArtifactStore(RawPaths);
 
         var dbPath = Path.Combine(Root, "operational-state.db");
-        var repository = new OperationalStateRepository(dbPath);
-        repository.InitializeAsync().GetAwaiter().GetResult();
+        Repository = new OperationalStateRepository(dbPath);
+        Repository.InitializeAsync().GetAwaiter().GetResult();
 
-        Dispatcher = dispatcher ?? new FakeIngestAgentDispatcher();
+        Launcher = launcher ?? new FakeAgentProcessLauncher();
 
-        var hubContext = new RecordingHubContext(PublishedEvents);
+        var hubContext = new RecordingHubContext(PublishedEvents, PublishedActivity);
         var publisher = new IngestLifecyclePublisher(hubContext);
+        Publisher = publisher;
+
+        Coordinator = new IngestRunCoordinator(
+            Repository,
+            Launcher,
+            publisher,
+            new HubTaskArtifactWriter(),
+            ContentPaths,
+            timeProvider,
+            livenessWindow ?? TimeSpan.FromSeconds(60),
+            CoordinatorLogger);
+        Coordinator.InitializeAsync().GetAwaiter().GetResult();
 
         var httpClient = new HttpClient(urlFetchHandler ?? new NotFoundHandler());
         var urlFetcher = new UrlContentFetcher(httpClient);
@@ -64,9 +86,7 @@ public sealed class IngestSubmissionPipelineFixture : IDisposable
             converter,
             urlFetcher,
             publisher,
-            Dispatcher,
-            new IngestRunGate(),
-            repository,
+            Coordinator,
             ContentPaths,
             Logger);
     }
@@ -132,14 +152,18 @@ public sealed class IngestSubmissionPipelineFixture : IDisposable
     }
 
     /// <summary>Minimal <see cref="IHubContext{IngestLifecycleHub}"/> that records published events instead of broadcasting over a real connection.</summary>
-    private sealed class RecordingHubContext(List<RealtimeLifecycleEvent> sink) : IHubContext<IngestLifecycleHub>
+    private sealed class RecordingHubContext(
+        List<RealtimeLifecycleEvent> sink,
+        List<(string Method, object? Payload, DateTimeOffset ReceivedAt)> activitySink) : IHubContext<IngestLifecycleHub>
     {
-        public IHubClients Clients { get; } = new RecordingClients(sink);
+        public IHubClients Clients { get; } = new RecordingClients(sink, activitySink);
         public IGroupManager Groups => throw new NotSupportedException();
 
-        private sealed class RecordingClients(List<RealtimeLifecycleEvent> sink) : IHubClients
+        private sealed class RecordingClients(
+            List<RealtimeLifecycleEvent> sink,
+            List<(string Method, object? Payload, DateTimeOffset ReceivedAt)> activitySink) : IHubClients
         {
-            public IClientProxy All { get; } = new RecordingClientProxy(sink);
+            public IClientProxy All { get; } = new RecordingClientProxy(sink, activitySink);
             public IClientProxy AllExcept(IReadOnlyList<string> excludedConnectionIds) => All;
             public IClientProxy Client(string connectionId) => All;
             public IClientProxy Clients(IReadOnlyList<string> connectionIds) => All;
@@ -150,13 +174,19 @@ public sealed class IngestSubmissionPipelineFixture : IDisposable
             public IClientProxy Users(IReadOnlyList<string> userIds) => All;
         }
 
-        private sealed class RecordingClientProxy(List<RealtimeLifecycleEvent> sink) : IClientProxy
+        private sealed class RecordingClientProxy(
+            List<RealtimeLifecycleEvent> sink,
+            List<(string Method, object? Payload, DateTimeOffset ReceivedAt)> activitySink) : IClientProxy
         {
             public Task SendCoreAsync(string method, object?[] args, CancellationToken cancellationToken = default)
             {
                 if (args.Length > 0 && args[0] is RealtimeLifecycleEvent lifecycleEvent)
                 {
                     lock (sink) { sink.Add(lifecycleEvent); }
+                }
+                else if (args.Length > 0)
+                {
+                    lock (activitySink) { activitySink.Add((method, args[0], DateTimeOffset.UtcNow)); }
                 }
                 return Task.CompletedTask;
             }

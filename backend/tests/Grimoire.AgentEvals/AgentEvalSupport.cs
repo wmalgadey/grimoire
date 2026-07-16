@@ -68,8 +68,9 @@ public sealed class AgentEvalRunner
         string fixtureName,
         string sourceContent,
         string runLabel,
-        Action<string>? mutateSkillFile,
-        CancellationToken cancellationToken)
+        Action<string>? mutateSystemPrompt,
+        CancellationToken cancellationToken,
+        string? userPrompt = null)
     {
         var taskId = $"eval-{runLabel}-{Guid.NewGuid():N}";
         var sandboxRoot = Path.Combine(Path.GetTempPath(), "grimoire-agent-evals", taskId);
@@ -79,10 +80,10 @@ public sealed class AgentEvalRunner
         CopyDirectory(wikiFixtureRoot, Path.Combine(sandboxRoot, "wiki"));
         CopyDirectory(Path.Combine(_repoRoot, "agents", "ingest"), Path.Combine(sandboxRoot, "agents", "ingest"));
 
-        if (mutateSkillFile is not null)
+        if (mutateSystemPrompt is not null)
         {
-            var skillPath = Path.Combine(sandboxRoot, "agents", "ingest", "skills", "wiki-maintenance", "SKILL.md");
-            mutateSkillFile(skillPath);
+            var systemPromptPath = Path.Combine(sandboxRoot, "agents", "ingest", "system-prompt.md");
+            mutateSystemPrompt(systemPromptPath);
         }
 
         var options = new AgentCliOptions(
@@ -94,7 +95,9 @@ public sealed class AgentEvalRunner
             IndexPath: Path.Combine(sandboxRoot, "wiki", "index.md"),
             LogPath: Path.Combine(sandboxRoot, "wiki", "log.md"),
             PastedText: sourceContent,
-            InstructionsDir: Path.Combine(sandboxRoot, "agents", "ingest"),
+            SystemPromptPath: Path.Combine(sandboxRoot, "agents", "ingest", "system-prompt.md"),
+            DefaultUserPromptPath: Path.Combine(sandboxRoot, "agents", "ingest", "default-user-prompt.md"),
+            UserPrompt: userPrompt,
             PolicyPath: Path.Combine(sandboxRoot, "agents", "ingest", "policy.json"));
 
         Directory.CreateDirectory(options.PagesDir);
@@ -120,14 +123,34 @@ public sealed class AgentEvalRunner
             cancellationToken);
 
         var recordingModelClient = new RecordingModelClient(new AnthropicModelClient());
-        var instructionLoader = new InstructionSetLoader();
-        var instructionResult = await instructionLoader.LoadAsync(options.InstructionsDir, cancellationToken);
+        var promptLoader = new SystemPromptLoader();
+        var instructionResult = await promptLoader.LoadAsync(options.SystemPromptPath, cancellationToken);
         if (instructionResult.IsSecond(out var instructionFailure))
         {
-            throw new InvalidOperationException($"Instruction set invalid for eval run: {instructionFailure.Reason}");
+            throw new InvalidOperationException($"System prompt invalid for eval run: {instructionFailure.Reason}");
         }
 
-        instructionResult.IsFirst(out var instructionSet);
+        instructionResult.IsFirst(out var systemPromptDoc);
+
+        string effectiveUserPrompt;
+        string userPromptSource;
+        if (!string.IsNullOrWhiteSpace(options.UserPrompt))
+        {
+            effectiveUserPrompt = options.UserPrompt.Trim();
+            userPromptSource = "custom";
+        }
+        else
+        {
+            var defaultPromptResult = await promptLoader.LoadAsync(options.DefaultUserPromptPath, cancellationToken);
+            if (defaultPromptResult.IsSecond(out var defaultPromptFailure))
+            {
+                throw new InvalidOperationException($"Default user prompt invalid for eval run: {defaultPromptFailure.Reason}");
+            }
+
+            defaultPromptResult.IsFirst(out var loadedDefaultPrompt);
+            effectiveUserPrompt = loadedDefaultPrompt!.Content.Trim();
+            userPromptSource = "default";
+        }
 
         var policyLoader = new PolicyLoader(sandboxRoot);
         var policyResult = await policyLoader.LoadAsync(options.PolicyPath, cancellationToken);
@@ -145,7 +168,8 @@ public sealed class AgentEvalRunner
         try
         {
             var loopResult = await loop.RunAsync(
-                instructionSet!.BuildSystemPrompt(),
+                systemPromptDoc!.Content,
+                effectiveUserPrompt,
                 options.TaskId,
                 options.SourceRef,
                 options.PastedText ?? string.Empty,
@@ -167,11 +191,13 @@ public sealed class AgentEvalRunner
                 PagesUpdated: [],
                 PagesSuperseded: [],
                 DeniedActions: executor.Denials.Select(d => new DeniedActionEntry(d.Action, d.RequestedTarget, d.CanonicalTarget, d.Reason, d.Turn)).ToList(),
-                InstructionFiles: instructionSet.Files.Select(f => new InstructionFileRecord(f.Path, f.Sha256)).ToList(),
+                InstructionFiles: [new InstructionFileRecord(systemPromptDoc.Path, systemPromptDoc.Sha256)],
                 Policy: new PolicyRecord(loadedPolicy.Identity.Path, loadedPolicy.Identity.Version, loadedPolicy.Identity.Sha256),
                 Model: recordingModelClient.ModelId,
                 Turns: loopResult.TurnsUsed,
-                RolledBack: null);
+                RolledBack: null,
+                UserPromptSource: userPromptSource,
+                UserPrompt: effectiveUserPrompt);
 
             await taskStore.WriteAsync(options.TaskArtifactPath, doc, cancellationToken);
             await logAppender.EnsureLogEntryAsync(options.LogPath, "completed", options.SourceRef, options.TaskId, false, cancellationToken);
@@ -206,11 +232,13 @@ public sealed class AgentEvalRunner
                 PagesUpdated: [],
                 PagesSuperseded: [],
                 DeniedActions: executor.Denials.Select(d => new DeniedActionEntry(d.Action, d.RequestedTarget, d.CanonicalTarget, d.Reason, d.Turn)).ToList(),
-                InstructionFiles: instructionSet!.Files.Select(f => new InstructionFileRecord(f.Path, f.Sha256)).ToList(),
+                InstructionFiles: [new InstructionFileRecord(systemPromptDoc!.Path, systemPromptDoc.Sha256)],
                 Policy: new PolicyRecord(loadedPolicy!.Identity.Path, loadedPolicy.Identity.Version, loadedPolicy.Identity.Sha256),
                 Model: recordingModelClient.ModelId,
                 Turns: null,
-                RolledBack: rollback.Values.All(v => v));
+                RolledBack: rollback.Values.All(v => v),
+                UserPromptSource: userPromptSource,
+                UserPrompt: effectiveUserPrompt);
 
             await taskStore.WriteAsync(options.TaskArtifactPath, doc, cancellationToken);
             await logAppender.EnsureLogEntryAsync(options.LogPath, "failed", options.SourceRef, options.TaskId, true, cancellationToken);

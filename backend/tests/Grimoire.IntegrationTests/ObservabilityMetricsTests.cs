@@ -126,6 +126,7 @@ public class ObservabilityMetricsTests
 
         await loop.RunAsync(
             systemPrompt: "You are a test agent.",
+            userPrompt: "Integrate the source.",
             taskId: "task-metrics",
             sourceRef: "source.md",
             sourceContent: "# source",
@@ -245,5 +246,131 @@ public class ObservabilityMetricsTests
             m.Value == 1L &&
             m.StopReason == "stop_sequence" &&
             m.Outcome == "terminal");
+    }
+
+    // --- 004-ingest-agent-systemprompt (plan.md ## Observability > Business Metrics) ---
+    // T046: these five metrics were emitted in code but had no deterministic test
+    // coverage (found by /speckit-converge's observability audit).
+
+    [Fact]
+    public void HubMetrics_RecordUserPrompt_Increments_UserPromptTotal_WithSourceTag()
+    {
+        var measurements = new List<(long Value, string Source)>();
+
+        using var listener = new MeterListener();
+        listener.InstrumentPublished = (instrument, l) =>
+        {
+            if (instrument.Meter.Name == "Grimoire.Hub" &&
+                instrument.Name == "wiki.ingest.user_prompt_total")
+            {
+                l.EnableMeasurementEvents(instrument);
+            }
+        };
+        listener.SetMeasurementEventCallback<long>((_, value, tags, _) =>
+        {
+            var source = tags.ToArray().FirstOrDefault(t => t.Key == "source").Value?.ToString() ?? "";
+            AddSynchronized(measurements, (value, source));
+        });
+        listener.Start();
+
+        HubMetrics.RecordUserPrompt("custom");
+
+        Assert.Contains(Snapshot(measurements), m => m.Value == 1L && m.Source == "custom");
+    }
+
+    [Fact]
+    public void HubMetrics_RecordConvertStepDisabled_Increments_ConvertStepDisabledTotal_WithStepTag()
+    {
+        var measurements = new List<(long Value, string Step)>();
+
+        using var listener = new MeterListener();
+        listener.InstrumentPublished = (instrument, l) =>
+        {
+            if (instrument.Meter.Name == "Grimoire.Hub" &&
+                instrument.Name == "wiki.ingest.convert_step_disabled_total")
+            {
+                l.EnableMeasurementEvents(instrument);
+            }
+        };
+        listener.SetMeasurementEventCallback<long>((_, value, tags, _) =>
+        {
+            var step = tags.ToArray().FirstOrDefault(t => t.Key == "step").Value?.ToString() ?? "";
+            AddSynchronized(measurements, (value, step));
+        });
+        listener.Start();
+
+        HubMetrics.RecordConvertStepDisabled("markitdown");
+
+        Assert.Contains(Snapshot(measurements), m => m.Value == 1L && m.Step == "markitdown");
+    }
+
+    [Fact]
+    public void HubMetrics_RecordRunEvent_Increments_RunEventsTotal_WithEventTypeTag()
+    {
+        var measurements = new List<(long Value, string EventType)>();
+
+        using var listener = new MeterListener();
+        listener.InstrumentPublished = (instrument, l) =>
+        {
+            if (instrument.Meter.Name == "Grimoire.Hub" &&
+                instrument.Name == "wiki.ingest.run_events_total")
+            {
+                l.EnableMeasurementEvents(instrument);
+            }
+        };
+        listener.SetMeasurementEventCallback<long>((_, value, tags, _) =>
+        {
+            var eventType = tags.ToArray().FirstOrDefault(t => t.Key == "event_type").Value?.ToString() ?? "";
+            AddSynchronized(measurements, (value, eventType));
+        });
+        listener.Start();
+
+        HubMetrics.RecordRunEvent("heartbeat");
+
+        Assert.Contains(Snapshot(measurements), m => m.Value == 1L && m.EventType == "heartbeat");
+    }
+
+    [Fact]
+    public void HubMetrics_RecordLivenessFailure_Increments_LivenessFailuresTotal()
+    {
+        var measurements = new List<long>();
+
+        using var listener = new MeterListener();
+        listener.InstrumentPublished = (instrument, l) =>
+        {
+            if (instrument.Meter.Name == "Grimoire.Hub" &&
+                instrument.Name == "wiki.ingest.liveness_failures_total")
+            {
+                l.EnableMeasurementEvents(instrument);
+            }
+        };
+        listener.SetMeasurementEventCallback<long>((_, value, _, _) => AddSynchronized(measurements, value));
+        listener.Start();
+
+        HubMetrics.RecordLivenessFailure();
+
+        Assert.Contains(Snapshot(measurements), v => v == 1L);
+    }
+
+    [Fact]
+    public void HubMetrics_RecordQueueDepth_Records_QueueDepthGauge()
+    {
+        var measurements = new List<long>();
+
+        using var listener = new MeterListener();
+        listener.InstrumentPublished = (instrument, l) =>
+        {
+            if (instrument.Meter.Name == "Grimoire.Hub" &&
+                instrument.Name == "wiki.ingest.queue_depth")
+            {
+                l.EnableMeasurementEvents(instrument);
+            }
+        };
+        listener.SetMeasurementEventCallback<long>((_, value, _, _) => AddSynchronized(measurements, value));
+        listener.Start();
+
+        HubMetrics.RecordQueueDepth(7);
+
+        Assert.Contains(Snapshot(measurements), v => v == 7L);
     }
 }

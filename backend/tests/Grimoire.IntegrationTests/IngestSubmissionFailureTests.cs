@@ -39,7 +39,7 @@ public class IngestSubmissionFailureTests
         Assert.Contains("PdfReadError", final.FailureReason);
 
         Assert.False(File.Exists(fixture.RawPaths.NormalizedMarkdownPathFor(taskId)), "No partial normalized artifact must remain after a failed conversion.");
-        Assert.Empty(fixture.Dispatcher.Requests);
+        Assert.Empty(fixture.Launcher.Requests);
     }
 
     [Fact]
@@ -58,7 +58,7 @@ public class IngestSubmissionFailureTests
         Assert.Equal("failed", final!.Status);
         Assert.Contains("404", final.FailureReason);
         Assert.False(File.Exists(fixture.RawPaths.NormalizedMarkdownPathFor(taskId)));
-        Assert.Empty(fixture.Dispatcher.Requests);
+        Assert.Empty(fixture.Launcher.Requests);
     }
 
     [Theory]

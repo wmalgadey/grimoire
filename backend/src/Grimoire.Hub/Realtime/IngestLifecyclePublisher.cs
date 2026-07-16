@@ -57,4 +57,23 @@ public sealed class IngestLifecyclePublisher
         _logger.LogInformation(new EventId(10, "ingest.lifecycle.published"),
             "Ingest lifecycle published: {task_id} {from_stage} -> {to_stage}", taskId, fromStatus, toStatus);
     }
+
+    /// <summary>
+    /// Publishes a live loop-activity update for a running task
+    /// (contracts/ingest-submission-api-extension.md `run_activity`, FR-018/SC-011).
+    /// Loop mechanics only — no wiki-content interpretation (Principle V).
+    /// </summary>
+    public async Task PublishRunActivityAsync(
+        string taskId, AgentDispatch.RunActivitySnapshot snapshot, CancellationToken cancellationToken = default)
+    {
+        await _hubContext.Clients.All.SendAsync("runActivityChanged", new
+        {
+            kind = "run_activity",
+            taskId,
+            modelTurns = snapshot.ModelTurns,
+            toolCalls = snapshot.ToolCalls,
+            toolCallsByName = snapshot.ToolCallsByName,
+            currentAction = snapshot.CurrentAction,
+        }, cancellationToken);
+    }
 }
