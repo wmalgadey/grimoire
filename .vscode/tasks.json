@@ -34,6 +34,58 @@
             }
         },
         {
+            "label": "build: backend",
+            "type": "shell",
+            "command": "dotnet build ${workspaceFolder}/backend/",
+            "group": "build",
+            "presentation": {
+                "panel": "dedicated",
+                "reveal": "silent",
+                "clear": true
+            },
+            "problemMatcher": "$msCompile"
+        },
+        {
+            "label": "start: frontend",
+            "type": "shell",
+            "command": "cd ${workspaceFolder}/frontend && bun run dev",
+            "isBackground": true,
+            "presentation": {
+                "panel": "dedicated",
+                "reveal": "always"
+            },
+            "problemMatcher": {
+                "owner": "frontend",
+                "pattern": {
+                    "regexp": "."
+                },
+                "background": {
+                    "activeOnStart": true,
+                    "beginsPattern": "^.*starting.*$",
+                    "endsPattern": "^.*(ready in|Local:).*$"
+                }
+            }
+        },
+        {
+            "label": "prod: prelaunch",
+            "dependsOn": [
+                "build: backend",
+                "start: frontend"
+            ],
+            "dependsOrder": "parallel",
+            "problemMatcher": []
+        },
+        {
+            "label": "dev: prelaunch",
+            "dependsOn": [
+                "litellm",
+                "build: backend",
+                "start: frontend"
+            ],
+            "dependsOrder": "parallel",
+            "problemMatcher": []
+        },
+        {
             "label": "litellm",
             "type": "shell",
             "command": "cd ${workspaceFolder}/scripts/nim/ && ./run-litellm-proxy.sh",
@@ -57,7 +109,7 @@
         {
             "label": "hub",
             "type": "shell",
-            "command": "cd ${workspaceFolder}/backend && dotnet build . && dotnet run --project src/Grimoire.Hub/",
+            "command": "cd ${workspaceFolder}/backend && dotnet run --project src/Grimoire.Hub/",
             "isBackground": true,
             "dependsOn": [
                 "litellm"
