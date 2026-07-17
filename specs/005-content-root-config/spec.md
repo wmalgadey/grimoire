@@ -19,6 +19,15 @@ such layout, so the application as-is cannot be deployed outside a developer che
 Operators also cannot reason about where data lives, because locations are implicit
 consequences of project structure rather than explicit configuration.
 
+## Clarifications
+
+### Session 2026-07-18
+
+- Q: When a base directory is chosen (the repo checkout or any other directory), how should the default on-disk layout of runtime data look underneath it? → A: Consolidated data directory — all runtime data defaults (wiki content root, raw intake storage, operational state store, agent instruction set, secrets) live under one folder beneath the base directory; existing checkout data is moved there once, and the repo checkout remains a valid base directory.
+- Q: When no base directory is explicitly configured, what is the default base for the consolidated data directory? → A: The process working directory; launch/deployment configurations pin an explicit base (or working directory) per environment.
+- Q: How are production and development launch setups separated within the one codebase? → A: Configuration only — each launch configuration passes its own base directory / path overrides through the standard channels; the application itself stays profile-agnostic (no named-profile mechanism, no environment-keyed default sets).
+- Q: How does existing runtime data in the current checkout (wiki/, raw/, backend/data/, agents/ingest/, .env) get into the new consolidated data directory? → A: Manual one-time move with documented instructions (optionally a one-off script). The application knows only the new layout — no legacy-layout detection and no automatic migration.
+
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - Deploy to a production environment without a source checkout (Priority: P1)
@@ -58,22 +67,27 @@ end to end.
 ### User Story 2 - Run locally with sensible defaults (Priority: P2)
 
 A developer starts the application from the project checkout without providing any path
-configuration. Sensible defaults — resolved relative to a single, clearly documented
-base location (the directory the application is started from, or an explicitly provided
-base directory) — keep the existing local workflow working: the wiki content root, raw
-storage, and operational state end up in the same places the developer uses today.
+configuration. Sensible defaults — a single consolidated data directory beneath a
+clearly documented base location — keep the local workflow working with zero
+configuration: all runtime data (wiki content root, raw storage, operational state,
+agent instruction set, secrets) lives under that one data directory, whether the base
+is the repo checkout or any other directory the user chooses. Existing checkout data is
+moved into the consolidated layout once (documented, one-time).
 
-**Why this priority**: The development workflow must not regress; defaults make the
-common case zero-configuration while the production case (Story 1) stays explicit.
+**Why this priority**: The development workflow must stay zero-configuration while
+gaining an obvious, single home for all current and future runtime data; the production
+case (Story 1) stays explicit.
 
 **Independent Test**: Start the application from the project checkout with no path
-configuration and verify it reads and writes the same locations as before the change.
+configuration and verify all reads and writes occur under the consolidated data
+directory beneath the checkout.
 
 **Acceptance Scenarios**:
 
 1. **Given** no path configuration is provided, **When** the application starts from
-   the project checkout, **Then** it resolves all locations from documented defaults
-   relative to the start/base directory and the existing local data is used.
+   the project checkout, **Then** it resolves all locations to the consolidated data
+   directory beneath the base directory and uses the (once-migrated) existing local
+   data.
 2. **Given** a developer provides only one overridden location (e.g., a different wiki
    content root), **When** the application starts, **Then** the override is honored and
    all other locations fall back to their documented defaults.
@@ -127,6 +141,10 @@ naming that location.
   working context as today, not against a repository root.
 - A configured path points at a file where a directory is expected (or vice versa):
   startup validation fails with a message naming the location.
+- Legacy pre-consolidation data still present at the old scattered locations under the
+  base directory: the application ignores it — it performs no legacy-layout detection
+  or automatic migration; missing required inputs surface through normal startup
+  validation, and the documented one-time move is the remedy.
 
 ## Requirements *(mandatory)*
 
@@ -139,15 +157,20 @@ naming that location.
 - **FR-002**: The application MUST NOT discover, require, or assume a source-code
   repository or development project structure at runtime, and MUST NOT require
   version-control tooling to be installed on the host.
-- **FR-003**: Configured relative paths MUST resolve against a single documented base
-  (the application's start directory, or an explicitly configured base directory) —
-  never against a discovered repository root.
-- **FR-004**: When no configuration is provided, the system MUST fall back to
-  documented defaults that preserve the existing local development workflow when
-  started from the project checkout.
+- **FR-003**: Configured relative paths MUST resolve against a single documented base:
+  the explicitly configured base directory, or — when none is configured — the process
+  working directory. Resolution MUST never depend on a discovered repository root.
+- **FR-004**: When no configuration is provided, the system MUST fall back to a
+  documented default layout in which all runtime data locations resolve beneath a
+  single consolidated data directory under the base directory — one obvious home for
+  all current and future runtime data, defined in one place rather than scattered
+  through the system.
 - **FR-005**: Path configuration MUST be acceptable through the standard configuration
   channels (command line, environment, configuration file) with one documented
   precedence order: command line over environment over configuration file over defaults.
+  Production and development setups differ only in the configuration values each launch
+  passes; the application contains no environment-specific path logic or named-profile
+  mechanism.
 - **FR-006**: At startup the system MUST validate all configured locations: required
   input locations (agent instruction set, secrets) that are missing or of the wrong
   kind cause immediate startup failure with a message naming the location and its
@@ -167,6 +190,10 @@ naming that location.
   on; each entry has a name, a configured value (absolute or relative), a resolved
   absolute value, a kind (required input vs. writable data), and a source (command
   line, environment, configuration file, or default).
+- **Runtime Data Base Directory**: The single directory the operator chooses as the
+  home for runtime data — the repo checkout or any other directory. All default
+  locations resolve into one consolidated data directory beneath it; individual
+  locations may still be overridden to point elsewhere.
 - **Wiki Content Root**: The directory holding the wiki maintained by agents (pages,
   tasks, index, log). Configured directly; no longer derived from a repository root.
 - **Raw Intake Storage**: The directory holding pre-agent intake artifacts (originals
@@ -184,9 +211,10 @@ naming that location.
 - **SC-002**: 100% of application starts with a missing or invalid required input
   location fail during startup (before serving any request) with a message naming the
   offending location and its configured value.
-- **SC-003**: Starting from the project checkout with zero path configuration uses the
-  same effective locations as before this feature in 100% of starts (no developer
-  workflow regression).
+- **SC-003**: Starting from the project checkout with zero path configuration resolves
+  100% of runtime data locations beneath the single consolidated data directory under
+  the checkout, and the developer workflow continues to work after the documented
+  one-time data move.
 - **SC-004**: 100% of agent worker runs receive their operating locations from the
   harness; no agent worker run performs repository or project-structure discovery.
 - **SC-005**: 100% of successful starts report every effective storage location in the
@@ -204,9 +232,13 @@ naming that location.
 - Writable data locations (raw intake storage, operational state store, wiki content
   root) are auto-created when absent; required input locations (agent instruction set,
   secrets) are never auto-created because the system cannot invent their content.
-- Defaults are chosen so that starting from the project checkout reproduces today's
-  effective locations; deployed environments are expected to configure paths
-  explicitly.
+- Default locations follow the consolidated layout (one data directory beneath the
+  base); today's scattered checkout locations are migrated by a documented one-time
+  move, after which the repo checkout remains a fully valid base directory. Deployed
+  environments may rely on the same defaults or configure paths explicitly.
+- Agent instruction files (system prompt, policy) are runtime data owned by a
+  deployment: they live under the consolidated data directory (a required input
+  location), not inside the application's code/install location.
 - How the deployable application is packaged for production (and how the agent worker
   is packaged alongside it) is an implementation/planning concern; this feature only
   requires that its location be explicitly configurable rather than derived from a
