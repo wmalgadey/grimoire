@@ -158,3 +158,7 @@ dotnet test … RepoLessStartupTests & DispatchPathArgumentsTests & PathPreceden
 ## Implementation Strategy
 
 **MVP = Phases 0–3 (US1)**: after US1 the application is deployable anywhere with explicit configuration — the core of the feature request. **Increment 2 = US2**: migrated checkout + zero-config dev workflow + config-only launch configs. **Increment 3 = US3**: hardened operator feedback. **Polish** closes the constitutional logging/CI gates and runs the full quickstart validation.
+
+## Phase 7: Convergence
+
+- [ ] T024 Fix `GrimoirePathResolver.CreateDirectoryIfMissing` in backend/src/Grimoire.Hub/Runtime/Paths/GrimoirePathResolver.cs so a writable-data location that already exists as the wrong kind (a file where a directory is expected — reproduced for `content_root`; the same code path also creates `data_dir`, `raw_dir`, `raw_originals_dir`, `raw_sources_dir`, `pages_dir`, `tasks_dir`, and the `state_db` parent dir) fails with the same clean `GrimoirePathValidationException` (naming the location, configured value, resolved path, and reason, plus the `paths_validation_failed` log event) instead of letting `Directory.CreateDirectory` throw an unhandled `System.IO.IOException`; add a hermetic regression test (e.g. in StartupValidationTests.cs) that seeds a file at a writable location's path and asserts the clean failure per FR-006 / spec.md Edge Cases ("A configured path points at a file where a directory is expected (or vice versa): startup validation fails with a message naming the location.") (partial)
