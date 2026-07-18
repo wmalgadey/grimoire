@@ -19,7 +19,7 @@
 
 **⚠️ NON-NEGOTIABLE**: No feature implementation can begin until Phase 0 is complete.
 
-- [ ] T001 Write structural boundary rule `RuntimePathsBoundaryRuleTests` in backend/tests/Grimoire.ArchTests/RuntimePathsBoundaryRuleTests.cs (Mono.Cecil IL scan, same idiom as GuardedWriteBoundaryRuleTests): (a) in production assemblies (Grimoire.Hub, Grimoire.IngestAgent, Grimoire.Domain), calls to `System.IO.Directory::GetCurrentDirectory`, `System.Environment::get_CurrentDirectory`, and `System.AppContext::get_BaseDirectory` are permitted only in namespace `Grimoire.Hub.Runtime.Paths`; (b) no production assembly contains IL string literals `rev-parse` or `--show-toplevel`. Note: this rule fails RED on the current code (`FindRepoRoot` in both Program.cs files) — that is expected and stays red until T010/T016 remove the violations; mark the two known violations as an explicit allowlist with a `// TODO(T010,T016)` expiry so the probe logic can still be verified, then remove the allowlist in T010/T016.
+- [ ] T001 Write structural boundary rule `RuntimePathsBoundaryRuleTests` in backend/tests/Grimoire.ArchTests/RuntimePathsBoundaryRuleTests.cs (Mono.Cecil IL scan, same idiom as GuardedWriteBoundaryRuleTests): (a) in production assemblies (Grimoire.Hub, Grimoire.IngestAgent, Grimoire.Domain), calls to `System.IO.Directory::GetCurrentDirectory`, `System.Environment::get_CurrentDirectory`, and `System.AppContext::get_BaseDirectory` are permitted only in namespace `Grimoire.Hub.Runtime.Paths`; (b) no production assembly contains IL string literals `rev-parse` or `--show-toplevel`. Note: this rule fails RED on the current code (`FindRepoRoot` in both Program.cs files) — that is expected and stays red until T010/T016 remove the violations; mark the two known violations as an explicit allowlist with a `// TODO(T010,T012)` expiry so the probe logic can still be verified, then remove the allowlist in T010 (Hub) and T012 (IngestAgent).
 - [ ] T002 Red/Green probe for T001: add a deliberately violating class `backend/src/Grimoire.Hub/ProbeAmbientPathViolation.cs` calling `Directory.GetCurrentDirectory()` outside the allowed namespace, run `dotnet test backend/tests/Grimoire.ArchTests --filter RuntimePathsBoundary` and verify it FAILS; delete the probe class, verify it PASSES; document the probe result in the commit message.
 
 **Checkpoint**: Structural boundary is guarded. Feature code may now begin.
@@ -60,6 +60,7 @@
 - [ ] T010t [P] [US1] Hermetic integration test `RepoLessStartupTests` in backend/tests/Grimoire.IntegrationTests/PathConfiguration/RepoLessStartupTests.cs: boot the Hub host in a temp base directory containing no `.git` and no project layout (fixture `data/` tree with instruction files + `.env` stub, fake `IAgentProcessLauncher`), assert successful start and that every write lands under the configured roots (SC-001)
 - [ ] T011t [P] [US1] Hermetic integration test `DispatchPathArgumentsTests` in backend/tests/Grimoire.IntegrationTests/PathConfiguration/DispatchPathArgumentsTests.cs: capture dispatch via the fake launcher and assert every dispatch passes `--wiki-root` plus absolute Hub-resolved paths for all path arguments (SC-004)
 - [ ] T012t [P] [US1] Hermetic integration test `PathPrecedenceTests` in backend/tests/Grimoire.IntegrationTests/PathConfiguration/PathPrecedenceTests.cs: same key supplied via CLI + environment + config file resolves per precedence command line > environment > appsettings > default, and `PathLocation.source` reports the winning channel (FR-005)
+- [ ] T013t [P] [US1] Hermetic test `ArtifactRelativePathsTests` in backend/tests/Grimoire.IntegrationTests/PathConfiguration/ArtifactRelativePathsTests.cs: given a `--wiki-root` and touched absolute paths beneath it, the agent's task artifact records content-root-relative page paths (`pages/foo.md`, `tasks/…` — no `wiki/` prefix, no repo-relative segments) in `PagesTouched`/`PagesCreated`/`PagesUpdated`/`PagesSuperseded`; exercises the agent's relativization directly with temp directories, no LLM call (FR-009)
 
 ### Implementation for User Story 1
 
@@ -69,7 +70,7 @@
 - [ ] T013 [US1] Update backend/src/Grimoire.IngestAgent/AgentCore/PolicyLoader.cs so path prefixes resolve against the injected wiki root (constructor parameter renamed accordingly); adjust its unit/integration tests' fixtures to content-root-relative prefixes (depends on T012)
 - [ ] T014 [US1] Update backend/src/Grimoire.Hub/Submission/SubmissionService.cs `ResolveSourcePath` to resolve relative source paths against the process working directory (parameter `repoRoot` removed); update the `submit-source` CLI path in Program.cs accordingly (depends on T009)
 
-**Checkpoint**: US1 fully functional — quickstart Scenario 2 passes; T010t–T012t green.
+**Checkpoint**: US1 fully functional — quickstart Scenario 2 passes; T010t–T013t green.
 
 ---
 
@@ -142,7 +143,7 @@
 ### Parallel Opportunities
 
 - T004 ∥ T005 (different files).
-- T010t ∥ T011t ∥ T012t (separate test files), then implementation serially T010 → T011 → T012 → T013 with T014 ∥ after T009.
+- T010t ∥ T011t ∥ T012t ∥ T013t (separate test files), then implementation serially T010 → T011 → T012 → T013 with T014 ∥ after T009.
 - T016 ∥ T017 while T015 runs.
 - T020 ∥ T022 in Polish.
 
