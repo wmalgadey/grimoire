@@ -32,15 +32,29 @@ Then: update `.gitignore` (`backend/data/` → `data/state/`, add `data/raw/`), 
 
 ```bash
 cd /Volumes/Daten/grimoire
-dotnet run --project backend/src/Grimoire.Hub -- --agent-worker backend/src/Grimoire.IngestAgent/Grimoire.IngestAgent.csproj
+dotnet run --project backend/src/Grimoire.Hub -- \
+  --base-dir "$(pwd)" \
+  --agent-worker "$(pwd)/backend/src/Grimoire.IngestAgent/Grimoire.IngestAgent.csproj"
 ```
 
 Expected: startup succeeds; the `paths_resolved` log line shows the content root at
 `/Volumes/Daten/grimoire/wiki` and every other location under
 `/Volumes/Daten/grimoire/data/...`; submitting a small text source produces artifacts
 only under `wiki/tasks`, `wiki/pages`, `data/raw`, `data/state`.
-(Only the agent-worker value is passed because the checkout runs the worker from
-source; a published install needs no arguments at all.)
+
+`--base-dir "$(pwd)"` is required with this invocation form specifically:
+`dotnet run --project <path>` changes the running process's own working directory to
+the *project's* directory (a `dotnet` CLI behavior, not a Grimoire default), which
+would otherwise make the zero-config resolution land under
+`backend/src/Grimoire.Hub/wiki`/`data` instead of the checkout root. `--agent-worker`
+must be absolute for the same reason it isn't resolved against the base directory at
+all (research R4): its default anchor is the install directory
+(`AppContext.BaseDirectory`), so a relative dev-source path here would resolve under
+`bin/Debug/net10.0/` instead. Neither caveat applies to a real deployment: a published
+install (Scenario 2) runs the built DLL directly (`dotnet Grimoire.Hub.dll`, no `dotnet
+run --project` indirection) and needs no arguments at all; the VS Code launch
+configurations (`.vscode/launch.json`) already set `cwd` and pass an absolute
+`--agent-worker` for the same reason.
 
 ## Scenario 2 — Production-style start outside any checkout (User Story 1, SC-001)
 

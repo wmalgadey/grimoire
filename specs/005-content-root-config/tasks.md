@@ -82,14 +82,14 @@
 
 ### Tests for User Story 2 (write first, ensure they FAIL)
 
-- [ ] T015t [P] [US2] Hermetic resolver tests `DefaultLayoutTests` in backend/tests/Grimoire.IntegrationTests/PathConfiguration/DefaultLayoutTests.cs: with zero configuration the content root resolves to `<cwd>/wiki` and every internal data location beneath `<cwd>/data`; overriding a single location leaves all other defaults intact (SC-003, FR-004, US2 acceptance 2)
+- [X] T015t [P] [US2] Hermetic resolver tests `DefaultLayoutTests` in backend/tests/Grimoire.IntegrationTests/PathConfiguration/DefaultLayoutTests.cs: with zero configuration the content root resolves to `<cwd>/wiki` and every internal data location beneath `<cwd>/data`; overriding a single location leaves all other defaults intact (SC-003, FR-004, US2 acceptance 2)
 
 ### Implementation for User Story 2
 
-- [ ] T015 [US2] Execute the one-time checkout migration per quickstart.md: `git mv agents data/agents`, move `raw/` → `data/raw`, `.env` → `data/.env`, `backend/data/operational-state.db` → `data/state/` (wiki/ stays in place); rewrite `data/agents/ingest/policy.json` prefixes to content-root-relative (`pages/`, `tasks/`, `index.md`, `log.md`) and bump its `version` (depends on T013 so the loader semantics match)
-- [ ] T016 [P] [US2] Update .gitignore: replace `backend/data/` with `data/state/` and add `data/raw/` (the existing `.env` pattern already covers `data/.env`)
-- [ ] T017 [P] [US2] Update .vscode/launch.json: both configurations get `cwd: ${workspaceFolder}` and `--agent-worker ${workspaceFolder}/backend/src/Grimoire.IngestAgent/Grimoire.IngestAgent.csproj`; dev config drops all other path arguments (defaults apply); prod config keeps `--content-root /Volumes/Daten/parainoid/llm-wiki`; prelaunch tasks unchanged
-- [ ] T018 [US2] Validate quickstart.md Scenario 1 end-to-end from the checkout root (zero-config start, ingest a small pasted text, verify writes only under wiki/ and data/) and fix anything it surfaces (depends on T015, T016, T017)
+- [X] T015 [US2] Execute the one-time checkout migration per quickstart.md: `git mv agents data/agents`, move `raw/` → `data/raw`, `.env` → `data/.env`, `backend/data/operational-state.db` → `data/state/` (wiki/ stays in place); rewrite `data/agents/ingest/policy.json` prefixes to content-root-relative (`pages/`, `tasks/`, `index.md`, `log.md`) and bump its `version` (depends on T013 so the loader semantics match)
+- [X] T016 [P] [US2] Update .gitignore: replace `backend/data/` with `data/state/` and add `data/raw/` (the existing `.env` pattern already covers `data/.env`)
+- [X] T017 [P] [US2] Update .vscode/launch.json: both configurations get `cwd: ${workspaceFolder}` and `--agent-worker ${workspaceFolder}/backend/src/Grimoire.IngestAgent/Grimoire.IngestAgent.csproj`; dev config drops all other path arguments (defaults apply); prod config keeps `--content-root /Volumes/Daten/parainoid/llm-wiki`; prelaunch tasks unchanged
+- [X] T018 [US2] Validate quickstart.md Scenario 1 end-to-end from the checkout root (zero-config start, ingest a small pasted text, verify writes only under wiki/ and data/) and fix anything it surfaces (depends on T015, T016, T017)
 
 **Checkpoint**: US1 and US2 both work — dev checkout and repo-less deployment share one codebase with config-only differences.
 
@@ -103,11 +103,11 @@
 
 ### Tests for User Story 3 (write first, ensure they FAIL)
 
-- [ ] T019t [P] [US3] Hermetic integration tests `StartupValidationTests` in backend/tests/Grimoire.IntegrationTests/PathConfiguration/StartupValidationTests.cs: for each required input (secrets file, each of the three instruction files, agent worker) missing or of the wrong kind (file where directory expected and vice versa), startup fails before serving with exit/exception naming the logical location, configured value, and resolved path; absent writable locations (wiki, raw, state, data) are created and reported (SC-002, FR-006, US3 acceptance 1–2)
+- [X] T019t [P] [US3] Hermetic integration tests `StartupValidationTests` in backend/tests/Grimoire.IntegrationTests/PathConfiguration/StartupValidationTests.cs: for each required input (secrets file, each of the three instruction files, agent worker) missing or of the wrong kind (file where directory expected and vice versa), startup fails before serving with exit/exception naming the logical location, configured value, and resolved path; absent writable locations (wiki, raw, state, data) are created and reported (SC-002, FR-006, US3 acceptance 1–2)
 
 ### Implementation for User Story 3
 
-- [ ] T019 [US3] Harden `GrimoirePathResolver` validation in backend/src/Grimoire.Hub/Runtime/Paths/GrimoirePathResolver.cs: explicit kind checks (file vs directory) per location, aggregate-free first-failure message format `"<location>: configured '<value>' resolved to '<path>' — <reason>"`, and ensure validation runs before any endpoint/dispatch initialization in Program.cs (depends on T006; test T019t)
+- [X] T019 [US3] Harden `GrimoirePathResolver` validation in backend/src/Grimoire.Hub/Runtime/Paths/GrimoirePathResolver.cs: explicit kind checks (file vs directory) per location, aggregate-free first-failure message format `"<location>: configured '<value>' resolved to '<path>' — <reason>"`, and ensure validation runs before any endpoint/dispatch initialization in Program.cs (depends on T006; test T019t)
 
 **Checkpoint**: All three stories independently functional.
 
@@ -115,10 +115,10 @@
 
 ## Phase 6: Polish & Cross-Cutting Concerns
 
-- [ ] T020 [P] Observability tests (MANDATORY — Constitution IV; logging contract, deterministic integration tests for ALL three Structured Log Events rows) in backend/tests/Grimoire.IntegrationTests/PathConfiguration/PathLoggingContractTests.cs: `paths_resolved` (INFO, all eight path fields + sources), `paths_location_created` (INFO, location + resolved_path), `paths_validation_failed` (ERROR, location + configured_value + resolved_path + reason), captured via the in-memory exporter per ADR-005
-- [ ] T021 Logging contract CI enforcement (MANDATORY — Constitution IV): verify .github/workflows/ci.yml executes the new test classes in the standard PR pipeline (Grimoire.ArchTests and Grimoire.IntegrationTests are already invoked project-wide — confirm no filter excludes PathConfiguration/PathLoggingContract tests, and add an explicit `--filter`-free assertion note to the workflow if needed)
-- [ ] T022 [P] Documentation: record the two-home layout, configuration table, and migration note in docs/ (link contracts/path-configuration.md from an operator-facing page or README section)
-- [ ] T023 Dead-code and literal sweep: remove any leftover repoRoot parameters, unused `ParseOption` helpers, and stray path literals outside `Grimoire.Hub.Runtime.Paths` (grep for `backend/data`, `agents/ingest`, `"wiki"`, `".env"` in backend/src); run the full quickstart.md validation (Scenarios 1–5) as the feature's DoD gate
+- [X] T020 [P] Observability tests (MANDATORY — Constitution IV; logging contract, deterministic integration tests for ALL three Structured Log Events rows) in backend/tests/Grimoire.IntegrationTests/PathConfiguration/PathLoggingContractTests.cs: `paths_resolved` (INFO, all eight path fields + sources), `paths_location_created` (INFO, location + resolved_path), `paths_validation_failed` (ERROR, location + configured_value + resolved_path + reason), captured via the in-memory exporter per ADR-005
+- [X] T021 Logging contract CI enforcement (MANDATORY — Constitution IV): verify .github/workflows/ci.yml executes the new test classes in the standard PR pipeline (Grimoire.ArchTests and Grimoire.IntegrationTests are already invoked project-wide — confirm no filter excludes PathConfiguration/PathLoggingContract tests, and add an explicit `--filter`-free assertion note to the workflow if needed)
+- [X] T022 [P] Documentation: record the two-home layout, configuration table, and migration note in docs/ (link contracts/path-configuration.md from an operator-facing page or README section)
+- [X] T023 Dead-code and literal sweep: remove any leftover repoRoot parameters, unused `ParseOption` helpers, and stray path literals outside `Grimoire.Hub.Runtime.Paths` (grep for `backend/data`, `agents/ingest`, `"wiki"`, `".env"` in backend/src); run the full quickstart.md validation (Scenarios 1–5) as the feature's DoD gate
 
 *No trace-contract tasks: plan.md declares zero Distributed Trace Spans rows. No agent-behavior evaluation tasks: the feature has no agentic surface (plan.md § Agentic Boundary).*
 

@@ -10,8 +10,8 @@ using your own judgment. You are the editor, not a pipeline step.
 
 Before touching any page, you MUST:
 
-1. Read `wiki/index.md` to understand what the wiki already contains.
-2. Use `list_files` on `wiki/pages/` and its topic folders (see Wiki Folder Structure
+1. Read `index.md` to understand what the wiki already contains.
+2. Use `list_files` on `pages/` and its topic folders (see Wiki Folder Structure
    below) to confirm the directory contents.
 3. For any topic the source overlaps with, read the existing page(s) before deciding
    whether to update, supersede, or create.
@@ -38,10 +38,10 @@ artificially limit the scope.
 
 After every write:
 
-- Update `wiki/index.md` to list any newly created pages. Existing entries that were
+- Update `index.md` to list any newly created pages. Existing entries that were
   updated do not need a new index entry, but update the summary if it no longer reflects
   the page's current content. See Catalog Upkeep below for the exact entry format.
-- At run end, add a log entry to `wiki/log.md` under today's date heading (newest-first —
+- At run end, add a log entry to `log.md` under today's date heading (newest-first —
   see Ingest Log Upkeep below).
 
 If supersession occurred, also note it in the log entry.
@@ -93,9 +93,9 @@ shell commands or perform network requests.
 # Wiki-Maintenance Conventions
 
 The following conventions apply to every page you create or edit. Apply these rules to
-all `write_file` calls that target `wiki/pages/`.
+all `write_file` calls that target `pages/`.
 
-The wiki is an Open Knowledge Format (OKF) v0.1 bundle: `wiki/pages/` is the bundle root,
+The wiki is an Open Knowledge Format (OKF) v0.1 bundle: `pages/` is the bundle root,
 each page is an OKF **concept** document, and `index.md`/`log.md` are OKF's reserved files.
 
 **Deviation from OKF:** internal cross-references use Obsidian-style wikilinks
@@ -106,13 +106,13 @@ genuinely external URLs (e.g. citations to sources outside the wiki).
 
 ## Wiki Folder Structure
 
-Every page lives in a topic folder under `wiki/pages/` — never write a page directly into
-the `wiki/pages/` root. Choose the folder that matches the page type (see the table
+Every page lives in a topic folder under `pages/` — never write a page directly into
+the `pages/` root. Choose the folder that matches the page type (see the table
 below). If a genuinely new topic area needs a folder that does not yet exist, create it,
 but only when none of the existing folders fits.
 
 ```text
-wiki/pages/
+pages/
 ├── tech/           # Technologies, platforms (Kubernetes, Quarkus, …)
 ├── tools/          # Tools, CLIs, SaaS products
 ├── concepts/       # Abstract concepts, patterns, ideas
@@ -130,15 +130,15 @@ The `type` column is the exact, required value for that page's frontmatter `type
 
 | Type | `type:` value | When to create | File location |
 |------|---------------|-----------------|---------------|
-| **Concept** | `Concept` | Abstract ideas, principles, design patterns | `wiki/pages/concepts/<slug>.md` |
-| **Technology** | `Technology` | Platforms, libraries, frameworks | `wiki/pages/tech/<slug>.md` |
-| **Tool** | `Tool` | CLIs, SaaS products, utilities | `wiki/pages/tools/<slug>.md` |
-| **Person** | `Person` | Named individuals (authors, researchers, practitioners) | `wiki/pages/people/<slug>.md` |
-| **Organisation** | `Organisation` | Companies, projects, communities | `wiki/pages/organisations/<slug>.md` |
-| **Event** | `Event` | Conferences, meetups, gatherings | `wiki/pages/events/<slug>.md` |
-| **Hobby** | `Hobby` | Non-technical interests (coffee, books, film, and similar) | `wiki/pages/hobbies/<slug>.md` |
-| **Personal** | `Personal` | Personal reflections and notes | `wiki/pages/personal/<slug>.md` |
-| **Source summary** | `Source summary` | Condensed representation of a specific source document | `wiki/pages/sources/<slug>.md` |
+| **Concept** | `Concept` | Abstract ideas, principles, design patterns | `pages/concepts/<slug>.md` |
+| **Technology** | `Technology` | Platforms, libraries, frameworks | `pages/tech/<slug>.md` |
+| **Tool** | `Tool` | CLIs, SaaS products, utilities | `pages/tools/<slug>.md` |
+| **Person** | `Person` | Named individuals (authors, researchers, practitioners) | `pages/people/<slug>.md` |
+| **Organisation** | `Organisation` | Companies, projects, communities | `pages/organisations/<slug>.md` |
+| **Event** | `Event` | Conferences, meetups, gatherings | `pages/events/<slug>.md` |
+| **Hobby** | `Hobby` | Non-technical interests (coffee, books, film, and similar) | `pages/hobbies/<slug>.md` |
+| **Personal** | `Personal` | Personal reflections and notes | `pages/personal/<slug>.md` |
+| **Source summary** | `Source summary` | Condensed representation of a specific source document | `pages/sources/<slug>.md` |
 
 A single source may produce pages of multiple types (e.g. a book produces a source
 summary page in `sources/`, a concept page in `concepts/`, and an author person page in
@@ -252,7 +252,7 @@ signals that the content is stale without losing it.
 
 ## Catalog (index.md) Upkeep
 
-`wiki/index.md` is the human- and agent-readable entry point to the wiki. It carries **no
+`index.md` is the human- and agent-readable entry point to the wiki. It carries **no
 frontmatter** except one exception: if it does not yet have an `okf_version: "0.1"`
 block, add one — this is the only file permitted frontmatter under OKF, and it declares
 the bundle's spec version.
@@ -269,7 +269,7 @@ Keep the body current:
 
 ## Ingest Log (log.md) Upkeep
 
-`wiki/log.md` records ingest history **newest-first**. Entries are grouped under
+`log.md` records ingest history **newest-first**. Entries are grouped under
 date headings, each a bullet with a bold leading verb:
 
 ```markdown

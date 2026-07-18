@@ -10,10 +10,12 @@
       "request": "launch",
       "preLaunchTask": "prod: prelaunch",
       "program": "${workspaceFolder}/backend/src/Grimoire.Hub/bin/Debug/net10.0/Grimoire.Hub.dll",
-      "cwd": "${workspaceFolder}/backend/src/Grimoire.Hub",
+      "cwd": "${workspaceFolder}",
       "args": [
         "--content-root",
-        "/Volumes/Daten/parainoid/llm-wiki"
+        "/Volumes/Daten/parainoid/llm-wiki",
+        "--agent-worker",
+        "${workspaceFolder}/backend/src/Grimoire.IngestAgent/Grimoire.IngestAgent.csproj"
       ],
       "env": {
         "ASPNETCORE_ENVIRONMENT": "Production",
@@ -33,8 +35,11 @@
       "request": "launch",
       "preLaunchTask": "dev: prelaunch",
       "program": "${workspaceFolder}/backend/src/Grimoire.Hub/bin/Debug/net10.0/Grimoire.Hub.dll",
-      "cwd": "${workspaceFolder}/backend/src/Grimoire.Hub",
-      "args": [],
+      "cwd": "${workspaceFolder}",
+      "args": [
+        "--agent-worker",
+        "${workspaceFolder}/backend/src/Grimoire.IngestAgent/Grimoire.IngestAgent.csproj"
+      ],
       "env": {
         "ASPNETCORE_ENVIRONMENT": "Development",
         "ASPNETCORE_URLS": "http://localhost:5255",

@@ -78,7 +78,7 @@ public sealed class AgentEvalRunner
         var wikiFixtureRoot = Path.Combine(fixtureRoot, "wiki");
 
         CopyDirectory(wikiFixtureRoot, Path.Combine(sandboxRoot, "wiki"));
-        CopyDirectory(Path.Combine(_repoRoot, "agents", "ingest"), Path.Combine(sandboxRoot, "agents", "ingest"));
+        CopyDirectory(Path.Combine(_repoRoot, "data", "agents", "ingest"), Path.Combine(sandboxRoot, "agents", "ingest"));
 
         if (mutateSystemPrompt is not null)
         {

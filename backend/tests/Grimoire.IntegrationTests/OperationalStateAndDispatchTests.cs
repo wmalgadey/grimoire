@@ -61,9 +61,9 @@ public class OperationalStateAndDispatchTests
             IndexPath: indexPath,
             LogPath: logPath,
             PastedText: null,
-            SystemPromptPath: Path.Combine(repoRootForPaths, "agents", "ingest", "system-prompt.md"),
-            DefaultUserPromptPath: Path.Combine(repoRootForPaths, "agents", "ingest", "default-user-prompt.md"),
-            PolicyPath: Path.Combine(repoRootForPaths, "agents", "ingest", "policy.json")));
+            SystemPromptPath: Path.Combine(repoRootForPaths, "data", "agents", "ingest", "system-prompt.md"),
+            DefaultUserPromptPath: Path.Combine(repoRootForPaths, "data", "agents", "ingest", "default-user-prompt.md"),
+            PolicyPath: Path.Combine(repoRootForPaths, "data", "agents", "ingest", "policy.json")));
 
         // Agent should fail (exit 1) due to missing source, without making any LLM call.
         Assert.Equal(1, exitCode);
