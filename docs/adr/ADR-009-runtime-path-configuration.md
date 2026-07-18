@@ -1,5 +1,5 @@
 ---
-status: proposed
+status: accepted
 ---
 
 # ADR-009: Explicit Runtime Path Configuration and Consolidated Data Directory
