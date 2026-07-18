@@ -89,17 +89,17 @@ public static class GrimoirePathResolver
         ValidateRequiredFile(logger, "agent_worker", options.AgentWorker, agentWorkerPath);
 
         // Auto-create writable data locations.
-        CreateDirectoryIfMissing(logger, "data_dir", dataDir);
-        CreateDirectoryIfMissing(logger, "content_root", contentRoot);
-        CreateDirectoryIfMissing(logger, "pages_dir", pagesDir);
-        CreateDirectoryIfMissing(logger, "tasks_dir", tasksDir);
-        CreateDirectoryIfMissing(logger, "raw_dir", rawDir);
-        CreateDirectoryIfMissing(logger, "raw_originals_dir", rawOriginalsDir);
-        CreateDirectoryIfMissing(logger, "raw_sources_dir", rawSourcesDir);
+        CreateDirectoryIfMissing(logger, "data_dir", options.DataDir, dataDir);
+        CreateDirectoryIfMissing(logger, "content_root", options.ContentRoot, contentRoot);
+        CreateDirectoryIfMissing(logger, "pages_dir", options.ContentRoot, pagesDir);
+        CreateDirectoryIfMissing(logger, "tasks_dir", options.ContentRoot, tasksDir);
+        CreateDirectoryIfMissing(logger, "raw_dir", options.RawDir, rawDir);
+        CreateDirectoryIfMissing(logger, "raw_originals_dir", options.RawDir, rawOriginalsDir);
+        CreateDirectoryIfMissing(logger, "raw_sources_dir", options.RawDir, rawSourcesDir);
         var stateDbDir = Path.GetDirectoryName(stateDbPath);
         if (!string.IsNullOrEmpty(stateDbDir))
         {
-            CreateDirectoryIfMissing(logger, "state_db_dir", stateDbDir);
+            CreateDirectoryIfMissing(logger, "state_db_dir", options.StateDb, stateDbDir);
         }
 
         var resolved = new ResolvedGrimoirePaths(
@@ -200,10 +200,17 @@ public static class GrimoirePathResolver
         throw new GrimoirePathValidationException(location, configuredValue, resolvedPath, reason);
     }
 
-    private static void CreateDirectoryIfMissing(ILogger logger, string location, string resolvedPath)
+    private static void CreateDirectoryIfMissing(ILogger logger, string location, string? configuredValue, string resolvedPath)
     {
         if (Directory.Exists(resolvedPath))
             return;
+
+        var displayValue = string.IsNullOrWhiteSpace(configuredValue) ? "(default)" : configuredValue;
+
+        if (File.Exists(resolvedPath))
+        {
+            Fail(logger, location, displayValue, resolvedPath, "expected a directory but found a file.");
+        }
 
         Directory.CreateDirectory(resolvedPath);
         GrimoirePathLogEvents.LogLocationCreated(logger, location, resolvedPath);

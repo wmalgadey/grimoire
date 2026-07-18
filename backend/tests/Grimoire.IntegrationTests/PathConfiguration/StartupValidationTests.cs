@@ -89,6 +89,41 @@ public class StartupValidationTests
     }
 
     [Fact]
+    public void ContentRootIsAFile_FailsCleanlyInsteadOfThrowingRawIOException()
+    {
+        var baseDir = Path.Combine(Path.GetTempPath(), $"grimoire-startup-wrongkind-writable-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(baseDir);
+
+        try
+        {
+            var options = PathConfigurationTestHelpers.SeedRequiredInputs(baseDir);
+            var configRoot = new ConfigurationBuilder().Build();
+
+            // content_root is a writable-data location (auto-created) — but here it already
+            // exists as a file, the exact FR-006 edge case: "A configured path points at a
+            // file where a directory is expected ... startup validation fails with a message
+            // naming the location." Must not surface as a raw System.IO.IOException.
+            var contentRootPath = Path.Combine(baseDir, "wiki");
+            File.WriteAllText(contentRootPath, "not a directory");
+
+            var exception = Assert.Throws<GrimoirePathValidationException>(
+                () => GrimoirePathResolver.Resolve(options, configRoot, NullLogger.Instance));
+
+            Assert.Equal("content_root", exception.Location);
+            Assert.Equal(contentRootPath, exception.ResolvedPath);
+            Assert.Contains(exception.Location, exception.Message, StringComparison.Ordinal);
+            Assert.Contains(exception.ResolvedPath, exception.Message, StringComparison.Ordinal);
+        }
+        finally
+        {
+            if (Directory.Exists(baseDir))
+            {
+                Directory.Delete(baseDir, recursive: true);
+            }
+        }
+    }
+
+    [Fact]
     public void AbsentWritableDataLocations_AreCreated_AndSuccessReturnsResolvedPaths()
     {
         var baseDir = Path.Combine(Path.GetTempPath(), $"grimoire-startup-writable-{Guid.NewGuid():N}");
