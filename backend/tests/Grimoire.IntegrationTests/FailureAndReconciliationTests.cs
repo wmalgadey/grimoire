@@ -28,6 +28,7 @@ public class FailureAndReconciliationTests
             TaskId: taskId,
             SourceRef: Path.Combine(root, "missing-source.md"),
             SourceKind: "file",
+            WikiRoot: root,
             PagesDir: pagesDir,
             TasksDir: tasksDir,
             IndexPath: indexPath,

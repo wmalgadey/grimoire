@@ -90,6 +90,7 @@ public sealed class AgentEvalRunner
             TaskId: taskId,
             SourceRef: $"eval://{fixtureName}/{runLabel}",
             SourceKind: "pasted_text",
+            WikiRoot: Path.Combine(sandboxRoot, "wiki"),
             PagesDir: Path.Combine(sandboxRoot, "wiki", "pages"),
             TasksDir: Path.Combine(sandboxRoot, "wiki", "tasks"),
             IndexPath: Path.Combine(sandboxRoot, "wiki", "index.md"),

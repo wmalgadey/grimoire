@@ -55,6 +55,7 @@ public class OperationalStateAndDispatchTests
             TaskId: taskId,
             SourceRef: sourcePath,
             SourceKind: "file",
+            WikiRoot: root,
             PagesDir: pagesDir,
             TasksDir: tasksDir,
             IndexPath: indexPath,

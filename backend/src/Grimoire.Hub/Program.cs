@@ -4,10 +4,10 @@ using Grimoire.Hub.Conversion;
 using Grimoire.Hub.IngestSubmission;
 using Grimoire.Hub.OperationalState;
 using Grimoire.Hub.Realtime;
+using Grimoire.Hub.Runtime.Paths;
 using Grimoire.Hub.Submission;
 using Grimoire.Hub.TaskArtifact;
 using Grimoire.Hub;
-using System.Diagnostics;
 
 var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddHubTelemetry();
@@ -18,60 +18,64 @@ builder.Services.AddSingleton<MarkItDownConverter>();
 builder.Services.AddSingleton<HubTaskArtifactWriter>();
 builder.Services.AddSingleton<KanbanBoardProjectionStore>();
 
-var repoRoot = FindRepoRoot(Directory.GetCurrentDirectory());
-var dbPath = Path.Combine(repoRoot, "backend", "data", "operational-state.db");
-var envPath = Path.Combine(repoRoot, ".env");
-var agentProjectPath = Path.Combine(repoRoot, "backend", "src", "Grimoire.IngestAgent", "Grimoire.IngestAgent.csproj");
+// ADR-009: every runtime location is composed in exactly one place, resolved before the
+// host is built (no repository/project-structure discovery, FR-002/FR-003).
+builder.Configuration.AddCommandLine(args, PathConfigurationSwitchMappingsFactory());
 
-if (!File.Exists(envPath))
+var pathOptions = new GrimoirePathOptions();
+builder.Configuration.GetSection(GrimoirePathOptions.SectionName).Bind(pathOptions);
+
+using (var bootstrapLoggerFactory = TelemetryExtensions.CreateBootstrapLoggerFactory())
 {
-    throw new FileNotFoundException($"Required .env file was not found at '{envPath}'.", envPath);
-}
+    var pathLogger = bootstrapLoggerFactory.CreateLogger("Grimoire.Hub.Runtime.Paths");
+    var resolvedPaths = GrimoirePathResolver.Resolve(pathOptions, builder.Configuration, pathLogger);
 
-var contentRootDirName = ParseOption(args, "--content-root") ?? builder.Configuration["ContentRootDirName"] ?? "wiki";
-var contentPaths = ContentRootPaths.Resolve(repoRoot, contentRootDirName);
-var rawStoragePaths = RawStoragePaths.Resolve(repoRoot);
-builder.Services.AddSingleton(rawStoragePaths);
-builder.Services.AddSingleton<SourceArtifactStore>();
-builder.Services.AddSingleton<IngestLifecyclePublisher>();
+    var contentPaths = ContentRootPaths.FromResolved(resolvedPaths);
+    var rawStoragePaths = RawStoragePaths.FromResolved(resolvedPaths);
 
-var repository = new OperationalStateRepository(dbPath);
-await repository.InitializeAsync();
-builder.Services.AddSingleton(repository);
-builder.Services.AddSingleton(contentPaths);
-builder.Services.AddSingleton(new LocalSecretsLoader(envPath));
-builder.Services.AddSingleton<AgentProcessHost>(sp => new AgentProcessHost(sp.GetRequiredService<LocalSecretsLoader>(), agentProjectPath));
-builder.Services.AddSingleton<IAgentProcessLauncher>(sp => sp.GetRequiredService<AgentProcessHost>());
-builder.Services.AddSingleton<IngestRunCoordinator>(sp => new IngestRunCoordinator(
-    sp.GetRequiredService<OperationalStateRepository>(),
-    sp.GetRequiredService<IAgentProcessLauncher>(),
-    sp.GetRequiredService<IngestLifecyclePublisher>(),
-    sp.GetRequiredService<HubTaskArtifactWriter>(),
-    sp.GetRequiredService<ContentRootPaths>(),
-    logger: sp.GetRequiredService<ILogger<IngestRunCoordinator>>()));
-builder.Services.AddSingleton<IngestSubmissionValidator>();
-builder.Services.AddSingleton<IngestSubmissionPipeline>();
+    builder.Services.AddSingleton(resolvedPaths);
+    builder.Services.AddSingleton(rawStoragePaths);
+    builder.Services.AddSingleton<SourceArtifactStore>();
+    builder.Services.AddSingleton<IngestLifecyclePublisher>();
 
-var reconciler = new RestartReconciler(repository);
-await reconciler.ReconcileRunningTasksAsync(contentPaths.TasksDir, contentPaths.LogPath);
+    var repository = new OperationalStateRepository(resolvedPaths.StateDbPath);
+    await repository.InitializeAsync();
+    builder.Services.AddSingleton(repository);
+    builder.Services.AddSingleton(contentPaths);
+    builder.Services.AddSingleton(new LocalSecretsLoader(resolvedPaths.SecretsFilePath));
+    builder.Services.AddSingleton<AgentProcessHost>(sp => new AgentProcessHost(sp.GetRequiredService<LocalSecretsLoader>(), resolvedPaths.AgentWorkerPath));
+    builder.Services.AddSingleton<IAgentProcessLauncher>(sp => sp.GetRequiredService<AgentProcessHost>());
+    builder.Services.AddSingleton<IngestRunCoordinator>(sp => new IngestRunCoordinator(
+        sp.GetRequiredService<OperationalStateRepository>(),
+        sp.GetRequiredService<IAgentProcessLauncher>(),
+        sp.GetRequiredService<IngestLifecyclePublisher>(),
+        sp.GetRequiredService<HubTaskArtifactWriter>(),
+        sp.GetRequiredService<ContentRootPaths>(),
+        logger: sp.GetRequiredService<ILogger<IngestRunCoordinator>>()));
+    builder.Services.AddSingleton<IngestSubmissionValidator>();
+    builder.Services.AddSingleton<IngestSubmissionPipeline>();
 
-if (args.Length > 0 && string.Equals(args[0], "submit-source", StringComparison.OrdinalIgnoreCase))
-{
-    var sourcePath = ParseOption(args, "--path") ?? throw new ArgumentException("Missing --path option.");
-    var sourceKind = ParseOption(args, "--source-kind") ?? "file";
-    string? pastedText = null;
-    if (sourceKind == "pasted_text")
+    var reconciler = new RestartReconciler(repository);
+    await reconciler.ReconcileRunningTasksAsync(contentPaths.TasksDir, contentPaths.LogPath);
+
+    if (args.Length > 0 && string.Equals(args[0], "submit-source", StringComparison.OrdinalIgnoreCase))
     {
-        pastedText = await Console.In.ReadToEndAsync();
+        var sourcePath = ParseOption(args, "--path") ?? throw new ArgumentException("Missing --path option.");
+        var sourceKind = ParseOption(args, "--source-kind") ?? "file";
+        string? pastedText = null;
+        if (sourceKind == "pasted_text")
+        {
+            pastedText = await Console.In.ReadToEndAsync();
+        }
+
+        var secretsLoader = new LocalSecretsLoader(resolvedPaths.SecretsFilePath);
+        var processHost = new AgentProcessHost(secretsLoader, resolvedPaths.AgentWorkerPath);
+        var service = new SubmissionService(repository, processHost);
+
+        var taskId = await service.SubmitAsync(new SubmitSourceOptions(sourcePath, sourceKind, pastedText), contentPaths);
+        Console.WriteLine($"Submitted ingest task: {taskId}");
+        return;
     }
-
-    var secretsLoader = new LocalSecretsLoader(envPath);
-    var processHost = new AgentProcessHost(secretsLoader, agentProjectPath);
-    var service = new SubmissionService(repository, processHost);
-
-    var taskId = await service.SubmitAsync(new SubmitSourceOptions(sourcePath, sourceKind, pastedText), repoRoot, contentPaths);
-    Console.WriteLine($"Submitted ingest task: {taskId}");
-    return;
 }
 
 var app = builder.Build();
@@ -99,25 +103,16 @@ static string? ParseOption(string[] args, string option)
     return null;
 }
 
-static string FindRepoRoot(string start)
+// ADR-009 command-line switches (contracts/path-configuration.md): mapped last so they
+// win over environment/appsettings/defaults regardless of default-provider ordering.
+static Dictionary<string, string> PathConfigurationSwitchMappingsFactory() => new(StringComparer.OrdinalIgnoreCase)
 {
-    var startInfo = new ProcessStartInfo
-    {
-        FileName = "git",
-        WorkingDirectory = start,
-        RedirectStandardOutput = true,
-        RedirectStandardError = true,
-        UseShellExecute = false,
-    };
-    startInfo.ArgumentList.Add("rev-parse");
-    startInfo.ArgumentList.Add("--show-toplevel");
-
-    using var process = Process.Start(startInfo) ?? throw new InvalidOperationException("Failed to start git process.");
-    var output = process.StandardOutput.ReadToEnd().Trim();
-    var error = process.StandardError.ReadToEnd().Trim();
-    process.WaitForExit();
-
-    return process.ExitCode != 0 || string.IsNullOrWhiteSpace(output)
-        ? throw new InvalidOperationException($"Could not locate repository root: {error}")
-        : output;
-}
+    ["--base-dir"] = "Grimoire:Paths:BaseDir",
+    ["--data-dir"] = "Grimoire:Paths:DataDir",
+    ["--content-root"] = "Grimoire:Paths:ContentRoot",
+    ["--raw-dir"] = "Grimoire:Paths:RawDir",
+    ["--state-db"] = "Grimoire:Paths:StateDb",
+    ["--secrets-file"] = "Grimoire:Paths:SecretsFile",
+    ["--instructions-dir"] = "Grimoire:Paths:InstructionsDir",
+    ["--agent-worker"] = "Grimoire:Paths:AgentWorker",
+};
