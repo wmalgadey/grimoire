@@ -12,8 +12,8 @@ working directory).
 | Field | Config key | Default | Notes |
 | --- | --- | --- | --- |
 | `BaseDir` | `Grimoire:Paths:BaseDir` | process working directory | Root for every other relative default |
-| `DataDir` | `Grimoire:Paths:DataDir` | `data` (under base) | The consolidated data directory |
-| `ContentRoot` | `Grimoire:Paths:ContentRoot` | `wiki` (under data) | Wiki content root |
+| `ContentRoot` | `Grimoire:Paths:ContentRoot` | `wiki` (under base) | Wiki content root — deliberately OUTSIDE the data directory so it can be committed to its own git repository |
+| `DataDir` | `Grimoire:Paths:DataDir` | `data` (under base) | The consolidated internal runtime data directory |
 | `RawDir` | `Grimoire:Paths:RawDir` | `raw` (under data) | Raw intake storage |
 | `StateDb` | `Grimoire:Paths:StateDb` | `state/operational-state.db` (under data) | SQLite operational state (ADR-003) |
 | `SecretsFile` | `Grimoire:Paths:SecretsFile` | `.env` (under data) | ADR-004 secrets file |
@@ -21,10 +21,10 @@ working directory).
 | `AgentWorker` | `Grimoire:Paths:AgentWorker` | `Grimoire.IngestAgent.dll` beside Hub binaries | `.csproj` / `.dll` / executable (research R4) |
 
 Resolution rule: an absolute value is taken as-is; a relative value resolves against
-its parent in the table above (`DataDir` against base; the five data locations against
-`DataDir`; `AgentWorker` against the application install directory). `--content-root`
-therefore accepts an absolute external wiki exactly as the prod launch config does
-today.
+its documented anchor (`ContentRoot` and `DataDir` against base; the four internal
+data locations against `DataDir`; `AgentWorker` against the application install
+directory). `--content-root` therefore accepts an absolute external wiki exactly as
+the prod launch config does today.
 
 ## ResolvedGrimoirePaths (validated output)
 

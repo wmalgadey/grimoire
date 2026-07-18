@@ -25,28 +25,39 @@ CLI/env/JSON layering).
 
 **Decision**: Default layout under the base directory:
 
+Two homes beneath the base: the wiki in its own directory (independently
+version-controllable), and one consolidated `data/` directory for all internal
+runtime data.
+
 | Location | Default | Kind |
 | --- | --- | --- |
 | Base directory | explicitly configured, else process working directory | — |
+| Wiki content root | `<base>/wiki` | writable data (auto-create) |
 | Data directory | `<base>/data` | — |
-| Wiki content root | `<data>/wiki` | writable data (auto-create) |
 | Raw intake storage | `<data>/raw` (`originals/`, `sources/`) | writable data (auto-create) |
 | Operational state | `<data>/state/operational-state.db` | writable data (auto-create dir) |
 | Secrets file | `<data>/.env` | required input |
 | Agent instructions | `<data>/agents/ingest` (`system-prompt.md`, `default-user-prompt.md`, `policy.json`) | required input |
 | Agent worker | next to the Hub binaries (see R4) | required input |
 
-A visible `data/` directory (not a hidden dot-directory) is chosen because the wiki
-inside it is user-facing content (Obsidian-editable per ADR-003). ADR-003's
-illustrative `.grimoire/` example is superseded by this concrete, configurable
-location; ADR-003's substance (SQLite operational state outside git-tracked domain
-state) is unchanged — `data/state/` is git-ignored, `data/wiki/` remains trackable.
+The wiki sits deliberately OUTSIDE `data/` (plan revision 2026-07-18): it is domain
+state a user may put under its own git repository and commit independently (ADR-003
+portability), while `data/` holds internal runtime data the application owns.
+ADR-003's illustrative `.grimoire/` example is superseded by the concrete,
+configurable `data/` location; ADR-003's substance (git-friendly domain state vs.
+git-ignored operational SQLite) is strengthened — `data/state/` and `data/raw/` are
+git-ignored, the wiki directory is a clean, independently trackable tree. In the
+checkout, today's `wiki/` directory already matches the default and does not move.
 
-**Rationale**: Matches clarification session 2026-07-18 (consolidated layout, working
-directory default, manual one-time move).
+**Rationale**: Clarification session 2026-07-18 (consolidated internal data, working
+directory default, manual one-time move) + plan-revision input: "the wiki dir and the
+data dir should be separate, so the wiki could for instance be separately committed
+to git."
 
-**Alternatives considered**: `.grimoire/` hidden dir (hostile to wiki editing);
-keeping today's scattered layout (explicitly rejected in clarification Q1).
+**Alternatives considered**: Wiki inside `data/` (couples the user's knowledge base
+to internal runtime files, making an independent wiki git repo awkward — rejected by
+plan revision); `.grimoire/` hidden dir (hostile to wiki editing); keeping today's
+scattered layout (explicitly rejected in clarification Q1).
 
 ## R3 — Removing repo-root discovery from both processes
 
@@ -126,13 +137,14 @@ exactly what the story forbids).
 
 ## R7 — Migration of the existing checkout
 
-**Decision**: Documented one-time move (quickstart.md §Migration): `git mv wiki
-data/wiki`, `git mv agents data/agents`, move `raw/` → `data/raw`, `.env` →
-`data/.env`, `backend/data/operational-state.db` → `data/state/`; update `.gitignore`
+**Decision**: Documented one-time move (quickstart.md §Migration): `wiki/` stays
+where it is (already matches the `<base>/wiki` default); `git mv agents data/agents`;
+move `raw/` → `data/raw`, `.env` → `data/.env`,
+`backend/data/operational-state.db` → `data/state/`; update `.gitignore`
 (`backend/data/` → `data/state/`, add `data/raw/`); rewrite `policy.json` prefixes to
-content-root-relative; update `.vscode/launch.json` (dev: zero path args with cwd at
-the checkout root — or explicit `--base-dir ${workspaceFolder}`; prod: explicit
-`--content-root` plus its own base/data dir). No legacy-layout detection code ships.
+content-root-relative; update `.vscode/launch.json` (dev: cwd at the checkout root —
+or explicit `--base-dir ${workspaceFolder}`; prod: explicit `--content-root` plus its
+own base/data dir). No legacy-layout detection code ships.
 
 **Rationale**: Clarification Q4; a single dev environment does not justify permanent
 compatibility code.

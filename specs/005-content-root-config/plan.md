@@ -8,15 +8,19 @@
 
 Remove all runtime dependence on the source-repository structure. A single composition
 point (`GrimoirePathOptions` + `GrimoirePathResolver`, namespace
-`Grimoire.Hub.Runtime.Paths`) defines and resolves every runtime location beneath a
-consolidated `<base>/data` directory (base = configured `--base-dir`, else the process
-working directory), layered through the standard configuration channels with precedence
+`Grimoire.Hub.Runtime.Paths`) defines and resolves every runtime location beneath the
+base directory (base = configured `--base-dir`, else the process working directory)
+in two homes: the wiki content root at `<base>/wiki` — deliberately separate so the
+wiki can be committed to its own git repository — and all internal runtime data
+beneath a consolidated `<base>/data` directory. Configuration is layered through the
+standard channels with precedence
 CLI > env > `appsettings.json` > defaults. `FindRepoRoot` (git shell-out) is deleted
 from Hub and IngestAgent; the agent receives a new explicit `--wiki-root` argument that
 anchors relative page paths and safety-policy prefixes. Startup validates fail-fast
 (required inputs) / auto-creates (writable data) and reports every resolved location.
-Existing checkout data moves once, manually, into `data/` (documented in
-[quickstart.md](quickstart.md)). Full rationale: [research.md](research.md).
+Existing checkout data moves once, manually, into `data/` — the wiki stays in place
+(documented in [quickstart.md](quickstart.md)). Full rationale:
+[research.md](research.md).
 
 ## Technical Context
 
@@ -24,7 +28,7 @@ Existing checkout data moves once, manually, into `data/` (documented in
 
 **Primary Dependencies**: ASP.NET Core Minimal APIs + SignalR (Hub), Microsoft.Extensions.Configuration providers (command line, environment, JSON — already in the shared framework), Mono.Cecil + NetArchTest (arch tests), OpenTelemetry .NET SDK (ADR-005)
 
-**Storage**: File system (consolidated `data/` directory: wiki markdown, raw intake artifacts, `.env`) + embedded SQLite for operational state (ADR-003) — locations become configurable, engines unchanged
+**Storage**: File system — wiki markdown in its own `wiki/` directory (independently git-committable) + consolidated `data/` directory (raw intake artifacts, `.env`, agent instructions) + embedded SQLite for operational state (ADR-003) — locations become configurable, engines unchanged
 
 **Testing**: xUnit — Grimoire.ArchTests (Cecil/NetArchTest), Grimoire.IntegrationTests (hermetic, in-memory OTel exporter per ADR-005), no new Testcontainers need (no new external API boundary)
 
@@ -62,13 +66,13 @@ harness mechanics (paths), no content semantics.
 | --- | --- | --- |
 | ADR-001 | Backend/Frontend Tech Stack | Stay on .NET 10 / stock ASP.NET Core configuration stack; no new runtime or config framework. |
 | ADR-002 | Ingest Agent Execution Model | Child-process spawn with CLI-arg path passing must be preserved; this feature only extends the argument list (`--wiki-root`) and how the Hub computes the values. |
-| ADR-003 | Domain vs. Operational State Persistence | SQLite operational state stays out of git; markdown domain state stays git-diffable. Consolidated layout must keep `data/state/` (+ `data/raw/`) ignored while `data/wiki/` remains trackable. ADR-009 supersedes only ADR-003's illustrative `.grimoire/` naming. |
+| ADR-003 | Domain vs. Operational State Persistence | SQLite operational state stays out of git; markdown domain state stays git-diffable. The layout keeps `data/state/` (+ `data/raw/`) ignored while the wiki lives outside `data/` as an independently version-controllable tree. ADR-009 supersedes only ADR-003's illustrative `.grimoire/` naming. |
 | ADR-004 | Credential Scoping | Secrets stay in a local git-ignored file read by the Hub and injected only into the agent's environment; only the file's location becomes configurable (`<data>/.env` default). |
 | ADR-005 | Observability Backend | New log events verified in CI via the in-memory OTel exporter; local via Aspire dashboard OTLP. |
 | ADR-006 | Agent Tool Loop & Guarded Boundary | Deny-by-default policy file, guarded executor, and write journal unchanged; policy path-prefix *anchor* moves to the content root (guardrail-rule change), prefixes rewritten accordingly. |
 | ADR-007 | Agent Instruction Surface | `system-prompt.md` / `default-user-prompt.md` / `policy.json` continue to be loaded by explicit path with fail-closed behavior and SHA-256 identity; only the directory they live in becomes configuration. |
 | ADR-008 | Agent Event Channel & Run Supervision | NDJSON stdout channel, supervision, and queue untouched; dispatch continues to pass absolute Hub-resolved paths. |
-| **ADR-009** | **Explicit Runtime Path Configuration and Consolidated Data Directory** (drafted by this plan, [docs/adr/ADR-009-runtime-path-configuration.md](../../docs/adr/ADR-009-runtime-path-configuration.md)) | Single composition point; consolidated `data/` defaults; precedence order; no ambient-directory access outside `Grimoire.Hub.Runtime.Paths`; no VCS invocation; structural rule as below. |
+| **ADR-009** | **Explicit Runtime Path Configuration and Consolidated Data Directory** (drafted by this plan, [docs/adr/ADR-009-runtime-path-configuration.md](../../docs/adr/ADR-009-runtime-path-configuration.md)) | Single composition point; two-home defaults (`<base>/wiki` + consolidated `<base>/data`); precedence order; no ambient-directory access outside `Grimoire.Hub.Runtime.Paths`; no VCS invocation; structural rule as below. |
 
 **New ADR required?**: Yes — ADR-009 drafted; MUST be moved to **Accepted** (author
 sign-off) before `/speckit-tasks` is invoked (Constitution III / workflow step 4).
@@ -92,7 +96,7 @@ No agentic surface — harness-only feature. For the record:
 | --- | --- | --- | --- | --- | --- |
 | SC-001 start + operate in repo-less dir | Deterministic guarantee | Hermetic integration test | Fake agent launcher (existing `IAgentProcessLauncher` seam); temp directories; no git binary invoked | Prepared `data/` tree fixture (instructions + `.env` stub) | Boot the Hub host in a temp base dir without `.git`; assert successful start and that all writes land under configured roots |
 | SC-002 invalid required input fails fast | Deterministic guarantee | Hermetic integration test | Temp dirs with deliberately missing secrets/instructions/worker | Per-location negative fixtures | Assert non-zero startup failure + `paths_validation_failed` naming location, configured value, resolved path |
-| SC-003 zero-config resolves under `<cwd>/data` | Deterministic guarantee | Hermetic unit/integration test on `GrimoirePathResolver` | None (pure resolution) + integration variant with temp cwd | Default-options fixture | Assert every resolved path is beneath `<cwd>/data`; doubles as the defaults-in-one-place regression test |
+| SC-003 zero-config resolves under `<cwd>/wiki` + `<cwd>/data` | Deterministic guarantee | Hermetic unit/integration test on `GrimoirePathResolver` | None (pure resolution) + integration variant with temp cwd | Default-options fixture | Assert content root resolves to `<cwd>/wiki` and every internal data path beneath `<cwd>/data`; doubles as the defaults-in-one-place regression test |
 | SC-004 agent receives all paths, no discovery | Deterministic guarantee | Arch test + hermetic integration test | Cecil IL scan; recorded dispatch args via fake launcher | Violation probe class (Red/Green, then deleted) | `RuntimePathsBoundaryRuleTests` + assertion that every dispatch includes `--wiki-root` and absolute paths |
 | SC-005 every start reports resolved locations | Deterministic guarantee | Hermetic integration test (in-memory OTel/log exporter per ADR-005) | In-memory log/exporter capture | Same fixtures as SC-001/SC-003 | Assert `paths_resolved` event with all 8 mandatory path fields |
 
@@ -166,8 +170,10 @@ backend/
     ├── Grimoire.ArchTests/RuntimePathsBoundaryRuleTests.cs   # NEW (Phase 0, Red/Green probe)
     └── Grimoire.IntegrationTests/PathConfigurationTests.cs   # NEW (SC-001/002/003/005 + log contract)
 
-data/                                         # NEW consolidated home (one-time migration)
-├── wiki/  ├── raw/  ├── state/  ├── agents/ingest/  └── .env
+wiki/                                         # UNCHANGED location — separate from data/,
+                                              #   independently git-committable
+data/                                         # NEW consolidated internal-data home (one-time migration)
+├── raw/  ├── state/  ├── agents/ingest/  └── .env
 .gitignore                                    # CHANGED — data/state/, data/raw/
 .vscode/launch.json                           # CHANGED — config-only prod/dev split
 docs/adr/ADR-009-runtime-path-configuration.md  # NEW (drafted by this plan)

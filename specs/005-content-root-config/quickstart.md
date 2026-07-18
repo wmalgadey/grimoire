@@ -15,7 +15,8 @@ From the checkout root:
 
 ```bash
 mkdir -p data/state
-git mv wiki data/wiki
+# wiki/ stays where it is — it already matches the <base>/wiki default and remains
+# independently committable (its own git repo if desired).
 git mv agents data/agents
 [ -d raw ] && mv raw data/raw || mkdir -p data/raw
 mv .env data/.env
@@ -34,9 +35,10 @@ cd /Volumes/Daten/grimoire
 dotnet run --project backend/src/Grimoire.Hub -- --agent-worker backend/src/Grimoire.IngestAgent/Grimoire.IngestAgent.csproj
 ```
 
-Expected: startup succeeds; the `paths_resolved` log line lists every location under
+Expected: startup succeeds; the `paths_resolved` log line shows the content root at
+`/Volumes/Daten/grimoire/wiki` and every other location under
 `/Volumes/Daten/grimoire/data/...`; submitting a small text source produces artifacts
-only under `data/raw`, `data/wiki/tasks`, `data/wiki/pages`, `data/state`.
+only under `wiki/tasks`, `wiki/pages`, `data/raw`, `data/state`.
 (Only the agent-worker value is passed because the checkout runs the worker from
 source; a published install needs no arguments at all.)
 
@@ -53,7 +55,8 @@ dotnet $PUB/app/Grimoire.Hub.dll --content-root /Volumes/Daten/parainoid/llm-wik
 ```
 
 Expected: startup succeeds without git installed/available; content root is the
-external wiki; all other locations auto-resolve/auto-create under `$PUB/base/data`;
+external wiki (the default `$PUB/base/wiki` is not used or created); all other
+locations auto-resolve/auto-create under `$PUB/base/data`;
 an end-to-end ingest writes pages into the external wiki and raw/state under
 `$PUB/base/data`. Task-artifact page paths are content-root-relative (`pages/...`).
 
@@ -94,7 +97,8 @@ dispatch.
 
 - **Dev** (`Hub (dev: litellm proxy + NVIDIA)`): `cwd` = `${workspaceFolder}`; args:
   `--agent-worker ${workspaceFolder}/backend/src/Grimoire.IngestAgent/Grimoire.IngestAgent.csproj`.
-  Everything else defaults beneath `${workspaceFolder}/data`.
+  The wiki defaults to `${workspaceFolder}/wiki`; everything else beneath
+  `${workspaceFolder}/data`.
 - **Prod** (`Hub (prod: external wiki + Anthropic)`): `cwd` = `${workspaceFolder}`
   (or any base), args: `--content-root /Volumes/Daten/parainoid/llm-wiki` plus
   `--agent-worker …` as above. Only configuration values differ between the two —

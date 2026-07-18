@@ -22,9 +22,12 @@ shape every process (Hub, current and future agents) inherits, so it is fixed by
 
 - The application must run in a directory with no repository structure and without
   version-control tooling installed (spec 005 FR-002).
-- All defaults must be defined in one obvious place, and all runtime data must land
-  under one consolidated directory — for current and future locations (clarification
-  2026-07-18 Q1).
+- All defaults must be defined in one obvious place, and all internal runtime data
+  must land under one consolidated directory — for current and future locations
+  (clarification 2026-07-18 Q1).
+- The wiki must stay separable from internal runtime data so it can be committed to
+  its own git repository independently (plan revision 2026-07-18; ADR-003
+  portability).
 - The repo checkout must remain a fully valid base directory; any other base must work
   identically (clarification Q1/Q2).
 - Prod and dev must differ only in configuration values, not code paths
@@ -49,12 +52,15 @@ Chosen option: **Option 1.**
   (`GrimoirePathResolver`, namespace `Grimoire.Hub.Runtime.Paths`) define and resolve
   every runtime location. No other production code derives a root path or reads
   ambient process context (current directory, executable directory) for path purposes.
-- **Consolidated data directory.** Defaults: base = configured `BaseDir`, else the
-  process working directory; all runtime data beneath `<base>/data` — `wiki/`, `raw/`,
+- **Two homes beneath the base.** Defaults: base = configured `BaseDir`, else the
+  process working directory. The wiki content root lives in its own directory,
+  `<base>/wiki`, deliberately outside the data directory so the user's knowledge base
+  can be version-controlled and committed independently of application internals. All
+  internal runtime data lives beneath `<base>/data` — `raw/`,
   `state/operational-state.db`, `.env`, `agents/ingest/`. The agent worker binary is
   application code, not data: its default resolves beside the Hub binaries. Future
-  runtime locations MUST be added to this options type and default beneath the data
-  directory.
+  internal runtime locations MUST be added to this options type and default beneath
+  the data directory.
 - **Standard layering, one precedence.** Command line > environment >
   `appsettings.json` > code defaults, via the stock configuration providers with
   friendly switch mappings (`--base-dir`, `--content-root`, …). No profile mechanism.
@@ -69,9 +75,10 @@ Chosen option: **Option 1.**
 
 This ADR supersedes ADR-003's illustrative `.grimoire/` runtime-directory naming;
 ADR-003's substance (git-friendly domain state vs. git-ignored operational SQLite)
-is unchanged — `data/state/` and `data/raw/` are git-ignored, `data/wiki/` remains
-trackable. ADR-002/004/006/007/008 contracts are amended only by the added
-`--wiki-root` argument and policy-prefix anchor.
+is strengthened — `data/state/` and `data/raw/` are git-ignored while the wiki is a
+clean, independently trackable tree outside `data/`. ADR-002/004/006/007/008
+contracts are amended only by the added `--wiki-root` argument and policy-prefix
+anchor.
 
 ### Consequences
 
@@ -81,8 +88,8 @@ trackable. ADR-002/004/006/007/008 contracts are amended only by the added
 - Good, because one policy file is valid for every deployment (prefixes anchored at
   the content root), closing the existing prod divergence.
 - Bad, because the existing checkout needs a documented one-time data move
-  (`wiki/`, `agents/`, `raw/`, `.env`, `backend/data/` → `data/...`), and task
-  artifacts change page paths from repo-relative to content-root-relative.
+  (`agents/`, `raw/`, `.env`, `backend/data/` → `data/...`; `wiki/` stays in place),
+  and task artifacts change page paths from repo-relative to content-root-relative.
 - Neutral: launch configurations must pass the agent-worker path when running the
   worker from source.
 

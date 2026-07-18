@@ -24,8 +24,10 @@ Defaults and resolution anchors: see `data-model.md` (single source:
 
 1. Absolute values are used as-is; relative values resolve against their documented
    anchor (never a discovered repository root). (FR-002, FR-003)
-2. With no configuration at all, every location resolves beneath
-   `<working-directory>/data`. (FR-004)
+2. With no configuration at all, the wiki content root resolves to
+   `<working-directory>/wiki` and every internal runtime data location resolves
+   beneath `<working-directory>/data`. The two never nest, so the wiki can be an
+   independent git repository. (FR-004)
 3. Missing/wrong-kind **required inputs** (secrets file, the three instruction files,
    agent worker) abort startup with exit code ≠ 0 and an error naming the logical
    location, configured value, and resolved path. (FR-006, SC-002)

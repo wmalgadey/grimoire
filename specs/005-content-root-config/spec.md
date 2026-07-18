@@ -27,6 +27,7 @@ consequences of project structure rather than explicit configuration.
 - Q: When no base directory is explicitly configured, what is the default base for the consolidated data directory? → A: The process working directory; launch/deployment configurations pin an explicit base (or working directory) per environment.
 - Q: How are production and development launch setups separated within the one codebase? → A: Configuration only — each launch configuration passes its own base directory / path overrides through the standard channels; the application itself stays profile-agnostic (no named-profile mechanism, no environment-keyed default sets).
 - Q: How does existing runtime data in the current checkout (wiki/, raw/, backend/data/, agents/ingest/, .env) get into the new consolidated data directory? → A: Manual one-time move with documented instructions (optionally a one-off script). The application knows only the new layout — no legacy-layout detection and no automatic migration.
+- Q (plan revision): Does the wiki content root live inside the consolidated data directory? → A: No — the wiki directory is separate from the data directory (default: its own directory beside the data directory under the base), so the wiki can be version-controlled and committed independently of the application's internal runtime data. The consolidated data directory holds the internal runtime data (raw intake, operational state, agent instruction set, secrets).
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -67,12 +68,13 @@ end to end.
 ### User Story 2 - Run locally with sensible defaults (Priority: P2)
 
 A developer starts the application from the project checkout without providing any path
-configuration. Sensible defaults — a single consolidated data directory beneath a
-clearly documented base location — keep the local workflow working with zero
-configuration: all runtime data (wiki content root, raw storage, operational state,
-agent instruction set, secrets) lives under that one data directory, whether the base
-is the repo checkout or any other directory the user chooses. Existing checkout data is
-moved into the consolidated layout once (documented, one-time).
+configuration. Sensible defaults keep the local workflow working with zero
+configuration: the wiki lives in its own directory beneath the base (independently
+committable to git), and all internal runtime data (raw storage, operational state,
+agent instruction set, secrets) lives under a single consolidated data directory
+beside it — whether the base is the repo checkout or any other directory the user
+chooses. Existing checkout data is moved into the consolidated layout once
+(documented, one-time).
 
 **Why this priority**: The development workflow must stay zero-configuration while
 gaining an obvious, single home for all current and future runtime data; the production
@@ -85,9 +87,10 @@ directory beneath the checkout.
 **Acceptance Scenarios**:
 
 1. **Given** no path configuration is provided, **When** the application starts from
-   the project checkout, **Then** it resolves all locations to the consolidated data
-   directory beneath the base directory and uses the (once-migrated) existing local
-   data.
+   the project checkout, **Then** it resolves the wiki content root to the wiki
+   directory beneath the base and every internal runtime data location to the
+   consolidated data directory beneath the base, using the (once-migrated) existing
+   local data.
 2. **Given** a developer provides only one overridden location (e.g., a different wiki
    content root), **When** the application starts, **Then** the override is honored and
    all other locations fall back to their documented defaults.
@@ -161,10 +164,11 @@ naming that location.
   the explicitly configured base directory, or — when none is configured — the process
   working directory. Resolution MUST never depend on a discovered repository root.
 - **FR-004**: When no configuration is provided, the system MUST fall back to a
-  documented default layout in which all runtime data locations resolve beneath a
-  single consolidated data directory under the base directory — one obvious home for
-  all current and future runtime data, defined in one place rather than scattered
-  through the system.
+  documented default layout beneath the base directory with exactly two homes: the
+  wiki content root in its own directory (independently version-controllable), and
+  all internal runtime data locations beneath a single consolidated data directory —
+  one obvious home for all current and future internal runtime data, defined in one
+  place rather than scattered through the system.
 - **FR-005**: Path configuration MUST be acceptable through the standard configuration
   channels (command line, environment, configuration file) with one documented
   precedence order: command line over environment over configuration file over defaults.
@@ -191,9 +195,10 @@ naming that location.
   absolute value, a kind (required input vs. writable data), and a source (command
   line, environment, configuration file, or default).
 - **Runtime Data Base Directory**: The single directory the operator chooses as the
-  home for runtime data — the repo checkout or any other directory. All default
-  locations resolve into one consolidated data directory beneath it; individual
-  locations may still be overridden to point elsewhere.
+  home for runtime data — the repo checkout or any other directory. By default the
+  wiki content root resolves to its own directory beneath it and all internal runtime
+  data resolves into one consolidated data directory beneath it; individual locations
+  may still be overridden to point elsewhere.
 - **Wiki Content Root**: The directory holding the wiki maintained by agents (pages,
   tasks, index, log). Configured directly; no longer derived from a repository root.
 - **Raw Intake Storage**: The directory holding pre-agent intake artifacts (originals
@@ -212,9 +217,9 @@ naming that location.
   location fail during startup (before serving any request) with a message naming the
   offending location and its configured value.
 - **SC-003**: Starting from the project checkout with zero path configuration resolves
-  100% of runtime data locations beneath the single consolidated data directory under
-  the checkout, and the developer workflow continues to work after the documented
-  one-time data move.
+  100% of runtime data locations beneath the checkout — the wiki content root in the
+  wiki directory, everything else beneath the consolidated data directory — and the
+  developer workflow continues to work after the documented one-time data move.
 - **SC-004**: 100% of agent worker runs receive their operating locations from the
   harness; no agent worker run performs repository or project-structure discovery.
 - **SC-005**: 100% of successful starts report every effective storage location in the
@@ -232,10 +237,12 @@ naming that location.
 - Writable data locations (raw intake storage, operational state store, wiki content
   root) are auto-created when absent; required input locations (agent instruction set,
   secrets) are never auto-created because the system cannot invent their content.
-- Default locations follow the consolidated layout (one data directory beneath the
-  base); today's scattered checkout locations are migrated by a documented one-time
-  move, after which the repo checkout remains a fully valid base directory. Deployed
-  environments may rely on the same defaults or configure paths explicitly.
+- Default locations follow the two-home layout beneath the base (wiki directory +
+  consolidated data directory); today's scattered checkout locations are migrated by
+  a documented one-time move, after which the repo checkout remains a fully valid
+  base directory. Deployed environments may rely on the same defaults or configure
+  paths explicitly. Keeping the wiki outside the data directory is deliberate: it can
+  be committed to (its own) git independently of internal runtime data.
 - Agent instruction files (system prompt, policy) are runtime data owned by a
   deployment: they live under the consolidated data directory (a required input
   location), not inside the application's code/install location.
