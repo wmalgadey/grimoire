@@ -23,6 +23,11 @@ public class DefaultLayoutTests
         {
             Directory.SetCurrentDirectory(cwd);
 
+            // getcwd() resolves symlinks (macOS temp dirs: /var/folders → /private/var/
+            // folders) and the resolver derives its base from the process CWD, so the
+            // expectations must be built from the same canonical form.
+            cwd = Directory.GetCurrentDirectory();
+
             var options = PathConfigurationTestHelpers.SeedRequiredInputsForZeroConfig(cwd);
             var configRoot = new ConfigurationBuilder().Build();
 
@@ -69,6 +74,9 @@ public class DefaultLayoutTests
         try
         {
             Directory.SetCurrentDirectory(cwd);
+
+            // Same canonicalization as ZeroConfiguration_… above (macOS /var symlink).
+            cwd = Directory.GetCurrentDirectory();
 
             var options = PathConfigurationTestHelpers.SeedRequiredInputsForZeroConfig(cwd);
 

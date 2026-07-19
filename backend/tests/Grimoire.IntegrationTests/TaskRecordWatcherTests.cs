@@ -72,9 +72,11 @@ public class TaskRecordWatcherTests
 
         harness.Watcher.SimulateWatcherErrorForTests(new IOException("simulated watch handle loss"));
 
-        // Self-restart has a 1s delay before re-arming; wait past it, then confirm events
-        // resume exactly as before the simulated failure.
+        // Self-restart has a 1s delay before re-arming; wait past it, then prove the fresh
+        // watcher delivers again via the same handshake used at startup before asserting
+        // on the real record.
         await Task.Delay(TimeSpan.FromSeconds(2));
+        await harness.ArmWatcherAsync();
 
         var taskId = "ingest-watcher-4";
         harness.WriteRecordAtomically(taskId, "running");
@@ -148,11 +150,39 @@ public class TaskRecordWatcherTests
 
             await connection.StartAsync();
             await harness.Watcher.StartAsync(CancellationToken.None);
-
-            // Let the FileSystemWatcher's EnableRaisingEvents settle before the test writes.
-            await Task.Delay(100);
+            await harness.ArmWatcherAsync();
 
             return harness;
+        }
+
+        /// <summary>
+        /// Deterministic arming handshake: macOS FSEvents streams can drop events raised
+        /// before the stream is fully started, so a fixed settle delay flakes. Write
+        /// sentinel records until one round-trips as a `taskRecordChanged` event; only
+        /// then is the watcher provably delivering.
+        /// </summary>
+        public async Task ArmWatcherAsync()
+        {
+            const string sentinelId = "watcher-arming-sentinel";
+            for (var attempt = 0; attempt < 20; attempt++)
+            {
+                var seen = EventsFor(sentinelId).Count;
+                WriteRecordAtomically(sentinelId, "running", narrative: $"arming attempt {attempt}");
+
+                // Each probe needs the 300 ms debounce window plus delivery margin.
+                var deadline = DateTime.UtcNow + TimeSpan.FromSeconds(1);
+                while (DateTime.UtcNow < deadline)
+                {
+                    if (EventsFor(sentinelId).Count > seen)
+                    {
+                        return;
+                    }
+
+                    await Task.Delay(25);
+                }
+            }
+
+            throw new TimeoutException("FileSystemWatcher never delivered the arming sentinel event.");
         }
 
         public void WriteRecordAtomically(string taskId, string status, string? narrative = null)

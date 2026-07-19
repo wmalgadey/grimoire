@@ -123,6 +123,16 @@ public sealed class FakeAgentProcessLauncher : IAgentProcessLauncher
                 }
 
                 await WriteArtifactAsync(taskArtifactPath, request, _terminalStatus, _failureReason);
+
+                // The window must be committed before the completion event/pipe close:
+                // the coordinator may dispatch the next run the moment it observes the
+                // terminal signal, and a Finished stamp taken after that handoff can
+                // postdate the next run's Started, breaking the non-overlap assertions.
+                lock (RunWindows)
+                {
+                    RunWindows.Add((started, DateTimeOffset.UtcNow));
+                }
+
                 if (_terminalStatus == "failed")
                 {
                     handle.EmitEvent("failed", request.TaskId, new { reason = _failureReason ?? "Fake agent run failed." });
@@ -133,10 +143,6 @@ public sealed class FakeAgentProcessLauncher : IAgentProcessLauncher
                 }
 
                 handle.ClosePipe();
-                lock (RunWindows)
-                {
-                    RunWindows.Add((started, DateTimeOffset.UtcNow));
-                }
             }, CancellationToken.None);
         }
 
