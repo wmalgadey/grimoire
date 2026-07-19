@@ -110,7 +110,14 @@ implementation (Principle I "new boundaries via ADR").
 
 ## Verification
 
-- `Grimoire.ArchTests` gains rules C1–C5 plus port-presence checks; the standard PR
-  pipeline runs them (Principle IV).
-- Each rule's Red/Green probe is executed during Phase 0 of feature 006 and documented in
-  its tasks.md; probes are never merged.
+- `Grimoire.ArchTests` gains rules C1–C5 plus port-presence checks
+  (`HexagonalPortsAdapterRuleTests`); the standard PR pipeline runs them (Principle IV) —
+  24/24 `Grimoire.ArchTests` pass with zero active violations as of feature 006 completion.
+- Each rule's Red/Green probe was executed and documented in feature 006's tasks.md
+  commit history; no probe file was merged:
+  - C1 (T001, Phase 0): probed immediately — no active violation existed.
+  - C2, C3, C4, C5 (Hub and Agent), and port ownership (T018, User Story 1): probed after
+    the move-only restructuring turned every rule Green.
+- C2–C5 and the port-presence/ownership checks were genuinely Red against the
+  pre-restructuring codebase (documented in the T001–T002 commit) before User Story 1
+  turned them Green.
