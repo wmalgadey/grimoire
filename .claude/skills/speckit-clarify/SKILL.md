@@ -4,8 +4,8 @@ description: "Identify underspecified areas in the current feature spec by askin
 argument-hint: "Optional areas to clarify in the spec"
 compatibility: "Requires spec-kit project structure with .specify/ directory"
 metadata:
-  author: github-spec-kit
-  source: preset:claude-ask-questions
+  author: "github-spec-kit"
+  source: "templates/commands/clarify.md"
 user-invocable: true
 disable-model-invocation: false
 ---
