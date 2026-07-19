@@ -9,7 +9,8 @@
 Two coupled increments. First, align the codebase with the constitution v1.4.0 hexagonal
 rules: keep the two existing ports (`IModelClient`, `IAgentProcessLauncher`), add two new
 ones (`IMarkdownConverter`, `IUrlContentFetcher`), move all four production adapters into
-designated `Adapters.<System>` namespaces, fix the direct `SubmissionService →
+context-nested `<Consumer>.Adapters.<System>` namespaces (co-located with the port they
+implement), fix the direct `SubmissionService →
 AgentProcessHost` reference, and enforce everything with new NetArchTest containment
 rules (ADR-010), each proven by a Red/Green probe — with zero behavioral change. Second,
 replace the task card's raw-JSON "Details" target with a SvelteKit route `/tasks/[taskId]`
@@ -161,18 +162,20 @@ specs/006-hexagonal-arch-tasks-ui/
 backend/
 ├── src/
 │   ├── Grimoire.Hub/
-│   │   ├── Adapters/
-│   │   │   ├── AgentProcess/        # AgentProcessHost, LocalSecretsLoader (moved)
-│   │   │   ├── MarkItDown/          # MarkItDownConverter, MarkItDownOptions (moved)
-│   │   │   └── HttpFetch/           # UrlContentFetcher (moved)
 │   │   ├── AgentDispatch/           # IAgentProcessLauncher port (+ RunToExitAsync), coordinator
+│   │   │   └── Adapters/
+│   │   │       └── AgentProcess/    # AgentProcessHost, LocalSecretsLoader (moved)
 │   │   ├── IngestSubmission/        # IMarkdownConverter & IUrlContentFetcher ports (new),
-│   │   │                            #   pipeline on ports, task-record endpoint + read model
+│   │   │   │                        #   pipeline on ports, task-record endpoint + read model
+│   │   │   └── Adapters/
+│   │   │       ├── MarkItDown/      # MarkItDownConverter, MarkItDownOptions (moved)
+│   │   │       └── HttpFetch/       # UrlContentFetcher (moved)
 │   │   ├── Realtime/                # TaskRecordWatcher (new), taskRecordChanged publish
 │   │   └── Conversion/              # remaining non-adapter conversion types (registry, stores)
 │   └── Grimoire.IngestAgent/
-│       ├── Adapters/Anthropic/      # AnthropicModelClient (moved)
 │       └── AgentCore/               # IModelClient port (unchanged), loop
+│           └── Adapters/
+│               └── Anthropic/       # AnthropicModelClient (moved)
 └── tests/
     ├── Grimoire.ArchTests/          # + C1–C5 containment & port rules (first tasks)
     └── Grimoire.IntegrationTests/   # + Fakes/FakeMarkdownConverter, Fakes/FakeUrlContentFetcher,

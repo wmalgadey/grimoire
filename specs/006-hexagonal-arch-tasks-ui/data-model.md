@@ -41,10 +41,10 @@ consumers refetch the TaskRecord.
 
 | Port (owner namespace) | Methods (contract essence) | Production adapter (namespace) | Test fake |
 | --- | --- | --- | --- |
-| `IAgentProcessLauncher` (`Grimoire.Hub.AgentDispatch`) | `StartAsync`, `RunToExitAsync` | `AgentProcessHost` (`Grimoire.Hub.Adapters.AgentProcess`) | `FakeAgentProcess` (exists) |
-| `IMarkdownConverter` (`Grimoire.Hub.IngestSubmission`) | `ConvertAsync(inputPath) → MarkItDownConversionResult` | `MarkItDownConverter` (`Grimoire.Hub.Adapters.MarkItDown`) | `FakeMarkdownConverter` (new) |
-| `IUrlContentFetcher` (`Grimoire.Hub.IngestSubmission`) | `FetchAsync(url) → UrlFetchResult` | `UrlContentFetcher` (`Grimoire.Hub.Adapters.HttpFetch`) | `FakeUrlContentFetcher` (new) |
-| `IModelClient` (`Grimoire.IngestAgent.AgentCore`) | `NextTurnAsync` | `AnthropicModelClient` (`Grimoire.IngestAgent.Adapters.Anthropic`) | `FakeModelClient` (exists) |
+| `IAgentProcessLauncher` (`Grimoire.Hub.AgentDispatch`) | `StartAsync`, `RunToExitAsync` | `AgentProcessHost` (`Grimoire.Hub.AgentDispatch.Adapters.AgentProcess`) | `FakeAgentProcess` (exists) |
+| `IMarkdownConverter` (`Grimoire.Hub.IngestSubmission`) | `ConvertAsync(inputPath) → MarkItDownConversionResult` | `MarkItDownConverter` (`Grimoire.Hub.IngestSubmission.Adapters.MarkItDown`) | `FakeMarkdownConverter` (new) |
+| `IUrlContentFetcher` (`Grimoire.Hub.IngestSubmission`) | `FetchAsync(url) → UrlFetchResult` | `UrlContentFetcher` (`Grimoire.Hub.IngestSubmission.Adapters.HttpFetch`) | `FakeUrlContentFetcher` (new) |
+| `IModelClient` (`Grimoire.IngestAgent.AgentCore`) | `NextTurnAsync` | `AnthropicModelClient` (`Grimoire.IngestAgent.AgentCore.Adapters.Anthropic`) | `FakeModelClient` (exists) |
 
 **Persistence exemption** (no ports, containment only): `OperationalStateRepository` et al.
 remain concrete in `Grimoire.Hub.OperationalState` — the sole namespace allowed to import

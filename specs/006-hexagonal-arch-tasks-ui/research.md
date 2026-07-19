@@ -4,15 +4,16 @@
 
 ## Decision 1 — Adapter namespace scheme and composition-root exemption
 
-**Decision**: Introduce per-process adapter namespaces `Grimoire.Hub.Adapters.<System>` and
-`Grimoire.IngestAgent.Adapters.<System>`. Concrete external-system adapters move there:
+**Decision**: Introduce context-nested adapter namespaces `<Consumer>.Adapters.<System>` —
+each adapter lives directly beneath the orchestration namespace that owns its port
+(screaming/feature-first layout). Concrete external-system adapters move there:
 
 | External system | Port (stays with consumer) | Adapter type | New adapter namespace |
 | --- | --- | --- | --- |
-| Spawned agent process | `IAgentProcessLauncher` (`Grimoire.Hub.AgentDispatch`) | `AgentProcessHost` | `Grimoire.Hub.Adapters.AgentProcess` |
-| Subprocess converter (MarkItDown CLI) | `IMarkdownConverter` (new, `Grimoire.Hub.IngestSubmission`) | `MarkItDownConverter` | `Grimoire.Hub.Adapters.MarkItDown` |
-| Outbound HTTP fetching | `IUrlContentFetcher` (new, `Grimoire.Hub.IngestSubmission`) | `UrlContentFetcher` | `Grimoire.Hub.Adapters.HttpFetch` |
-| LLM provider API | `IModelClient` (`Grimoire.IngestAgent.AgentCore`, exists) | `AnthropicModelClient` | `Grimoire.IngestAgent.Adapters.Anthropic` |
+| Spawned agent process | `IAgentProcessLauncher` (`Grimoire.Hub.AgentDispatch`) | `AgentProcessHost` | `Grimoire.Hub.AgentDispatch.Adapters.AgentProcess` |
+| Subprocess converter (MarkItDown CLI) | `IMarkdownConverter` (new, `Grimoire.Hub.IngestSubmission`) | `MarkItDownConverter` | `Grimoire.Hub.IngestSubmission.Adapters.MarkItDown` |
+| Outbound HTTP fetching | `IUrlContentFetcher` (new, `Grimoire.Hub.IngestSubmission`) | `UrlContentFetcher` | `Grimoire.Hub.IngestSubmission.Adapters.HttpFetch` |
+| LLM provider API | `IModelClient` (`Grimoire.IngestAgent.AgentCore`, exists) | `AnthropicModelClient` | `Grimoire.IngestAgent.AgentCore.Adapters.Anthropic` |
 
 The composition root (`Program.cs` of each process) is explicitly exempt from the
 "no concrete adapter references" rule — it is the one place that wires adapters to ports.
@@ -23,7 +24,11 @@ constitution prescribes ("namespace-level containment enforced by architecture t
 sufficient until an ADR establishes a stronger boundary"). Ports remain owned by their
 consuming orchestration namespace, matching the two ports that already exist.
 
-**Alternatives considered**: Separate adapter assemblies per external system — rejected as
+**Alternatives considered**: Per-process top-level adapter buckets
+(`Grimoire.<Process>.Adapters.<System>`) — rejected: a technical grouping that scatters a
+context's functionality away from its port and consumer, contradicting the feature-first
+layout the existing capability namespaces establish (screaming architecture), with no
+enforceability gain. Separate adapter assemblies per external system — rejected as
 Big Design Up Front; constitution explicitly says no extra assemblies are mandated.
 A single flat `Adapters` namespace without per-system segments — rejected because
 containment rules ("LLM SDK only in the model-client adapter namespace") need per-system
@@ -35,15 +40,20 @@ namespaces to be expressible as NetArchTest rules.
 
 1. `Microsoft.Data.Sqlite` referenced only from `Grimoire.Hub.OperationalState` (designated
    persistence adapter namespace; persistence exemption applies, no port required).
-2. `Anthropic` SDK referenced only from `Grimoire.IngestAgent.Adapters.Anthropic`.
-3. `System.Net.Http.HttpClient` usage in Hub confined to `Grimoire.Hub.Adapters.HttpFetch`
+2. `Anthropic` SDK referenced only from `Grimoire.IngestAgent.AgentCore.Adapters.Anthropic`.
+3. `System.Net.Http.HttpClient` usage in Hub confined to
+   `Grimoire.Hub.IngestSubmission.Adapters.HttpFetch`
    (SignalR/OTel framework wiring in `Program.cs`/`TelemetryExtensions` is composition-root
    configuration, not orchestration consumption).
-4. `System.Diagnostics.Process` usage confined to `Grimoire.Hub.Adapters.AgentProcess` and
-   `Grimoire.Hub.Adapters.MarkItDown` (Hub) — no process spawning elsewhere.
-5. Orchestration namespaces (`Grimoire.Hub.*` except `Adapters.*` and the composition root)
-   must not reference concrete adapter types (`AgentProcessHost`, `MarkItDownConverter`,
-   `UrlContentFetcher`); mirror rule in the agent for `AnthropicModelClient`.
+4. `System.Diagnostics.Process` usage confined to
+   `Grimoire.Hub.AgentDispatch.Adapters.AgentProcess` and
+   `Grimoire.Hub.IngestSubmission.Adapters.MarkItDown` (Hub) — no process spawning elsewhere.
+5. Orchestration namespaces (`Grimoire.Hub.*` except `.Adapters.` sub-namespaces and the
+   composition root) must not reference concrete adapter types (`AgentProcessHost`,
+   `MarkItDownConverter`, `UrlContentFetcher`); mirror rule in the agent for
+   `AnthropicModelClient`. Because adapters nest under their consumer's prefix,
+   orchestration-side rules carve out `.Adapters.` sub-namespaces; the Red/Green probes
+   verify the carve-out leaves no hole.
 
 Existing rules (Domain dependency freedom, guarded write boundary, dispatch boundaries,
 runtime paths) stay untouched.
@@ -92,6 +102,7 @@ criterion with no polling load. Watching the directory catches all writers (Hub 
 stages and the agent process, which writes the file directly).
 
 **Alternatives considered**:
+
 - Client-side polling every 3 s — simplest, but constant background load per open view and
   no reuse of the existing realtime channel; rejected.
 - Deriving record changes from lifecycle/run-activity events — misses agent-side artifact
