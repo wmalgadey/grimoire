@@ -37,8 +37,8 @@ public sealed class IngestSubmissionPipeline
 {
     private readonly HubTaskArtifactWriter _taskArtifactWriter;
     private readonly SourceArtifactStore _sourceArtifactStore;
-    private readonly MarkItDownConverter _converter;
-    private readonly UrlContentFetcher _urlFetcher;
+    private readonly IMarkdownConverter _converter;
+    private readonly IUrlContentFetcher _urlFetcher;
     private readonly IngestLifecyclePublisher _publisher;
     private readonly IngestRunCoordinator _coordinator;
     private readonly ContentRootPaths _contentPaths;
@@ -47,8 +47,8 @@ public sealed class IngestSubmissionPipeline
     public IngestSubmissionPipeline(
         HubTaskArtifactWriter taskArtifactWriter,
         SourceArtifactStore sourceArtifactStore,
-        MarkItDownConverter converter,
-        UrlContentFetcher urlFetcher,
+        IMarkdownConverter converter,
+        IUrlContentFetcher urlFetcher,
         IngestLifecyclePublisher publisher,
         IngestRunCoordinator coordinator,
         ContentRootPaths contentPaths,

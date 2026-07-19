@@ -1,4 +1,5 @@
 using Grimoire.Hub.AgentDispatch;
+using Grimoire.Hub.AgentDispatch.Adapters.AgentProcess;
 using Grimoire.Hub.OperationalState;
 
 namespace Grimoire.IntegrationTests;

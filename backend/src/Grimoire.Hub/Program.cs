@@ -1,7 +1,10 @@
 using Grimoire.Hub.AgentDispatch;
+using Grimoire.Hub.AgentDispatch.Adapters.AgentProcess;
 using Grimoire.Hub.ContentRoot;
 using Grimoire.Hub.Conversion;
 using Grimoire.Hub.IngestSubmission;
+using Grimoire.Hub.IngestSubmission.Adapters.HttpFetch;
+using Grimoire.Hub.IngestSubmission.Adapters.MarkItDown;
 using Grimoire.Hub.OperationalState;
 using Grimoire.Hub.Realtime;
 using Grimoire.Hub.Runtime.Paths;
@@ -12,9 +15,9 @@ using Grimoire.Hub;
 var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddHubTelemetry();
 builder.Services.AddSignalR();
-builder.Services.AddHttpClient<UrlContentFetcher>();
+builder.Services.AddHttpClient<IUrlContentFetcher, UrlContentFetcher>();
 builder.Services.AddSingleton(sp => MarkItDownOptions.FromConfiguration(sp.GetRequiredService<IConfiguration>()));
-builder.Services.AddSingleton<MarkItDownConverter>();
+builder.Services.AddSingleton<IMarkdownConverter, MarkItDownConverter>();
 builder.Services.AddSingleton<HubTaskArtifactWriter>();
 builder.Services.AddSingleton<KanbanBoardProjectionStore>();
 

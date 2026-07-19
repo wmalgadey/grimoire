@@ -1,28 +1,8 @@
 using System.Diagnostics;
 
-namespace Grimoire.Hub.AgentDispatch;
+namespace Grimoire.Hub.AgentDispatch.Adapters.AgentProcess;
 
-/// <summary>
-/// A started agent child process as seen by the run coordinator: a stream of stdout
-/// lines (the NDJSON event channel) and a termination lever. Run outcome is never
-/// derived from the exit code (ADR-008).
-/// </summary>
-public interface IAgentProcessHandle : IAsyncDisposable
-{
-    IAsyncEnumerable<string> ReadStdoutLinesAsync(CancellationToken cancellationToken);
-
-    /// <summary>Forcefully terminates the agent process tree (liveness failure cleanup).</summary>
-    void Terminate();
-}
-
-/// <summary>
-/// Seam between the run coordinator and the real child process, so supervision and
-/// queue behavior are hermetically testable with scripted event streams (Principle II).
-/// </summary>
-public interface IAgentProcessLauncher
-{
-    Task<IAgentProcessHandle> StartAsync(IngestAgentRequest request, CancellationToken cancellationToken = default);
-}
+using Grimoire.Hub.AgentDispatch;
 
 /// <summary>
 /// Owns the agent child-process lifecycle (ADR-002 spawn model, ADR-004 credential

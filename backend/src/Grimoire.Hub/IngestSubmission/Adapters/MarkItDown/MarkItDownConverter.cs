@@ -1,15 +1,16 @@
 using System.Diagnostics;
+using Grimoire.Hub.Conversion;
+using Grimoire.Hub.IngestSubmission;
 
-namespace Grimoire.Hub.Conversion;
-
-public sealed record MarkItDownConversionResult(bool Success, string? Markdown, string? FailureReason);
+namespace Grimoire.Hub.IngestSubmission.Adapters.MarkItDown;
 
 /// <summary>
-/// Process-invocation adapter around the MarkItDown CLI (research.md Decision 1): the single
-/// conversion entrypoint for PDF/Office documents and fetched URL content. Markdown files are
-/// passed through as-is by the caller and never routed through this adapter (FR-004).
+/// Process-invocation adapter around the MarkItDown CLI (research.md Decision 1; ADR-010
+/// P2): the single conversion entrypoint for PDF/Office documents and fetched URL
+/// content. Markdown files are passed through as-is by the caller and never routed
+/// through this adapter (FR-004).
 /// </summary>
-public sealed class MarkItDownConverter
+public sealed class MarkItDownConverter : IMarkdownConverter
 {
     private readonly MarkItDownOptions _options;
 

@@ -2,6 +2,8 @@ using Grimoire.Hub.AgentDispatch;
 using Grimoire.Hub.ContentRoot;
 using Grimoire.Hub.Conversion;
 using Grimoire.Hub.IngestSubmission;
+using Grimoire.Hub.IngestSubmission.Adapters.HttpFetch;
+using Grimoire.Hub.IngestSubmission.Adapters.MarkItDown;
 using Grimoire.Hub.OperationalState;
 using Grimoire.Hub.Realtime;
 using Grimoire.Hub.TaskArtifact;
@@ -50,7 +52,9 @@ public sealed class IngestSubmissionPipelineFixture : IDisposable
         TimeProvider? timeProvider = null,
         ContentRootPaths? contentPaths = null,
         RawStoragePaths? rawPaths = null,
-        string? root = null)
+        string? root = null,
+        IMarkdownConverter? converter = null,
+        IUrlContentFetcher? urlFetcher = null)
     {
         Root = root ?? Path.Combine(Path.GetTempPath(), $"grimoire-ingest-submission-{Guid.NewGuid():N}");
         Directory.CreateDirectory(Root);
@@ -115,14 +119,14 @@ public sealed class IngestSubmissionPipelineFixture : IDisposable
         Coordinator.InitializeAsync().GetAwaiter().GetResult();
 
         var httpClient = new HttpClient(urlFetchHandler ?? new NotFoundHandler());
-        var urlFetcher = new UrlContentFetcher(httpClient);
-        var converter = new MarkItDownConverter(new MarkItDownOptions(markItDownExecutablePath, TimeSpan.FromSeconds(30)));
+        var effectiveUrlFetcher = urlFetcher ?? new UrlContentFetcher(httpClient);
+        var effectiveConverter = converter ?? new MarkItDownConverter(new MarkItDownOptions(markItDownExecutablePath, TimeSpan.FromSeconds(30)));
 
         Pipeline = new IngestSubmissionPipeline(
             new HubTaskArtifactWriter(),
             SourceArtifactStore,
-            converter,
-            urlFetcher,
+            effectiveConverter,
+            effectiveUrlFetcher,
             publisher,
             Coordinator,
             ContentPaths,

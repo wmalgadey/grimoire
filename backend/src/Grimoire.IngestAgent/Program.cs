@@ -1,5 +1,6 @@
 using Grimoire.IngestAgent;
 using Grimoire.IngestAgent.AgentCore;
+using Grimoire.IngestAgent.AgentCore.Adapters.Anthropic;
 using Grimoire.IngestAgent.Guardrails;
 using Grimoire.IngestAgent.IngestLog;
 using Grimoire.IngestAgent.Source;

@@ -7,15 +7,18 @@ namespace Grimoire.ArchTests;
 /// Structural boundary rule for ADR-008: the Hub's dispatch path must not synchronously
 /// wait on agent process exit to derive a run outcome. Run outcome arrives via Agent Run
 /// Events (or the liveness window). The only type permitted to touch
-/// <c>Process.WaitForExit*</c> is the process lifecycle owner
-/// <c>Grimoire.Hub.AgentDispatch.AgentProcessHost</c>, which waits solely for cleanup
-/// after termination and for the manual CLI run-to-exit path (ADR-008 exit-code note).
+/// <c>Process.WaitForExit*</c> on the agent-run dispatch path is the process lifecycle
+/// owner <c>AgentProcessHost</c> (ADR-010 <c>Grimoire.Hub.AgentDispatch.Adapters.AgentProcess</c>),
+/// which waits solely for cleanup after termination and for the manual CLI run-to-exit
+/// path (ADR-008 exit-code note). <c>MarkItDownConverter</c> (ADR-010
+/// <c>Grimoire.Hub.IngestSubmission.Adapters.MarkItDown</c>) is also allowed: it waits on
+/// its own owned document-conversion subprocess, not an agent run.
 /// </summary>
 public class NonBlockingDispatchRuleTests
 {
     // The dispatch path (ADR-008): everything that starts or schedules agent runs.
-    // Other Hub child processes (git in Program, markitdown in Conversion) are not
-    // agent runs and may legitimately be awaited.
+    // Other Hub child processes (git in Program, markitdown in its ADR-010 adapter
+    // namespace) are not agent runs and may legitimately be awaited.
     private static readonly string[] _dispatchPathNamespaces =
     [
         "Grimoire.Hub.AgentDispatch",
@@ -25,7 +28,8 @@ public class NonBlockingDispatchRuleTests
 
     private static readonly HashSet<string> _allowedOutermostTypes =
     [
-        "Grimoire.Hub.AgentDispatch.AgentProcessHost",
+        "Grimoire.Hub.AgentDispatch.Adapters.AgentProcess.AgentProcessHost",
+        "Grimoire.Hub.IngestSubmission.Adapters.MarkItDown.MarkItDownConverter",
     ];
 
     private static readonly string[] _blockingWaitMethods =

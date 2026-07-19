@@ -1,5 +1,6 @@
 using System.Net;
-using Grimoire.Hub.Conversion;
+using Grimoire.Hub.IngestSubmission;
+using Grimoire.Hub.IngestSubmission.Adapters.HttpFetch;
 
 namespace Grimoire.IntegrationTests;
 

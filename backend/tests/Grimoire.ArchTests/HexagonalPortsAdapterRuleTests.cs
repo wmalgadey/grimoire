@@ -99,12 +99,9 @@ public class HexagonalPortsAdapterRuleTests
     // they fall outside the "Grimoire.Hub" / "Grimoire.IngestAgent" prefix filter below
     // and are exempt by construction — no explicit carve-out needed.
     //
-    // NOTE: the forbidden-type list below targets each adapter's CURRENT (pre-move)
-    // namespace, because that is where the genuine active violation lives today
-    // (SubmissionService -> AgentProcessHost et al., T002's documented Red state). Once
-    // User Story 1 moves the adapters under their ADR-010 ".Adapters." namespace
-    // (T007-T010), this list is updated in the same commits to name the new locations,
-    // so the rule keeps enforcing C5 permanently rather than only during the migration.
+    // T017: the moves in T007-T010 landed the adapters under their ADR-010 ".Adapters."
+    // namespace, so the forbidden-type list below now names those final locations —
+    // this rule enforces C5 permanently, not just during the migration.
 
     [Fact]
     public void HubOrchestration_MustNotReferenceConcreteAdapterTypes()
@@ -114,9 +111,9 @@ public class HexagonalPortsAdapterRuleTests
             .And().DoNotResideInNamespaceContaining(".Adapters.")
             .Should().NotHaveDependencyOnAny(
             [
-                "Grimoire.Hub.AgentDispatch.AgentProcessHost",
-                "Grimoire.Hub.Conversion.MarkItDownConverter",
-                "Grimoire.Hub.Conversion.UrlContentFetcher",
+                "Grimoire.Hub.AgentDispatch.Adapters.AgentProcess.AgentProcessHost",
+                "Grimoire.Hub.IngestSubmission.Adapters.MarkItDown.MarkItDownConverter",
+                "Grimoire.Hub.IngestSubmission.Adapters.HttpFetch.UrlContentFetcher",
             ])
             .GetResult();
 

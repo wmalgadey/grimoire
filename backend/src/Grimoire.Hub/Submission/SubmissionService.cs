@@ -10,10 +10,10 @@ namespace Grimoire.Hub.Submission;
 public sealed class SubmissionService
 {
     private readonly OperationalStateRepository _repository;
-    private readonly AgentProcessHost _processHost;
+    private readonly IAgentProcessLauncher _processHost;
     private readonly ILogger<SubmissionService> _logger;
 
-    public SubmissionService(OperationalStateRepository repository, AgentProcessHost processHost, ILogger<SubmissionService>? logger = null)
+    public SubmissionService(OperationalStateRepository repository, IAgentProcessLauncher processHost, ILogger<SubmissionService>? logger = null)
     {
         _repository = repository;
         _processHost = processHost;

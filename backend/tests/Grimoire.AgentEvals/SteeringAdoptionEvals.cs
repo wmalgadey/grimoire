@@ -1,4 +1,5 @@
 using Grimoire.IngestAgent.AgentCore;
+using Grimoire.IngestAgent.AgentCore.Adapters.Anthropic;
 
 namespace Grimoire.AgentEvals;
 

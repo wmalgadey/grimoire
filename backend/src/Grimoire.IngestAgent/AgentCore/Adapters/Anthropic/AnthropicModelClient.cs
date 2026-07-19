@@ -1,13 +1,14 @@
 using Anthropic;
 using Anthropic.Models.Messages;
+using Grimoire.IngestAgent.AgentCore;
 using Microsoft.Extensions.Logging;
 using System.Text.Json;
 
-namespace Grimoire.IngestAgent.AgentCore;
+namespace Grimoire.IngestAgent.AgentCore.Adapters.Anthropic;
 
 /// <summary>
-/// Production <see cref="IModelClient"/> over the Anthropic C# SDK Messages API.
-/// Model ID comes from the <c>GRIMOIRE_INGEST_MODEL</c> environment variable
+/// Production <see cref="IModelClient"/> over the Anthropic C# SDK Messages API (ADR-010
+/// P4). Model ID comes from the <c>GRIMOIRE_INGEST_MODEL</c> environment variable
 /// (default <c>claude-opus-4-8</c>).
 /// </summary>
 public sealed class AnthropicModelClient : IModelClient
@@ -50,11 +51,11 @@ public sealed class AnthropicModelClient : IModelClient
         CancellationToken cancellationToken)
     {
         // Build messages from conversation history.
-        var messages = new List<Anthropic.Models.Messages.MessageParam>();
+        var messages = new List<MessageParam>();
         foreach (var msg in conversation)
         {
             var contentBlocks = BuildContentBlocks(msg.ContentBlocks);
-            messages.Add(new Anthropic.Models.Messages.MessageParam
+            messages.Add(new MessageParam
             {
                 Role = string.Equals(msg.Role, "user", StringComparison.OrdinalIgnoreCase)
                     ? Role.User

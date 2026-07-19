@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using Grimoire.Hub;
 using Grimoire.Hub.AgentDispatch;
+using Grimoire.Hub.AgentDispatch.Adapters.AgentProcess;
 using Grimoire.IngestAgent;
 
 namespace Grimoire.IntegrationTests;

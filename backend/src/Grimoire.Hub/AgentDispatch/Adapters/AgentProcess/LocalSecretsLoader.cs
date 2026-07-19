@@ -1,4 +1,4 @@
-namespace Grimoire.Hub.AgentDispatch;
+namespace Grimoire.Hub.AgentDispatch.Adapters.AgentProcess;
 
 public sealed class LocalSecretsLoader
 {

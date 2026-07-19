@@ -143,6 +143,28 @@ public sealed class FakeAgentProcessLauncher : IAgentProcessLauncher
         return handle;
     }
 
+    /// <summary>
+    /// Manual CLI path test double: mirrors the auto-play artifact write without a
+    /// scripted handle/event stream (SubmissionService only calls this method, never
+    /// StartAsync). Returns 0 (success) unless <c>throwOnStart</c> was configured.
+    /// </summary>
+    public async Task<int> RunToExitAsync(IngestAgentRequest request, CancellationToken cancellationToken = default)
+    {
+        lock (Requests)
+        {
+            Requests.Add(request);
+        }
+
+        if (_throwOnStart is not null)
+        {
+            throw _throwOnStart;
+        }
+
+        var taskArtifactPath = Path.Combine(request.TasksDir, $"{request.TaskId}.md");
+        await WriteArtifactAsync(taskArtifactPath, request, _terminalStatus, _failureReason);
+        return _terminalStatus == "failed" ? 1 : 0;
+    }
+
     private static async Task WriteArtifactAsync(string path, IngestAgentRequest request, string status, string? failureReason)
     {
         Directory.CreateDirectory(Path.GetDirectoryName(path)!);
