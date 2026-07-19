@@ -221,3 +221,14 @@ Task: "FakeUrlContentFetcher in tests/Grimoire.IntegrationTests/Fakes (T015)"
 - All new paths resolve via `ResolvedGrimoirePaths` (ADR-009); the watcher observes and never writes (ADR-002/003).
 - Probes (Phase 0 / T018) are never committed as surviving files; each probe's Red run is documented in a commit message.
 - Commit after each task or logical group; move commits stay move-only for `git blame` mitigation (ADR-010).
+
+---
+
+## Phase 7: Convergence
+
+**Purpose**: Close the gaps found by `/speckit-converge` on 2026-07-19: the implementation is complete and CI is green, but the full local `dotnet test` run on a macOS dev machine (a named target platform in plan.md) fails 5 tests, blocking the T019/T043 "full suite passes locally" gates.
+
+- [ ] T045 Harden `TaskRecordWatcher` arming and the `TaskRecordWatcherTests` harness so `taskRecordChanged` events are delivered reliably on macOS: replace the fixed 100 ms settle in `backend/tests/Grimoire.IntegrationTests/TaskRecordWatcherTests.cs` with a deterministic arming handshake (e.g. write a sentinel record and wait for its event before the test's real write) and resolve the symlinked temp `TasksDir` (`/var/folders/…` → `/private/var/…`) when arming the `FileSystemWatcher` in `backend/src/Grimoire.Hub/Realtime/TaskRecordWatcher.cs`, keeping the ≤ 5 s freshness budget, per SC-005/FR-009 (partial)
+- [ ] T046 Fix the full-suite-only failure of `GetTaskRecord_EmitsServeSpan_AsChildOfAspNetCoreRequestSpan` in `backend/tests/Grimoire.IntegrationTests/TaskRecordTraceTests.cs` (passes in isolation, fails in the full run) by isolating its ActivityListener/in-memory exporter from spans emitted by concurrently running tests, per plan: Observability trace contract / Constitution IV (partial)
+- [ ] T047 Make both `DefaultLayoutTests` assertions in `backend/tests/Grimoire.IntegrationTests/PathConfiguration/DefaultLayoutTests.cs` symlink-tolerant on macOS (compare symlink-resolved paths so `/var/folders/…` equals `/private/var/folders/…`), restoring the T019/T043 full-local-suite gate on macOS dev machines, per SC-003 (partial)
+- [ ] T048 Deflake `SecondSubmission_WaitsForFirstRunToFinish_ThenAutoTriggers` in `backend/tests/Grimoire.IntegrationTests/IngestQueueSerializationTests.cs` (timing-sensitive: failed in a full-suite run, passed on isolated re-run) by replacing fixed timing assumptions with condition-based waits, per SC-003 (partial)
