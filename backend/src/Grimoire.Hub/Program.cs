@@ -41,6 +41,7 @@ using (var bootstrapLoggerFactory = TelemetryExtensions.CreateBootstrapLoggerFac
     builder.Services.AddSingleton<SourceArtifactStore>();
     builder.Services.AddSingleton<TaskRecordReadModel>();
     builder.Services.AddSingleton<IngestLifecyclePublisher>();
+    builder.Services.AddHostedService<TaskRecordWatcher>();
 
     var repository = new OperationalStateRepository(resolvedPaths.StateDbPath);
     await repository.InitializeAsync();

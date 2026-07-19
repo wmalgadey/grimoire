@@ -26,6 +26,8 @@ public static class IngestSubmissionLogEvents
     private static readonly EventId QueuePausedAfterRestartEvent = new(33, "ingest.queue.paused_after_restart");
     private static readonly EventId QueueResumedEvent = new(34, "ingest.queue.resumed");
     private static readonly EventId TaskRecordServedEvent = new(35, "task_record.served");
+    private static readonly EventId TaskRecordChangePublishedEvent = new(36, "task_record.change_published");
+    private static readonly EventId TaskRecordWatchFailedEvent = new(37, "task_record.watch_failed");
 
     public static void LogSubmissionAccepted(ILogger logger, string taskId, string sourceKind, DateTimeOffset submittedAt)
     {
@@ -215,6 +217,29 @@ public static class IngestSubmissionLogEvents
         logger.LogInformation(TaskRecordServedEvent,
             "Task record served. task_id={task_id} outcome={outcome} content_length={content_length}",
             taskId, outcome, contentLength);
+    }
+
+    public static void LogTaskRecordChangePublished(ILogger logger, string taskId, string eventId, DateTimeOffset changedAt)
+    {
+        using var span = StartLogEventSpan("task_record.change_published", "Information");
+        span?.SetTag("task_id", taskId);
+        span?.SetTag("event_id", eventId);
+        span?.SetTag("changed_at", changedAt);
+
+        logger.LogInformation(TaskRecordChangePublishedEvent,
+            "Task record change published. task_id={task_id} event_id={event_id} changed_at={changed_at}",
+            taskId, eventId, changedAt);
+    }
+
+    public static void LogTaskRecordWatchFailed(ILogger logger, string path, string reason)
+    {
+        using var span = StartLogEventSpan("task_record.watch_failed", "Warning");
+        span?.SetTag("path", path);
+        span?.SetTag("reason", reason);
+
+        logger.LogWarning(TaskRecordWatchFailedEvent,
+            "Task record watcher failed; restarting. path={path} reason={reason}",
+            path, reason);
     }
 
     private static Activity? StartLogEventSpan(string eventName, string level)

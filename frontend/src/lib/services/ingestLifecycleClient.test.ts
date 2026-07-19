@@ -5,7 +5,12 @@ import {
 	createIngestLifecycleClient,
 	type IngestLifecycleClient
 } from './ingestLifecycleClient';
-import type { BoardTask, ConnectionState, LifecycleEvent } from '$lib/types';
+import type {
+	BoardTask,
+	ConnectionState,
+	LifecycleEvent,
+	TaskRecordChangedEvent
+} from '$lib/types';
 
 // T074 (US2, convergence): exercises the rules mandated by
 // contracts/ingest-lifecycle-events.md ## Rules that the component-level KanbanColumn test
@@ -112,6 +117,7 @@ function createFakeClient() {
 			};
 		}),
 		onRunActivityChanged: vi.fn(() => () => {}),
+		onTaskRecordChanged: vi.fn(() => () => {}),
 		onConnectionStateChanged: vi.fn(() => () => {})
 	};
 
@@ -206,6 +212,59 @@ test('createBoardLifecycleStream refreshes the board from the REST API on reconn
 	expect(onTasksChanged).toHaveBeenLastCalledWith([
 		expect.objectContaining({ taskId: 'task-1', status: 'queued' })
 	]);
+});
+
+// T032/T037 (US3, contracts/task-record-changed-event.md): onTaskRecordChanged delivers
+// events from the taskRecordChanged channel and dedupes by eventId, consistent with the
+// applyLifecycleEvent idempotency rule for taskLifecycleChanged.
+
+function taskRecordChangedEvent(
+	overrides: Partial<TaskRecordChangedEvent> = {}
+): TaskRecordChangedEvent {
+	return {
+		eventId: 'evt-1',
+		taskId: 'task-1',
+		changedAt: '2026-07-19T10:00:00Z',
+		...overrides
+	};
+}
+
+function getRegisteredHandler(
+	connection: ReturnType<typeof getLastFakeConnection>,
+	channel: string
+): (event: TaskRecordChangedEvent) => void {
+	const call = connection.on.mock.calls.find(([name]) => name === channel);
+	if (!call) throw new Error(`no handler registered for "${channel}"`);
+	return call[1] as (event: TaskRecordChangedEvent) => void;
+}
+
+test('onTaskRecordChanged delivers events from the taskRecordChanged channel', () => {
+	const client = createIngestLifecycleClient();
+	const connection = getLastFakeConnection();
+
+	const received: TaskRecordChangedEvent[] = [];
+	client.onTaskRecordChanged((event) => received.push(event));
+
+	const handler = getRegisteredHandler(connection, 'taskRecordChanged');
+	handler(taskRecordChangedEvent());
+
+	expect(received).toHaveLength(1);
+	expect(received[0]).toEqual(taskRecordChangedEvent());
+});
+
+test('onTaskRecordChanged dedupes by eventId', () => {
+	const client = createIngestLifecycleClient();
+	const connection = getLastFakeConnection();
+
+	const received: TaskRecordChangedEvent[] = [];
+	client.onTaskRecordChanged((event) => received.push(event));
+
+	const handler = getRegisteredHandler(connection, 'taskRecordChanged');
+	const evt = taskRecordChangedEvent();
+	handler(evt);
+	handler(evt);
+
+	expect(received).toHaveLength(1);
 });
 
 test('onConnectionStateChanged reflects connecting, connected, reconnecting, and back to connected', async () => {

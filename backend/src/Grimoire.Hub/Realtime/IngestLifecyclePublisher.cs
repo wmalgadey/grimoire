@@ -1,4 +1,5 @@
 using System.Diagnostics.Metrics;
+using Grimoire.Hub.IngestSubmission;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -56,6 +57,26 @@ public sealed class IngestLifecyclePublisher
 
         _logger.LogInformation(new EventId(10, "ingest.lifecycle.published"),
             "Ingest lifecycle published: {task_id} {from_stage} -> {to_stage}", taskId, fromStatus, toStatus);
+    }
+
+    /// <summary>
+    /// Publishes a debounced task-record change notification (006 FR-009/FR-010,
+    /// contracts/task-record-changed-event.md). Called by <c>TaskRecordWatcher</c> — a
+    /// watcher-initiated root span (no ambient HTTP request to parent to), correlated to
+    /// its log event and metric via <paramref name="taskId"/>/the generated event id.
+    /// </summary>
+    public async Task PublishTaskRecordChangedAsync(string taskId, DateTimeOffset changedAt, CancellationToken cancellationToken = default)
+    {
+        using var span = HubTracing.ActivitySource.StartActivity("hub.task_record.publish_change");
+        var eventId = Guid.NewGuid().ToString("N");
+        span?.SetTag("task_id", taskId);
+        span?.SetTag("event_id", eventId);
+
+        var changedEvent = new TaskRecordChangedEvent(eventId, taskId, changedAt);
+        await _hubContext.Clients.All.SendAsync("taskRecordChanged", changedEvent, cancellationToken);
+
+        HubMetrics.RecordTaskRecordChangeEvent();
+        IngestSubmissionLogEvents.LogTaskRecordChangePublished(_logger, taskId, eventId, changedAt);
     }
 
     /// <summary>

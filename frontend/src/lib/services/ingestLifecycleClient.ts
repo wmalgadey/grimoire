@@ -1,5 +1,11 @@
 import * as signalR from '@microsoft/signalr';
-import type { BoardTask, ConnectionState, LifecycleEvent, RunActivityEvent } from '$lib/types';
+import type {
+	BoardTask,
+	ConnectionState,
+	LifecycleEvent,
+	RunActivityEvent,
+	TaskRecordChangedEvent
+} from '$lib/types';
 import { listBoard } from './ingestSubmissionsApi';
 
 const HUB_PATH = '/hubs/ingest-lifecycle';
@@ -9,6 +15,7 @@ export interface IngestLifecycleClient {
 	stop(): Promise<void>;
 	onLifecycleChanged(handler: (event: LifecycleEvent) => void): () => void;
 	onRunActivityChanged(handler: (event: RunActivityEvent) => void): () => void;
+	onTaskRecordChanged(handler: (event: TaskRecordChangedEvent) => void): () => void;
 	onReconnected(handler: () => void): () => void;
 	onConnectionStateChanged(handler: (state: ConnectionState) => void): () => void;
 }
@@ -49,6 +56,18 @@ export function createIngestLifecycleClient(hubUrl: string = HUB_PATH): IngestLi
 		onRunActivityChanged(handler) {
 			connection.on('runActivityChanged', handler);
 			return () => connection.off('runActivityChanged', handler);
+		},
+		onTaskRecordChanged(handler) {
+			// 006 (contracts/task-record-changed-event.md): dedupe by eventId, consistent
+			// with applyLifecycleEvent's seenEventKeys handling for taskLifecycleChanged.
+			const seenEventIds = new Set<string>();
+			const wrapped = (event: TaskRecordChangedEvent) => {
+				if (seenEventIds.has(event.eventId)) return;
+				seenEventIds.add(event.eventId);
+				handler(event);
+			};
+			connection.on('taskRecordChanged', wrapped);
+			return () => connection.off('taskRecordChanged', wrapped);
 		},
 		onReconnected(handler) {
 			// @microsoft/signalr has no unregister API for onreconnected callbacks (unlike
