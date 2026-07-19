@@ -28,14 +28,15 @@ public class FailureAndReconciliationTests
             TaskId: taskId,
             SourceRef: Path.Combine(root, "missing-source.md"),
             SourceKind: "file",
+            WikiRoot: root,
             PagesDir: pagesDir,
             TasksDir: tasksDir,
             IndexPath: indexPath,
             LogPath: logPath,
             PastedText: null,
-            SystemPromptPath: Path.Combine(repoRootForPaths, "agents", "ingest", "system-prompt.md"),
-            DefaultUserPromptPath: Path.Combine(repoRootForPaths, "agents", "ingest", "default-user-prompt.md"),
-            PolicyPath: Path.Combine(repoRootForPaths, "agents", "ingest", "policy.json")));
+            SystemPromptPath: Path.Combine(repoRootForPaths, "data", "agents", "ingest", "system-prompt.md"),
+            DefaultUserPromptPath: Path.Combine(repoRootForPaths, "data", "agents", "ingest", "default-user-prompt.md"),
+            PolicyPath: Path.Combine(repoRootForPaths, "data", "agents", "ingest", "policy.json")));
 
         Assert.Equal(1, exitCode);
         Assert.Empty(Directory.GetFiles(pagesDir));

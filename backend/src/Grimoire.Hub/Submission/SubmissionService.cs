@@ -1,6 +1,7 @@
 using Grimoire.Hub.AgentDispatch;
 using Grimoire.Hub.ContentRoot;
 using Grimoire.Hub.OperationalState;
+using Grimoire.Hub.Runtime.Paths;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 
@@ -19,10 +20,10 @@ public sealed class SubmissionService
         _logger = logger ?? NullLogger<SubmissionService>.Instance;
     }
 
-    public async Task<string> SubmitAsync(SubmitSourceOptions options, string repoRoot, ContentRootPaths contentPaths, CancellationToken cancellationToken = default)
+    public async Task<string> SubmitAsync(SubmitSourceOptions options, ContentRootPaths contentPaths, CancellationToken cancellationToken = default)
     {
         var taskId = $"{DateTime.UtcNow:yyyy-MM-dd}-ingest-{Guid.NewGuid():N}";
-        var normalizedSourceRef = ResolveSourcePath(options.Path, repoRoot);
+        var normalizedSourceRef = ResolveSourcePath(options.Path);
 
         using var submitSpan = HubTracing.ActivitySource.StartActivity("hub.ingest.submit");
         submitSpan?.SetTag("task_id", taskId);
@@ -46,6 +47,7 @@ public sealed class SubmissionService
             TaskId: taskId,
             SourceRef: normalizedSourceRef,
             SourceKind: options.SourceKind,
+            WikiRoot: contentPaths.Root,
             PagesDir: contentPaths.PagesDir,
             TasksDir: contentPaths.TasksDir,
             IndexPath: contentPaths.IndexPath,
@@ -71,18 +73,20 @@ public sealed class SubmissionService
         return taskId;
     }
 
-    private static string ResolveSourcePath(string sourcePath, string repoRoot)
+    private static string ResolveSourcePath(string sourcePath)
     {
         if (Path.IsPathRooted(sourcePath))
         {
             return sourcePath;
         }
 
-        var cwd = Directory.GetCurrentDirectory();
+        // FR-003 / spec edge case: relative source paths resolve against the process
+        // working directory, never a discovered repository root (ADR-009 single
+        // composition point owns the one sanctioned ambient-directory read).
+        var cwd = GrimoirePathResolver.CurrentWorkingDirectory;
         var candidates = new List<string>
         {
             Path.GetFullPath(sourcePath, cwd),
-            Path.GetFullPath(sourcePath, repoRoot),
         };
 
         var current = new DirectoryInfo(cwd);

@@ -1,6 +1,6 @@
 #!/bin/bash
 
-source "$(dirname "$0")/../../.env"
+source "$(dirname "$0")/../../data/.env"
 
 export ANTHROPIC_API_KEY="${NVIDIA_API_KEY}"
 export ANTHROPIC_BASE_URL="https://integrate.api.nvidia.com"

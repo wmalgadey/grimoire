@@ -22,16 +22,21 @@ public sealed record PolicyLoadFailure(string Reason);
 /// </summary>
 public sealed class PolicyLoader
 {
-    private readonly string _repositoryRoot;
+    private readonly string _wikiRoot;
 
-    public PolicyLoader(string repositoryRoot)
+    /// <param name="wikiRoot">
+    /// The Hub-resolved wiki content root (contracts/agent-launch.md <c>--wiki-root</c>).
+    /// Policy path prefixes (<c>pages/</c>, <c>tasks/</c>, <c>index.md</c>, <c>log.md</c>)
+    /// are anchored here — never against a discovered repository root (ADR-009).
+    /// </param>
+    public PolicyLoader(string wikiRoot)
     {
-        _repositoryRoot = repositoryRoot;
+        _wikiRoot = wikiRoot;
     }
 
     /// <summary>
-    /// Loads the policy at <paramref name="policyPath"/>, resolves prefixes against
-    /// <paramref name="repositoryRoot"/>, and returns either a loaded policy or a failure.
+    /// Loads the policy at <paramref name="policyPath"/>, resolves prefixes against the
+    /// wiki root, and returns either a loaded policy or a failure.
     /// </summary>
     public async Task<OneOf<LoadedPolicy, PolicyLoadFailure>> LoadAsync(
         string policyPath,
@@ -82,7 +87,7 @@ public sealed class PolicyLoader
 
         var readPrefixes = ResolveAndNormalize(schema.Read ?? [], isWrite: false);
         var writePrefixes = ResolveAndNormalize(schema.Write ?? [], isWrite: true);
-        var policy = new SafetyPolicy(_repositoryRoot, readPrefixes, writePrefixes);
+        var policy = new SafetyPolicy(_wikiRoot, readPrefixes, writePrefixes);
 
         var sha256 = Convert.ToHexStringLower(SHA256.HashData(fileBytes));
         var identity = new PolicyIdentity(policyPath, schema.Version, sha256);
@@ -103,10 +108,10 @@ public sealed class PolicyLoader
             var platformPathPrefix = rule.PathPrefix
                 .Replace(Path.AltDirectorySeparatorChar, Path.DirectorySeparatorChar);
 
-            // Resolve relative prefix against repository root.
+            // Resolve relative prefix against the wiki root (ADR-009).
             var absolute = Path.IsPathRooted(platformPathPrefix)
                 ? platformPathPrefix
-                : Path.Combine(_repositoryRoot, platformPathPrefix);
+                : Path.Combine(_wikiRoot, platformPathPrefix);
             var canonical = Path.GetFullPath(absolute);
 
             // Ensure directory prefixes end with the directory separator so prefix

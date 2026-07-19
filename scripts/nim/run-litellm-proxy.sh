@@ -2,7 +2,7 @@
 
 set -euo pipefail
 
-source "$(dirname "$0")/../../.env"
+source "$(dirname "$0")/../../data/.env"
 
 pip install uv
 uv tool install 'litellm[proxy]' --with python-dotenv
