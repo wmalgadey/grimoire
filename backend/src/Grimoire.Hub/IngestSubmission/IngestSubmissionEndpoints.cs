@@ -24,6 +24,7 @@ public static class IngestSubmissionEndpoints
         group.MapGet("/", GetBoardAsync);
         group.MapGet("/defaults", GetDefaultsAsync);
         group.MapGet("/{taskId}", GetTaskDetailAsync);
+        group.MapGet("/{taskId}/task-record", GetTaskRecordAsync);
         group.MapPost("/{taskId}/retrigger", PostRetriggerAsync);
         return group;
     }
@@ -308,6 +309,61 @@ public static class IngestSubmissionEndpoints
                 currentAction = activity.CurrentAction,
                 lastEventAt = activity.LastEventAt,
             },
+        });
+    }
+
+    /// <summary>
+    /// Serves the rendered task record (006 FR-006/FR-007, contracts/task-record-api.md):
+    /// parsed frontmatter as <c>metadata</c> plus the markdown body with the frontmatter
+    /// block stripped. Missing file or unparseable frontmatter both map to 404 — never a
+    /// 5xx for a malformed record. Leaves the existing detail/board endpoints untouched
+    /// (FR-012).
+    /// </summary>
+    private static async Task<IResult> GetTaskRecordAsync(
+        string taskId,
+        TaskRecordReadModel readModel,
+        ILoggerFactory loggerFactory,
+        CancellationToken cancellationToken)
+    {
+        var logger = loggerFactory.CreateLogger(typeof(IngestSubmissionEndpoints));
+
+        using var span = HubTracing.ActivitySource.StartActivity("hub.task_record.serve");
+        span?.SetTag("task_id", taskId);
+
+        var result = await readModel.ReadAsync(taskId, cancellationToken);
+        var outcome = result.Outcome switch
+        {
+            TaskRecordOutcome.Ok => "ok",
+            TaskRecordOutcome.Missing => "missing",
+            TaskRecordOutcome.Unparseable => "unparseable",
+            _ => "unknown",
+        };
+        span?.SetTag("outcome", outcome);
+
+        var contentLength = result.Record?.Body.Length ?? 0;
+        IngestSubmissionLogEvents.LogTaskRecordServed(logger, taskId, outcome, contentLength);
+        HubMetrics.RecordTaskRecordRead(outcome);
+
+        if (result.Outcome != TaskRecordOutcome.Ok)
+        {
+            return Results.NotFound(new { message = $"Task record for '{taskId}' is not available." });
+        }
+
+        var record = result.Record!;
+        return Results.Ok(new
+        {
+            taskId = record.TaskId,
+            metadata = new
+            {
+                status = record.Metadata.Status,
+                agent = record.Metadata.Agent,
+                startedAt = record.Metadata.StartedAt,
+                completedAt = record.Metadata.CompletedAt,
+                sourceRef = record.Metadata.SourceRef,
+                originalRef = record.Metadata.OriginalRef,
+                failureReason = record.Metadata.FailureReason,
+            },
+            body = record.Body,
         });
     }
 

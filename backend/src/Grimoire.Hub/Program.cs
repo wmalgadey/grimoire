@@ -39,6 +39,7 @@ using (var bootstrapLoggerFactory = TelemetryExtensions.CreateBootstrapLoggerFac
     builder.Services.AddSingleton(resolvedPaths);
     builder.Services.AddSingleton(rawStoragePaths);
     builder.Services.AddSingleton<SourceArtifactStore>();
+    builder.Services.AddSingleton<TaskRecordReadModel>();
     builder.Services.AddSingleton<IngestLifecyclePublisher>();
 
     var repository = new OperationalStateRepository(resolvedPaths.StateDbPath);

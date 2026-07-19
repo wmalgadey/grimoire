@@ -25,6 +25,7 @@ public static class IngestSubmissionLogEvents
     private static readonly EventId QueueAdvancedEvent = new(32, "ingest.queue.advanced");
     private static readonly EventId QueuePausedAfterRestartEvent = new(33, "ingest.queue.paused_after_restart");
     private static readonly EventId QueueResumedEvent = new(34, "ingest.queue.resumed");
+    private static readonly EventId TaskRecordServedEvent = new(35, "task_record.served");
 
     public static void LogSubmissionAccepted(ILogger logger, string taskId, string sourceKind, DateTimeOffset submittedAt)
     {
@@ -200,6 +201,20 @@ public static class IngestSubmissionLogEvents
         logger.LogInformation(QueueResumedEvent,
             "Run queue processing resumed. task_id={task_id} scope={scope}",
             taskId, scope);
+    }
+
+    // --- 006-hexagonal-arch-tasks-ui (plan.md ## Observability > Structured Log Events) ---
+
+    public static void LogTaskRecordServed(ILogger logger, string taskId, string outcome, int contentLength)
+    {
+        using var span = StartLogEventSpan("task_record.served", "Information");
+        span?.SetTag("task_id", taskId);
+        span?.SetTag("outcome", outcome);
+        span?.SetTag("content_length", contentLength);
+
+        logger.LogInformation(TaskRecordServedEvent,
+            "Task record served. task_id={task_id} outcome={outcome} content_length={content_length}",
+            taskId, outcome, contentLength);
     }
 
     private static Activity? StartLogEventSpan(string eventName, string level)

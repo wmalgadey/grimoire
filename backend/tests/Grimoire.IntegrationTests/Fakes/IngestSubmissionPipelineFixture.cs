@@ -6,6 +6,7 @@ using Grimoire.Hub.IngestSubmission.Adapters.HttpFetch;
 using Grimoire.Hub.IngestSubmission.Adapters.MarkItDown;
 using Grimoire.Hub.OperationalState;
 using Grimoire.Hub.Realtime;
+using Grimoire.Hub.Runtime.Paths;
 using Grimoire.Hub.TaskArtifact;
 using Microsoft.AspNetCore.SignalR;
 
@@ -22,6 +23,7 @@ public sealed class IngestSubmissionPipelineFixture : IDisposable
     public string Root { get; }
     public ContentRootPaths ContentPaths { get; }
     public RawStoragePaths RawPaths { get; }
+    public ResolvedGrimoirePaths ResolvedPaths { get; }
     public SourceArtifactStore SourceArtifactStore { get; }
     public KanbanBoardProjectionStore BoardStore { get; } = new();
     public FakeAgentProcessLauncher Launcher { get; }
@@ -96,6 +98,25 @@ public sealed class IngestSubmissionPipelineFixture : IDisposable
             OriginalsDir: Path.Combine(Root, "raw", "originals"),
             SourcesDir: Path.Combine(Root, "raw", "sources"));
         SourceArtifactStore = new SourceArtifactStore(RawPaths);
+
+        ResolvedPaths = new ResolvedGrimoirePaths(
+            BaseDir: Root,
+            DataDir: Root,
+            ContentRoot: ContentPaths.Root,
+            PagesDir: ContentPaths.PagesDir,
+            TasksDir: ContentPaths.TasksDir,
+            IndexPath: ContentPaths.IndexPath,
+            LogPath: ContentPaths.LogPath,
+            RawOriginalsDir: RawPaths.OriginalsDir,
+            RawSourcesDir: RawPaths.SourcesDir,
+            StateDbPath: Path.Combine(Root, "operational-state.db"),
+            SecretsFilePath: Path.Combine(Root, ".env"),
+            InstructionsDir: Path.GetDirectoryName(ContentPaths.SystemPromptPath)!,
+            SystemPromptPath: ContentPaths.SystemPromptPath,
+            DefaultUserPromptPath: ContentPaths.DefaultUserPromptPath,
+            PolicyPath: ContentPaths.PolicyPath,
+            AgentWorkerPath: "unused",
+            Locations: []);
 
         var dbPath = Path.Combine(Root, "operational-state.db");
         Repository = new OperationalStateRepository(dbPath);
