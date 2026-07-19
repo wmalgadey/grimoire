@@ -19,7 +19,7 @@ SignalR event published by a debounced Hub-side `TasksDir` watcher.
 
 ## Technical Context
 
-**Language/Version**: C# / .NET 9 (Hub, IngestAgent, tests); TypeScript 5 + Svelte 5 / SvelteKit 2 (frontend)
+**Language/Version**: C# / .NET 10 (Hub, IngestAgent, tests — per ADR-001, `net10.0` in `backend/Directory.Build.props`); TypeScript 6 + Svelte 5 / SvelteKit 2 (frontend)
 
 **Primary Dependencies**: ASP.NET Core Minimal APIs + SignalR, Anthropic .NET SDK, OpenTelemetry .NET, NetArchTest.Rules, xUnit; frontend: @microsoft/signalr, Tailwind 4, Vitest (browser, Playwright); new: `marked`, `dompurify`
 
