@@ -33,26 +33,64 @@ public sealed class IngestSubmissionPipelineFixture : IDisposable
     public CaptureLogger<IngestRunCoordinator> CoordinatorLogger { get; } = new();
     public IngestLifecyclePublisher Publisher { get; private set; } = null!;
 
+    /// <param name="contentPaths">
+    /// Pre-resolved content-root paths (e.g. from <c>GrimoirePathResolver</c>, ADR-009) to
+    /// wire the pipeline against instead of the fixture's own ad-hoc temp layout — lets
+    /// path-configuration tests (specs/005-content-root-config) exercise the real pipeline
+    /// under paths that came from actual resolution/validation. Required instruction files
+    /// are still populated at these paths when they don't already exist.
+    /// </param>
+    /// <param name="rawPaths">Pre-resolved raw-storage paths, paired with <paramref name="contentPaths"/>.</param>
+    /// <param name="root">Overrides the fixture's own temp root (used for <see cref="Dispose"/> cleanup scoping).</param>
     public IngestSubmissionPipelineFixture(
         FakeAgentProcessLauncher? launcher = null,
         HttpMessageHandler? urlFetchHandler = null,
         string markItDownExecutablePath = "markitdown",
         TimeSpan? livenessWindow = null,
-        TimeProvider? timeProvider = null)
+        TimeProvider? timeProvider = null,
+        ContentRootPaths? contentPaths = null,
+        RawStoragePaths? rawPaths = null,
+        string? root = null)
     {
-        Root = Path.Combine(Path.GetTempPath(), $"grimoire-ingest-submission-{Guid.NewGuid():N}");
+        Root = root ?? Path.Combine(Path.GetTempPath(), $"grimoire-ingest-submission-{Guid.NewGuid():N}");
         Directory.CreateDirectory(Root);
 
-        ContentPaths = ContentRootPaths.Resolve(Root, "wiki");
-        Directory.CreateDirectory(ContentPaths.PagesDir);
-        Directory.CreateDirectory(ContentPaths.TasksDir);
-        File.WriteAllText(ContentPaths.IndexPath, "# Index\n");
-        File.WriteAllText(ContentPaths.LogPath, string.Empty);
-        Directory.CreateDirectory(Path.GetDirectoryName(ContentPaths.SystemPromptPath)!);
-        File.WriteAllText(ContentPaths.SystemPromptPath, "# Test system prompt\nRules.\n");
-        File.WriteAllText(ContentPaths.DefaultUserPromptPath, "Please integrate the source.\n");
+        if (contentPaths is not null)
+        {
+            ContentPaths = contentPaths;
+            Directory.CreateDirectory(ContentPaths.PagesDir);
+            Directory.CreateDirectory(ContentPaths.TasksDir);
+            if (!File.Exists(ContentPaths.IndexPath)) File.WriteAllText(ContentPaths.IndexPath, "# Index\n");
+            if (!File.Exists(ContentPaths.LogPath)) File.WriteAllText(ContentPaths.LogPath, string.Empty);
+            Directory.CreateDirectory(Path.GetDirectoryName(ContentPaths.SystemPromptPath)!);
+            if (!File.Exists(ContentPaths.SystemPromptPath)) File.WriteAllText(ContentPaths.SystemPromptPath, "# Test system prompt\nRules.\n");
+            if (!File.Exists(ContentPaths.DefaultUserPromptPath)) File.WriteAllText(ContentPaths.DefaultUserPromptPath, "Please integrate the source.\n");
+        }
+        else
+        {
+            var contentRoot = Path.Combine(Root, "wiki");
+            var instructionsDir = Path.Combine(Root, "agents", "ingest");
+            ContentPaths = new ContentRootPaths(
+                Root: contentRoot,
+                PagesDir: Path.Combine(contentRoot, "pages"),
+                TasksDir: Path.Combine(contentRoot, "tasks"),
+                IndexPath: Path.Combine(contentRoot, "index.md"),
+                LogPath: Path.Combine(contentRoot, "log.md"),
+                SystemPromptPath: Path.Combine(instructionsDir, "system-prompt.md"),
+                DefaultUserPromptPath: Path.Combine(instructionsDir, "default-user-prompt.md"),
+                PolicyPath: Path.Combine(instructionsDir, "policy.json"));
+            Directory.CreateDirectory(ContentPaths.PagesDir);
+            Directory.CreateDirectory(ContentPaths.TasksDir);
+            File.WriteAllText(ContentPaths.IndexPath, "# Index\n");
+            File.WriteAllText(ContentPaths.LogPath, string.Empty);
+            Directory.CreateDirectory(instructionsDir);
+            File.WriteAllText(ContentPaths.SystemPromptPath, "# Test system prompt\nRules.\n");
+            File.WriteAllText(ContentPaths.DefaultUserPromptPath, "Please integrate the source.\n");
+        }
 
-        RawPaths = RawStoragePaths.Resolve(Root);
+        RawPaths = rawPaths ?? new RawStoragePaths(
+            OriginalsDir: Path.Combine(Root, "raw", "originals"),
+            SourcesDir: Path.Combine(Root, "raw", "sources"));
         SourceArtifactStore = new SourceArtifactStore(RawPaths);
 
         var dbPath = Path.Combine(Root, "operational-state.db");

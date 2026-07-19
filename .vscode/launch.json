@@ -1,5 +1,53 @@
 {
   "version": "0.2.0",
   "configurations": [
+    {
+      // PROD: Hub gegen ein externes Wiki-Verzeichnis, direkte Verbindung zur Anthropic API.
+      // Kein GRIMOIRE_INGEST_BASE_URL -> AnthropicModelClient nutzt die Default-Anthropic-URL.
+      // Auth-Token kommt aus .env (ANTHROPIC_AUTH_TOKEN, sk-ant-...).
+      "name": "Hub (prod: external wiki + Anthropic)",
+      "type": "coreclr",
+      "request": "launch",
+      "preLaunchTask": "prod: prelaunch",
+      "program": "${workspaceFolder}/backend/src/Grimoire.Hub/bin/Debug/net10.0/Grimoire.Hub.dll",
+      "cwd": "${workspaceFolder}",
+      "args": [
+        "--content-root",
+        "/Volumes/Daten/parainoid/llm-wiki",
+        "--agent-worker",
+        "${workspaceFolder}/backend/src/Grimoire.IngestAgent/Grimoire.IngestAgent.csproj"
+      ],
+      "env": {
+        "ASPNETCORE_ENVIRONMENT": "Production",
+        "ASPNETCORE_URLS": "http://localhost:5255",
+        "GRIMOIRE_INGEST_MODEL": "claude-haiku-4-5"
+      },
+      "stopAtEntry": false,
+      "console": "externalTerminal"
+    },
+    {
+      // DEV: Hub gegen das repo-interne Wiki, spricht NICHT direkt mit Anthropic, sondern
+      // mit dem lokalen litellm-Proxy (scripts/nim/run-litellm-proxy.sh, Port 4000), der
+      // per NVIDIA_API_KEY auf NVIDIA NIM routet. Der Proxy wird als PreLaunch gestartet.
+      // GRIMOIRE_INGEST_MODEL = model_name aus scripts/nim/litellm_config.yaml.
+      "name": "Hub (dev: litellm proxy + NVIDIA)",
+      "type": "coreclr",
+      "request": "launch",
+      "preLaunchTask": "dev: prelaunch",
+      "program": "${workspaceFolder}/backend/src/Grimoire.Hub/bin/Debug/net10.0/Grimoire.Hub.dll",
+      "cwd": "${workspaceFolder}",
+      "args": [
+        "--agent-worker",
+        "${workspaceFolder}/backend/src/Grimoire.IngestAgent/Grimoire.IngestAgent.csproj"
+      ],
+      "env": {
+        "ASPNETCORE_ENVIRONMENT": "Development",
+        "ASPNETCORE_URLS": "http://localhost:5255",
+        "GRIMOIRE_INGEST_BASE_URL": "http://localhost:4000",
+        "GRIMOIRE_INGEST_MODEL": "nvidia-model"
+      },
+      "stopAtEntry": false,
+      "console": "internalConsole"
+    }
   ]
 }

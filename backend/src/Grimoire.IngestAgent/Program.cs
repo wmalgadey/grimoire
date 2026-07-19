@@ -21,7 +21,7 @@ var sourceReader = new SourceReader();
 var startTime = DateTimeOffset.UtcNow;
 using var runSpan = IngestAgentTracing.StartRunActivity(options.TaskId);
 
-var repoRoot = FindRepoRoot(options.TasksDir);
+var wikiRoot = options.WikiRoot;
 var journal = new WriteJournal();
 GuardedToolExecutor? executor = null;
 AnthropicModelClient? modelClient = null;
@@ -113,7 +113,7 @@ try
         userPromptSource = "default";
     }
 
-    var policyLoader = new PolicyLoader(repoRoot);
+    var policyLoader = new PolicyLoader(wikiRoot);
     var policyResult = await policyLoader.LoadAsync(options.PolicyPath, CancellationToken.None);
     if (policyResult.IsSecond(out var policyFailure))
     {
@@ -164,7 +164,7 @@ try
     executor = new GuardedToolExecutor(
         loadedPolicy!.Policy,
         journal,
-        repoRoot,
+        wikiRoot,
         options.TaskId,
         loggerFactory.CreateLogger<GuardedToolExecutor>());
     var tokenCap = ResolveTokenCapFromEnvironment();
@@ -227,12 +227,12 @@ try
             StartedAt: startTime,
             CompletedAt: DateTimeOffset.UtcNow,
             SourceRef: options.SourceRef,
-            PagesTouched: touchedPaths.Select(p => Path.GetRelativePath(repoRoot, p)).ToList(),
+            PagesTouched: touchedPaths.Select(p => Path.GetRelativePath(wikiRoot, p)).ToList(),
             FailureReason: null,
             Narrative: loopResult.Narrative,
-            PagesCreated: pagesCreated.Select(p => Path.GetRelativePath(repoRoot, p)).ToList(),
-            PagesUpdated: pagesUpdated.Select(p => Path.GetRelativePath(repoRoot, p)).ToList(),
-            PagesSuperseded: pagesSuperseded.Select(p => Path.GetRelativePath(repoRoot, p)).ToList(),
+            PagesCreated: pagesCreated.Select(p => Path.GetRelativePath(wikiRoot, p)).ToList(),
+            PagesUpdated: pagesUpdated.Select(p => Path.GetRelativePath(wikiRoot, p)).ToList(),
+            PagesSuperseded: pagesSuperseded.Select(p => Path.GetRelativePath(wikiRoot, p)).ToList(),
             DeniedActions: executor.Denials.Select(d => new DeniedActionEntry(d.Action, d.RequestedTarget, d.CanonicalTarget, d.Reason, d.Turn)).ToList(),
             InstructionFiles: [new InstructionFileRecord(loadedSystemPrompt.Path, loadedSystemPrompt.Sha256)],
             Policy: new PolicyRecord(loadedPolicy.Identity.Path, loadedPolicy.Identity.Version, loadedPolicy.Identity.Sha256),
@@ -395,6 +395,7 @@ static AgentCliOptions ParseArgs(string[] args)
         TaskId: GetRequired("--task-id"),
         SourceRef: GetRequired("--source-ref"),
         SourceKind: sourceKind,
+        WikiRoot: GetRequired("--wiki-root"),
         PagesDir: GetRequired("--pages-dir"),
         TasksDir: GetRequired("--tasks-dir"),
         IndexPath: GetRequired("--index-path"),
@@ -405,26 +406,6 @@ static AgentCliOptions ParseArgs(string[] args)
         UserPrompt: GetOptional("--user-prompt"),
         PolicyPath: GetRequired("--policy-path"),
         HeartbeatSeconds: heartbeatSeconds);
-}
-
-static string FindRepoRoot(string startPath)
-{
-    var current = Path.GetFullPath(startPath);
-    while (true)
-    {
-        if (Directory.Exists(Path.Combine(current, ".specify")) &&
-            Directory.Exists(Path.Combine(current, "specs")))
-            return current;
-
-        if (Directory.Exists(Path.Combine(current, ".git")))
-            return current;
-
-        var parent = Directory.GetParent(current);
-        if (parent is null)
-            return Path.GetFullPath(Path.Combine(startPath, "..", ".."));
-
-        current = parent.FullName;
-    }
 }
 
 static int ResolveTokenCapFromEnvironment()

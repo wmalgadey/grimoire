@@ -28,8 +28,8 @@ public class GovernanceIdentityTests
                 {
                   "version": 1,
                   "defaultDecision": "deny",
-                  "read": [{"pathPrefix": "wiki/"}],
-                  "write": [{"pathPrefix": "wiki/pages/"}]
+                  "read": [{"pathPrefix": "pages/"}],
+                  "write": [{"pathPrefix": "pages/"}]
                 }
                 """);
 

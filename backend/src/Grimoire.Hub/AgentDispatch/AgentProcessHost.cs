@@ -34,12 +34,18 @@ public interface IAgentProcessLauncher
 public sealed class AgentProcessHost : IAgentProcessLauncher
 {
     private readonly LocalSecretsLoader _secretsLoader;
-    private readonly string _agentProjectPath;
+    private readonly string _agentWorkerPath;
 
-    public AgentProcessHost(LocalSecretsLoader secretsLoader, string agentProjectPath)
+    /// <summary>
+    /// <paramref name="agentWorkerPath"/> is the Hub-resolved agent-worker location
+    /// (Grimoire:Paths:AgentWorker, research R4): a <c>.csproj</c> launches via
+    /// <c>dotnet run --project</c> (dev convenience), a <c>.dll</c> via <c>dotnet &lt;dll&gt;</c>,
+    /// anything else is launched directly as an executable.
+    /// </summary>
+    public AgentProcessHost(LocalSecretsLoader secretsLoader, string agentWorkerPath)
     {
         _secretsLoader = secretsLoader;
-        _agentProjectPath = agentProjectPath;
+        _agentWorkerPath = agentWorkerPath;
     }
 
     public async Task<IAgentProcessHandle> StartAsync(IngestAgentRequest request, CancellationToken cancellationToken = default)
@@ -87,23 +93,38 @@ public sealed class AgentProcessHost : IAgentProcessLauncher
     {
         var startInfo = new ProcessStartInfo
         {
-            FileName = "dotnet",
             RedirectStandardInput = true,
             RedirectStandardOutput = true,
             RedirectStandardError = true,
             UseShellExecute = false,
         };
 
-        startInfo.ArgumentList.Add("run");
-        startInfo.ArgumentList.Add("--project");
-        startInfo.ArgumentList.Add(_agentProjectPath);
-        startInfo.ArgumentList.Add("--");
+        if (_agentWorkerPath.EndsWith(".csproj", StringComparison.OrdinalIgnoreCase))
+        {
+            startInfo.FileName = "dotnet";
+            startInfo.ArgumentList.Add("run");
+            startInfo.ArgumentList.Add("--project");
+            startInfo.ArgumentList.Add(_agentWorkerPath);
+            startInfo.ArgumentList.Add("--");
+        }
+        else if (_agentWorkerPath.EndsWith(".dll", StringComparison.OrdinalIgnoreCase))
+        {
+            startInfo.FileName = "dotnet";
+            startInfo.ArgumentList.Add(_agentWorkerPath);
+        }
+        else
+        {
+            startInfo.FileName = _agentWorkerPath;
+        }
+
         startInfo.ArgumentList.Add("--task-id");
         startInfo.ArgumentList.Add(request.TaskId);
         startInfo.ArgumentList.Add("--source-ref");
         startInfo.ArgumentList.Add(request.SourceRef);
         startInfo.ArgumentList.Add("--source-kind");
         startInfo.ArgumentList.Add(request.SourceKind);
+        startInfo.ArgumentList.Add("--wiki-root");
+        startInfo.ArgumentList.Add(request.WikiRoot);
         startInfo.ArgumentList.Add("--pages-dir");
         startInfo.ArgumentList.Add(request.PagesDir);
         startInfo.ArgumentList.Add("--tasks-dir");

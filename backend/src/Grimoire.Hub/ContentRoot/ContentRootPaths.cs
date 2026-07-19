@@ -1,5 +1,14 @@
+using Grimoire.Hub.Runtime.Paths;
+
 namespace Grimoire.Hub.ContentRoot;
 
+/// <summary>
+/// Wiki content root and agent-instruction locations, as a flat projection of the
+/// single-composition-point <see cref="ResolvedGrimoirePaths"/> (ADR-009). Kept as a
+/// plain record (rather than folded into <see cref="ResolvedGrimoirePaths"/> itself) so
+/// consumers that only need content-root paths, and hermetic tests, do not have to
+/// depend on the full runtime-paths resolution/validation pipeline.
+/// </summary>
 public sealed record ContentRootPaths(
     string Root,
     string PagesDir,
@@ -10,17 +19,14 @@ public sealed record ContentRootPaths(
     string DefaultUserPromptPath,
     string PolicyPath)
 {
-    public static ContentRootPaths Resolve(string repoRoot, string contentRootDirName)
-    {
-        var root = Path.Combine(repoRoot, contentRootDirName);
-        return new ContentRootPaths(
-            Root: root,
-            PagesDir: Path.Combine(root, "pages"),
-            TasksDir: Path.Combine(root, "tasks"),
-            IndexPath: Path.Combine(root, "index.md"),
-            LogPath: Path.Combine(root, "log.md"),
-            SystemPromptPath: Path.Combine(repoRoot, "agents", "ingest", "system-prompt.md"),
-            DefaultUserPromptPath: Path.Combine(repoRoot, "agents", "ingest", "default-user-prompt.md"),
-            PolicyPath: Path.Combine(repoRoot, "agents", "ingest", "policy.json"));
-    }
+    public static ContentRootPaths FromResolved(ResolvedGrimoirePaths resolved) =>
+        new(
+            Root: resolved.ContentRoot,
+            PagesDir: resolved.PagesDir,
+            TasksDir: resolved.TasksDir,
+            IndexPath: resolved.IndexPath,
+            LogPath: resolved.LogPath,
+            SystemPromptPath: resolved.SystemPromptPath,
+            DefaultUserPromptPath: resolved.DefaultUserPromptPath,
+            PolicyPath: resolved.PolicyPath);
 }
