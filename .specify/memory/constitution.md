@@ -1,37 +1,55 @@
 <!--
 SYNC IMPACT REPORT
 ==================
-Version change: 1.2.0 → 1.3.0
+Version change: 1.3.0 → 1.4.0
 
 Principles modified:
-  - IV. Behavioral & Observable Engineering (added explicit trace-contract MUST rules)
+  - I. Domain Architecture & Strategic DDD → I. Domain Architecture, Strategic DDD &
+    Hexagonal Boundaries (added normative Ports & Adapters rules: external-system
+    ports, port ownership, adapter containment, persistence exemption, ADR gate for
+    new external-system boundaries)
 
 Principles added: none
 
 Sections modified:
-  - Definition of Done (added explicit trace-contract validation gate)
+  - Definition of Done (added hexagonal boundary gate: ports at external-system
+    boundaries, infrastructure packages confined to adapter namespaces)
 
 Sections removed: none
 
 Templates updated:
-  - .specify/templates/plan-template.md ✅ (added mandatory trace-strategy derivation
-    from each Distributed Trace Spans row to implementation, deterministic validation,
-    and CI enforcement tasks)
-  - .specify/templates/tasks-template.md ✅ (added mandatory trace-contract task
-    coverage for implementation, deterministic integration tests, and standard PR CI run)
+  - .specify/templates/plan-template.md ✅ (Architectural Constraints & ADRs section
+    now requires naming port, adapter namespace, and containment rule for any new
+    external-system dependency)
+  - .specify/templates/tasks-template.md ✅ (Phase 0 now requires adapter-containment
+    structural tests with Red/Green probe when a feature introduces a new
+    external-system adapter)
+  - .specify/templates/spec-template.md ✅ no change required (spec stays tech-agnostic)
+  - .specify/templates/checklist-template.md ✅ no change required
 
-Rationale for MINOR bump: this amendment introduces new normative MUST requirements
-for trace-chain implementation and explicit trace-contract propagation from plan
-observability rows into tasks, tests, and standard PR CI enforcement.
+Rationale for MINOR bump: Principle I is materially expanded with new normative MUST
+rules (hexagonal ports at external-system boundaries, adapter containment enforced by
+structural tests). No existing principle is removed or redefined: the persistence
+exemption preserves Principle II's anti-mocking stance, and existing code boundaries
+(IModelClient, IAgentProcessLauncher, guarded write layer) already conform.
 
-Deferred TODOs: none
+Deferred TODOs (implementation follow-up outside this amendment, via normal SDD flow):
+  - Draft ADR-010 (hexagonal adapter containment & port conventions) and move to
+    Accepted before enforcement tasks are generated
+  - Add adapter-containment structural tests to Grimoire.ArchTests with Red/Green
+    probes (Sqlite → Grimoire.Hub.OperationalState only; Anthropic SDK →
+    Grimoire.IngestAgent.AgentCore only; outbound HTTP fetch → Grimoire.Hub.Conversion
+    only)
+  - Extract ports for external-system adapters currently consumed concretely:
+    MarkItDownConverter (subprocess) and UrlContentFetcher (network) behind port
+    interfaces consumed by IngestSubmissionPipeline
 -->
 
 # Grimoire Constitution
 
 ## Core Principles
 
-### I. Domain Architecture & Strategic DDD
+### I. Domain Architecture, Strategic DDD & Hexagonal Boundaries
 
 Strategic Domain-Driven Design MUST be applied from the first commit. Ubiquitous Language
 and Bounded Context definitions are established before any code is written and reflected
@@ -44,8 +62,41 @@ The Domain Core MUST be strictly dependency-free: it MUST NOT import from Infras
 Framework, or Adapter packages. This boundary MUST be enforced by an automated architecture
 test.
 
+**Hexagonal structure (Ports & Adapters).** The backend follows a pragmatic
+ports-and-adapters architecture: the Domain Core is the innermost hexagon, harness
+orchestration code forms the application ring, and infrastructure lives in adapters at
+the edge. The following rules are normative:
+
+- **External-system ports.** Every dependency on an external system that hermetic
+  harness tests must be able to replace (Principle II) — LLM provider APIs, spawned
+  agent processes, subprocess-based converters, and outbound network fetching — MUST be
+  consumed through a port interface. The production adapter and the test fake implement
+  the same port. Orchestration code MUST NOT construct or reference the concrete adapter
+  type directly.
+- **Port ownership.** A port interface is declared in the consuming orchestration
+  namespace — the inside of the hexagon — never in an infrastructure-only location that
+  would invert the dependency direction.
+- **Adapter containment.** Infrastructure packages MUST be confined to their designated
+  adapter namespace: persistence driver packages (e.g., `Microsoft.Data.Sqlite`) only in
+  persistence adapter namespaces, LLM SDK packages only in the model-client adapter
+  namespace, outbound HTTP fetching only in the fetch adapter namespace. Domain and
+  orchestration namespaces MUST NOT import infrastructure packages. Each containment
+  rule MUST be enforced by a structural architecture test with a Red/Green probe
+  (Principle III).
+- **Persistence exemption.** Ports are NOT required for persistence and local
+  filesystem adapters (repositories, artifact stores, projection stores). Per
+  Principle II these are verified against real infrastructure; introducing a port
+  interface solely to enable mocking them violates Principle II and does not satisfy
+  this principle. Concrete repository and store classes MAY be injected directly,
+  provided they satisfy adapter containment.
+- **New boundaries via ADR.** Introducing a dependency on a new external system
+  requires an ADR that names the port, its adapter namespace, and its containment rule
+  before implementation begins (the Principle IV infrastructure rule applies).
+
 Big Design Up Front is explicitly rejected. Structural boundaries are earned via ADRs, not
-assumed upfront.
+assumed upfront. The hexagonal rules above do not mandate extra assemblies or layers:
+namespace-level containment enforced by architecture tests is sufficient until an ADR
+establishes a stronger boundary.
 
 ### II. Pragmatic Testing Strategy
 
@@ -227,6 +278,7 @@ A feature increment is DONE when ALL of the following conditions hold:
 - [ ] Trace contract is complete for every row in `plan.md ## Observability > Distributed Trace Spans`: implementation tasks define span names, parent/child relationships, and required attributes; deterministic integration tests validate span names, parent/child relationships, and correlation attributes (including shared IDs such as `task_id`); and these trace tests run in the standard PR CI pipeline
 - [ ] Agent-behavior evaluation tests (final phase) pass for every agent-judgment success criterion in the spec, at the thresholds the spec defines (only for features with agentic behavior)
 - [ ] The agentic boundary (Principle V) is respected: no wiki-content judgment is implemented as deterministic backend code, instruction files are loaded into the agent's context, and the guarded-tool structural test passes
+- [ ] Hexagonal boundary rules (Principle I) hold: external-system dependencies introduced or touched by the feature are consumed via ports with production adapter and test fake, and infrastructure packages appear only in their designated adapter namespaces (enforced by structural architecture tests)
 - [ ] Integration tests via Testcontainers cover all API boundaries introduced by the feature
 - [ ] CI/CD pipeline passes: architecture tests, integration tests, linting, build
 - [ ] No unapproved infrastructure was introduced
@@ -247,4 +299,4 @@ per semantic versioning (MAJOR: incompatible principle removals/redefinitions; M
 or materially expanded principles; PATCH: clarifications), update the Sync Impact Report,
 and propagate changes to the dependent templates in `.specify/templates/`.
 
-**Version**: 1.3.0 | **Ratified**: 2026-06-23 | **Last Amended**: 2026-07-05
+**Version**: 1.4.0 | **Ratified**: 2026-06-23 | **Last Amended**: 2026-07-18

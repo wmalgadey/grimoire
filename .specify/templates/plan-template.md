@@ -52,6 +52,13 @@
   cross-cutting concern not covered by existing ADRs, draft a new MADR in docs/adr/
   BEFORE finalizing this plan.
 
+  HEXAGONAL GATE (Constitution Principle I): If this feature adds a dependency on a
+  new external system (LLM API, spawned process, subprocess converter, network
+  service), the plan and its ADR MUST name: the port interface, the adapter namespace
+  that contains the infrastructure package, and the structural containment rule that
+  enforces it. Persistence/local-filesystem adapters are exempt from ports but not
+  from adapter containment.
+
   Format:
   - ADR-NNN: [Title] — [How it constrains this feature]
   - ADR-NNN: [Title] — [How it constrains this feature]

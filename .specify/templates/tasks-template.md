@@ -84,6 +84,9 @@ Enforce the structural rule from [ADR-XXX] before any feature code exists.
 **Requirements**:
 - Use ArchUnit (Java), NetArchTest.Rules (C#), import-linter (Python), or equivalent
 - Document the rule: e.g., "src/domain/ MUST NOT import from src/infrastructure/"
+- If the feature introduces a new external-system adapter (Constitution Principle I),
+  include an adapter-containment rule (infrastructure package importable only from its
+  designated adapter namespace) with its own Red/Green probe
 - Do NOT implement any feature code in this task
 
 **Red/Green probe** (required — confirms the test actually catches violations):
