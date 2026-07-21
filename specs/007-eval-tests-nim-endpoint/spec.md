@@ -8,6 +8,16 @@
 
 **Input**: User description: "die eval agent tests sollen ohne anthropic subscription laufen, sondern mit günstigeren anbietern. Im Projekt befindet sich bereits ein script um nim endpunkte über den litellm Proxy verfügbar zu machen. Diese test sollten idealerweise mit diesem nim endpunkt laufen und könnten auch on demand in github worklfows laufen, der api key dann als github secrets."
 
+## Clarifications
+
+### Session 2026-07-21
+
+- Q: When both an Anthropic credential AND an affordable-provider (NIM) configuration are present simultaneously, which provider is actually used for the eval run? → A: Ambiguous config is an error — the run fails fast with a configuration error rather than silently picking one.
+- Q: What is the timeout bound for a single provider call before an eval sample is force-failed? → A: 120 seconds.
+- Q: How should the CI eval workflow publish its readable results (FR-007)? → A: A PR comment summarizing per-test pass/fail and scores, plus transcripts as retrievable workflow artifacts.
+- Q: For the eval gate (FR-003), what must a developer explicitly set for the affordable-provider configuration to count as "present"? → A: All three (endpoint, model, and API key) must be explicitly set — no implicit defaults.
+- Q: What happens when the eval workflow is triggered without an associated PR (e.g., workflow_dispatch from a branch with no open PR)? → A: Artifacts only — no comment is posted; only the downloadable artifacts contain the results for that run.
+
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - Run agent evals locally without an Anthropic subscription (Priority: P1)
@@ -61,10 +71,11 @@ A developer wants to choose which provider and model an eval run uses — the af
 ### Edge Cases
 
 - What happens when the affordable provider returns responses that are structurally unusable for the agent loop (e.g., the model does not support tool use)? The eval run must fail with a diagnosable error naming the model capability problem, not report it as an agent-judgment failure.
-- What happens when the provider rate-limits or times out mid-run? The affected eval sample fails with the provider error recorded; the run must not hang indefinitely.
-- What happens when both Anthropic and affordable-provider configurations are present simultaneously? Exactly one provider is used per run, and the choice is deterministic and documented (explicit configuration wins over defaults).
+- What happens when the provider rate-limits or times out mid-run? A single provider call that does not complete within 120 seconds fails the affected eval sample with the provider/timeout error recorded; the run must not hang indefinitely.
+- What happens when both an Anthropic credential and a complete affordable-provider configuration are present simultaneously, with no explicit provider selection? The eval gate treats this as a configuration error and fails fast, naming the conflict — it does not silently pick a provider.
 - What happens when a cheaper model consistently scores below a spec-defined threshold that the reference model passes? The eval fails honestly at the spec-defined threshold; thresholds are not silently lowered per provider (see Assumptions).
 - What happens if someone triggers the CI eval workflow concurrently twice? Both runs are independent; results are attributed to their own run without interference.
+- What happens when the CI eval workflow is triggered without an associated pull request (e.g., workflow_dispatch from a branch with no open PR)? Results still publish as retrievable run artifacts; no PR comment is posted since there is no PR to comment on.
 
 ## Requirements *(mandatory)*
 
@@ -72,19 +83,21 @@ A developer wants to choose which provider and model an eval run uses — the af
 
 - **FR-001**: The agent-behavior evaluation suite MUST be runnable against a configurable model provider endpoint and model, without requiring any Anthropic subscription or Anthropic-specific credential.
 - **FR-002**: The default affordable path MUST use the project's existing NIM-endpoint-via-proxy setup (the scripts already present in the project), so a developer can go from "proxy started" to "evals running" with documented configuration only — no code changes.
-- **FR-003**: The eval enablement gate MUST accept the affordable-provider configuration as sufficient to run evals. When neither an Anthropic credential nor an affordable-provider configuration is present, eval tests MUST skip with a reason message that names both supported options.
+- **FR-003**: The eval enablement gate MUST accept the affordable-provider configuration as sufficient to run evals; a configuration counts as present only when its endpoint, model identifier, and API credential are all explicitly set — there are no implicit defaults for any of the three. When neither an Anthropic credential nor a complete affordable-provider configuration is present, eval tests MUST skip with a reason message that names both supported options.
 - **FR-004**: When evals are enabled but the configured endpoint is unreachable or the credential is rejected, eval tests MUST fail with an actionable connectivity/authentication error — they MUST NOT skip and MUST NOT misreport the problem as an agent-judgment failure.
 - **FR-005**: An on-demand, manually triggered CI workflow MUST run the eval suite against the affordable provider, reading the provider API key exclusively from the repository's secret store.
 - **FR-006**: The on-demand eval workflow MUST be separate from the standard PR pipeline: PR CI keeps running only deterministic gates and MUST NOT require the provider secret. (Constitution Principle II: harness tests stay hermetic; evals are the sampled, non-hermetic tier.)
-- **FR-007**: The CI eval workflow MUST publish the eval outcome (per-test pass/fail and the achieved scores against thresholds) in a form reviewers can read after the run, including the eval transcripts as retrievable run artifacts.
+- **FR-007**: The CI eval workflow MUST publish the eval outcome (per-test pass/fail and the achieved scores against thresholds) as a comment on the associated pull request when the trigger is associated with one, and MUST always publish the eval transcripts as retrievable run artifacts. When the trigger has no associated pull request, the workflow MUST still publish the transcripts as artifacts and MUST NOT attempt to post a comment.
 - **FR-008**: The provider API key MUST never appear in test output, logs, transcripts, or published CI artifacts.
 - **FR-009**: Every eval run record (task artifact, transcript) MUST name the model that actually produced the run, so results from different providers are distinguishable.
 - **FR-010**: The number of samples per eval MUST remain configurable per run (as today), so CI cost can be controlled independently of local runs.
 - **FR-011**: The existing Anthropic path MUST keep working unchanged for developers who have a subscription; selecting a provider MUST be a configuration decision, never a code change.
+- **FR-012**: When an Anthropic credential AND a complete affordable-provider configuration are both present without an explicit provider selection, the eval gate MUST fail fast with a configuration error naming the conflict — it MUST NOT silently choose a provider.
+- **FR-013**: A single provider call that does not complete within 120 seconds MUST cause the affected eval sample to fail with a timeout error recorded; it MUST NOT allow the run to hang indefinitely.
 
 ### Key Entities
 
-- **Provider configuration**: The set of values that select a model provider for an eval run — endpoint address, model identifier, and API credential. Exactly one active configuration per run.
+- **Provider configuration**: The set of values that select a model provider for an eval run — endpoint address, model identifier, and API credential. For the affordable-provider path, all three MUST be explicitly set for the configuration to count as present. Exactly one active configuration per run; an Anthropic credential and a complete affordable-provider configuration present together without an explicit provider selection is an invalid state and the run fails fast.
 - **Eval run record**: The existing per-run output (task artifact, transcript, scored result) extended by the guarantee that it faithfully names the model/provider used.
 - **CI eval workflow run**: A manually triggered execution of the eval suite in CI, bound to a secret-stored credential, producing published results and artifacts.
 
