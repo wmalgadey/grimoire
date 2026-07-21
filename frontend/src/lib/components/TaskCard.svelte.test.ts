@@ -22,7 +22,11 @@ test('failed task renders the failure reason and a details link', async () => {
 	await expect
 		.element(screen.getByTestId('task-card-failure-reason'))
 		.toHaveTextContent('PdfReadError: unable to parse cross-reference table');
-	await expect.element(screen.getByTestId('task-card-link')).toHaveAttribute('href', task.taskLink);
+	// 006: Details links to the rendered internal route, built from taskId — not taskLink
+	// (which stays pointed at the Hub JSON API for machine consumers).
+	await expect
+		.element(screen.getByTestId('task-card-link'))
+		.toHaveAttribute('href', `/tasks/${task.taskId}`);
 });
 
 test('completed task does not render a failure reason', async () => {

@@ -119,4 +119,24 @@ public static class HubMetrics
     {
         _queueDepth.Record(depth);
     }
+
+    // --- 006-hexagonal-arch-tasks-ui (plan.md ## Observability > Business Metrics) ---
+
+    private static readonly Counter<long> _taskRecordReadsTotal =
+        Meter.CreateCounter<long>("hub.task_record_reads_total",
+            description: "Task-record API reads");
+
+    public static void RecordTaskRecordRead(string outcome)
+    {
+        _taskRecordReadsTotal.Add(1, new KeyValuePair<string, object?>("outcome", outcome));
+    }
+
+    private static readonly Counter<long> _taskRecordChangeEventsTotal =
+        Meter.CreateCounter<long>("hub.task_record_change_events_total",
+            description: "taskRecordChanged events published");
+
+    public static void RecordTaskRecordChangeEvent()
+    {
+        _taskRecordChangeEventsTotal.Add(1);
+    }
 }

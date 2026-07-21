@@ -21,7 +21,9 @@ public class SourceArtifactPersistenceTests
         var taskId = await fixture.Pipeline.AcceptAsync(
             new IngestSubmissionInput(IngestSubmissionKind.Url, "https://example.test/article", null, null, null));
 
-        await fixture.WaitForStatusAsync(taskId, s => s is "completed" or "failed");
+        // Real markitdown subprocess (Python startup + conversion): under full-suite
+        // parallel load the default 10 s budget is too tight on a busy dev machine.
+        await fixture.WaitForStatusAsync(taskId, s => s is "completed" or "failed", TimeSpan.FromSeconds(30));
 
         var artifactSet = await fixture.SourceArtifactStore.TryReadMetadataAsync(taskId);
         Assert.NotNull(artifactSet);

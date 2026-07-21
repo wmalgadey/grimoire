@@ -1,15 +1,14 @@
 using System.Text;
+using Grimoire.Hub.IngestSubmission;
 
-namespace Grimoire.Hub.Conversion;
-
-public sealed record UrlFetchResult(bool Success, byte[]? Content, string? ContentType, int? HttpStatus, string? FailureReason);
+namespace Grimoire.Hub.IngestSubmission.Adapters.HttpFetch;
 
 /// <summary>
-/// Fetches URL content at ingest-submission time (research.md Decision 3, FR-004). The Hub owns
-/// this fetch; the persisted result is what the triggered Ingest agent run consumes — no re-fetch
-/// happens later (FR-010).
+/// Fetches URL content at ingest-submission time (research.md Decision 3, FR-004; ADR-010
+/// P3). The Hub owns this fetch; the persisted result is what the triggered Ingest agent
+/// run consumes — no re-fetch happens later (FR-010).
 /// </summary>
-public sealed class UrlContentFetcher
+public sealed class UrlContentFetcher : IUrlContentFetcher
 {
     // A 2xx HTTP status does not guarantee the requested article was actually returned: sites that
     // gate content behind a login (e.g. LinkedIn posts) commonly respond 200 OK with a login/auth

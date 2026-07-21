@@ -129,6 +129,7 @@ public class SubmissionPromptApiTests
                     services.AddSingleton(fixture.ContentPaths);
                     services.AddSingleton(fixture.SourceArtifactStore);
                     services.AddSingleton(fixture.Coordinator);
+                    services.AddSingleton(new TaskRecordReadModel(fixture.ResolvedPaths));
                 });
                 webHost.Configure(app =>
                 {

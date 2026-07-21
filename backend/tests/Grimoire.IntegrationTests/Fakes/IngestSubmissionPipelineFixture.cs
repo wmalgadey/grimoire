@@ -2,8 +2,11 @@ using Grimoire.Hub.AgentDispatch;
 using Grimoire.Hub.ContentRoot;
 using Grimoire.Hub.Conversion;
 using Grimoire.Hub.IngestSubmission;
+using Grimoire.Hub.IngestSubmission.Adapters.HttpFetch;
+using Grimoire.Hub.IngestSubmission.Adapters.MarkItDown;
 using Grimoire.Hub.OperationalState;
 using Grimoire.Hub.Realtime;
+using Grimoire.Hub.Runtime.Paths;
 using Grimoire.Hub.TaskArtifact;
 using Microsoft.AspNetCore.SignalR;
 
@@ -20,6 +23,7 @@ public sealed class IngestSubmissionPipelineFixture : IDisposable
     public string Root { get; }
     public ContentRootPaths ContentPaths { get; }
     public RawStoragePaths RawPaths { get; }
+    public ResolvedGrimoirePaths ResolvedPaths { get; }
     public SourceArtifactStore SourceArtifactStore { get; }
     public KanbanBoardProjectionStore BoardStore { get; } = new();
     public FakeAgentProcessLauncher Launcher { get; }
@@ -50,7 +54,9 @@ public sealed class IngestSubmissionPipelineFixture : IDisposable
         TimeProvider? timeProvider = null,
         ContentRootPaths? contentPaths = null,
         RawStoragePaths? rawPaths = null,
-        string? root = null)
+        string? root = null,
+        IMarkdownConverter? converter = null,
+        IUrlContentFetcher? urlFetcher = null)
     {
         Root = root ?? Path.Combine(Path.GetTempPath(), $"grimoire-ingest-submission-{Guid.NewGuid():N}");
         Directory.CreateDirectory(Root);
@@ -93,6 +99,25 @@ public sealed class IngestSubmissionPipelineFixture : IDisposable
             SourcesDir: Path.Combine(Root, "raw", "sources"));
         SourceArtifactStore = new SourceArtifactStore(RawPaths);
 
+        ResolvedPaths = new ResolvedGrimoirePaths(
+            BaseDir: Root,
+            DataDir: Root,
+            ContentRoot: ContentPaths.Root,
+            PagesDir: ContentPaths.PagesDir,
+            TasksDir: ContentPaths.TasksDir,
+            IndexPath: ContentPaths.IndexPath,
+            LogPath: ContentPaths.LogPath,
+            RawOriginalsDir: RawPaths.OriginalsDir,
+            RawSourcesDir: RawPaths.SourcesDir,
+            StateDbPath: Path.Combine(Root, "operational-state.db"),
+            SecretsFilePath: Path.Combine(Root, ".env"),
+            InstructionsDir: Path.GetDirectoryName(ContentPaths.SystemPromptPath)!,
+            SystemPromptPath: ContentPaths.SystemPromptPath,
+            DefaultUserPromptPath: ContentPaths.DefaultUserPromptPath,
+            PolicyPath: ContentPaths.PolicyPath,
+            AgentWorkerPath: "unused",
+            Locations: []);
+
         var dbPath = Path.Combine(Root, "operational-state.db");
         Repository = new OperationalStateRepository(dbPath);
         Repository.InitializeAsync().GetAwaiter().GetResult();
@@ -115,14 +140,14 @@ public sealed class IngestSubmissionPipelineFixture : IDisposable
         Coordinator.InitializeAsync().GetAwaiter().GetResult();
 
         var httpClient = new HttpClient(urlFetchHandler ?? new NotFoundHandler());
-        var urlFetcher = new UrlContentFetcher(httpClient);
-        var converter = new MarkItDownConverter(new MarkItDownOptions(markItDownExecutablePath, TimeSpan.FromSeconds(30)));
+        var effectiveUrlFetcher = urlFetcher ?? new UrlContentFetcher(httpClient);
+        var effectiveConverter = converter ?? new MarkItDownConverter(new MarkItDownOptions(markItDownExecutablePath, TimeSpan.FromSeconds(30)));
 
         Pipeline = new IngestSubmissionPipeline(
             new HubTaskArtifactWriter(),
             SourceArtifactStore,
-            converter,
-            urlFetcher,
+            effectiveConverter,
+            effectiveUrlFetcher,
             publisher,
             Coordinator,
             ContentPaths,

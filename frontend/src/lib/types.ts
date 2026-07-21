@@ -94,3 +94,29 @@ export interface RunActivityEvent extends RunActivity {
 // 004 (FR-023): client-only projection of the board's SignalR connection lifecycle —
 // not a domain entity, purely a display state for ConnectionStatusIndicator.svelte.
 export type ConnectionState = 'connecting' | 'connected' | 'reconnecting' | 'disconnected';
+
+// 006 (contracts/task-record-api.md, data-model.md TaskRecord): the per-task markdown
+// record's parsed frontmatter, served alongside the frontmatter-stripped markdown body.
+export interface TaskRecordMetadata {
+	status: string;
+	agent: string | null;
+	startedAt: string;
+	completedAt: string | null;
+	sourceRef: string | null;
+	originalRef: string | null;
+	failureReason: string | null;
+}
+
+export interface TaskRecord {
+	taskId: string;
+	metadata: TaskRecordMetadata;
+	body: string;
+}
+
+// 006 (contracts/task-record-changed-event.md): realtime notification that a task
+// record's file changed; carries no content — consumers refetch the TaskRecord.
+export interface TaskRecordChangedEvent {
+	eventId: string;
+	taskId: string;
+	changedAt: string;
+}

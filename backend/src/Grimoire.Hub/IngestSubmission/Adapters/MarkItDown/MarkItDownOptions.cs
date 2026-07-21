@@ -1,4 +1,4 @@
-namespace Grimoire.Hub.Conversion;
+namespace Grimoire.Hub.IngestSubmission.Adapters.MarkItDown;
 
 /// <summary>
 /// Configuration surface for the MarkItDown conversion adapter (research.md Decision 1).

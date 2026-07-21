@@ -5,7 +5,8 @@ import type {
 	IngestSubmissionDefaults,
 	IngestSubmissionKind,
 	SubmissionAcceptedResponse,
-	TaskDetail
+	TaskDetail,
+	TaskRecord
 } from '$lib/types';
 
 const BASE_PATH = '/api/ingest-submissions';
@@ -113,6 +114,27 @@ export async function getTaskDetail(
 	}
 
 	return response.json();
+}
+
+// 006 (contracts/task-record-api.md): a 404 is an expected, common outcome (record not
+// yet written, or unparseable) — modeled as a discriminant rather than a thrown error so
+// callers render the placeholder state without a try/catch.
+export type TaskRecordResult = { status: 'ok'; record: TaskRecord } | { status: 'unavailable' };
+
+export async function getTaskRecord(
+	taskId: string,
+	fetchImpl: typeof fetch = fetch
+): Promise<TaskRecordResult> {
+	const response = await fetchImpl(`${BASE_PATH}/${encodeURIComponent(taskId)}/task-record`);
+	if (response.status === 404) {
+		return { status: 'unavailable' };
+	}
+	if (!response.ok) {
+		throw new IngestSubmissionApiError(await parseErrorMessage(response), response.status);
+	}
+
+	const record: TaskRecord = await response.json();
+	return { status: 'ok', record };
 }
 
 /** 004: single source of truth for the submission form's prompt editor and step toggles. */

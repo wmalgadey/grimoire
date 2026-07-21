@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { resolve } from '$app/paths';
 	import type { BoardTask, RunActivity } from '$lib/types';
 	import StatusBadge from './StatusBadge.svelte';
 
@@ -42,10 +43,12 @@
 
 	<div class="flex items-center justify-between text-xs text-slate-500">
 		<time datetime={task.updatedAt}>{new Date(task.updatedAt).toLocaleString()}</time>
-		<!-- taskLink points at the Hub JSON API (contracts/ingest-submission-api.md), not a SvelteKit route -->
-		<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
-		<a href={task.taskLink} class="underline hover:no-underline" data-testid="task-card-link"
-			>Details</a
+		<!-- Rendered detail view (006 research.md Decision 7): built from taskId, not taskLink —
+		     taskLink keeps pointing at the Hub JSON API for machine consumers. -->
+		<a
+			href={resolve('/tasks/[taskId]', { taskId: task.taskId })}
+			class="underline hover:no-underline"
+			data-testid="task-card-link">Details</a
 		>
 	</div>
 </article>

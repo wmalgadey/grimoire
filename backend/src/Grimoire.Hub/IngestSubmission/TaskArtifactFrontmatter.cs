@@ -16,7 +16,9 @@ public sealed record TaskArtifactFrontmatter(
     string? OriginalRef,
     string? FailureReason,
     string? UserPromptSource = null,
-    IReadOnlyDictionary<string, bool>? ConvertSteps = null)
+    IReadOnlyDictionary<string, bool>? ConvertSteps = null,
+    string? Agent = null,
+    DateTimeOffset? CompletedAt = null)
 {
     public static TaskArtifactFrontmatter? TryParse(string markdown)
     {
@@ -41,6 +43,12 @@ public sealed record TaskArtifactFrontmatter(
             ? parsed
             : DateTimeOffset.MinValue;
 
+        var completedAt = frontmatter.TryGetValue("completed_at", out var completedRaw)
+            && !string.Equals(completedRaw, "null", StringComparison.OrdinalIgnoreCase)
+            && DateTimeOffset.TryParse(completedRaw, out var parsedCompleted)
+                ? parsedCompleted
+                : (DateTimeOffset?)null;
+
         return new TaskArtifactFrontmatter(
             TaskId: taskId,
             Status: status,
@@ -49,7 +57,9 @@ public sealed record TaskArtifactFrontmatter(
             OriginalRef: Unquote(frontmatter, "original_ref"),
             FailureReason: Unquote(frontmatter, "failure_reason"),
             UserPromptSource: Unquote(frontmatter, "user_prompt_source"),
-            ConvertSteps: ParseConvertSteps(frontmatter));
+            ConvertSteps: ParseConvertSteps(frontmatter),
+            Agent: Unquote(frontmatter, "agent"),
+            CompletedAt: completedAt);
     }
 
     /// <summary>
