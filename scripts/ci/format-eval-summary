@@ -1,0 +1,80 @@
+#!/usr/bin/env python3
+"""
+Converts a `dotnet test --logger trx` results file for `Grimoire.AgentEvals` into the
+markdown pass/fail + scores summary used by `.github/workflows/eval.yml` — both as the
+PR-comment body (when `pr_number` was provided) and the `$GITHUB_STEP_SUMMARY` job summary
+(always). See specs/007-eval-tests-nim-endpoint/contracts/eval-workflow-dispatch.md.
+
+Each eval test asserts a single aggregate threshold (e.g. "SC-006 threshold not met.
+Success rate: 66.7% (2/3).") rather than per-sample results, so a "score" is only available
+in the assertion failure message on a failed test; passed tests are reported without one.
+"""
+
+import sys
+import xml.etree.ElementTree as ET
+
+
+def _namespace(root):
+    return root.tag.split("}")[0] + "}" if root.tag.startswith("{") else ""
+
+
+def _extract_score(message):
+    if not message:
+        return ""
+
+    return message.strip().splitlines()[0]
+
+
+def format_summary(trx_path):
+    root = ET.parse(trx_path).getroot()
+    ns = _namespace(root)
+
+    results = root.find(f"{ns}Results")
+    unit_test_results = results.findall(f"{ns}UnitTestResult") if results is not None else []
+
+    rows = []
+    passed = 0
+    failed = 0
+
+    for result in unit_test_results:
+        name = result.get("testName", "unknown")
+        outcome = result.get("outcome", "Unknown")
+
+        message = None
+        output = result.find(f"{ns}Output")
+        if output is not None:
+            error_info = output.find(f"{ns}ErrorInfo")
+            if error_info is not None:
+                message_el = error_info.find(f"{ns}Message")
+                if message_el is not None:
+                    message = message_el.text
+
+        if outcome == "Passed":
+            passed += 1
+            rows.append((name, "✅ Passed", ""))
+        else:
+            failed += 1
+            rows.append((name, "❌ Failed", _extract_score(message)))
+
+    lines = ["## Agent Eval Results", "", "| Test | Outcome | Detail |", "|------|---------|--------|"]
+    for name, status_icon, detail in rows:
+        lines.append(f"| {name} | {status_icon} | {detail.replace('|', chr(92) + '|')} |")
+
+    total = passed + failed
+    lines.append("")
+    lines.append(f"**{passed} passed, {failed} failed, {total} total**")
+
+    return "\n".join(lines) + "\n"
+
+
+def main(argv):
+    if len(argv) != 2:
+        print("Usage: format-eval-summary <results.trx>", file=sys.stderr)
+        return 2
+
+    sys.stdout.write(format_summary(argv[1]))
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main(sys.argv))

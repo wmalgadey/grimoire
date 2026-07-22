@@ -19,6 +19,26 @@ public class HexagonalPortsAdapterRuleTests
 {
     private static Assembly HubAssembly => typeof(Grimoire.Hub.HubMetrics).Assembly;
     private static Assembly IngestAgentAssembly => typeof(Grimoire.IngestAgent.AgentCliOptions).Assembly;
+    private static Assembly AgentEvalsAssembly => typeof(Grimoire.AgentEvals.EvalGate).Assembly;
+
+    // ---- C2 (007-eval-tests-nim-endpoint): the eval harness must reach the Anthropic
+    // Messages API only through the ADR-010 IModelClient port (AnthropicModelClient),
+    // never by depending on the Anthropic SDK directly — this is the architectural premise
+    // the eval-provider-resolution design in research.md D1/D2 relies on.
+
+    [Fact]
+    public void AgentEvals_MustNotDependOn_AnthropicSdk()
+    {
+        var result = Types.InAssembly(AgentEvalsAssembly)
+            .ShouldNot()
+            .HaveDependencyOn("Anthropic")
+            .GetResult();
+
+        Assert.True(result.IsSuccessful,
+            "C2 (ADR-010, extended by 007-eval-tests-nim-endpoint): Grimoire.AgentEvals must not " +
+            "depend on the Anthropic SDK directly; it must reach model providers only through " +
+            "the IModelClient port. Violations: " + string.Join(", ", result.FailingTypeNames ?? []));
+    }
 
     // ---- C1: Microsoft.Data.Sqlite confined to the designated persistence adapter ----
     // No active violation (OperationalStateRepository already owns all Sqlite usage);

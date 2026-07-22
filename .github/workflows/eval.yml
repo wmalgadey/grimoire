@@ -1,0 +1,116 @@
+name: Agent Evals (affordable provider)
+
+on:
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: "PR number to post the results summary to (optional; omit for artifacts/job-summary only)"
+        required: false
+        type: string
+      sample_count:
+        description: "Samples per eval (optional; suite default is 10, clamped 1-20)"
+        required: false
+        type: string
+
+permissions:
+  contents: read
+  pull-requests: write
+
+env:
+  DOTNET_NOLOGO: true
+
+jobs:
+  eval:
+    name: Run agent evals against the affordable provider
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Restore solution
+        run: dotnet restore backend/Grimoire.slnx
+
+      - name: Build solution
+        run: dotnet build backend/Grimoire.slnx --configuration Release --no-restore
+
+      # Isolation from the PR pipeline (SC-005): this job never sets ANTHROPIC_AUTH_TOKEN —
+      # only the affordable provider's GRIMOIRE_EVAL_PROVIDER_* variables below, sourced
+      # exclusively from the NVIDIA_NIM_API_KEY repository secret (FR-005).
+      - name: Start LiteLLM proxy (NVIDIA NIM affordable provider)
+        env:
+          NVIDIA_NIM_API_KEY: ${{ secrets.NVIDIA_NIM_API_KEY }}
+        run: |
+          set -euo pipefail
+          pip install --break-system-packages uv
+          uv tool install 'litellm[proxy]' --with python-dotenv
+          export PATH="$HOME/.local/bin:$PATH"
+
+          (cd scripts/nim && nohup litellm --config litellm_config.yaml --port 4000 > /tmp/litellm-proxy.log 2>&1 &)
+
+          echo "Waiting for the LiteLLM proxy to accept connections on :4000..."
+          ready=""
+          for _ in $(seq 1 30); do
+            if curl -sf http://localhost:4000/health/liveliness > /dev/null 2>&1; then
+              ready=1
+              break
+            fi
+            sleep 2
+          done
+
+          if [ -z "$ready" ]; then
+            echo "::error::LiteLLM proxy did not become ready within 60s — failing fast rather than running evals against a dead endpoint."
+            cat /tmp/litellm-proxy.log || true
+            exit 1
+          fi
+
+          echo "LiteLLM proxy is up."
+
+      - name: Run agent evals
+        env:
+          GRIMOIRE_EVAL: "1"
+          GRIMOIRE_EVAL_PROVIDER_BASE_URL: "http://localhost:4000"
+          GRIMOIRE_EVAL_PROVIDER_MODEL: "nvidia-model"
+          GRIMOIRE_EVAL_PROVIDER_API_KEY: ${{ secrets.NVIDIA_NIM_API_KEY }}
+          GRIMOIRE_EVAL_SAMPLES: ${{ inputs.sample_count }}
+        run: |
+          dotnet test backend/tests/Grimoire.AgentEvals \
+            --configuration Release \
+            --no-build \
+            --logger "trx;LogFileName=eval-results.trx" \
+            --results-directory "${{ github.workspace }}/eval-artifacts"
+
+      - name: Format eval summary
+        if: always()
+        run: |
+          if [ -f "eval-artifacts/eval-results.trx" ]; then
+            python3 scripts/ci/format-eval-summary "eval-artifacts/eval-results.trx" > eval-summary.md
+          else
+            echo "## Agent Eval Results" > eval-summary.md
+            echo "" >> eval-summary.md
+            echo "No results file was produced — the eval run failed before completing (see the job log)." >> eval-summary.md
+          fi
+          cat eval-summary.md >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload eval results and transcripts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: agent-eval-results
+          path: |
+            eval-artifacts/**
+            /tmp/grimoire-agent-evals/transcripts/**
+          if-no-files-found: warn
+
+      # FR-007 no-PR fallback: only attempted when pr_number was provided; artifacts and
+      # the job summary above are otherwise the only output.
+      - name: Post PR comment
+        if: always() && inputs.pr_number != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh pr comment "${{ inputs.pr_number }}" --body-file eval-summary.md

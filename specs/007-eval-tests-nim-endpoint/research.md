@@ -97,6 +97,21 @@ eval failure later.
   Assumptions section designates exactly one supported mechanism, and offering three
   increases support burden for a solo-developer project (Principle II proportionality).
 
+**Risk resolution (T002, executed 2026-07-21)**: Installed `litellm[proxy]` via
+`uv tool install 'litellm[proxy]' --with python-dotenv` (the `pip install uv` line in
+`run-litellm-proxy.sh` fails on machines without `pip` on `PATH` — `uv` itself is
+sufficient and already present; no script change needed since the line is a no-op once
+`uv` is installed). Started the proxy (`litellm --config litellm_config.yaml --port 4000`
+with `NVIDIA_NIM_API_KEY` set from `data/.env`'s `NVIDIA_API_KEY`) and confirmed
+`GET /health/liveliness` returns `200` within ~8s of startup. Sent
+`POST http://localhost:4000/v1/messages` with `model: "nvidia-model"` and a minimal
+Anthropic-Messages-API-shaped body (`x-api-key`, `anthropic-version: 2023-06-01` headers) —
+the proxy returned a well-formed Anthropic Messages API response (`type: "message"`,
+`role: "assistant"`, `content: [{"type": "text", ...}]`, `stop_reason: "end_turn"`,
+`usage.input_tokens`/`output_tokens`). **No protocol mismatch and no config adjustment
+required** — `scripts/nim/litellm_config.yaml` works as committed against the real NVIDIA
+NIM backend.
+
 ## D4 — Timeout enforcement via a decorator on the port, not inside `AnthropicModelClient`
 
 **Decision**: Add `TimeoutEnforcingModelClient : IModelClient`, a decorator (same pattern as

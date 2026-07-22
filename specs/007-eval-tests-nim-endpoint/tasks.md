@@ -46,7 +46,7 @@ D1/D2).
 
 **⚠️ NON-NEGOTIABLE**: No feature implementation can begin until Phase 0 is complete.
 
-- [ ] T001 Write and verify a new NetArchTest rule in `backend/tests/Grimoire.ArchTests/HexagonalPortsAdapterRuleTests.cs` (or a new adjacent file) asserting the `Grimoire.AgentEvals` test assembly has **no** dependency on the `Anthropic` SDK namespace (extends ADR-010's C2 containment, currently scoped only to `Grimoire.IngestAgent`, to the eval harness assembly that this feature's design depends on staying port-only)
+- [X] T001 Write and verify a new NetArchTest rule in `backend/tests/Grimoire.ArchTests/HexagonalPortsAdapterRuleTests.cs` (or a new adjacent file) asserting the `Grimoire.AgentEvals` test assembly has **no** dependency on the `Anthropic` SDK namespace (extends ADR-010's C2 containment, currently scoped only to `Grimoire.IngestAgent`, to the eval harness assembly that this feature's design depends on staying port-only)
 
   **Red/Green probe** (required):
   1. Write the rule.
@@ -66,8 +66,8 @@ D1/D2).
 the misleading existing documentation before adding new documented configuration on top of
 it.
 
-- [ ] T002 Smoke-test `scripts/nim/run-litellm-proxy.sh` + `scripts/nim/litellm_config.yaml`: start the proxy, point the Anthropic .NET SDK (or a `curl POST http://localhost:4000/v1/messages`) at it with `model: "nvidia-model"`, and confirm it returns a valid Anthropic-Messages-API-shaped response. Record the outcome (and any required config adjustment) as an update to `specs/007-eval-tests-nim-endpoint/research.md` (D3 risk resolution)
-- [ ] T003 [P] Update `.env-example`: remove the stale `claude-nim`/port-3456 commented block (superseded, per research.md D3) and add a corrected commented example for `GRIMOIRE_EVAL_PROVIDER_BASE_URL=http://localhost:4000`, `GRIMOIRE_EVAL_PROVIDER_MODEL=nvidia-model`, `GRIMOIRE_EVAL_PROVIDER_API_KEY="$NVIDIA_API_KEY"` matching the LiteLLM proxy flow
+- [X] T002 Smoke-test `scripts/nim/run-litellm-proxy.sh` + `scripts/nim/litellm_config.yaml`: start the proxy, point the Anthropic .NET SDK (or a `curl POST http://localhost:4000/v1/messages`) at it with `model: "nvidia-model"`, and confirm it returns a valid Anthropic-Messages-API-shaped response. Record the outcome (and any required config adjustment) as an update to `specs/007-eval-tests-nim-endpoint/research.md` (D3 risk resolution)
+- [X] T003 [P] Update `.env-example`: remove the stale `claude-nim`/port-3456 commented block (superseded, per research.md D3) and add a corrected commented example for `GRIMOIRE_EVAL_PROVIDER_BASE_URL=http://localhost:4000`, `GRIMOIRE_EVAL_PROVIDER_MODEL=nvidia-model`, `GRIMOIRE_EVAL_PROVIDER_API_KEY="$NVIDIA_API_KEY"` matching the LiteLLM proxy flow
 
 **Checkpoint**: The affordable-provider proxy is confirmed reachable and documented; user story implementation can now begin.
 
@@ -81,12 +81,12 @@ exercise the same resolved configuration and the same model client).
 
 **⚠️ CRITICAL**: No user story work can begin until this phase is complete.
 
-- [ ] T004 [P] Add `ProviderKind` enum, `ProviderConfiguration` record, and `EvalGateOutcome` record to `backend/tests/Grimoire.AgentEvals/AgentEvalSupport.cs` per `data-model.md`
-- [ ] T005 Implement `EvalProviderResolver.Resolve()` as a pure function of environment variables → `EvalGateOutcome`, per the resolution table in `contracts/eval-provider-env-vars.md`, in `backend/tests/Grimoire.AgentEvals/AgentEvalSupport.cs` (depends on T004)
-- [ ] T006 [P] Implement `TimeoutEnforcingModelClient : IModelClient` (decorator, injectable timeout, default 120s) and `ModelCallTimeoutException` in `backend/tests/Grimoire.AgentEvals/AgentEvalSupport.cs`
-- [ ] T007 Replace `EvalGate.IsEnabled`'s boolean check with `EvalProviderResolver`-backed resolution in `EvalFactAttribute`: `Enabled` → run, `Skipped` → `Skip = Reason` (existing xUnit mechanism), `ConfigurationError` → throw so the run fails loudly rather than skipping (FR-012), in `backend/tests/Grimoire.AgentEvals/AgentEvalSupport.cs` (depends on T005)
-- [ ] T008 Wire the resolved `ProviderConfiguration` and `TimeoutEnforcingModelClient` into `AgentEvalRunner.RunAsync`: when `Kind == Affordable`, set `GRIMOIRE_INGEST_BASE_URL`/`GRIMOIRE_INGEST_MODEL`/`ANTHROPIC_AUTH_TOKEN` from the resolved config immediately before constructing `AnthropicModelClient`, then wrap it in `TimeoutEnforcingModelClient` before handing it to `RecordingModelClient`/`AgentLoop`, in `backend/tests/Grimoire.AgentEvals/AgentEvalSupport.cs` (depends on T005, T006, T007)
-- [ ] T009 [P] Extend the credential-redaction path in `AgentEvalRunner`'s failure handling to also scrub the configured `GRIMOIRE_EVAL_PROVIDER_API_KEY` value from `FailureReason`/`Narrative` (mirrors `SanitizeErrorText` in `backend/src/Grimoire.IngestAgent/Program.cs:353`), in `backend/tests/Grimoire.AgentEvals/AgentEvalSupport.cs` (depends on T008)
+- [X] T004 [P] Add `ProviderKind` enum, `ProviderConfiguration` record, and `EvalGateOutcome` record to `backend/tests/Grimoire.AgentEvals/AgentEvalSupport.cs` per `data-model.md`
+- [X] T005 Implement `EvalProviderResolver.Resolve()` as a pure function of environment variables → `EvalGateOutcome`, per the resolution table in `contracts/eval-provider-env-vars.md`, in `backend/tests/Grimoire.AgentEvals/AgentEvalSupport.cs` (depends on T004)
+- [X] T006 [P] Implement `TimeoutEnforcingModelClient : IModelClient` (decorator, injectable timeout, default 120s) and `ModelCallTimeoutException` in `backend/tests/Grimoire.AgentEvals/AgentEvalSupport.cs`
+- [X] T007 Replace `EvalGate.IsEnabled`'s boolean check with `EvalProviderResolver`-backed resolution in `EvalFactAttribute`: `Enabled` → run, `Skipped` → `Skip = Reason` (existing xUnit mechanism), `ConfigurationError` → throw so the run fails loudly rather than skipping (FR-012), in `backend/tests/Grimoire.AgentEvals/AgentEvalSupport.cs` (depends on T005)
+- [X] T008 Wire the resolved `ProviderConfiguration` and `TimeoutEnforcingModelClient` into `AgentEvalRunner.RunAsync`: when `Kind == Affordable`, set `GRIMOIRE_INGEST_BASE_URL`/`GRIMOIRE_INGEST_MODEL`/`ANTHROPIC_AUTH_TOKEN` from the resolved config immediately before constructing `AnthropicModelClient`, then wrap it in `TimeoutEnforcingModelClient` before handing it to `RecordingModelClient`/`AgentLoop`, in `backend/tests/Grimoire.AgentEvals/AgentEvalSupport.cs` (depends on T005, T006, T007)
+- [X] T009 [P] Extend the credential-redaction path in `AgentEvalRunner`'s failure handling to also scrub the configured `GRIMOIRE_EVAL_PROVIDER_API_KEY` value from `FailureReason`/`Narrative` (mirrors `SanitizeErrorText` in `backend/src/Grimoire.IngestAgent/Program.cs:353`), in `backend/tests/Grimoire.AgentEvals/AgentEvalSupport.cs` (depends on T008)
 
 **Checkpoint**: Foundation ready — gate resolution, timeout enforcement, and provider wiring are all functional. User story implementation can now begin.
 
@@ -106,17 +106,17 @@ observe every eval test executes (none skip) and produces a scored result.
 
 > **NOTE: Write these tests FIRST, ensure they FAIL before the Phase 2 implementation is complete**
 
-- [ ] T010 [P] [US1] Test: neither Anthropic nor affordable configured → `Skipped`, reason names both options (FR-003) in `backend/tests/Grimoire.AgentEvals/EvalProviderResolverTests.cs`
-- [ ] T011 [P] [US1] Test: affordable-only, all 3 vars set → `Enabled`, `Kind = Affordable` in `backend/tests/Grimoire.AgentEvals/EvalProviderResolverTests.cs`
-- [ ] T012 [P] [US1] Test: partial affordable config (1 or 2 of the 3 vars set) → `Skipped`, not counted as present (data-model.md identity rule) in `backend/tests/Grimoire.AgentEvals/EvalProviderResolverTests.cs`
-- [ ] T013 [P] [US1] Test: `ANTHROPIC_AUTH_TOKEN` set AND all 3 affordable vars set → `ConfigurationError` naming the conflict, not a silent pick (FR-012) in `backend/tests/Grimoire.AgentEvals/EvalProviderResolverTests.cs`
-- [ ] T014 [P] [US1] Test: affordable endpoint unreachable (refused local port) → eval sample fails with an actionable connectivity error — not a skip, not misreported as an agent-judgment failure (FR-004) in `backend/tests/Grimoire.AgentEvals/EvalConnectivityTests.cs`
-- [ ] T015 [P] [US1] Test: `TimeoutEnforcingModelClient` wrapping a `FakeModelClient` whose `NextTurnAsync` never completes, with a short injected timeout, throws `ModelCallTimeoutException` (FR-013) in `backend/tests/Grimoire.AgentEvals/TimeoutEnforcingModelClientTests.cs`
-- [ ] T016 [P] [US1] Test: a rejected-auth double whose exception message embeds the configured affordable-provider key produces a `FailureReason`/`Narrative` with the key redacted (FR-008 harness half) in `backend/tests/Grimoire.AgentEvals/EvalProviderResolverTests.cs`
+- [X] T010 [P] [US1] Test: neither Anthropic nor affordable configured → `Skipped`, reason names both options (FR-003) in `backend/tests/Grimoire.AgentEvals/EvalProviderResolverTests.cs`
+- [X] T011 [P] [US1] Test: affordable-only, all 3 vars set → `Enabled`, `Kind = Affordable` in `backend/tests/Grimoire.AgentEvals/EvalProviderResolverTests.cs`
+- [X] T012 [P] [US1] Test: partial affordable config (1 or 2 of the 3 vars set) → `Skipped`, not counted as present (data-model.md identity rule) in `backend/tests/Grimoire.AgentEvals/EvalProviderResolverTests.cs`
+- [X] T013 [P] [US1] Test: `ANTHROPIC_AUTH_TOKEN` set AND all 3 affordable vars set → `ConfigurationError` naming the conflict, not a silent pick (FR-012) in `backend/tests/Grimoire.AgentEvals/EvalProviderResolverTests.cs`
+- [X] T014 [P] [US1] Test: affordable endpoint unreachable (refused local port) → eval sample fails with an actionable connectivity error — not a skip, not misreported as an agent-judgment failure (FR-004) in `backend/tests/Grimoire.AgentEvals/EvalConnectivityTests.cs`
+- [X] T015 [P] [US1] Test: `TimeoutEnforcingModelClient` wrapping a `FakeModelClient` whose `NextTurnAsync` never completes, with a short injected timeout, throws `ModelCallTimeoutException` (FR-013) in `backend/tests/Grimoire.AgentEvals/TimeoutEnforcingModelClientTests.cs`
+- [X] T016 [P] [US1] Test: a rejected-auth double whose exception message embeds the configured affordable-provider key produces a `FailureReason`/`Narrative` with the key redacted (FR-008 harness half) in `backend/tests/Grimoire.AgentEvals/EvalProviderResolverTests.cs`
 
 ### Implementation for User Story 1
 
-- [ ] T017 [US1] Run `quickstart.md` Scenarios 1–3 against the local LiteLLM proxy started in T002; fix any gap the manual run surfaces (depends on T002, T008–T016)
+- [X] T017 [US1] Run `quickstart.md` Scenarios 1–3 against the local LiteLLM proxy started in T002; fix any gap the manual run surfaces (depends on T002, T008–T016)
 
 **Checkpoint**: User Story 1 is fully functional and independently testable — this is the MVP.
 
@@ -134,14 +134,14 @@ Anthropic credential configured anywhere in CI.
 
 ### Tests for User Story 2
 
-- [ ] T018 [P] [US2] Fixture-based test: given a sample eval-results file with mixed pass/fail scores, the summary formatter produces the expected per-test pass/fail + scores markdown (both the PR-comment form and the job-summary form) in `scripts/ci/format-eval-summary.test.sh` (or equivalent, exercising `scripts/ci/format-eval-summary`)
+- [X] T018 [P] [US2] Fixture-based test: given a sample eval-results file with mixed pass/fail scores, the summary formatter produces the expected per-test pass/fail + scores markdown (both the PR-comment form and the job-summary form) in `scripts/ci/format-eval-summary.test.sh` (or equivalent, exercising `scripts/ci/format-eval-summary`)
 
 ### Implementation for User Story 2
 
-- [ ] T019 [US2] Implement `scripts/ci/format-eval-summary` (script), converting the `dotnet test` results file into the markdown summary consumed by T018's test (depends on T018)
-- [ ] T020 [US2] Create `.github/workflows/eval.yml`: `workflow_dispatch` trigger with optional `pr_number` and `sample_count` inputs; start the LiteLLM proxy and poll until ready (fail fast with a clear message if it never comes up); set `GRIMOIRE_EVAL=1` and `GRIMOIRE_EVAL_PROVIDER_*` from `secrets.NVIDIA_NIM_API_KEY`/fixed base URL/model; run `dotnet test backend/tests/Grimoire.AgentEvals` with a results logger; always upload the results file and transcripts as artifacts; write the formatted summary (T019) to `$GITHUB_STEP_SUMMARY` (depends on T019, T008)
-- [ ] T021 [US2] Add a PR-comment step to `.github/workflows/eval.yml` using `gh pr comment` against `pr_number`, executed only when that input is provided; when omitted, no comment is attempted — artifacts and job summary remain the only output (FR-007, no-PR fallback) (depends on T020)
-- [ ] T022 [US2] Add the `NVIDIA_NIM_API_KEY` secret to the repository's secret store (manual GitHub repository-settings step); document the one-time setup in `specs/007-eval-tests-nim-endpoint/quickstart.md`
+- [X] T019 [US2] Implement `scripts/ci/format-eval-summary` (script), converting the `dotnet test` results file into the markdown summary consumed by T018's test (depends on T018)
+- [X] T020 [US2] Create `.github/workflows/eval.yml`: `workflow_dispatch` trigger with optional `pr_number` and `sample_count` inputs; start the LiteLLM proxy and poll until ready (fail fast with a clear message if it never comes up); set `GRIMOIRE_EVAL=1` and `GRIMOIRE_EVAL_PROVIDER_*` from `secrets.NVIDIA_NIM_API_KEY`/fixed base URL/model; run `dotnet test backend/tests/Grimoire.AgentEvals` with a results logger; always upload the results file and transcripts as artifacts; write the formatted summary (T019) to `$GITHUB_STEP_SUMMARY` (depends on T019, T008)
+- [X] T021 [US2] Add a PR-comment step to `.github/workflows/eval.yml` using `gh pr comment` against `pr_number`, executed only when that input is provided; when omitted, no comment is attempted — artifacts and job summary remain the only output (FR-007, no-PR fallback) (depends on T020)
+- [X] T022 [US2] Add the `NVIDIA_NIM_API_KEY` secret to the repository's secret store (manual GitHub repository-settings step); document the one-time setup in `specs/007-eval-tests-nim-endpoint/quickstart.md` (confirmed done manually by the repo owner, 2026-07-22)
 - [ ] T023 [US2] Run `quickstart.md` Scenario 4 end-to-end: trigger `eval.yml` once with `pr_number` set against a real open PR, and once without it; confirm the comment/no-comment behavior and that artifacts are always present (depends on T020, T021, T022)
 
 **Checkpoint**: User Stories 1 AND 2 both work independently.
@@ -158,12 +158,12 @@ affordable) and verify each run's recorded output names the model that was actua
 
 ### Tests for User Story 3
 
-- [ ] T024 [P] [US3] Test: with the affordable provider configured, the completed run's `TaskArtifactDocument.Model` equals the configured `GRIMOIRE_EVAL_PROVIDER_MODEL` value (SC-002/FR-009) in `backend/tests/Grimoire.AgentEvals/EvalProviderResolverTests.cs`
-- [ ] T025 [P] [US3] Test: running the same eval once with only `ANTHROPIC_AUTH_TOKEN` set and once with only the affordable provider set produces two artifacts, each naming its own model, with the Anthropic-only run's `Model`/behavior identical to pre-feature output (FR-011) in `backend/tests/Grimoire.AgentEvals/EvalProviderTransparencyTests.cs`
+- [X] T024 [P] [US3] Test: with the affordable provider configured, the completed run's `TaskArtifactDocument.Model` equals the configured `GRIMOIRE_EVAL_PROVIDER_MODEL` value (SC-002/FR-009) in `backend/tests/Grimoire.AgentEvals/EvalProviderResolverTests.cs`
+- [X] T025 [P] [US3] Test: running the same eval once with only `ANTHROPIC_AUTH_TOKEN` set and once with only the affordable provider set produces two artifacts, each naming its own model, with the Anthropic-only run's `Model`/behavior identical to pre-feature output (FR-011) in `backend/tests/Grimoire.AgentEvals/EvalProviderTransparencyTests.cs`
 
 ### Implementation for User Story 3
 
-- [ ] T026 [US3] Run `quickstart.md` Scenario 5 manually; confirm both artifacts name their respective models (depends on T008, T024, T025)
+- [X] T026 [US3] Run `quickstart.md` Scenario 5 manually; confirm both artifacts name their respective models (depends on T008, T024, T025)
 
 **Checkpoint**: All three user stories are independently functional.
 
@@ -176,15 +176,15 @@ declared in `plan.md ## Observability`, and run the remaining cross-cutting/eval
 gates. Per Constitution Principle III, these tasks require the Phase 2–5 implementation to
 already exist and therefore belong here, not in Phase 0.
 
-- [ ] T027 Implement the `eval_provider_resolved` (INFO) structured log event — fields `provider`, `outcome`, `model`, `reason` — emitted once `EvalProviderResolver.Resolve()` finishes, in `backend/tests/Grimoire.AgentEvals/AgentEvalSupport.cs`
-- [ ] T028 [P] Deterministic integration test validating `eval_provider_resolved`'s event name, level, and all four mandatory fields across the enabled/skipped/configuration-error permutations, in `backend/tests/Grimoire.IntegrationTests/EvalObservabilityTests.cs`
-- [ ] T029 Implement the `eval_sample_timeout` (WARN) structured log event — fields `eval_name`, `provider`, `model`, `timeout_seconds` — emitted when `TimeoutEnforcingModelClient` throws `ModelCallTimeoutException`, in `backend/tests/Grimoire.AgentEvals/AgentEvalSupport.cs`
-- [ ] T030 [P] Deterministic integration test validating `eval_sample_timeout`'s event name, level, and mandatory fields, in `backend/tests/Grimoire.IntegrationTests/EvalObservabilityTests.cs`
-- [ ] T031 Implement the `grimoire.eval.gate_resolutions_total` counter (labels `provider`, `outcome`), incremented alongside T027, in `backend/tests/Grimoire.AgentEvals/AgentEvalSupport.cs`
-- [ ] T032 [P] Deterministic integration test validating the counter increments correctly for each provider/outcome label combination, in `backend/tests/Grimoire.IntegrationTests/EvalObservabilityTests.cs`
-- [ ] T033 Implement the `eval.gate_resolution` trace span (root, attributes `provider`/`outcome`/`model`) around gate resolution, in `backend/tests/Grimoire.AgentEvals/AgentEvalSupport.cs`
-- [ ] T034 [P] Deterministic integration test validating the span name and attributes via an in-memory OTel exporter (ADR-005 pattern), in `backend/tests/Grimoire.IntegrationTests/EvalObservabilityTests.cs`
-- [ ] T035 CI enforcement: confirm T028/T030/T032/T034 run in the standard PR pipeline — they land in `Grimoire.IntegrationTests`, which `.github/workflows/ci.yml`'s `backend` job already runs unconditionally; verify no change to `ci.yml` is needed and no provider secret is required (SC-005)
+- [X] T027 Implement the `eval_provider_resolved` (INFO) structured log event — fields `provider`, `outcome`, `model`, `reason` — emitted once `EvalProviderResolver.Resolve()` finishes, in `backend/tests/Grimoire.AgentEvals/AgentEvalSupport.cs`
+- [X] T028 [P] Deterministic integration test validating `eval_provider_resolved`'s event name, level, and all four mandatory fields across the enabled/skipped/configuration-error permutations, in `backend/tests/Grimoire.IntegrationTests/EvalObservabilityTests.cs`
+- [X] T029 Implement the `eval_sample_timeout` (WARN) structured log event — fields `eval_name`, `provider`, `model`, `timeout_seconds` — emitted when `TimeoutEnforcingModelClient` throws `ModelCallTimeoutException`, in `backend/tests/Grimoire.AgentEvals/AgentEvalSupport.cs`
+- [X] T030 [P] Deterministic integration test validating `eval_sample_timeout`'s event name, level, and mandatory fields, in `backend/tests/Grimoire.IntegrationTests/EvalObservabilityTests.cs`
+- [X] T031 Implement the `grimoire.eval.gate_resolutions_total` counter (labels `provider`, `outcome`), incremented alongside T027, in `backend/tests/Grimoire.AgentEvals/AgentEvalSupport.cs`
+- [X] T032 [P] Deterministic integration test validating the counter increments correctly for each provider/outcome label combination, in `backend/tests/Grimoire.IntegrationTests/EvalObservabilityTests.cs`
+- [X] T033 Implement the `eval.gate_resolution` trace span (root, attributes `provider`/`outcome`/`model`) around gate resolution, in `backend/tests/Grimoire.AgentEvals/AgentEvalSupport.cs`
+- [X] T034 [P] Deterministic integration test validating the span name and attributes via an in-memory OTel exporter (ADR-005 pattern), in `backend/tests/Grimoire.IntegrationTests/EvalObservabilityTests.cs`
+- [X] T035 CI enforcement: confirm T028/T030/T032/T034 run in the standard PR pipeline — they land in `Grimoire.IntegrationTests`, which `.github/workflows/ci.yml`'s `backend` job already runs unconditionally; verify no change to `ci.yml` is needed and no provider secret is required (SC-005)
 - [ ] T036 Agent-behavior evaluation tests (MANDATORY — Constitution Principles II & V): run all 6 existing `EvalFact`-gated eval classes in `backend/tests/Grimoire.AgentEvals/` against the configured affordable provider and confirm every threshold in the underlying feature specs still passes, unchanged (SC-006) — no new code, a verification run
 
 ---
