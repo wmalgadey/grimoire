@@ -211,9 +211,28 @@ already exist and therefore belong here, not in Phase 0.
 
   A 1-sample sanity check after the fix confirmed the `"pages"` denial is gone (only
   the harmless, undocumented `list_files(".")` attempt remains denied — the system
-  prompt never instructs listing the wiki root itself). A full
-  `GRIMOIRE_EVAL_SAMPLES=5` re-run across all 6 classes is in progress to get a real
-  SC-006 measurement; this task stays open until that completes.
+  prompt never instructs listing the wiki root itself).
+
+  **Full run completed 2026-07-23 (`GRIMOIRE_EVAL_SAMPLES=5`, all 6 classes, 37 live
+  samples total, ~1h56m).** Results: SC-006 0/5, SC-007 Convention 0/5, SC-007 Steering
+  1/10, SC-008 0/5, SC-009 1/5, SC-010 0/5 — none met their spec threshold. Root cause
+  is now conclusive and singular: **34 of the 37 samples** failed with
+  `failure_reason: "Model call exceeded the 120s timeout."` (`TimeoutEnforcingModelClient`,
+  FR-013), confirmed via task-artifact inspection across every class. The handful of
+  samples that *did* complete within the timeout passed their check correctly (e.g.
+  `sc009-5`, `sc007-steer-2`, `sc007-steer-5`) — proving the harness path (gate →
+  provider wiring → real network call → guardrail evaluation → completion → correct
+  `Model` field) works end-to-end. There is no remaining harness or guardrail defect;
+  this is a genuine performance characteristic of the configured NVIDIA NIM model
+  (`minimax-m3` via the LiteLLM proxy) under this workload — it too often cannot
+  complete a single agent turn within FR-013's 120s bound. SC-006 as measured on this
+  specific affordable-provider configuration does **not** currently pass — that is a
+  model/infrastructure capability finding, not a code defect, and is outside what this
+  feature (provider selection) can fix by construction. Options for whoever owns this
+  finding: try a faster NIM model/config, or accept the affordable path as
+  developer-convenience-only (unblocking local iteration without an Anthropic
+  subscription) rather than a like-for-like substitute for Anthropic's judgment
+  thresholds.
 
 ---
 

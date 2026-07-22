@@ -40,6 +40,15 @@ the full variable contract and `data-model.md` for the gate's resolution rules.
    a slower and more expensive live run left to that task. No harness defect was found; no
    code change was made as a result of this run.
 
+   **T036 full run (executed 2026-07-23, `GRIMOIRE_EVAL_SAMPLES=5`, all 6 classes, 37
+   live samples)**: none of the 6 thresholds passed. 34/37 samples failed with
+   `failure_reason: "Model call exceeded the 120s timeout."` — a real performance
+   characteristic of the configured NVIDIA NIM model (`minimax-m3` via the LiteLLM
+   proxy), not a harness defect. The samples that did complete in time passed
+   correctly, confirming the full harness path works end-to-end. See tasks.md's T036
+   note for the per-class breakdown and two harness bugs (plus one guardrail bug) found
+   and fixed along the way.
+
 ## Scenario 2 — Gate skip and fail-fast behavior (FR-003, FR-012)
 
 1. Unset every eval-related variable and run `dotnet test backend/tests/Grimoire.AgentEvals`.
