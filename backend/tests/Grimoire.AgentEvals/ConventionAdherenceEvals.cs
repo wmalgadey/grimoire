@@ -1,5 +1,6 @@
 namespace Grimoire.AgentEvals;
 
+[Collection("EvalProviderEnvironment")]
 public class ConventionAdherenceEvals
 {
     [EvalFact]

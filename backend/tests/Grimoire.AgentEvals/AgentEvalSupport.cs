@@ -289,6 +289,47 @@ public sealed class AgentEvalRunner
         Directory.CreateDirectory(_transcriptRoot);
     }
 
+    /// <summary>
+    /// Constructs an <see cref="AnthropicModelClient"/> wired to the given resolved provider
+    /// (data-model.md#ProviderConfiguration), for any caller that needs its own client outside
+    /// the main agent loop (e.g. an eval's LLM-judge client) — not just <see cref="RunAsync"/>.
+    /// When affordable, the process env vars <c>AnthropicModelClient</c>'s constructor reads
+    /// are set from the resolved configuration immediately before construction, then restored
+    /// to their prior value immediately after: the constructor reads them once, synchronously,
+    /// and caches what it needs, so this shim never needs to outlive the constructor call and
+    /// never leaks into a later resolution within the same process (which would otherwise see
+    /// its own prior <c>ANTHROPIC_AUTH_TOKEN</c> mutation alongside the still-set
+    /// <c>GRIMOIRE_EVAL_PROVIDER_*</c> vars and misreport a both-configured conflict).
+    /// </summary>
+    internal static AnthropicModelClient CreateProviderWiredAnthropicClient(ProviderConfiguration configuration)
+    {
+        if (configuration.Kind != ProviderKind.Affordable)
+        {
+            return new AnthropicModelClient();
+        }
+
+        var originalIngestBaseUrl = Environment.GetEnvironmentVariable("GRIMOIRE_INGEST_BASE_URL");
+        var originalIngestModel = Environment.GetEnvironmentVariable("GRIMOIRE_INGEST_MODEL");
+        var originalAnthropicToken = Environment.GetEnvironmentVariable("ANTHROPIC_AUTH_TOKEN");
+
+        Environment.SetEnvironmentVariable("GRIMOIRE_INGEST_BASE_URL", configuration.BaseUrl);
+        Environment.SetEnvironmentVariable("GRIMOIRE_INGEST_MODEL", configuration.Model);
+        Environment.SetEnvironmentVariable(
+            "ANTHROPIC_AUTH_TOKEN",
+            Environment.GetEnvironmentVariable("GRIMOIRE_EVAL_PROVIDER_API_KEY"));
+
+        try
+        {
+            return new AnthropicModelClient();
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable("GRIMOIRE_INGEST_BASE_URL", originalIngestBaseUrl);
+            Environment.SetEnvironmentVariable("GRIMOIRE_INGEST_MODEL", originalIngestModel);
+            Environment.SetEnvironmentVariable("ANTHROPIC_AUTH_TOKEN", originalAnthropicToken);
+        }
+    }
+
     public async Task<EvalRunResult> RunAsync(
         string fixtureName,
         string sourceContent,
@@ -337,14 +378,6 @@ public sealed class AgentEvalRunner
         }
 
         var configuration = gateOutcome.Configuration;
-        if (configuration.Kind == ProviderKind.Affordable)
-        {
-            Environment.SetEnvironmentVariable("GRIMOIRE_INGEST_BASE_URL", configuration.BaseUrl);
-            Environment.SetEnvironmentVariable("GRIMOIRE_INGEST_MODEL", configuration.Model);
-            Environment.SetEnvironmentVariable(
-                "ANTHROPIC_AUTH_TOKEN",
-                Environment.GetEnvironmentVariable("GRIMOIRE_EVAL_PROVIDER_API_KEY"));
-        }
 
         var taskStore = new TaskArtifactStore();
         var logAppender = new IngestLogAppender();
@@ -365,7 +398,9 @@ public sealed class AgentEvalRunner
                 Narrative: "Eval run started."),
             cancellationToken);
 
-        var recordingModelClient = new RecordingModelClient(new TimeoutEnforcingModelClient(new AnthropicModelClient()));
+        IModelClient anthropicModelClient = CreateProviderWiredAnthropicClient(configuration);
+
+        var recordingModelClient = new RecordingModelClient(new TimeoutEnforcingModelClient(anthropicModelClient));
         var promptLoader = new SystemPromptLoader();
         var instructionResult = await promptLoader.LoadAsync(options.SystemPromptPath, cancellationToken);
         if (instructionResult.IsSecond(out var instructionFailure))

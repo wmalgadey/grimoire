@@ -12,6 +12,7 @@ namespace Grimoire.AgentEvals;
 /// Principle II: agent-judgment criteria are evaluation-scored, not reimplemented as
 /// deterministic string matching).
 /// </summary>
+[Collection("EvalProviderEnvironment")]
 public class SteeringAdoptionEvals
 {
     private static readonly IReadOnlyList<(string SourceContent, string Steer)> Pairs =
@@ -93,7 +94,11 @@ public class SteeringAdoptionEvals
     public async Task SC007_SteeredRuns_ReflectTheRequestedFocus_AtLeast90Percent()
     {
         var runner = new AgentEvalRunner();
-        var judge = new AnthropicModelClient();
+        // The judge needs its own AnthropicModelClient wired to whichever provider is
+        // resolved (Anthropic or affordable) — it isn't part of the main agent loop that
+        // RunAsync wires up, so it must be constructed via the same helper (nothing has
+        // mutated the process env yet at this point in the test method).
+        var judge = AgentEvalRunner.CreateProviderWiredAnthropicClient(EvalProviderResolver.Resolve().Configuration);
         var successes = 0;
 
         for (var i = 0; i < Pairs.Count; i++)
