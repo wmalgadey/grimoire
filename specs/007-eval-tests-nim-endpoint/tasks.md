@@ -187,6 +187,34 @@ already exist and therefore belong here, not in Phase 0.
 - [X] T035 CI enforcement: confirm T028/T030/T032/T034 run in the standard PR pipeline — they land in `Grimoire.IntegrationTests`, which `.github/workflows/ci.yml`'s `backend` job already runs unconditionally; verify no change to `ci.yml` is needed and no provider secret is required (SC-005)
 - [ ] T036 Agent-behavior evaluation tests (MANDATORY — Constitution Principles II & V): run all 6 existing `EvalFact`-gated eval classes in `backend/tests/Grimoire.AgentEvals/` against the configured affordable provider and confirm every threshold in the underlying feature specs still passes, unchanged (SC-006) — no new code, a verification run
 
+  **Attempted 2026-07-22 (reduced to `GRIMOIRE_EVAL_SAMPLES=3` per cost/time agreement).**
+  The run surfaced and led to fixing two real harness bugs (see the
+  "Fix eval-harness provider env-var self-pollution and judge-client wiring" commit):
+  `AgentEvalRunner.RunAsync` mutated the real process's `ANTHROPIC_AUTH_TOKEN`
+  permanently, so the second sample (or second eval class) in the same process
+  self-triggered a `ConfigurationError`; and `SteeringAdoptionEvals`'s separate
+  LLM-judge client never received the affordable-provider wiring at all.
+
+  With both fixed, a re-run completed with **no harness errors** (no
+  `ConfigurationError`, no auth failures) — confirming the gate/wiring/timeout
+  mechanics work correctly end-to-end. However, most SC-006/007/008/009/010 samples
+  still failed. Root cause, confirmed via transcript/task-artifact inspection: a
+  separate, pre-existing bug in `SafetyPolicy.PrefixMatches`
+  (`backend/src/Grimoire.Domain/Guardrails/SafetyPolicy.cs`) — a directory-prefix rule
+  (e.g. `"pages/"`) never matched the bare directory path itself (e.g.
+  `list_files(path: "pages")`, which canonicalizes without the trailing separator the
+  rule requires), so every such `list_files` call was denied with `reason: "no_rule"`
+  regardless of provider. This applies identically to Anthropic and the affordable
+  provider — not a regression from this feature — but it was blocking real
+  measurement of SC-006 on the affordable provider, so it was fixed (see the "Fix
+  SafetyPolicy directory-prefix matching" commit) at the user's direction.
+
+  A 1-sample sanity check after the fix confirmed the `"pages"` denial is gone (only
+  the harmless, undocumented `list_files(".")` attempt remains denied — the system
+  prompt never instructs listing the wiki root itself). A full
+  `GRIMOIRE_EVAL_SAMPLES=5` re-run across all 6 classes is in progress to get a real
+  SC-006 measurement; this task stays open until that completes.
+
 ---
 
 ## Dependencies & Execution Order
