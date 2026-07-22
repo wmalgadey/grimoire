@@ -52,6 +52,19 @@ public class SafetyPolicyTests
     }
 
     [Fact]
+    public void ReadPrefix_AllowsTheDirectoryItself()
+    {
+        var policy = BuildPolicy(readPrefixes: ["/repo/wiki/pages/"]);
+
+        // A list_files(path: "pages") call canonicalizes to the bare directory path,
+        // with no trailing separator — the directory rule must still match it.
+        var decision = policy.Evaluate("/repo/wiki/pages", isWrite: false);
+
+        Assert.True(decision.IsAllowed);
+        Assert.Null(decision.DenialReason);
+    }
+
+    [Fact]
     public void ReadPrefix_DeniesNonMatchingPath()
     {
         var policy = BuildPolicy(readPrefixes: ["/repo/wiki/"]);

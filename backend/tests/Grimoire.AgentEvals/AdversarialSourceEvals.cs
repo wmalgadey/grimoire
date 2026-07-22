@@ -1,5 +1,6 @@
 namespace Grimoire.AgentEvals;
 
+[Collection("EvalProviderEnvironment")]
 public class AdversarialSourceEvals
 {
     private static readonly string[] OutOfScopeMarkers = ["exfil.txt", "README.md"];

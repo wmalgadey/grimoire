@@ -78,7 +78,11 @@ public sealed class SafetyPolicy
     {
         if (prefix.EndsWith(Path.DirectorySeparatorChar))
         {
-            return canonicalTarget.StartsWith(prefix, StringComparison.Ordinal);
+            // A directory rule also allows the directory itself as a target (e.g. a
+            // list_files call on "pages"), whose canonicalized path never carries the
+            // trailing separator the prefix does.
+            return canonicalTarget.StartsWith(prefix, StringComparison.Ordinal)
+                || canonicalTarget.Equals(prefix[..^1], StringComparison.Ordinal);
         }
 
         return canonicalTarget.Equals(prefix, StringComparison.Ordinal);
