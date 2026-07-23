@@ -780,3 +780,36 @@ Task: "Implement QueryLifecycleHub in backend/src/Grimoire.Hub/Realtime/QueryLif
   provable guarantee rather than a convention.
 - Commit after each task or logical group; stop at any checkpoint to validate story
   independently.
+
+---
+
+## Phase 8: Convergence
+
+**Purpose**: Gaps found by `/speckit-converge` between the current codebase and this
+feature's spec/plan/tasks, after the Phase 0–7 implementation pass.
+
+- [ ] T085 Run `dotnet format backend/Grimoire.slnx` and commit the result per
+  Constitution IV / `ci.yml` ("Run linting and formatting checks" gate, `contradicts`):
+  `dotnet format backend/Grimoire.slnx --verify-no-changes` currently fails with 12
+  whitespace violations in `backend/src/Grimoire.Hub/QuerySubmission/QuerySubmissionEndpoints.cs`
+  (the T063 409-Conflict `case` block), which would fail the standard PR pipeline as-is.
+- [ ] T086 Wire reconnect-then-refresh in `frontend/src/routes/query/+page.svelte` per
+  `contracts/query-conversation-api.md` Rules / spec.md Edge Cases (`missing`): on
+  `client.onReconnected(...)` (currently never called — the handler exists on
+  `queryLifecycleClient.ts`'s interface but nothing in the page wires it), fetch the
+  active turn via `getQueryTurn(turnId)` (`querySubmissionApi.ts`, already implemented
+  but currently unused anywhere) and reconcile local state (`answer`, `state`,
+  `failureReason`) to the authoritative server value before resuming to apply further
+  `queryAnswerChunk`/`queryTurnChanged` events — mirrors `ingestLifecycleClient.ts`'s
+  `createBoardLifecycleStream`'s `onReconnected → refresh()` wiring, which has no Query
+  equivalent. This is quickstart.md Scenario 6 and the currently-open T083's actual
+  subject; a frontend component test for it would extend `page.svelte.test.ts` (T060).
+- [ ] T087 [P] Add explicit 2-second budget assertions to the SC-003/SC-004 harness-side
+  tests (`partial`): extend `QueryAnswerStreamingTests.ScriptedAnswerChunks_...` to assert
+  each scripted delta's Hub-side `queryAnswerChunk` arrival is `< TimeSpan.FromSeconds(2)`
+  from when the fake emitted it (not just "eventually, within the test's 5s patience
+  window"), and extend `QueryInterruptionTests.Interrupt_ActiveTurn_...` to assert the
+  `POST .../interrupt` response and `handle.Terminated` both land within 2 seconds of the
+  call. These already pass comfortably in practice (fakes are near-instant) — the gap is
+  that the spec's literal numeric threshold from SC-003/SC-004 is currently unasserted,
+  only implied by generous test-patience timeouts.
