@@ -14,24 +14,29 @@ ADR-001 (TypeScript + SvelteKit frontend stack).
 
 ## Developing
 
+Requires Node ≥20.12 on `PATH` (see `.nvmrc`) even though Bun is the package manager —
+some CLI tools (`svelte-kit`) are invoked via a `#!/usr/bin/env node` shebang, which
+resolves through the system Node, not Bun's own runtime. Run `nvm use` (or equivalent)
+before installing if your default Node is older.
+
 ```sh
-npm install
-npm run dev -- --open
+bun install
+bun run dev -- --open
 ```
 
 ## Testing
 
 ```sh
-npm run test        # vitest run (client + server projects)
-npm run check        # svelte-check
-npm run lint          # prettier --check + eslint
+bun run test        # vitest run (client + server projects)
+bun run check        # svelte-check
+bun run lint          # prettier --check + eslint
 ```
 
 ## Building
 
 ```sh
-npm run build
-npm run preview
+bun run build
+bun run preview
 ```
 
 > `@sveltejs/adapter-auto` cannot detect a deployment target in this dev environment; swap in a
