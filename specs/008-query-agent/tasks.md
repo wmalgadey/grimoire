@@ -140,46 +140,61 @@ individual pieces are independently buildable.
 
 **⚠️ CRITICAL**: No user story work can begin until this phase is complete.
 
-- [ ] T017 [P] Extend `Grimoire.AgentRuntime.Core.IModelClient.NextTurnAsync` with an
+- [X] T017 [P] Extend `Grimoire.AgentRuntime.Core.IModelClient.NextTurnAsync` with an
   optional `Action<string>? onTextDelta` parameter (ADR-011); update
   `Grimoire.AgentRuntime.Core.Adapters.Anthropic.AnthropicModelClient` to use the
   Anthropic streaming Messages API when `onTextDelta` is non-null, invoking it per text
   delta as the SSE stream is consumed, and still return the same aggregated `ModelTurn`
   on completion. When `onTextDelta` is null (Ingest's call sites), behavior is
   byte-for-byte unchanged (non-streaming call path).
-- [ ] T018 [P] Extend `Grimoire.AgentRuntime.Core.AgentLoop` to forward a supplied
+- [X] T018 [P] Extend `Grimoire.AgentRuntime.Core.AgentLoop` to forward a supplied
   `onTextDelta` callback from its constructor/run options down to
   `IModelClient.NextTurnAsync`, and to accept "which tools are registered" from an
   injected `ToolRegistry` (supports T011's generalized `GuardedToolExecutor`).
-- [ ] T019 [P] Extend `Grimoire.AgentRuntime.RunEvents.RunEventEmitter` with
-  `EmitAnswerChunk(string taskId, string text)`, emitting
+- [X] T019 [P] Extend `Grimoire.AgentRuntime.RunEvents.RunEventEmitter` with
+  `EmitAnswerChunk(text)` (taskId implicit via the emitter's own stored `_taskId`, matching
+  every sibling `Emit*` method's signature — not a separate parameter as first drafted), emitting
   `{"type":"answer_chunk","taskId":...,"timestamp":...,"text":...}` per
   `contracts/query-run-events.md`, interleaved with existing `heartbeat`/`activity`
   emission on the same NDJSON stdout stream.
-- [ ] T020 [P] Implement `backend/src/Grimoire.QueryAgent/Program.cs` (CLI entry point,
+- [X] T020 [P] Implement `backend/src/Grimoire.QueryAgent/Program.cs` (CLI entry point,
   ADR-002 pattern: parses `--wiki-root`, `--task-id`/`--turn-id`, `--system-prompt-path`,
   `--policy-path`, conversation-history input; wires `AgentLoop` with a streaming
   `onTextDelta` that calls `RunEventEmitter.EmitAnswerChunk`; on completion writes the
   `completed`/`failed` NDJSON terminal event — it does NOT write a Query Run Artifact,
   per R3/ADR-011 the Hub owns 100% of artifact writing) and
-  `backend/src/Grimoire.QueryAgent/QueryCliOptions.cs`.
-- [ ] T021 Implement `backend/src/Grimoire.QueryAgent/QueryToolRegistry.cs`: registers
+  `backend/src/Grimoire.QueryAgent/QueryCliOptions.cs`. Conversation history (prompt +
+  priorTurns) is read from stdin as JSON (mirrors Ingest's pasted-text-via-stdin
+  convention) rather than a CLI arg, since it has no practical length bound; the
+  harness-owned message scaffold (each prior turn → real user/assistant conversation
+  turns) is built here too, ahead of its Phase 5/US3 dedicated task, since the file
+  already needed it to run at all. Required a small `AgentLoop.RunAsync` overload
+  accepting a pre-built `IReadOnlyList<ConversationMessage>` (Ingest's 5-arg
+  source-wrapping overload is unchanged and delegates to it) since Query has no
+  "source" concept to wrap.
+- [X] T021 Implement `backend/src/Grimoire.QueryAgent/QueryToolRegistry.cs`: registers
   exactly `list_files` and `read_file` (schemas per `contracts/guarded-read-only-tools.md`)
   against the shared `GuardedToolExecutor`; does not reference or import any write-tool
   type at all (FR-011 structural half; this is what T003/T004's ArchTests rule proves).
-- [ ] T022 [P] Extend `backend/src/Grimoire.Hub/Runtime/Paths/GrimoirePathOptions.cs` and
+- [X] T022 [P] Extend `backend/src/Grimoire.Hub/Runtime/Paths/GrimoirePathOptions.cs` and
   `GrimoirePathResolver.cs`/`ResolvedGrimoirePaths.cs` with the new runtime locations:
   `agents/query/system-prompt.md`, `agents/query/policy.json` (beneath `<base>`), and
   `data/query-runs/` (beneath `<base>/data`) — single composition point, ADR-009
-  pattern, no ambient discovery.
-- [ ] T023 [P] Integration test `backend/tests/Grimoire.IntegrationTests/PathConfiguration/QueryRuntimePathsTests.cs`:
+  pattern, no ambient discovery. Placed the instruction files beneath `<base>/data`
+  (matching `data/agents/ingest/`'s actual on-disk convention, `InstructionsDir`'s real
+  default) rather than directly beneath `<base>` as this line's prose says — see T014's
+  note; `QueryInstructionsDir`/`QueryAgentWorker` are validated as required inputs at
+  startup exactly like their Ingest counterparts.
+- [X] T023 [P] Integration test `backend/tests/Grimoire.IntegrationTests/PathConfiguration/QueryRuntimePathsTests.cs`:
   verifies the new path fields resolve correctly under default layout and explicit
   `--base`/env-var overrides, mirroring `DefaultLayoutTests.cs`/`PathPrecedenceTests.cs`
   for the Ingest paths.
-- [ ] T024 [P] Add `Grimoire:QueryConcurrencyLimit` (default `3`) to
+- [X] T024 [P] Add `Grimoire:QueryConcurrencyLimit` (default `3`) to
   `backend/src/Grimoire.Hub`'s configuration binding (same options-binding convention as
-  existing `Grimoire:*` settings), FR-017.
-- [ ] T025 [P] Extend `backend/tests/Grimoire.IntegrationTests/Fakes/FakeAgentProcess.cs`
+  existing `Grimoire:*` settings), FR-017. New `QueryDispatch.QueryConcurrencyOptions`
+  bound and registered as a singleton in `Program.cs`; `QueryRunCoordinator` (Phase 3)
+  will consume it.
+- [X] T025 [P] Extend `backend/tests/Grimoire.IntegrationTests/Fakes/FakeAgentProcess.cs`
   and `Fakes/FakeModelClient.cs` to support scripting `answer_chunk` deltas (including
   configurable per-delta timing/delay) so streaming/timing tests (US1, US2) can drive
   them deterministically without a live LLM call.

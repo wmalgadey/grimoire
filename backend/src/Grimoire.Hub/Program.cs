@@ -6,6 +6,7 @@ using Grimoire.Hub.IngestSubmission;
 using Grimoire.Hub.IngestSubmission.Adapters.HttpFetch;
 using Grimoire.Hub.IngestSubmission.Adapters.MarkItDown;
 using Grimoire.Hub.OperationalState;
+using Grimoire.Hub.QueryDispatch;
 using Grimoire.Hub.Realtime;
 using Grimoire.Hub.Runtime.Paths;
 using Grimoire.Hub.Submission;
@@ -27,6 +28,12 @@ builder.Configuration.AddCommandLine(args, PathConfigurationSwitchMappingsFactor
 
 var pathOptions = new GrimoirePathOptions();
 builder.Configuration.GetSection(GrimoirePathOptions.SectionName).Bind(pathOptions);
+
+// FR-017: Query's own concurrency limit — read here alongside the other Grimoire:*
+// settings; QueryRunCoordinator (008-query-agent) consumes it once it exists.
+var queryConcurrencyOptions = new QueryConcurrencyOptions();
+builder.Configuration.GetSection(QueryConcurrencyOptions.SectionName).Bind(queryConcurrencyOptions);
+builder.Services.AddSingleton(queryConcurrencyOptions);
 
 using (var bootstrapLoggerFactory = TelemetryExtensions.CreateBootstrapLoggerFactory())
 {

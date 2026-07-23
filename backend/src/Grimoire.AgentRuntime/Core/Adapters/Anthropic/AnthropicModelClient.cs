@@ -2,6 +2,7 @@ using Anthropic;
 using Anthropic.Models.Messages;
 using Grimoire.AgentRuntime.Core;
 using Microsoft.Extensions.Logging;
+using System.Text;
 using System.Text.Json;
 
 namespace Grimoire.AgentRuntime.Core.Adapters.Anthropic;
@@ -54,7 +55,8 @@ public sealed class AnthropicModelClient : IModelClient
         string systemPrompt,
         IReadOnlyList<ConversationMessage> conversation,
         IReadOnlyList<ToolDefinition> tools,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        Action<string>? onTextDelta = null)
     {
         // Build messages from conversation history.
         var messages = new List<MessageParam>();
@@ -78,14 +80,24 @@ public sealed class AnthropicModelClient : IModelClient
 
         var toolsList = _cachedTools!;
 
-        var response = await _client.Messages.Create(new MessageCreateParams
+        var createParams = new MessageCreateParams
         {
             Model = ModelId,
             MaxTokens = 8096,
             System = systemPrompt,
             Messages = messages,
             Tools = toolsList,
-        }, cancellationToken: cancellationToken);
+        };
+
+        return onTextDelta is null
+            ? await NextTurnNonStreamingAsync(createParams, cancellationToken)
+            : await NextTurnStreamingAsync(createParams, onTextDelta, cancellationToken);
+    }
+
+    private async Task<ModelTurn> NextTurnNonStreamingAsync(
+        MessageCreateParams createParams, CancellationToken cancellationToken)
+    {
+        var response = await _client.Messages.Create(createParams, cancellationToken: cancellationToken);
 
         var toolUseRequests = new List<ToolUseRequest>();
         string? assistantText = null;
@@ -111,6 +123,68 @@ public sealed class AnthropicModelClient : IModelClient
             StopReason: ModelStopReasonContract.FromRawValue(response.StopReason),
             InputTokens: (int)(response.Usage?.InputTokens ?? 0),
             OutputTokens: (int)(response.Usage?.OutputTokens ?? 0));
+    }
+
+    /// <summary>
+    /// ADR-011 R2: consumes the Anthropic streaming Messages API, invoking
+    /// <paramref name="onTextDelta"/> per text delta as it arrives so the first content
+    /// can reach the caller well before the turn as a whole completes (SC-003), while
+    /// still returning the same aggregated <see cref="ModelTurn"/> shape as the
+    /// non-streaming path on completion.
+    /// </summary>
+    private async Task<ModelTurn> NextTurnStreamingAsync(
+        MessageCreateParams createParams, Action<string> onTextDelta, CancellationToken cancellationToken)
+    {
+        string? assistantText = null;
+        var toolBlocksByIndex = new SortedDictionary<long, (string Id, string Name, StringBuilder Json)>();
+        var stopReason = ModelStopReason.Unknown;
+        int inputTokens = 0;
+        int outputTokens = 0;
+
+        await foreach (var streamEvent in _client.Messages.CreateStreaming(createParams, cancellationToken))
+        {
+            if (streamEvent.TryPickStart(out var start))
+            {
+                inputTokens = (int)(start.Message.Usage?.InputTokens ?? 0);
+            }
+            else if (streamEvent.TryPickContentBlockStart(out var blockStart) &&
+                     blockStart.ContentBlock.TryPickToolUse(out var toolUseStart))
+            {
+                toolBlocksByIndex[blockStart.Index] = (toolUseStart.ID, toolUseStart.Name, new StringBuilder());
+            }
+            else if (streamEvent.TryPickContentBlockDelta(out var blockDelta))
+            {
+                if (blockDelta.Delta.TryPickText(out var textDelta) && !string.IsNullOrEmpty(textDelta.Text))
+                {
+                    assistantText = (assistantText ?? string.Empty) + textDelta.Text;
+                    onTextDelta(textDelta.Text);
+                }
+                else if (blockDelta.Delta.TryPickInputJson(out var inputJsonDelta) &&
+                         toolBlocksByIndex.TryGetValue(blockDelta.Index, out var entry))
+                {
+                    entry.Json.Append(inputJsonDelta.PartialJson);
+                }
+            }
+            else if (streamEvent.TryPickDelta(out var messageDelta))
+            {
+                stopReason = ModelStopReasonContract.FromRawValue(messageDelta.Delta.StopReason);
+                outputTokens = (int)messageDelta.Usage.OutputTokens;
+            }
+        }
+
+        var toolUseRequests = toolBlocksByIndex.Values
+            .Select(t => new ToolUseRequest(
+                ToolUseId: t.Id,
+                ToolName: t.Name,
+                InputJson: t.Json.Length == 0 ? "{}" : t.Json.ToString()))
+            .ToList();
+
+        return new ModelTurn(
+            AssistantText: assistantText,
+            ToolUseRequests: toolUseRequests,
+            StopReason: stopReason,
+            InputTokens: inputTokens,
+            OutputTokens: outputTokens);
     }
 
     private static List<ToolUnion> BuildTools(IReadOnlyList<ToolDefinition> tools)

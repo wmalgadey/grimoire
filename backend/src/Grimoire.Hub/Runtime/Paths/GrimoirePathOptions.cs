@@ -34,13 +34,29 @@ public sealed class GrimoirePathOptions
     /// <summary>ADR-007 instruction surface directory. Default: <c>agents/ingest</c> under the data directory.</summary>
     public string? InstructionsDir { get; set; }
 
+    /// <summary>
+    /// Query agent instruction surface directory (008-query-agent, ADR-009/ADR-011).
+    /// Default: <c>agents/query</c> under the data directory.
+    /// </summary>
+    public string? QueryInstructionsDir { get; set; }
+
+    /// <summary>
+    /// Query Run Artifact storage (008-query-agent, ADR-009/ADR-011 R7) — Hub-written
+    /// only, git-ignored. Default: <c>query-runs</c> under the data directory.
+    /// </summary>
+    public string? QueryRunsDir { get; set; }
+
     /// <summary>Ingest agent worker (.csproj/.dll/executable). Default: beside the Hub binaries.</summary>
     public string? AgentWorker { get; set; }
+
+    /// <summary>Query agent worker (.csproj/.dll/executable). Default: beside the Hub binaries.</summary>
+    public string? QueryAgentWorker { get; set; }
 
     public const string DefaultContentRootDirName = "wiki";
     public const string DefaultDataDirName = "data";
     public const string DefaultRawDirName = "raw";
     public const string DefaultSecretsFileName = ".env";
+    public const string DefaultQueryRunsDirName = "query-runs";
 
     // Not a `const`: NetArchTest's HaveDependencyOn scan treats string *field constants*
     // as candidate dependency evidence, and this filename's "Grimoire.IngestAgent" prefix
@@ -48,6 +64,10 @@ public sealed class GrimoirePathOptions
     // though it is a child-process executable name, not an assembly reference.
     public static readonly string DefaultAgentWorkerFileName = "Grimoire.IngestAgent" + ".dll";
 
+    // Same rationale as DefaultAgentWorkerFileName above, for Grimoire.QueryAgent.
+    public static readonly string DefaultQueryAgentWorkerFileName = "Grimoire.QueryAgent" + ".dll";
+
     public static readonly string DefaultStateDbRelativePath = Path.Combine("state", "operational-state.db");
     public static readonly string DefaultInstructionsDirRelativePath = Path.Combine("agents", "ingest");
+    public static readonly string DefaultQueryInstructionsDirRelativePath = Path.Combine("agents", "query");
 }

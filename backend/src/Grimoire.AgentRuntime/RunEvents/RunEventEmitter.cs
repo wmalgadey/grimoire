@@ -50,6 +50,15 @@ public sealed class RunEventEmitter : IDisposable
             currentAction,
         });
 
+    /// <summary>
+    /// ADR-011 R2: an incremental streamed-answer delta (contracts/query-run-events.md),
+    /// interleaved with `heartbeat`/`activity` on the same NDJSON stdout stream. Emitted
+    /// zero or more times per run by agents whose <c>AgentLoop</c> was given an
+    /// <c>onTextDelta</c> callback (Grimoire.QueryAgent); Ingest never calls this.
+    /// </summary>
+    public void EmitAnswerChunk(string text)
+        => Emit(new { type = "answer_chunk", taskId = _taskId, timestamp = DateTimeOffset.UtcNow, text });
+
     public void EmitCompleted(string summary)
         => Emit(new { type = "completed", taskId = _taskId, timestamp = DateTimeOffset.UtcNow, summary });
 

@@ -116,6 +116,11 @@ public sealed class IngestSubmissionPipelineFixture : IDisposable
             DefaultUserPromptPath: ContentPaths.DefaultUserPromptPath,
             PolicyPath: ContentPaths.PolicyPath,
             AgentWorkerPath: "unused",
+            QueryInstructionsDir: Path.Combine(Root, "agents", "query"),
+            QuerySystemPromptPath: Path.Combine(Root, "agents", "query", "system-prompt.md"),
+            QueryPolicyPath: Path.Combine(Root, "agents", "query", "policy.json"),
+            QueryRunsDir: Path.Combine(Root, "query-runs"),
+            QueryAgentWorkerPath: "unused",
             Locations: []);
 
         var dbPath = Path.Combine(Root, "operational-state.db");
