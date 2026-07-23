@@ -25,6 +25,7 @@ public sealed class AgentLoop
     private readonly RunEventEmitter? _eventEmitter;
     private readonly ToolRegistry _registry;
     private readonly IAgentLoopInstrumentation _instrumentation;
+    private readonly Action<string>? _onTextDelta;
 
     public AgentLoop(
         IModelClient modelClient,
@@ -33,7 +34,8 @@ public sealed class AgentLoop
         int tokenCap = DefaultTokenCap,
         RunEventEmitter? eventEmitter = null,
         ToolRegistry? registry = null,
-        IAgentLoopInstrumentation? instrumentation = null)
+        IAgentLoopInstrumentation? instrumentation = null,
+        Action<string>? onTextDelta = null)
     {
         _modelClient = modelClient;
         _executor = executor;
@@ -42,14 +44,19 @@ public sealed class AgentLoop
         _eventEmitter = eventEmitter;
         _registry = registry ?? ToolRegistry.Default;
         _instrumentation = instrumentation ?? NullAgentLoopInstrumentation.Instance;
+        // ADR-011 R2: forwarded verbatim to IModelClient.NextTurnAsync so the Anthropic
+        // adapter streams text deltas as they arrive (Grimoire.QueryAgent). Null for
+        // Ingest's call sites — behavior there is unchanged (non-streaming call path).
+        _onTextDelta = onTextDelta;
     }
 
     /// <summary>
-    /// Runs the agent loop to completion.
-    /// Returns the agent's final narrative message on success.
-    /// Throws <see cref="AgentLoopCapException"/> on cap breach.
+    /// Runs the agent loop to completion for a run with an Ingest-shaped single source
+    /// (task id, source reference, and source content wrapped in untrusted-data
+    /// delimiters — ADR-007's scaffold). Returns the agent's final narrative message on
+    /// success. Throws <see cref="AgentLoopCapException"/> on cap breach.
     /// </summary>
-    public async Task<AgentLoopResult> RunAsync(
+    public Task<AgentLoopResult> RunAsync(
         string systemPrompt,
         string userPrompt,
         string taskId,
@@ -57,11 +64,30 @@ public sealed class AgentLoop
         string sourceContent,
         CancellationToken cancellationToken)
     {
-        var conversation = new List<ConversationMessage>();
-
-        // Initial user message: scaffold + effective user prompt + source as untrusted delimited data.
         var userMessage = BuildUserMessage(taskId, sourceRef, userPrompt, sourceContent);
-        conversation.Add(new ConversationMessage("user", [new ConversationTextBlock(userMessage)]));
+        var initialConversation = new List<ConversationMessage>
+        {
+            new("user", [new ConversationTextBlock(userMessage)]),
+        };
+
+        return RunAsync(systemPrompt, initialConversation, taskId, cancellationToken);
+    }
+
+    /// <summary>
+    /// Runs the agent loop to completion from an already-assembled initial conversation
+    /// history — the harness-owned scaffold is built by the caller instead of by the
+    /// loop itself (ADR-011), since callers with no "source" concept (Grimoire.QueryAgent)
+    /// have nothing to wrap the way Ingest wraps a source document. Returns the agent's
+    /// final narrative message on success. Throws <see cref="AgentLoopCapException"/> on
+    /// cap breach.
+    /// </summary>
+    public async Task<AgentLoopResult> RunAsync(
+        string systemPrompt,
+        IReadOnlyList<ConversationMessage> initialConversation,
+        string taskId,
+        CancellationToken cancellationToken)
+    {
+        var conversation = new List<ConversationMessage>(initialConversation);
 
         int turnsUsed = 0;
         int totalInputTokens = 0;
@@ -86,7 +112,7 @@ public sealed class AgentLoop
             using var span = _instrumentation.StartModelTurnActivity(taskId, turnsUsed + 1);
 
             var turn = await _modelClient.NextTurnAsync(
-                systemPrompt, conversation, _registry.Tools, cancellationToken);
+                systemPrompt, conversation, _registry.Tools, cancellationToken, _onTextDelta);
 
             span?.SetTag("stop_reason", turn.StopReason.ToProtocolString());
             span?.SetTag("tool_request_count", turn.ToolUseRequests.Count);

@@ -175,11 +175,18 @@ public interface IModelClient
     /// <param name="conversation">All prior messages in the conversation (user + assistant).</param>
     /// <param name="tools">Tool definitions available to the model on this turn.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
+    /// <param name="onTextDelta">
+    /// ADR-011: when non-null, the model turn is streamed and this callback is invoked
+    /// once per incremental assistant text delta as the underlying API stream is
+    /// consumed (used by Grimoire.QueryAgent's answer streaming, SC-003). When null
+    /// (Ingest's call sites), behavior is unchanged — a single non-streamed call.
+    /// </param>
     Task<ModelTurn> NextTurnAsync(
         string systemPrompt,
         IReadOnlyList<ConversationMessage> conversation,
         IReadOnlyList<ToolDefinition> tools,
-        CancellationToken cancellationToken);
+        CancellationToken cancellationToken,
+        Action<string>? onTextDelta = null);
 }
 
 /// <summary>JSON schema and metadata for a tool offered to the model.</summary>

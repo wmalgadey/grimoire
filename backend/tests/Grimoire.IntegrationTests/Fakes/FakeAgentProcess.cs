@@ -40,6 +40,28 @@ public sealed class ScriptedAgentProcessHandle : IAgentProcessHandle
     /// <summary>Closes the stdout pipe without a terminal event (process exit / crash).</summary>
     public void ClosePipe() => _lines.Writer.TryComplete();
 
+    /// <summary>
+    /// T025 (008-query-agent): scripts a sequence of <c>answer_chunk</c> events
+    /// (contracts/query-run-events.md) for one turn, with an optional delay before each
+    /// so SC-003 timing scenarios (first chunk immediate, later chunks delayed) can be
+    /// driven deterministically without a live LLM call.
+    /// </summary>
+    public async Task EmitAnswerChunksAsync(
+        string taskId,
+        IEnumerable<(string Text, TimeSpan Delay)> chunks,
+        CancellationToken cancellationToken = default)
+    {
+        foreach (var (text, delay) in chunks)
+        {
+            if (delay > TimeSpan.Zero)
+            {
+                await Task.Delay(delay, cancellationToken);
+            }
+
+            EmitEvent("answer_chunk", taskId, new { text });
+        }
+    }
+
     public async IAsyncEnumerable<string> ReadStdoutLinesAsync(
         [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken cancellationToken)
     {
