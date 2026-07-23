@@ -1,3 +1,5 @@
+using Grimoire.EvalRunner.Providers;
+
 namespace Grimoire.AgentEvals;
 
 /// <summary>
@@ -130,7 +132,7 @@ public class EvalProviderResolverTests
 /// process environment (the sanitizer reads it directly, mirroring Program.cs), so this
 /// runs in the sequential <c>EvalProviderEnvironment</c> collection.
 /// </summary>
-[Collection("EvalProviderEnvironment")]
+[Collection("EvalRunnerProcessTests")]
 public class EvalCredentialRedactionTests
 {
     [Fact]
@@ -147,7 +149,7 @@ public class EvalCredentialRedactionTests
 
             var rejectedAuthMessage = $"401 Unauthorized: invalid credential '{fakeKey}' for request to affordable provider";
 
-            var sanitized = AgentEvalRunner.SanitizeErrorText(rejectedAuthMessage);
+            var sanitized = EvalProviderResolver.SanitizeErrorText(rejectedAuthMessage);
 
             Assert.DoesNotContain(fakeKey, sanitized, StringComparison.Ordinal);
             Assert.Contains("[REDACTED]", sanitized, StringComparison.Ordinal);

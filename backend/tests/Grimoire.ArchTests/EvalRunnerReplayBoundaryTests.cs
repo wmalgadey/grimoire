@@ -71,10 +71,14 @@ public class EvalRunnerReplayBoundaryTests
             "Violations: " + string.Join(", ", result.FailingTypeNames ?? []));
     }
 
+    // Composition root exempt by construction: Program.cs compiles into the global
+    // namespace, outside the "Grimoire.EvalRunner" prefix filter — it is the single
+    // place allowed to construct the capture-time judge adapter (ADR-011).
     [Fact]
     public void EvalRunner_MustNotReferenceConcreteAdapterTypes()
     {
         var result = Types.InAssembly(EvalRunnerAssembly)
+            .That().ResideInNamespaceStartingWith("Grimoire.EvalRunner")
             .ShouldNot().HaveDependencyOnAny(
             [
                 "Grimoire.IngestAgent.AgentCore.Adapters.Anthropic.AnthropicModelClient",

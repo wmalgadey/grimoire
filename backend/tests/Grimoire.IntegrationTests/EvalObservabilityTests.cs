@@ -1,7 +1,7 @@
 using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Diagnostics.Metrics;
-using Grimoire.AgentEvals;
+using Grimoire.EvalRunner.Providers;
 using Microsoft.Extensions.Logging;
 
 namespace Grimoire.IntegrationTests;

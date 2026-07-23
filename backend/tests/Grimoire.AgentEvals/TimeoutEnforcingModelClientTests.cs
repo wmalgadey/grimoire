@@ -1,5 +1,7 @@
 using Grimoire.IngestAgent.AgentCore;
 
+using Grimoire.EvalRunner.Providers;
+
 namespace Grimoire.AgentEvals;
 
 /// <summary>
