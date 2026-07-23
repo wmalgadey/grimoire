@@ -1,6 +1,7 @@
 using Grimoire.IngestAgent;
 using Grimoire.IngestAgent.AgentCore;
 using Grimoire.IngestAgent.AgentCore.Adapters.Anthropic;
+using Grimoire.IngestAgent.AgentCore.Adapters.Replay;
 using Grimoire.IngestAgent.Guardrails;
 using Grimoire.IngestAgent.IngestLog;
 using Grimoire.IngestAgent.Source;
@@ -25,7 +26,7 @@ using var runSpan = IngestAgentTracing.StartRunActivity(options.TaskId);
 var wikiRoot = options.WikiRoot;
 var journal = new WriteJournal();
 GuardedToolExecutor? executor = null;
-AnthropicModelClient? modelClient = null;
+IModelClient? modelClient = null;
 
 // 004 FR-014: convert-step configuration is Hub-owned and set at submission time.
 // Read it from whatever the Hub already wrote before this process's first write
@@ -48,7 +49,7 @@ if (File.Exists(options.TaskArtifactPath))
 
 try
 {
-    modelClient = new AnthropicModelClient(loggerFactory.CreateLogger<AnthropicModelClient>());
+    modelClient = CreateModelClient(loggerFactory);
 
     await taskStore.WriteAsync(
         options.TaskArtifactPath,
@@ -363,6 +364,33 @@ static string SanitizeErrorText(string message)
     sanitized = Regex.Replace(sanitized, "sk-ant-[A-Za-z0-9_-]+", "[REDACTED]",
         RegexOptions.CultureInvariant);
     return sanitized;
+}
+
+// Composition-root model-adapter selection (ADR-011): GRIMOIRE_MODEL_REPLAY_PATH serves
+// a recording with no credential read; GRIMOIRE_MODEL_CAPTURE_PATH wraps the live
+// adapter in the turn-capture decorator; both set is a fail-fast configuration error;
+// neither preserves production behavior unchanged.
+static IModelClient CreateModelClient(ILoggerFactory loggerFactory)
+{
+    var replayPath = Environment.GetEnvironmentVariable("GRIMOIRE_MODEL_REPLAY_PATH");
+    var capturePath = Environment.GetEnvironmentVariable("GRIMOIRE_MODEL_CAPTURE_PATH");
+
+    if (!string.IsNullOrWhiteSpace(replayPath) && !string.IsNullOrWhiteSpace(capturePath))
+    {
+        throw new InvalidOperationException(
+            "Both GRIMOIRE_MODEL_REPLAY_PATH and GRIMOIRE_MODEL_CAPTURE_PATH are set. " +
+            "Configure at most one of replay/capture mode (ADR-011); production leaves both unset.");
+    }
+
+    if (!string.IsNullOrWhiteSpace(replayPath))
+    {
+        return new ReplayModelClient(replayPath);
+    }
+
+    var liveClient = new AnthropicModelClient(loggerFactory.CreateLogger<AnthropicModelClient>());
+    return string.IsNullOrWhiteSpace(capturePath)
+        ? liveClient
+        : new TurnCaptureModelClient(liveClient, capturePath);
 }
 
 static AgentCliOptions ParseArgs(string[] args)

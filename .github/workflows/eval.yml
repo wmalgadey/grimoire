@@ -71,40 +71,41 @@ jobs:
 
           echo "LiteLLM proxy is up."
 
-      - name: Run agent evals
+      # 009: live capture via the standalone eval runner — runs the eval scenarios
+      # against the affordable provider through the real agent executable, scores them,
+      # and (re)writes the provenance-carrying recordings that the hermetic replay tier
+      # (ci.yml) consumes. Download the recordings artifact and commit it to refresh
+      # data/evals/recordings/.
+      - name: Run capture via eval runner
         env:
-          GRIMOIRE_EVAL: "1"
           GRIMOIRE_EVAL_PROVIDER_BASE_URL: "http://localhost:4000"
           GRIMOIRE_EVAL_PROVIDER_MODEL: "nvidia-model"
           GRIMOIRE_EVAL_PROVIDER_API_KEY: ${{ secrets.NVIDIA_NIM_API_KEY }}
           GRIMOIRE_EVAL_SAMPLES: ${{ inputs.sample_count }}
         run: |
-          dotnet test backend/tests/Grimoire.AgentEvals \
+          dotnet run --project backend/src/Grimoire.EvalRunner \
             --configuration Release \
             --no-build \
-            --logger "trx;LogFileName=eval-results.trx" \
-            --results-directory "${{ github.workspace }}/eval-artifacts"
+            -- capture --summary eval-summary.md
 
-      - name: Format eval summary
+      - name: Publish job summary
         if: always()
         run: |
-          if [ -f "eval-artifacts/eval-results.trx" ]; then
-            python3 scripts/ci/format-eval-summary "eval-artifacts/eval-results.trx" > eval-summary.md
-          else
+          if [ ! -f eval-summary.md ]; then
             echo "## Agent Eval Results" > eval-summary.md
             echo "" >> eval-summary.md
-            echo "No results file was produced — the eval run failed before completing (see the job log)." >> eval-summary.md
+            echo "No summary was produced — the capture run failed before completing (see the job log)." >> eval-summary.md
           fi
           cat eval-summary.md >> "$GITHUB_STEP_SUMMARY"
 
-      - name: Upload eval results and transcripts
+      - name: Upload refreshed recordings and summary
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: agent-eval-results
           path: |
-            eval-artifacts/**
-            /tmp/grimoire-agent-evals/transcripts/**
+            eval-summary.md
+            data/evals/recordings/**
           if-no-files-found: warn
 
       # FR-007 no-PR fallback: only attempted when pr_number was provided; artifacts and

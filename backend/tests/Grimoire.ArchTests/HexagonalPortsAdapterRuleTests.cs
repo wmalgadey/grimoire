@@ -19,7 +19,7 @@ public class HexagonalPortsAdapterRuleTests
 {
     private static Assembly HubAssembly => typeof(Grimoire.Hub.HubMetrics).Assembly;
     private static Assembly IngestAgentAssembly => typeof(Grimoire.IngestAgent.AgentCliOptions).Assembly;
-    private static Assembly AgentEvalsAssembly => typeof(Grimoire.AgentEvals.EvalGate).Assembly;
+    private static Assembly AgentEvalsAssembly => typeof(Grimoire.AgentEvals.EvalProviderResolverTests).Assembly;
 
     // ---- C2 (007-eval-tests-nim-endpoint): the eval harness must reach the Anthropic
     // Messages API only through the ADR-010 IModelClient port (AnthropicModelClient),
