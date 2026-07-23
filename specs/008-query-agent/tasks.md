@@ -813,3 +813,33 @@ feature's spec/plan/tasks, after the Phase 0–7 implementation pass.
   call. These already pass comfortably in practice (fakes are near-instant) — the gap is
   that the spec's literal numeric threshold from SC-003/SC-004 is currently unasserted,
   only implied by generous test-patience timeouts.
+
+## Phase 9: Convergence
+
+**Purpose**: Gaps found by a second `/speckit-converge` pass between the current codebase
+and this feature's spec/plan/tasks. T085–T087 (Phase 8) remain open and unaddressed; the
+items below are additional gaps found in this pass.
+
+- [ ] T088 Map busy/conflict rejection reason codes to clear human-readable messages per
+  spec.md Edge Cases ("a submission beyond that limit is rejected immediately with a
+  clear 'busy' message") and Assumptions ("submissions beyond it are rejected immediately
+  with a clear 'busy' message, not queued") (`partial`): in
+  `frontend/src/lib/services/querySubmissionApi.ts`, `parseErrorMessage` (line ~21)
+  currently falls back to the raw `body.reason` string as the displayed `message` when the
+  server rejects a submission with `503 query_concurrency_limit_reached` or
+  `409 conversation_already_active`. `frontend/src/routes/query/+page.svelte` (lines ~59-61)
+  then assigns `error.message` directly to `submissionError`, so the user sees the literal
+  snake_case machine code instead of a clear busy message. Add a reason-code-to-text
+  mapping and extend `page.svelte.test.ts` to assert the human-readable text for both
+  reason codes.
+- [ ] T089 Treat an in-flight turn as interrupted when the page is reloaded, per spec.md
+  Edge Cases ("An in-flight turn at reload time is treated as interrupted") and
+  Assumptions ("A page reload with an in-flight turn treats that turn as interrupted")
+  (`contradicts`): neither `frontend/src/routes/query/+page.svelte` (no
+  `beforeunload`/`pagehide` handler) nor the backend (`QueryLifecycleHub`/
+  `QueryRunCoordinator`, no `OnDisconnectedAsync`-triggered termination) currently does
+  this — an abandoned in-flight turn instead runs to its natural terminal state
+  (`completed`/`failed`), so its Query Run Artifact never records `interrupted` for this
+  case. Add either a client-side unload handler that calls the interrupt endpoint before
+  the page closes, or server-side disconnect detection that marks the active turn
+  interrupted, and cover it with an integration test.
