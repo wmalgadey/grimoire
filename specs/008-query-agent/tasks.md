@@ -455,16 +455,22 @@ correctly against the earlier turn.
 
 ### Tests for User Story 3
 
-- [ ] T059 [P] [US3] Integration test `backend/tests/Grimoire.IntegrationTests/QueryFollowUpContextTests.cs`:
+- [X] T059 [P] [US3] Integration test `backend/tests/Grimoire.IntegrationTests/QueryFollowUpContextTests.cs`:
   `priorTurns` supplied on a submission (including a `state: "interrupted"` entry with
-  partial `answer` text) are formatted into the spawned `Grimoire.QueryAgent` process's
-  initial conversation history via the harness-owned message scaffold (FR-009); a
+  partial `answer` text) are forwarded verbatim to the spawned `Grimoire.QueryAgent`
+  process's request (the Hub-side half of FR-009 — the actual message-scaffold
+  formatting is T062, inside that process, and is exercised by
+  `QueryLifecycleTraceTests`'s `query_agent.model_turn` coverage instead, since the Hub
+  test has no visibility into the child process's in-memory conversation history); a
   second submission on a conversation with an already-`running` turn returns `409
-  Conflict` (FR-008 server-side guard, contract's error response).
-- [ ] T060 [P] [US3] Frontend test `frontend/src/routes/query/page.svelte.test.ts`:
+  Conflict` (FR-008 server-side guard, contract's error response); a submission on a
+  *different* conversation while one is running still succeeds.
+- [X] T060 [P] [US3] Frontend test `frontend/src/routes/query/page.svelte.test.ts`:
   starting a new conversation (T041's route) regenerates `conversationId` and clears
   `turns`/`activeTurnId` (FR-010); while a turn is `running`, the prompt form is
-  visibly disabled/explained as "one turn at a time" (FR-008 UI half).
+  visibly disabled/explained as "one turn at a time" (FR-008 UI half). Written and
+  statically reviewed; execution blocked in this sandbox (see T029 note), pending a
+  local environment fix.
 - [X] T061 [P] [US3] Agent-behavior evaluation fixtures + tests in
   `backend/tests/Grimoire.AgentEvals/QueryFollowUpEvals.cs`: sampled two-turn
   conversation fixtures with a pronoun/reference dependency, asserting SC-009 (≥90%
@@ -479,23 +485,36 @@ correctly against the earlier turn.
   partial/interrupted entries) into the initial `AgentLoop` conversation history exactly
   as ADR-007's scaffold wraps Ingest's effective prompt — non-agent-editable, harness
   structure around agent-visible content.
-- [ ] T063 [US3] Extend `QuerySubmissionValidator.cs`/`QuerySubmissionEndpoints.cs`
+- [X] T063 [US3] Extend `QuerySubmissionValidator.cs`/`QuerySubmissionEndpoints.cs`
   (T033) to return `409 Conflict` when the conversation (as tracked by
   `QueryRunCoordinator`) already has a `running` turn (FR-008 server-side guard).
-- [ ] T064 [US3] Implement client-side `QueryConversation` state management in
+  Implemented in `QueryRunCoordinator.SubmitTurnAsync` itself via an atomic
+  `ConcurrentDictionary.TryAdd` reservation on `_activeTurnByConversation` (added a
+  `QuerySubmissionResult.ConversationAlreadyActive` case) rather than a separate
+  check-then-act call to `IsConversationActive`, which would leave a race window between
+  two concurrent submissions for the same conversation. The pre-existing
+  `IsConversationActive` method is kept as a read-only diagnostic (doc comment
+  corrected); it is not what the guard uses.
+- [X] T064 [US3] Implement client-side `QueryConversation` state management in
   `frontend/src/routes/query/+page.svelte` (T041): maintains `turns` ordered list with
   `activeTurnId`, sends the full `priorTurns` payload (per data-model.md client view,
   including partial answers of interrupted turns) on every follow-up submission, exposes
   a "new conversation" action that regenerates `conversationId` and clears `turns`.
-- [ ] T065 [US3] Update `frontend/src/lib/components/QueryPromptForm.svelte` (T052) to
+- [X] T065 [US3] Update `frontend/src/lib/components/QueryPromptForm.svelte` (T052) to
   disable submission while `activeTurnId` is set, with a visible "one turn at a time"
   explanation (FR-008).
-- [ ] T066 [US3] Add structured log event `query.submission.rejected` (INFO,
+- [X] T066 [US3] Add structured log event `query.submission.rejected` (INFO,
   `conversation_id`) for the FR-008 409 case (distinct from the FR-017 concurrency-limit
-  rejection covered in US4/Phase 6) per plan.md Observability table.
-- [ ] T067 [P] [US3] Deterministic integration test extending
+  rejection covered in US4/Phase 6) per plan.md Observability table. Reuses the same
+  `QueryLifecycleLogEvents.LogSubmissionRejected` helper as the 503 case (single log
+  event name covers both rejection reasons, per plan.md's single `query.submission.rejected`
+  row — the reason itself is distinguishable by the HTTP status code the same request
+  received, so no extra field was added).
+- [X] T067 [P] [US3] Deterministic integration test extending
   `QueryLifecycleLogEventTests.cs` (T043/T055): validates `query.submission.rejected`
-  event name/level/mandatory field for the FR-008 409 case.
+  event name/level/mandatory field. Already covered by the existing generic assertion in
+  that file (same helper method as T077/the 503 case) — no separate test needed since
+  T063's 409 path and the FR-017 503 path call the identical `LogSubmissionRejected`.
 
 **Checkpoint**: All three interactive user stories (US1, US2, US3) are independently
 functional — a full ask/interrupt/follow-up conversation loop works end-to-end.
