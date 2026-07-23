@@ -98,6 +98,9 @@ public sealed class FakeAgentProcessLauncher : IAgentProcessLauncher
     public List<(DateTimeOffset Started, DateTimeOffset Finished)> RunWindows { get; } = [];
     public List<ScriptedAgentProcessHandle> Handles { get; } = [];
 
+    /// <summary>Every <see cref="QueryAgentRequest"/> received via the Query-shaped StartAsync overload.</summary>
+    public List<QueryAgentRequest> QueryRequests { get; } = [];
+
     public FakeAgentProcessLauncher(
         string terminalStatus = "completed",
         string? failureReason = null,
@@ -169,6 +172,63 @@ public sealed class FakeAgentProcessLauncher : IAgentProcessLauncher
         }
 
         return handle;
+    }
+
+    /// <summary>
+    /// Query-shaped StartAsync (ADR-011): records the request and, in auto-play mode,
+    /// scripts `started` → optional `answer_chunk` deltas (<see cref="ScriptedAnswerChunks"/>)
+    /// → terminal event, without writing any artifact (Query has no write path at all).
+    /// </summary>
+    public IReadOnlyList<(string Text, TimeSpan Delay)>? ScriptedAnswerChunks { get; set; }
+
+    public Task<IAgentProcessHandle> StartAsync(QueryAgentRequest request, CancellationToken cancellationToken = default)
+    {
+        lock (QueryRequests)
+        {
+            QueryRequests.Add(request);
+        }
+
+        if (_throwOnStart is not null)
+        {
+            throw _throwOnStart;
+        }
+
+        var handle = new ScriptedAgentProcessHandle();
+        lock (Handles)
+        {
+            Handles.Add(handle);
+        }
+
+        if (_autoPlay)
+        {
+            handle.EmitEvent("started", request.TurnId);
+
+            _ = Task.Run(async () =>
+            {
+                if (_simulatedRunDuration > TimeSpan.Zero)
+                {
+                    await Task.Delay(_simulatedRunDuration, CancellationToken.None);
+                }
+
+                if (ScriptedAnswerChunks is { Count: > 0 })
+                {
+                    await handle.EmitAnswerChunksAsync(request.TurnId, ScriptedAnswerChunks, CancellationToken.None);
+                }
+
+                if (_terminalStatus == "failed")
+                {
+                    handle.EmitEvent("failed", request.TurnId, new { reason = _failureReason ?? "Fake query run failed." });
+                }
+                else
+                {
+                    handle.EmitEvent("completed", request.TurnId, new { summary = "Fake query run completed." });
+                }
+
+                handle.ClosePipe();
+            }, CancellationToken.None);
+        }
+
+        return Task.FromResult<IAgentProcessHandle>(handle);
     }
 
     /// <summary>

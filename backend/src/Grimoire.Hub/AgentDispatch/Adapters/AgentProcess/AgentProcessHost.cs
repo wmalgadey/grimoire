@@ -15,17 +15,21 @@ public sealed class AgentProcessHost : IAgentProcessLauncher
 {
     private readonly LocalSecretsLoader _secretsLoader;
     private readonly string _agentWorkerPath;
+    private readonly string? _queryAgentWorkerPath;
 
     /// <summary>
     /// <paramref name="agentWorkerPath"/> is the Hub-resolved agent-worker location
     /// (Grimoire:Paths:AgentWorker, research R4): a <c>.csproj</c> launches via
     /// <c>dotnet run --project</c> (dev convenience), a <c>.dll</c> via <c>dotnet &lt;dll&gt;</c>,
-    /// anything else is launched directly as an executable.
+    /// anything else is launched directly as an executable. <paramref name="queryAgentWorkerPath"/>
+    /// (Grimoire:Paths:QueryAgentWorker, ADR-011) is optional so existing Ingest-only call
+    /// sites/tests are unaffected; only Query dispatch requires it.
     /// </summary>
-    public AgentProcessHost(LocalSecretsLoader secretsLoader, string agentWorkerPath)
+    public AgentProcessHost(LocalSecretsLoader secretsLoader, string agentWorkerPath, string? queryAgentWorkerPath = null)
     {
         _secretsLoader = secretsLoader;
         _agentWorkerPath = agentWorkerPath;
+        _queryAgentWorkerPath = queryAgentWorkerPath;
     }
 
     public async Task<IAgentProcessHandle> StartAsync(IngestAgentRequest request, CancellationToken cancellationToken = default)
@@ -67,6 +71,148 @@ public sealed class AgentProcessHost : IAgentProcessLauncher
         return process.ExitCode > 1 && !string.IsNullOrWhiteSpace(stdErr)
             ? throw new InvalidOperationException($"Ingest agent crashed: {stdErr}")
             : process.ExitCode;
+    }
+
+    /// <summary>ADR-011: spawns a Query agent process (see the interface doc for port-reuse rationale).</summary>
+    public async Task<IAgentProcessHandle> StartAsync(QueryAgentRequest request, CancellationToken cancellationToken = default)
+    {
+        var process = StartQueryProcess(request);
+
+        // Conversation input (prompt + prior turns) goes on stdin as JSON, unlike
+        // Ingest's plain pasted-text stdin — mirrors the convention, not the payload
+        // shape (QueryConversationInput in Grimoire.QueryAgent).
+        var stdinPayload = System.Text.Json.JsonSerializer.Serialize(new
+        {
+            prompt = request.Prompt,
+            priorTurns = request.PriorTurns.Select(t => new
+            {
+                position = t.Position,
+                prompt = t.Prompt,
+                answer = t.Answer,
+                state = t.State,
+            }),
+        });
+        await process.StandardInput.WriteAsync(stdinPayload);
+        process.StandardInput.Close();
+
+        return new ProcessHandle(process);
+    }
+
+    private Process StartQueryProcess(QueryAgentRequest request)
+    {
+        if (string.IsNullOrWhiteSpace(_queryAgentWorkerPath))
+        {
+            throw new InvalidOperationException(
+                "AgentProcessHost was not configured with a Query agent worker path (Grimoire:Paths:QueryAgentWorker).");
+        }
+
+        var startInfo = new ProcessStartInfo
+        {
+            RedirectStandardInput = true,
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+            UseShellExecute = false,
+        };
+
+        if (_queryAgentWorkerPath.EndsWith(".csproj", StringComparison.OrdinalIgnoreCase))
+        {
+            startInfo.FileName = "dotnet";
+            startInfo.ArgumentList.Add("run");
+            startInfo.ArgumentList.Add("--project");
+            startInfo.ArgumentList.Add(_queryAgentWorkerPath);
+            startInfo.ArgumentList.Add("--");
+        }
+        else if (_queryAgentWorkerPath.EndsWith(".dll", StringComparison.OrdinalIgnoreCase))
+        {
+            startInfo.FileName = "dotnet";
+            startInfo.ArgumentList.Add(_queryAgentWorkerPath);
+        }
+        else
+        {
+            startInfo.FileName = _queryAgentWorkerPath;
+        }
+
+        startInfo.ArgumentList.Add("--turn-id");
+        startInfo.ArgumentList.Add(request.TurnId);
+        startInfo.ArgumentList.Add("--wiki-root");
+        startInfo.ArgumentList.Add(request.WikiRoot);
+        startInfo.ArgumentList.Add("--pages-dir");
+        startInfo.ArgumentList.Add(request.PagesDir);
+        startInfo.ArgumentList.Add("--index-path");
+        startInfo.ArgumentList.Add(request.IndexPath);
+        startInfo.ArgumentList.Add("--log-path");
+        startInfo.ArgumentList.Add(request.LogPath);
+        startInfo.ArgumentList.Add("--system-prompt-path");
+        startInfo.ArgumentList.Add(request.SystemPromptPath);
+        startInfo.ArgumentList.Add("--policy-path");
+        startInfo.ArgumentList.Add(request.PolicyPath);
+
+        var authToken = _secretsLoader.GetAnthropicAuthToken();
+        var queryModel = _secretsLoader.GetQueryModel();
+        var queryBaseUrl = _secretsLoader.GetQueryBase();
+
+        var baseEnv = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var (key, value) in startInfo.Environment)
+        {
+            if (value is not null)
+                baseEnv[key] = value;
+        }
+
+        var childEnv = BuildQueryChildEnvironment(baseEnv, authToken, queryBaseUrl, queryModel, Activity.Current);
+        startInfo.Environment.Clear();
+        foreach (var (key, value) in childEnv)
+        {
+            startInfo.Environment[key] = value;
+        }
+
+        return Process.Start(startInfo) ?? throw new InvalidOperationException("Failed to start query agent process.");
+    }
+
+    /// <summary>
+    /// Query's own credential/model-scoping (ADR-004) and trace-propagation (Constitution
+    /// IV) env-var build — parallels <see cref="BuildChildEnvironment"/> but with
+    /// <c>GRIMOIRE_QUERY_*</c> names so Query's env stays independent of Ingest's, even
+    /// though both read the same <c>ANTHROPIC_AUTH_TOKEN</c> secret.
+    /// </summary>
+    private static Dictionary<string, string> BuildQueryChildEnvironment(
+        IDictionary<string, string> baseEnv,
+        string? authToken,
+        string? queryBaseUrl,
+        string? queryModel,
+        Activity? currentActivity)
+    {
+        var env = new Dictionary<string, string>(baseEnv, StringComparer.OrdinalIgnoreCase);
+        env.Remove("ANTHROPIC_API_KEY");
+        env.Remove("ANTHROPIC_AUTH_TOKEN");
+        if (!string.IsNullOrWhiteSpace(authToken))
+        {
+            env["ANTHROPIC_AUTH_TOKEN"] = authToken;
+        }
+
+        env.Remove("GRIMOIRE_QUERY_MODEL");
+        if (!string.IsNullOrWhiteSpace(queryModel))
+        {
+            env["GRIMOIRE_QUERY_MODEL"] = queryModel;
+        }
+
+        env.Remove("GRIMOIRE_QUERY_BASE_URL");
+        if (!string.IsNullOrWhiteSpace(queryBaseUrl))
+        {
+            env["GRIMOIRE_QUERY_BASE_URL"] = queryBaseUrl;
+        }
+
+        env.Remove("TRACEPARENT");
+        env.Remove("TRACESTATE");
+        if (currentActivity is not null && currentActivity.Recorded)
+        {
+            env["TRACEPARENT"] = $"00-{currentActivity.TraceId}-{currentActivity.SpanId}-01";
+            if (!string.IsNullOrEmpty(currentActivity.TraceStateString))
+            {
+                env["TRACESTATE"] = currentActivity.TraceStateString;
+            }
+        }
+
+        return env;
     }
 
     private Process StartProcess(IngestAgentRequest request)

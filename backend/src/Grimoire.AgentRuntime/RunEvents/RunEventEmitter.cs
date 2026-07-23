@@ -1,6 +1,23 @@
 using System.Text.Json;
+using Grimoire.AgentRuntime.Guardrails;
 
 namespace Grimoire.AgentRuntime.RunEvents;
+
+/// <summary>
+/// Optional metadata attached to a terminal (<c>completed</c>/<c>failed</c>) event so a
+/// harness with no agent-side artifact write path (Grimoire.QueryAgent, ADR-011 R3) can
+/// still finalize its own persistent record entirely Hub-side, from the event stream
+/// alone. Ingest's call sites leave this null — it writes its own Task Artifact directly
+/// and has no need to round-trip this data through the event channel.
+/// </summary>
+public sealed record RunCompletionMetadata(
+    string? SystemPromptSha256 = null,
+    string? PolicyPath = null,
+    int? PolicyVersion = null,
+    string? PolicySha256 = null,
+    string? Model = null,
+    int? TurnsUsed = null,
+    IReadOnlyList<DeniedActionRecord>? DeniedActions = null);
 
 /// <summary>
 /// Emits Agent Run Events as NDJSON on stdout (contracts/agent-run-events.md, ADR-008):
@@ -59,11 +76,35 @@ public sealed class RunEventEmitter : IDisposable
     public void EmitAnswerChunk(string text)
         => Emit(new { type = "answer_chunk", taskId = _taskId, timestamp = DateTimeOffset.UtcNow, text });
 
-    public void EmitCompleted(string summary)
-        => Emit(new { type = "completed", taskId = _taskId, timestamp = DateTimeOffset.UtcNow, summary });
+    public void EmitCompleted(string summary, RunCompletionMetadata? metadata = null)
+        => Emit(BuildTerminalPayload("completed", summary, reason: null, metadata));
 
-    public void EmitFailed(string reason)
-        => Emit(new { type = "failed", taskId = _taskId, timestamp = DateTimeOffset.UtcNow, reason });
+    public void EmitFailed(string reason, RunCompletionMetadata? metadata = null)
+        => Emit(BuildTerminalPayload("failed", summary: null, reason, metadata));
+
+    private object BuildTerminalPayload(string type, string? summary, string? reason, RunCompletionMetadata? metadata)
+        => new
+        {
+            type,
+            taskId = _taskId,
+            timestamp = DateTimeOffset.UtcNow,
+            summary,
+            reason,
+            systemPromptSha256 = metadata?.SystemPromptSha256,
+            policyPath = metadata?.PolicyPath,
+            policyVersion = metadata?.PolicyVersion,
+            policySha256 = metadata?.PolicySha256,
+            model = metadata?.Model,
+            turnsUsed = metadata?.TurnsUsed,
+            deniedActions = metadata?.DeniedActions?.Select(d => new
+            {
+                action = d.Action,
+                requestedTarget = d.RequestedTarget,
+                canonicalTarget = d.CanonicalTarget,
+                reason = d.Reason,
+                turn = d.Turn,
+            }).ToList(),
+        };
 
     private void Emit(object payload)
     {

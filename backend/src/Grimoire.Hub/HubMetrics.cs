@@ -139,4 +139,43 @@ public static class HubMetrics
     {
         _taskRecordChangeEventsTotal.Add(1);
     }
+
+    // --- 008-query-agent (plan.md ## Observability > Business Metrics) ---
+
+    private static readonly Counter<long> _queryTurnsTotal =
+        Meter.CreateCounter<long>("query.turns_total",
+            description: "Query Turns reaching a terminal state");
+
+    private static readonly Histogram<double> _queryTurnDurationSeconds =
+        Meter.CreateHistogram<double>("query.turn_duration_seconds",
+            unit: "s",
+            description: "Wall-clock duration of a Query Turn");
+
+    public static void RecordQueryTurn(string outcome, double durationSeconds)
+    {
+        _queryTurnsTotal.Add(1, new KeyValuePair<string, object?>("outcome", outcome));
+        _queryTurnDurationSeconds.Record(durationSeconds, new KeyValuePair<string, object?>("outcome", outcome));
+    }
+
+    private static readonly Counter<long> _queryAnswerChunksTotal =
+        Meter.CreateCounter<long>("query.answer_chunks_total",
+            description: "answer_chunk events emitted");
+
+    public static void RecordQueryAnswerChunk()
+    {
+        _queryAnswerChunksTotal.Add(1);
+    }
+
+    private static readonly Counter<long> _querySubmissionsRejectedTotal =
+        Meter.CreateCounter<long>("query.submissions_rejected_total",
+            description: "Submissions rejected for being over the concurrency limit");
+
+    public static void RecordQuerySubmissionRejected()
+    {
+        _querySubmissionsRejectedTotal.Add(1);
+    }
+
+    // Note: query.tool_calls_total is emitted by Grimoire.QueryAgent itself (the guarded
+    // tool executor runs in that process, not the Hub) — see QueryAgentMetrics there,
+    // mirroring Grimoire.IngestAgent.IngestAgentMetrics.RecordToolCall.
 }
