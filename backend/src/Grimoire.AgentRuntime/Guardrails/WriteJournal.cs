@@ -1,4 +1,4 @@
-namespace Grimoire.IngestAgent.Guardrails;
+namespace Grimoire.AgentRuntime.Guardrails;
 
 /// <summary>
 /// Records the prior state of a file before every allowed write so the run can be

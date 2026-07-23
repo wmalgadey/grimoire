@@ -1,4 +1,4 @@
-using Grimoire.IngestAgent.AgentCore;
+using Grimoire.AgentRuntime.Core;
 
 using Grimoire.EvalRunner.Providers;
 

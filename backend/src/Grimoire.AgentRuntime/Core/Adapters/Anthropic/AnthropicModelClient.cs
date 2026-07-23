@@ -1,15 +1,18 @@
 using Anthropic;
 using Anthropic.Models.Messages;
-using Grimoire.IngestAgent.AgentCore;
+using Grimoire.AgentRuntime.Core;
 using Microsoft.Extensions.Logging;
 using System.Text.Json;
 
-namespace Grimoire.IngestAgent.AgentCore.Adapters.Anthropic;
+namespace Grimoire.AgentRuntime.Core.Adapters.Anthropic;
 
 /// <summary>
 /// Production <see cref="IModelClient"/> over the Anthropic C# SDK Messages API (ADR-010
-/// P4). Model ID comes from the <c>GRIMOIRE_INGEST_MODEL</c> environment variable
-/// (default <c>claude-opus-4-8</c>).
+/// P4, relocated to the shared runtime by ADR-011 C6). Model ID and base URL come from
+/// caller-supplied environment variable names (default <c>GRIMOIRE_INGEST_MODEL</c> /
+/// <c>GRIMOIRE_INGEST_BASE_URL</c>, preserving Grimoire.IngestAgent's existing behavior
+/// unchanged); Grimoire.QueryAgent supplies its own <c>GRIMOIRE_QUERY_*</c> names so each
+/// agent process's credential/model scoping (ADR-004) stays independent.
 /// </summary>
 public sealed class AnthropicModelClient : IModelClient
 {
@@ -22,9 +25,12 @@ public sealed class AnthropicModelClient : IModelClient
     private IReadOnlyList<ToolDefinition>? _cachedToolSource;
     private List<ToolUnion>? _cachedTools;
 
-    public AnthropicModelClient(ILogger<AnthropicModelClient> logger = null!)
+    public AnthropicModelClient(
+        ILogger<AnthropicModelClient> logger = null!,
+        string modelEnvVar = "GRIMOIRE_INGEST_MODEL",
+        string baseUrlEnvVar = "GRIMOIRE_INGEST_BASE_URL")
     {
-        var baseUrl = Environment.GetEnvironmentVariable("GRIMOIRE_INGEST_BASE_URL");
+        var baseUrl = Environment.GetEnvironmentVariable(baseUrlEnvVar);
 
         _client = string.IsNullOrWhiteSpace(baseUrl)
             ? new AnthropicClient()
@@ -37,7 +43,7 @@ public sealed class AnthropicModelClient : IModelClient
                 Handlers = [new LoggingHandler(logger)],
             };
 
-        ModelId = Environment.GetEnvironmentVariable("GRIMOIRE_INGEST_MODEL") ?? DefaultModel;
+        ModelId = Environment.GetEnvironmentVariable(modelEnvVar) ?? DefaultModel;
 
         logger?.LogInformation("AnthropicModelClient initialized with model {ModelId} and base URL {BaseUrl}.", ModelId, _client.BaseUrl);
     }

@@ -4,7 +4,7 @@ using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
-namespace Grimoire.IngestAgent.AgentCore;
+namespace Grimoire.AgentRuntime.Instructions;
 
 /// <summary>Identity record for a loaded safety policy file (FR-012).</summary>
 public sealed record PolicyIdentity(string Path, int Version, string Sha256);

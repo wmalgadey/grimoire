@@ -1,7 +1,7 @@
 using System.Security.Cryptography;
 using System.Text;
 
-namespace Grimoire.IngestAgent.AgentCore;
+namespace Grimoire.AgentRuntime.Instructions;
 
 /// <summary>
 /// The single System Prompt Document loaded for a run (ADR-007). Its content is the

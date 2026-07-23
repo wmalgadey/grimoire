@@ -1,4 +1,4 @@
-using Grimoire.IngestAgent.Guardrails;
+using Grimoire.AgentRuntime.Guardrails;
 using Microsoft.Extensions.Logging;
 using System.Diagnostics;
 

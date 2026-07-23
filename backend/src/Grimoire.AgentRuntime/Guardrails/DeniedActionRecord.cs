@@ -1,4 +1,4 @@
-namespace Grimoire.IngestAgent.Guardrails;
+namespace Grimoire.AgentRuntime.Guardrails;
 
 /// <summary>
 /// One policy refusal, persisted into the task artifact (FR-008, SC-002).

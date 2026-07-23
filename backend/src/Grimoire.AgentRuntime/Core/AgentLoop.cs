@@ -1,6 +1,7 @@
-using Grimoire.IngestAgent.Guardrails;
+using Grimoire.AgentRuntime.Guardrails;
+using Grimoire.AgentRuntime.RunEvents;
 
-namespace Grimoire.IngestAgent.AgentCore;
+namespace Grimoire.AgentRuntime.Core;
 
 /// <summary>
 /// Manual tool-use loop. System prompt = the System Prompt Document verbatim (ADR-007).
@@ -22,19 +23,25 @@ public sealed class AgentLoop
     private readonly int _turnCap;
     private readonly int _tokenCap;
     private readonly RunEventEmitter? _eventEmitter;
+    private readonly ToolRegistry _registry;
+    private readonly IAgentLoopInstrumentation _instrumentation;
 
     public AgentLoop(
         IModelClient modelClient,
         GuardedToolExecutor executor,
         int turnCap = DefaultTurnCap,
         int tokenCap = DefaultTokenCap,
-        RunEventEmitter? eventEmitter = null)
+        RunEventEmitter? eventEmitter = null,
+        ToolRegistry? registry = null,
+        IAgentLoopInstrumentation? instrumentation = null)
     {
         _modelClient = modelClient;
         _executor = executor;
         _turnCap = turnCap;
         _tokenCap = tokenCap;
         _eventEmitter = eventEmitter;
+        _registry = registry ?? ToolRegistry.Default;
+        _instrumentation = instrumentation ?? NullAgentLoopInstrumentation.Instance;
     }
 
     /// <summary>
@@ -66,21 +73,20 @@ public sealed class AgentLoop
         {
             if (turnsUsed >= _turnCap)
             {
-                IngestAgentMetrics.RecordAgentTurns(turnsUsed, "failed");
+                _instrumentation.RecordAgentTurns(turnsUsed, "failed");
                 throw new AgentLoopCapException(
                     $"Turn cap of {_turnCap} exceeded. Rolled back.",
                     cap: "turns",
                     turnsUsed: turnsUsed);
             }
 
-            // The span stays open across tool dispatch below so every
-            // ingest_agent.tool_call span is a child of this model turn.
-            using var span = IngestAgentTracing.ActivitySource.StartActivity("ingest_agent.model_turn");
-            span?.SetTag("task_id", taskId);
-            span?.SetTag("turn", turnsUsed + 1);
+            // The span stays open across tool dispatch below so every per-agent
+            // tool-call span (e.g. ingest_agent.tool_call/query_agent.tool_call) is a
+            // child of this model turn.
+            using var span = _instrumentation.StartModelTurnActivity(taskId, turnsUsed + 1);
 
             var turn = await _modelClient.NextTurnAsync(
-                systemPrompt, conversation, ToolRegistry.All, cancellationToken);
+                systemPrompt, conversation, _registry.Tools, cancellationToken);
 
             span?.SetTag("stop_reason", turn.StopReason.ToProtocolString());
             span?.SetTag("tool_request_count", turn.ToolUseRequests.Count);
@@ -97,12 +103,12 @@ public sealed class AgentLoop
             var stopReason = turn.StopReason;
             var stopReasonLabel = stopReason.ToProtocolString();
 
-            IngestAgentMetrics.RecordModelTokens(turn.InputTokens, turn.OutputTokens);
-            IngestAgentMetrics.RecordModelToolRequests(turn.ToolUseRequests.Count, stopReason);
+            _instrumentation.RecordModelTokens(turn.InputTokens, turn.OutputTokens);
+            _instrumentation.RecordModelToolRequests(turn.ToolUseRequests.Count, stopReason);
 
             if (totalInputTokens + totalOutputTokens > _tokenCap)
             {
-                IngestAgentMetrics.RecordAgentTurns(turnsUsed, "failed");
+                _instrumentation.RecordAgentTurns(turnsUsed, "failed");
                 throw new AgentLoopCapException(
                     $"Token cap of {_tokenCap} exceeded. Rolled back.",
                     cap: "tokens",
@@ -121,14 +127,14 @@ public sealed class AgentLoop
                 switch (stopReason)
                 {
                     case ModelStopReason.ToolUse:
-                        IngestAgentMetrics.RecordNoToolTurn(stopReason, "invalid_tool_use");
+                        _instrumentation.RecordNoToolTurn(stopReason, "invalid_tool_use");
                         throw new InvalidOperationException(
                             $"Model returned stop_reason={stopReasonLabel} but no tool_use blocks were parsed.");
 
                     case ModelStopReason.EndTurn:
                         // Run completes only on explicit end_turn (per contract).
-                        IngestAgentMetrics.RecordNoToolTurn(stopReason, "terminal");
-                        IngestAgentMetrics.RecordAgentTurns(turnsUsed, "completed");
+                        _instrumentation.RecordNoToolTurn(stopReason, "terminal");
+                        _instrumentation.RecordAgentTurns(turnsUsed, "completed");
                         _eventEmitter?.EmitActivity(turnsUsed, toolCallsTotal, toolCallsByName, "finalizing");
 
                         return new AgentLoopResult(
@@ -139,12 +145,12 @@ public sealed class AgentLoop
 
                     case ModelStopReason.MaxTokens or ModelStopReason.PauseTurn:
                         // Non-terminal no-tool stop reasons require another turn.
-                        IngestAgentMetrics.RecordNoToolTurn(stopReason, "continue");
+                        _instrumentation.RecordNoToolTurn(stopReason, "continue");
                         conversation.Add(new ConversationMessage("user", [new ConversationTextBlock(ContinuePrompt)]));
                         continue;
 
                     default:
-                        IngestAgentMetrics.RecordNoToolTurn(stopReason, "invalid_stop_reason");
+                        _instrumentation.RecordNoToolTurn(stopReason, "invalid_stop_reason");
                         throw new InvalidOperationException(
                             $"Model returned unexpected stop_reason='{stopReasonLabel}' without tool_use blocks. " +
                             $"Expected {ModelStopReason.EndTurn.ToProtocolString()} to complete, " +

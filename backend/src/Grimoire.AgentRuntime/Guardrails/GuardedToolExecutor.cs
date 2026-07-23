@@ -1,10 +1,8 @@
 using Grimoire.Domain.Guardrails;
-using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Logging.Abstractions;
 using System.Text;
 using System.Text.Json;
 
-namespace Grimoire.IngestAgent.Guardrails;
+namespace Grimoire.AgentRuntime.Guardrails;
 
 /// <summary>
 /// Result of executing one guarded tool call.
@@ -25,7 +23,8 @@ public sealed class GuardedToolExecutor
     private readonly WriteJournal _journal;
     private readonly string _repositoryRoot;
     private readonly string _taskId;
-    private readonly ILogger<GuardedToolExecutor> _logger;
+    private readonly ToolRegistry _registry;
+    private readonly IToolCallInstrumentation _instrumentation;
     private readonly List<DeniedActionRecord> _denials = [];
     private readonly List<string> _touchedPaths = [];
 
@@ -34,13 +33,15 @@ public sealed class GuardedToolExecutor
         WriteJournal journal,
         string repositoryRoot,
         string? taskId = null,
-        ILogger<GuardedToolExecutor>? logger = null)
+        ToolRegistry? registry = null,
+        IToolCallInstrumentation? instrumentation = null)
     {
         _policy = policy;
         _journal = journal;
         _repositoryRoot = repositoryRoot;
         _taskId = taskId ?? string.Empty;
-        _logger = logger ?? NullLogger<GuardedToolExecutor>.Instance;
+        _registry = registry ?? ToolRegistry.Default;
+        _instrumentation = instrumentation ?? NullToolCallInstrumentation.Instance;
     }
 
     /// <summary>All policy denials that occurred during the run so far.</summary>
@@ -58,6 +59,15 @@ public sealed class GuardedToolExecutor
         int turn,
         CancellationToken cancellationToken)
     {
+        // A tool name this run's registry does not offer is always rejected as unknown —
+        // even if a dispatch case for it exists below — so a read-only-configured
+        // executor (Grimoire.QueryAgent) can never reach the write branch regardless of
+        // what the model requests (ADR-011 R3, FR-011).
+        if (!_registry.Supports(toolName))
+        {
+            return new ToolExecutionResult(true, $"Unknown tool: {toolName}");
+        }
+
         switch (toolName)
         {
             case ToolRegistry.ListFiles:
@@ -90,8 +100,7 @@ public sealed class GuardedToolExecutor
             return RecordDenial(ToolRegistry.ListFiles, relativePath, canonical, policyResult.DenialReason!, turn);
         }
 
-        EmitAllowed(ToolRegistry.ListFiles, canonical, turn);
-        IngestAgentMetrics.RecordToolCall(ToolRegistry.ListFiles, "allowed");
+        _instrumentation.RecordAllowed(_taskId, ToolRegistry.ListFiles, canonical, turn);
 
         if (!Directory.Exists(canonical))
         {
@@ -130,8 +139,7 @@ public sealed class GuardedToolExecutor
             return RecordDenial(ToolRegistry.ReadFile, relativePath, canonical, policyResult.DenialReason!, turn);
         }
 
-        EmitAllowed(ToolRegistry.ReadFile, canonical, turn);
-        IngestAgentMetrics.RecordToolCall(ToolRegistry.ReadFile, "allowed");
+        _instrumentation.RecordAllowed(_taskId, ToolRegistry.ReadFile, canonical, turn);
 
         if (!File.Exists(canonical))
         {
@@ -195,8 +203,7 @@ public sealed class GuardedToolExecutor
 
         // 4. Record touched path, emit telemetry.
         _touchedPaths.Add(canonical);
-        EmitAllowed(ToolRegistry.WriteFile, canonical, turn);
-        IngestAgentMetrics.RecordToolCall(ToolRegistry.WriteFile, "allowed");
+        _instrumentation.RecordAllowed(_taskId, ToolRegistry.WriteFile, canonical, turn);
 
         return new ToolExecutionResult(false, $"Written: {relativePath}");
     }
@@ -208,32 +215,11 @@ public sealed class GuardedToolExecutor
         var record = new DeniedActionRecord(action, requestedTarget, canonicalTarget, reason, turn);
         _denials.Add(record);
 
-        using var span = IngestAgentTracing.ActivitySource.StartActivity("ingest_agent.tool_call");
-        span?.SetTag("task_id", _taskId);
-        span?.SetTag("tool", action);
-        span?.SetTag("target", canonicalTarget);
-        span?.SetTag("requested_target", requestedTarget);
-        span?.SetTag("decision", "denied");
-        span?.SetTag("turn", turn);
-
-        IngestAgentMetrics.RecordToolCall(action, "denied");
-        IngestAgentMetrics.RecordActionDenied(action, reason);
-        IngestAgentLogEvents.LogToolDenied(_logger, _taskId, action, canonicalTarget, reason, turn);
+        _instrumentation.RecordDenied(_taskId, action, requestedTarget, canonicalTarget, reason, turn);
 
         return new ToolExecutionResult(
             true,
             $"denied: {reason}. This action is outside the safety policy; continue with your remaining allowed work.");
-    }
-
-    private void EmitAllowed(string tool, string target, int turn)
-    {
-        using var span = IngestAgentTracing.ActivitySource.StartActivity("ingest_agent.tool_call");
-        span?.SetTag("task_id", _taskId);
-        span?.SetTag("tool", tool);
-        span?.SetTag("target", target);
-        span?.SetTag("decision", "allowed");
-        span?.SetTag("turn", turn);
-        IngestAgentLogEvents.LogToolAllowed(_logger, _taskId, tool, target, turn);
     }
 
     /// <summary>
