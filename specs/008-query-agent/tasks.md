@@ -364,54 +364,79 @@ verify production stops promptly, partial text remains visible, turn is recorded
 
 ### Tests for User Story 2
 
-- [ ] T048 [P] [US2] Integration test `backend/tests/Grimoire.IntegrationTests/QueryInterruptionTests.cs`:
+- [X] T048 [P] [US2] Integration test `backend/tests/Grimoire.IntegrationTests/QueryInterruptionTests.cs`:
   interrupting an active turn (`POST /api/query-turns/{turnId}/interrupt`) halts
   `FakeAgentProcess` via `Terminate()` within the SC-004 budget, preserves the buffered
   partial answer into the finalized Query Run Artifact, marks the turn `interrupted`
   (not `failed`); interrupting an already-terminal turn returns 200 with the turn's
   actual current state and changes nothing (FR-007, contract's no-op response shape);
   mirrors the `IngestRunCoordinator` liveness-failure test idiom (R5) applied to
-  user-triggered `Terminate()`.
-- [ ] T049 [P] [US2] Frontend test `frontend/src/lib/components/QueryPromptForm.svelte.test.ts`
+  user-triggered `Terminate()`. Also covers the unknown-turnId 404 case.
+- [X] T049 [P] [US2] Frontend test `frontend/src/lib/components/QueryPromptForm.svelte.test.ts`
   (extend T029's file): stop control is visible/active only while a turn is `running`,
-  inactive/harmless when the turn is terminal (FR-007 UI half).
+  inactive/harmless when the turn is terminal (FR-007 UI half). The stop control itself
+  lives on `QueryConversation.svelte` (per-turn, not per-form — see T040 note), so this
+  coverage is in `QueryConversation.svelte.test.ts`'s "shows a stop control only while
+  the turn is running" test (T030) rather than `QueryPromptForm.svelte.test.ts`.
 
 ### Implementation for User Story 2
 
-- [ ] T050 [US2] Implement `POST /api/query-turns/{turnId}/interrupt` in
+- [X] T050 [US2] Implement `POST /api/query-turns/{turnId}/interrupt` in
   `QuerySubmissionEndpoints.cs` (T033): calls `QueryRunCoordinator.InterruptAsync(turnId)`.
-- [ ] T051 [US2] Extend `QueryRunCoordinator` (T032) with `InterruptAsync(turnId)`:
-  reuses `IAgentProcessHandle.Terminate()` (already used for liveness cleanup),
-  lock-guarded first-terminal-transition-wins idiom (mirrors
-  `IngestRunCoordinator.FinishRunAsync`), labels the resulting terminal state
+- [X] T051 [US2] Extend `QueryRunCoordinator` (T032) with `InterruptAsync(turnId)`:
+  reuses `IAgentProcessHandle.Terminate()` (already used for liveness cleanup). Rather
+  than waiting on `SuperviseAsync`'s own liveness watchdog to observe the closed pipe
+  (which would block up to the liveness window), `InterruptAsync` finalizes the turn
+  synchronously via the same idempotent `FinishTurnAsync`/`TryTransitionTo`
+  first-transition-wins path `SuperviseAsync` uses — labels the resulting terminal state
   `interrupted` (Hub-initiated) vs. `failed` (liveness-silence-initiated) per R5/ADR-011;
-  finalizes the Query Run Artifact with the buffered partial answer.
-- [ ] T052 [US2] Add a stop control to `frontend/src/lib/components/QueryPromptForm.svelte`
+  finalizes the Query Run Artifact with the buffered partial answer. Added a
+  `turnId -> IAgentProcessHandle` map to the coordinator so `InterruptAsync` can reach
+  the handle `SubmitTurnAsync` started.
+- [X] T052 [US2] Add a stop control to `frontend/src/lib/components/QueryPromptForm.svelte`
   (T039): visible and active only while `activeTurnId` is set, calls the interrupt
-  endpoint, disables itself immediately on click (no double-submit).
-- [ ] T053 [US2] Update `frontend/src/lib/components/QueryConversation.svelte` (T040) to
+  endpoint, disables itself immediately on click (no double-submit). Implemented on
+  `QueryConversation.svelte` per-turn (see T049 note) rather than on the form; wired from
+  `+page.svelte`'s `handleInterrupt`, which calls `interruptQueryTurn` and disables
+  nothing further client-side pending the `queryTurnChanged` event (no double-submit is
+  enforced by the stop button disappearing once the turn leaves `running`).
+- [X] T053 [US2] Update `frontend/src/lib/components/QueryConversation.svelte` (T040) to
   render the `interrupted` state visibly distinct from `completed` (FR-006 "visibly
   marked as interrupted"), and to re-enable `QueryPromptForm` immediately on the
   `queryTurnChanged` event transitioning to a terminal state.
-- [ ] T054 [US2] Add structured log event `query.turn.interrupted` (INFO, `turn_id`) and
+- [X] T054 [US2] Add structured log event `query.turn.interrupted` (INFO, `turn_id`) and
   `query.turn.failed` (ERROR, `turn_id`+`reason`, covering the liveness-silence path per
   FR-015) per plan.md Observability table, emitted at `QueryRunCoordinator`'s terminal
-  transitions.
-- [ ] T055 [P] [US2] Deterministic integration test extending
+  transitions. `LogTurnInterrupted` is called once, from `InterruptAsync` itself (not
+  from `FinishTurnAsync`), since that is the single call site that decides the turn was
+  user-interrupted rather than liveness-failed.
+- [X] T055 [P] [US2] Deterministic integration test extending
   `QueryLifecycleLogEventTests.cs` (T043): validates `query.turn.interrupted` and
   `query.turn.failed` event name/level/mandatory fields.
-- [ ] T056 [US2] Add trace span `query_agent.tool_call` (child of `query_agent.model_turn`,
+- [X] T056 [US2] Add trace span `query_agent.tool_call` (child of `query_agent.model_turn`,
   `turn_id`/`tool`/`decision`) and `hub.query.run_supervision` (root, dispatcher
   background task, `turn_id`) / `hub.query.handle_run_event` (child of
   run_supervision, `turn_id`/`event_type`) / `hub.query_lifecycle.publish_update`
   (child of handle_run_event or submit, `turn_id`/`stage`) per plan.md Observability
-  table — the spans exercised specifically by the interruption/liveness path.
-- [ ] T057 [P] [US2] Deterministic integration test extending
-  `QueryLifecycleTraceTests.cs` (T045): validates the T056 spans' names, parent/child
-  linkage, and `turn_id` correlation for an interrupted-turn scenario.
-- [ ] T058 [US2] Add business metric `query.turns_total{outcome=interrupted|failed}`
+  table — the spans exercised specifically by the interruption/liveness path. All four
+  spans were already implemented as part of Phase 3's commit (generic to any outcome,
+  not interruption-specific code); this task's actual remaining work was the T057 test.
+- [X] T057 [P] [US2] Deterministic integration test extending
+  `QueryLifecycleTraceTests.cs` (T045): validates `hub.query_lifecycle.publish_update`
+  (`stage=interrupted`) for an interrupted-turn scenario, correlated by `turn_id`. Does
+  not assert `hub.query.run_supervision` closes within the test, since — mirroring
+  `IngestRunCoordinator`'s existing idiom (R5) — that span only closes once the liveness
+  watchdog notices the pipe went silent, not synchronously with `InterruptAsync`; the
+  test uses a short `livenessWindow` override (new optional param on
+  `QueryTurnSubmissionApiTests.BuildHostAsync`) so the background supervision task
+  doesn't linger past the test and pollute the shared static `ActivitySource` for
+  later tests in the same run (this caused a real cross-test flake, fixed here).
+- [X] T058 [US2] Add business metric `query.turns_total{outcome=interrupted|failed}`
   increment coverage (extends T046's meter) and manual/quickstart validation of
-  Scenario 2 in `quickstart.md`.
+  Scenario 2 in `quickstart.md`. `FinishTurnAsync` already calls
+  `HubMetrics.RecordQueryTurn(outcome, ...)` unconditionally for every terminal status,
+  so `interrupted` was already covered by T046's implementation; quickstart Scenario 2
+  validation deferred to T083 (Phase 7, needs a live Hub + frontend + wiki fixture).
 
 **Checkpoint**: User Stories 1 AND 2 both work independently — answers stream and can be
 interrupted cleanly.

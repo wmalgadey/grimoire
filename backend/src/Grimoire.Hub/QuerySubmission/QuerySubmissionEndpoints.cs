@@ -22,6 +22,7 @@ public static class QuerySubmissionEndpoints
     public static RouteGroupBuilder MapQueryTurnEndpoints(this RouteGroupBuilder group)
     {
         group.MapGet("/{turnId}", GetTurnAsync);
+        group.MapPost("/{turnId}/interrupt", PostInterruptAsync);
         return group;
     }
 
@@ -94,5 +95,17 @@ public static class QuerySubmissionEndpoints
             state = turn.Status.ToString().ToLowerInvariant(),
             failureReason = turn.FailureReason,
         }));
+    }
+
+    private static async Task<IResult> PostInterruptAsync(
+        string turnId, QueryRunCoordinator coordinator, CancellationToken cancellationToken)
+    {
+        var turn = await coordinator.InterruptAsync(turnId, cancellationToken);
+        if (turn is null)
+        {
+            return Results.NotFound(new { message = $"Query turn '{turnId}' was not found." });
+        }
+
+        return Results.Ok(new { turnId = turn.TurnId, state = turn.Status.ToString().ToLowerInvariant() });
     }
 }

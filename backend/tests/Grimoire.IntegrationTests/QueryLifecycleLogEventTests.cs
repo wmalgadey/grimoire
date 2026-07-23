@@ -18,11 +18,13 @@ public class QueryLifecycleLogEventTests
 
         QueryLifecycleLogEvents.LogTurnCreated(logger, conversationId: "c-1", turnId: "t-1");
         QueryLifecycleLogEvents.LogTurnCompleted(logger, turnId: "t-1", durationMs: 1234);
+        QueryLifecycleLogEvents.LogTurnInterrupted(logger, turnId: "t-7");
         QueryLifecycleLogEvents.LogTurnFailed(logger, turnId: "t-2", reason: "liveness timeout");
         QueryLifecycleLogEvents.LogSubmissionRejected(logger, conversationId: "c-3");
 
         AssertEvent(logger.Entries, "query.turn.created", LogLevel.Information, ["conversation_id", "turn_id"]);
         AssertEvent(logger.Entries, "query.turn.completed", LogLevel.Information, ["turn_id", "duration_ms"]);
+        AssertEvent(logger.Entries, "query.turn.interrupted", LogLevel.Information, ["turn_id"]);
         AssertEvent(logger.Entries, "query.turn.failed", LogLevel.Error, ["turn_id", "reason"]);
         AssertEvent(logger.Entries, "query.submission.rejected", LogLevel.Information, ["conversation_id"]);
     }
