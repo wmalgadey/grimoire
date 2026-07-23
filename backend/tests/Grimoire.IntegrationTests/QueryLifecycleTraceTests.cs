@@ -170,6 +170,50 @@ public class QueryLifecycleTraceTests
         Assert.Equal("read_file", GetTag(tool, "tool"));
     }
 
+    [Fact]
+    public async Task QueryAgentToolCallSpan_ReflectsDeniedDecision_ForAnOutOfScopeRequest()
+    {
+        var activities = new ConcurrentQueue<Activity>();
+        using var listener = new ActivityListener
+        {
+            ShouldListenTo = src => src.Name == "Grimoire.QueryAgent",
+            Sample = (ref ActivityCreationOptions<ActivityContext> _) => ActivitySamplingResult.AllDataAndRecorded,
+            ActivityStopped = activity => activities.Enqueue(activity),
+        };
+        ActivitySource.AddActivityListener(listener);
+
+        var root = Path.Combine(Path.GetTempPath(), $"query-agent-trace-denied-{Guid.NewGuid():N}");
+        var wikiDir = Path.Combine(root, "wiki");
+        var pagesDir = Path.Combine(wikiDir, "pages");
+        Directory.CreateDirectory(pagesDir);
+
+        var policy = new SafetyPolicy(wikiDir, readPrefixes: [pagesDir + Path.DirectorySeparatorChar], writePrefixes: []);
+        var journal = new WriteJournal();
+        var executor = new GuardedToolExecutor(
+            policy, journal, wikiDir, taskId: "turn-trace-denied-1",
+            registry: Grimoire.QueryAgent.QueryToolRegistry.Default,
+            instrumentation: new QueryToolCallInstrumentation(Microsoft.Extensions.Logging.Abstractions.NullLogger.Instance));
+        var fakeModel = new FakeModelClient([
+            FakeModelClient.ReadFileTurn("tool-1", "../outside-wiki-secret.txt"),
+            FakeModelClient.FinalTurn("I could not access that file — it is outside the wiki.")]);
+        var loop = new AgentLoop(
+            fakeModel, executor,
+            registry: Grimoire.QueryAgent.QueryToolRegistry.Default,
+            instrumentation: new QueryAgentLoopInstrumentation());
+
+        using (QueryAgentTracing.StartRunActivity("turn-trace-denied-1"))
+        {
+            await loop.RunAsync("You are a test query agent.", [new ConversationMessage("user", "Read the secret file.")],
+                "turn-trace-denied-1", CancellationToken.None);
+        }
+
+        var run = Assert.Single(activities.Where(a => a.OperationName == "query_agent.run"));
+        var tool = Assert.Single(activities.Where(a => a.OperationName == "query_agent.tool_call" && a.TraceId == run.TraceId));
+
+        Assert.Equal("denied", GetTag(tool, "decision"));
+        Assert.Equal("read_file", GetTag(tool, "tool"));
+    }
+
     private static string GetTag(Activity activity, string tagName)
         => activity.TagObjects.FirstOrDefault(tag => tag.Key == tagName).Value?.ToString() ?? string.Empty;
 }
