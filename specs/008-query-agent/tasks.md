@@ -32,17 +32,17 @@ code exists. This phase is first, non-negotiable, and blocks everything else.
 
 **⚠️ NON-NEGOTIABLE**: No feature implementation can begin until Phase 0 is complete.
 
-- [ ] T001 Write `Grimoire.ArchTests/AgentRuntimeAdapterBoundaryRuleTests.cs`: NetArchTest
+- [X] T001 Write `Grimoire.ArchTests/AgentRuntimeAdapterBoundaryRuleTests.cs`: NetArchTest
   rule asserting the Anthropic SDK namespace is only referenced from
   `Grimoire.AgentRuntime.Core.Adapters.Anthropic` (ADR-011 C6, supersedes the ADR-010
   containment table entry for `IModelClient`'s adapter namespace). Rule targets the
   `Grimoire.AgentRuntime` assembly (does not yet exist — this task's Red probe covers
   that too, see T002).
-- [ ] T002 Red/Green probe for T001: temporarily add a type in
+- [X] T002 Red/Green probe for T001: temporarily add a type in
   `Grimoire.AgentRuntime.Core` (not `.Adapters.Anthropic`) that references the Anthropic
   SDK, run the test — it MUST fail; remove the probe type, run again — it MUST pass.
   Commit message documents the probe result per the constitution's Phase 0 requirement.
-- [ ] T003 Extend `Grimoire.ArchTests/GuardedWriteBoundaryRuleTests.cs` (or add a sibling
+- [X] T003 Extend `Grimoire.ArchTests/GuardedWriteBoundaryRuleTests.cs` (or add a sibling
   `QueryAgentGuardedWriteBoundaryRuleTests.cs`) with an IL-scan rule (ADR-011 C7)
   asserting zero filesystem-write API calls (`File.*Write*`, `File.Delete`,
   `Directory.Delete`, etc., same `_writeMethods` list) are reachable anywhere in the
@@ -51,17 +51,17 @@ code exists. This phase is first, non-negotiable, and blocks everything else.
   write calls, full stop (FR-011, FR-014). Assembly does not exist yet — this is
   expected to be unreachable/failing-to-compile until T020 exists; write the rule body
   now so T004's probe can exercise it against a scratch project reference.
-- [ ] T004 Red/Green probe for T003: after `Grimoire.QueryAgent` exists as an empty
+- [X] T004 Red/Green probe for T003: after `Grimoire.QueryAgent` exists as an empty
   console project (bring forward the minimal shell from T020 if needed to unblock this
   probe), add a deliberate `File.WriteAllText(...)` call in a
   `Grimoire.QueryAgent`-only scratch class, run the test — it MUST fail; remove the
   scratch class, run again — it MUST pass. Commit message documents the probe result.
 
 **Definition of Done**:
-- [ ] Both rules (T001, T003) written and committed
-- [ ] Both Red/Green probes completed (T002, T004) with commit messages documenting
+- [X] Both rules (T001, T003) written and committed
+- [X] Both Red/Green probes completed (T002, T004) with commit messages documenting
   the probe result
-- [ ] Both tests pass in CI with no active violations (probe code removed)
+- [X] Both tests pass in CI with no active violations (probe code removed)
 
 **Checkpoint**: ADR-011's structural boundaries are guarded. Feature code may now begin.
 
