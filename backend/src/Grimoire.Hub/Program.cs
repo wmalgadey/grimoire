@@ -6,7 +6,10 @@ using Grimoire.Hub.IngestSubmission;
 using Grimoire.Hub.IngestSubmission.Adapters.HttpFetch;
 using Grimoire.Hub.IngestSubmission.Adapters.MarkItDown;
 using Grimoire.Hub.OperationalState;
+using Microsoft.AspNetCore.SignalR;
 using Grimoire.Hub.QueryDispatch;
+using Grimoire.Hub.QueryRunArtifact;
+using Grimoire.Hub.QuerySubmission;
 using Grimoire.Hub.Realtime;
 using Grimoire.Hub.Runtime.Paths;
 using Grimoire.Hub.Submission;
@@ -55,7 +58,8 @@ using (var bootstrapLoggerFactory = TelemetryExtensions.CreateBootstrapLoggerFac
     builder.Services.AddSingleton(repository);
     builder.Services.AddSingleton(contentPaths);
     builder.Services.AddSingleton(new LocalSecretsLoader(resolvedPaths.SecretsFilePath));
-    builder.Services.AddSingleton<AgentProcessHost>(sp => new AgentProcessHost(sp.GetRequiredService<LocalSecretsLoader>(), resolvedPaths.AgentWorkerPath));
+    builder.Services.AddSingleton<AgentProcessHost>(sp => new AgentProcessHost(
+        sp.GetRequiredService<LocalSecretsLoader>(), resolvedPaths.AgentWorkerPath, resolvedPaths.QueryAgentWorkerPath));
     builder.Services.AddSingleton<IAgentProcessLauncher>(sp => sp.GetRequiredService<AgentProcessHost>());
     builder.Services.AddSingleton<IngestRunCoordinator>(sp => new IngestRunCoordinator(
         sp.GetRequiredService<OperationalStateRepository>(),
@@ -66,6 +70,22 @@ using (var bootstrapLoggerFactory = TelemetryExtensions.CreateBootstrapLoggerFac
         logger: sp.GetRequiredService<ILogger<IngestRunCoordinator>>()));
     builder.Services.AddSingleton<IngestSubmissionValidator>();
     builder.Services.AddSingleton<IngestSubmissionPipeline>();
+
+    // 008-query-agent: fully decoupled from Ingest's coordinator (no shared lock/slot,
+    // ADR-011/SC-006) — its own SignalR channel, artifact writer, and bounded-concurrency
+    // dispatch.
+    builder.Services.AddSingleton<QueryLifecyclePublisher>(sp => new QueryLifecyclePublisher(
+        sp.GetRequiredService<IHubContext<QueryLifecycleHub>>(),
+        sp.GetRequiredService<ILogger<QueryLifecyclePublisher>>()));
+    builder.Services.AddSingleton<QueryRunArtifactWriter>();
+    builder.Services.AddSingleton<QuerySubmissionValidator>();
+    builder.Services.AddSingleton<QueryRunCoordinator>(sp => new QueryRunCoordinator(
+        sp.GetRequiredService<IAgentProcessLauncher>(),
+        sp.GetRequiredService<QueryLifecyclePublisher>(),
+        sp.GetRequiredService<QueryRunArtifactWriter>(),
+        resolvedPaths,
+        sp.GetRequiredService<QueryConcurrencyOptions>(),
+        logger: sp.GetRequiredService<ILogger<QueryRunCoordinator>>()));
 
     var reconciler = new RestartReconciler(repository);
     await reconciler.ReconcileRunningTasksAsync(contentPaths.TasksDir, contentPaths.LogPath);
@@ -100,6 +120,9 @@ app.MapGet("/", () => "Grimoire Hub");
 app.MapHub<IngestLifecycleHub>("/hubs/ingest-lifecycle");
 app.MapGroup("/api/ingest-submissions").MapIngestSubmissionEndpoints();
 app.MapGroup("/api/ingest-queue").MapIngestQueueEndpoints();
+app.MapHub<QueryLifecycleHub>("/hubs/query-lifecycle");
+app.MapGroup("/api/query-conversations").MapQueryConversationEndpoints();
+app.MapGroup("/api/query-turns").MapQueryTurnEndpoints();
 app.Run();
 
 static string? ParseOption(string[] args, string option)

@@ -219,16 +219,16 @@ verify an honest-gap answer.
 
 > **NOTE: Write these tests FIRST, ensure they FAIL before implementation**
 
-- [ ] T026 [P] [US1] Integration test `backend/tests/Grimoire.IntegrationTests/QueryInstructionLoadTests.cs`:
+- [X] T026 [P] [US1] Integration test `backend/tests/Grimoire.IntegrationTests/QueryInstructionLoadTests.cs`:
   system prompt loaded verbatim as the agent's entire system prompt, SHA-256 recorded on
   the Query Run Artifact (SC-001); missing/unreadable/empty `agents/query/system-prompt.md`
   fails the turn before any agent output with a human-readable reason (fail-closed,
   mirrors `InstructionLoadFailureTests.cs` for Ingest).
-- [ ] T027 [P] [US1] Integration test `backend/tests/Grimoire.IntegrationTests/QueryTurnSubmissionApiTests.cs`:
+- [X] T027 [P] [US1] Integration test `backend/tests/Grimoire.IntegrationTests/QueryTurnSubmissionApiTests.cs`:
   `POST /api/query-conversations/{conversationId}/turns` per
   `contracts/query-conversation-api.md` — 202 Accepted with `turnId`/`position`/`state`,
   400 for empty/whitespace/over-max-length prompt (FR-004) with no turn created.
-- [ ] T028 [P] [US1] Integration test `backend/tests/Grimoire.IntegrationTests/QueryAnswerStreamingTests.cs`:
+- [X] T028 [P] [US1] Integration test `backend/tests/Grimoire.IntegrationTests/QueryAnswerStreamingTests.cs`:
   using `FakeModelClient`'s scripted delta timing (T025), asserts `answer_chunk` events
   reach the `QueryLifecycleHub` publisher within budget of production (SC-003 harness
   half — event-plumbing latency, not end-to-end LLM wall-clock).
@@ -241,11 +241,11 @@ verify an honest-gap answer.
 
 ### Implementation for User Story 1
 
-- [ ] T031 [US1] Implement `backend/src/Grimoire.Hub/QueryDispatch/QueryAgentRequest.cs`
+- [X] T031 [US1] Implement `backend/src/Grimoire.Hub/QueryDispatch/QueryAgentRequest.cs`
   (extends `IAgentProcessLauncher`'s request shape per data-model.md: `TurnId`,
   `ConversationId`, `Prompt`, `PriorTurns`, `WikiRoot`/`PagesDir`/`IndexPath`/`LogPath`,
   `SystemPromptPath`, `PolicyPath`).
-- [ ] T032 [US1] Implement `backend/src/Grimoire.Hub/QueryDispatch/QueryRunCoordinator.cs`:
+- [X] T032 [US1] Implement `backend/src/Grimoire.Hub/QueryDispatch/QueryRunCoordinator.cs`:
   bounded-concurrency dispatch via `IAgentProcessLauncher`, tracks per-turn state
   (`running`/`completed`/`interrupted`/`failed`), accumulates `answer_chunk` text into an
   in-memory partial-answer buffer per turn (ADR-011), forwards terminal events to
@@ -253,23 +253,35 @@ verify an honest-gap answer.
   minimal single-turn happy path (dispatch → stream → complete) is required for this
   story; interruption (US2) and concurrency-limit rejection (US4/foundational for FR-017)
   are separate stories' scope, but this class's shape must accommodate them.
-- [ ] T033 [US1] Implement `backend/src/Grimoire.Hub/QuerySubmission/QuerySubmissionEndpoints.cs`
+  Concurrency limiting (`SemaphoreSlim.WaitAsync(0)`, immediate reject) is implemented
+  now rather than deferred — it's what makes this coordinator bounded-concurrency
+  rather than unbounded, not an add-on; T076/Phase 7 verifies it, doesn't build it.
+  `IAgentProcessLauncher` gained a second `StartAsync(QueryAgentRequest, ...)` overload
+  (port ownership unchanged, ADR-011) and `AgentRunEvent`/`RunEventEmitter`'s terminal
+  events gained optional metadata fields (system prompt hash, policy identity, model,
+  turns used, denied actions) so the Hub can finalize the Query Run Artifact entirely
+  from the event stream, since the agent process never writes anything — this wasn't
+  fully specified in the contracts and was resolved during implementation.
+- [X] T033 [US1] Implement `backend/src/Grimoire.Hub/QuerySubmission/QuerySubmissionEndpoints.cs`
   and `QuerySubmissionValidator.cs`: `POST /api/query-conversations/{conversationId}/turns`
   (202/400 per contract, server-side re-validation of prompt empty/max-length per FR-004)
   and `GET /api/query-turns/{turnId}` (current authoritative state, per contract).
-- [ ] T034 [US1] Implement `backend/src/Grimoire.Hub/QueryRunArtifact/QueryRunArtifactWriter.cs`
-  and `QueryRunArtifactStore.cs`: writes one markdown file per turn to
-  `<base>/data/query-runs/<conversationId>/<turnId>.md` on terminal transition (FR-016),
-  fields per data-model.md's Query Run Artifact table — entirely Hub-written, agent
-  process has no write path at all (R3).
-- [ ] T035 [US1] Implement `backend/src/Grimoire.Hub/Realtime/QueryLifecycleHub.cs`
+- [X] T034 [US1] Implement `backend/src/Grimoire.Hub/QueryRunArtifact/QueryRunArtifactWriter.cs`:
+  writes one markdown file per turn to `<base>/data/query-runs/<conversationId>/<turnId>.md`
+  on terminal transition (FR-016), fields per data-model.md's Query Run Artifact table —
+  entirely Hub-written, agent process has no write path at all (R3). Skipped the
+  `QueryRunArtifactStore.cs` reader: nothing in scope reads the artifact back (`GET
+  /api/query-turns/{turnId}` serves from `QueryRunCoordinator`'s in-memory state, and
+  Query has no restart-recovery requirement the way Ingest does) — add one if a later
+  need for reading persisted artifacts back emerges.
+- [X] T035 [US1] Implement `backend/src/Grimoire.Hub/Realtime/QueryLifecycleHub.cs`
   (SignalR hub, route `/hubs/query-lifecycle`, broadcast-only, mirrors
   `IngestLifecycleHub.cs`).
-- [ ] T036 [US1] Implement `backend/src/Grimoire.Hub/Realtime/QueryLifecyclePublisher.cs`:
+- [X] T036 [US1] Implement `backend/src/Grimoire.Hub/Realtime/QueryLifecyclePublisher.cs`:
   broadcasts `queryAnswerChunk` (turnId, sequence, text) and `queryTurnChanged`
   (eventId, turnId, fromState, toState, timestamp, failureReason) per
   `contracts/query-conversation-api.md`, mirrors `IngestLifecyclePublisher.cs`.
-- [ ] T037 [US1] Wire `Grimoire.Hub`'s DI/`Program.cs`: register `QueryRunCoordinator`,
+- [X] T037 [US1] Wire `Grimoire.Hub`'s DI/`Program.cs`: register `QueryRunCoordinator`,
   `QueryRunArtifactWriter`, `QueryLifecyclePublisher`, `QueryLifecycleHub` mapping, and
   the `QueryConcurrencyLimit` option (T024) into the ASP.NET Core pipeline.
 - [ ] T038 [P] [US1] Implement `frontend/src/lib/services/queryLifecycleClient.ts`:
@@ -290,28 +302,28 @@ verify an honest-gap answer.
   state, sends `priorTurns` on every submission (US3 groundwork, inert until US3 wires
   follow-ups — T041 only needs a single-turn conversation for US1's own independent
   test).
-- [ ] T042 [US1] Add structured log events `query.turn.created`, `query.instructions.loaded`,
+- [X] T042 [US1] Add structured log events `query.turn.created`, `query.instructions.loaded`,
   `query.instructions.load_failed`, `query.turn.completed` (INFO/ERROR per plan.md
   Observability table) with their mandatory fields (`conversation_id`/`turn_id`,
   `turn_id`+`system_prompt_sha256`+`policy_version`+`policy_sha256`,
   `turn_id`+`reason`, `turn_id`+`duration_ms` respectively), emitted at the trigger
   points in `QueryRunCoordinator`/`QueryAgentRequest` loading.
-- [ ] T043 [P] [US1] Deterministic integration test `backend/tests/Grimoire.IntegrationTests/QueryLifecycleLogEventTests.cs`
+- [X] T043 [P] [US1] Deterministic integration test `backend/tests/Grimoire.IntegrationTests/QueryLifecycleLogEventTests.cs`
   (mirrors `IngestLifecycleLogEventTests.cs`): validates event name, level, and mandatory
   fields for `query.turn.created`, `query.instructions.loaded`,
   `query.instructions.load_failed`, `query.turn.completed`.
-- [ ] T044 [US1] Add trace spans `hub.query.submit` (root, `turn_id`/`conversation_id`),
+- [X] T044 [US1] Add trace spans `hub.query.submit` (root, `turn_id`/`conversation_id`),
   `hub.query.spawn_agent` (child of submit, `turn_id`/`agent=query`),
   `query_agent.run` (root in agent process, `turn_id`), `query_agent.load_instructions`
   (child of run, `turn_id`/`system_prompt_sha256`), `query_agent.model_turn` (child of
   run, `turn_id`/`turn`/`stop_reason`), `query_agent.finalize_artifact` (child of run,
   `turn_id`/`outcome`) per plan.md Observability table, using the existing OTel
   bootstrap pattern (`TelemetryBootstrap.cs`/`TelemetryExtensions.cs`).
-- [ ] T045 [P] [US1] Deterministic integration test `backend/tests/Grimoire.IntegrationTests/QueryLifecycleTraceTests.cs`
+- [X] T045 [P] [US1] Deterministic integration test `backend/tests/Grimoire.IntegrationTests/QueryLifecycleTraceTests.cs`
   (mirrors `IngestLifecycleTraceTests.cs`): validates span names, parent/child linkage,
   and `turn_id` correlation for the spans in T044 (submit/spawn_agent/run/
   load_instructions/model_turn/finalize_artifact subset reachable without interruption).
-- [ ] T046 [US1] Add business metrics `query.turns_total{outcome}`,
+- [X] T046 [US1] Add business metrics `query.turns_total{outcome}`,
   `query.answer_chunks_total`, `query.turn_duration_seconds{outcome}` (plan.md
   Observability table) via the existing `HubMetrics.cs`/`IngestAgentMetrics.cs`-style
   meter registration pattern.
