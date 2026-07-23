@@ -1,6 +1,6 @@
 # Quickstart: Recorded-Replay Agent Evaluations
 
-**Feature**: 008-agent-eval-replay
+**Feature**: 009-agent-eval-replay
 
 Validation scenarios proving the feature end-to-end. Contracts:
 [eval-cli.md](./contracts/eval-cli.md), [recording-format.md](./contracts/recording-format.md).

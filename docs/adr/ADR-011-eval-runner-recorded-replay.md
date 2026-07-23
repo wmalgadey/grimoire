@@ -6,7 +6,7 @@ status: accepted
 
 ## Context and Problem Statement
 
-Feature 008 replaces the always-live agent-behavior eval suite with a recorded-replay
+Feature 009 replaces the always-live agent-behavior eval suite with a recorded-replay
 tier (Constitution Principle II explicitly permits evaluation "against real or recorded
 LLM output"). This requires three structural elements no existing ADR covers: a
 standalone eval command that drives the real agent from outside in isolated workspaces
@@ -22,9 +22,9 @@ implementation.
   with Red/Green probes (Principle III).
 - Principle II: replay tests must be hermetic and deterministic while still verifying
   genuine agent behavior; harness contracts tested without live LLM calls.
-- Spec 008 FR-015: evaluation must execute the real application through its production
+- Spec 009 FR-015: evaluation must execute the real application through its production
   entry points — no duplicated orchestration wiring.
-- Spec 008 FR-016 / SC-008: no skipped eval tests in the standard suite; staleness must
+- Spec 009 FR-016 / SC-008: no skipped eval tests in the standard suite; staleness must
   block instruction-change merges.
 - ADR-002: agents are standalone executables spawned per task with a file-based
   contract — the natural outside-in seam.
@@ -45,7 +45,7 @@ implementation.
 Chosen option: **Option 1.**
 
 - **New process**: `backend/src/Grimoire.EvalRunner` — subcommands `capture`, `replay`,
-  `status` (contract: `specs/008-agent-eval-replay/contracts/eval-cli.md`). It drives
+  `status` (contract: `specs/009-agent-eval-replay/contracts/eval-cli.md`). It drives
   `Grimoire.IngestAgent` exclusively as a spawned child process per sample (ADR-002
   contract) in an isolated per-run workspace. 007's provider resolution, timeout, and
   sanitization move here; all `[EvalFact]`/`GRIMOIRE_EVAL` gating is deleted from the
@@ -61,7 +61,7 @@ Chosen option: **Option 1.**
   fail-fast configuration error; neither preserves production behavior unchanged.
 - **Recording store**: JSON manifest + per-sample files versioned under
   `data/evals/recordings/<scenario>/` (format:
-  `specs/008-agent-eval-replay/contracts/recording-format.md`). Local-filesystem
+  `specs/009-agent-eval-replay/contracts/recording-format.md`). Local-filesystem
   persistence — port-exempt per Principle I, containment-bound. Manifest fingerprints
   (instruction surface per ADR-007, policy per ADR-006, fixture, scenario definition,
   judge prompt) are the staleness authority; replay tests failing on staleness in the
@@ -101,9 +101,9 @@ Chosen option: **Option 1.**
 
 ## Verification
 
-- `Grimoire.ArchTests` gains C6–C8 with Red/Green probes (Phase 0 of feature 008
+- `Grimoire.ArchTests` gains C6–C8 with Red/Green probes (Phase 0 of feature 009
   tasks); ADR-010's C1–C5 remain in force and their tests keep passing.
 - Hermetic contract tests cover replay matching, staleness, provenance, determinism,
   credential hygiene; the standard PR pipeline runs them plus the replay eval tests.
-- This ADR MUST be Accepted before `/speckit-tasks` for feature 008 (Constitution
+- This ADR MUST be Accepted before `/speckit-tasks` for feature 009 (Constitution
   Principle III).

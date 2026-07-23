@@ -1,8 +1,8 @@
 # Implementation Plan: Recorded-Replay Agent Evaluations
 
-**Branch**: `008-agent-eval-replay` (git: `claude/speckit-agent-eval-alternatives-yhik4p`) | **Date**: 2026-07-23 | **Spec**: [spec.md](./spec.md)
+**Branch**: `009-agent-eval-replay` (git: `claude/speckit-agent-eval-alternatives-yhik4p`) | **Date**: 2026-07-23 | **Spec**: [spec.md](./spec.md)
 
-**Input**: Feature specification from `/specs/008-agent-eval-replay/spec.md`
+**Input**: Feature specification from `/specs/009-agent-eval-replay/spec.md`
 
 **Note**: This template is filled in by the `/speckit-plan` command; its definition describes the execution workflow.
 
@@ -209,7 +209,7 @@ The existing `eval.gate_resolution` span and `eval_provider_resolved` /
 ### Documentation (this feature)
 
 ```text
-specs/008-agent-eval-replay/
+specs/009-agent-eval-replay/
 ├── plan.md              # This file (/speckit-plan command output)
 ├── research.md          # Phase 0 output (/speckit-plan command)
 ├── data-model.md        # Phase 1 output (/speckit-plan command)

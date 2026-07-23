@@ -1,6 +1,6 @@
 # Research: Recorded-Replay Agent Evaluations
 
-**Feature**: 008-agent-eval-replay | **Date**: 2026-07-23
+**Feature**: 009-agent-eval-replay | **Date**: 2026-07-23
 
 All Technical Context unknowns are resolved below. Each entry: Decision / Rationale /
 Alternatives considered.

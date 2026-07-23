@@ -1,6 +1,6 @@
 # Contract: Recording Store Format
 
-**Feature**: 008-agent-eval-replay
+**Feature**: 009-agent-eval-replay
 
 Root: `data/evals/recordings/` (versioned in git). One directory per scenario.
 

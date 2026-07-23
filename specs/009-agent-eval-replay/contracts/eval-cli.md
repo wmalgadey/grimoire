@@ -1,6 +1,6 @@
 # Contract: Eval Command CLI (`Grimoire.EvalRunner`)
 
-**Feature**: 008-agent-eval-replay
+**Feature**: 009-agent-eval-replay
 
 Invocation: `dotnet run --project backend/src/Grimoire.EvalRunner -- <subcommand> [options]`
 
