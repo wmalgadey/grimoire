@@ -8,6 +8,14 @@
 
 **Input**: User description: "der agent eval test ist ziemlich aufwendig. er testet llm antworten und ist damit auch noch teuer. wir brauchen eine alternative, den agenten zu testen. evtl. könnten wir snapshots der antworten speichern, um damit einen agent durchlauf zu simulieren? oder wir entfernen die eval tests komplett und testen den deterministischen teil der anwendung"
 
+## Clarifications
+
+### Session 2026-07-23
+
+- Q: How should eval runs be executed going forward — as tests, as a standalone command ("remote control"), or hybrid? → A: Hybrid — live evals (recording and on-demand full runs) move out of the test suite into a dedicated, standalone eval command; replay remains an always-running deterministic test in the standard suite. The standard test suite contains no skipped eval tests anymore.
+- Q: How does the eval command execute the system — an in-process rebuild of the agent loop (as today) or from outside against the real application in an isolated environment? → A: The eval command drives the real application through its production entry points, in an isolated per-run workspace — no rebuilt/duplicated wiring. A fully external black-box deployment is out of scope.
+- Q: How strictly are changes to agent instruction files governed? → A: Manual instruction edits remain allowed, but a change to instruction files can only merge with fresh eval evidence: recordings captured after the change, meeting the spec-defined thresholds. Staleness becomes a merge gate. Restricting instruction changes to an evaluating agent/system is a separate future feature.
+
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - Verify agent behavior via replay at zero provider cost (Priority: P1)
@@ -29,7 +37,7 @@ A developer wants to verify that the agent-behavior evaluation suite still passe
 
 ### User Story 2 - Capture and refresh recordings from genuine live runs (Priority: P2)
 
-A developer (or maintainer in CI) wants to create or refresh the recordings that replay mode consumes. They explicitly start a recording run: the eval suite executes against a real model provider exactly as today, and every model interaction of every sample is captured as a recording. Each recording carries the identity of the model that produced it, the capture date, and a fingerprint of the agent instruction files and eval scenario it was captured against. Recordings are stored versioned alongside the eval suite so every contributor replays the same, reviewable state.
+A developer (or maintainer in CI) wants to create or refresh the recordings that replay mode consumes. They explicitly start a recording run via the standalone eval command: the eval scenarios execute against a real model provider exactly as today, and every model interaction of every sample is captured as a recording. Each recording carries the identity of the model that produced it, the capture date, and a fingerprint of the agent instruction files and eval scenario it was captured against. Recordings are stored versioned alongside the eval suite so every contributor replays the same, reviewable state.
 
 **Why this priority**: Replay is only trustworthy if recordings are genuine, attributable, and refreshable. Without a defined capture path the replay tier would decay into unverifiable fixtures — which the project's principles prohibit (agent judgment must not be replaced by hand-authored deterministic data).
 
@@ -68,6 +76,7 @@ A developer changes an agent instruction file (the versioned files that govern a
 - What happens when only a subset of recordings is stale? Unaffected evals still replay as trusted; only the affected ones are flagged, so a partial refresh is sufficient.
 - What happens to live evaluation? It remains fully available (per the existing affordable-provider setup) for recording runs and on-demand full runs; replay complements it, it does not remove it.
 - What happens if recordings grow large over time? Each scenario keeps only its current recording set (superseded captures are replaced), bounding growth to the size of the active suite.
+- What happens when a pull request changes an instruction file but ships no refreshed recordings? The staleness gate blocks the merge and names the affected recordings and the eval-command invocation that refreshes them — the developer records locally (or triggers the on-demand CI eval) and commits the fresh recordings.
 
 ## Requirements *(mandatory)*
 
@@ -77,7 +86,7 @@ A developer changes an agent instruction file (the versioned files that govern a
 - **FR-002**: Replay mode MUST require no provider credential or endpoint configuration and MUST be runnable in the standard PR pipeline without any secrets, satisfying the hermetic-test rules for that pipeline.
 - **FR-003**: Replay of an unchanged recording set MUST be deterministic: repeated replays produce identical scores and identical pass/fail outcomes.
 - **FR-004**: Recordings MUST originate exclusively from genuine model output captured during an explicit recording run against a real provider. Hand-authored or hand-modified recordings MUST NOT be accepted as trusted replay input.
-- **FR-005**: Recording MUST happen only on explicit request (a dedicated recording run); replay mode MUST never fall back to live provider calls on its own.
+- **FR-005**: Recording MUST happen only on explicit request via the eval command; replay mode MUST never fall back to live provider calls on its own.
 - **FR-006**: Every recording MUST carry provenance metadata: the identity of the model that produced it, the capture timestamp, and fingerprints of the agent instruction files and the eval scenario it was captured against.
 - **FR-007**: Recordings MUST be stored versioned alongside the eval suite so that all contributors and CI replay the identical recording state, and recording changes are reviewable.
 - **FR-008**: The replay run MUST detect staleness: when the current instruction files or eval scenario no longer match a recording's fingerprints, every affected eval MUST be flagged stale, MUST NOT count as a trusted pass, and the output MUST name the recordings requiring refresh.
@@ -85,8 +94,10 @@ A developer changes an agent instruction file (the versioned files that govern a
 - **FR-010**: When the interaction the harness conducts during replay diverges from the recorded interaction, the affected eval MUST fail with an actionable replay-mismatch outcome, not with misleading judgment scores.
 - **FR-011**: Recordings and replay outputs MUST NOT contain credential material.
 - **FR-012**: Every replay result MUST name its provenance: which recording it used, the model that originally produced it, and the capture date — so replayed results are never confused with live results.
-- **FR-013**: The existing live evaluation path (including the affordable-provider setup and its on-demand CI workflow) MUST remain available unchanged; it serves as the capture mechanism for recordings and for on-demand full live runs.
+- **FR-013**: Live evaluation (recording runs and on-demand full live runs) MUST be provided by a dedicated, standalone eval command — a "remote control" outside the test suite — reusing the existing provider configuration (affordable-provider setup and its on-demand CI workflow). After this feature, the standard test suite MUST contain no eval tests that skip for lack of provider configuration; replay evals run unconditionally, live evals live only in the eval command.
 - **FR-014**: The spec-defined agent-judgment thresholds MUST remain unchanged by this feature; replay changes how often live model calls are needed, not what agent behavior must achieve.
+- **FR-015**: The eval command MUST execute the system under evaluation through the application's real production entry points, in an isolated per-run workspace (own wiki fixture copy, own working directories) — it MUST NOT maintain a separate, rebuilt copy of the application's orchestration wiring. Evaluating a fully deployed system as an external black box is out of scope.
+- **FR-016**: A change to agent instruction files MUST NOT merge without fresh eval evidence: the recordings affected by the change MUST have been re-captured after the change (via the eval command) and the replayed results MUST meet the spec-defined thresholds. The staleness detection (FR-008) acts as the merge-blocking gate in the standard PR pipeline. Changes that do not touch instruction files or eval scenarios are unaffected by this gate.
 
 ### Key Entities
 
@@ -106,6 +117,8 @@ A developer changes an agent instruction file (the versioned files that govern a
 - **SC-005**: 100% of recordings affected by an instruction-file or scenario change are flagged stale on the next replay run; 0 stale recordings are reported as trusted passes.
 - **SC-006**: Routine verification of agent behavior (local pre-PR checks and the standard PR pipeline) incurs zero provider spend; live provider spend is limited to explicit recording runs and on-demand live eval runs.
 - **SC-007**: The agent-judgment thresholds defined in existing feature specs are evaluated unchanged — this feature changes the cost and frequency of live runs, not what agent behavior must achieve.
+- **SC-008**: The standard test suite reports zero skipped eval tests in 100% of runs — replay evals always execute; live evals exist only in the standalone eval command.
+- **SC-009**: 100% of merged changes to agent instruction files carry eval evidence captured after the change (fresh recordings meeting thresholds); 0 instruction changes merge on stale evidence.
 
 ## Assumptions
 
@@ -115,3 +128,4 @@ A developer changes an agent instruction file (the versioned files that govern a
 - The live evaluation infrastructure from the affordable-provider feature (NIM endpoint, on-demand CI workflow) is reused unchanged as the capture path; no new provider integration is introduced.
 - Refresh cadence is event-driven: recordings are refreshed when staleness is flagged (instruction/scenario changes) or on explicit demand; scheduled periodic re-recording is out of scope.
 - Replay evals run and gate like other deterministic tests once trusted; a stale or missing recording blocks a trusted pass but points to the concrete refresh action rather than failing with a judgment error.
+- Restricting instruction changes to an evaluating agent/system (prohibiting manual edits entirely) was considered and deferred to a future feature; this feature delivers the fresh-evidence merge gate (FR-016) instead.
