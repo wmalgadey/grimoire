@@ -1,5 +1,5 @@
 ---
-status: proposed
+status: accepted
 ---
 
 # ADR-011: Standalone Eval Runner and Recorded-Replay at the Model Port
