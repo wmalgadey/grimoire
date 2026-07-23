@@ -107,6 +107,7 @@ public sealed class QueryRunCoordinator
 
         var turn = new QueryTurnState(turnId, conversationId, position, prompt, _timeProvider.GetUtcNow());
         _turns[turnId] = turn;
+        HubMetrics.AdjustQueryConcurrentRuns(1);
 
         QueryLifecycleLogEvents.LogTurnCreated(_logger, conversationId, turnId);
 
@@ -287,6 +288,7 @@ public sealed class QueryRunCoordinator
         _activeTurnByConversation.TryRemove(new KeyValuePair<string, string>(turn.ConversationId, turnId));
         _handles.TryRemove(turnId, out _);
         _concurrencySlots.Release();
+        HubMetrics.AdjustQueryConcurrentRuns(-1);
 
         var durationMs = (long)(completedAt - turn.StartedAt).TotalMilliseconds;
         var outcome = status.ToString().ToLowerInvariant();

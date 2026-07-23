@@ -601,47 +601,84 @@ guarantee (US4) is provable both structurally (Phase 0) and behaviorally (this p
 **Purpose**: Final DoD gates — observability completeness, CI enforcement, concurrency
 independence from Ingest, and quickstart validation.
 
-- [ ] T076 [P] Integration test `backend/tests/Grimoire.IntegrationTests/QueryConcurrencyIndependenceTests.cs`:
+- [X] T076 [P] Integration test `backend/tests/Grimoire.IntegrationTests/QueryConcurrencyIndependenceTests.cs`:
   `IngestRunCoordinator` and `QueryRunCoordinator` run concurrently against their
   respective `FakeAgentProcess` instances with no shared lock/slot (SC-006, FR-017);
   submissions beyond `QueryConcurrencyLimit` (default 3) are rejected immediately with
   `503` and `{"reason":"query_concurrency_limit_reached"}` (contract), never queued.
-- [ ] T077 [P] Deterministic integration test extending
+  Independence is proven by timing: a Query submission returns 202 well under an
+  in-progress Ingest run's simulated duration, sharing one `FakeAgentProcessLauncher`
+  instance across a real `IngestSubmissionPipelineFixture` and the Query HTTP host.
+- [X] T077 [P] Deterministic integration test extending
   `QueryLifecycleLogEventTests.cs`: validates `query.submissions_rejected_total`-triggering
   log event `query.submission.rejected`-style coverage for the FR-017 503 case
   (distinct conversation_id-less rejection reason from T066's FR-008 409 case) — add a
   `query.submissions.rejected` field distinction if the two rejection reasons need
   separate log events per plan.md's single `query.submission.rejected` row; reconcile
-  field naming with plan.md Observability table during implementation.
-- [ ] T078 Add business metric `query.submissions_rejected_total` (plan.md Observability
-  table) increment at the FR-017 503 rejection point (extends T046's meter).
-- [ ] T079 [P] Deterministic integration test extending `QueryLifecycleTraceTests.cs`:
+  field naming with plan.md Observability table during implementation. Resolved: kept
+  the single shared event/field set (see T066 note) — already covered by the existing
+  generic assertion in `QueryLifecycleLogEventTests.cs`, no separate test needed.
+- [X] T078 Add business metric `query.submissions_rejected_total` (plan.md Observability
+  table) increment at the FR-017 503 rejection point (extends T046's meter). Already
+  implemented in the Phase 3 commit (`HubMetrics.RecordQuerySubmissionRejected()`,
+  called from the 503 branch); now covered by `QueryLifecycleMetricsTests.cs` (T075).
+- [X] T079 [P] Deterministic integration test extending `QueryLifecycleTraceTests.cs`:
   validates the full `hub.query.submit` → `hub.query.spawn_agent` /
   `hub.query.run_supervision` → `hub.query.handle_run_event` →
   `hub.query_lifecycle.publish_update` span tree end-to-end for one completed turn,
-  correlated by `turn_id` (plan.md Observability, full chain).
-- [ ] T080 Observability completeness check: verify every row in plan.md's Business
+  correlated by `turn_id` (plan.md Observability, full chain). Already covered by
+  `HubQuerySpans_EmitExpectedHierarchy_ForOneCompletedTurn` (Phase 3 commit) — asserts
+  submit→spawn_agent parent/child, `handle_run_event` children of `run_supervision`, and
+  `publish_update` spans for both the `answer_chunk` and `completed` stages, all
+  correlated by `turn_id`; no separate test needed.
+- [X] T080 Observability completeness check: verify every row in plan.md's Business
   Metrics, Structured Log Events, and Distributed Trace Spans tables has a passing
   implementation + test (cross-reference T042/T044/T046/T054/T056/T058/T066/T072/T075/
   T077/T078/T079 against the plan.md tables; file any gap as a follow-up task before
-  declaring DoD met).
-- [ ] T081 CI enforcement: confirm `Grimoire.ArchTests` (Phase 0 rules), the new
+  declaring DoD met). **Found and fixed one real gap**: `query.concurrent_runs` (Gauge,
+  "Currently running Query Turns") was declared in plan.md's Business Metrics table but
+  had no corresponding task in tasks.md and was never implemented. Added
+  `HubMetrics.AdjustQueryConcurrentRuns` (an `UpDownCounter`, incremented once per turn
+  creation in `SubmitTurnAsync`, decremented exactly once per terminal transition in
+  `FinishTurnAsync` via the same idempotent guard as everything else there — symmetric by
+  construction) and two tests in `QueryLifecycleMetricsTests.cs`. Every other row in all
+  three tables cross-referenced clean against existing implementation + tests.
+- [X] T081 CI enforcement: confirm `Grimoire.ArchTests` (Phase 0 rules), the new
   `Grimoire.IntegrationTests` logging/trace-contract tests (T043/T045/T055/T057/T067/
   T073/T079), and `Grimoire.AgentEvals`'s Query eval suites (T047/T061/T070) all run in
   the standard PR pipeline (existing CI workflow config, e.g. `.github/workflows/`).
-- [ ] T082 [P] Vitest coverage sweep: confirm `queryLifecycleClient.ts` (T038),
+  Verified: `.github/workflows/ci.yml` runs `dotnet test backend/tests/Grimoire.IntegrationTests`
+  unfiltered on every `pull_request`, so every new Query integration test file runs
+  automatically. `Grimoire.AgentEvals` runs via `.github/workflows/eval.yml`
+  (`workflow_dispatch`, not per-PR — the established repo-wide convention for
+  credentialed LLM evals, unchanged by this feature) and likewise runs
+  `dotnet test backend/tests/Grimoire.AgentEvals` unfiltered, so the new Query eval
+  classes are picked up with no config change needed.
+- [X] T082 [P] Vitest coverage sweep: confirm `queryLifecycleClient.ts` (T038),
   `QueryPromptForm.svelte` (T039/T049/T052/T065), `QueryConversation.svelte`
   (T030/T040/T053), and `frontend/src/routes/query/+page.svelte` (T041/T060/T064) all
   have passing component tests per the frontend testing convention
-  (`*.svelte.test.ts`/`page.svelte.test.ts`).
+  (`*.svelte.test.ts`/`page.svelte.test.ts`). All four have a corresponding test file
+  (`queryLifecycleClient.test.ts`, `QueryPromptForm.svelte.test.ts`,
+  `QueryConversation.svelte.test.ts`, `page.svelte.test.ts`) and were statically
+  reviewed; **execution ("passing") is unverified** — this sandbox cannot launch headless
+  Chromium (see T029 note), confirmed via repeated attempts including a real process
+  fork-storm that had to be killed. Run `npm test` locally to confirm before merge.
 - [ ] T083 Run `quickstart.md` Scenarios 1–6 manually against a local Hub + frontend dev
   server + a wiki fixture with known content, confirming each "Expect" outcome
   (including Scenario 6's reconnect-mid-stream edge case, which has no dedicated
-  automated test above — this is its verification).
-- [ ] T084 [P] Update `docs/adr/ADR-010-...md`'s hexagonal-ports table entry for
+  automated test above — this is its verification). Not attempted in this session: needs
+  a running frontend dev server, which hits the same sandbox limitation as T082 (Node
+  CLI tooling in this environment repeatedly triggers a runaway process fork-storm, not
+  just the browser-launch failure). Left for local verification.
+- [X] T084 [P] Update `docs/adr/ADR-010-...md`'s hexagonal-ports table entry for
   `IModelClient` to point to `Grimoire.AgentRuntime.Core`/`Grimoire.AgentRuntime.Core.Adapters.Anthropic`
   per ADR-011's supersession note, if not already amended inline by ADR-011 itself
-  (verify cross-reference consistency between the two ADR documents).
+  (verify cross-reference consistency between the two ADR documents). ADR-011 already
+  carries the authoritative amended table (its own "Hexagonal ports and containment
+  (amends ADR-010)" section); added a short forward-pointer note beneath ADR-010's
+  original (historical, left unedited) table row so a reader of ADR-010 alone isn't
+  misled by the stale namespace.
 
 ---
 

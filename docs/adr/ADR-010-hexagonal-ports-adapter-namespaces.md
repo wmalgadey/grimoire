@@ -61,6 +61,11 @@ enforceability.
 | `IUrlContentFetcher` (new) | `Grimoire.Hub.IngestSubmission` | `UrlContentFetcher` → `Grimoire.Hub.IngestSubmission.Adapters.HttpFetch` | `FakeUrlContentFetcher` |
 | `IModelClient` | `Grimoire.IngestAgent.AgentCore` | `AnthropicModelClient` → `Grimoire.IngestAgent.AgentCore.Adapters.Anthropic` | `FakeModelClient` |
 
+> This `IModelClient` row was superseded by ADR-011's "Hexagonal ports and containment
+> (amends ADR-010)" section (008-query-agent): the port and its Anthropic adapter moved
+> to `Grimoire.AgentRuntime.Core`/`Grimoire.AgentRuntime.Core.Adapters.Anthropic` when the
+> Ingest/Query shared runtime was extracted. See ADR-011 for the current table entry.
+
 ### Containment rules (enforced in `Grimoire.ArchTests`, each with a Red/Green probe)
 
 - C1: `Microsoft.Data.Sqlite` only in `Grimoire.Hub.OperationalState` (designated
