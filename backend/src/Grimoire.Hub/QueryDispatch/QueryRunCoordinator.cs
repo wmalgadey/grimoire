@@ -14,6 +14,9 @@ public abstract record QuerySubmissionResult
 
     /// <summary>FR-017: the configured concurrency limit was already reached — rejected immediately, never queued.</summary>
     public sealed record ConcurrencyLimitReached : QuerySubmissionResult;
+
+    /// <summary>FR-008: the conversation already has a running turn — at most one active turn per conversation.</summary>
+    public sealed record ConversationAlreadyActive : QuerySubmissionResult;
 }
 
 /// <summary>
@@ -62,7 +65,12 @@ public sealed class QueryRunCoordinator
 
     public QueryTurnState? GetTurn(string turnId) => _turns.TryGetValue(turnId, out var turn) ? turn : null;
 
-    /// <summary>Whether the conversation already has a running turn (FR-008, wired by US3's 409 guard).</summary>
+    /// <summary>
+    /// Whether the conversation already has a running turn (FR-008). Diagnostic/read-only —
+    /// <see cref="SubmitTurnAsync"/>'s actual 409 guard uses an atomic
+    /// <see cref="ConcurrentDictionary{TKey,TValue}.TryAdd"/> rather than this check, to
+    /// avoid a TOCTOU race between two concurrent submissions for the same conversation.
+    /// </summary>
     public bool IsConversationActive(string conversationId) => _activeTurnByConversation.ContainsKey(conversationId);
 
     /// <summary>
@@ -83,13 +91,22 @@ public sealed class QueryRunCoordinator
 
         var turnId = $"{_timeProvider.GetUtcNow():yyyy-MM-dd}-query-{Guid.NewGuid():N}"[..40];
 
+        // Atomic reservation (FR-008): TryAdd is the actual race-free guard against two
+        // concurrent submissions for the same conversation both passing a separate
+        // check-then-set; a plain IsConversationActive() check followed by a later
+        // assignment would leave a window where both requests observe "no active turn".
+        if (!_activeTurnByConversation.TryAdd(conversationId, turnId))
+        {
+            _concurrencySlots.Release();
+            return new QuerySubmissionResult.ConversationAlreadyActive();
+        }
+
         using var submitSpan = HubTracing.ActivitySource.StartActivity("hub.query.submit");
         submitSpan?.SetTag("turn_id", turnId);
         submitSpan?.SetTag("conversation_id", conversationId);
 
         var turn = new QueryTurnState(turnId, conversationId, position, prompt, _timeProvider.GetUtcNow());
         _turns[turnId] = turn;
-        _activeTurnByConversation[conversationId] = turnId;
 
         QueryLifecycleLogEvents.LogTurnCreated(_logger, conversationId, turnId);
 

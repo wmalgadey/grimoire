@@ -66,11 +66,20 @@ public static class QuerySubmissionEndpoints
                 });
 
             case QuerySubmissionResult.ConcurrencyLimitReached:
+            {
                 HubMetrics.RecordQuerySubmissionRejected();
                 var logger = loggerFactory.CreateLogger(typeof(QuerySubmissionEndpoints));
                 QueryLifecycleLogEvents.LogSubmissionRejected(logger, conversationId);
                 return Results.Json(new { reason = "query_concurrency_limit_reached" },
                     statusCode: StatusCodes.Status503ServiceUnavailable);
+            }
+
+            case QuerySubmissionResult.ConversationAlreadyActive:
+            {
+                var logger = loggerFactory.CreateLogger(typeof(QuerySubmissionEndpoints));
+                QueryLifecycleLogEvents.LogSubmissionRejected(logger, conversationId);
+                return Results.Conflict(new { reason = "conversation_already_active" });
+            }
 
             default:
                 throw new InvalidOperationException($"Unknown submission result: {result.GetType().Name}");
