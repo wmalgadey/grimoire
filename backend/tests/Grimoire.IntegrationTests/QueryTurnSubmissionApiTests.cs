@@ -119,7 +119,7 @@ public class QueryTurnSubmissionApiTests
         Locations: []);
 
     internal static async Task<IHost> BuildHostAsync(
-        FakeAgentProcessLauncher launcher, string root, int concurrencyLimit = 3)
+        FakeAgentProcessLauncher launcher, string root, int concurrencyLimit = 3, TimeSpan? livenessWindow = null)
     {
         var resolvedPaths = BuildResolvedPaths(root);
 
@@ -145,6 +145,7 @@ public class QueryTurnSubmissionApiTests
                         sp.GetRequiredService<QueryRunArtifactWriter>(),
                         resolvedPaths,
                         sp.GetRequiredService<QueryConcurrencyOptions>(),
+                        livenessWindow: livenessWindow,
                         logger: NullLogger<QueryRunCoordinator>.Instance));
                 });
                 webHost.Configure(app =>

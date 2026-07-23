@@ -38,6 +38,7 @@ public sealed class QueryRunCoordinator
 
     private readonly ConcurrentDictionary<string, QueryTurnState> _turns = new();
     private readonly ConcurrentDictionary<string, string> _activeTurnByConversation = new();
+    private readonly ConcurrentDictionary<string, AgentDispatch.IAgentProcessHandle> _handles = new();
 
     public QueryRunCoordinator(
         AgentDispatch.IAgentProcessLauncher launcher,
@@ -120,10 +121,42 @@ public sealed class QueryRunCoordinator
             return new QuerySubmissionResult.Accepted(turn);
         }
 
+        _handles[turnId] = handle;
+
         // Fire-and-forget supervision; the coordinator is re-entered via events.
         _ = Task.Run(() => SuperviseAsync(turnId, handle, CancellationToken.None), CancellationToken.None);
 
         return new QuerySubmissionResult.Accepted(turn);
+    }
+
+    /// <summary>
+    /// Interrupts an in-progress turn (FR-006/FR-007): terminates the agent process and
+    /// transitions the turn to <see cref="QueryTurnStatus.Interrupted"/> immediately,
+    /// rather than waiting on <see cref="SuperviseAsync"/>'s liveness watchdog — the user
+    /// asked for this, so there is nothing to wait to detect (SC-004). Interrupting an
+    /// already-terminal turn is a no-op that returns the turn's actual current state
+    /// (contract: 200, not 404/409). Returns null only if the turn is unknown.
+    /// </summary>
+    public async Task<QueryTurnState?> InterruptAsync(string turnId, CancellationToken cancellationToken = default)
+    {
+        if (!_turns.TryGetValue(turnId, out var turn))
+        {
+            return null;
+        }
+
+        if (turn.IsTerminal)
+        {
+            return turn;
+        }
+
+        if (_handles.TryGetValue(turnId, out var handle))
+        {
+            handle.Terminate();
+        }
+
+        QueryLifecycleLogEvents.LogTurnInterrupted(_logger, turnId);
+        await FinishTurnAsync(turnId, QueryTurnStatus.Interrupted, failureReason: null, metadata: null, cancellationToken);
+        return turn;
     }
 
     private async Task SuperviseAsync(string turnId, AgentDispatch.IAgentProcessHandle handle, CancellationToken cancellationToken)
@@ -235,6 +268,7 @@ public sealed class QueryRunCoordinator
         }
 
         _activeTurnByConversation.TryRemove(new KeyValuePair<string, string>(turn.ConversationId, turnId));
+        _handles.TryRemove(turnId, out _);
         _concurrencySlots.Release();
 
         var durationMs = (long)(completedAt - turn.StartedAt).TotalMilliseconds;

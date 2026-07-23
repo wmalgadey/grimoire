@@ -68,6 +68,42 @@ public class QueryLifecycleTraceTests
     }
 
     [Fact]
+    public async Task HubQuerySpans_EmitExpectedHierarchy_ForInterruptedTurn()
+    {
+        var activities = new ConcurrentQueue<Activity>();
+        using var listener = new ActivityListener
+        {
+            ShouldListenTo = src => src.Name == "Grimoire.Hub",
+            Sample = (ref ActivityCreationOptions<ActivityContext> _) => ActivitySamplingResult.AllDataAndRecorded,
+            ActivityStopped = activity => activities.Enqueue(activity),
+        };
+        ActivitySource.AddActivityListener(listener);
+
+        var launcher = new FakeAgentProcessLauncher(autoPlay: false);
+        var root = QueryTurnSubmissionApiTests.CreateTempRoot();
+        using var host = await QueryTurnSubmissionApiTests.BuildHostAsync(launcher, root, livenessWindow: TimeSpan.FromMilliseconds(100));
+        var coordinator = host.Services.GetRequiredService<Grimoire.Hub.QueryDispatch.QueryRunCoordinator>();
+
+        var submission = await coordinator.SubmitTurnAsync("c-trace-interrupt", 1, "What decisions exist?", []);
+        var accepted = Assert.IsType<Grimoire.Hub.QueryDispatch.QuerySubmissionResult.Accepted>(submission);
+        var turnId = accepted.Turn.TurnId;
+
+        var interrupted = await coordinator.InterruptAsync(turnId);
+        Assert.Equal(Grimoire.Hub.QueryDispatch.QueryTurnStatus.Interrupted, interrupted!.Status);
+
+        // InterruptAsync finalizes the turn synchronously (does not wait on
+        // SuperviseAsync's own liveness watchdog, R5/T051), so publish_update is
+        // observable immediately; the run_supervision span itself only closes once the
+        // watchdog notices the pipe went silent (same "readLoop ends with the pipe;
+        // nothing to await after termination" idiom as IngestRunCoordinator) and is not
+        // asserted here.
+        var publishUpdates = activities.Where(a => a.OperationName == "hub.query_lifecycle.publish_update" && GetTag(a, "turn_id") == turnId).ToList();
+
+        Assert.NotEmpty(publishUpdates);
+        Assert.Contains(publishUpdates, a => GetTag(a, "stage") == "interrupted");
+    }
+
+    [Fact]
     public async Task QueryAgentSpans_EmitExpectedHierarchyAndAttributes()
     {
         var activities = new ConcurrentQueue<Activity>();
