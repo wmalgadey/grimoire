@@ -2,8 +2,8 @@ using System.Diagnostics.Metrics;
 using Grimoire.Domain.Guardrails;
 using Grimoire.Hub;
 using Grimoire.IngestAgent;
-using Grimoire.IngestAgent.AgentCore;
-using Grimoire.IngestAgent.Guardrails;
+using Grimoire.AgentRuntime.Core;
+using Grimoire.AgentRuntime.Guardrails;
 using Grimoire.IntegrationTests.Fakes;
 
 namespace Grimoire.IntegrationTests;

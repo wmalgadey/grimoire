@@ -1,5 +1,5 @@
 using Grimoire.Domain.Guardrails;
-using Grimoire.IngestAgent.Guardrails;
+using Grimoire.AgentRuntime.Guardrails;
 
 namespace Grimoire.IntegrationTests.PathConfiguration;
 

@@ -4,16 +4,27 @@ using Mono.Cecil.Cil;
 namespace Grimoire.ArchTests;
 
 /// <summary>
-/// Structural boundary rule for ADR-006: filesystem-WRITE operations within
-/// Grimoire.IngestAgent are only permitted in the three guarded namespaces.
+/// Structural boundary rule for ADR-006 (extended by ADR-011 T013): filesystem-WRITE
+/// operations within Grimoire.IngestAgent's own assembly, plus the shared
+/// Grimoire.AgentRuntime library it now depends on, are only permitted in the guarded
+/// namespaces. <see cref="GuardedToolExecutor"/> (the actual guarded write path) moved
+/// from Grimoire.IngestAgent.Guardrails to Grimoire.AgentRuntime.Guardrails as part of
+/// the Query-agent shared-runtime extraction, so both assemblies are scanned — scanning
+/// only Grimoire.IngestAgent post-move would silently stop covering the real write path.
 /// Uses IL-level inspection (Mono.Cecil) to distinguish write calls from reads.
 /// </summary>
 public class GuardedWriteBoundaryRuleTests
 {
-    // Namespaces inside Grimoire.IngestAgent that are permitted to use filesystem-write APIs.
+    private static readonly System.Reflection.Assembly[] _scannedAssemblies =
+    [
+        typeof(Grimoire.IngestAgent.AgentCliOptions).Assembly,
+        typeof(Grimoire.AgentRuntime.Guardrails.ToolRegistry).Assembly,
+    ];
+
+    // Namespaces permitted to use filesystem-write APIs across the scanned assemblies.
     private static readonly HashSet<string> _allowedNamespacePrefixes =
     [
-        "Grimoire.IngestAgent.Guardrails",
+        "Grimoire.AgentRuntime.Guardrails",
         "Grimoire.IngestAgent.TaskArtifact",
         "Grimoire.IngestAgent.IngestLog",
     ];
@@ -46,41 +57,43 @@ public class GuardedWriteBoundaryRuleTests
     [Fact]
     public void IngestAgent_FilesystemWriteAPIs_MustOnlyBeCalledFromAllowedNamespaces()
     {
-        var assemblyPath = typeof(Grimoire.IngestAgent.AgentCliOptions).Assembly.Location;
-        var assembly = AssemblyDefinition.ReadAssembly(assemblyPath);
-
         var violations = new List<string>();
 
-        foreach (var module in assembly.Modules)
+        foreach (var scannedAssembly in _scannedAssemblies)
         {
-            foreach (var (type, effectiveNamespace) in module.Types.SelectMany(t => GetAllTypesWithNamespace(t, t.Namespace)))
+            var assembly = AssemblyDefinition.ReadAssembly(scannedAssembly.Location);
+
+            foreach (var module in assembly.Modules)
             {
-                if (string.IsNullOrEmpty(effectiveNamespace))
-                    continue;
-
-                // Skip types in the allowed namespaces.
-                if (_allowedNamespacePrefixes.Any(ns => effectiveNamespace.StartsWith(ns, StringComparison.Ordinal)))
-                    continue;
-
-                foreach (var method in type.Methods)
+                foreach (var (type, effectiveNamespace) in module.Types.SelectMany(t => GetAllTypesWithNamespace(t, t.Namespace)))
                 {
-                    if (!method.HasBody)
+                    if (string.IsNullOrEmpty(effectiveNamespace))
                         continue;
 
-                    foreach (var instruction in method.Body.Instructions)
+                    // Skip types in the allowed namespaces.
+                    if (_allowedNamespacePrefixes.Any(ns => effectiveNamespace.StartsWith(ns, StringComparison.Ordinal)))
+                        continue;
+
+                    foreach (var method in type.Methods)
                     {
-                        if (instruction.OpCode != OpCodes.Call &&
-                            instruction.OpCode != OpCodes.Callvirt &&
-                            instruction.OpCode != OpCodes.Newobj)
+                        if (!method.HasBody)
                             continue;
 
-                        if (instruction.Operand is not MethodReference callee)
-                            continue;
-
-                        var callSig = $"{callee.DeclaringType.FullName}::{callee.Name}";
-                        if (_writeMethods.Any(w => callSig.StartsWith(w, StringComparison.Ordinal)))
+                        foreach (var instruction in method.Body.Instructions)
                         {
-                            violations.Add($"{type.FullName}.{method.Name} [{effectiveNamespace}] → {callSig}");
+                            if (instruction.OpCode != OpCodes.Call &&
+                                instruction.OpCode != OpCodes.Callvirt &&
+                                instruction.OpCode != OpCodes.Newobj)
+                                continue;
+
+                            if (instruction.Operand is not MethodReference callee)
+                                continue;
+
+                            var callSig = $"{callee.DeclaringType.FullName}::{callee.Name}";
+                            if (_writeMethods.Any(w => callSig.StartsWith(w, StringComparison.Ordinal)))
+                            {
+                                violations.Add($"{type.FullName}.{method.Name} [{effectiveNamespace}] → {callSig}");
+                            }
                         }
                     }
                 }
@@ -90,7 +103,7 @@ public class GuardedWriteBoundaryRuleTests
         Assert.True(
             violations.Count == 0,
             $"Filesystem-write APIs must only be called from allowed namespaces " +
-            $"(Guardrails, TaskArtifact, IngestLog). Violations:\n" +
+            $"(Grimoire.AgentRuntime.Guardrails, Grimoire.IngestAgent.TaskArtifact, Grimoire.IngestAgent.IngestLog). Violations:\n" +
             string.Join("\n", violations));
     }
 

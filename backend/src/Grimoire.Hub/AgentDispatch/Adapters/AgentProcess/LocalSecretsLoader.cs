@@ -25,6 +25,11 @@ public sealed class LocalSecretsLoader
 
     internal string? GetIngestBase() => ReadEnvVar("GRIMOIRE_INGEST_BASE_URL");
 
+    /// <summary>Query's own model override (ADR-004 applied to 008-query-agent), independent of Ingest's.</summary>
+    public string? GetQueryModel() => ReadEnvVar("GRIMOIRE_QUERY_MODEL");
+
+    internal string? GetQueryBase() => ReadEnvVar("GRIMOIRE_QUERY_BASE_URL");
+
     private string? ReadEnvVar(string varName)
     {
         if (!File.Exists(_envFilePath))

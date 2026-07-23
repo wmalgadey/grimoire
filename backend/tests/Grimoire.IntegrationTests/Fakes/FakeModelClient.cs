@@ -1,4 +1,4 @@
-using Grimoire.IngestAgent.AgentCore;
+using Grimoire.AgentRuntime.Core;
 
 namespace Grimoire.IntegrationTests.Fakes;
 
@@ -10,12 +10,16 @@ namespace Grimoire.IntegrationTests.Fakes;
 public sealed class FakeModelClient : IModelClient
 {
     private readonly Queue<ModelTurn> _script;
+    private readonly IReadOnlyDictionary<int, IReadOnlyList<ScriptedDelta>> _deltaScript;
     private readonly List<RecordedCall> _calls = [];
     private int _turnIndex;
 
-    public FakeModelClient(IEnumerable<ModelTurn> script)
+    public FakeModelClient(
+        IEnumerable<ModelTurn> script,
+        IReadOnlyDictionary<int, IReadOnlyList<ScriptedDelta>>? deltaScript = null)
     {
         _script = new Queue<ModelTurn>(script);
+        _deltaScript = deltaScript ?? new Dictionary<int, IReadOnlyList<ScriptedDelta>>();
     }
 
     public string ModelId => "fake-model";
@@ -26,13 +30,15 @@ public sealed class FakeModelClient : IModelClient
     /// <summary>Number of times <see cref="NextTurnAsync"/> was called.</summary>
     public int CallCount => _calls.Count;
 
-    public Task<ModelTurn> NextTurnAsync(
+    public async Task<ModelTurn> NextTurnAsync(
         string systemPrompt,
         IReadOnlyList<ConversationMessage> conversation,
         IReadOnlyList<ToolDefinition> tools,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        Action<string>? onTextDelta = null)
     {
-        _calls.Add(new RecordedCall(_turnIndex, systemPrompt, [.. conversation], [.. tools]));
+        var callIndex = _turnIndex;
+        _calls.Add(new RecordedCall(callIndex, systemPrompt, [.. conversation], [.. tools]));
         _turnIndex++;
 
         if (_script.Count == 0)
@@ -42,7 +48,31 @@ public sealed class FakeModelClient : IModelClient
                 "Add more scripted turns or verify the loop terminates as expected.");
         }
 
-        return Task.FromResult(_script.Dequeue());
+        var turn = _script.Dequeue();
+
+        if (onTextDelta is not null)
+        {
+            if (_deltaScript.TryGetValue(callIndex, out var deltas))
+            {
+                foreach (var delta in deltas)
+                {
+                    if (delta.Delay > TimeSpan.Zero)
+                    {
+                        await Task.Delay(delta.Delay, cancellationToken);
+                    }
+
+                    onTextDelta(delta.Text);
+                }
+            }
+            else if (!string.IsNullOrEmpty(turn.AssistantText))
+            {
+                // No explicit delta script for this call — emit the whole assistant
+                // text as a single chunk so streaming call sites still see something.
+                onTextDelta(turn.AssistantText);
+            }
+        }
+
+        return turn;
     }
 
     // ── Script builder helpers ────────────────────────────────────────────────────
@@ -87,3 +117,10 @@ public sealed record RecordedCall(
     string SystemPrompt,
     IReadOnlyList<ConversationMessage> Conversation,
     IReadOnlyList<ToolDefinition> Tools);
+
+/// <summary>
+/// One scripted streaming text delta (ADR-011/T025), with an optional delay before it is
+/// delivered — lets tests script SC-003 timing scenarios (e.g. first chunk immediate,
+/// later chunks after a deliberate delay) deterministically, without a live LLM call.
+/// </summary>
+public sealed record ScriptedDelta(string Text, TimeSpan Delay = default);

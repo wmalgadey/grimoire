@@ -21,6 +21,17 @@ public class HexagonalPortsAdapterRuleTests
     private static Assembly IngestAgentAssembly => typeof(Grimoire.IngestAgent.AgentCliOptions).Assembly;
     private static Assembly AgentEvalsAssembly => typeof(Grimoire.AgentEvals.EvalGate).Assembly;
 
+    // NOTE (ADR-011): IModelClient/AnthropicModelClient relocated from
+    // Grimoire.IngestAgent.AgentCore(.Adapters.Anthropic) to the shared
+    // Grimoire.AgentRuntime.Core(.Adapters.Anthropic) library. The two
+    // IngestAgentAssembly-scoped rules below (AnthropicSdk_MustOnlyBeReferencedFrom_...
+    // and AgentOrchestration_MustNotReferenceConcreteAnthropicModelClient) now pass
+    // vacuously — Grimoire.IngestAgent no longer depends on the Anthropic SDK or the
+    // concrete adapter type at all — and are superseded by
+    // AgentRuntimeAdapterBoundaryRuleTests' C6 rule, which asserts the real current
+    // containment. Kept here rather than deleted since a vacuous pass is still a true
+    // (if redundant) statement, not a stale assertion of a wrong location.
+
     // ---- C2 (007-eval-tests-nim-endpoint): the eval harness must reach the Anthropic
     // Messages API only through the ADR-010 IModelClient port (AnthropicModelClient),
     // never by depending on the Anthropic SDK directly — this is the architectural premise
@@ -200,11 +211,9 @@ public class HexagonalPortsAdapterRuleTests
     [Fact]
     public void AnthropicModelClient_ImplementsIModelClient()
     {
-        var adapterType = IngestAgentAssembly.GetType("Grimoire.IngestAgent.AgentCore.Adapters.Anthropic.AnthropicModelClient");
-        Assert.True(adapterType is not null, "Adapter type 'AnthropicModelClient' not found at its ADR-010 namespace.");
-
-        var portType = typeof(Grimoire.IngestAgent.AgentCore.IModelClient);
+        var adapterType = typeof(Grimoire.AgentRuntime.Core.Adapters.Anthropic.AnthropicModelClient);
+        var portType = typeof(Grimoire.AgentRuntime.Core.IModelClient);
         Assert.True(portType.IsAssignableFrom(adapterType),
-            "P4 (ADR-010): AnthropicModelClient must implement IModelClient.");
+            "P4 (ADR-010, relocated by ADR-011 C6): AnthropicModelClient must implement IModelClient.");
     }
 }

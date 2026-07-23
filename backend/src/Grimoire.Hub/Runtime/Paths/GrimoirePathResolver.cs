@@ -54,8 +54,11 @@ public static class GrimoirePathResolver
         var stateDbPath = ResolveAgainst(options.StateDb, dataDir, GrimoirePathOptions.DefaultStateDbRelativePath);
         var secretsFilePath = ResolveAgainst(options.SecretsFile, dataDir, GrimoirePathOptions.DefaultSecretsFileName);
         var instructionsDir = ResolveAgainst(options.InstructionsDir, dataDir, GrimoirePathOptions.DefaultInstructionsDirRelativePath);
+        var queryInstructionsDir = ResolveAgainst(options.QueryInstructionsDir, dataDir, GrimoirePathOptions.DefaultQueryInstructionsDirRelativePath);
+        var queryRunsDir = ResolveAgainst(options.QueryRunsDir, dataDir, GrimoirePathOptions.DefaultQueryRunsDirName);
 
         var agentWorkerPath = ResolveAgainst(options.AgentWorker, AppContext.BaseDirectory, GrimoirePathOptions.DefaultAgentWorkerFileName);
+        var queryAgentWorkerPath = ResolveAgainst(options.QueryAgentWorker, AppContext.BaseDirectory, GrimoirePathOptions.DefaultQueryAgentWorkerFileName);
 
         var pagesDir = Path.Combine(contentRoot, "pages");
         var tasksDir = Path.Combine(contentRoot, "tasks");
@@ -66,6 +69,8 @@ public static class GrimoirePathResolver
         var systemPromptPath = Path.Combine(instructionsDir, "system-prompt.md");
         var defaultUserPromptPath = Path.Combine(instructionsDir, "default-user-prompt.md");
         var policyPath = Path.Combine(instructionsDir, "policy.json");
+        var querySystemPromptPath = Path.Combine(queryInstructionsDir, "system-prompt.md");
+        var queryPolicyPath = Path.Combine(queryInstructionsDir, "policy.json");
 
         var locations = new List<PathLocation>
         {
@@ -77,6 +82,9 @@ public static class GrimoirePathResolver
             BuildLocation("secrets_file", "SecretsFile", options.SecretsFile, secretsFilePath, PathLocationKind.RequiredInput, configRoot),
             BuildLocation("instructions_dir", "InstructionsDir", options.InstructionsDir, instructionsDir, PathLocationKind.RequiredInput, configRoot),
             BuildLocation("agent_worker", "AgentWorker", options.AgentWorker, agentWorkerPath, PathLocationKind.RequiredInput, configRoot),
+            BuildLocation("query_instructions_dir", "QueryInstructionsDir", options.QueryInstructionsDir, queryInstructionsDir, PathLocationKind.RequiredInput, configRoot),
+            BuildLocation("query_runs_dir", "QueryRunsDir", options.QueryRunsDir, queryRunsDir, PathLocationKind.WritableData, configRoot),
+            BuildLocation("query_agent_worker", "QueryAgentWorker", options.QueryAgentWorker, queryAgentWorkerPath, PathLocationKind.RequiredInput, configRoot),
         };
 
         // Validate required inputs — fail fast, before any writable location is touched.
@@ -87,6 +95,10 @@ public static class GrimoirePathResolver
         ValidateRequiredFile(logger, "default_user_prompt", options.InstructionsDir, defaultUserPromptPath);
         ValidateRequiredFile(logger, "policy", options.InstructionsDir, policyPath);
         ValidateRequiredFile(logger, "agent_worker", options.AgentWorker, agentWorkerPath);
+        ValidateRequiredDirectory(logger, "query_instructions_dir", options.QueryInstructionsDir, queryInstructionsDir);
+        ValidateRequiredFile(logger, "query_system_prompt", options.QueryInstructionsDir, querySystemPromptPath);
+        ValidateRequiredFile(logger, "query_policy", options.QueryInstructionsDir, queryPolicyPath);
+        ValidateRequiredFile(logger, "query_agent_worker", options.QueryAgentWorker, queryAgentWorkerPath);
 
         // Auto-create writable data locations.
         CreateDirectoryIfMissing(logger, "data_dir", options.DataDir, dataDir);
@@ -96,6 +108,7 @@ public static class GrimoirePathResolver
         CreateDirectoryIfMissing(logger, "raw_dir", options.RawDir, rawDir);
         CreateDirectoryIfMissing(logger, "raw_originals_dir", options.RawDir, rawOriginalsDir);
         CreateDirectoryIfMissing(logger, "raw_sources_dir", options.RawDir, rawSourcesDir);
+        CreateDirectoryIfMissing(logger, "query_runs_dir", options.QueryRunsDir, queryRunsDir);
         var stateDbDir = Path.GetDirectoryName(stateDbPath);
         if (!string.IsNullOrEmpty(stateDbDir))
         {
@@ -119,6 +132,11 @@ public static class GrimoirePathResolver
             DefaultUserPromptPath: defaultUserPromptPath,
             PolicyPath: policyPath,
             AgentWorkerPath: agentWorkerPath,
+            QueryInstructionsDir: queryInstructionsDir,
+            QuerySystemPromptPath: querySystemPromptPath,
+            QueryPolicyPath: queryPolicyPath,
+            QueryRunsDir: queryRunsDir,
+            QueryAgentWorkerPath: queryAgentWorkerPath,
             Locations: locations);
 
         GrimoirePathLogEvents.LogPathsResolved(logger, resolved);

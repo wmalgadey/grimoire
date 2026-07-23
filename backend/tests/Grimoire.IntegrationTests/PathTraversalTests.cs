@@ -1,5 +1,5 @@
 using Grimoire.Domain.Guardrails;
-using Grimoire.IngestAgent.Guardrails;
+using Grimoire.AgentRuntime.Guardrails;
 using System.Text.Json;
 
 namespace Grimoire.IntegrationTests;

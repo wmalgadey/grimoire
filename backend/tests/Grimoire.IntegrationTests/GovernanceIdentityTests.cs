@@ -1,4 +1,5 @@
-using Grimoire.IngestAgent.AgentCore;
+using Grimoire.AgentRuntime.Core;
+using Grimoire.AgentRuntime.Instructions;
 using Grimoire.IngestAgent.TaskArtifact;
 using System.Security.Cryptography;
 using System.Text;

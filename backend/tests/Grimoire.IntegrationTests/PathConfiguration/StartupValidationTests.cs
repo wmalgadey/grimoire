@@ -154,7 +154,11 @@ public class StartupValidationTests
             // US3 acceptance scenario 3: every effective location is present in the report.
             var reportedNames = resolved.Locations.Select(l => l.Name).ToHashSet();
             Assert.Equal(
-                new HashSet<string> { "base_dir", "data_dir", "content_root", "raw_dir", "state_db", "secrets_file", "instructions_dir", "agent_worker" },
+                new HashSet<string>
+                {
+                    "base_dir", "data_dir", "content_root", "raw_dir", "state_db", "secrets_file", "instructions_dir", "agent_worker",
+                    "query_instructions_dir", "query_runs_dir", "query_agent_worker",
+                },
                 reportedNames);
             Assert.All(resolved.Locations, l => Assert.True(Path.IsPathRooted(l.ResolvedPath)));
         }

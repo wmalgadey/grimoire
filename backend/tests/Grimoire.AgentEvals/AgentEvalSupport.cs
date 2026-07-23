@@ -4,10 +4,12 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
+using Grimoire.AgentRuntime.Core;
+using Grimoire.AgentRuntime.Core.Adapters.Anthropic;
+using Grimoire.AgentRuntime.Guardrails;
+using Grimoire.AgentRuntime.Instructions;
 using Grimoire.IngestAgent;
 using Grimoire.IngestAgent.AgentCore;
-using Grimoire.IngestAgent.AgentCore.Adapters.Anthropic;
-using Grimoire.IngestAgent.Guardrails;
 using Grimoire.IngestAgent.IngestLog;
 using Grimoire.IngestAgent.TaskArtifact;
 using Microsoft.Extensions.Logging;
@@ -164,9 +166,10 @@ public sealed class TimeoutEnforcingModelClient : IModelClient
         string systemPrompt,
         IReadOnlyList<ConversationMessage> conversation,
         IReadOnlyList<ToolDefinition> tools,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        Action<string>? onTextDelta = null)
     {
-        var innerTask = _inner.NextTurnAsync(systemPrompt, conversation, tools, cancellationToken);
+        var innerTask = _inner.NextTurnAsync(systemPrompt, conversation, tools, cancellationToken, onTextDelta);
         var timeoutTask = Task.Delay(_timeout, cancellationToken);
 
         var completed = await Task.WhenAny(innerTask, timeoutTask);
@@ -682,9 +685,10 @@ public sealed class RecordingModelClient : IModelClient
         string systemPrompt,
         IReadOnlyList<ConversationMessage> conversation,
         IReadOnlyList<ToolDefinition> tools,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        Action<string>? onTextDelta = null)
     {
-        var turn = await _inner.NextTurnAsync(systemPrompt, conversation, tools, cancellationToken);
+        var turn = await _inner.NextTurnAsync(systemPrompt, conversation, tools, cancellationToken, onTextDelta);
         _turn++;
 
         Calls.Add(new RecordedEvalTurn(

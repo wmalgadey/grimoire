@@ -139,4 +139,60 @@ public static class HubMetrics
     {
         _taskRecordChangeEventsTotal.Add(1);
     }
+
+    // --- 008-query-agent (plan.md ## Observability > Business Metrics) ---
+
+    private static readonly Counter<long> _queryTurnsTotal =
+        Meter.CreateCounter<long>("query.turns_total",
+            description: "Query Turns reaching a terminal state");
+
+    private static readonly Histogram<double> _queryTurnDurationSeconds =
+        Meter.CreateHistogram<double>("query.turn_duration_seconds",
+            unit: "s",
+            description: "Wall-clock duration of a Query Turn");
+
+    public static void RecordQueryTurn(string outcome, double durationSeconds)
+    {
+        _queryTurnsTotal.Add(1, new KeyValuePair<string, object?>("outcome", outcome));
+        _queryTurnDurationSeconds.Record(durationSeconds, new KeyValuePair<string, object?>("outcome", outcome));
+    }
+
+    private static readonly Counter<long> _queryAnswerChunksTotal =
+        Meter.CreateCounter<long>("query.answer_chunks_total",
+            description: "answer_chunk events emitted");
+
+    public static void RecordQueryAnswerChunk()
+    {
+        _queryAnswerChunksTotal.Add(1);
+    }
+
+    private static readonly Counter<long> _querySubmissionsRejectedTotal =
+        Meter.CreateCounter<long>("query.submissions_rejected_total",
+            description: "Submissions rejected for being over the concurrency limit");
+
+    public static void RecordQuerySubmissionRejected()
+    {
+        _querySubmissionsRejectedTotal.Add(1);
+    }
+
+    private static readonly UpDownCounter<long> _queryConcurrentRuns =
+        Meter.CreateUpDownCounter<long>("query.concurrent_runs",
+            description: "Currently running Query Turns");
+
+    /// <summary>
+    /// Adjusts the live count of non-terminal Query Turns (T080 gap fix: this metric row
+    /// existed in plan.md but had no implementation). Called once per turn creation
+    /// (+1, in <c>QueryRunCoordinator.SubmitTurnAsync</c>) and exactly once per turn's
+    /// first terminal transition (-1, in <c>FinishTurnAsync</c>) — symmetric by
+    /// construction via the same idempotent first-transition-wins guard everything else
+    /// in that class uses, so this can never drift negative or double-count.
+    /// </summary>
+    public static void AdjustQueryConcurrentRuns(long delta)
+    {
+        _queryConcurrentRuns.Add(delta);
+    }
+
+    // Note: query.tool_calls_total is emitted by Grimoire.QueryAgent itself (the guarded
+    // tool executor runs in that process, not the Hub) — see QueryAgentMetrics there,
+    // mirroring Grimoire.IngestAgent.IngestAgentMetrics.RecordToolCall.
 }

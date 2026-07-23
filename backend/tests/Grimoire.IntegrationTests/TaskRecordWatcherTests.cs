@@ -126,6 +126,11 @@ public class TaskRecordWatcherTests
                 DefaultUserPromptPath: Path.Combine(root, "agents", "ingest", "default-user-prompt.md"),
                 PolicyPath: Path.Combine(root, "agents", "ingest", "policy.json"),
                 AgentWorkerPath: "unused",
+                QueryInstructionsDir: Path.Combine(root, "agents", "query"),
+                QuerySystemPromptPath: Path.Combine(root, "agents", "query", "system-prompt.md"),
+                QueryPolicyPath: Path.Combine(root, "agents", "query", "policy.json"),
+                QueryRunsDir: Path.Combine(root, "query-runs"),
+                QueryAgentWorkerPath: "unused",
                 Locations: []);
 
             var builder = WebApplication.CreateBuilder();
