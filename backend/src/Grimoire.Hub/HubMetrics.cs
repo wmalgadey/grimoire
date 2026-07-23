@@ -175,6 +175,23 @@ public static class HubMetrics
         _querySubmissionsRejectedTotal.Add(1);
     }
 
+    private static readonly UpDownCounter<long> _queryConcurrentRuns =
+        Meter.CreateUpDownCounter<long>("query.concurrent_runs",
+            description: "Currently running Query Turns");
+
+    /// <summary>
+    /// Adjusts the live count of non-terminal Query Turns (T080 gap fix: this metric row
+    /// existed in plan.md but had no implementation). Called once per turn creation
+    /// (+1, in <c>QueryRunCoordinator.SubmitTurnAsync</c>) and exactly once per turn's
+    /// first terminal transition (-1, in <c>FinishTurnAsync</c>) — symmetric by
+    /// construction via the same idempotent first-transition-wins guard everything else
+    /// in that class uses, so this can never drift negative or double-count.
+    /// </summary>
+    public static void AdjustQueryConcurrentRuns(long delta)
+    {
+        _queryConcurrentRuns.Add(delta);
+    }
+
     // Note: query.tool_calls_total is emitted by Grimoire.QueryAgent itself (the guarded
     // tool executor runs in that process, not the Hub) — see QueryAgentMetrics there,
     // mirroring Grimoire.IngestAgent.IngestAgentMetrics.RecordToolCall.

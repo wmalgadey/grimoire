@@ -5,12 +5,14 @@ using Grimoire.QueryAgent;
 namespace Grimoire.IntegrationTests;
 
 /// <summary>
-/// T046/T058/T075/T078 (008-query-agent) — business metric emission via in-process
+/// T046/T058/T075/T078/T080 (008-query-agent) — business metric emission via in-process
 /// MeterListener (mirrors ObservabilityMetricsTests.cs's pattern), for every metric row
 /// in plan.md ## Observability > Business Metrics that this feature owns: the Hub-side
 /// `query.turns_total`/`query.turn_duration_seconds`/`query.answer_chunks_total`/
-/// `query.submissions_rejected_total` and the agent-side `query.tool_calls_total` (the
-/// guarded tool executor runs inside `Grimoire.QueryAgent`, not the Hub).
+/// `query.submissions_rejected_total`/`query.concurrent_runs` and the agent-side
+/// `query.tool_calls_total` (the guarded tool executor runs inside `Grimoire.QueryAgent`,
+/// not the Hub). `query.concurrent_runs` was found missing entirely during the T080
+/// observability completeness check — declared in plan.md, never implemented or tasked.
 /// </summary>
 public class QueryLifecycleMetricsTests
 {
@@ -121,6 +123,30 @@ public class QueryLifecycleMetricsTests
         HubMetrics.RecordQuerySubmissionRejected();
 
         Assert.Contains(Snapshot(measurements), v => v == 1L);
+    }
+
+    [Fact]
+    public void HubMetrics_AdjustQueryConcurrentRuns_RecordsBothTheIncrementAndDecrement()
+    {
+        var measurements = new List<long>();
+
+        using var listener = new MeterListener();
+        listener.InstrumentPublished = (instrument, l) =>
+        {
+            if (instrument.Meter.Name == "Grimoire.Hub" && instrument.Name == "query.concurrent_runs")
+            {
+                l.EnableMeasurementEvents(instrument);
+            }
+        };
+        listener.SetMeasurementEventCallback<long>((_, value, _, _) => AddSynchronized(measurements, value));
+        listener.Start();
+
+        HubMetrics.AdjustQueryConcurrentRuns(1);
+        HubMetrics.AdjustQueryConcurrentRuns(-1);
+
+        var snapshot = Snapshot(measurements);
+        Assert.Contains(snapshot, v => v == 1L);
+        Assert.Contains(snapshot, v => v == -1L);
     }
 
     [Fact]

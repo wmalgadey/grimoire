@@ -94,8 +94,18 @@ public class QueryInstructionLoadTests
         Assert.Equal(reason, turn.FailureReason);
         Assert.Equal(string.Empty, turn.Answer);
 
+        // The turn's in-memory status flips synchronously before FinishTurnAsync's own
+        // await of the artifact write completes (QueryRunCoordinator.FinishTurnAsync),
+        // so the file write is still a separate, slightly-later async operation — poll
+        // for it too rather than assuming it's already on disk the instant Status flips.
         var resolvedPaths = QueryTurnSubmissionApiTests.BuildResolvedPaths(root);
         var artifactPath = resolvedPaths.QueryRunArtifactPathFor("c-fail", turnId);
+        var artifactDeadline = DateTime.UtcNow.AddSeconds(5);
+        while (!File.Exists(artifactPath) && DateTime.UtcNow < artifactDeadline)
+        {
+            await Task.Delay(25);
+        }
+
         Assert.True(File.Exists(artifactPath));
         var artifact = await File.ReadAllTextAsync(artifactPath);
         Assert.Contains("state: failed", artifact);
