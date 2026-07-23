@@ -120,3 +120,51 @@ export interface TaskRecordChangedEvent {
 	taskId: string;
 	changedAt: string;
 }
+
+// 008-query-agent (data-model.md QueryTurn, contracts/query-conversation-api.md).
+export type QueryTurnStatus = 'running' | 'completed' | 'interrupted' | 'failed';
+
+/** One prompt-answer exchange, client view (data-model.md Query Turn). */
+export interface QueryTurn {
+	turnId: string;
+	conversationId: string;
+	position: number;
+	prompt: string;
+	answer: string;
+	state: QueryTurnStatus;
+	failureReason?: string | null;
+}
+
+/** POST /api/query-conversations/{conversationId}/turns 202 response. */
+export interface QueryTurnAcceptedResponse {
+	turnId: string;
+	conversationId: string;
+	position: number;
+	state: QueryTurnStatus;
+	acceptedAt: string;
+}
+
+/** One prior turn sent with a follow-up submission (FR-009, includes interrupted partials). */
+export interface QueryPriorTurn {
+	position: number;
+	prompt: string;
+	answer: string;
+	state: QueryTurnStatus;
+}
+
+/** SignalR `queryAnswerChunk` payload (contracts/query-conversation-api.md). */
+export interface QueryAnswerChunkEvent {
+	turnId: string;
+	sequence: number;
+	text: string;
+}
+
+/** SignalR `queryTurnChanged` payload (contracts/query-conversation-api.md). */
+export interface QueryTurnChangedEvent {
+	eventId: string;
+	turnId: string;
+	fromState: QueryTurnStatus | null;
+	toState: QueryTurnStatus;
+	timestamp: string;
+	failureReason: string | null;
+}
