@@ -72,27 +72,27 @@ code exists. This phase is first, non-negotiable, and blocks everything else.
 **Purpose**: Stand up the new projects and move Ingest's shared code onto them before
 any Query-specific behavior is added.
 
-- [ ] T005 Create new class library project `backend/src/Grimoire.AgentRuntime/Grimoire.AgentRuntime.csproj`
+- [X] T005 Create new class library project `backend/src/Grimoire.AgentRuntime/Grimoire.AgentRuntime.csproj`
   (net10.0, matches `Grimoire.IngestAgent.csproj`'s target framework/nullable/langversion
   settings) and add it to `backend/Grimoire.sln`.
-- [ ] T006 Create new console project `backend/src/Grimoire.QueryAgent/Grimoire.QueryAgent.csproj`
+- [X] T006 Create new console project `backend/src/Grimoire.QueryAgent/Grimoire.QueryAgent.csproj`
   referencing `Grimoire.AgentRuntime` (mirrors `Grimoire.IngestAgent.csproj`'s
   OpenTelemetry/Anthropic-SDK/etc. package references it still needs transitively) and
   add it to `backend/Grimoire.sln`.
-- [ ] T007 [P] Move `backend/src/Grimoire.IngestAgent/AgentCore/AgentLoop.cs`,
+- [X] T007 [P] Move `backend/src/Grimoire.IngestAgent/AgentCore/AgentLoop.cs`,
   `AgentCore/IModelClient.cs` to `backend/src/Grimoire.AgentRuntime/Core/` (namespace
   `Grimoire.AgentRuntime.Core`), preserving git history via `git mv`.
-- [ ] T008 [P] Move `backend/src/Grimoire.IngestAgent/AgentCore/Adapters/Anthropic/AnthropicModelClient.cs`
+- [X] T008 [P] Move `backend/src/Grimoire.IngestAgent/AgentCore/Adapters/Anthropic/AnthropicModelClient.cs`
   to `backend/src/Grimoire.AgentRuntime/Core/Adapters/Anthropic/` (namespace
   `Grimoire.AgentRuntime.Core.Adapters.Anthropic`, satisfies ADR-011 C6/T001), via
   `git mv`.
-- [ ] T009 [P] Move `backend/src/Grimoire.IngestAgent/AgentCore/SystemPromptLoader.cs`,
+- [X] T009 [P] Move `backend/src/Grimoire.IngestAgent/AgentCore/SystemPromptLoader.cs`,
   `AgentCore/PolicyLoader.cs` to `backend/src/Grimoire.AgentRuntime/Instructions/`
   (namespace `Grimoire.AgentRuntime.Instructions`), via `git mv`.
-- [ ] T010 [P] Move `backend/src/Grimoire.IngestAgent/AgentCore/RunEventEmitter.cs` to
+- [X] T010 [P] Move `backend/src/Grimoire.IngestAgent/AgentCore/RunEventEmitter.cs` to
   `backend/src/Grimoire.AgentRuntime/RunEvents/` (namespace
   `Grimoire.AgentRuntime.RunEvents`), via `git mv`.
-- [ ] T011 [P] Move `backend/src/Grimoire.IngestAgent/Guardrails/GuardedToolExecutor.cs`,
+- [X] T011 [P] Move `backend/src/Grimoire.IngestAgent/Guardrails/GuardedToolExecutor.cs`,
   `Guardrails/WriteJournal.cs`, `Guardrails/DeniedActionRecord.cs`,
   `Guardrails/ToolRegistry.cs` to `backend/src/Grimoire.AgentRuntime/Guardrails/`
   (namespace `Grimoire.AgentRuntime.Guardrails`), via `git mv`. Generalize
@@ -100,7 +100,7 @@ any Query-specific behavior is added.
   parameter) instead of a hardcoded Ingest tool set, so `Grimoire.QueryAgent` can supply
   its own read-only registry. Make `WriteJournal` a no-op-safe type for agents with no
   write tool (Query never calls its write-recording path).
-- [ ] T012 Update `Grimoire.IngestAgent` to reference `Grimoire.AgentRuntime` and update
+- [X] T012 Update `Grimoire.IngestAgent` to reference `Grimoire.AgentRuntime` and update
   all `using`/namespace references in `Program.cs`, `AgentCliOptions.cs`,
   `Guardrails/ToolRegistry.cs` (Ingest's own registry, stays in `Grimoire.IngestAgent`
   wired against the generalized executor), `TaskArtifact/*.cs`, `IngestLog/*.cs`, and
@@ -109,18 +109,21 @@ any Query-specific behavior is added.
   (existing Ingest integration tests in `Grimoire.IntegrationTests` still pass
   byte-for-byte — no callback supplied to `NextTurnAsync`, so streaming path is inert
   for Ingest).
-- [ ] T013 Update `backend/tests/Grimoire.ArchTests/GuardedWriteBoundaryRuleTests.cs`'s
+- [X] T013 Update `backend/tests/Grimoire.ArchTests/GuardedWriteBoundaryRuleTests.cs`'s
   `_allowedNamespacePrefixes` and assembly-under-test namespace references to match the
   moved `Grimoire.AgentRuntime.Guardrails`/`Grimoire.IngestAgent.TaskArtifact`/
   `Grimoire.IngestAgent.IngestLog` split; re-run to confirm still green post-move.
-- [ ] T014 [P] Create `agents/query/system-prompt.md` (initial versioned Query System
+- [X] T014 [P] Create `agents/query/system-prompt.md` (initial versioned Query System
   Prompt Document per FR-003/FR-018: grounding rules, citation conventions naming wiki
   pages drawn from, honest-gap handling for uncovered questions, tone, and an explicit
   instruction that querying is read-only and the agent must decline+explain any
-  write-requesting prompt — SC-010).
-- [ ] T015 [P] Create `agents/query/policy.json` per
+  write-requesting prompt — SC-010). Placed at `data/agents/query/system-prompt.md`
+  (not repo-root `agents/query/`) to match the actual ADR-009 convention already
+  established by `data/agents/ingest/` (`GrimoirePathOptions.InstructionsDir` default).
+- [X] T015 [P] Create `agents/query/policy.json` per
   `contracts/guarded-read-only-tools.md`: `{"version":1,"defaultDecision":"deny","read":[{"pathPrefix":"pages/"},{"pathPrefix":"index.md"},{"pathPrefix":"log.md"}],"write":[]}`.
-- [ ] T016 [P] Add `data/query-runs/` to `.gitignore` (ADR-009/R7 pattern, mirrors
+  Placed at `data/agents/query/policy.json` (see T014 note).
+- [X] T016 [P] Add `data/query-runs/` to `.gitignore` (ADR-009/R7 pattern, mirrors
   existing `data/` git-ignore entries for operational state).
 
 **Checkpoint**: `Grimoire.AgentRuntime` exists, Ingest is unaffected, `Grimoire.QueryAgent`

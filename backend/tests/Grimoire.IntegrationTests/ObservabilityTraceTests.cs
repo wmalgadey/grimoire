@@ -2,9 +2,10 @@ using System.Collections.Concurrent;
 using System.Diagnostics;
 using Grimoire.Domain.Guardrails;
 using Grimoire.Hub.OperationalState;
-using Grimoire.IngestAgent.AgentCore;
+using Grimoire.AgentRuntime.Core;
 using Grimoire.IngestAgent;
-using Grimoire.IngestAgent.Guardrails;
+using Grimoire.IngestAgent.AgentCore;
+using Grimoire.AgentRuntime.Guardrails;
 using Grimoire.IngestAgent.IngestLog;
 using Grimoire.IntegrationTests.Fakes;
 
@@ -136,11 +137,13 @@ public class ObservabilityTraceTests
             readPrefixes: [wikiDir + Path.DirectorySeparatorChar],
             writePrefixes: [pagesDir + Path.DirectorySeparatorChar]);
         var journal = new WriteJournal();
-        var executor = new GuardedToolExecutor(policy, journal, root, taskId: "task-123");
+        var executor = new GuardedToolExecutor(
+            policy, journal, root, taskId: "task-123",
+            instrumentation: new IngestToolCallInstrumentation(new CaptureLogger<ObservabilityTraceTests>()));
         var fakeModel = new FakeModelClient([
             FakeModelClient.WriteFileTurn("tool-1", "wiki/pages/new.md", "# New page"),
             FakeModelClient.FinalTurn("Trace contract run complete.")]);
-        var loop = new AgentLoop(fakeModel, executor);
+        var loop = new AgentLoop(fakeModel, executor, instrumentation: new IngestAgentLoopInstrumentation());
 
         using (var runSpan = IngestAgentTracing.ActivitySource.StartActivity("ingest_agent.run"))
         {

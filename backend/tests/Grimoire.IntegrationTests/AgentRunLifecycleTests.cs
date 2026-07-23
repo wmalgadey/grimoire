@@ -1,6 +1,6 @@
 using Grimoire.Domain.Guardrails;
-using Grimoire.IngestAgent.AgentCore;
-using Grimoire.IngestAgent.Guardrails;
+using Grimoire.AgentRuntime.Core;
+using Grimoire.AgentRuntime.Guardrails;
 using Grimoire.IntegrationTests.Fakes;
 
 namespace Grimoire.IntegrationTests;

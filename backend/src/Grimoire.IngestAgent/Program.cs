@@ -1,7 +1,10 @@
+using Grimoire.AgentRuntime.Core;
+using Grimoire.AgentRuntime.Core.Adapters.Anthropic;
+using Grimoire.AgentRuntime.Guardrails;
+using Grimoire.AgentRuntime.Instructions;
+using Grimoire.AgentRuntime.RunEvents;
 using Grimoire.IngestAgent;
 using Grimoire.IngestAgent.AgentCore;
-using Grimoire.IngestAgent.AgentCore.Adapters.Anthropic;
-using Grimoire.IngestAgent.Guardrails;
 using Grimoire.IngestAgent.IngestLog;
 using Grimoire.IngestAgent.Source;
 using Grimoire.IngestAgent.TaskArtifact;
@@ -166,10 +169,15 @@ try
         loadedPolicy!.Policy,
         journal,
         wikiRoot,
-        options.TaskId,
-        loggerFactory.CreateLogger<GuardedToolExecutor>());
+        taskId: options.TaskId,
+        instrumentation: new IngestToolCallInstrumentation(loggerFactory.CreateLogger<GuardedToolExecutor>()));
     var tokenCap = ResolveTokenCapFromEnvironment();
-    var loop = new AgentLoop(modelClient, executor, tokenCap: tokenCap, eventEmitter: runEvents);
+    var loop = new AgentLoop(
+        modelClient,
+        executor,
+        tokenCap: tokenCap,
+        eventEmitter: runEvents,
+        instrumentation: new IngestAgentLoopInstrumentation());
     var systemPrompt = loadedSystemPrompt.Content;
 
     AgentLoopResult loopResult;

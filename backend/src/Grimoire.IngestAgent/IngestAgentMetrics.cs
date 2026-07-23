@@ -1,7 +1,7 @@
 using System.Diagnostics;
 using System.Diagnostics.Metrics;
-using Grimoire.IngestAgent.AgentCore;
-using Grimoire.IngestAgent.Guardrails;
+using Grimoire.AgentRuntime.Core;
+using Grimoire.AgentRuntime.Guardrails;
 
 namespace Grimoire.IngestAgent;
 

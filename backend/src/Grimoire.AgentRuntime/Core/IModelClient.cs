@@ -1,6 +1,6 @@
 using System.Linq;
 
-namespace Grimoire.IngestAgent.AgentCore;
+namespace Grimoire.AgentRuntime.Core;
 
 /// <summary>
 /// One tool-use request issued by the model.

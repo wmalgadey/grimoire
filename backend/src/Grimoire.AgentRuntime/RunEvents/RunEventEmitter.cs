@@ -1,6 +1,6 @@
 using System.Text.Json;
 
-namespace Grimoire.IngestAgent.AgentCore;
+namespace Grimoire.AgentRuntime.RunEvents;
 
 /// <summary>
 /// Emits Agent Run Events as NDJSON on stdout (contracts/agent-run-events.md, ADR-008):
