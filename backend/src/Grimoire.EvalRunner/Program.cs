@@ -38,85 +38,85 @@ if (scenarios.Count == 0)
 switch (subcommand)
 {
     case "replay":
-    {
-        var pipeline = new ReplayPipeline(store, paths, invoker, logger);
-        var results = new List<ScenarioReplayResult>();
-        foreach (var scenario in scenarios)
         {
-            results.Add(await pipeline.RunScenarioAsync(scenario, CancellationToken.None));
-        }
-
-        WriteSummary(options.SummaryPath, Summary.ForReplay(results));
-
-        if (results.Any(r => r.TrustStatus != Grimoire.EvalRunner.Recording.TrustStatus.Trusted))
-        {
-            foreach (var result in results.Where(r => r.TrustStatus != Grimoire.EvalRunner.Recording.TrustStatus.Trusted))
-            {
-                Console.Error.WriteLine($"{result.ScenarioId}: {result.TrustStatus} — {result.Detail}");
-                foreach (var sample in result.Samples.Where(s => s.TrustStatus != Grimoire.EvalRunner.Recording.TrustStatus.Trusted))
-                {
-                    Console.Error.WriteLine($"  sample {sample.Sample}: {sample.TrustStatus} — {sample.Detail}");
-                }
-            }
-
-            return 3;
-        }
-
-        return results.All(r => r.IsTrustedPass) ? 0 : 1;
-    }
-
-    case "status":
-    {
-        var reports = scenarios.Select(s => StalenessCheck.Evaluate(s, store, paths)).ToList();
-        foreach (var report in reports.Where(r => r.Status == Grimoire.EvalRunner.Recording.TrustStatus.Stale))
-        {
-            EvalRunnerTelemetry.RecordRecordingStale(logger, report.ScenarioId, report.ChangedFingerprints, store.ScenarioDirectory(report.ScenarioId));
-        }
-
-        WriteSummary(options.SummaryPath, Summary.ForStatus(reports));
-        return reports.All(r => r.Status == Grimoire.EvalRunner.Recording.TrustStatus.Trusted) ? 0 : 3;
-    }
-
-    case "capture":
-    {
-        var gate = EvalProviderResolver.Resolve();
-        EvalObservability.RecordGateResolution(logger, gate);
-        if (gate.Status != EvalGateStatus.Enabled)
-        {
-            Console.Error.WriteLine(gate.Reason);
-            return 2;
-        }
-
-        var sampleCount = options.Samples ?? ScenarioDefinitions.ResolveSampleCount();
-        var pipeline = new CapturePipeline(store, paths, invoker, logger, CreateJudgeClient);
-        var results = new List<CaptureScenarioResult>();
-        try
-        {
+            var pipeline = new ReplayPipeline(store, paths, invoker, logger);
+            var results = new List<ScenarioReplayResult>();
             foreach (var scenario in scenarios)
             {
-                results.Add(await pipeline.RunScenarioAsync(scenario, gate.Configuration, sampleCount, CancellationToken.None));
+                results.Add(await pipeline.RunScenarioAsync(scenario, CancellationToken.None));
             }
-        }
-        catch (Exception ex)
-        {
-            Console.Error.WriteLine(EvalProviderResolver.SanitizeErrorText($"Capture failed: {ex.Message}"));
-            return 2;
-        }
 
-        WriteSummary(options.SummaryPath, Summary.ForCapture(results));
+            WriteSummary(options.SummaryPath, Summary.ForReplay(results));
 
-        if (results.Any(r => !r.Stored))
-        {
-            foreach (var result in results.Where(r => !r.Stored))
+            if (results.Any(r => r.TrustStatus != Grimoire.EvalRunner.Recording.TrustStatus.Trusted))
             {
-                Console.Error.WriteLine($"{result.ScenarioId}: {result.Detail}");
+                foreach (var result in results.Where(r => r.TrustStatus != Grimoire.EvalRunner.Recording.TrustStatus.Trusted))
+                {
+                    Console.Error.WriteLine($"{result.ScenarioId}: {result.TrustStatus} — {result.Detail}");
+                    foreach (var sample in result.Samples.Where(s => s.TrustStatus != Grimoire.EvalRunner.Recording.TrustStatus.Trusted))
+                    {
+                        Console.Error.WriteLine($"  sample {sample.Sample}: {sample.TrustStatus} — {sample.Detail}");
+                    }
+                }
+
+                return 3;
             }
 
-            return 2;
+            return results.All(r => r.IsTrustedPass) ? 0 : 1;
         }
 
-        return results.All(r => r.ThresholdMet && r.NoOutOfScopeGuaranteeHeld) ? 0 : 1;
-    }
+    case "status":
+        {
+            var reports = scenarios.Select(s => StalenessCheck.Evaluate(s, store, paths)).ToList();
+            foreach (var report in reports.Where(r => r.Status == Grimoire.EvalRunner.Recording.TrustStatus.Stale))
+            {
+                EvalRunnerTelemetry.RecordRecordingStale(logger, report.ScenarioId, report.ChangedFingerprints, store.ScenarioDirectory(report.ScenarioId));
+            }
+
+            WriteSummary(options.SummaryPath, Summary.ForStatus(reports));
+            return reports.All(r => r.Status == Grimoire.EvalRunner.Recording.TrustStatus.Trusted) ? 0 : 3;
+        }
+
+    case "capture":
+        {
+            var gate = EvalProviderResolver.Resolve();
+            EvalObservability.RecordGateResolution(logger, gate);
+            if (gate.Status != EvalGateStatus.Enabled)
+            {
+                Console.Error.WriteLine(gate.Reason);
+                return 2;
+            }
+
+            var sampleCount = options.Samples ?? ScenarioDefinitions.ResolveSampleCount();
+            var pipeline = new CapturePipeline(store, paths, invoker, logger, CreateJudgeClient);
+            var results = new List<CaptureScenarioResult>();
+            try
+            {
+                foreach (var scenario in scenarios)
+                {
+                    results.Add(await pipeline.RunScenarioAsync(scenario, gate.Configuration, sampleCount, CancellationToken.None));
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.Error.WriteLine(EvalProviderResolver.SanitizeErrorText($"Capture failed: {ex.Message}"));
+                return 2;
+            }
+
+            WriteSummary(options.SummaryPath, Summary.ForCapture(results));
+
+            if (results.Any(r => !r.Stored))
+            {
+                foreach (var result in results.Where(r => !r.Stored))
+                {
+                    Console.Error.WriteLine($"{result.ScenarioId}: {result.Detail}");
+                }
+
+                return 2;
+            }
+
+            return results.All(r => r.ThresholdMet && r.NoOutOfScopeGuaranteeHeld) ? 0 : 1;
+        }
 
     default:
         Console.Error.WriteLine($"Unknown subcommand '{subcommand}'.");

@@ -62,7 +62,9 @@ Pure staleness/provenance report; touches no workspaces, spawns no agent.
 ## Global rules
 
 - All subcommands emit the observability signals declared in `plan.md ## Observability`.
-- Machine-readable summary format is the existing TRX/markdown pipeline consumed by
-  `scripts/ci/format-eval-summary` (007 FR-007 contract preserved for `eval.yml`).
+- The summary is written directly in the markdown shape established by 007's
+  `scripts/ci/format-eval-summary` ("## Agent Eval Results" + per-test table), so
+  `eval.yml`'s PR-comment/job-summary contract carries over without a TRX intermediate
+  (the script itself remains for TRX-based `dotnet test` runs).
 - The runner never modifies `data/agents/` or repo wiki content; it writes only to the
   recordings root, temp workspaces, and the summary path.

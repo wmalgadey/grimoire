@@ -42,6 +42,20 @@ jobs:
       - name: Run hermetic integration tests
         run: dotnet test backend/tests/Grimoire.IntegrationTests --configuration Release --no-build
 
+      # 009: replay agent evals — hermetic (recordings from data/evals/recordings/, real
+      # agent process, zero provider config/secrets). SC-008: zero skipped eval tests.
+      # A stale/missing recording fails here — that failure IS the FR-016 merge gate for
+      # instruction-file changes (refresh via the EvalRunner capture command or eval.yml).
+      - name: Run replay agent evals (hermetic, zero skips)
+        timeout-minutes: 10
+        run: |
+          set -o pipefail
+          dotnet test backend/tests/Grimoire.AgentEvals --configuration Release --no-build | tee agent-evals-output.txt
+          if ! grep -Eq "Skipped:\s+0," agent-evals-output.txt; then
+            echo "::error::Eval tests were skipped — SC-008 requires zero skipped eval tests in the standard suite."
+            exit 1
+          fi
+
   frontend:
     name: Frontend Gates
     runs-on: ubuntu-latest

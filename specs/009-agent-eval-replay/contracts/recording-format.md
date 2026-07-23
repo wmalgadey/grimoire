@@ -42,7 +42,8 @@ Rules:
 {
   "schema_version": 1,
   "sample": 1,
-  "task_id": "eval-…",
+  "task_id": "capture-…",
+  "model": "nvidia/llama-3.3-nemotron-super-49b-v1",
   "turns": [
     {
       "turn": 1,
@@ -64,6 +65,11 @@ Rules:
 ```
 
 Rules:
+- `model` names the model that produced the sample (`IModelClient.ModelId` at capture);
+  the replay adapter presents it as its own model id so the task artifact stays honest.
+- `task_id` is baked into the captured conversation's first message — replay reuses it
+  verbatim so the replayed conversation matches byte-for-byte. The source ref is the
+  stable value `eval://<scenario>/sample-NN` for the same reason.
 - `turns` is the full ordered interaction; `tool_uses`, `assistant_text`, `stop_reason`
   and token counts are stored verbatim (they are what replay serves back);
   conversation *requests* are stored as hashes only (match-checking, R2) — recorded

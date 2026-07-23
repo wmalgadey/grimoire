@@ -168,6 +168,17 @@ public sealed class CapturePipeline
 
                 sampleResults.Add(new CaptureSampleResult(
                     sampleNumber, taskId, Captured: true, score.Pass, score.OutOfScopeWriteSucceeded, Detail: null));
+
+                // Emitted inside the sample's capture span (Principle IV); the path is the
+                // recording's final store location after the wholesale swap below.
+                EvalRunnerTelemetry.RecordRecordingCaptured(
+                    _logger,
+                    taskId,
+                    scenario.Id,
+                    sampleNumber,
+                    rawCapture.Model,
+                    _store.SamplePath(scenario.Id, $"sample-{sampleNumber:00}.json"),
+                    providerLabel);
             }
 
             var allCaptured = sampleResults.Count > 0 && sampleResults.All(r => r.Captured);
@@ -185,25 +196,13 @@ public sealed class CapturePipeline
             }
 
             var fingerprints = StalenessCheck.CurrentFingerprints(scenario, _paths);
-            var manifest = _store.ReplaceScenario(
+            _store.ReplaceScenario(
                 scenario.Id,
                 capturedAt: DateTimeOffset.UtcNow,
                 model: model ?? "unknown",
                 providerKind: providerLabel,
                 fingerprints,
                 recordings);
-
-            foreach (var sample in manifest.Samples)
-            {
-                EvalRunnerTelemetry.RecordRecordingCaptured(
-                    _logger,
-                    sample.TaskId,
-                    scenario.Id,
-                    manifest.Samples.ToList().IndexOf(sample) + 1,
-                    manifest.Model,
-                    _store.SamplePath(scenario.Id, sample.File),
-                    providerLabel);
-            }
 
             return new CaptureScenarioResult(
                 scenario.Id, model, scenario.Threshold, rate, rate >= scenario.Threshold, guaranteeHeld,
