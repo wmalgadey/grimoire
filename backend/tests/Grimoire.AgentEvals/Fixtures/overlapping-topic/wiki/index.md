@@ -1,3 +1,3 @@
 # Wiki Index
 
-- [Retrieval Patterns](pages/retrieval-patterns.md)
+- [[concepts/retrieval-patterns]] — Techniques for combining and ranking results from multiple retrieval methods.

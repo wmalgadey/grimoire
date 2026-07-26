@@ -1,0 +1,176 @@
+{
+  "schema_version": 1,
+  "sample": 5,
+  "task_id": "capture-catalog-discoverability-05-32d138067bae439a923153687edf164e",
+  "model": "claude-haiku-4-5",
+  "turns": [
+    {
+      "turn": 1,
+      "system_prompt_sha256": "sha256:d58c1db8446cd6ae5232c41ebf8698c211cd1320145cf6219e76a37edf2f5f0e",
+      "conversation": [
+        {
+          "role": "user",
+          "content_sha256": "sha256:cd331128cb365f4fb0a7a2fef65bd59c7518457be0ed3a9c8a83aa58fe632151"
+        }
+      ],
+      "tool_names": [
+        "list_files",
+        "read_file",
+        "write_file"
+      ],
+      "stop_reason": "tool_use",
+      "tool_uses": [
+        {
+          "tool_use_id": "toolu_01Ms2Jnty2YdNHnvNEwkVE1Z",
+          "tool_name": "read_file",
+          "input_json": "{\u0022path\u0022:\u0022index.md\u0022}"
+        },
+        {
+          "tool_use_id": "toolu_01FLMPsF72kE5d4dmBSw5iK4",
+          "tool_name": "list_files",
+          "input_json": "{\u0022path\u0022:\u0022pages\u0022}"
+        }
+      ],
+      "assistant_text": "I\u0027ll start by exploring the wiki to understand its current state and then integrate this source about evaluation harnesses.",
+      "input_tokens": 4982,
+      "output_tokens": 114
+    },
+    {
+      "turn": 2,
+      "system_prompt_sha256": "sha256:d58c1db8446cd6ae5232c41ebf8698c211cd1320145cf6219e76a37edf2f5f0e",
+      "conversation": [
+        {
+          "role": "user",
+          "content_sha256": "sha256:cd331128cb365f4fb0a7a2fef65bd59c7518457be0ed3a9c8a83aa58fe632151"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:e2ccfcd4fc519b613c45e4ee38a7bd636626107c8fe24d73a36feb306fd4abfb"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:88a0ddad2ec8de8c2684f2213e88812d68e6eb54b57a5fb7fc138c1e283fdff4"
+        }
+      ],
+      "tool_names": [
+        "list_files",
+        "read_file",
+        "write_file"
+      ],
+      "stop_reason": "tool_use",
+      "tool_uses": [
+        {
+          "tool_use_id": "toolu_01KxgBXGkPnb7Xfhx5Y1Eg6p",
+          "tool_name": "read_file",
+          "input_json": "{\u0022path\u0022:\u0022log.md\u0022}"
+        }
+      ],
+      "assistant_text": "The wiki is empty, so I\u0027m creating it from scratch. Let me also check if log.md exists:",
+      "input_tokens": 5174,
+      "output_tokens": 79
+    },
+    {
+      "turn": 3,
+      "system_prompt_sha256": "sha256:d58c1db8446cd6ae5232c41ebf8698c211cd1320145cf6219e76a37edf2f5f0e",
+      "conversation": [
+        {
+          "role": "user",
+          "content_sha256": "sha256:cd331128cb365f4fb0a7a2fef65bd59c7518457be0ed3a9c8a83aa58fe632151"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:e2ccfcd4fc519b613c45e4ee38a7bd636626107c8fe24d73a36feb306fd4abfb"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:88a0ddad2ec8de8c2684f2213e88812d68e6eb54b57a5fb7fc138c1e283fdff4"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:d032ac418ddbc8a92feef9079a71efb876a9eecb2f4243196b7f5f55f9981bd5"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:2247e3fa7eccde36179c069e2ac86e43c2c684fcaba649eef824b5aca18e435b"
+        }
+      ],
+      "tool_names": [
+        "list_files",
+        "read_file",
+        "write_file"
+      ],
+      "stop_reason": "tool_use",
+      "tool_uses": [
+        {
+          "tool_use_id": "toolu_01Ae7JwL4ME6kxNRfNgVsBhc",
+          "tool_name": "write_file",
+          "input_json": "{\u0022path\u0022:\u0022pages/concepts/evaluation-harness.md\u0022,\u0022content\u0022:\u0022---\\ntype: Concept\\ntitle: Evaluation Harness\\ndescription: A framework that automates system evaluation against fixed scenarios with statistical pass-rate gating.\\ntimestamp: 2025-07-14T00:00:00Z\\ntags:\\n  - concept/Testing\\n  - concept/Evaluation\\n  - concept/AI-Systems\\nconfidence: medium\\nconfidence_reason: \\u0022Single direct source; core properties clearly described. Practical framing evident but needs corroboration on best practices or adoption patterns.\\u0022\\n---\\n\\nAn **evaluation harness** is a framework that automates the testing and evaluation of a system\\u2014such as an agent, machine learning model, or data pipeline\\u2014by running it against a fixed set of predefined scenarios and scoring the output against established thresholds.\\n\\n## Key Characteristics\\n\\n**Non-determinism handling:** Harnesses typically sample multiple runs per scenario to account for LLM non-determinism and variability in model behavior, rather than relying on single-pass results.\\n\\n**Separated concerns:** They distinguish between:\\n- **Deterministic harness checks**: objective, rule-based validation (input format, presence of required fields, etc.)\\n- **Evaluation-style judgment scoring**: qualitative assessment that may involve heuristics or reference-model comparison\\n\\n**Pass-rate gating:** Rather than making a definition of done dependent on any single run or scenario, evaluation harnesses aggregate results across all runs and scenarios, then gate completion on an aggregate pass rate threshold. This shifts acceptance criteria from individual case inspection to statistical coverage.\\n\\n## Typical Workflow\\n\\n1. Define a fixed set of test scenarios with known or expected behaviors\\n2. Run the system multiple times against each scenario (sampling for non-determinism)\\n3. Collect outputs and apply both deterministic checks and judgment-based scoring\\n4. Aggregate scores and compare against a configured pass-rate threshold\\n5. Gate deployment or acceptance on whether the aggregate result meets the threshold\\n\\n## Motivation\\n\\nEvaluation harnesses address the challenge of manually validating system behavior at scale, especially for stochastic systems where single runs may not be representative. They enable:\\n- Automated regression testing for models and agents\\n- Reproducible, threshold-based acceptance criteria\\n- Statistical confidence in system quality across variable conditions\\n\u0022}"
+        },
+        {
+          "tool_use_id": "toolu_01TjihQoJuF8mV5boGCsv31F",
+          "tool_name": "write_file",
+          "input_json": "{\u0022path\u0022:\u0022index.md\u0022,\u0022content\u0022:\u0022---\\nokf_version: \\u00220.1\\u0022\\n---\\n\\n# Wiki Index\\n\\n## Concepts\\n\\n- [[concepts/evaluation-harness]] \\u2014 A framework that automates system evaluation against fixed scenarios with statistical pass-rate gating.\\n\u0022}"
+        },
+        {
+          "tool_use_id": "toolu_011hadv7C5XhkKdmGkjFcXtt",
+          "tool_name": "write_file",
+          "input_json": "{\u0022path\u0022:\u0022log.md\u0022,\u0022content\u0022:\u0022## 2025-07-14\\n\\n* **Ingest**: Created [[concepts/evaluation-harness]] from source description \\u2014 source: eval://catalog-discoverability/sample-05 | completed | task: capture-catalog-discoverability-05-32d138067bae439a923153687edf164e\\n\u0022}"
+        }
+      ],
+      "assistant_text": "Now I\u0027ll create the appropriate pages. The source describes evaluation harnesses, which is a concept in AI/ML systems testing and evaluation. This warrants:\n\n1. **A Concept page** for \u0022evaluation harness\u0022 \u2014 the core abstraction\n2. **Update to index.md** to add the new page and OKF version block\n3. **A log.md entry** to record this ingest\n\nLet me create these:",
+      "input_tokens": 5280,
+      "output_tokens": 898
+    },
+    {
+      "turn": 4,
+      "system_prompt_sha256": "sha256:d58c1db8446cd6ae5232c41ebf8698c211cd1320145cf6219e76a37edf2f5f0e",
+      "conversation": [
+        {
+          "role": "user",
+          "content_sha256": "sha256:cd331128cb365f4fb0a7a2fef65bd59c7518457be0ed3a9c8a83aa58fe632151"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:e2ccfcd4fc519b613c45e4ee38a7bd636626107c8fe24d73a36feb306fd4abfb"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:88a0ddad2ec8de8c2684f2213e88812d68e6eb54b57a5fb7fc138c1e283fdff4"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:d032ac418ddbc8a92feef9079a71efb876a9eecb2f4243196b7f5f55f9981bd5"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:2247e3fa7eccde36179c069e2ac86e43c2c684fcaba649eef824b5aca18e435b"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:41cc4384f71bcc037b1afbe3ef6b8dbd45021fe86a8ecdc602650d804049f97d"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:de6743860e4fe58eee27a543d3c52904d194730f0d4b1d6ada79e45b5fa0f951"
+        }
+      ],
+      "tool_names": [
+        "list_files",
+        "read_file",
+        "write_file"
+      ],
+      "stop_reason": "end_turn",
+      "tool_uses": [],
+      "assistant_text": "## Summary\n\n**Pages created:**\n- **\u0060pages/concepts/evaluation-harness.md\u0060** \u2014 A new Concept page covering evaluation harnesses as a framework for automating system testing and evaluation. The page explains:\n  - The core definition: automation of testing against fixed scenarios with threshold-based pass-rate gating\n  - Three key characteristics: non-determinism handling (multiple runs per scenario), separation of deterministic checks from judgment scoring, and aggregate pass-rate gating rather than per-run acceptance\n  - A typical workflow from scenario definition through threshold comparison\n  - The motivation: enabling reproducible, statistical validation of stochastic systems at scale\n\n**Catalog updated:**\n- \u0060index.md\u0060 now includes the OKF version block and lists the new evaluation-harness page\n\n**Log updated:**\n- \u0060log.md\u0060 created with a single entry recording this ingest\n\n**Confidence:** Marked as \u0060medium\u0060 \u2014 the source is direct and clearly describes the core properties and use cases of evaluation harnesses, but a single source does not yet provide corroboration on adoption patterns, best practices, or competing approaches in the evaluation-testing landscape.\n\nNo updates, supersessions, or contradictions were needed; the wiki was empty and this source establishes a new concept entry.",
+      "input_tokens": 6288,
+      "output_tokens": 280
+    }
+  ],
+  "outcome": {
+    "status": "completed",
+    "checks": {
+      "completed": true,
+      "all_pages_discoverable": true
+    }
+  }
+}

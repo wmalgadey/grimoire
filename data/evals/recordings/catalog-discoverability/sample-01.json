@@ -1,0 +1,176 @@
+{
+  "schema_version": 1,
+  "sample": 1,
+  "task_id": "capture-catalog-discoverability-01-4ba413d73a6e4a53a05854d2333ede8d",
+  "model": "claude-haiku-4-5",
+  "turns": [
+    {
+      "turn": 1,
+      "system_prompt_sha256": "sha256:d58c1db8446cd6ae5232c41ebf8698c211cd1320145cf6219e76a37edf2f5f0e",
+      "conversation": [
+        {
+          "role": "user",
+          "content_sha256": "sha256:17049cd213d459644010ade761fb1b3504953f51b0c95c3504b4ab5bc6bc0927"
+        }
+      ],
+      "tool_names": [
+        "list_files",
+        "read_file",
+        "write_file"
+      ],
+      "stop_reason": "tool_use",
+      "tool_uses": [
+        {
+          "tool_use_id": "toolu_01GM9YcRUzGunChf5XGBFSf5",
+          "tool_name": "read_file",
+          "input_json": "{\u0022path\u0022:\u0022index.md\u0022}"
+        },
+        {
+          "tool_use_id": "toolu_018U9o85mP7fVHNLaXfKKDZa",
+          "tool_name": "list_files",
+          "input_json": "{\u0022path\u0022:\u0022pages\u0022}"
+        }
+      ],
+      "assistant_text": "I\u0027ll start by exploring the wiki structure to understand the current state, then integrate this source about evaluation harnesses.",
+      "input_tokens": 4988,
+      "output_tokens": 115
+    },
+    {
+      "turn": 2,
+      "system_prompt_sha256": "sha256:d58c1db8446cd6ae5232c41ebf8698c211cd1320145cf6219e76a37edf2f5f0e",
+      "conversation": [
+        {
+          "role": "user",
+          "content_sha256": "sha256:17049cd213d459644010ade761fb1b3504953f51b0c95c3504b4ab5bc6bc0927"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:d6c5e049f0c0c3155c3f7b9fba6ad6a6361537ad48e9983071b455f182da9c49"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:ec65fca836258c209ff9d9cd9c75f1d4e6343caade54ae621f76e050a00df29c"
+        }
+      ],
+      "tool_names": [
+        "list_files",
+        "read_file",
+        "write_file"
+      ],
+      "stop_reason": "tool_use",
+      "tool_uses": [
+        {
+          "tool_use_id": "toolu_01EfavHQT5aVvGamv8kYPBNs",
+          "tool_name": "list_files",
+          "input_json": "{\u0022path\u0022:\u0022.\u0022}"
+        }
+      ],
+      "assistant_text": "The wiki is empty. Let me check if the \u0060pages/\u0060 directory exists and has any subdirectories:",
+      "input_tokens": 5181,
+      "output_tokens": 76
+    },
+    {
+      "turn": 3,
+      "system_prompt_sha256": "sha256:d58c1db8446cd6ae5232c41ebf8698c211cd1320145cf6219e76a37edf2f5f0e",
+      "conversation": [
+        {
+          "role": "user",
+          "content_sha256": "sha256:17049cd213d459644010ade761fb1b3504953f51b0c95c3504b4ab5bc6bc0927"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:d6c5e049f0c0c3155c3f7b9fba6ad6a6361537ad48e9983071b455f182da9c49"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:ec65fca836258c209ff9d9cd9c75f1d4e6343caade54ae621f76e050a00df29c"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:702880a5d816f017a7e827ee18bf1dcb3ca2f511fee7059d54dd7c3451f822bb"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:97ef56751f056c55e06294a4961c7fca2f3f5a0e029b20492f19b063c22ddf9e"
+        }
+      ],
+      "tool_names": [
+        "list_files",
+        "read_file",
+        "write_file"
+      ],
+      "stop_reason": "tool_use",
+      "tool_uses": [
+        {
+          "tool_use_id": "toolu_01JNFe3RDQYeRgm21aoaaKp1",
+          "tool_name": "write_file",
+          "input_json": "{\u0022path\u0022:\u0022pages/concepts/evaluation-harnesses.md\u0022,\u0022content\u0022:\u0022---\\ntype: Concept\\ntitle: Evaluation Harnesses\\ndescription: Frameworks that automate testing systems against fixed scenarios with deterministic and judgment-based scoring.\\ntimestamp: 2026-01-24T00:00:00Z\\ntags:\\n  - pattern/Testing\\n  - concept/Evaluation\\n  - concept/LLM-Testing\\nconfidence: medium\\nconfidence_reason: \\u0022Single authoritative source describing established practice; no contradictions encountered.\\u0022\\n---\\n\\nAn **evaluation harness** is a framework that automates the testing of a system (an agent, model, or pipeline) against a fixed set of scenarios, rather than relying on manual inspection or human judgment alone.\\n\\n## Characteristics\\n\\n**Automation**: Runs the system through predetermined test scenarios without human intervention.\\n\\n**Multi-run sampling**: Typically executes multiple runs per scenario to account for non-determinism in LLM outputs, avoiding false conclusions based on a single run.\\n\\n**Deterministic \\u002B judgment scoring**: Separates:\\n- **Deterministic checks**: Automated, rule-based validation (e.g., output format, presence of required fields)\\n- **Judgment-style scoring**: Evaluation criteria that require interpretation but are consistently applied\\n\\n**Definition of done**: Gates completion on aggregate pass rate across all sampled runs, not on any single run passing or failing.\\n\\n## Why It Matters\\n\\nFor systems built on LLMs or probabilistic models, evaluation harnesses provide a rigorous, repeatable way to verify behavior. They reduce the surface area for human bias and enable continuous validation during development and iteration.\\n\\n\u0022}"
+        },
+        {
+          "tool_use_id": "toolu_01WFSxvCP1uqTGFV4gL6yVYa",
+          "tool_name": "write_file",
+          "input_json": "{\u0022path\u0022:\u0022index.md\u0022,\u0022content\u0022:\u0022# Wiki Index\\n\\n## Concepts\\n\\n- [[concepts/evaluation-harnesses]] \\u2014 Frameworks that automate testing systems against fixed scenarios with deterministic and judgment-based scoring.\\n\u0022}"
+        },
+        {
+          "tool_use_id": "toolu_016PKFeuhU1cDHE38n38rEdJ",
+          "tool_name": "write_file",
+          "input_json": "{\u0022path\u0022:\u0022log.md\u0022,\u0022content\u0022:\u0022# Ingest Log\\n\\n## 2026-01-24\\n\\n* **Ingest**: Created [[concepts/evaluation-harnesses]] \\u2014 source: eval://catalog-discoverability/sample-01 | completed | task: capture-catalog-discoverability-01-4ba413d73a6e4a53a05854d2333ede8d\\n\u0022}"
+        }
+      ],
+      "assistant_text": "I see. The wiki is brand new with an empty index. Based on the source content about evaluation harnesses, I need to:\n\n1. Create a concept page for \u0022evaluation harnesses\u0022 (it\u0027s an abstract idea/pattern, not a specific tool)\n2. Create the necessary folder structure\n3. Update the index\n\nThe source describes evaluation harnesses as a **pattern/concept** for automating system testing and validation. This fits naturally in \u0060pages/concepts/\u0060.\n\nLet me create the concept page:",
+      "input_tokens": 5297,
+      "output_tokens": 762
+    },
+    {
+      "turn": 4,
+      "system_prompt_sha256": "sha256:d58c1db8446cd6ae5232c41ebf8698c211cd1320145cf6219e76a37edf2f5f0e",
+      "conversation": [
+        {
+          "role": "user",
+          "content_sha256": "sha256:17049cd213d459644010ade761fb1b3504953f51b0c95c3504b4ab5bc6bc0927"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:d6c5e049f0c0c3155c3f7b9fba6ad6a6361537ad48e9983071b455f182da9c49"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:ec65fca836258c209ff9d9cd9c75f1d4e6343caade54ae621f76e050a00df29c"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:702880a5d816f017a7e827ee18bf1dcb3ca2f511fee7059d54dd7c3451f822bb"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:97ef56751f056c55e06294a4961c7fca2f3f5a0e029b20492f19b063c22ddf9e"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:94c818a965f28ac9ae2926789f6e58ac2f56b4b859673ce0435e746cc2eb886b"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:61512ffc52a0336e7208212ef7f27b7522fbc6fdf5dabd0335a4758bf1c791b3"
+        }
+      ],
+      "tool_names": [
+        "list_files",
+        "read_file",
+        "write_file"
+      ],
+      "stop_reason": "end_turn",
+      "tool_uses": [],
+      "assistant_text": "## Summary\n\nI have successfully integrated the evaluation harnesses source into the wiki:\n\n### Page Created\n- **[[concepts/evaluation-harnesses]]** \u2014 A concept page documenting evaluation harnesses as an automated testing framework pattern. The page covers:\n  - The core definition and purpose\n  - Key characteristics (automation, multi-run sampling, separation of deterministic and judgment scoring, aggregate pass-rate gating)\n  - Why the pattern matters for LLM-based systems\n\n### Rationale for Page Type and Location\nThe source describes a testing/evaluation **pattern** \u2014 an abstract methodology rather than a concrete tool or technology. This naturally belongs in \u0060pages/concepts/\u0060 with type \u0060Concept\u0060. The tags reflect both the testing domain (\u0060pattern/Testing\u0060) and the LLM-specific context where this pattern is most commonly applied.\n\n### Index and Log Updates\n- Added the new page to \u0060index.md\u0060 under a \u0022Concepts\u0022 heading\n- Created \u0060log.md\u0060 with today\u0027s ingest entry documenting the creation\n\n### Confidence Assessment\nRated as \u0060medium\u0060 confidence because the source is a single, clear, authoritative description of an established practice with no contradictions or ambiguities, but lacks corroboration from additional independent sources.",
+      "input_tokens": 6169,
+      "output_tokens": 273
+    }
+  ],
+  "outcome": {
+    "status": "completed",
+    "checks": {
+      "completed": true,
+      "all_pages_discoverable": true
+    }
+  }
+}
