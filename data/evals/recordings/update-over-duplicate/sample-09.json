@@ -1,0 +1,187 @@
+{
+  "schema_version": 1,
+  "sample": 9,
+  "task_id": "capture-update-over-duplicate-09-c220ca92bfc64aac83c54ebd8f321620",
+  "model": "claude-haiku-4-5",
+  "turns": [
+    {
+      "turn": 1,
+      "system_prompt_sha256": "sha256:d58c1db8446cd6ae5232c41ebf8698c211cd1320145cf6219e76a37edf2f5f0e",
+      "conversation": [
+        {
+          "role": "user",
+          "content_sha256": "sha256:bfbfe8374cd6d0cad52a514b1dbdfc60880c534ee65d555b27c32cc1a8c8feb9"
+        }
+      ],
+      "tool_names": [
+        "list_files",
+        "read_file",
+        "write_file"
+      ],
+      "stop_reason": "tool_use",
+      "tool_uses": [
+        {
+          "tool_use_id": "toolu_01HXAmRLM8YAnQXcZFM4XTzQ",
+          "tool_name": "read_file",
+          "input_json": "{\u0022path\u0022:\u0022index.md\u0022}"
+        },
+        {
+          "tool_use_id": "toolu_01GtpM2vEfqsnAx5NUaBQsAF",
+          "tool_name": "list_files",
+          "input_json": "{\u0022path\u0022:\u0022pages\u0022}"
+        }
+      ],
+      "assistant_text": "I\u0027ll start by exploring the wiki to understand its current state and find any existing pages related to hybrid retrieval and RAG systems.",
+      "input_tokens": 4982,
+      "output_tokens": 119
+    },
+    {
+      "turn": 2,
+      "system_prompt_sha256": "sha256:d58c1db8446cd6ae5232c41ebf8698c211cd1320145cf6219e76a37edf2f5f0e",
+      "conversation": [
+        {
+          "role": "user",
+          "content_sha256": "sha256:bfbfe8374cd6d0cad52a514b1dbdfc60880c534ee65d555b27c32cc1a8c8feb9"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:7e9594d0f292187a9ee603c635f25b76404da877fa1e61fa595e9a4266fc2404"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:f022b073b743fa9e7fd3cb82ee8c28a2e99c87a3038de75daec59ee544fcac45"
+        }
+      ],
+      "tool_names": [
+        "list_files",
+        "read_file",
+        "write_file"
+      ],
+      "stop_reason": "tool_use",
+      "tool_uses": [
+        {
+          "tool_use_id": "toolu_011YgReK942V8jNJYnsvimxh",
+          "tool_name": "list_files",
+          "input_json": "{\u0022path\u0022:\u0022pages/concepts\u0022}"
+        },
+        {
+          "tool_use_id": "toolu_012HF6zRgoChmfQSgaPTnohF",
+          "tool_name": "read_file",
+          "input_json": "{\u0022path\u0022:\u0022pages/concepts/retrieval-patterns.md\u0022}"
+        },
+        {
+          "tool_use_id": "toolu_0168w5QLdbgRUthTvFU5pXwM",
+          "tool_name": "read_file",
+          "input_json": "{\u0022path\u0022:\u0022log.md\u0022}"
+        }
+      ],
+      "assistant_text": "Let me check what exists in the concepts folder and read the existing retrieval-patterns page:",
+      "input_tokens": 5195,
+      "output_tokens": 158
+    },
+    {
+      "turn": 3,
+      "system_prompt_sha256": "sha256:d58c1db8446cd6ae5232c41ebf8698c211cd1320145cf6219e76a37edf2f5f0e",
+      "conversation": [
+        {
+          "role": "user",
+          "content_sha256": "sha256:bfbfe8374cd6d0cad52a514b1dbdfc60880c534ee65d555b27c32cc1a8c8feb9"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:7e9594d0f292187a9ee603c635f25b76404da877fa1e61fa595e9a4266fc2404"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:f022b073b743fa9e7fd3cb82ee8c28a2e99c87a3038de75daec59ee544fcac45"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:2b93d4761c308f3db9501b4c588aff9ed07ab3116da6bed8974ed64ab99b87df"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:28894f05db4aa9a877495d0ae66d1bd75c489db007526091800e65d814455622"
+        }
+      ],
+      "tool_names": [
+        "list_files",
+        "read_file",
+        "write_file"
+      ],
+      "stop_reason": "tool_use",
+      "tool_uses": [
+        {
+          "tool_use_id": "toolu_01C3Z2VouPistGkk996dM9Wk",
+          "tool_name": "write_file",
+          "input_json": "{\u0022path\u0022:\u0022pages/concepts/retrieval-patterns.md\u0022,\u0022content\u0022:\u0022---\\ntype: Concept\\ntitle: Retrieval Patterns\\ndescription: Techniques for combining and ranking results from multiple retrieval methods, particularly hybrid retrieval combining lexical and vector search.\\ntimestamp: 2026-07-14T00:00:00Z\\ntags:\\n  - concept/Retrieval\\n  - concept/Ranking\\n  - concept/RAG\\nconfidence: medium\\nconfidence_reason: \\u0022Single authoritative source on hybrid retrieval; pattern established in production RAG systems.\\u0022\\n---\\n\\n## Hybrid Retrieval\\n\\nHybrid retrieval combines sparse lexical search (e.g. BM25) with dense vector search, then merges the two ranked result sets to capture both exact term matches and semantic similarity.\\n\\n### Merge Strategy: Reciprocal Rank Fusion\\n\\nA common approach to merging results from multiple retrieval methods is **reciprocal rank fusion (RRF)**. This technique ranks items by the reciprocal of their position in each result set, allowing fair comparison across different retrieval mechanisms that may have different scoring scales.\\n\\n### Performance Profile\\n\\nHybrid retrieval consistently outperforms either method alone on queries mixing rare identifiers (error codes, product SKUs) with natural language intent. This makes it the default retrieval pattern in production RAG systems, where queries are often heterogeneous and require both precision (lexical matching) and semantic understanding.\\n\\n## Citations\\n\\n[^1]: Hybrid retrieval source \\u2014 combines BM25 lexical search with dense vector search via reciprocal rank fusion for production RAG.\\n\u0022}"
+        },
+        {
+          "tool_use_id": "toolu_01PKGrCYq1ccrxUYKPBMdEe2",
+          "tool_name": "write_file",
+          "input_json": "{\u0022path\u0022:\u0022log.md\u0022,\u0022content\u0022:\u0022# Ingest Log\\n\\n## 2026-07-14\\n\\n* **Ingest**: Updated [[concepts/retrieval-patterns]] with substantive hybrid retrieval content, reciprocal rank fusion explanation, and performance characteristics \\u2014 source: eval://update-over-duplicate/sample-09 | completed | task: capture-update-over-duplicate-09-c220ca92bfc64aac83c54ebd8f321620\\n\u0022}"
+        },
+        {
+          "tool_use_id": "toolu_01FmcJd3GKSwonqk9KfLF3W7",
+          "tool_name": "write_file",
+          "input_json": "{\u0022path\u0022:\u0022index.md\u0022,\u0022content\u0022:\u0022# Wiki Index\\n\\n- [[concepts/retrieval-patterns]] \\u2014 Techniques for combining sparse lexical and dense vector search, particularly hybrid retrieval and reciprocal rank fusion for RAG systems.\\n\u0022}"
+        }
+      ],
+      "assistant_text": "Good. I\u0027ve identified the wiki state:\n\n1. **Existing page**: \u0060pages/concepts/retrieval-patterns.md\u0060 \u2014 a skeletal concept page about retrieval techniques with just one line of content\n2. **Index**: Single entry for the retrieval-patterns page\n3. **No log yet**: The log.md file doesn\u0027t exist, so I\u0027ll need to create it\n\nThe source material is about **hybrid retrieval**, which is a specific instantiation of retrieval patterns. The source adds:\n- Definition of hybrid retrieval (sparse \u002B dense search)\n- Mention of reciprocal rank fusion as a merge strategy\n- Performance benefit over single methods\n- Practical context (RAG systems, handling mixed queries)\n\n**Editorial decision**: This is an **update** to the existing retrieval-patterns page, not a new page. The source provides substantive content that should replace the current skeletal entry. The existing page already signals \u0022reciprocal rank fusion\u0022 in passing, and this source explains it properly.\n\nLet me update the retrieval-patterns page and create the log:",
+      "input_tokens": 5559,
+      "output_tokens": 901
+    },
+    {
+      "turn": 4,
+      "system_prompt_sha256": "sha256:d58c1db8446cd6ae5232c41ebf8698c211cd1320145cf6219e76a37edf2f5f0e",
+      "conversation": [
+        {
+          "role": "user",
+          "content_sha256": "sha256:bfbfe8374cd6d0cad52a514b1dbdfc60880c534ee65d555b27c32cc1a8c8feb9"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:7e9594d0f292187a9ee603c635f25b76404da877fa1e61fa595e9a4266fc2404"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:f022b073b743fa9e7fd3cb82ee8c28a2e99c87a3038de75daec59ee544fcac45"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:2b93d4761c308f3db9501b4c588aff9ed07ab3116da6bed8974ed64ab99b87df"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:28894f05db4aa9a877495d0ae66d1bd75c489db007526091800e65d814455622"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:83e47ab35b64e41491981a7d48a83dddba05119eb3353d2851ce001ddb5fa9ec"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:3c392d472b60269f70ceba513b8ae0048431bea813cbddce4fa35220d8fb19ff"
+        }
+      ],
+      "tool_names": [
+        "list_files",
+        "read_file",
+        "write_file"
+      ],
+      "stop_reason": "end_turn",
+      "tool_uses": [],
+      "assistant_text": "---\n\n## Summary\n\n**Action taken:** Updated \u0060[[concepts/retrieval-patterns]]\u0060 with substantive content from the source.\n\n**Why update, not create:**\n- The wiki already had a retrieval-patterns page, albeit skeletal (\u0022Use reciprocal rank fusion for robust retrieval\u0022).\n- The source directly elaborates on that same topic: it defines hybrid retrieval (the pattern), explains reciprocal rank fusion (the merge method mentioned in the original), and contextualizes both for production RAG systems.\n- This is a clear case of adding facts, context, and nuance to an existing page without changing its framing\u2014exactly the update scenario.\n\n**Changes made:**\n\n1. **Expanded \u0060pages/concepts/retrieval-patterns.md\u0060:**\n   - Replaced one-liner with structured sections on hybrid retrieval, reciprocal rank fusion, and performance profile.\n   - Added practical context: hybrid retrieval handles mixed queries (rare identifiers \u002B natural language) better than single methods alone.\n   - Updated frontmatter: timestamp, description, tags, confidence reasoning.\n   - Added a citation.\n\n2. **Updated \u0060index.md\u0060:**\n   - Improved the description of the retrieval-patterns entry to reflect its expanded scope (now covers hybrid retrieval explicitly, mentions RAG systems).\n\n3. **Created \u0060log.md\u0060:**\n   - New file (didn\u0027t exist); added entry documenting the ingest run under today\u0027s date (2026-07-14).\n\n**No uncertainties or flags.** The source is factual and descriptive. It makes no contradictory claims and aligns cleanly with the existing page\u0027s skeleton. All actions stayed within write scope (pages/, index.md, log.md).",
+      "input_tokens": 6570,
+      "output_tokens": 384
+    }
+  ],
+  "outcome": {
+    "status": "completed",
+    "checks": {
+      "completed": true,
+      "existing_page_updated": true,
+      "page_count_bounded": true
+    }
+  }
+}

@@ -1,0 +1,235 @@
+{
+  "schema_version": 1,
+  "sample": 3,
+  "task_id": "capture-update-over-duplicate-03-3ff24fb3e3b249278f54a9c0cf3fd867",
+  "model": "claude-haiku-4-5",
+  "turns": [
+    {
+      "turn": 1,
+      "system_prompt_sha256": "sha256:d58c1db8446cd6ae5232c41ebf8698c211cd1320145cf6219e76a37edf2f5f0e",
+      "conversation": [
+        {
+          "role": "user",
+          "content_sha256": "sha256:f16495ab4aa37727ac52b9859a7e0bb010d7c8ececc763ace2d709c15387f511"
+        }
+      ],
+      "tool_names": [
+        "list_files",
+        "read_file",
+        "write_file"
+      ],
+      "stop_reason": "tool_use",
+      "tool_uses": [
+        {
+          "tool_use_id": "toolu_01Mxanj8wCpcwzgpzY2fNoFf",
+          "tool_name": "read_file",
+          "input_json": "{\u0022path\u0022:\u0022index.md\u0022}"
+        },
+        {
+          "tool_use_id": "toolu_01GMJjv9vBdnFBpSprqxVjr2",
+          "tool_name": "list_files",
+          "input_json": "{\u0022path\u0022:\u0022pages\u0022}"
+        }
+      ],
+      "assistant_text": "I\u0027ll start by exploring the wiki to understand its current state and then integrate the source appropriately.",
+      "input_tokens": 4984,
+      "output_tokens": 112
+    },
+    {
+      "turn": 2,
+      "system_prompt_sha256": "sha256:d58c1db8446cd6ae5232c41ebf8698c211cd1320145cf6219e76a37edf2f5f0e",
+      "conversation": [
+        {
+          "role": "user",
+          "content_sha256": "sha256:f16495ab4aa37727ac52b9859a7e0bb010d7c8ececc763ace2d709c15387f511"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:4e54a07f9989f10bc0ea4ca8db81a804b5d15d76a543915e8f553b641064f952"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:fef17fdae8ded506812bf05b6cceb1cef8cd9ed0685db50fab4327830c566dff"
+        }
+      ],
+      "tool_names": [
+        "list_files",
+        "read_file",
+        "write_file"
+      ],
+      "stop_reason": "tool_use",
+      "tool_uses": [
+        {
+          "tool_use_id": "toolu_01BPon85oppgr6Hj47MHFHv1",
+          "tool_name": "read_file",
+          "input_json": "{\u0022path\u0022:\u0022pages/concepts/retrieval-patterns.md\u0022}"
+        }
+      ],
+      "assistant_text": "Now let me examine the existing retrieval-patterns page to understand what\u0027s already covered:",
+      "input_tokens": 5190,
+      "output_tokens": 81
+    },
+    {
+      "turn": 3,
+      "system_prompt_sha256": "sha256:d58c1db8446cd6ae5232c41ebf8698c211cd1320145cf6219e76a37edf2f5f0e",
+      "conversation": [
+        {
+          "role": "user",
+          "content_sha256": "sha256:f16495ab4aa37727ac52b9859a7e0bb010d7c8ececc763ace2d709c15387f511"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:4e54a07f9989f10bc0ea4ca8db81a804b5d15d76a543915e8f553b641064f952"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:fef17fdae8ded506812bf05b6cceb1cef8cd9ed0685db50fab4327830c566dff"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:db468fc05a87470ef346a74d41b0e7a5f02dd4fa945b90fcd32db2249d2f43a9"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:cb52dc6e5a7d6b1424c5f1f14f2c8780307492e706d36876c8f01507fd4bcb7a"
+        }
+      ],
+      "tool_names": [
+        "list_files",
+        "read_file",
+        "write_file"
+      ],
+      "stop_reason": "tool_use",
+      "tool_uses": [
+        {
+          "tool_use_id": "toolu_01MbweSnJPq2k39qVaSeKxAP",
+          "tool_name": "read_file",
+          "input_json": "{\u0022path\u0022:\u0022log.md\u0022}"
+        }
+      ],
+      "assistant_text": "Good. The existing page is very minimal and provides only a brief mention of reciprocal rank fusion. The new source adds substantial content about hybrid retrieval\u2014the combination of sparse lexical search (BM25) and dense vector search. This is clearly an **update** scenario: the new source expands on and provides context for the existing retrieval patterns concept without contradicting it.\n\nLet me check if there\u0027s a log file to understand the current date:",
+      "input_tokens": 5384,
+      "output_tokens": 151
+    },
+    {
+      "turn": 4,
+      "system_prompt_sha256": "sha256:d58c1db8446cd6ae5232c41ebf8698c211cd1320145cf6219e76a37edf2f5f0e",
+      "conversation": [
+        {
+          "role": "user",
+          "content_sha256": "sha256:f16495ab4aa37727ac52b9859a7e0bb010d7c8ececc763ace2d709c15387f511"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:4e54a07f9989f10bc0ea4ca8db81a804b5d15d76a543915e8f553b641064f952"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:fef17fdae8ded506812bf05b6cceb1cef8cd9ed0685db50fab4327830c566dff"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:db468fc05a87470ef346a74d41b0e7a5f02dd4fa945b90fcd32db2249d2f43a9"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:cb52dc6e5a7d6b1424c5f1f14f2c8780307492e706d36876c8f01507fd4bcb7a"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:a10c9d5b07cf3966b7d0786e9d4b05e6fc2e779bb974949921d2b35056c0de92"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:14da6df4e487817d55884db47d2feb901cf6a2e5b808b6d6a5791aff6495a2b0"
+        }
+      ],
+      "tool_names": [
+        "list_files",
+        "read_file",
+        "write_file"
+      ],
+      "stop_reason": "tool_use",
+      "tool_uses": [
+        {
+          "tool_use_id": "toolu_01B7nCXmyHZZirQz2aMcNg8X",
+          "tool_name": "write_file",
+          "input_json": "{\u0022path\u0022:\u0022pages/concepts/retrieval-patterns.md\u0022,\u0022content\u0022:\u0022---\\ntype: Concept\\ntitle: Retrieval Patterns\\ndescription: Techniques for combining sparse lexical and dense vector search to improve retrieval accuracy and coverage.\\ntimestamp: 2026-07-14T00:00:00Z\\ntags:\\n  - concept/Retrieval\\n  - concept/Ranking\\n  - concept/RAG\\nconfidence: medium\\nconfidence_reason: \\u0022Single source on hybrid retrieval; reciprocal rank fusion established in prior entry. Needs corroboration from additional sources.\\u0022\\n---\\n\\n## Hybrid Retrieval\\n\\n**Hybrid retrieval** combines sparse lexical search (e.g. BM25) with dense vector search, then merges the two ranked result sets\\u2014often via **reciprocal rank fusion**\\u2014to capture both exact term matches and semantic similarity.\\n\\n### Why Hybrid?\\n\\nHybrid retrieval consistently outperforms either search method alone on queries that mix:\\n- Rare identifiers (error codes, product SKUs)\\n- Natural language intent\\n\\nThis dual coverage makes it particularly effective for production retrieval-augmented generation (RAG) systems, where queries often contain both structured references and free-form semantic intent.\\n\\n### Implementation\\n\\nThe typical approach:\\n\\n1. Execute the query against a sparse index (e.g. BM25, full-text search)\\n2. Execute the query against a dense vector store (embedding search)\\n3. Merge ranked result sets using reciprocal rank fusion or similar scoring strategy\\n\\nThis pattern has become the default in production RAG systems.\\n\\n## Citations\\n\\n[^1]: Internal source on hybrid retrieval and reciprocal rank fusion techniques in RAG systems.\\n\u0022}"
+        },
+        {
+          "tool_use_id": "toolu_01TyRm7xzhn2JyG7K3a79iwY",
+          "tool_name": "write_file",
+          "input_json": "{\u0022path\u0022:\u0022log.md\u0022,\u0022content\u0022:\u0022## 2026-07-14\\n\\n* **Update**: [[concepts/retrieval-patterns]] \\u2014 expanded with comprehensive hybrid retrieval content (combining BM25 and vector search, use cases, implementation notes) | completed | source: eval://update-over-duplicate/sample-03\\n\u0022}"
+        },
+        {
+          "tool_use_id": "toolu_01SvvPQRzTWCvdm3PsiJ7pmQ",
+          "tool_name": "write_file",
+          "input_json": "{\u0022path\u0022:\u0022index.md\u0022,\u0022content\u0022:\u0022# Wiki Index\\n\\n- [[concepts/retrieval-patterns]] \\u2014 Techniques for combining sparse lexical and dense vector search to improve retrieval accuracy and coverage.\\n\u0022}"
+        }
+      ],
+      "assistant_text": "The log doesn\u0027t exist yet, so I\u0027ll create it. Now I\u0027ll update the retrieval-patterns page with the new content and create the log entry. Let me get today\u0027s date in ISO 8601 format. I\u0027ll use 2026-07-14 as a reasonable current date based on the system prompt examples:",
+      "input_tokens": 5562,
+      "output_tokens": 715
+    },
+    {
+      "turn": 5,
+      "system_prompt_sha256": "sha256:d58c1db8446cd6ae5232c41ebf8698c211cd1320145cf6219e76a37edf2f5f0e",
+      "conversation": [
+        {
+          "role": "user",
+          "content_sha256": "sha256:f16495ab4aa37727ac52b9859a7e0bb010d7c8ececc763ace2d709c15387f511"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:4e54a07f9989f10bc0ea4ca8db81a804b5d15d76a543915e8f553b641064f952"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:fef17fdae8ded506812bf05b6cceb1cef8cd9ed0685db50fab4327830c566dff"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:db468fc05a87470ef346a74d41b0e7a5f02dd4fa945b90fcd32db2249d2f43a9"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:cb52dc6e5a7d6b1424c5f1f14f2c8780307492e706d36876c8f01507fd4bcb7a"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:a10c9d5b07cf3966b7d0786e9d4b05e6fc2e779bb974949921d2b35056c0de92"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:14da6df4e487817d55884db47d2feb901cf6a2e5b808b6d6a5791aff6495a2b0"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:ac52954baf2bbb673a5445a50f149c65bbb5b584fb1600007b59a847d219e672"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:686187b74445b01c3271d50bce13e2e7df6cf20e14a8a8c29c8fc6a51d3df328"
+        }
+      ],
+      "tool_names": [
+        "list_files",
+        "read_file",
+        "write_file"
+      ],
+      "stop_reason": "end_turn",
+      "tool_uses": [],
+      "assistant_text": "## Summary\n\n**Action taken: Update**\n\nI updated the existing \u0060[[concepts/retrieval-patterns]]\u0060 page with comprehensive content from the source:\n\n- **Added**: Structured section on hybrid retrieval explaining the combination of sparse lexical search (BM25) and dense vector search with reciprocal rank fusion\n- **Added**: \u0022Why Hybrid?\u0022 subsection detailing the use cases (rare identifiers \u002B natural language intent) and production RAG context\n- **Added**: \u0022Implementation\u0022 subsection outlining the typical three-step approach\n- **Updated**: Page description in frontmatter and index to reflect expanded scope\n- **Updated**: Tags to include \u0060concept/RAG\u0060 for better categorization\n- **Updated**: Timestamp to current date (2026-07-14)\n- **Confidence**: Kept at \u0060medium\u0060 \u2014 this is a single source and would benefit from corroboration\n\n**Index and log updated:**\n- Updated \u0060index.md\u0060 with new description reflecting the expanded content\n- Created \u0060log.md\u0060 (first entry) documenting the update\n\n**Why update, not create?** The existing page already covered retrieval patterns and reciprocal rank fusion. The new source directly expands on that foundation by explaining *how* and *why* hybrid retrieval (the main pattern) works, providing concrete implementation details and production context. This is a clear case of enrichment rather than replacement or duplication.",
+      "input_tokens": 6387,
+      "output_tokens": 310
+    }
+  ],
+  "outcome": {
+    "status": "completed",
+    "checks": {
+      "completed": true,
+      "existing_page_updated": true,
+      "page_count_bounded": true
+    }
+  }
+}

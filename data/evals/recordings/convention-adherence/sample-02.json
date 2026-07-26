@@ -1,0 +1,176 @@
+{
+  "schema_version": 1,
+  "sample": 2,
+  "task_id": "capture-convention-adherence-02-f1fc654c65e149d4aa60156a2ae785bd",
+  "model": "claude-haiku-4-5",
+  "turns": [
+    {
+      "turn": 1,
+      "system_prompt_sha256": "sha256:d58c1db8446cd6ae5232c41ebf8698c211cd1320145cf6219e76a37edf2f5f0e",
+      "conversation": [
+        {
+          "role": "user",
+          "content_sha256": "sha256:d17a7ad23074760c92a65ebe69a7adc5333b67bb6801969b57447342f0af9b53"
+        }
+      ],
+      "tool_names": [
+        "list_files",
+        "read_file",
+        "write_file"
+      ],
+      "stop_reason": "tool_use",
+      "tool_uses": [
+        {
+          "tool_use_id": "toolu_01YJgWBP8F6wZNTLXvZNkHnV",
+          "tool_name": "read_file",
+          "input_json": "{\u0022path\u0022:\u0022index.md\u0022}"
+        },
+        {
+          "tool_use_id": "toolu_01Dz3VonUVjtqYAk8cwER61J",
+          "tool_name": "list_files",
+          "input_json": "{\u0022path\u0022:\u0022pages\u0022}"
+        }
+      ],
+      "assistant_text": "I\u0027ll start by exploring the wiki structure to understand the current state, then integrate this source appropriately.",
+      "input_tokens": 5006,
+      "output_tokens": 113
+    },
+    {
+      "turn": 2,
+      "system_prompt_sha256": "sha256:d58c1db8446cd6ae5232c41ebf8698c211cd1320145cf6219e76a37edf2f5f0e",
+      "conversation": [
+        {
+          "role": "user",
+          "content_sha256": "sha256:d17a7ad23074760c92a65ebe69a7adc5333b67bb6801969b57447342f0af9b53"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:eaca84f8fc81bb1aa506e77329bd785b015e482b32110d2294b8c0185858fee9"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:df99321f81e5d6303ce3c23ab0222826e993df7bda689ff66e25fd4fb05fe884"
+        }
+      ],
+      "tool_names": [
+        "list_files",
+        "read_file",
+        "write_file"
+      ],
+      "stop_reason": "tool_use",
+      "tool_uses": [
+        {
+          "tool_use_id": "toolu_01HJDLCsHaVFHZqrEEzPQn3m",
+          "tool_name": "read_file",
+          "input_json": "{\u0022path\u0022:\u0022log.md\u0022}"
+        }
+      ],
+      "assistant_text": "The wiki is currently empty. The source describes a technical concept related to embedding management and retrieval systems. I\u0027ll create a page for this as a \u0060Concept\u0060 page since it describes an abstract design pattern/operational process (offline embedding refresh jobs), and it fits naturally in \u0060pages/concepts/\u0060.\n\nLet me also check if there\u0027s a log file:",
+      "input_tokens": 5197,
+      "output_tokens": 130
+    },
+    {
+      "turn": 3,
+      "system_prompt_sha256": "sha256:d58c1db8446cd6ae5232c41ebf8698c211cd1320145cf6219e76a37edf2f5f0e",
+      "conversation": [
+        {
+          "role": "user",
+          "content_sha256": "sha256:d17a7ad23074760c92a65ebe69a7adc5333b67bb6801969b57447342f0af9b53"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:eaca84f8fc81bb1aa506e77329bd785b015e482b32110d2294b8c0185858fee9"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:df99321f81e5d6303ce3c23ab0222826e993df7bda689ff66e25fd4fb05fe884"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:07fd61465f9dab545d463607ebadb363542a9458765ad226c48506742830b513"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:6a705895585a976f85770d03854455210b43d7bc3a810d0c7b70a52247954f4f"
+        }
+      ],
+      "tool_names": [
+        "list_files",
+        "read_file",
+        "write_file"
+      ],
+      "stop_reason": "tool_use",
+      "tool_uses": [
+        {
+          "tool_use_id": "toolu_01Rpfob3dkagXAr63H37VuLy",
+          "tool_name": "write_file",
+          "input_json": "{\u0022path\u0022:\u0022pages/concepts/offline-embedding-refresh.md\u0022,\u0022content\u0022:\u0022---\\ntype: Concept\\ntitle: Offline Embedding Refresh Jobs\\ndescription: Batch processes that regenerate vector embeddings when models change or documents update, with atomic index swaps and blue/green staging.\\ntimestamp: 2025-01-16T00:00:00Z\\ntags:\\n  - concept/Vector-Embeddings\\n  - concept/Batch-Processing\\n  - pattern/Blue-Green-Deployment\\n  - concept/Retrieval-Systems\\nconfidence: medium\\nconfidence_reason: \\u0022Single source; technically specific and well-articulated but not yet corroborated by independent sources.\\u0022\\n---\\n\\n## Overview\\n\\nOffline embedding refresh jobs are scheduled batch processes that regenerate vector embeddings for a corpus when the underlying embedding model changes or when source documents update in bulk. Rather than regenerating embeddings on demand, these jobs run on a fixed cadence, typically re-embedding the full document set or an incremental subset, then atomically swapping the new vectors into the retrieval index to avoid serving mixed-model results during the transition.\\n\\n## Key Operational Concerns\\n\\n### Model Versioning\\nEach batch run should be tagged with the embedding model version used for that job. This enables tracking which model produced which vectors and is essential for debugging vector drift or quality regressions.\\n\\n### Vector Drift Monitoring\\nComparing old and new vectors after a refresh reveals whether the new embedding model produces meaningfully different representations. This monitoring helps detect both expected improvements and unexpected degradation, and informs decisions about whether to proceed with the swap.\\n\\n### Blue/Green Index Staging\\nThe new index is staged in parallel with the existing one (blue/green pattern) before being promoted to serve traffic. This staging allows validation and rollback if quality regression is detected, preventing end-user impact from a failed embedding update.\\n\\n### Atomic Index Swap\\nThe transition from old to new vectors must be atomic\\u2014switching all queries to the new index at once, not gradually or partially. This avoids the operational complexity and user-facing inconsistency of serving mixed-model results during a gradual migration.\\n\\n## Typical Workflow\\n\\n1. **Trigger**: Scheduled cadence or on-demand refresh (e.g., weekly, after model upgrade, or after bulk document ingest)\\n2. **Regenerate**: Re-embed the full or incremental document corpus using the current (or upgraded) embedding model\\n3. **Stage**: Load the new vectors into a blue/green index, kept separate from the live index\\n4. **Validate**: Monitor drift, check retrieval quality, run tests against the staged index\\n5. **Swap**: Atomically promote the blue/green index to serve all queries\\n6. **Rollback (if needed)**: If quality regression is detected post-swap, fall back to the previous index\\n\\n## Related Concepts\\n\\n- [[]] (blue/green deployment patterns in general)\\n- [[]] (vector similarity search and retrieval systems)\\n- [[]] (embedding models and model versioning)\\n\\n---\\n\\n*This page was created from an ingest of a technical description of offline embedding refresh operations.*\\n\u0022}"
+        },
+        {
+          "tool_use_id": "toolu_01FqzBApV1WmAnMDXom1qXNX",
+          "tool_name": "write_file",
+          "input_json": "{\u0022path\u0022:\u0022index.md\u0022,\u0022content\u0022:\u0022okf_version: \\u00220.1\\u0022\\n\\n# Wiki Index\\n\\n## Concepts\\n\\n- [[concepts/offline-embedding-refresh]] \\u2014 Batch processes that regenerate vector embeddings when models change or documents update, with atomic index swaps and blue/green staging.\\n\u0022}"
+        },
+        {
+          "tool_use_id": "toolu_01VNGMWPRXWT4bzX2zgDcW4w",
+          "tool_name": "write_file",
+          "input_json": "{\u0022path\u0022:\u0022log.md\u0022,\u0022content\u0022:\u0022## 2025-01-16\\n\\n* **Ingest**: Created [[concepts/offline-embedding-refresh]] to capture the offline embedding refresh pattern, including model versioning, drift monitoring, and blue/green index staging. \\u2014 source: eval://convention-adherence/sample-02 | completed | task: capture-convention-adherence-02-f1fc654c65e149d4aa60156a2ae785bd\\n\u0022}"
+        }
+      ],
+      "assistant_text": "Now I\u0027ll create the new page and update both the index and log.\n\nThe source describes an operational pattern for managing vector embeddings. This is fundamentally a **Concept** (architectural pattern / operational technique) rather than a technology or tool. The core idea\u2014batch refresh of embeddings with atomic swapping\u2014is an abstract pattern applicable across many retrieval systems.",
+      "input_tokens": 5354,
+      "output_tokens": 1092
+    },
+    {
+      "turn": 4,
+      "system_prompt_sha256": "sha256:d58c1db8446cd6ae5232c41ebf8698c211cd1320145cf6219e76a37edf2f5f0e",
+      "conversation": [
+        {
+          "role": "user",
+          "content_sha256": "sha256:d17a7ad23074760c92a65ebe69a7adc5333b67bb6801969b57447342f0af9b53"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:eaca84f8fc81bb1aa506e77329bd785b015e482b32110d2294b8c0185858fee9"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:df99321f81e5d6303ce3c23ab0222826e993df7bda689ff66e25fd4fb05fe884"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:07fd61465f9dab545d463607ebadb363542a9458765ad226c48506742830b513"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:6a705895585a976f85770d03854455210b43d7bc3a810d0c7b70a52247954f4f"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:4106109be3b5e5fab92ae8105adc46842a6bcdc400f3da7171997a5e65479d48"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:9ad535e86dd0a9d4523d08adefd4659205cfc709fea96c5e00f030eafa961c4e"
+        }
+      ],
+      "tool_names": [
+        "list_files",
+        "read_file",
+        "write_file"
+      ],
+      "stop_reason": "end_turn",
+      "tool_uses": [],
+      "assistant_text": "## Summary\n\nI have successfully integrated the source into the wiki. Here\u0027s what I did:\n\n### Pages Created\n\n1. **[[concepts/offline-embedding-refresh]]** \u2014 A new concept page capturing the offline embedding refresh pattern as described in the source. The page covers:\n   - Overview of the batch refresh process and its triggers\n   - Four key operational concerns: model versioning, vector drift monitoring, blue/green staging, and atomic swaps\n   - A typical workflow from trigger through validation and optional rollback\n   - Placeholders for related concepts (to be filled when those pages are created)\n\n### Editorial Judgment\n\n- **Type choice**: Treated this as a **Concept** rather than a Tool or Technology because it describes an abstract operational pattern/architecture technique applicable across many systems, not a specific product or framework.\n- **Coverage scope**: The source provides sufficient detail to warrant a standalone page; it is neither too thin for a full page nor overlapping with existing content (the wiki was empty).\n- **Confidence**: Set to \u0060medium\u0060 \u2014 the source is technically specific and well-articulated, but represents a single source without independent corroboration.\n\n### Housekeeping\n\n- Updated \u0060index.md\u0060 with OKF version declaration and the new page entry\n- Created \u0060log.md\u0060 with the ingest entry (newest-first format as per convention)\n\n**No actions outside write scope; all operations completed successfully.**",
+      "input_tokens": 6557,
+      "output_tokens": 311
+    }
+  ],
+  "outcome": {
+    "status": "completed",
+    "checks": {
+      "completed": true,
+      "all_pages_follow_conventions": true
+    }
+  }
+}

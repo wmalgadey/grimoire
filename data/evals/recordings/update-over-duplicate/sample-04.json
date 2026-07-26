@@ -1,0 +1,365 @@
+{
+  "schema_version": 1,
+  "sample": 4,
+  "task_id": "capture-update-over-duplicate-04-653dd6f3ffd14a9ba6a8180258deb383",
+  "model": "claude-haiku-4-5",
+  "turns": [
+    {
+      "turn": 1,
+      "system_prompt_sha256": "sha256:d58c1db8446cd6ae5232c41ebf8698c211cd1320145cf6219e76a37edf2f5f0e",
+      "conversation": [
+        {
+          "role": "user",
+          "content_sha256": "sha256:aa01403bbd8673d0c4c88ca8ec69b07c7b5e3771a4042c4207e882c8e33a9eb1"
+        }
+      ],
+      "tool_names": [
+        "list_files",
+        "read_file",
+        "write_file"
+      ],
+      "stop_reason": "tool_use",
+      "tool_uses": [
+        {
+          "tool_use_id": "toolu_01AwGNzP1b1DB2PUcTXCu4YJ",
+          "tool_name": "read_file",
+          "input_json": "{\u0022path\u0022:\u0022index.md\u0022}"
+        },
+        {
+          "tool_use_id": "toolu_01DC66Z5uFfNVJbWAPhspftC",
+          "tool_name": "list_files",
+          "input_json": "{\u0022path\u0022:\u0022pages\u0022}"
+        }
+      ],
+      "assistant_text": "I\u0027ll start by exploring the wiki to understand its current state and identify any relevant existing pages.",
+      "input_tokens": 4983,
+      "output_tokens": 111
+    },
+    {
+      "turn": 2,
+      "system_prompt_sha256": "sha256:d58c1db8446cd6ae5232c41ebf8698c211cd1320145cf6219e76a37edf2f5f0e",
+      "conversation": [
+        {
+          "role": "user",
+          "content_sha256": "sha256:aa01403bbd8673d0c4c88ca8ec69b07c7b5e3771a4042c4207e882c8e33a9eb1"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:c260103a3e00dc34bfc725dd113f5899acbe2f4e341382113b3a4b17a1587229"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:1ea2c9acd18c3bb54f4fbc52867b31cba181910199c1b047d7d03c5911ee3d8f"
+        }
+      ],
+      "tool_names": [
+        "list_files",
+        "read_file",
+        "write_file"
+      ],
+      "stop_reason": "tool_use",
+      "tool_uses": [
+        {
+          "tool_use_id": "toolu_01CfqYB57B9XXTkEGsxmHLh2",
+          "tool_name": "read_file",
+          "input_json": "{\u0022path\u0022:\u0022pages/concepts/retrieval-patterns.md\u0022}"
+        }
+      ],
+      "assistant_text": "Good, there is already a page on retrieval patterns. Let me read it to understand its current scope.",
+      "input_tokens": 5188,
+      "output_tokens": 85
+    },
+    {
+      "turn": 3,
+      "system_prompt_sha256": "sha256:d58c1db8446cd6ae5232c41ebf8698c211cd1320145cf6219e76a37edf2f5f0e",
+      "conversation": [
+        {
+          "role": "user",
+          "content_sha256": "sha256:aa01403bbd8673d0c4c88ca8ec69b07c7b5e3771a4042c4207e882c8e33a9eb1"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:c260103a3e00dc34bfc725dd113f5899acbe2f4e341382113b3a4b17a1587229"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:1ea2c9acd18c3bb54f4fbc52867b31cba181910199c1b047d7d03c5911ee3d8f"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:f6422c3c0854067eb5038120426f953ca3cb40c9ccd0fb817f8aa91faf030eae"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:1b79b2c7e4548f9080b871ba43bb35b1cab133d7b032d8231b9735f27853e5eb"
+        }
+      ],
+      "tool_names": [
+        "list_files",
+        "read_file",
+        "write_file"
+      ],
+      "stop_reason": "tool_use",
+      "tool_uses": [
+        {
+          "tool_use_id": "toolu_01RuTGuJrCQ9uKFSmVYYwU1u",
+          "tool_name": "write_file",
+          "input_json": "{\u0022path\u0022:\u0022pages/concepts/retrieval-patterns.md\u0022,\u0022content\u0022:\u0022---\\ntype: Concept\\ntitle: Retrieval Patterns\\ndescription: Techniques for combining and ranking results from multiple retrieval methods, particularly hybrid retrieval combining lexical and semantic search.\\ntimestamp: 2026-01-15T00:00:00Z\\ntags:\\n  - concept/Retrieval\\n  - concept/Ranking\\n  - concept/RAG\\nconfidence: medium\\nconfidence_reason: \\u0022Core concept from production systems; single authoritative source on hybrid retrieval pattern.\\u0022\\n---\\n\\n## Hybrid Retrieval\\n\\nHybrid retrieval combines **sparse lexical search** (e.g. BM25) with **dense vector search**, then merges the two ranked result sets, often via reciprocal rank fusion, to capture both exact term matches and semantic similarity.\\n\\n### Why Hybrid Works\\n\\nHybrid retrieval consistently outperforms either method alone, particularly on queries that mix:\\n- **Rare identifiers**: error codes, product SKUs, specific reference numbers\\n- **Natural language intent**: conceptual meaning and semantic context\\n\\n### Merging Strategy\\n\\nReciprocal rank fusion is a common merge strategy that combines the rankings from both retrieval methods without requiring joint vector representations. This approach avoids the need to normalize scores across fundamentally different ranking systems.\\n\\n### Production Status\\n\\nHybrid retrieval has become the **default retrieval pattern in production RAG systems**, replacing single-method approaches in most modern implementations.\\n\\n## Citations\\n\\n[^1]: Source: eval://update-over-duplicate/sample-04\\n\u0022}"
+        }
+      ],
+      "assistant_text": "Now I understand the current state. The wiki has a page on \u0060retrieval-patterns\u0060 that is very sparse\u2014just one sentence about reciprocal rank fusion. The new source provides substantial, concrete content about hybrid retrieval that directly expands on this topic. This is clearly an **update** scenario rather than creation of a new page.\n\nThe source adds:\n- Definition of hybrid retrieval (combining sparse lexical search like BM25 with dense vector search)\n- The merging mechanism (reciprocal rank fusion)\n- Concrete use cases (rare identifiers, error codes, product SKUs with natural language intent)\n- Real-world validation (outperforms either method alone, now the default in production RAG)\n\nThis fills out the existing stub substantially and aligns perfectly with the page\u0027s existing scope. I\u0027ll update the page with this content.",
+      "input_tokens": 5386,
+      "output_tokens": 594
+    },
+    {
+      "turn": 4,
+      "system_prompt_sha256": "sha256:d58c1db8446cd6ae5232c41ebf8698c211cd1320145cf6219e76a37edf2f5f0e",
+      "conversation": [
+        {
+          "role": "user",
+          "content_sha256": "sha256:aa01403bbd8673d0c4c88ca8ec69b07c7b5e3771a4042c4207e882c8e33a9eb1"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:c260103a3e00dc34bfc725dd113f5899acbe2f4e341382113b3a4b17a1587229"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:1ea2c9acd18c3bb54f4fbc52867b31cba181910199c1b047d7d03c5911ee3d8f"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:f6422c3c0854067eb5038120426f953ca3cb40c9ccd0fb817f8aa91faf030eae"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:1b79b2c7e4548f9080b871ba43bb35b1cab133d7b032d8231b9735f27853e5eb"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:bc5ce38219ba9dc92195c250d6d81a7240fec1eaab648d8e576d505ba3e2f1f4"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:207cd489c4ac0c7ceb145cc63a8142ba9509115898284718ce48ecff39bed7ec"
+        }
+      ],
+      "tool_names": [
+        "list_files",
+        "read_file",
+        "write_file"
+      ],
+      "stop_reason": "tool_use",
+      "tool_uses": [
+        {
+          "tool_use_id": "toolu_01Up7qtL6yTi59hsxL7p2Hvw",
+          "tool_name": "write_file",
+          "input_json": "{\u0022path\u0022:\u0022index.md\u0022,\u0022content\u0022:\u0022# Wiki Index\\n\\n- [[concepts/retrieval-patterns]] \\u2014 Techniques for combining and ranking results from multiple retrieval methods, particularly hybrid retrieval combining lexical and semantic search.\\n\u0022}"
+        }
+      ],
+      "assistant_text": "Now I\u0027ll update the index.md to reflect the improved description of the retrieval-patterns page.",
+      "input_tokens": 6004,
+      "output_tokens": 132
+    },
+    {
+      "turn": 5,
+      "system_prompt_sha256": "sha256:d58c1db8446cd6ae5232c41ebf8698c211cd1320145cf6219e76a37edf2f5f0e",
+      "conversation": [
+        {
+          "role": "user",
+          "content_sha256": "sha256:aa01403bbd8673d0c4c88ca8ec69b07c7b5e3771a4042c4207e882c8e33a9eb1"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:c260103a3e00dc34bfc725dd113f5899acbe2f4e341382113b3a4b17a1587229"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:1ea2c9acd18c3bb54f4fbc52867b31cba181910199c1b047d7d03c5911ee3d8f"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:f6422c3c0854067eb5038120426f953ca3cb40c9ccd0fb817f8aa91faf030eae"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:1b79b2c7e4548f9080b871ba43bb35b1cab133d7b032d8231b9735f27853e5eb"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:bc5ce38219ba9dc92195c250d6d81a7240fec1eaab648d8e576d505ba3e2f1f4"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:207cd489c4ac0c7ceb145cc63a8142ba9509115898284718ce48ecff39bed7ec"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:ad268807d183c94c35884e62059492b6c8378b0c3280dc9fc7f5d452178e5242"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:fb4defed3ef767130b21eb97b7870f4daebeff0e5bf7ed2269a84f23308e1f4b"
+        }
+      ],
+      "tool_names": [
+        "list_files",
+        "read_file",
+        "write_file"
+      ],
+      "stop_reason": "tool_use",
+      "tool_uses": [
+        {
+          "tool_use_id": "toolu_01HaS71eT9AFXQMHfLgQm3ez",
+          "tool_name": "read_file",
+          "input_json": "{\u0022path\u0022:\u0022log.md\u0022}"
+        }
+      ],
+      "assistant_text": "Now I\u0027ll add a log entry to document this ingest.",
+      "input_tokens": 6153,
+      "output_tokens": 69
+    },
+    {
+      "turn": 6,
+      "system_prompt_sha256": "sha256:d58c1db8446cd6ae5232c41ebf8698c211cd1320145cf6219e76a37edf2f5f0e",
+      "conversation": [
+        {
+          "role": "user",
+          "content_sha256": "sha256:aa01403bbd8673d0c4c88ca8ec69b07c7b5e3771a4042c4207e882c8e33a9eb1"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:c260103a3e00dc34bfc725dd113f5899acbe2f4e341382113b3a4b17a1587229"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:1ea2c9acd18c3bb54f4fbc52867b31cba181910199c1b047d7d03c5911ee3d8f"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:f6422c3c0854067eb5038120426f953ca3cb40c9ccd0fb817f8aa91faf030eae"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:1b79b2c7e4548f9080b871ba43bb35b1cab133d7b032d8231b9735f27853e5eb"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:bc5ce38219ba9dc92195c250d6d81a7240fec1eaab648d8e576d505ba3e2f1f4"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:207cd489c4ac0c7ceb145cc63a8142ba9509115898284718ce48ecff39bed7ec"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:ad268807d183c94c35884e62059492b6c8378b0c3280dc9fc7f5d452178e5242"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:fb4defed3ef767130b21eb97b7870f4daebeff0e5bf7ed2269a84f23308e1f4b"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:49cd2da458f7c6a941c6d8576e3fd75a70276d94d62b92e3845d08e8b57f999c"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:7f7c5515a15e23888cd1ff154734f22a7eef67dc3ab244fd3971ecc587d0acf1"
+        }
+      ],
+      "tool_names": [
+        "list_files",
+        "read_file",
+        "write_file"
+      ],
+      "stop_reason": "tool_use",
+      "tool_uses": [
+        {
+          "tool_use_id": "toolu_016HAYa92RaZ6necsZkyWSQX",
+          "tool_name": "write_file",
+          "input_json": "{\u0022path\u0022:\u0022log.md\u0022,\u0022content\u0022:\u0022## 2026-01-15\\n\\n* **Update**: Expanded [[concepts/retrieval-patterns]] with comprehensive content on hybrid retrieval (combining BM25 and dense vector search), use cases, and production adoption \\u2014 source: eval://update-over-duplicate/sample-04 | completed | task: capture-update-over-duplicate-04-653dd6f3ffd14a9ba6a8180258deb383\\n\u0022}"
+        }
+      ],
+      "assistant_text": "The log doesn\u0027t exist yet. I\u0027ll create it with today\u0027s entry.",
+      "input_tokens": 6249,
+      "output_tokens": 185
+    },
+    {
+      "turn": 7,
+      "system_prompt_sha256": "sha256:d58c1db8446cd6ae5232c41ebf8698c211cd1320145cf6219e76a37edf2f5f0e",
+      "conversation": [
+        {
+          "role": "user",
+          "content_sha256": "sha256:aa01403bbd8673d0c4c88ca8ec69b07c7b5e3771a4042c4207e882c8e33a9eb1"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:c260103a3e00dc34bfc725dd113f5899acbe2f4e341382113b3a4b17a1587229"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:1ea2c9acd18c3bb54f4fbc52867b31cba181910199c1b047d7d03c5911ee3d8f"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:f6422c3c0854067eb5038120426f953ca3cb40c9ccd0fb817f8aa91faf030eae"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:1b79b2c7e4548f9080b871ba43bb35b1cab133d7b032d8231b9735f27853e5eb"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:bc5ce38219ba9dc92195c250d6d81a7240fec1eaab648d8e576d505ba3e2f1f4"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:207cd489c4ac0c7ceb145cc63a8142ba9509115898284718ce48ecff39bed7ec"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:ad268807d183c94c35884e62059492b6c8378b0c3280dc9fc7f5d452178e5242"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:fb4defed3ef767130b21eb97b7870f4daebeff0e5bf7ed2269a84f23308e1f4b"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:49cd2da458f7c6a941c6d8576e3fd75a70276d94d62b92e3845d08e8b57f999c"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:7f7c5515a15e23888cd1ff154734f22a7eef67dc3ab244fd3971ecc587d0acf1"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:2e387b1f68579c2ab57d7c1df1bb83953e052c9ec2aca4a47a39bf6017e3df54"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:8c3ee1f729fe4d27d44e7c92d4fa09eac6b6861c2e0dfb2eeb5bfcb49de57ddc"
+        }
+      ],
+      "tool_names": [
+        "list_files",
+        "read_file",
+        "write_file"
+      ],
+      "stop_reason": "end_turn",
+      "tool_uses": [],
+      "assistant_text": "---\n\n## Summary\n\n**Action taken:** Updated existing page \u0060[[concepts/retrieval-patterns]]\u0060\n\n**Rationale:** The source provided concrete, production-proven content on hybrid retrieval that directly expanded the existing stub page on retrieval patterns. This was clearly an **update** scenario rather than creating a new page, since:\n\n1. The wiki already had a page on this exact topic with compatible scope\n2. The new source adds substance (definition, components, use cases, real-world validation) without contradicting the existing content\n3. The existing one-liner about reciprocal rank fusion fit naturally into the expanded narrative\n\n**Changes made:**\n- Rewrote \u0060retrieval-patterns.md\u0060 with structured sections covering hybrid retrieval definition, why it works, the merging strategy, and production status\n- Updated the page\u0027s description to reflect the expanded scope\n- Enhanced tags to include RAG context\n- Updated \u0060index.md\u0060 entry to reflect the new page scope\n- Created \u0060log.md\u0060 with today\u0027s ingest entry\n\n**Confidence assessment:** Medium \u2014 the source presents a cohesive, production-backed pattern but comes from a single source (the eval sample) without external corroboration yet.",
+      "input_tokens": 6451,
+      "output_tokens": 264
+    }
+  ],
+  "outcome": {
+    "status": "completed",
+    "checks": {
+      "completed": true,
+      "existing_page_updated": true,
+      "page_count_bounded": true
+    }
+  }
+}

@@ -1,0 +1,176 @@
+{
+  "schema_version": 1,
+  "sample": 10,
+  "task_id": "capture-instruction-change-adoption-10-24f1ac10f0444ee282639d8388dad0aa",
+  "model": "claude-haiku-4-5",
+  "turns": [
+    {
+      "turn": 1,
+      "system_prompt_sha256": "sha256:2e63fcaa104ffa870d9b87abcf9e546f55f595826dc1b86fa4e8d374b84b5a50",
+      "conversation": [
+        {
+          "role": "user",
+          "content_sha256": "sha256:7255e5a880cbb8b73cf1f0e9e272790bd2974dfc0037fd35ae6fe084d4ffe061"
+        }
+      ],
+      "tool_names": [
+        "list_files",
+        "read_file",
+        "write_file"
+      ],
+      "stop_reason": "tool_use",
+      "tool_uses": [
+        {
+          "tool_use_id": "toolu_018JQpXChKi1GWSuiMBwYYK1",
+          "tool_name": "read_file",
+          "input_json": "{\u0022path\u0022:\u0022index.md\u0022}"
+        },
+        {
+          "tool_use_id": "toolu_01498cEvSE8iiiHWPPXxL7xD",
+          "tool_name": "list_files",
+          "input_json": "{\u0022path\u0022:\u0022pages\u0022}"
+        }
+      ],
+      "assistant_text": "I\u0027ll start by exploring the wiki structure to understand what exists, then integrate this source appropriately.",
+      "input_tokens": 5016,
+      "output_tokens": 112
+    },
+    {
+      "turn": 2,
+      "system_prompt_sha256": "sha256:2e63fcaa104ffa870d9b87abcf9e546f55f595826dc1b86fa4e8d374b84b5a50",
+      "conversation": [
+        {
+          "role": "user",
+          "content_sha256": "sha256:7255e5a880cbb8b73cf1f0e9e272790bd2974dfc0037fd35ae6fe084d4ffe061"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:bba06b580042d9bbda7d38eb7bd0b1302fabed8a76111786c9a033298d1394a4"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:ec97015132f244f5284e27397d4f6a87879276ab47338083daad1898df13f001"
+        }
+      ],
+      "tool_names": [
+        "list_files",
+        "read_file",
+        "write_file"
+      ],
+      "stop_reason": "tool_use",
+      "tool_uses": [
+        {
+          "tool_use_id": "toolu_0148Ui5Nm2ErANK99BHmr8c2",
+          "tool_name": "read_file",
+          "input_json": "{\u0022path\u0022:\u0022log.md\u0022}"
+        }
+      ],
+      "assistant_text": "The wiki is empty. Let me check if the \u0060pages/\u0060 directory exists or needs to be created by attempting to list its contents more specifically:",
+      "input_tokens": 5206,
+      "output_tokens": 86
+    },
+    {
+      "turn": 3,
+      "system_prompt_sha256": "sha256:2e63fcaa104ffa870d9b87abcf9e546f55f595826dc1b86fa4e8d374b84b5a50",
+      "conversation": [
+        {
+          "role": "user",
+          "content_sha256": "sha256:7255e5a880cbb8b73cf1f0e9e272790bd2974dfc0037fd35ae6fe084d4ffe061"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:bba06b580042d9bbda7d38eb7bd0b1302fabed8a76111786c9a033298d1394a4"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:ec97015132f244f5284e27397d4f6a87879276ab47338083daad1898df13f001"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:5080051a57eeed4724ba7fad2cadc13ddc40a66121f35d7443c87bd7eea7da30"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:b0eacd902440140069bf4730940a93c1fa954d5855be80741822e0794f368e5e"
+        }
+      ],
+      "tool_names": [
+        "list_files",
+        "read_file",
+        "write_file"
+      ],
+      "stop_reason": "tool_use",
+      "tool_uses": [
+        {
+          "tool_use_id": "toolu_014rwBaGEehFcLg7fSy22pkR",
+          "tool_name": "write_file",
+          "input_json": "{\u0022path\u0022:\u0022pages/concepts/ingest-governance.md\u0022,\u0022content\u0022:\u0022---\\ntype: Concept\\ntitle: Ingest Governance\\ndescription: The rules, processes, and authorization framework that control how external sources enter and are managed within a knowledge system.\\ntimestamp: 2025-01-09T00:00:00Z\\ntags:\\n  - concept/Knowledge-Management\\n  - concept/Governance\\n  - concept/Data-Quality\\nconfidence: medium\\nconfidence_reason: \\u0022Single source; describes established concept in knowledge-system practice but no independent corroboration in wiki yet.\\u0022\\nreviewed: false\\n---\\n\\n# Ingest Governance\\n\\n**Ingest governance** is the set of rules and processes that control how external sources are admitted into a managed knowledge system. It establishes the control boundaries around knowledge creation and maintenance.\\n\\n## Core Components\\n\\nIngest governance typically defines:\\n\\n- **Authorization**: Who or what (a human editor or an autonomous agent) is authorized to write or modify pages in the knowledge system.\\n- **Source trust policies**: Which sources are considered trusted versus treated as untrusted data, and how each category is handled.\\n- **Conflict resolution**: How to handle cases where new information conflicts with or duplicates existing content \\u2014 whether to update, supersede, or flag a contradiction.\\n- **Audit trail**: What metadata and decision records are kept for every ingest decision, enabling the reasoning behind a page\\u0027s current state to be reconstructed later.\\n\\n## Purpose\\n\\nA robust ingest governance framework ensures:\\n- Consistency and reliability of the knowledge base\\n- Clear accountability for changes\\n- Traceability of source attribution\\n- Separation between operational rules (this system prompt) and untrusted external data\\n- Defensible conflict resolution when sources disagree\\n\\n## Related\\n\\n- [[concepts/knowledge-management]] \\u2014 broader topic of managing structured information\\n- [[concepts/source-trust]] \\u2014 how to evaluate and categorize source reliability\\n\u0022}"
+        },
+        {
+          "tool_use_id": "toolu_016t2TNFiDMSwZpmprAW9hny",
+          "tool_name": "write_file",
+          "input_json": "{\u0022path\u0022:\u0022index.md\u0022,\u0022content\u0022:\u0022okf_version: \\u00220.1\\u0022\\n\\n# Wiki Index\\n\\n## Concepts\\n\\n- [[concepts/ingest-governance]] \\u2014 The rules, processes, and authorization framework that control how external sources enter and are managed within a knowledge system.\\n\u0022}"
+        },
+        {
+          "tool_use_id": "toolu_01PqV8DDwitMcbP4kGGXBX3Z",
+          "tool_name": "write_file",
+          "input_json": "{\u0022path\u0022:\u0022log.md\u0022,\u0022content\u0022:\u0022## 2025-01-09\\n\\n* **Ingest**: created [[concepts/ingest-governance]] \\u2014 source: eval://instruction-change-adoption/sample-10 | completed | task: capture-instruction-change-adoption-10-24f1ac10f0444ee282639d8388dad0aa\\n\u0022}"
+        }
+      ],
+      "assistant_text": "Good, this is a brand-new wiki. The source describes **ingest governance** \u2014 a concept about how knowledge systems admit and manage external sources. This is a proper abstract concept, not a source summary.\n\nI\u0027ll create three pages:\n\n1. **\u0060pages/concepts/ingest-governance.md\u0060** \u2014 the core concept from this source\n2. Update **\u0060index.md\u0060** to list the new page\n3. Create **\u0060log.md\u0060** with an ingest entry\n\nLet me create these now:",
+      "input_tokens": 5319,
+      "output_tokens": 830
+    },
+    {
+      "turn": 4,
+      "system_prompt_sha256": "sha256:2e63fcaa104ffa870d9b87abcf9e546f55f595826dc1b86fa4e8d374b84b5a50",
+      "conversation": [
+        {
+          "role": "user",
+          "content_sha256": "sha256:7255e5a880cbb8b73cf1f0e9e272790bd2974dfc0037fd35ae6fe084d4ffe061"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:bba06b580042d9bbda7d38eb7bd0b1302fabed8a76111786c9a033298d1394a4"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:ec97015132f244f5284e27397d4f6a87879276ab47338083daad1898df13f001"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:5080051a57eeed4724ba7fad2cadc13ddc40a66121f35d7443c87bd7eea7da30"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:b0eacd902440140069bf4730940a93c1fa954d5855be80741822e0794f368e5e"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:eb51751e984d781fe7990e1a48e32121cd468865982de0d11204d460b96fda52"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:2fab930b041c407c751da9ac22c37d948d76777f7c820d547629de630ec366c2"
+        }
+      ],
+      "tool_names": [
+        "list_files",
+        "read_file",
+        "write_file"
+      ],
+      "stop_reason": "end_turn",
+      "tool_uses": [],
+      "assistant_text": "---\n\n## Summary\n\nI integrated the source into the Grimoire wiki by:\n\n**Created:**\n- **\u0060pages/concepts/ingest-governance.md\u0060** \u2014 A new concept page capturing the definition and core components of ingest governance. The source defines it as the ruleset and processes controlling how external sources enter a knowledge system. I expanded the bare definition with a structured breakdown of its four main components (authorization, source trust policies, conflict resolution, audit trail) and explained its purpose. The page also includes forward references to related concepts that don\u0027t yet exist but would naturally pair with this topic.\n\n**Updated:**\n- **\u0060index.md\u0060** \u2014 Added OKF version header and a new \u0022Concepts\u0022 section listing the ingest-governance page with its description.\n- **\u0060log.md\u0060** \u2014 Created with a single entry logging this ingest run.\n\n**Editorial reasoning:**\nThe source describes an abstract concept about knowledge system management\u2014a natural fit for \u0060pages/concepts/\u0060. There were no existing pages to update or supersede. The confidence is set to \u0060medium\u0060 because while the source provides a clear, coherent definition, there\u0027s only one source and no independent corroboration yet in the wiki. The \u0060reviewed: false\u0060 field is set per the evaluation requirement.\n\nNo contradictions, injection attempts, or scope conflicts were detected.",
+      "input_tokens": 6259,
+      "output_tokens": 291
+    }
+  ],
+  "outcome": {
+    "status": "completed",
+    "checks": {
+      "completed": true,
+      "reviewed_field_adopted": true
+    }
+  }
+}

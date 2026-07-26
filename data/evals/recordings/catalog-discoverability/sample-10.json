@@ -1,0 +1,126 @@
+{
+  "schema_version": 1,
+  "sample": 10,
+  "task_id": "capture-catalog-discoverability-10-18efd20ef0ee4196ac013416d5b648b4",
+  "model": "claude-haiku-4-5",
+  "turns": [
+    {
+      "turn": 1,
+      "system_prompt_sha256": "sha256:d58c1db8446cd6ae5232c41ebf8698c211cd1320145cf6219e76a37edf2f5f0e",
+      "conversation": [
+        {
+          "role": "user",
+          "content_sha256": "sha256:815492d134e51d0e785314bca5cc0c739edf72d6f4e711d9e7da525d3cdc0c88"
+        }
+      ],
+      "tool_names": [
+        "list_files",
+        "read_file",
+        "write_file"
+      ],
+      "stop_reason": "tool_use",
+      "tool_uses": [
+        {
+          "tool_use_id": "toolu_01DDs5vQu5XonFsiSzpzyoZD",
+          "tool_name": "read_file",
+          "input_json": "{\u0022path\u0022:\u0022index.md\u0022}"
+        },
+        {
+          "tool_use_id": "toolu_01VGqcxHb4PmpQsMPxhu5u9S",
+          "tool_name": "list_files",
+          "input_json": "{\u0022path\u0022:\u0022pages\u0022}"
+        }
+      ],
+      "assistant_text": "I\u0027ll start by exploring the wiki structure to understand the current state, then integrate this source about evaluation harnesses.",
+      "input_tokens": 4985,
+      "output_tokens": 115
+    },
+    {
+      "turn": 2,
+      "system_prompt_sha256": "sha256:d58c1db8446cd6ae5232c41ebf8698c211cd1320145cf6219e76a37edf2f5f0e",
+      "conversation": [
+        {
+          "role": "user",
+          "content_sha256": "sha256:815492d134e51d0e785314bca5cc0c739edf72d6f4e711d9e7da525d3cdc0c88"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:6e5ac0e0f431406a0c66df94624625d20dc687736cd4a48ba0848179e932b348"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:a39664fe88d61b2a65039a326f7a3c2a04e730fcf440102827baf6e2bd384bea"
+        }
+      ],
+      "tool_names": [
+        "list_files",
+        "read_file",
+        "write_file"
+      ],
+      "stop_reason": "tool_use",
+      "tool_uses": [
+        {
+          "tool_use_id": "toolu_01JiLqGXrBLpdbjs4D9sQL8T",
+          "tool_name": "write_file",
+          "input_json": "{\u0022path\u0022:\u0022pages/concepts/evaluation-harness.md\u0022,\u0022content\u0022:\u0022---\\ntype: Concept\\ntitle: Evaluation Harness\\ndescription: Framework for automating system evaluation against fixed scenarios with deterministic checks and aggregate scoring.\\ntimestamp: 2025-01-18T00:00:00Z\\ntags:\\n  - concept/Testing\\n  - concept/LLM-Evaluation\\n  - pattern/CI-CD\\nconfidence: medium\\nconfidence_reason: \\u0022Single authoritative source; describes a technical pattern common in LLM and AI systems testing.\\u0022\\n---\\n\\nAn **evaluation harness** is a framework that automates the running of a system (agent, model, or pipeline) against a fixed set of scenarios and scores its output against a defined threshold. Rather than relying on manual inspection of behavior, evaluation harnesses provide a structured, repeatable testing mechanism.\\n\\n## Key Characteristics\\n\\n- **Automated scenario execution**: Runs a system through a predefined set of test cases or scenarios\\n- **Multiple sampling per scenario**: Typically samples multiple runs per scenario to account for LLM non-determinism\\n- **Separation of concerns**: Distinguishes between deterministic harness checks (pass/fail mechanics) and evaluation-style judgment scoring (semantic quality assessment)\\n- **Aggregate-based gating**: Defines \\u0022done\\u0022 on aggregate pass rate across all runs, not on any single execution\\n\\n## Use Cases\\n\\nEvaluation harnesses are particularly valuable in LLM and AI system contexts where:\\n- Output is inherently non-deterministic, requiring multiple runs to establish confidence\\n- Quality assessment involves both mechanical correctness and subjective judgment\\n- Release gates and continuous integration need quantifiable, repeatable pass/fail criteria\\n\\n## Related Concepts\\n\\n- [[Testing]] frameworks\\n- [[CI-CD]] pipelines for AI systems\\n\\n## Citations\\n\\n[^1]: Source reference: eval://catalog-discoverability/sample-10\\n\u0022}"
+        },
+        {
+          "tool_use_id": "toolu_01UidNSCDwuhvKzHY4ucrVhX",
+          "tool_name": "write_file",
+          "input_json": "{\u0022path\u0022:\u0022index.md\u0022,\u0022content\u0022:\u0022---\\nokf_version: \\u00220.1\\u0022\\n---\\n\\n# Wiki Index\\n\\n## Concepts\\n\\n- [[concepts/evaluation-harness]] \\u2014 Framework for automating system evaluation against fixed scenarios with deterministic checks and aggregate scoring.\\n\u0022}"
+        },
+        {
+          "tool_use_id": "toolu_01QDBGYX4B6GfSVhfpGY8byj",
+          "tool_name": "write_file",
+          "input_json": "{\u0022path\u0022:\u0022log.md\u0022,\u0022content\u0022:\u0022# Ingest Log\\n\\n## 2025-01-18\\n\\n* **Create**: [[concepts/evaluation-harness]] \\u2014 Concept page on automated evaluation frameworks for systems and LLMs. | source: eval://catalog-discoverability/sample-10 | completed\\n\u0022}"
+        }
+      ],
+      "assistant_text": "The wiki is empty, so I\u0027ll create the necessary folder structure and pages. Based on the source, \u0022evaluation harnesses\u0022 is a technical concept about testing/evaluation systems. This deserves:\n\n1. A **Concept** page for \u0022Evaluation Harness\u0022 (abstract pattern/framework idea)\n2. Update the **index.md** to catalog this new page\n3. Add an entry to **log.md** (which doesn\u0027t exist yet, so I\u0027ll create it)\n\nLet me create these files:",
+      "input_tokens": 5178,
+      "output_tokens": 811
+    },
+    {
+      "turn": 3,
+      "system_prompt_sha256": "sha256:d58c1db8446cd6ae5232c41ebf8698c211cd1320145cf6219e76a37edf2f5f0e",
+      "conversation": [
+        {
+          "role": "user",
+          "content_sha256": "sha256:815492d134e51d0e785314bca5cc0c739edf72d6f4e711d9e7da525d3cdc0c88"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:6e5ac0e0f431406a0c66df94624625d20dc687736cd4a48ba0848179e932b348"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:a39664fe88d61b2a65039a326f7a3c2a04e730fcf440102827baf6e2bd384bea"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:a72d7d5b5bf83b81b6ada7f715579dfcfe6172451d4fb17e1394915197f68ca5"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:bbb18cfb5575367fbb8b7a3d840cf1ec1aeaed7f79d73fa736061e3bb82b3460"
+        }
+      ],
+      "tool_names": [
+        "list_files",
+        "read_file",
+        "write_file"
+      ],
+      "stop_reason": "end_turn",
+      "tool_uses": [],
+      "assistant_text": "## Summary\n\n**Pages created:**\n- **[[concepts/evaluation-harness]]** \u2014 A new Concept page capturing the definition and characteristics of evaluation harnesses. The source describes a well-defined technical pattern: automated testing frameworks that run systems against fixed scenarios, sample multiple runs to account for LLM non-determinism, separate deterministic checks from subjective scoring, and gate pass/fail on aggregate metrics. This is a clean factual concept with no contradictions or ambiguities.\n\n**Index and log updated:**\n- Created \u0060index.md\u0060 with OKF version declaration and an entry for the new concept page\n- Created \u0060log.md\u0060 to record this ingest run\n\n**Editorial decisions:**\n- Chose **Concept** (not Tool) because the source describes an abstract pattern/framework idea, not a specific product or CLI\n- Placed in \u0060pages/concepts/\u0060 per wiki structure conventions\n- Set confidence to **medium**: single authoritative source, but no contradiction or corroboration yet\n- Added related concept links ([[Testing]], [[CI-CD]]) to signal where this concept connects to other potential pages\n\nNo uncertainties or review flags in the source. All actions within the allowed write scope.",
+      "input_tokens": 6099,
+      "output_tokens": 264
+    }
+  ],
+  "outcome": {
+    "status": "completed",
+    "checks": {
+      "completed": true,
+      "all_pages_discoverable": true
+    }
+  }
+}
