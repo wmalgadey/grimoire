@@ -21,6 +21,8 @@ public sealed record EvalPaths(string RepoRoot)
 
     public string DefaultRecordingsRoot => Path.Combine(RepoRoot, "data", "evals", "recordings");
 
+    public string LocalEnvPath => Path.Combine(RepoRoot, "data", ".env");
+
     public static EvalPaths Discover(string? start = null)
     {
         var current = new DirectoryInfo(start ?? AppContext.BaseDirectory);

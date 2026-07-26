@@ -1,4 +1,4 @@
-// Composition root for the standalone eval command (ADR-011): the only place in this
+// Composition root for the standalone eval command (ADR-012): the only place in this
 // process that constructs a concrete model adapter (the capture-time judge client) and
 // binds pipelines to the recording store, workspace invoker, and telemetry.
 using Grimoire.EvalRunner;
@@ -79,6 +79,7 @@ switch (subcommand)
 
     case "capture":
         {
+            LocalEnvFile.ApplyIfPresent(paths.LocalEnvPath);
             var gate = EvalProviderResolver.Resolve();
             EvalObservability.RecordGateResolution(logger, gate);
             if (gate.Status != EvalGateStatus.Enabled)
