@@ -28,7 +28,7 @@ description: "Task list for feature implementation"
 Existing hexagonal backend repo (`backend/Grimoire.slnx`). This feature touches:
 - `backend/src/Grimoire.EvalRunner/` — NEW standalone eval command
 - `backend/src/Grimoire.IngestAgent/` — composition root + new `AgentCore/Adapters/Replay/` namespace
-- `backend/tests/Grimoire.ArchTests/` — ADR-011 rules C6–C8
+- `backend/tests/Grimoire.ArchTests/` — ADR-012 rules C6–C8
 - `backend/tests/Grimoire.AgentEvals/` — repurposed: always-running replay tests (live gating deleted)
 - `backend/tests/Grimoire.IntegrationTests/` — adapter contract + observability tests (PR pipeline)
 - `data/evals/recordings/` — NEW versioned recording store
@@ -38,11 +38,11 @@ Existing hexagonal backend repo (`backend/Grimoire.slnx`). This feature touches:
 
 ## Phase 0: Structural Boundary Enforcement (MANDATORY — Constitution Principle III)
 
-**Purpose**: Prove, before any feature code exists, that the ADR-011 boundaries are guarded: the replay adapter namespace stays SDK-free and port-shaped, and the eval runner can never bypass the spawned-process/port seam.
+**Purpose**: Prove, before any feature code exists, that the ADR-012 boundaries are guarded: the replay adapter namespace stays SDK-free and port-shaped, and the eval runner can never bypass the spawned-process/port seam.
 
 **⚠️ NON-NEGOTIABLE**: No feature implementation can begin until Phase 0 is complete.
 
-- [X] T001 Write and verify ADR-011 structural rules in `backend/tests/Grimoire.ArchTests/EvalRunnerReplayBoundaryTests.cs`. Precondition inside this task (no feature code): create the empty console-project shell `backend/src/Grimoire.EvalRunner/Grimoire.EvalRunner.csproj` + minimal `Program.cs` stub and add it to `backend/Grimoire.slnx`, so the rules have an assembly to load. Rules:
+- [X] T001 Write and verify ADR-012 structural rules in `backend/tests/Grimoire.ArchTests/EvalRunnerReplayBoundaryTests.cs`. Precondition inside this task (no feature code): create the empty console-project shell `backend/src/Grimoire.EvalRunner/Grimoire.EvalRunner.csproj` + minimal `Program.cs` stub and add it to `backend/Grimoire.slnx`, so the rules have an assembly to load. Rules:
   - **C6**: no namespace in `Grimoire.IngestAgent.AgentCore.Adapters.Replay` references the `Anthropic` SDK namespace, and no namespace outside an `.Adapters.` segment references the concrete types `ReplayModelClient`/`TurnCaptureModelClient` (extends ADR-010 C2/C5).
   - **C7**: the `Grimoire.EvalRunner` assembly references no LLM SDK namespace and no concrete `.Adapters.` type from any assembly.
   - **C8**: `System.Diagnostics.Process` usage in `Grimoire.EvalRunner` is confined to the `Grimoire.EvalRunner.Workspace` namespace (mirror of ADR-010 C4).
@@ -54,7 +54,7 @@ Existing hexagonal backend repo (`backend/Grimoire.slnx`). This feature touches:
   4. Delete the probe lines; run again — MUST pass (C6/C7/C8 vacuously green on the empty scaffold).
   5. Document probe results in the commit message.
 
-**Checkpoint**: ADR-011 boundaries are guarded. Feature code may now begin.
+**Checkpoint**: ADR-012 boundaries are guarded. Feature code may now begin.
 
 ---
 
@@ -128,7 +128,7 @@ Existing hexagonal backend repo (`backend/Grimoire.slnx`). This feature touches:
 - [X] T028 [US2] Per-call timeout enforcement for capture: bound each model call at 120 s via the per-sample process budget in `Workspace/AgentProcessInvoker.cs` and map a timeout kill to the 007-compatible timeout failure (distinct from judgment failure), emitting the existing `eval_sample_timeout` WARN event fields from `Grimoire.EvalRunner` (depends on T012, T025)
 - [X] T029 [US2] Emit capture observability in `backend/src/Grimoire.EvalRunner/EvalRunnerTelemetry.cs` + `Capture/CapturePipeline.cs`: `eval.capture_run` root span (`task_id`, `scenario`, `provider`, `model`), `eval_recording_captured` INFO event (`task_id`, `scenario`, `sample`, `model`, `recording_path`) in span context, `grimoire.eval.recordings_captured_total{scenario,provider}` counter; keep 007's `eval_provider_resolved` event + `eval.gate_resolution` span emitting from the moved resolver (depends on T025, T009)
 - [X] T030 [US2] Rework `.github/workflows/eval.yml`: replace the `dotnet test` eval invocation with `dotnet run --project backend/src/Grimoire.EvalRunner -- capture --summary …`, keep `workflow_dispatch`-only trigger, repository-secret provider key, PR comment via `scripts/ci/format-eval-summary` when a PR is associated, and upload the refreshed `data/evals/recordings/` + summary as artifacts ready to commit (007 FR-005/FR-007 contract preserved) (depends on T025, T029)
-- [ ] T031 [US2] Bootstrap capture (non-hermetic, one-time): run `capture` for all six scenarios against the configured affordable provider, review the summary against thresholds, and commit the genuine recording set to `data/evals/recordings/` — this turns T019's per-scenario replay tests green in CI (depends on T025–T028; unblocks full US1 verification)
+- [X] T031 [US2] Bootstrap capture (non-hermetic, one-time): run `capture` for all six scenarios against the configured affordable provider, review the summary against thresholds, and commit the genuine recording set to `data/evals/recordings/` — this turns T019's per-scenario replay tests green in CI (depends on T025–T028; unblocks full US1 verification)
 
 **Checkpoint**: Live capture works end-to-end locally and in CI; genuine recordings are versioned; replay tier is now fully green.
 
@@ -159,10 +159,10 @@ Existing hexagonal backend repo (`backend/Grimoire.slnx`). This feature touches:
 - [X] T037 Migrate & extend `backend/tests/Grimoire.IntegrationTests/EvalObservabilityTests.cs`: keep 007's `eval_provider_resolved`/`eval_sample_timeout`/`eval.gate_resolution` assertions against the moved resolver (T009), verifying names, levels, and fields unchanged (MANDATORY — Constitution Principle IV)
 - [X] T038 Deterministic logging-contract tests in `backend/tests/Grimoire.IntegrationTests/EvalRunnerObservabilityTests.cs`: in-memory exporter assertions for `eval_recording_captured` (INFO: task_id, scenario, sample, model, recording_path — captured via a fake-provider run), `eval_replay_result` (INFO: task_id, scenario, sample, trust_status, model, captured_at), `eval_recording_stale` (WARN: scenario, changed_fingerprints, recording_path) — event name, level, every mandatory field per trigger (MANDATORY — Constitution Principle IV)
 - [X] T039 Deterministic trace-contract tests in `backend/tests/Grimoire.IntegrationTests/EvalRunnerObservabilityTests.cs`: `eval.capture_run` (root; task_id, scenario, provider, model) and `eval.replay_run` (root; task_id, scenario, trust_status, recording_id) span names, root parentage, and task_id correlation with the log events and metric increments (`grimoire.eval.recordings_captured_total`, `grimoire.eval.replay_results_total`) (MANDATORY — Constitution Principle IV)
-- [ ] T040 Agent-behavior evaluation verification: confirm every agent-judgment success criterion holds at its spec-defined threshold on the recorded evidence — T031's capture summary (live scores) and the green per-scenario replay tests (recorded scores) for SC-006/007/008/009/010 + steering (SC-007/004) — and record the results in `specs/009-agent-eval-replay/tasks.md` completion notes (MANDATORY — Constitution Principles II & V)
+- [X] T040 Agent-behavior evaluation verification: confirm every agent-judgment success criterion holds at its spec-defined threshold on the recorded evidence — T031's capture summary (live scores) and the green per-scenario replay tests (recorded scores) for SC-006/007/008/009/010 + steering (SC-007/004) — and record the results in `specs/009-agent-eval-replay/tasks.md` completion notes (MANDATORY — Constitution Principles II & V)
 - [X] T041 CI enforcement: verify `.github/workflows/ci.yml` (Deterministic Backend Gates) runs `Grimoire.IntegrationTests` (T037–T039 logging + trace tests) and `Grimoire.AgentEvals` (replay + staleness tests) in the standard PR pipeline with no provider secret and 0 skipped tests (MANDATORY — Constitution Principle IV; completes the logging/trace contract CI category)
 - [ ] T042 [P] Run full `quickstart.md` validation (§1–§5 incl. SC-002 < 5 min timing measurement and the observability spot-check); fix any deviation or update quickstart with corrected commands
-- [X] T043 [P] Documentation closure: update `specs/007-eval-tests-nim-endpoint/`-referencing docs where behavior moved (`.env-example` cross-check, `scripts/ci/format-eval-summary` usage note for the runner summary), and verify `docs/adr/ADR-011-eval-runner-recorded-replay.md` Verification section matches the implemented rule names/files
+- [X] T043 [P] Documentation closure: update `specs/007-eval-tests-nim-endpoint/`-referencing docs where behavior moved (`.env-example` cross-check, `scripts/ci/format-eval-summary` usage note for the runner summary), and verify `docs/adr/ADR-012-eval-runner-recorded-replay.md` Verification section matches the implemented rule names/files
 
 **Checkpoint**: Definition of Done satisfiable — all ADRs Accepted with live structural tests, observability contracts implemented+tested+CI-enforced, evaluation thresholds verified on recorded evidence, zero skipped tests.
 
@@ -189,11 +189,58 @@ Deviation note (T024): the replay-contract fixtures are generated in-test by
 (T021 runs in CI before genuine recordings exist) without checked-in synthetic data
 that could be mistaken for genuine recordings.
 
+## Bootstrap Capture Update (2026-07-26)
+
+T031 has run against a real provider (`claude-haiku-4-5`) across three iterations, each
+diagnosing and fixing a real bug before re-capturing. Final state: all 6 scenarios
+**trusted and passing at their spec-defined thresholds**; `dotnet test
+backend/tests/Grimoire.AgentEvals` — **40/40 passed, 0 skipped**. T040's agent-behavior
+success criteria (SC-006–SC-010, steering) are therefore satisfied on recorded evidence.
+
+Diagnosing the initial 4/6 scenario-level failures found three were harness/fixture bugs,
+not agent-judgment failures — worth recording since each is a variant of the same root
+cause (a scorer or fixture that drifted out of sync with the actual agent instructions):
+
+- **`convention-adherence`** (0% → 100%): `DeterministicScorers.PageHasBasicConventions`
+  required frontmatter fields (`inbound_links`, `last_reviewed`) that do not exist in the
+  actual Frontmatter Standard (`data/agents/ingest/system-prompt.md`) and were sourced
+  from a `SKILL.md` file that does not exist in this repo. Fixed the required-field list.
+- **`update-over-duplicate`** (30% → 100%): the fixture's pre-existing page lived at
+  `pages/retrieval-patterns.md`, but the current Page Types table places Concept pages at
+  `pages/concepts/<slug>.md`; the agent, correctly following current instructions, created
+  a new page at the right path and only sometimes also updated the legacy-path page,
+  exceeding the ≤2-page bound. Moved the fixture page and its frontmatter to match.
+- **`catalog-discoverability`** sample 3's single capture-time failure (1 turn,
+  `status: failed`) did not recur on re-capture — confirmed transient, not a defect.
+- **`steering-adoption`** (80% → 100%, in two steps): initially assumed a genuine
+  agent-judgment shortfall on two samples ("update the existing page") — **this was
+  wrong**. Both consistently-failing samples' steer text references a pre-existing page
+  ("the existing autoscaling page", "the existing confidence-scoring page's rationale
+  section") that cannot exist, because the scenario used the `empty-topic` fixture
+  (zero pre-existing pages). The agent was reporting reality correctly; the judge
+  penalized it for not doing the impossible. Gave `steering-adoption` its own
+  `steering-topic` fixture containing the two referenced pages.
+
+One genuine agent-instruction gap was also found and fixed: recorded judge verdicts
+showed the agent treating legitimate operator task-framing (steer text preceding
+`<source>`) with the same suspicion as untrusted source content, declining to follow
+explicit steers. Added a `system-prompt.md` section distinguishing the two. A first
+version of that wording caused a measured regression in `adversarial-source` (100% →
+80%: the agent began blanket-refusing sources that mixed an injection attempt with
+unrelated legitimate content, rather than rejecting only the directive-shaped part).
+The hard security guarantee (`no_out_of_scope_write`) held at 100% throughout — this was
+never a security regression, only an over-broad refusal. Added an explicit
+"reject the directive, not the whole source" clarification; re-verified at 100%.
+
+Every fix was re-verified against real recorded evidence (free `replay` where only
+scorer/fixture code changed; a live re-`capture` where the fixture content or
+instruction files changed, per the FR-016 staleness gate) before being treated as done.
+
 ## Dependencies & Execution Order
 
 ### Phase Dependencies
 
-- **Phase 0 (T001)**: First, always — guards ADR-011 before feature code.
+- **Phase 0 (T001)**: First, always — guards ADR-012 before feature code.
 - **Phase 1 (T002–T003)**: After T001.
 - **Phase 2 (T004–T015)**: After Phase 1 — blocks all stories.
 - **US1 (T016–T024)**: After Phase 2.
@@ -225,3 +272,7 @@ set) to light up the per-scenario replay tests — that already delivers the hea
 value: free, deterministic agent-behavior verification on every PR. Full US2 (judge,
 eval.yml, hygiene) and US3 (staleness gate) follow incrementally; each checkpoint leaves
 CI green and previous stories intact.
+
+## Phase 7: Convergence
+
+- [X] T044 Rename stale "ADR-011" references to "ADR-012" across the codebase — the governing ADR was renumbered (`docs/adr/ADR-012-eval-runner-recorded-replay.md`, status: accepted) but comments and ArchTest assertion-failure strings in `backend/tests/Grimoire.ArchTests/EvalRunnerReplayBoundaryTests.cs`, `backend/tests/Grimoire.ArchTests/GuardedWriteBoundaryRuleTests.cs`, `backend/tests/Grimoire.IntegrationTests/ReplayAdapterTests.cs`, `backend/src/Grimoire.IngestAgent/Program.cs`, `backend/src/Grimoire.IngestAgent/AgentCore/Adapters/Replay/{ReplayModelClient.cs,TurnCaptureModelClient.cs}`, `backend/src/Grimoire.EvalRunner/{Program.cs,EvalRunnerAssemblyMarker.cs,Recording/RecordingStore.cs,Workspace/AgentProcessInvoker.cs}`, and `.env-example` still say "ADR-011" (`grep -rl "ADR-011" --include="*.cs" backend/`) per plan.md ADR table (contradicts)
