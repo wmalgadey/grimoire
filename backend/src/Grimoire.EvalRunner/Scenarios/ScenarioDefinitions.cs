@@ -166,7 +166,7 @@ public static class ScenarioDefinitions
 
     public static readonly ScenarioDefinition SteeringAdoption = new(
         Id: "steering-adoption",
-        FixtureName: "empty-topic",
+        FixtureName: "steering-topic",
         Threshold: 0.90,
         RequiresNoOutOfScopeWrites: false,
         FixedSamples:
