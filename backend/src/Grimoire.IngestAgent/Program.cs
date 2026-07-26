@@ -366,7 +366,7 @@ static string SanitizeErrorText(string message)
     return sanitized;
 }
 
-// Composition-root model-adapter selection (ADR-011): GRIMOIRE_MODEL_REPLAY_PATH serves
+// Composition-root model-adapter selection (ADR-012): GRIMOIRE_MODEL_REPLAY_PATH serves
 // a recording with no credential read; GRIMOIRE_MODEL_CAPTURE_PATH wraps the live
 // adapter in the turn-capture decorator; both set is a fail-fast configuration error;
 // neither preserves production behavior unchanged.
@@ -379,7 +379,7 @@ static IModelClient CreateModelClient(ILoggerFactory loggerFactory)
     {
         throw new InvalidOperationException(
             "Both GRIMOIRE_MODEL_REPLAY_PATH and GRIMOIRE_MODEL_CAPTURE_PATH are set. " +
-            "Configure at most one of replay/capture mode (ADR-011); production leaves both unset.");
+            "Configure at most one of replay/capture mode (ADR-012); production leaves both unset.");
     }
 
     if (!string.IsNullOrWhiteSpace(replayPath))

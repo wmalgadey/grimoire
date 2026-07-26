@@ -3,7 +3,7 @@ using Grimoire.EvalRunner.Providers;
 
 namespace Grimoire.EvalRunner.Workspace;
 
-/// <summary>Model-adapter mode for one spawned agent run (ADR-011 env contract).</summary>
+/// <summary>Model-adapter mode for one spawned agent run (ADR-012 env contract).</summary>
 public sealed record AgentModelMode
 {
     private AgentModelMode(string? replayPath, string? capturePath, ProviderConfiguration? provider)
@@ -31,7 +31,7 @@ public sealed record AgentRunResult(int ExitCode, bool TimedOut, string StdErr);
 /// Spawns the real <c>Grimoire.IngestAgent</c> executable per sample through its
 /// production CLI contract (ADR-002), with a scoped environment (ADR-004): provider
 /// credentials enter only capture-mode child processes; replay-mode children get no
-/// credential at all. The only <see cref="Process"/> user in this assembly (ADR-011 C8).
+/// credential at all. The only <see cref="Process"/> user in this assembly (ADR-012 C8).
 /// </summary>
 public sealed class AgentProcessInvoker
 {

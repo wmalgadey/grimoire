@@ -6,7 +6,7 @@ using Grimoire.IntegrationTests.Fakes;
 namespace Grimoire.IntegrationTests;
 
 /// <summary>
-/// T008 — hermetic contract tests for the ADR-011 record/replay seam at the
+/// T008 — hermetic contract tests for the ADR-012 record/replay seam at the
 /// <see cref="IModelClient"/> port: capture→replay round-trip fidelity, first-divergence
 /// mismatch (FR-010), exhausted recordings, schema validity, and the composition root's
 /// fail-fast both-env-vars configuration error.

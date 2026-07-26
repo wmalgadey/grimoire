@@ -2,7 +2,7 @@
 status: accepted
 ---
 
-# ADR-011: Standalone Eval Runner and Recorded-Replay at the Model Port
+# ADR-012: Standalone Eval Runner and Recorded-Replay at the Model Port
 
 ## Context and Problem Statement
 

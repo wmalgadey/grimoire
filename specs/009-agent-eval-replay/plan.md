@@ -27,7 +27,7 @@ Replace the always-live agent-behavior eval suite with a two-tier setup:
 
 Record/replay is implemented at the existing `IModelClient` port (ADR-010): a
 `ReplayModelClient` adapter and a turn-capture decorator, both selected exclusively in
-the `Grimoire.IngestAgent` composition root via environment configuration. A new ADR-011
+the `Grimoire.IngestAgent` composition root via environment configuration. A new ADR-012
 fixes this structural boundary (new process, new adapter namespace, recording store,
 containment rules).
 
@@ -79,7 +79,7 @@ steering scenario, recorded LLM-judge verdicts.
   `Grimoire.IngestAgent` composition root (`Program.cs`) from environment configuration.
   `Grimoire.EvalRunner` consumes the agent exclusively as a spawned process (ADR-002
   pattern) and MUST NOT reference the Anthropic SDK or concrete adapter types — enforced
-  by new arch rules (ADR-011, C6/C7). The recording store is local-filesystem persistence:
+  by new arch rules (ADR-012, C6/C7). The recording store is local-filesystem persistence:
   port-exempt, containment-bound.
 - **Principle II (Pragmatic testing)**: PASS — this feature is the direct implementation
   of Principle II's "real **or recorded** LLM output" clause. Replay tests are hermetic
@@ -89,8 +89,8 @@ steering scenario, recorded LLM-judge verdicts.
   CLI gating) are tested hermetically. The replay tests spawn the real agent executable —
   integration-first, no mocked repositories.
 - **Principle III (ADR-driven)**: PASS — all ADRs in `docs/adr/` were read; constraints
-  listed below. A new structural boundary is introduced → **ADR-011 drafted** as part of
-  this plan (`docs/adr/ADR-011-eval-runner-recorded-replay.md`); it MUST reach Accepted
+  listed below. A new structural boundary is introduced → **ADR-012 drafted** as part of
+  this plan (`docs/adr/ADR-012-eval-runner-recorded-replay.md`); it MUST reach Accepted
   before `/speckit-tasks`. Structural rules get Red/Green probes (Phase 0 of tasks).
 - **Principle IV (Observability)**: Addressed in `## Observability`; every row derives
   implementation, deterministic test, and CI-enforcement tasks.
@@ -116,10 +116,10 @@ No violations to justify; `## Complexity Tracking` is not needed.
 | ADR-007 | Agent Instruction Surface | The instruction fingerprint set is exactly ADR-007's surface: `system-prompt.md`, `default-user-prompt.md`, plus `policy.json` (ADR-006) and the scenario definition/fixture. These SHA-256 hashes are the staleness basis (FR-006/FR-008). |
 | ADR-008 | Agent Event Channel, Run Supervision | The runner consumes the agent's exit code and task artifact; stdout NDJSON events remain available but are not a new contract surface. No change. |
 | ADR-009 | Explicit Runtime Path Configuration | Recordings live under the consolidated `data/` directory (`data/evals/recordings/`); all agent paths are passed explicitly per run into the isolated workspace, per ADR-009's explicit-path rule. |
-| ADR-010 | Hexagonal Ports and Adapter Namespaces | Record/replay MUST attach at the `IModelClient` port; new adapter namespace `Grimoire.IngestAgent.AgentCore.Adapters.Replay`; construction only in the composition root. `Grimoire.EvalRunner` MUST NOT reference the Anthropic SDK or any concrete `.Adapters.` type. ADR-010's table is extended by ADR-011 ("new boundaries via ADR"). |
-| **ADR-011 (new, drafted)** | Standalone Eval Runner and Recorded-Replay at the Model Port | Fixes: `Grimoire.EvalRunner` as a new standalone process; `Adapters.Replay` namespace; recording store location/format; env-based composition-root selection (`GRIMOIRE_MODEL_CAPTURE_PATH` / `GRIMOIRE_MODEL_REPLAY_PATH`); containment rules C6 (replay adapter isolation) and C7 (EvalRunner references no LLM SDK / concrete adapters); replay-tests-as-merge-gate. |
+| ADR-010 | Hexagonal Ports and Adapter Namespaces | Record/replay MUST attach at the `IModelClient` port; new adapter namespace `Grimoire.IngestAgent.AgentCore.Adapters.Replay`; construction only in the composition root. `Grimoire.EvalRunner` MUST NOT reference the Anthropic SDK or any concrete `.Adapters.` type. ADR-010's table is extended by ADR-012 ("new boundaries via ADR"). |
+| **ADR-012 (new, drafted)** | Standalone Eval Runner and Recorded-Replay at the Model Port | Fixes: `Grimoire.EvalRunner` as a new standalone process; `Adapters.Replay` namespace; recording store location/format; env-based composition-root selection (`GRIMOIRE_MODEL_CAPTURE_PATH` / `GRIMOIRE_MODEL_REPLAY_PATH`); containment rules C6 (replay adapter isolation) and C7 (EvalRunner references no LLM SDK / concrete adapters); replay-tests-as-merge-gate. |
 
-**New ADR required?**: **Yes — drafted**: `docs/adr/ADR-011-eval-runner-recorded-replay.md`
+**New ADR required?**: **Yes — drafted**: `docs/adr/ADR-012-eval-runner-recorded-replay.md`
 (status: proposed). It MUST be moved to Accepted (review or explicit author sign-off)
 before `/speckit-tasks` is invoked.
 
@@ -235,7 +235,7 @@ backend/
 │   │                                           #   invocation (ADR-002 contract), provider env scoping
 │   └── Grimoire.IngestAgent/
 │       ├── Program.cs                          # Composition root: selects Anthropic vs Replay adapter,
-│       │                                       #   optional TurnCapture decorator, from env (ADR-011)
+│       │                                       #   optional TurnCapture decorator, from env (ADR-012)
 │       └── AgentCore/Adapters/Replay/          # NEW — ReplayModelClient, TurnCaptureModelClient,
 │                                               #   recording turn (de)serialization
 ├── tests/
@@ -245,7 +245,7 @@ backend/
 │   │   │                                       #   hermetic harness tests that remain (mismatch,
 │   │   │                                       #   staleness, provenance, determinism)
 │   │   └── (EvalFact/live-gating code deleted; provider resolver moves to EvalRunner)
-│   ├── Grimoire.ArchTests/                     # + C6/C7 rules and Red/Green probes (ADR-011)
+│   ├── Grimoire.ArchTests/                     # + C6/C7 rules and Red/Green probes (ADR-012)
 │   └── Grimoire.IntegrationTests/              # EvalObservabilityTests re-pointed + new event/span tests
 data/
 └── evals/

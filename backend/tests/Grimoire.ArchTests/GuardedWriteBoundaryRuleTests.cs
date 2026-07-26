@@ -11,7 +11,7 @@ namespace Grimoire.ArchTests;
 public class GuardedWriteBoundaryRuleTests
 {
     // Namespaces inside Grimoire.IngestAgent that are permitted to use filesystem-write APIs.
-    // Adapters.Replay (ADR-011) writes only the captured turn stream to the eval runner's
+    // Adapters.Replay (ADR-012) writes only the captured turn stream to the eval runner's
     // GRIMOIRE_MODEL_CAPTURE_PATH — never wiki content; wiki writes remain confined to the
     // guarded tool layer above.
     private static readonly HashSet<string> _allowedNamespacePrefixes =

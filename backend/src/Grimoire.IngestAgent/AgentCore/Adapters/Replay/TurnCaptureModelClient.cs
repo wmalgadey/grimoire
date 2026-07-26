@@ -1,7 +1,7 @@
 namespace Grimoire.IngestAgent.AgentCore.Adapters.Replay;
 
 /// <summary>
-/// Decorator over the live <see cref="IModelClient"/> adapter (ADR-011): forwards every
+/// Decorator over the live <see cref="IModelClient"/> adapter (ADR-012): forwards every
 /// call and appends the turn — request fingerprints + verbatim response — to the capture
 /// file. The file is rewritten after each turn so a crashed run still leaves its captured
 /// prefix. The eval runner later enriches the file with sample metadata, judge verdicts,

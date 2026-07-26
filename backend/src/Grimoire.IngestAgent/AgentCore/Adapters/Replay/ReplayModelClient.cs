@@ -21,7 +21,7 @@ public sealed class ReplayMismatchException : Exception
 
 /// <summary>
 /// <see cref="IModelClient"/> adapter that serves recorded turns instead of calling a
-/// provider (ADR-011). Call <em>k</em> returns turn <em>k</em>'s recorded response after
+/// provider (ADR-012). Call <em>k</em> returns turn <em>k</em>'s recorded response after
 /// verifying the request fingerprints (system prompt hash, per-message conversation
 /// hashes, tool-name list) match the recording — first divergence fails fast with
 /// <see cref="ReplayMismatchException"/> (research.md R2). Requires no credential and

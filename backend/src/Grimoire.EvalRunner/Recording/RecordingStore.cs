@@ -22,7 +22,7 @@ public sealed record RecordingManifest(
 
 /// <summary>
 /// Filesystem recording store under a recordings root (default `data/evals/recordings/`).
-/// Local-filesystem persistence — port-exempt per Principle I (ADR-011). Writes are
+/// Local-filesystem persistence — port-exempt per Principle I (ADR-012). Writes are
 /// wholesale per scenario: a capture run replaces the scenario directory atomically
 /// (temp dir + swap), so no mixed capture generations can exist.
 /// </summary>

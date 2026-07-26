@@ -79,7 +79,7 @@ Rules:
 - Schema evolution: `schema_version` bump ⇒ old recordings read as `mismatch` with an
   actionable re-capture message (never silently reinterpreted).
 
-## Replay env contract (composition root, ADR-011)
+## Replay env contract (composition root, ADR-012)
 
 | Variable | Effect in `Grimoire.IngestAgent` `Program.cs` |
 |----------|-----------------------------------------------|

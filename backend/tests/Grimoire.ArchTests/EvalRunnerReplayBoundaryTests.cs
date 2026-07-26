@@ -4,7 +4,7 @@ using NetArchTest.Rules;
 namespace Grimoire.ArchTests;
 
 /// <summary>
-/// Structural boundary rules for ADR-011 (feature 009-agent-eval-replay): the
+/// Structural boundary rules for ADR-012 (feature 009-agent-eval-replay): the
 /// recorded-replay adapters stay confined to their ADR-010-style adapter namespace,
 /// and the standalone eval runner can reach the model only through the spawned agent
 /// process or the <c>IModelClient</c> port — never via an LLM SDK or a concrete
@@ -27,7 +27,7 @@ public class EvalRunnerReplayBoundaryTests
             .GetResult();
 
         Assert.True(result.IsSuccessful,
-            "C6 (ADR-011): Grimoire.IngestAgent.AgentCore.Adapters.Replay must not reference " +
+            "C6 (ADR-012): Grimoire.IngestAgent.AgentCore.Adapters.Replay must not reference " +
             "the Anthropic SDK — replay is a pure port implementation. " +
             "Violations: " + string.Join(", ", result.FailingTypeNames ?? []));
     }
@@ -51,7 +51,7 @@ public class EvalRunnerReplayBoundaryTests
             .GetResult();
 
         Assert.True(result.IsSuccessful,
-            "C6 (ADR-011): namespaces outside an .Adapters. segment must not reference the " +
+            "C6 (ADR-012): namespaces outside an .Adapters. segment must not reference the " +
             "concrete ReplayModelClient/TurnCaptureModelClient (composition root exempt). " +
             "Violations: " + string.Join(", ", result.FailingTypeNames ?? []));
     }
@@ -66,14 +66,14 @@ public class EvalRunnerReplayBoundaryTests
             .GetResult();
 
         Assert.True(result.IsSuccessful,
-            "C7 (ADR-011): Grimoire.EvalRunner must not reference the Anthropic SDK — its only " +
+            "C7 (ADR-012): Grimoire.EvalRunner must not reference the Anthropic SDK — its only " +
             "paths to a model are the spawned agent process and the IModelClient port. " +
             "Violations: " + string.Join(", ", result.FailingTypeNames ?? []));
     }
 
     // Composition root exempt by construction: Program.cs compiles into the global
     // namespace, outside the "Grimoire.EvalRunner" prefix filter — it is the single
-    // place allowed to construct the capture-time judge adapter (ADR-011).
+    // place allowed to construct the capture-time judge adapter (ADR-012).
     [Fact]
     public void EvalRunner_MustNotReferenceConcreteAdapterTypes()
     {
@@ -88,7 +88,7 @@ public class EvalRunnerReplayBoundaryTests
             .GetResult();
 
         Assert.True(result.IsSuccessful,
-            "C7 (ADR-011): Grimoire.EvalRunner must not reference concrete .Adapters. types " +
+            "C7 (ADR-012): Grimoire.EvalRunner must not reference concrete .Adapters. types " +
             "from any assembly. Violations: " + string.Join(", ", result.FailingTypeNames ?? []));
     }
 
@@ -103,7 +103,7 @@ public class EvalRunnerReplayBoundaryTests
             .GetResult();
 
         Assert.True(result.IsSuccessful,
-            "C8 (ADR-011): System.Diagnostics.Process usage in Grimoire.EvalRunner must be " +
+            "C8 (ADR-012): System.Diagnostics.Process usage in Grimoire.EvalRunner must be " +
             "confined to Grimoire.EvalRunner.Workspace (mirror of ADR-010 C4). " +
             "Violations: " + string.Join(", ", result.FailingTypeNames ?? []));
     }
