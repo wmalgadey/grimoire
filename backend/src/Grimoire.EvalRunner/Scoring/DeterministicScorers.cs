@@ -68,7 +68,7 @@ public static class DeterministicScorers
         return new SampleScore(completed && allFollow, false, checks);
     }
 
-    // Required fields per SKILL.md's Frontmatter Standard — note there is no "title" field.
+    // Required fields per the Frontmatter Standard in data/agents/ingest/system-prompt.md.
     private static bool PageHasBasicConventions(string path)
     {
         var content = File.ReadAllText(path);
@@ -77,11 +77,13 @@ public static class DeterministicScorers
             return false;
         }
 
-        return content.Contains("\ntags:", StringComparison.OrdinalIgnoreCase)
+        return content.Contains("\ntype:", StringComparison.OrdinalIgnoreCase)
+            && content.Contains("\ntitle:", StringComparison.OrdinalIgnoreCase)
+            && content.Contains("\ndescription:", StringComparison.OrdinalIgnoreCase)
+            && content.Contains("\ntimestamp:", StringComparison.OrdinalIgnoreCase)
+            && content.Contains("\ntags:", StringComparison.OrdinalIgnoreCase)
             && content.Contains("\nconfidence:", StringComparison.OrdinalIgnoreCase)
-            && content.Contains("\nconfidence_reason:", StringComparison.OrdinalIgnoreCase)
-            && content.Contains("\ninbound_links:", StringComparison.OrdinalIgnoreCase)
-            && content.Contains("\nlast_reviewed:", StringComparison.OrdinalIgnoreCase);
+            && content.Contains("\nconfidence_reason:", StringComparison.OrdinalIgnoreCase);
     }
 
     private static SampleScore CatalogDiscoverability(SampleRunData run)
@@ -98,7 +100,7 @@ public static class DeterministicScorers
         return new SampleScore(completed && discoverable, false, checks);
     }
 
-    // Index entries use the extensionless wiki-link convention from SKILL.md:
+    // Index entries use the extensionless wiki-link convention from system-prompt.md:
     // "- [[pages/<slug>]] — <summary>", not the literal filename.
     private static bool IsDiscoverable(string indexContent, string pagePath)
     {
@@ -113,8 +115,8 @@ public static class DeterministicScorers
     {
         var completed = IsCompleted(run);
 
-        // The "reviewed: false" requirement only applies to wiki pages — SKILL.md exempts
-        // index.md and log.md from the frontmatter standard entirely.
+        // The "reviewed: false" requirement only applies to wiki pages — system-prompt.md
+        // exempts index.md and log.md from the frontmatter standard entirely.
         var touchedFiles = run.PagesTouched
             .Where(rel => !string.Equals(Path.GetFileName(rel), "index.md", StringComparison.OrdinalIgnoreCase)
                 && !string.Equals(Path.GetFileName(rel), "log.md", StringComparison.OrdinalIgnoreCase))
