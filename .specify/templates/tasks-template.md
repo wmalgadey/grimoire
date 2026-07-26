@@ -75,8 +75,11 @@ Enforce the structural rule from [ADR-XXX] before any feature code exists.
   - Go: custom package dependency check
 
   IMPORTANT: These are structural boundary tests only. Observability/instrumentation tests
-  (verifying metrics/spans are emitted) belong in the final phase — they require
-  production code to exist and cannot be written here.
+  (verifying metrics/spans are emitted) require production code to exist and cannot be
+  written here. They MAY be implemented and tested co-located with the user-story phase
+  that introduces the signal, or deferred to the final phase — either is compliant, as
+  long as the final phase's completeness-audit task (see "Phase N: Polish" below) covers
+  every row.
 -->
 
 - [ ] T000 Write and Verify Structural Boundary Tests for [ADR-XXX]
@@ -213,12 +216,17 @@ Examples of foundational tasks (adjust based on your project):
 
 ## Phase N: Polish & Cross-Cutting Concerns
 
-**Purpose**: Improvements that affect multiple user stories
+**Purpose**: Improvements that affect multiple user stories, plus the mandatory
+completeness audit (Constitution Principle III). Observability/instrumentation tests and
+agent-behavior evaluation tests MAY have already been implemented co-located with their
+triggering user-story phase above rather than here — either placement is compliant. The
+completeness-audit tasks below are the one thing that MUST live in this final phase
+regardless: they are what actually gates the DoD.
 
-- [ ] TXXX Observability tests: verify all metrics, log events, and trace spans from plan.md ## Observability are emitted (MANDATORY — Constitution Principle IV)
+- [ ] TXXX Observability completeness audit (MANDATORY — Constitution Principle III/IV): cross-reference every row of plan.md ## Observability (metrics, log events, trace spans) against its implementing task and passing test — wherever that task lives — and file any gap found as a new task before declaring the DoD met
 - [ ] TXXX Logging contract CI enforcement: ensure deterministic logging tests for all Structured Log Events rows run in the standard PR pipeline (MANDATORY — Constitution Principle IV)
 - [ ] TXXX Trace contract CI enforcement: ensure deterministic trace tests for all Distributed Trace Spans rows run in the standard PR pipeline (MANDATORY — Constitution Principle IV)
-- [ ] TXXX Agent-behavior evaluation tests: verify every agent-judgment success criterion from spec.md at its defined threshold via sampled runs with real or recorded LLM output (MANDATORY for features with agentic behavior — Constitution Principles II & V)
+- [ ] TXXX Agent-behavior evaluation completeness audit (MANDATORY for features with agentic behavior — Constitution Principles II & V): confirm every agent-judgment success criterion from spec.md has a passing evaluation test, at its defined threshold via sampled runs with real or recorded LLM output — wherever that test lives — and file any gap found as a new task before declaring the DoD met
 - [ ] TXXX [P] Documentation updates in docs/
 - [ ] TXXX Code cleanup and refactoring
 - [ ] TXXX Performance optimization across all stories

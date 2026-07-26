@@ -1,48 +1,48 @@
 <!--
 SYNC IMPACT REPORT
 ==================
-Version change: 1.3.0 → 1.4.0
+Version change: 1.4.0 → 1.5.0
 
 Principles modified:
-  - I. Domain Architecture & Strategic DDD → I. Domain Architecture, Strategic DDD &
-    Hexagonal Boundaries (added normative Ports & Adapters rules: external-system
-    ports, port ownership, adapter containment, persistence exemption, ADR gate for
-    new external-system boundaries)
+  - III. ADR-Driven & Test-Enforced Architecture (clarified the observability-test and
+    agent-behavior-evaluation-test placement rule: these MAY now be implemented and
+    tested co-located with the user-story phase that triggers them, instead of being
+    strictly confined to the final phase, PROVIDED the final phase carries a named
+    completeness-audit task proving every plan.md Observability row and every
+    agent-judgment success criterion has a passing implementation + test)
 
 Principles added: none
 
 Sections modified:
-  - Definition of Done (added hexagonal boundary gate: ports at external-system
-    boundaries, infrastructure packages confined to adapter namespaces)
+  - Definition of Done (reworded the observability and agent-behavior-evaluation
+    gates to require a final-phase completeness-audit task rather than requiring the
+    tests themselves to live in the final phase)
 
 Sections removed: none
 
 Templates updated:
-  - .specify/templates/plan-template.md ✅ (Architectural Constraints & ADRs section
-    now requires naming port, adapter namespace, and containment rule for any new
-    external-system dependency)
-  - .specify/templates/tasks-template.md ✅ (Phase 0 now requires adapter-containment
-    structural tests with Red/Green probe when a feature introduces a new
-    external-system adapter)
+  - .specify/templates/tasks-template.md ✅ (Phase 0 comment no longer states
+    observability tests "belong in the final phase"; Phase N template now models a
+    named completeness-audit task instead of monolithic final-phase observability/eval
+    test tasks)
+  - .specify/templates/plan-template.md ✅ no change required (Observability section
+    doesn't prescribe phase placement)
   - .specify/templates/spec-template.md ✅ no change required (spec stays tech-agnostic)
   - .specify/templates/checklist-template.md ✅ no change required
 
-Rationale for MINOR bump: Principle I is materially expanded with new normative MUST
-rules (hexagonal ports at external-system boundaries, adapter containment enforced by
-structural tests). No existing principle is removed or redefined: the persistence
-exemption preserves Principle II's anti-mocking stance, and existing code boundaries
-(IModelClient, IAgentProcessLauncher, guarded write layer) already conform.
+Rationale for MINOR bump: this is a material clarification of an existing MUST rule's
+enforceable meaning (which phase satisfies the requirement), not a new principle and
+not a removal of enforcement — the DoD gate and the mandatory final-phase audit remain.
+It resolves a real, already-lived conflict: every implemented feature to date (001,
+004, 006, 007, 008, 009) places observability/eval implementation and tests inside
+each user story's own phase and uses the final phase for a completeness-audit task
+instead, which the prior wording ("belong in the final polish phase," "MUST each
+appear as a named task in the final phase") did not permit. Codifying the practice
+already in use, rather than requiring a retroactive rewrite of every feature's
+tasks.md, is the correct fix (raised as finding H1 by `/speckit-analyze` on
+008-query-agent).
 
-Deferred TODOs (implementation follow-up outside this amendment, via normal SDD flow):
-  - Draft ADR-010 (hexagonal adapter containment & port conventions) and move to
-    Accepted before enforcement tasks are generated
-  - Add adapter-containment structural tests to Grimoire.ArchTests with Red/Green
-    probes (Sqlite → Grimoire.Hub.OperationalState only; Anthropic SDK →
-    Grimoire.IngestAgent.AgentCore only; outbound HTTP fetch → Grimoire.Hub.Conversion
-    only)
-  - Extract ports for external-system adapters currently consumed concretely:
-    MarkItDownConverter (subprocess) and UrlContentFetcher (network) behind port
-    interfaces consumed by IngestSubmissionPipeline
+Deferred TODOs: none.
 -->
 
 # Grimoire Constitution
@@ -156,18 +156,25 @@ protected by the rule without any further action.
 **Observability/instrumentation tests** (Phase N — after implementation):
 These verify that business metrics, structured log events, and trace spans are emitted
 as specified in `plan.md ## Observability`. They require production code to exist and
-therefore MUST NOT be placed in Phase 0. They belong in the final polish phase of
-`tasks.md`, gating the DoD.
+therefore MUST NOT be placed in Phase 0. They MAY be implemented and tested co-located
+with the user-story phase that introduces the signal, instead of being deferred to the
+final phase — either placement is compliant, provided the final-phase completeness
+audit below covers the row.
 
 **Agent-behavior evaluation tests** (Phase N — after implementation):
 Where a feature includes agentic behavior (Principle V), evaluation tests verifying the
-agent-judgment success criteria from the spec likewise belong in the final phase and gate
-the DoD. They require the agent loop and its instruction files to exist and MUST NOT be
-placed in Phase 0.
+agent-judgment success criteria from the spec gate the DoD. They require the agent loop
+and its instruction files to exist and MUST NOT be placed in Phase 0. As with
+observability tests, they MAY be co-located with the triggering user story's own phase
+rather than deferred to the final phase, provided the final-phase completeness audit
+below covers the criterion.
 
 The first task in every `tasks.md` MUST be a structural boundary test for the ADR(s)
-referenced in `plan.md ## Architectural Constraints & ADRs`. Observability tests and
-agent-behavior evaluation tests MUST each appear as a named task in the final phase.
+referenced in `plan.md ## Architectural Constraints & ADRs`. The final phase of every
+`tasks.md` MUST include a named completeness-audit task that cross-references every row
+of `plan.md ## Observability` and every agent-judgment success criterion in the spec
+against its implementing task and passing test — regardless of which phase implements
+them — and files any gap found as a new task before the DoD is declared met.
 
 Order is non-negotiable: plan drafted → ADR accepted → Structural test verified (Red/Green probe) → Feature code → Observability and evaluation tests pass → DoD met.
 
@@ -273,10 +280,10 @@ A feature increment is DONE when ALL of the following conditions hold:
 
 - [ ] All ADRs referenced in `plan.md` exist in `docs/adr/` and are in Accepted status
 - [ ] Structural boundary tests (Phase 0) pass in CI with no active violations
-- [ ] Observability tests (final phase) pass: all metrics, log events, and trace spans from `plan.md ## Observability` are emitted
+- [ ] Observability tests pass — implemented and tested either co-located with their triggering user-story phase or in the final phase — and a named final-phase completeness-audit task confirms every metric, log event, and trace span from `plan.md ## Observability` is emitted
 - [ ] Logging contract is complete for every row in `plan.md ## Observability > Structured Log Events`: implementation tasks define stable event names and mandatory fields, deterministic integration tests validate event name/level/mandatory fields, and these logging tests run in the standard PR CI pipeline
 - [ ] Trace contract is complete for every row in `plan.md ## Observability > Distributed Trace Spans`: implementation tasks define span names, parent/child relationships, and required attributes; deterministic integration tests validate span names, parent/child relationships, and correlation attributes (including shared IDs such as `task_id`); and these trace tests run in the standard PR CI pipeline
-- [ ] Agent-behavior evaluation tests (final phase) pass for every agent-judgment success criterion in the spec, at the thresholds the spec defines (only for features with agentic behavior)
+- [ ] Agent-behavior evaluation tests pass for every agent-judgment success criterion in the spec, at the thresholds the spec defines — implemented and tested either co-located with their triggering user-story phase or in the final phase, confirmed complete by the final-phase completeness-audit task (only for features with agentic behavior)
 - [ ] The agentic boundary (Principle V) is respected: no wiki-content judgment is implemented as deterministic backend code, instruction files are loaded into the agent's context, and the guarded-tool structural test passes
 - [ ] Hexagonal boundary rules (Principle I) hold: external-system dependencies introduced or touched by the feature are consumed via ports with production adapter and test fake, and infrastructure packages appear only in their designated adapter namespaces (enforced by structural architecture tests)
 - [ ] Integration tests via Testcontainers cover all API boundaries introduced by the feature
@@ -299,4 +306,4 @@ per semantic versioning (MAJOR: incompatible principle removals/redefinitions; M
 or materially expanded principles; PATCH: clarifications), update the Sync Impact Report,
 and propagate changes to the dependent templates in `.specify/templates/`.
 
-**Version**: 1.4.0 | **Ratified**: 2026-06-23 | **Last Amended**: 2026-07-18
+**Version**: 1.5.0 | **Ratified**: 2026-06-23 | **Last Amended**: 2026-07-26
