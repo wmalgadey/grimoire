@@ -23,7 +23,7 @@ a queue.
 }
 ```
 
-- `prompt`: required, non-empty after trim, ≤ max length (FR-004; same validation
+- `prompt`: required, non-empty after trim, ≤ 8000 characters (FR-004; same validation
   pattern as the Ingest User Prompt limit — client-side pre-check + server-side
   re-validation).
 - `priorTurns`: optional, empty/absent for the conversation's first turn. Each entry
@@ -44,8 +44,8 @@ a queue.
 
 ### Error responses
 
-- `400 Bad Request`: empty/whitespace-only prompt, or prompt exceeds max length (FR-004)
-  — no turn is created.
+- `400 Bad Request`: empty/whitespace-only prompt, or prompt exceeds 8000 characters
+  (FR-004) — no turn is created.
 - `409 Conflict`: the conversation already has an active turn (FR-008) — the client is
   expected to prevent this via UI state, this is the defensive server-side guard.
 - `503 Service Unavailable`: `QueryConcurrencyLimit` reached — a clear "busy" message,

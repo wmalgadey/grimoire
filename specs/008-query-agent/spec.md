@@ -263,7 +263,7 @@ performs no write, and the artifact records any denied attempts with reasons.
   unreadable, or effectively empty document fails the turn before any agent output,
   with a human-readable reason.
 - **FR-004**: The query surface MUST validate prompts before submission: empty or
-  whitespace-only prompts and prompts exceeding a reasonable maximum length are
+  whitespace-only prompts and prompts exceeding a maximum length of 8000 characters are
   rejected with a clear message before a turn is created.
 
 **Streaming & interruption**

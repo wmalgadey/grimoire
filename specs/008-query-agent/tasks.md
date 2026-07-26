@@ -843,3 +843,58 @@ items below are additional gaps found in this pass.
   case. Add either a client-side unload handler that calls the interrupt endpoint before
   the page closes, or server-side disconnect detection that marks the active turn
   interrupted, and cover it with an integration test.
+
+## Phase 10: Analysis Remediation
+
+**Purpose**: Remediate findings from `/speckit-analyze` (run after this branch was rebased
+onto `main`, which merged feature 009's recorded-replay eval architecture and CI changes).
+
+- [X] T090 Add the missing FR-015/SC-005 dead-run liveness test (analyze finding C2,
+  `missing`): `QueryRunCoordinator.SuperviseAsync`'s liveness watchdog was implemented
+  (silence-beyond-window → `Terminate()` + `FinishTurnAsync(..., Failed, ...)`) but had no
+  dedicated behavioral test proving it, unlike Ingest's `RunSupervisionTests.cs`. Added
+  `backend/tests/Grimoire.IntegrationTests/QueryLivenessSupervisionTests.cs` (two tests,
+  mirroring `RunSupervisionTests`'s silent-run and pipe-close-without-terminal-event
+  scenarios): asserts a silent `QueryRunCoordinator` turn reaches `failed` with a
+  liveness-worded reason within the configured window, and that the leftover process is
+  terminated. Both pass; full `Grimoire.IntegrationTests` suite re-run twice clean
+  (228/228) to confirm no regression — a pre-existing, unrelated cross-test flake in this
+  suite (a different single test fails intermittently across baseline runs with or
+  without this change, root-caused to shared static `ActivitySource`/`Meter` state under
+  parallel test execution — see T083 in `003-ingest-intake-webui/tasks.md` for the same
+  class of issue there) was confirmed pre-existing and out of scope for this task.
+- [X] T091 Document the FR-004 prompt max-length value in spec-layer artifacts (analyze
+  finding U1, `ambiguous`): spec.md, `data-model.md`, and
+  `contracts/query-conversation-api.md` all said only "reasonable maximum length" / "max
+  length" with no number; the actual value (8000 characters,
+  `QuerySubmissionValidator.PromptMaxLength`, mirrored in `QueryPromptForm.svelte`) existed
+  only in code. Updated all three spec-layer references to state "8000 characters"
+  explicitly, so the limit is traceable without reading code.
+- [ ] T092 Migrate Query's agent-judgment eval tests to feature 009's recorded-replay
+  pattern (analyze finding C1, `contradicts` — **blocks CI**): `.github/workflows/ci.yml`
+  now runs `Grimoire.AgentEvals` on every PR with a hard zero-skip gate
+  (`grep -Eq "Skipped:\s+0,"` else `exit 1`, feature 009's own SC-008). Query's
+  `QueryGroundingEvals`/`QueryFollowUpEvals`/`QueryReadOnlyDeclineEvals` (T047/T061/T070)
+  are still gated by the pre-009 `EvalFactAttribute` (skips without `GRIMOIRE_EVAL=1` +
+  live credentials) — confirmed reproducible: `dotnet test Grimoire.AgentEvals` currently
+  reports 4 Skipped, which fails this gate as written. Needs: (1) scenario definitions +
+  fixture wiring for the three Query eval scenarios in `Grimoire.EvalRunner`'s
+  Scenario/Capture/Replay pipeline, mirroring the 6 existing Ingest scenarios under
+  `data/evals/recordings/`; (2) a genuine live/credentialed capture run (via
+  `eval.yml`'s `workflow_dispatch` or the local `Grimoire.EvalRunner` capture command) to
+  produce real recordings — this cannot be fabricated, since `SyntheticRecordings.cs`'s own
+  doc comment establishes that synthetic data is never trusted scenario evidence for
+  agent-judgment claims; (3) re-point T047/T061/T070's tests at the replay path once
+  recordings exist. Left open pending a live-credentialed session to run the capture step.
+- [ ] T093 Reconcile Constitution Principle III's observability-test phase-placement
+  wording with actual project practice (analyze finding H1, constitution alignment):
+  the constitution states observability/instrumentation tests "belong in the final
+  polish phase of `tasks.md`" and "MUST each appear as a named task in the final phase,"
+  but this feature (like every prior feature: 001, 004, 006, 007, 009) implements and
+  tests observability incrementally per user-story phase, with the final phase instead
+  hosting a completeness-audit task (T080) that cross-references them. Since this is an
+  established, already-accepted cross-project convention rather than an 008-specific
+  deviation, the correct fix is a `/speckit-constitution` amendment (PATCH/MINOR)
+  explicitly sanctioning "implementation + test co-located with the triggering story
+  phase, verified by a named final-phase completeness-audit task" — not a tasks.md
+  rewrite here. Left open pending that amendment.

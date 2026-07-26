@@ -33,7 +33,7 @@ writes to the Query Run Artifact on terminal transition.
 | `turnId` | string (Hub-generated, e.g. `{date}-query-{guid}`) | Returned on submission accept |
 | `conversationId` | string | Echoes the client-supplied conversation id |
 | `position` | int | 1-based index within the conversation (client-assigned, echoed back) |
-| `prompt` | string | The Query Prompt (validated non-empty, within max length, FR-004) |
+| `prompt` | string | The Query Prompt (validated non-empty, ≤ 8000 characters, FR-004) |
 | `answer` | string | Accumulated from `answer_chunk` events; possibly partial |
 | `state` | `running` \| `completed` \| `interrupted` \| `failed` | Terminal states are final (FR-007) |
 | `failureReason` | string \| null | Set only when `state = failed` |
