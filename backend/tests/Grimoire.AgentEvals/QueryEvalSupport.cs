@@ -2,6 +2,7 @@ using Grimoire.AgentRuntime.Core;
 using Grimoire.AgentRuntime.Core.Adapters.Anthropic;
 using Grimoire.AgentRuntime.Guardrails;
 using Grimoire.AgentRuntime.Instructions;
+using Grimoire.EvalRunner.Providers;
 using Grimoire.QueryAgent;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -76,7 +77,7 @@ public sealed class QueryAgentEvalRunner
         policyResult.IsFirst(out var loadedPolicy);
 
         var taskId = $"eval-{runLabel}-{Guid.NewGuid():N}";
-        var anthropicModelClient = AgentEvalRunner.CreateProviderWiredAnthropicClient(configuration);
+        var anthropicModelClient = CreateProviderWiredAnthropicClient(configuration);
         var recordingModelClient = new RecordingModelClient(new TimeoutEnforcingModelClient(anthropicModelClient));
 
         var journal = new WriteJournal();
@@ -110,6 +111,43 @@ public sealed class QueryAgentEvalRunner
             EvalObservability.RecordSampleTimeout(
                 _logger, runLabel, EvalObservability.ProviderLabel(configuration.Kind), configuration.Model, timeoutEx.Timeout.TotalSeconds);
             throw;
+        }
+    }
+
+    /// <summary>
+    /// Constructs an <see cref="AnthropicModelClient"/> wired to the given resolved provider
+    /// (data-model.md#ProviderConfiguration). When affordable, the process env vars
+    /// <c>AnthropicModelClient</c>'s constructor reads are set from the resolved configuration
+    /// immediately before construction, then restored to their prior value immediately after:
+    /// the constructor reads them once, synchronously, and caches what it needs, so this shim
+    /// never needs to outlive the constructor call.
+    /// </summary>
+    private static AnthropicModelClient CreateProviderWiredAnthropicClient(ProviderConfiguration configuration)
+    {
+        if (configuration.Kind != ProviderKind.Affordable)
+        {
+            return new AnthropicModelClient();
+        }
+
+        var originalIngestBaseUrl = Environment.GetEnvironmentVariable("GRIMOIRE_INGEST_BASE_URL");
+        var originalIngestModel = Environment.GetEnvironmentVariable("GRIMOIRE_INGEST_MODEL");
+        var originalAnthropicToken = Environment.GetEnvironmentVariable("ANTHROPIC_AUTH_TOKEN");
+
+        Environment.SetEnvironmentVariable("GRIMOIRE_INGEST_BASE_URL", configuration.BaseUrl);
+        Environment.SetEnvironmentVariable("GRIMOIRE_INGEST_MODEL", configuration.Model);
+        Environment.SetEnvironmentVariable(
+            "ANTHROPIC_AUTH_TOKEN",
+            Environment.GetEnvironmentVariable("GRIMOIRE_EVAL_PROVIDER_API_KEY"));
+
+        try
+        {
+            return new AnthropicModelClient();
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable("GRIMOIRE_INGEST_BASE_URL", originalIngestBaseUrl);
+            Environment.SetEnvironmentVariable("GRIMOIRE_INGEST_MODEL", originalIngestModel);
+            Environment.SetEnvironmentVariable("ANTHROPIC_AUTH_TOKEN", originalAnthropicToken);
         }
     }
 

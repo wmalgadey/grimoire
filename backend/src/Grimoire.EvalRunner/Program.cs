@@ -8,8 +8,8 @@ using Grimoire.EvalRunner.Recording;
 using Grimoire.EvalRunner.Replay;
 using Grimoire.EvalRunner.Scenarios;
 using Grimoire.EvalRunner.Workspace;
-using Grimoire.IngestAgent.AgentCore;
-using Grimoire.IngestAgent.AgentCore.Adapters.Anthropic;
+using Grimoire.AgentRuntime.Core;
+using Grimoire.AgentRuntime.Core.Adapters.Anthropic;
 using Microsoft.Extensions.Logging;
 
 var (subcommand, options) = CliOptions.Parse(args);

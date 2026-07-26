@@ -1,4 +1,4 @@
-using Grimoire.IngestAgent.AgentCore;
+using Grimoire.AgentRuntime.Core;
 
 namespace Grimoire.EvalRunner.Providers;
 
@@ -25,9 +25,10 @@ public sealed class TimeoutEnforcingModelClient : IModelClient
         string systemPrompt,
         IReadOnlyList<ConversationMessage> conversation,
         IReadOnlyList<ToolDefinition> tools,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        Action<string>? onTextDelta = null)
     {
-        var innerTask = _inner.NextTurnAsync(systemPrompt, conversation, tools, cancellationToken);
+        var innerTask = _inner.NextTurnAsync(systemPrompt, conversation, tools, cancellationToken, onTextDelta);
         var timeoutTask = Task.Delay(_timeout, cancellationToken);
 
         var completed = await Task.WhenAny(innerTask, timeoutTask);

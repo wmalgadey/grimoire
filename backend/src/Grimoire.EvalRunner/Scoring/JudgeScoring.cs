@@ -1,4 +1,4 @@
-using Grimoire.IngestAgent.AgentCore;
+using Grimoire.AgentRuntime.Core;
 using Grimoire.IngestAgent.AgentCore.Adapters.Replay;
 
 namespace Grimoire.EvalRunner.Scoring;

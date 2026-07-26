@@ -1,5 +1,5 @@
 using System.Diagnostics;
-using Grimoire.IngestAgent.AgentCore;
+using Grimoire.AgentRuntime.Core;
 using Grimoire.IngestAgent.AgentCore.Adapters.Replay;
 using Grimoire.IntegrationTests.Fakes;
 

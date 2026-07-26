@@ -1,3 +1,5 @@
+using Grimoire.AgentRuntime.Core;
+
 namespace Grimoire.IngestAgent.AgentCore.Adapters.Replay;
 
 /// <summary>
@@ -43,7 +45,8 @@ public sealed class ReplayModelClient : IModelClient
         string systemPrompt,
         IReadOnlyList<ConversationMessage> conversation,
         IReadOnlyList<ToolDefinition> tools,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        Action<string>? onTextDelta = null)
     {
         var turnNumber = _nextTurnIndex + 1;
         if (_nextTurnIndex >= _sample.Turns.Count)

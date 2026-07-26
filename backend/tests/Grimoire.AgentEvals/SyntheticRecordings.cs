@@ -2,9 +2,9 @@ using Grimoire.EvalRunner.Recording;
 using Grimoire.EvalRunner.Scenarios;
 using Grimoire.EvalRunner.Scoring;
 using Grimoire.EvalRunner.Workspace;
-using Grimoire.IngestAgent.AgentCore;
+using Grimoire.AgentRuntime.Core;
+using Grimoire.AgentRuntime.Guardrails;
 using Grimoire.IngestAgent.AgentCore.Adapters.Replay;
-using Grimoire.IngestAgent.Guardrails;
 
 namespace Grimoire.AgentEvals;
 
@@ -79,7 +79,7 @@ public static class SyntheticRecordings
             Turn: 1,
             SystemPromptSha256: RecordingSerialization.Hash(systemPrompt),
             Conversation: [new RecordedMessage("user", RecordingSerialization.HashMessage(firstMessage))],
-            ToolNames: ToolRegistry.All.Select(t => t.Name).ToList(),
+            ToolNames: ToolRegistry.Default.Tools.Select(t => t.Name).ToList(),
             StopReason: "end_turn",
             ToolUses: [],
             AssistantText: "Synthetic replay-contract narrative.",

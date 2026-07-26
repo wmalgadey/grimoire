@@ -1,3 +1,5 @@
+using Grimoire.AgentRuntime.Core;
+
 namespace Grimoire.IngestAgent.AgentCore.Adapters.Replay;
 
 /// <summary>
@@ -25,9 +27,10 @@ public sealed class TurnCaptureModelClient : IModelClient
         string systemPrompt,
         IReadOnlyList<ConversationMessage> conversation,
         IReadOnlyList<ToolDefinition> tools,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        Action<string>? onTextDelta = null)
     {
-        var turn = await _inner.NextTurnAsync(systemPrompt, conversation, tools, cancellationToken);
+        var turn = await _inner.NextTurnAsync(systemPrompt, conversation, tools, cancellationToken, onTextDelta);
 
         _turns.Add(new RecordedTurn(
             Turn: _turns.Count + 1,
