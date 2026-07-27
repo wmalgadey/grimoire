@@ -9,7 +9,7 @@
 		createQueryLifecycleClient,
 		type QueryLifecycleClient
 	} from '$lib/services/queryLifecycleClient';
-	import { interruptQueryTurn, submitQueryTurn } from '$lib/services/querySubmissionApi';
+	import { getQueryTurn, interruptQueryTurn, submitQueryTurn } from '$lib/services/querySubmissionApi';
 	import type { ConnectionState, QueryTurn, QueryTurnStatus } from '$lib/types';
 
 	function newConversationId(): string {
@@ -71,12 +71,42 @@
 		}
 	}
 
+	// On reconnect, refresh the active turn's authoritative state via REST before resuming
+	// the stream (contracts/query-conversation-api.md ## Rules) — mirrors
+	// ingestLifecycleClient.ts's createBoardLifecycleStream's onReconnected → refresh().
+	async function refreshActiveTurn(turnId: string) {
+		try {
+			const authoritative = await getQueryTurn(turnId);
+			updateTurn(turnId, (turn) => ({
+				...turn,
+				answer: authoritative.answer,
+				state: authoritative.state,
+				failureReason: authoritative.failureReason
+			}));
+			if (authoritative.state !== 'running') {
+				activeTurnId = null;
+			}
+		} catch {
+			// Best-effort reconciliation; subsequent lifecycle events still apply normally.
+		}
+	}
+
 	function startNewConversation() {
 		conversationId = newConversationId();
 		turns = [];
 		activeTurnId = null;
 		lastAppliedSequenceByTurnId.clear();
 		seenTurnChangedKeys.clear();
+	}
+
+	// spec.md Edge Cases / Assumptions: an in-flight turn at reload time is treated as
+	// interrupted. `pagehide` fires reliably on reload/navigation/tab-close (unlike a
+	// SignalR disconnect, which also fires on a transient network blip the automatic-
+	// reconnect logic is meant to recover from — interrupting there would be wrong).
+	// `keepalive: true` lets the request complete even as the page is unloading.
+	function handlePageHide() {
+		if (!activeTurnId) return;
+		void interruptQueryTurn(activeTurnId, (input, init) => fetch(input, { ...init, keepalive: true }));
 	}
 
 	onMount(() => {
@@ -109,10 +139,19 @@
 			connectionState = state;
 		});
 
+		client.onReconnected(() => {
+			if (activeTurnId) {
+				void refreshActiveTurn(activeTurnId);
+			}
+		});
+
+		window.addEventListener('pagehide', handlePageHide);
+
 		void client.start();
 	});
 
 	onDestroy(() => {
+		window.removeEventListener('pagehide', handlePageHide);
 		void client?.stop();
 	});
 </script>
