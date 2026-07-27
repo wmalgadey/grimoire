@@ -37,6 +37,16 @@
 			submitting = false;
 		}
 	}
+
+	// Ctrl+Enter / Cmd+Enter submits — the standard convention for multi-line submit
+	// fields. A bare <textarea> doesn't submit on Enter the way an <input> does, so
+	// without this the only way to submit is clicking the button. Plain Enter is left
+	// alone and keeps inserting a newline.
+	function handleKeydown(event: KeyboardEvent) {
+		if (event.key !== 'Enter' || !(event.ctrlKey || event.metaKey)) return;
+		event.preventDefault();
+		(event.currentTarget as HTMLTextAreaElement).form?.requestSubmit();
+	}
 </script>
 
 <form class="flex flex-col gap-2" onsubmit={handleSubmit} data-testid="query-prompt-form">
@@ -50,6 +60,7 @@
 		bind:value={prompt}
 		maxlength={PROMPT_MAX_LENGTH}
 		disabled={disabled || submitting}
+		onkeydown={handleKeydown}
 		data-testid="query-prompt-input"></textarea>
 
 	{#if disabled}

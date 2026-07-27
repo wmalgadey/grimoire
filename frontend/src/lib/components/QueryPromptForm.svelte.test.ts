@@ -60,6 +60,48 @@ test('valid prompt calls onSubmit with the trimmed text and clears the input', a
 	await expect.element(screen.getByTestId('query-prompt-input')).toHaveValue('');
 });
 
+// T108 (Convergence) - a bare <textarea> doesn't submit on Enter the way an <input>
+// does, so a real user expected the standard Ctrl+Enter/Cmd+Enter multi-line-submit
+// convention; plain Enter must keep inserting a newline rather than submitting.
+test('Ctrl+Enter in the textarea submits the form', async () => {
+	const onSubmit = vi.fn().mockResolvedValue(undefined);
+	const screen = await render(QueryPromptForm, { onSubmit });
+
+	await screen.getByTestId('query-prompt-input').fill('What does ADR-004 decide?');
+	const textarea = screen.getByTestId('query-prompt-input').element() as HTMLTextAreaElement;
+	textarea.dispatchEvent(
+		new KeyboardEvent('keydown', { key: 'Enter', ctrlKey: true, bubbles: true, cancelable: true })
+	);
+
+	await expect.poll(() => onSubmit).toHaveBeenCalledWith('What does ADR-004 decide?');
+});
+
+test('Cmd+Enter in the textarea submits the form', async () => {
+	const onSubmit = vi.fn().mockResolvedValue(undefined);
+	const screen = await render(QueryPromptForm, { onSubmit });
+
+	await screen.getByTestId('query-prompt-input').fill('What does ADR-004 decide?');
+	const textarea = screen.getByTestId('query-prompt-input').element() as HTMLTextAreaElement;
+	textarea.dispatchEvent(
+		new KeyboardEvent('keydown', { key: 'Enter', metaKey: true, bubbles: true, cancelable: true })
+	);
+
+	await expect.poll(() => onSubmit).toHaveBeenCalledWith('What does ADR-004 decide?');
+});
+
+test('plain Enter in the textarea does not submit the form', async () => {
+	const onSubmit = vi.fn().mockResolvedValue(undefined);
+	const screen = await render(QueryPromptForm, { onSubmit });
+
+	await screen.getByTestId('query-prompt-input').fill('What does ADR-004 decide?');
+	const textarea = screen.getByTestId('query-prompt-input').element() as HTMLTextAreaElement;
+	textarea.dispatchEvent(
+		new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true })
+	);
+
+	expect(onSubmit).not.toHaveBeenCalled();
+});
+
 test('disabled prop disables the input and submit button, and shows the one-turn-at-a-time hint', async () => {
 	const onSubmit = vi.fn();
 	const screen = await render(QueryPromptForm, { onSubmit, disabled: true });
