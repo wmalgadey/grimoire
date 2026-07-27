@@ -14,11 +14,21 @@ export class QuerySubmissionApiError extends Error {
 	}
 }
 
+// spec.md Edge Cases / Assumptions: rejections beyond the concurrency limit or an
+// already-active conversation turn must show a clear, human-readable "busy" message —
+// not the raw snake_case machine reason code the Hub returns.
+const REASON_MESSAGES: Record<string, string> = {
+	query_concurrency_limit_reached: 'The wiki is busy right now — please try again in a moment.',
+	conversation_already_active: 'This conversation already has a question in progress.'
+};
+
 async function parseErrorMessage(response: Response): Promise<{ message: string; reason?: string }> {
 	try {
 		const body = await response.json();
 		if (typeof body?.message === 'string') return { message: body.message };
-		if (typeof body?.reason === 'string') return { message: body.reason, reason: body.reason };
+		if (typeof body?.reason === 'string') {
+			return { message: REASON_MESSAGES[body.reason] ?? body.reason, reason: body.reason };
+		}
 	} catch {
 		// fall through to a generic message below
 	}
