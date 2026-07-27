@@ -1,5 +1,6 @@
 using Grimoire.AgentRuntime.Core;
 using Grimoire.AgentRuntime.Core.Adapters.Anthropic;
+using Grimoire.AgentRuntime.Core.Adapters.Replay;
 using Grimoire.AgentRuntime.Guardrails;
 using Grimoire.AgentRuntime.Instructions;
 using Grimoire.AgentRuntime.RunEvents;
@@ -59,10 +60,7 @@ try
     runEvents.EmitStarted();
     runEvents.StartHeartbeat(TimeSpan.FromSeconds(options.HeartbeatSeconds));
 
-    var modelClient = new AnthropicModelClient(
-        loggerFactory.CreateLogger<AnthropicModelClient>(),
-        modelEnvVar: "GRIMOIRE_QUERY_MODEL",
-        baseUrlEnvVar: "GRIMOIRE_QUERY_BASE_URL");
+    var modelClient = CreateModelClient(loggerFactory);
 
     var journal = new WriteJournal();
     var executor = new GuardedToolExecutor(
@@ -145,6 +143,38 @@ static List<ConversationMessage> BuildInitialConversation(QueryConversationInput
 
     conversation.Add(new ConversationMessage("user", input.Prompt));
     return conversation;
+}
+
+// Composition-root model-adapter selection (ADR-012, T095 of 008-query-agent): mirrors
+// Grimoire.IngestAgent/Program.cs's CreateModelClient — GRIMOIRE_MODEL_REPLAY_PATH serves
+// a recording with no credential read; GRIMOIRE_MODEL_CAPTURE_PATH wraps the live
+// adapter in the turn-capture decorator; both set is a fail-fast configuration error;
+// neither preserves production behavior unchanged (still reads GRIMOIRE_QUERY_MODEL/
+// GRIMOIRE_QUERY_BASE_URL, independent of Ingest's env vars, per ADR-004).
+static IModelClient CreateModelClient(ILoggerFactory loggerFactory)
+{
+    var replayPath = Environment.GetEnvironmentVariable("GRIMOIRE_MODEL_REPLAY_PATH");
+    var capturePath = Environment.GetEnvironmentVariable("GRIMOIRE_MODEL_CAPTURE_PATH");
+
+    if (!string.IsNullOrWhiteSpace(replayPath) && !string.IsNullOrWhiteSpace(capturePath))
+    {
+        throw new InvalidOperationException(
+            "Both GRIMOIRE_MODEL_REPLAY_PATH and GRIMOIRE_MODEL_CAPTURE_PATH are set. " +
+            "Configure at most one of replay/capture mode (ADR-012); production leaves both unset.");
+    }
+
+    if (!string.IsNullOrWhiteSpace(replayPath))
+    {
+        return new ReplayModelClient(replayPath);
+    }
+
+    var liveClient = new AnthropicModelClient(
+        loggerFactory.CreateLogger<AnthropicModelClient>(),
+        modelEnvVar: "GRIMOIRE_QUERY_MODEL",
+        baseUrlEnvVar: "GRIMOIRE_QUERY_BASE_URL");
+    return string.IsNullOrWhiteSpace(capturePath)
+        ? liveClient
+        : new TurnCaptureModelClient(liveClient, capturePath);
 }
 
 static string SanitizeErrorText(string message)

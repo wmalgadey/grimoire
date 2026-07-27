@@ -1,6 +1,6 @@
 using Grimoire.AgentRuntime.Core;
 
-namespace Grimoire.IngestAgent.AgentCore.Adapters.Replay;
+namespace Grimoire.AgentRuntime.Core.Adapters.Replay;
 
 /// <summary>
 /// Thrown when the conversation the harness conducts diverges from the recorded

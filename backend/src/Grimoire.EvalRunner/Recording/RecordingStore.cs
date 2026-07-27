@@ -1,6 +1,6 @@
 using System.Security.Cryptography;
 using System.Text.Json;
-using Grimoire.IngestAgent.AgentCore.Adapters.Replay;
+using Grimoire.AgentRuntime.Core.Adapters.Replay;
 
 namespace Grimoire.EvalRunner.Recording;
 

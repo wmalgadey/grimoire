@@ -4,7 +4,7 @@ using Grimoire.EvalRunner.Scoring;
 using Grimoire.EvalRunner.Workspace;
 using Grimoire.AgentRuntime.Core;
 using Grimoire.AgentRuntime.Guardrails;
-using Grimoire.IngestAgent.AgentCore.Adapters.Replay;
+using Grimoire.AgentRuntime.Core.Adapters.Replay;
 
 namespace Grimoire.AgentEvals;
 

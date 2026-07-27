@@ -1,6 +1,6 @@
 using System.Security.Cryptography;
 using System.Text;
-using Grimoire.IngestAgent.AgentCore.Adapters.Replay;
+using Grimoire.AgentRuntime.Core.Adapters.Replay;
 
 namespace Grimoire.EvalRunner.Recording;
 
@@ -21,7 +21,7 @@ public static class Fingerprints
 
     public static IReadOnlyDictionary<string, string> Compute(
         string systemPromptPath,
-        string defaultUserPromptPath,
+        string? defaultUserPromptPath,
         string policyPath,
         string fixtureRoot,
         string scenarioDefinitionSerialization,
@@ -30,11 +30,18 @@ public static class Fingerprints
         var fingerprints = new Dictionary<string, string>(StringComparer.Ordinal)
         {
             [SystemPromptKey] = HashFile(systemPromptPath),
-            [DefaultUserPromptKey] = HashFile(defaultUserPromptPath),
             [PolicyKey] = HashFile(policyPath),
             [FixtureKey] = HashDirectory(fixtureRoot),
             [ScenarioDefinitionKey] = RecordingSerialization.Hash(scenarioDefinitionSerialization),
         };
+
+        // Query scenarios have no default-user-prompt document at all (research.md R1 of
+        // 008-query-agent, the user's Query Prompt is always supplied per turn) — omit
+        // the fingerprint entirely rather than hashing a path that doesn't exist.
+        if (defaultUserPromptPath is not null)
+        {
+            fingerprints[DefaultUserPromptKey] = HashFile(defaultUserPromptPath);
+        }
 
         if (judgePromptTemplate is not null)
         {

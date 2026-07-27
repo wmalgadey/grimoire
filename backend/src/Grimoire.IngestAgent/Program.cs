@@ -5,7 +5,7 @@ using Grimoire.AgentRuntime.Instructions;
 using Grimoire.AgentRuntime.RunEvents;
 using Grimoire.IngestAgent;
 using Grimoire.IngestAgent.AgentCore;
-using Grimoire.IngestAgent.AgentCore.Adapters.Replay;
+using Grimoire.AgentRuntime.Core.Adapters.Replay;
 using Grimoire.IngestAgent.IngestLog;
 using Grimoire.IngestAgent.Source;
 using Grimoire.IngestAgent.TaskArtifact;

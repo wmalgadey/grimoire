@@ -22,15 +22,16 @@ public class GuardedWriteBoundaryRuleTests
     ];
 
     // Namespaces permitted to use filesystem-write APIs across the scanned assemblies.
-    // Adapters.Replay (ADR-012) writes only the captured turn stream to the eval runner's
-    // GRIMOIRE_MODEL_CAPTURE_PATH — never wiki content; wiki writes remain confined to the
-    // guarded tool layer above.
+    // Adapters.Replay (ADR-012, relocated to Grimoire.AgentRuntime by T094, 008-query-agent,
+    // so Grimoire.QueryAgent's own composition root can reuse it) writes only the captured
+    // turn stream to the eval runner's GRIMOIRE_MODEL_CAPTURE_PATH — never wiki content;
+    // wiki writes remain confined to the guarded tool layer above.
     private static readonly HashSet<string> _allowedNamespacePrefixes =
     [
         "Grimoire.AgentRuntime.Guardrails",
         "Grimoire.IngestAgent.TaskArtifact",
         "Grimoire.IngestAgent.IngestLog",
-        "Grimoire.IngestAgent.AgentCore.Adapters.Replay",
+        "Grimoire.AgentRuntime.Core.Adapters.Replay",
     ];
 
     // Method name substrings that indicate filesystem-write operations.

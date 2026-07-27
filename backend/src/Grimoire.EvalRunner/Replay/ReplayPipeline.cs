@@ -184,7 +184,7 @@ public sealed class ReplayPipeline
                     : $"The agent produced no task artifact (exit {run.ExitCode}): {Truncate(run.StdErr)}"));
         }
 
-        var recordedSample = Grimoire.IngestAgent.AgentCore.Adapters.Replay.RecordingSerialization.Load(recordingPath);
+        var recordedSample = Grimoire.AgentRuntime.Core.Adapters.Replay.RecordingSerialization.Load(recordingPath);
         var judgeVerdict = recordedSample.JudgeVerdicts is { Count: > 0 }
             ? recordedSample.JudgeVerdicts[0].Verdict
             : null;

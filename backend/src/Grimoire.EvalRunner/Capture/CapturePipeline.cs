@@ -4,7 +4,7 @@ using Grimoire.EvalRunner.Scenarios;
 using Grimoire.EvalRunner.Scoring;
 using Grimoire.EvalRunner.Workspace;
 using Grimoire.AgentRuntime.Core;
-using Grimoire.IngestAgent.AgentCore.Adapters.Replay;
+using Grimoire.AgentRuntime.Core.Adapters.Replay;
 using Grimoire.IngestAgent.TaskArtifact;
 using Microsoft.Extensions.Logging;
 

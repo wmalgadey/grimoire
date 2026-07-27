@@ -4,7 +4,7 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using Grimoire.AgentRuntime.Core;
 
-namespace Grimoire.IngestAgent.AgentCore.Adapters.Replay;
+namespace Grimoire.AgentRuntime.Core.Adapters.Replay;
 
 /// <summary>
 /// One conversation message of a recorded model request, stored as a content hash

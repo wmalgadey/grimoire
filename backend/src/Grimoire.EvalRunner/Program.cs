@@ -27,11 +27,15 @@ var logger = loggerFactory.CreateLogger("Grimoire.EvalRunner");
 var paths = EvalPaths.Discover();
 var store = new RecordingStore(options.RecordingsRoot ?? paths.DefaultRecordingsRoot);
 var invoker = AgentProcessInvoker.ForRepo(paths);
+var queryInvoker = QueryAgentProcessInvoker.ForRepo(paths);
 
 var scenarios = ResolveScenarios(options.Scenarios);
-if (scenarios.Count == 0)
+var queryScenarios = ResolveQueryScenarios(options.Scenarios);
+if (scenarios.Count == 0 && queryScenarios.Count == 0)
 {
-    Console.Error.WriteLine($"No matching scenarios. Known: {string.Join(", ", ScenarioDefinitions.All.Select(s => s.Id))}");
+    Console.Error.WriteLine(
+        $"No matching scenarios. Known: {string.Join(", ", ScenarioDefinitions.All.Select(s => s.Id)
+            .Concat(QueryScenarioDefinitions.All.Select(s => s.Id)))}");
     return 2;
 }
 
@@ -46,11 +50,29 @@ switch (subcommand)
                 results.Add(await pipeline.RunScenarioAsync(scenario, CancellationToken.None));
             }
 
-            WriteSummary(options.SummaryPath, Summary.ForReplay(results));
-
-            if (results.Any(r => r.TrustStatus != Grimoire.EvalRunner.Recording.TrustStatus.Trusted))
+            var queryPipeline = new QueryReplayPipeline(store, paths, queryInvoker, logger);
+            var queryResults = new List<QueryScenarioReplayResult>();
+            foreach (var scenario in queryScenarios)
             {
-                foreach (var result in results.Where(r => r.TrustStatus != Grimoire.EvalRunner.Recording.TrustStatus.Trusted))
+                queryResults.Add(await queryPipeline.RunScenarioAsync(scenario, CancellationToken.None));
+            }
+
+            WriteSummary(options.SummaryPath, Summary.ForReplay(results) + Summary.ForQueryReplay(queryResults));
+
+            var untrusted = results.Where(r => r.TrustStatus != Grimoire.EvalRunner.Recording.TrustStatus.Trusted).ToList();
+            var queryUntrusted = queryResults.Where(r => r.TrustStatus != Grimoire.EvalRunner.Recording.TrustStatus.Trusted).ToList();
+            if (untrusted.Count > 0 || queryUntrusted.Count > 0)
+            {
+                foreach (var result in untrusted)
+                {
+                    Console.Error.WriteLine($"{result.ScenarioId}: {result.TrustStatus} — {result.Detail}");
+                    foreach (var sample in result.Samples.Where(s => s.TrustStatus != Grimoire.EvalRunner.Recording.TrustStatus.Trusted))
+                    {
+                        Console.Error.WriteLine($"  sample {sample.Sample}: {sample.TrustStatus} — {sample.Detail}");
+                    }
+                }
+
+                foreach (var result in queryUntrusted)
                 {
                     Console.Error.WriteLine($"{result.ScenarioId}: {result.TrustStatus} — {result.Detail}");
                     foreach (var sample in result.Samples.Where(s => s.TrustStatus != Grimoire.EvalRunner.Recording.TrustStatus.Trusted))
@@ -62,12 +84,14 @@ switch (subcommand)
                 return 3;
             }
 
-            return results.All(r => r.IsTrustedPass) ? 0 : 1;
+            return results.All(r => r.IsTrustedPass) && queryResults.All(r => r.IsTrustedPass) ? 0 : 1;
         }
 
     case "status":
         {
-            var reports = scenarios.Select(s => StalenessCheck.Evaluate(s, store, paths)).ToList();
+            var reports = scenarios.Select(s => StalenessCheck.Evaluate(s, store, paths))
+                .Concat(queryScenarios.Select(s => Grimoire.EvalRunner.Recording.QueryStalenessCheck.Evaluate(s, store, paths)))
+                .ToList();
             foreach (var report in reports.Where(r => r.Status == Grimoire.EvalRunner.Recording.TrustStatus.Stale))
             {
                 EvalRunnerTelemetry.RecordRecordingStale(logger, report.ScenarioId, report.ChangedFingerprints, store.ScenarioDirectory(report.ScenarioId));
@@ -91,11 +115,18 @@ switch (subcommand)
             var sampleCount = options.Samples ?? ScenarioDefinitions.ResolveSampleCount();
             var pipeline = new CapturePipeline(store, paths, invoker, logger, CreateJudgeClient);
             var results = new List<CaptureScenarioResult>();
+            var queryPipeline = new QueryCapturePipeline(store, paths, queryInvoker, logger);
+            var queryResults = new List<QueryCaptureScenarioResult>();
             try
             {
                 foreach (var scenario in scenarios)
                 {
                     results.Add(await pipeline.RunScenarioAsync(scenario, gate.Configuration, sampleCount, CancellationToken.None));
+                }
+
+                foreach (var scenario in queryScenarios)
+                {
+                    queryResults.Add(await queryPipeline.RunScenarioAsync(scenario, gate.Configuration, sampleCount, CancellationToken.None));
                 }
             }
             catch (Exception ex)
@@ -104,11 +135,18 @@ switch (subcommand)
                 return 2;
             }
 
-            WriteSummary(options.SummaryPath, Summary.ForCapture(results));
+            WriteSummary(options.SummaryPath, Summary.ForCapture(results) + Summary.ForQueryCapture(queryResults));
 
-            if (results.Any(r => !r.Stored))
+            var notStored = results.Where(r => !r.Stored).ToList();
+            var queryNotStored = queryResults.Where(r => !r.Stored).ToList();
+            if (notStored.Count > 0 || queryNotStored.Count > 0)
             {
-                foreach (var result in results.Where(r => !r.Stored))
+                foreach (var result in notStored)
+                {
+                    Console.Error.WriteLine($"{result.ScenarioId}: {result.Detail}");
+                }
+
+                foreach (var result in queryNotStored)
                 {
                     Console.Error.WriteLine($"{result.ScenarioId}: {result.Detail}");
                 }
@@ -116,7 +154,7 @@ switch (subcommand)
                 return 2;
             }
 
-            return results.All(r => r.ThresholdMet && r.NoOutOfScopeGuaranteeHeld) ? 0 : 1;
+            return results.All(r => r.ThresholdMet && r.NoOutOfScopeGuaranteeHeld) && queryResults.All(r => r.ThresholdMet) ? 0 : 1;
         }
 
     default:
@@ -128,6 +166,11 @@ static IReadOnlyList<ScenarioDefinition> ResolveScenarios(IReadOnlyList<string> 
     => requested.Count == 0
         ? ScenarioDefinitions.All
         : requested.Select(ScenarioDefinitions.Find).Where(s => s is not null).Cast<ScenarioDefinition>().ToList();
+
+static IReadOnlyList<QueryScenarioDefinition> ResolveQueryScenarios(IReadOnlyList<string> requested)
+    => requested.Count == 0
+        ? QueryScenarioDefinitions.All
+        : requested.Select(QueryScenarioDefinitions.Find).Where(s => s is not null).Cast<QueryScenarioDefinition>().ToList();
 
 static void WriteSummary(string? path, string summary)
 {

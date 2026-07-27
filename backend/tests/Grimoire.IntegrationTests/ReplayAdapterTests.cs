@@ -1,6 +1,6 @@
 using System.Diagnostics;
 using Grimoire.AgentRuntime.Core;
-using Grimoire.IngestAgent.AgentCore.Adapters.Replay;
+using Grimoire.AgentRuntime.Core.Adapters.Replay;
 using Grimoire.IntegrationTests.Fakes;
 
 namespace Grimoire.IntegrationTests;

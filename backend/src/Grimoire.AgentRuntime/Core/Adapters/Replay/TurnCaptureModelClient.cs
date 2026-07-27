@@ -1,6 +1,6 @@
 using Grimoire.AgentRuntime.Core;
 
-namespace Grimoire.IngestAgent.AgentCore.Adapters.Replay;
+namespace Grimoire.AgentRuntime.Core.Adapters.Replay;
 
 /// <summary>
 /// Decorator over the live <see cref="IModelClient"/> adapter (ADR-012): forwards every

@@ -972,3 +972,119 @@ onto `main`, which merged feature 009's recorded-replay eval architecture and CI
   phase, verified by a named final-phase completeness-audit task" — not a tasks.md
   rewrite here. Done: constitution amended to v1.5.0 (`/speckit-constitution`),
   propagated to `tasks-template.md`'s Phase 0 comment and Phase N template.
+
+## Phase 11: Convergence
+
+**Purpose**: T092 (Phase 9) named the eval-recorded-replay migration as a single, open
+gap. Codebase inspection breaks it into the concrete sub-gaps below, in dependency
+order, so `/speckit-implement` can execute them as discrete, independently-verifiable
+steps rather than one monolithic task.
+
+- [X] T094 Relocate `ReplayModelClient`, `TurnCaptureModelClient`, and `RecordingSchema`/
+  `RecordingSerialization` from `Grimoire.IngestAgent/AgentCore/Adapters/Replay/` to
+  `Grimoire.AgentRuntime/Core/Adapters/Replay/` per Constitution I (hexagonal
+  containment) (`contradicts`): all three depend only on `Grimoire.AgentRuntime.Core`'s
+  `IModelClient`/`ConversationMessage`/`ModelTurn` — nothing Ingest-specific — but are
+  physically confined to `Grimoire.IngestAgent`'s namespace, which structurally prevents
+  `Grimoire.QueryAgent` from reusing them for its own capture/replay composition root.
+  Update the namespace to `Grimoire.AgentRuntime.Core.Adapters.Replay`, fix
+  `Grimoire.IngestAgent/Program.cs`'s using directive, and update the two ArchTests that
+  hardcode the old namespace (`EvalRunnerReplayBoundaryTests.cs`'s C6a/C6b rules) plus
+  any other referencing file (`GuardedWriteBoundaryRuleTests.cs`,
+  `Grimoire.EvalRunner/Recording/Fingerprints.cs`, `RecordingStore.cs`,
+  `Grimoire.EvalRunner/Scoring/JudgeScoring.cs`, `Grimoire.EvalRunner/Replay/ReplayPipeline.cs`,
+  `Grimoire.EvalRunner/Capture/CapturePipeline.cs`, `Grimoire.AgentEvals/CaptureHygieneTests.cs`,
+  `Grimoire.AgentEvals/SyntheticRecordings.cs`, `Grimoire.IntegrationTests/ReplayAdapterTests.cs`).
+  Done: moved via `git mv`, updated all `using`/FQN references, split
+  `EvalRunnerReplayBoundaryTests.cs`'s C6b rule into three (AgentRuntime/IngestAgent/
+  QueryAgent, since QueryAgent's own composition root now also needs the exemption),
+  and fixed a latent stale-string bug found along the way (C7's adapter-type check still
+  referenced the pre-ADR-011 `Grimoire.IngestAgent.AgentCore.Adapters.Anthropic.
+  AnthropicModelClient` FQN, making that check vacuous). 34/34 ArchTests pass (was 32).
+- [X] T095 Add replay/capture composition-root selection to `Grimoire.QueryAgent/Program.cs`
+  per ADR-012 (`missing`): Program.cs currently constructs `AnthropicModelClient` directly
+  (no `GRIMOIRE_MODEL_REPLAY_PATH`/`GRIMOIRE_MODEL_CAPTURE_PATH` branch at all), unlike
+  `Grimoire.IngestAgent/Program.cs`'s `CreateModelClient()`. Add the equivalent local
+  function (same fail-fast-if-both-set behavior), using T094's relocated
+  `ReplayModelClient`/`TurnCaptureModelClient`. Done: added `CreateModelClient(loggerFactory)`
+  verbatim-mirrored from Ingest's, still reading `GRIMOIRE_QUERY_MODEL`/
+  `GRIMOIRE_QUERY_BASE_URL` (ADR-004 independence preserved).
+- [X] T096 Add `QueryScenarioDefinition` (or equivalent) to `Grimoire.EvalRunner/Scenarios/`
+  covering the 4 Query eval scenarios per T092 (`missing`): unlike Ingest's
+  `ScenarioDefinition` (single pasted source + one turn), Query scenarios are
+  conversational — model as an ordered sequence of turn prompts, feeding each prior
+  turn's prompt/answer forward as context, per `QueryConversationInput`'s shape.
+  Concrete definitions, ported from the current `[EvalFact]` tests' fixed inputs/
+  thresholds unchanged: `query-grounding-covered` (SC-007, single turn, 90%),
+  `query-grounding-uncovered` (SC-008, single turn, 90%), `query-follow-up` (SC-009, two
+  fixed turns, 90%), `query-read-only-decline` (SC-010, single turn, round-robin over 2
+  fixed prompts by sample index, 90%). All four use the existing
+  `Fixtures/query-grounding/wiki` fixture and are deterministically (substring) scored,
+  not judge-scored. Done: added `QueryScenarioDefinition`/`QueryScenarioDefinitions` plus
+  `QuerySampleNumbering` (the shared encode/decode formula multi-turn samples need — see
+  T099), and extended `EvalPaths`/`Fingerprints.Compute` with Query's own instruction
+  paths and a nullable default-user-prompt path (Query has none, R1).
+- [X] T097 Add a Query-shaped agent process invoker to `Grimoire.EvalRunner/Workspace/`
+  per T092 (`missing`): unlike `AgentProcessInvoker` (Ingest's CLI contract, pasted-text
+  stdin, `TaskArtifactDocument` read from disk for the outcome), Query has no artifact —
+  its CLI takes `--turn-id`/`--wiki-root`/`--pages-dir`/`--index-path`/`--log-path`/
+  `--system-prompt-path`/`--policy-path`, stdin is a JSON `{prompt, priorTurns}` payload
+  (mirrors `AgentProcessHost.StartQueryProcess`/`QueryConversationInput`), and the answer
+  plus denied actions must be read from the NDJSON `completed` event's `summary`/
+  `deniedActions` fields on stdout (`RunEventEmitter.EmitCompleted`) — there is nothing
+  else to read the outcome from (R3, no Hub-written artifact in this harness context).
+  Same replay/capture env-var contract as `AgentProcessInvoker` (T094/T095). Done: added
+  `QueryAgentProcessInvoker`, also capturing the `reason` field (a `ReplayMismatchException`
+  surfaces there via Program.cs's catch-all, not `summary`) so replay-mismatch detection
+  works correctly.
+- [X] T098 Add Query-shaped deterministic scorers per T092 (`missing`): port the substring
+  checks currently inline in `QueryGroundingEvals`/`QueryFollowUpEvals`/
+  `QueryReadOnlyDeclineEvals` (e.g. SC-007's "mentions child-process scoping AND cites
+  the source page", SC-010's "declines AND doesn't claim to have written") into a
+  `QuerySampleRunData`/scorer pair analogous to `DeterministicScorers`/`SampleRunData`,
+  keyed by the new scenario IDs from T096. Done: added `QueryDeterministicScorers`,
+  checks ported verbatim.
+- [X] T099 Add `QueryCapturePipeline`/`QueryReplayPipeline` to `Grimoire.EvalRunner` per
+  T092 (`missing`): wire T096–T098 together, mirroring `CapturePipeline`/`ReplayPipeline`'s
+  per-sample workspace/telemetry/staleness-fingerprint/wholesale-atomic-store structure,
+  adapted for a turn sequence per sample instead of one Ingest run. Done: since production
+  spawns one Query agent process PER conversation turn (not one process for a whole
+  conversation), each turn of a logical sample gets its own recording file, addressed via
+  `QuerySampleNumbering.Encode(sampleIndex, turnPosition)` — this fits entirely inside
+  the existing `RecordedSample`/manifest schema with zero format changes (single-turn
+  scenarios just use turnPosition=1). Added `QueryStalenessCheck` (mirrors
+  `StalenessCheck` for `QueryScenarioDefinition`) and wired both pipelines into
+  `Grimoire.EvalRunner/Program.cs`'s capture/replay/status subcommands (`ForQueryReplay`/
+  `ForQueryCapture` added to `Summary`) so `--scenario query-*` (or no filter) works from
+  the CLI, needed for T101.
+- [X] T100 Replace the `[EvalFact]`-gated Query eval tests with replay-tier tests per
+  SC-008 (feature 009) (`contradicts` — **blocks CI**): add
+  `QueryReplayEvalTests.cs` (plain `[Fact]`s, one per T096 scenario, asserting
+  `TrustStatus == Trusted` and `ThresholdMet`, mirroring `ReplayEvalTests.cs`'s
+  `AssertScenarioAsync` pattern) and delete `QueryGroundingEvals.cs`,
+  `QueryFollowUpEvals.cs`, `QueryReadOnlyDeclineEvals.cs`, and `QueryEvalSupport.cs`
+  (superseded — their live-run logic moves into T097/T098). These three files are the
+  direct cause of `Grimoire.AgentEvals`'s 4 Skipped tests failing CI's
+  `grep -Eq "Skipped:\s+0,"` gate. Done: added `QueryReplayEvalTests.cs`, deleted the
+  four superseded files (the fourth, `RecordingModelClient.cs`, was only ever referenced
+  by the now-deleted `QueryEvalSupport.cs` — dead code). Confirmed the new tests
+  correctly report **Failed** (not Skipped) with an actionable "no recording, capture
+  with: ..." message pending T101 — `dotnet test Grimoire.AgentEvals` now reports
+  `Skipped: 0` (was 4); full backend suite re-run clean (34/34 ArchTests, 14/14
+  Domain.UnitTests, 228/228 IntegrationTests, 40/44 AgentEvals — the 4 failures are
+  exactly T101's pending live capture, not a regression).
+- [ ] T101 Run a genuine live-credentialed capture for the 4 scenarios from T096
+  (`missing` — cannot be fabricated): via `Grimoire.EvalRunner`'s capture command against
+  a real Anthropic credential (`data/.env`, same class of action as T083 — requires
+  explicit user go-ahead to spend real API budget), producing real
+  `data/evals/recordings/query-grounding-covered/`,
+  `data/evals/recordings/query-grounding-uncovered/`,
+  `data/evals/recordings/query-follow-up/`, and
+  `data/evals/recordings/query-read-only-decline/` recording sets (manifest + samples),
+  committed to the repo per the existing 6-scenario pattern. Per
+  `SyntheticRecordings.cs`'s own doc comment, synthetic data is never trusted evidence
+  for an agent-judgment claim — this step cannot be skipped or faked.
+- [ ] T102 Final verification (`missing`): `dotnet test backend/tests/Grimoire.AgentEvals
+  --configuration Release --no-build` reports `Skipped: 0` in the standard run (no
+  `GRIMOIRE_EVAL` set), confirming CI's replay-eval gate (`.github/workflows/ci.yml`
+  "Run replay agent evals") passes end-to-end.

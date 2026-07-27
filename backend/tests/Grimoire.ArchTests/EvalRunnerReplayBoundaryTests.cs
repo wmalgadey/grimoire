@@ -5,15 +5,21 @@ namespace Grimoire.ArchTests;
 
 /// <summary>
 /// Structural boundary rules for ADR-012 (feature 009-agent-eval-replay): the
-/// recorded-replay adapters stay confined to their ADR-010-style adapter namespace,
-/// and the standalone eval runner can reach the model only through the spawned agent
+/// recorded-replay adapters stay confined to their ADR-011-style adapter namespace
+/// (relocated from Grimoire.IngestAgent to the shared Grimoire.AgentRuntime by T094,
+/// 008-query-agent, so Grimoire.QueryAgent's own composition root can reuse them), and
+/// the standalone eval runner can reach the model only through the spawned agent
 /// process or the <c>IModelClient</c> port — never via an LLM SDK or a concrete
 /// adapter type. Each rule was proven live with a Red/Green probe when introduced
 /// (temporary violating code, test observed failing, code deleted).
 /// </summary>
 public class EvalRunnerReplayBoundaryTests
 {
+    // Loaded by name (not typeof) so these rules compile regardless of which types each
+    // assembly currently declares.
+    private static Assembly AgentRuntimeAssembly => Assembly.Load("Grimoire.AgentRuntime");
     private static Assembly IngestAgentAssembly => typeof(Grimoire.IngestAgent.AgentCliOptions).Assembly;
+    private static Assembly QueryAgentAssembly => typeof(Grimoire.QueryAgent.QueryCliOptions).Assembly;
     private static Assembly EvalRunnerAssembly => typeof(Grimoire.EvalRunner.EvalRunnerAssemblyMarker).Assembly;
 
     // ---- C6a: the Replay adapter namespace references no LLM SDK package ----
@@ -21,39 +27,76 @@ public class EvalRunnerReplayBoundaryTests
     [Fact]
     public void ReplayAdapterNamespace_MustNotDependOn_AnthropicSdk()
     {
-        var result = Types.InAssembly(IngestAgentAssembly)
-            .That().ResideInNamespaceStartingWith("Grimoire.IngestAgent.AgentCore.Adapters.Replay")
+        var result = Types.InAssembly(AgentRuntimeAssembly)
+            .That().ResideInNamespaceStartingWith("Grimoire.AgentRuntime.Core.Adapters.Replay")
             .ShouldNot().HaveDependencyOn("Anthropic")
             .GetResult();
 
         Assert.True(result.IsSuccessful,
-            "C6 (ADR-012): Grimoire.IngestAgent.AgentCore.Adapters.Replay must not reference " +
+            "C6 (ADR-012): Grimoire.AgentRuntime.Core.Adapters.Replay must not reference " +
             "the Anthropic SDK — replay is a pure port implementation. " +
             "Violations: " + string.Join(", ", result.FailingTypeNames ?? []));
     }
 
     // ---- C6b: no namespace outside an .Adapters. segment references the concrete
-    // replay adapter types (C5 extension to the new types; composition root exempt
-    // by construction — Program.cs compiles into the global namespace, outside the
-    // "Grimoire.IngestAgent" prefix filter) ----
+    // replay adapter types (composition roots exempt by construction — each agent's
+    // Program.cs compiles into the global namespace, outside these prefix filters) ----
 
     [Fact]
-    public void AgentOrchestration_MustNotReferenceConcreteReplayAdapters()
+    public void AgentRuntimeCore_MustNotReferenceConcreteReplayAdapters_OutsideAdaptersNamespace()
+    {
+        var result = Types.InAssembly(AgentRuntimeAssembly)
+            .That().ResideInNamespaceStartingWith("Grimoire.AgentRuntime")
+            .And().DoNotResideInNamespaceContaining(".Adapters.")
+            .Should().NotHaveDependencyOnAny(
+            [
+                "Grimoire.AgentRuntime.Core.Adapters.Replay.ReplayModelClient",
+                "Grimoire.AgentRuntime.Core.Adapters.Replay.TurnCaptureModelClient",
+            ])
+            .GetResult();
+
+        Assert.True(result.IsSuccessful,
+            "C6 (ADR-012): Grimoire.AgentRuntime namespaces outside an .Adapters. segment must not " +
+            "reference the concrete ReplayModelClient/TurnCaptureModelClient. " +
+            "Violations: " + string.Join(", ", result.FailingTypeNames ?? []));
+    }
+
+    [Fact]
+    public void IngestAgentOrchestration_MustNotReferenceConcreteReplayAdapters()
     {
         var result = Types.InAssembly(IngestAgentAssembly)
             .That().ResideInNamespaceStartingWith("Grimoire.IngestAgent")
             .And().DoNotResideInNamespaceContaining(".Adapters.")
             .Should().NotHaveDependencyOnAny(
             [
-                "Grimoire.IngestAgent.AgentCore.Adapters.Replay.ReplayModelClient",
-                "Grimoire.IngestAgent.AgentCore.Adapters.Replay.TurnCaptureModelClient",
+                "Grimoire.AgentRuntime.Core.Adapters.Replay.ReplayModelClient",
+                "Grimoire.AgentRuntime.Core.Adapters.Replay.TurnCaptureModelClient",
             ])
             .GetResult();
 
         Assert.True(result.IsSuccessful,
-            "C6 (ADR-012): namespaces outside an .Adapters. segment must not reference the " +
-            "concrete ReplayModelClient/TurnCaptureModelClient (composition root exempt). " +
-            "Violations: " + string.Join(", ", result.FailingTypeNames ?? []));
+            "C6 (ADR-012): Grimoire.IngestAgent namespaces outside an .Adapters. segment must not " +
+            "reference the concrete ReplayModelClient/TurnCaptureModelClient (composition root " +
+            "exempt). Violations: " + string.Join(", ", result.FailingTypeNames ?? []));
+    }
+
+    [Fact]
+    public void QueryAgentOrchestration_MustNotReferenceConcreteReplayAdapters()
+    {
+        var result = Types.InAssembly(QueryAgentAssembly)
+            .That().ResideInNamespaceStartingWith("Grimoire.QueryAgent")
+            .And().DoNotResideInNamespaceContaining(".Adapters.")
+            .Should().NotHaveDependencyOnAny(
+            [
+                "Grimoire.AgentRuntime.Core.Adapters.Replay.ReplayModelClient",
+                "Grimoire.AgentRuntime.Core.Adapters.Replay.TurnCaptureModelClient",
+            ])
+            .GetResult();
+
+        Assert.True(result.IsSuccessful,
+            "C6 (ADR-012, T095): Grimoire.QueryAgent namespaces outside an .Adapters. segment must " +
+            "not reference the concrete ReplayModelClient/TurnCaptureModelClient (composition root " +
+            "exempt). Violations: " + string.Join(", ", result.FailingTypeNames ?? []));
     }
 
     // ---- C7: the eval runner references no LLM SDK and no concrete adapter type ----
@@ -81,9 +124,9 @@ public class EvalRunnerReplayBoundaryTests
             .That().ResideInNamespaceStartingWith("Grimoire.EvalRunner")
             .ShouldNot().HaveDependencyOnAny(
             [
-                "Grimoire.IngestAgent.AgentCore.Adapters.Anthropic.AnthropicModelClient",
-                "Grimoire.IngestAgent.AgentCore.Adapters.Replay.ReplayModelClient",
-                "Grimoire.IngestAgent.AgentCore.Adapters.Replay.TurnCaptureModelClient",
+                "Grimoire.AgentRuntime.Core.Adapters.Anthropic.AnthropicModelClient",
+                "Grimoire.AgentRuntime.Core.Adapters.Replay.ReplayModelClient",
+                "Grimoire.AgentRuntime.Core.Adapters.Replay.TurnCaptureModelClient",
             ])
             .GetResult();
 
