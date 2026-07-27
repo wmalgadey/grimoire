@@ -3,7 +3,7 @@ using Grimoire.EvalRunner.Providers;
 using Grimoire.EvalRunner.Recording;
 using Grimoire.EvalRunner.Scenarios;
 using Grimoire.EvalRunner.Workspace;
-using Grimoire.IngestAgent.AgentCore.Adapters.Replay;
+using Grimoire.AgentRuntime.Core.Adapters.Replay;
 using Microsoft.Extensions.Logging.Abstractions;
 
 namespace Grimoire.AgentEvals;

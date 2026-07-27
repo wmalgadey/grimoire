@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { onDestroy, onMount } from 'svelte';
+	import { resolve } from '$app/paths';
 	import ConnectionStatusIndicator from '$lib/components/ConnectionStatusIndicator.svelte';
 	import KanbanColumn from '$lib/components/KanbanColumn.svelte';
 	import SubmissionForm from '$lib/components/SubmissionForm.svelte';
@@ -101,7 +102,14 @@
 	<header class="sticky top-0 z-10 flex flex-col gap-1 bg-white/95 py-2 backdrop-blur">
 		<div class="flex items-center justify-between gap-2">
 			<h1 class="text-lg font-semibold text-slate-900">Submit a source</h1>
-			<ConnectionStatusIndicator state={connectionState} />
+			<div class="flex items-center gap-3">
+				<a
+					href={resolve('/query')}
+					class="text-sm font-medium text-slate-600 underline-offset-2 hover:underline"
+					data-testid="nav-link-query">Ask the wiki</a
+				>
+				<ConnectionStatusIndicator state={connectionState} />
+			</div>
 		</div>
 		<p class="text-sm text-slate-500">
 			Submit a URL, Markdown, PDF, or Office document to ingest into the wiki. Its progress appears

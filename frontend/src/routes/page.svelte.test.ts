@@ -50,6 +50,16 @@ test('renders the submission form and the kanban board on the same page and star
 	expect(startMock).toHaveBeenCalled();
 });
 
+// T103 (Convergence) - the query surface was previously unreachable from the root UI
+// (no nav link anywhere in the app); this asserts the link exists and points to /query.
+test('renders a nav link to the query surface', async () => {
+	const screen = await render(Page);
+
+	const link = screen.getByTestId('nav-link-query');
+	await expect.element(link).toBeVisible();
+	await expect.element(link).toHaveAttribute('href', '/query');
+});
+
 test('a lifecycle stream update buckets the task into its stage column, live', async () => {
 	onTasksChangedHandlers.length = 0;
 	const screen = await render(Page);

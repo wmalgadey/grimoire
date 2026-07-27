@@ -14,9 +14,19 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- Analysis remediation: process-wide ActivitySource/Meter listener state and real
+         child-process spawns make cross-test-class parallelism non-deterministic here
+         (Constitution II). xunit.runner.visualstudio only honors this via config, not the
+         assembly-level [CollectionBehavior] attribute, when run through `dotnet test`. -->
+    <None Update="xunit.runner.json" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\..\src\Grimoire.Hub\Grimoire.Hub.csproj" />
     <ProjectReference Include="..\..\src\Grimoire.Domain\Grimoire.Domain.csproj" />
     <ProjectReference Include="..\..\src\Grimoire.IngestAgent\Grimoire.IngestAgent.csproj" />
+    <ProjectReference Include="..\..\src\Grimoire.AgentRuntime\Grimoire.AgentRuntime.csproj" />
+    <ProjectReference Include="..\..\src\Grimoire.QueryAgent\Grimoire.QueryAgent.csproj" />
     <ProjectReference Include="..\Grimoire.AgentEvals\Grimoire.AgentEvals.csproj" />
     <ProjectReference Include="..\..\src\Grimoire.EvalRunner\Grimoire.EvalRunner.csproj" />
   </ItemGroup>

@@ -40,6 +40,28 @@ public sealed class ScriptedAgentProcessHandle : IAgentProcessHandle
     /// <summary>Closes the stdout pipe without a terminal event (process exit / crash).</summary>
     public void ClosePipe() => _lines.Writer.TryComplete();
 
+    /// <summary>
+    /// T025 (008-query-agent): scripts a sequence of <c>answer_chunk</c> events
+    /// (contracts/query-run-events.md) for one turn, with an optional delay before each
+    /// so SC-003 timing scenarios (first chunk immediate, later chunks delayed) can be
+    /// driven deterministically without a live LLM call.
+    /// </summary>
+    public async Task EmitAnswerChunksAsync(
+        string taskId,
+        IEnumerable<(string Text, TimeSpan Delay)> chunks,
+        CancellationToken cancellationToken = default)
+    {
+        foreach (var (text, delay) in chunks)
+        {
+            if (delay > TimeSpan.Zero)
+            {
+                await Task.Delay(delay, cancellationToken);
+            }
+
+            EmitEvent("answer_chunk", taskId, new { text });
+        }
+    }
+
     public async IAsyncEnumerable<string> ReadStdoutLinesAsync(
         [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken cancellationToken)
     {
@@ -75,6 +97,9 @@ public sealed class FakeAgentProcessLauncher : IAgentProcessLauncher
     public List<IngestAgentRequest> Requests { get; } = [];
     public List<(DateTimeOffset Started, DateTimeOffset Finished)> RunWindows { get; } = [];
     public List<ScriptedAgentProcessHandle> Handles { get; } = [];
+
+    /// <summary>Every <see cref="QueryAgentRequest"/> received via the Query-shaped StartAsync overload.</summary>
+    public List<QueryAgentRequest> QueryRequests { get; } = [];
 
     public FakeAgentProcessLauncher(
         string terminalStatus = "completed",
@@ -147,6 +172,63 @@ public sealed class FakeAgentProcessLauncher : IAgentProcessLauncher
         }
 
         return handle;
+    }
+
+    /// <summary>
+    /// Query-shaped StartAsync (ADR-011): records the request and, in auto-play mode,
+    /// scripts `started` → optional `answer_chunk` deltas (<see cref="ScriptedAnswerChunks"/>)
+    /// → terminal event, without writing any artifact (Query has no write path at all).
+    /// </summary>
+    public IReadOnlyList<(string Text, TimeSpan Delay)>? ScriptedAnswerChunks { get; set; }
+
+    public Task<IAgentProcessHandle> StartAsync(QueryAgentRequest request, CancellationToken cancellationToken = default)
+    {
+        lock (QueryRequests)
+        {
+            QueryRequests.Add(request);
+        }
+
+        if (_throwOnStart is not null)
+        {
+            throw _throwOnStart;
+        }
+
+        var handle = new ScriptedAgentProcessHandle();
+        lock (Handles)
+        {
+            Handles.Add(handle);
+        }
+
+        if (_autoPlay)
+        {
+            handle.EmitEvent("started", request.TurnId);
+
+            _ = Task.Run(async () =>
+            {
+                if (_simulatedRunDuration > TimeSpan.Zero)
+                {
+                    await Task.Delay(_simulatedRunDuration, CancellationToken.None);
+                }
+
+                if (ScriptedAnswerChunks is { Count: > 0 })
+                {
+                    await handle.EmitAnswerChunksAsync(request.TurnId, ScriptedAnswerChunks, CancellationToken.None);
+                }
+
+                if (_terminalStatus == "failed")
+                {
+                    handle.EmitEvent("failed", request.TurnId, new { reason = _failureReason ?? "Fake query run failed." });
+                }
+                else
+                {
+                    handle.EmitEvent("completed", request.TurnId, new { summary = "Fake query run completed." });
+                }
+
+                handle.ClosePipe();
+            }, CancellationToken.None);
+        }
+
+        return Task.FromResult<IAgentProcessHandle>(handle);
     }
 
     /// <summary>

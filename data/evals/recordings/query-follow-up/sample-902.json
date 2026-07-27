@@ -1,0 +1,42 @@
+{
+  "schema_version": 1,
+  "sample": 902,
+  "task_id": "capture-query-follow-up-09-t2-b59586f380334096901dfe5a482af471",
+  "model": "claude-haiku-4-5",
+  "turns": [
+    {
+      "turn": 1,
+      "system_prompt_sha256": "sha256:f12118972f6262fdb4b990a7b94486f5811f7f67583d9023ec3421ddcb35c9b4",
+      "conversation": [
+        {
+          "role": "user",
+          "content_sha256": "sha256:5a9b331ddecc0f2bf27a09e13ff118fb727d40642219017046f00157d714971c"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:e9a681ce240ac8335548a83981b23cd09a3d734525d21aa04d1245dacaefe07a"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:82c768069ee62384fb9a690e141dd0ad29a96b62238c0398ac630746611ee671"
+        }
+      ],
+      "tool_names": [
+        "list_files",
+        "read_file"
+      ],
+      "stop_reason": "end_turn",
+      "tool_uses": [],
+      "assistant_text": "No. According to [[write-journal]], the rollback does **not** use a database transaction. Instead, the page states that the journal \u0022provides transactional semantics **without needing a database**\u0022 \u2014 the journal itself acts as the transaction log, held only in the process\u0027s memory for the duration of one run.\n\nSo it\u0027s an in-memory rollback mechanism, not a database-backed one.",
+      "input_tokens": 2220,
+      "output_tokens": 90
+    }
+  ],
+  "outcome": {
+    "status": "completed",
+    "checks": {
+      "resolves_reference": true,
+      "no_clarification_needed": true
+    }
+  }
+}

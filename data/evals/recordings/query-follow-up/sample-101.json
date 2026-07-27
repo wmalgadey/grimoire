@@ -1,0 +1,101 @@
+{
+  "schema_version": 1,
+  "sample": 101,
+  "task_id": "capture-query-follow-up-01-t1-4b30839fd6304ed79a1e22e4f921013d",
+  "model": "claude-haiku-4-5",
+  "turns": [
+    {
+      "turn": 1,
+      "system_prompt_sha256": "sha256:f12118972f6262fdb4b990a7b94486f5811f7f67583d9023ec3421ddcb35c9b4",
+      "conversation": [
+        {
+          "role": "user",
+          "content_sha256": "sha256:5a9b331ddecc0f2bf27a09e13ff118fb727d40642219017046f00157d714971c"
+        }
+      ],
+      "tool_names": [
+        "list_files",
+        "read_file"
+      ],
+      "stop_reason": "tool_use",
+      "tool_uses": [
+        {
+          "tool_use_id": "toolu_01NTptRju8YKfciMvhAdByxv",
+          "tool_name": "list_files",
+          "input_json": "{\u0022path\u0022: \u0022pages\u0022}"
+        }
+      ],
+      "assistant_text": "I\u0027ll look for the Guarded Write Journal page for you.",
+      "input_tokens": 1984,
+      "output_tokens": 68
+    },
+    {
+      "turn": 2,
+      "system_prompt_sha256": "sha256:f12118972f6262fdb4b990a7b94486f5811f7f67583d9023ec3421ddcb35c9b4",
+      "conversation": [
+        {
+          "role": "user",
+          "content_sha256": "sha256:5a9b331ddecc0f2bf27a09e13ff118fb727d40642219017046f00157d714971c"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:eaf2d45d632d5582b5b50359a90e2b9bf1665e12cea41c0f6a2da616dfe499ad"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:04a656eac51e1a0940e77a0722e75ba054662cb64b330532b1bb2edadfa1ee4f"
+        }
+      ],
+      "tool_names": [
+        "list_files",
+        "read_file"
+      ],
+      "stop_reason": "tool_use",
+      "tool_uses": [
+        {
+          "tool_use_id": "toolu_01SEj1G4SjkbVwqbR4ecy7vP",
+          "tool_name": "read_file",
+          "input_json": "{\u0022path\u0022: \u0022pages/write-journal.md\u0022}"
+        }
+      ],
+      "assistant_text": "Let me read the write-journal page:",
+      "input_tokens": 2088,
+      "output_tokens": 69
+    },
+    {
+      "turn": 3,
+      "system_prompt_sha256": "sha256:f12118972f6262fdb4b990a7b94486f5811f7f67583d9023ec3421ddcb35c9b4",
+      "conversation": [
+        {
+          "role": "user",
+          "content_sha256": "sha256:5a9b331ddecc0f2bf27a09e13ff118fb727d40642219017046f00157d714971c"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:eaf2d45d632d5582b5b50359a90e2b9bf1665e12cea41c0f6a2da616dfe499ad"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:04a656eac51e1a0940e77a0722e75ba054662cb64b330532b1bb2edadfa1ee4f"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:4e314e88dfadac20c0f6b5305b853b9b39cf209f547bbb89075eb95279464e26"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:b696baa7c8e9debef6a4e706ebbb6dc9ee1e276be45384dc5829c50c90199030"
+        }
+      ],
+      "tool_names": [
+        "list_files",
+        "read_file"
+      ],
+      "stop_reason": "end_turn",
+      "tool_uses": [],
+      "assistant_text": "The [[write-journal|Guarded Write Journal]] page describes how the guarded tool executor maintains an in-memory transaction log for file writes. Specifically:\n\n- **Purpose**: It records the prior state of files (their previous content or the fact that they didn\u0027t exist) before the executor overwrites them.\n\n- **Rollback on failure**: If an agent run fails\u2014due to a turn cap being exceeded, an unrecoverable error, or all attempted writes being denied\u2014the journal can roll back every recorded write in reverse order: restoring previous file content or deleting newly created files.\n\n- **All-or-nothing semantics**: This mechanism provides transactional semantics for writes without requiring a database, since the journal itself serves as the transaction log held in the process\u0027s memory for the duration of one run.\n\nThe page also notes that the Query agent never uses this rollback capability since it has no write tool.",
+      "input_tokens": 2441,
+      "output_tokens": 200
+    }
+  ]
+}

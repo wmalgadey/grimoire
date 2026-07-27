@@ -3,8 +3,8 @@ using Grimoire.EvalRunner.Recording;
 using Grimoire.EvalRunner.Scenarios;
 using Grimoire.EvalRunner.Scoring;
 using Grimoire.EvalRunner.Workspace;
-using Grimoire.IngestAgent.AgentCore;
-using Grimoire.IngestAgent.AgentCore.Adapters.Replay;
+using Grimoire.AgentRuntime.Core;
+using Grimoire.AgentRuntime.Core.Adapters.Replay;
 using Grimoire.IngestAgent.TaskArtifact;
 using Microsoft.Extensions.Logging;
 

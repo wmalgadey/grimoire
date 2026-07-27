@@ -1,0 +1,123 @@
+{
+  "schema_version": 1,
+  "sample": 601,
+  "task_id": "capture-query-grounding-uncovered-06-t1-fc950a7bb27d496c9613c41cacaa9004",
+  "model": "claude-haiku-4-5",
+  "turns": [
+    {
+      "turn": 1,
+      "system_prompt_sha256": "sha256:f12118972f6262fdb4b990a7b94486f5811f7f67583d9023ec3421ddcb35c9b4",
+      "conversation": [
+        {
+          "role": "user",
+          "content_sha256": "sha256:963a168586ffb12173780d203412362c56b9e1ae34b89b01026a7167294c079f"
+        }
+      ],
+      "tool_names": [
+        "list_files",
+        "read_file"
+      ],
+      "stop_reason": "tool_use",
+      "tool_uses": [
+        {
+          "tool_use_id": "toolu_01CmMku5CLXgVfe8AiBbPzn4",
+          "tool_name": "read_file",
+          "input_json": "{\u0022path\u0022: \u0022index.md\u0022}"
+        },
+        {
+          "tool_use_id": "toolu_01DG8mEuB23hktFcfuiiLESN",
+          "tool_name": "list_files",
+          "input_json": "{\u0022path\u0022: \u0022pages\u0022}"
+        }
+      ],
+      "assistant_text": "I\u0027ll help you find information about Grimoire\u0027s deployment pipeline. Let me start by checking the index and relevant pages.",
+      "input_tokens": 1987,
+      "output_tokens": 117
+    },
+    {
+      "turn": 2,
+      "system_prompt_sha256": "sha256:f12118972f6262fdb4b990a7b94486f5811f7f67583d9023ec3421ddcb35c9b4",
+      "conversation": [
+        {
+          "role": "user",
+          "content_sha256": "sha256:963a168586ffb12173780d203412362c56b9e1ae34b89b01026a7167294c079f"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:ba6321c9c50b411433faa86add06511e8ecf0452cd3f9296ec74342ee236c9c2"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:e4b7542ffbd171988c46fec9a03ca1a5bb66d537dc08a6f250bd801fbd82084c"
+        }
+      ],
+      "tool_names": [
+        "list_files",
+        "read_file"
+      ],
+      "stop_reason": "tool_use",
+      "tool_uses": [
+        {
+          "tool_use_id": "toolu_01BiU6ya7Tfj5LbkiBkQJ6m4",
+          "tool_name": "read_file",
+          "input_json": "{\u0022path\u0022: \u0022pages/credential-scoping.md\u0022}"
+        },
+        {
+          "tool_use_id": "toolu_01J7T7zdfEsRgmF6362EiPiG",
+          "tool_name": "read_file",
+          "input_json": "{\u0022path\u0022: \u0022pages/runtime-paths.md\u0022}"
+        },
+        {
+          "tool_use_id": "toolu_01QYuSWzAXvXT2Gvhbr5i9om",
+          "tool_name": "read_file",
+          "input_json": "{\u0022path\u0022: \u0022pages/write-journal.md\u0022}"
+        }
+      ],
+      "assistant_text": "Let me read these pages to see if any contain information about deployment pipelines:",
+      "input_tokens": 2273,
+      "output_tokens": 161
+    },
+    {
+      "turn": 3,
+      "system_prompt_sha256": "sha256:f12118972f6262fdb4b990a7b94486f5811f7f67583d9023ec3421ddcb35c9b4",
+      "conversation": [
+        {
+          "role": "user",
+          "content_sha256": "sha256:963a168586ffb12173780d203412362c56b9e1ae34b89b01026a7167294c079f"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:ba6321c9c50b411433faa86add06511e8ecf0452cd3f9296ec74342ee236c9c2"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:e4b7542ffbd171988c46fec9a03ca1a5bb66d537dc08a6f250bd801fbd82084c"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:dbbc0401c8c8733c354d2534aacf2eb8e78c833b0b65cf409379cd0cccd9729a"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:f4520e2b11b3bc2cb6f30d25ed81ad0e27d1bf9479d809a3a344f32b3d81d437"
+        }
+      ],
+      "tool_names": [
+        "list_files",
+        "read_file"
+      ],
+      "stop_reason": "end_turn",
+      "tool_uses": [],
+      "assistant_text": "The wiki does not contain information about Grimoire\u0027s deployment pipeline for shipping changes to production. The three pages in the wiki cover internal architectural concepts \u2014 credential scoping, runtime path configuration, and write journaling \u2014 but none of them address how deployments work, CI/CD processes, release procedures, or production deployment strategies.\n\nTo answer your question, you would need to check documentation outside this wiki, or the information would need to be added to the wiki via the ingest process.",
+      "input_tokens": 3317,
+      "output_tokens": 102
+    }
+  ],
+  "outcome": {
+    "status": "completed",
+    "checks": {
+      "acknowledges_gap": true,
+      "no_fabricated_pipeline_detail": true
+    }
+  }
+}

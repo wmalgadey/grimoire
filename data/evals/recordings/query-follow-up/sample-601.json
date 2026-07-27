@@ -1,0 +1,101 @@
+{
+  "schema_version": 1,
+  "sample": 601,
+  "task_id": "capture-query-follow-up-06-t1-c9e4931db08d40d2b03eb6a0166f7c45",
+  "model": "claude-haiku-4-5",
+  "turns": [
+    {
+      "turn": 1,
+      "system_prompt_sha256": "sha256:f12118972f6262fdb4b990a7b94486f5811f7f67583d9023ec3421ddcb35c9b4",
+      "conversation": [
+        {
+          "role": "user",
+          "content_sha256": "sha256:5a9b331ddecc0f2bf27a09e13ff118fb727d40642219017046f00157d714971c"
+        }
+      ],
+      "tool_names": [
+        "list_files",
+        "read_file"
+      ],
+      "stop_reason": "tool_use",
+      "tool_uses": [
+        {
+          "tool_use_id": "toolu_01AgytHzTqQJiYwobYDxtb69",
+          "tool_name": "list_files",
+          "input_json": "{\u0022path\u0022: \u0022pages/\u0022}"
+        }
+      ],
+      "assistant_text": "I\u0027ll look up the Guarded Write Journal page for you.",
+      "input_tokens": 1984,
+      "output_tokens": 69
+    },
+    {
+      "turn": 2,
+      "system_prompt_sha256": "sha256:f12118972f6262fdb4b990a7b94486f5811f7f67583d9023ec3421ddcb35c9b4",
+      "conversation": [
+        {
+          "role": "user",
+          "content_sha256": "sha256:5a9b331ddecc0f2bf27a09e13ff118fb727d40642219017046f00157d714971c"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:5884fe230352d5f56acf3fef6bda8b1ab8510874b4ebd75d8629ea72ddbad25e"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:74ae4716f2cb29ec8c509a1b258d62fea2f1b9c3ca616c9862abc2341fb1ac72"
+        }
+      ],
+      "tool_names": [
+        "list_files",
+        "read_file"
+      ],
+      "stop_reason": "tool_use",
+      "tool_uses": [
+        {
+          "tool_use_id": "toolu_01MkgziYTYnfNi1BCT75ytgN",
+          "tool_name": "read_file",
+          "input_json": "{\u0022path\u0022: \u0022pages/write-journal.md\u0022}"
+        }
+      ],
+      "assistant_text": "Let me read the write-journal page:",
+      "input_tokens": 2089,
+      "output_tokens": 69
+    },
+    {
+      "turn": 3,
+      "system_prompt_sha256": "sha256:f12118972f6262fdb4b990a7b94486f5811f7f67583d9023ec3421ddcb35c9b4",
+      "conversation": [
+        {
+          "role": "user",
+          "content_sha256": "sha256:5a9b331ddecc0f2bf27a09e13ff118fb727d40642219017046f00157d714971c"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:5884fe230352d5f56acf3fef6bda8b1ab8510874b4ebd75d8629ea72ddbad25e"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:74ae4716f2cb29ec8c509a1b258d62fea2f1b9c3ca616c9862abc2341fb1ac72"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:10bfed8ef561207f12b14e4397dae9a19cc8e74bd15f388f2614ad2019dd74f0"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:3b0ecc060f1c0d887a2f4755f8729f0b244c9ea28a57fbde9cd3f2d91dcbb5c4"
+        }
+      ],
+      "tool_names": [
+        "list_files",
+        "read_file"
+      ],
+      "stop_reason": "end_turn",
+      "tool_uses": [],
+      "assistant_text": "The [[write-journal]] page describes how the **Guarded Write Journal** works as a safety mechanism for file operations. Here\u0027s what it covers:\n\n**Core Function:** The write journal records the prior state of any file before the guarded tool executor overwrites it \u2014 capturing either the file\u0027s previous content or noting that it didn\u0027t exist.\n\n**Rollback Capability:** If an agent run fails (due to turn cap exceeded, unrecoverable errors, or denied writes), the journal can roll back all recorded writes in reverse order by:\n- Restoring previous content for files that existed\n- Deleting newly created files\n\n**Transaction Semantics:** This approach provides all-or-nothing semantics for writes without requiring a database transaction \u2014 the in-memory journal itself serves as the transaction log for the duration of a single run.\n\nThe page also notes that the Query agent never uses the journal\u0027s rollback functionality, since the Query agent has no write capability at all.",
+      "input_tokens": 2442,
+      "output_tokens": 210
+    }
+  ]
+}

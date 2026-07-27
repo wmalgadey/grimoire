@@ -1,0 +1,113 @@
+{
+  "schema_version": 1,
+  "sample": 401,
+  "task_id": "capture-query-grounding-covered-04-t1-f4059d7d78ec4204b16aed81a7c2638d",
+  "model": "claude-haiku-4-5",
+  "turns": [
+    {
+      "turn": 1,
+      "system_prompt_sha256": "sha256:f12118972f6262fdb4b990a7b94486f5811f7f67583d9023ec3421ddcb35c9b4",
+      "conversation": [
+        {
+          "role": "user",
+          "content_sha256": "sha256:1f682c8faf9186252447d3e7b219354380da0ce97fc22d67be77b11b6d1e071c"
+        }
+      ],
+      "tool_names": [
+        "list_files",
+        "read_file"
+      ],
+      "stop_reason": "tool_use",
+      "tool_uses": [
+        {
+          "tool_use_id": "toolu_01A71xpcbCafmZi9wgYJMuBV",
+          "tool_name": "read_file",
+          "input_json": "{\u0022path\u0022: \u0022index.md\u0022}"
+        },
+        {
+          "tool_use_id": "toolu_01547LY3qjkwKNhntL2SMUZN",
+          "tool_name": "list_files",
+          "input_json": "{\u0022path\u0022: \u0022pages\u0022}"
+        }
+      ],
+      "assistant_text": "I\u0027ll help you find this information. Let me start by exploring the wiki structure and then locate the relevant pages.",
+      "input_tokens": 1991,
+      "output_tokens": 115
+    },
+    {
+      "turn": 2,
+      "system_prompt_sha256": "sha256:f12118972f6262fdb4b990a7b94486f5811f7f67583d9023ec3421ddcb35c9b4",
+      "conversation": [
+        {
+          "role": "user",
+          "content_sha256": "sha256:1f682c8faf9186252447d3e7b219354380da0ce97fc22d67be77b11b6d1e071c"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:44e16f73d46f8cbe72f93eb89deaebe2a77154a40653ab2686cd8a8f69f0a5ce"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:a25705c8bba2cca76b2b51b2aa68eefdb0d416fe4fb3ea4b1316342bf0e2af8c"
+        }
+      ],
+      "tool_names": [
+        "list_files",
+        "read_file"
+      ],
+      "stop_reason": "tool_use",
+      "tool_uses": [
+        {
+          "tool_use_id": "toolu_019QHWhF5badNCjsXBm6h9fZ",
+          "tool_name": "read_file",
+          "input_json": "{\u0022path\u0022: \u0022pages/credential-scoping.md\u0022}"
+        }
+      ],
+      "assistant_text": "Perfect! The index mentions [[credential-scoping]] which directly addresses credential isolation. Let me read that page:",
+      "input_tokens": 2275,
+      "output_tokens": 84
+    },
+    {
+      "turn": 3,
+      "system_prompt_sha256": "sha256:f12118972f6262fdb4b990a7b94486f5811f7f67583d9023ec3421ddcb35c9b4",
+      "conversation": [
+        {
+          "role": "user",
+          "content_sha256": "sha256:1f682c8faf9186252447d3e7b219354380da0ce97fc22d67be77b11b6d1e071c"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:44e16f73d46f8cbe72f93eb89deaebe2a77154a40653ab2686cd8a8f69f0a5ce"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:a25705c8bba2cca76b2b51b2aa68eefdb0d416fe4fb3ea4b1316342bf0e2af8c"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:3c62bd2e859febdb068f2a0a84c3fbfd74196ce231f2a765ee3e68eaf95b17a9"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:58b29713b24652cc69e5b38691547cb5726d2aaec04870b9df2d5f0f9298c8ef"
+        }
+      ],
+      "tool_names": [
+        "list_files",
+        "read_file"
+      ],
+      "stop_reason": "end_turn",
+      "tool_uses": [],
+      "assistant_text": "The answer is found in [[credential-scoping]]:\n\n**The Hub keeps the Anthropic API key out of its own process environment by never loading it into the Hub process at all.** Instead:\n\n1. **A local secrets loader** reads the API key from a git-ignored \u0060.env\u0060 file at startup.\n2. **The key is injected only into child processes** \u2014 specifically, it is injected into the environment of the spawned Ingest agent (or Query agent) process immediately before that process starts.\n3. **The Hub\u0027s own process environment is never mutated** \u2014 it never holds the credential.\n\nThis design means that even if the Hub process is compromised or misbehaves, it cannot leak the API key by inspecting its own environment variables, since the key only exists inside the short-lived child process that actually needs to call the Anthropic API.",
+      "input_tokens": 2622,
+      "output_tokens": 193
+    }
+  ],
+  "outcome": {
+    "status": "completed",
+    "checks": {
+      "mentions_scoping_concept": true,
+      "cites_source_page": true
+    }
+  }
+}

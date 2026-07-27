@@ -15,6 +15,15 @@ public sealed record EvalPaths(string RepoRoot)
 
     public string PolicyPath => Path.Combine(AgentInstructionsDir, "policy.json");
 
+    // Query's own instruction surface (ADR-007 pattern, ADR-011) — a sibling of Ingest's,
+    // with no default-user-prompt document (the user's Query Prompt is always supplied
+    // per turn, research.md R1 of 008-query-agent).
+    public string QueryInstructionsDir => Path.Combine(RepoRoot, "data", "agents", "query");
+
+    public string QuerySystemPromptPath => Path.Combine(QueryInstructionsDir, "system-prompt.md");
+
+    public string QueryPolicyPath => Path.Combine(QueryInstructionsDir, "policy.json");
+
     public string FixturesRoot => Path.Combine(RepoRoot, "backend", "tests", "Grimoire.AgentEvals", "Fixtures");
 
     public string FixtureWikiRoot(string fixtureName) => Path.Combine(FixturesRoot, fixtureName, "wiki");

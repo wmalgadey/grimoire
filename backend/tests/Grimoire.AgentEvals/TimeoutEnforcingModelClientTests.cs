@@ -1,4 +1,4 @@
-using Grimoire.IngestAgent.AgentCore;
+using Grimoire.AgentRuntime.Core;
 
 using Grimoire.EvalRunner.Providers;
 
@@ -58,7 +58,8 @@ public class TimeoutEnforcingModelClientTests
             string systemPrompt,
             IReadOnlyList<ConversationMessage> conversation,
             IReadOnlyList<ToolDefinition> tools,
-            CancellationToken cancellationToken)
+            CancellationToken cancellationToken,
+            Action<string>? onTextDelta = null)
             => new TaskCompletionSource<ModelTurn>().Task;
     }
 
@@ -70,7 +71,8 @@ public class TimeoutEnforcingModelClientTests
             string systemPrompt,
             IReadOnlyList<ConversationMessage> conversation,
             IReadOnlyList<ToolDefinition> tools,
-            CancellationToken cancellationToken)
+            CancellationToken cancellationToken,
+            Action<string>? onTextDelta = null)
             => Task.FromResult(turn);
     }
 }

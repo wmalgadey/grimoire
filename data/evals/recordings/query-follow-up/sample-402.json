@@ -1,0 +1,42 @@
+{
+  "schema_version": 1,
+  "sample": 402,
+  "task_id": "capture-query-follow-up-04-t2-147fbed0002f49259d61ed8e1f12517e",
+  "model": "claude-haiku-4-5",
+  "turns": [
+    {
+      "turn": 1,
+      "system_prompt_sha256": "sha256:f12118972f6262fdb4b990a7b94486f5811f7f67583d9023ec3421ddcb35c9b4",
+      "conversation": [
+        {
+          "role": "user",
+          "content_sha256": "sha256:5a9b331ddecc0f2bf27a09e13ff118fb727d40642219017046f00157d714971c"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:f3c27238d4171f07616b2d6216df84e64d630b996b979951f13a3f401c88803b"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:82c768069ee62384fb9a690e141dd0ad29a96b62238c0398ac630746611ee671"
+        }
+      ],
+      "tool_names": [
+        "list_files",
+        "read_file"
+      ],
+      "stop_reason": "end_turn",
+      "tool_uses": [],
+      "assistant_text": "No, according to [[write-journal]], it does **not** use a database transaction for that rollback. Instead, the page explicitly states:\n\n\u003E \u0022This provides atomic transaction-like behavior for writes without needing a database, since the in-memory journal itself acts as the transaction log for the duration of a single run.\u0022\n\nThe rollback is managed entirely through an **in-memory journal** that records file states during a single run, rather than relying on any external database transaction system.",
+      "input_tokens": 2197,
+      "output_tokens": 106
+    }
+  ],
+  "outcome": {
+    "status": "completed",
+    "checks": {
+      "resolves_reference": true,
+      "no_clarification_needed": true
+    }
+  }
+}

@@ -42,6 +42,35 @@ public static class Summary
         return Finish(builder, results.Count(r => r.Stored && r.ThresholdMet), results.Count(r => !(r.Stored && r.ThresholdMet)));
     }
 
+    public static string ForQueryReplay(IReadOnlyList<Replay.QueryScenarioReplayResult> results)
+    {
+        var builder = StartTable();
+        foreach (var result in results)
+        {
+            var detail = result.TrustStatus == TrustStatus.Trusted
+                ? FormatQueryRate(result)
+                : result.Detail ?? result.TrustStatus.ToString();
+            AppendRow(builder, $"replay:{result.ScenarioId}", result.IsTrustedPass, detail);
+        }
+
+        return Finish(builder, results.Count(r => r.IsTrustedPass), results.Count(r => !r.IsTrustedPass));
+    }
+
+    public static string ForQueryCapture(IReadOnlyList<QueryCaptureScenarioResult> results)
+    {
+        var builder = StartTable();
+        foreach (var result in results)
+        {
+            var pass = result.Stored && result.ThresholdMet;
+            var detail = result.Detail
+                ?? string.Create(CultureInfo.InvariantCulture,
+                    $"Success rate: {result.SuccessRate:P1} (threshold {result.Threshold:P0}); model {result.Model}");
+            AppendRow(builder, $"capture:{result.ScenarioId}", pass, detail);
+        }
+
+        return Finish(builder, results.Count(r => r.Stored && r.ThresholdMet), results.Count(r => !(r.Stored && r.ThresholdMet)));
+    }
+
     public static string ForStatus(IReadOnlyList<ScenarioTrustReport> reports)
     {
         var builder = StartTable();
@@ -57,6 +86,10 @@ public static class Summary
     }
 
     private static string FormatRate(ScenarioReplayResult result)
+        => string.Create(CultureInfo.InvariantCulture,
+            $"Success rate: {result.SuccessRate:P1} (threshold {result.Threshold:P0}); model {result.Model}; captured {result.CapturedAt:yyyy-MM-dd}");
+
+    private static string FormatQueryRate(Replay.QueryScenarioReplayResult result)
         => string.Create(CultureInfo.InvariantCulture,
             $"Success rate: {result.SuccessRate:P1} (threshold {result.Threshold:P0}); model {result.Model}; captured {result.CapturedAt:yyyy-MM-dd}");
 

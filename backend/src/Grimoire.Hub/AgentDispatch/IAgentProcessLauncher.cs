@@ -28,4 +28,12 @@ public interface IAgentProcessLauncher
     /// diagnostics; the web dispatch path never uses this method.
     /// </summary>
     Task<int> RunToExitAsync(IngestAgentRequest request, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// ADR-011: spawns a Query agent process. Port ownership is unchanged from Ingest's
+    /// overload above — same interface, same <see cref="IAgentProcessHandle"/> contract —
+    /// only the request shape differs (Query has no manual CLI run-to-exit path, so no
+    /// analogous <c>RunToExitAsync</c> overload exists).
+    /// </summary>
+    Task<IAgentProcessHandle> StartAsync(QueryAgentRequest request, CancellationToken cancellationToken = default);
 }
