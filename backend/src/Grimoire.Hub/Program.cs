@@ -150,4 +150,7 @@ static Dictionary<string, string> PathConfigurationSwitchMappingsFactory() => ne
     ["--secrets-file"] = "Grimoire:Paths:SecretsFile",
     ["--instructions-dir"] = "Grimoire:Paths:InstructionsDir",
     ["--agent-worker"] = "Grimoire:Paths:AgentWorker",
+    ["--query-instructions-dir"] = "Grimoire:Paths:QueryInstructionsDir",
+    ["--query-runs-dir"] = "Grimoire:Paths:QueryRunsDir",
+    ["--query-agent-worker"] = "Grimoire:Paths:QueryAgentWorker",
 };

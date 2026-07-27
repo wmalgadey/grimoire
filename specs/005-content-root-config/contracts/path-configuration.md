@@ -16,6 +16,9 @@ defaults** (FR-005).
 | Secrets file | `--secrets-file` | `Grimoire__Paths__SecretsFile` | `Grimoire:Paths:SecretsFile` |
 | Agent instructions dir | `--instructions-dir` | `Grimoire__Paths__InstructionsDir` | `Grimoire:Paths:InstructionsDir` |
 | Agent worker | `--agent-worker` | `Grimoire__Paths__AgentWorker` | `Grimoire:Paths:AgentWorker` |
+| Query instructions dir (008-query-agent) | `--query-instructions-dir` | `Grimoire__Paths__QueryInstructionsDir` | `Grimoire:Paths:QueryInstructionsDir` |
+| Query runs dir (008-query-agent) | `--query-runs-dir` | `Grimoire__Paths__QueryRunsDir` | `Grimoire:Paths:QueryRunsDir` |
+| Query agent worker (008-query-agent) | `--query-agent-worker` | `Grimoire__Paths__QueryAgentWorker` | `Grimoire:Paths:QueryAgentWorker` |
 
 Defaults and resolution anchors: see `data-model.md` (single source:
 `GrimoirePathOptions` + the `Grimoire:Paths` section of `appsettings.json`).
