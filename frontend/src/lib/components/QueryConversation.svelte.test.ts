@@ -70,6 +70,30 @@ test('renders the answer as formatted markdown, not raw markup', async () => {
 	expect(answerEl.innerHTML).not.toContain('**ADR-004**');
 });
 
+// T109 (Convergence) - Tailwind Preflight zeroes margin/padding/list-style on every
+// block element project-wide, so without scoped CSS the rendered answer's paragraphs
+// and list items ran together with no blank-line separation and lists lost their
+// bullets/indentation; a real user reported the rendering looked wrong.
+test('applies visible spacing between paragraphs and list markers to the rendered answer', async () => {
+	const screen = await render(QueryConversation, {
+		turns: [
+			turn({
+				answer: 'First paragraph.\n\nSecond paragraph.\n\n- item one\n- item two',
+				state: 'completed'
+			})
+		]
+	});
+
+	const answerEl = screen.getByTestId('query-turn-answer').element();
+	const paragraphs = answerEl.querySelectorAll('p');
+	expect(paragraphs.length).toBe(2);
+	expect(parseFloat(getComputedStyle(paragraphs[0]).marginBottom)).toBeGreaterThan(0);
+
+	const list = answerEl.querySelector('ul');
+	expect(list).not.toBeNull();
+	expect(getComputedStyle(list as Element).listStyleType).not.toBe('none');
+});
+
 test('sanitizes a script-injection payload in the answer text', async () => {
 	const screen = await render(QueryConversation, {
 		turns: [turn({ answer: '<img src=x onerror="alert(1)">safe text', state: 'completed' })]

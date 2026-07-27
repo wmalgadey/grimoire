@@ -85,3 +85,60 @@
 		</article>
 	{/each}
 </div>
+
+<style>
+	/* {@html}-injected markdown isn't part of Svelte's compiled markup, so its elements
+	   never receive Svelte's scoping hash — :global() is required to reach them at all.
+	   Needed because Tailwind Preflight zeroes margin/padding/list-style on every block
+	   element project-wide, which otherwise collapses paragraphs/lists/headings in an
+	   agent answer into an unreadable, spacing-free run. */
+	.query-turn-answer-body :global(> :first-child) {
+		margin-top: 0;
+	}
+	.query-turn-answer-body :global(> :last-child) {
+		margin-bottom: 0;
+	}
+	.query-turn-answer-body :global(p),
+	.query-turn-answer-body :global(ul),
+	.query-turn-answer-body :global(ol),
+	.query-turn-answer-body :global(blockquote),
+	.query-turn-answer-body :global(pre) {
+		margin-top: 0;
+		margin-bottom: 0.75rem;
+	}
+	.query-turn-answer-body :global(h1),
+	.query-turn-answer-body :global(h2),
+	.query-turn-answer-body :global(h3),
+	.query-turn-answer-body :global(h4),
+	.query-turn-answer-body :global(h5),
+	.query-turn-answer-body :global(h6) {
+		margin-top: 1rem;
+		margin-bottom: 0.5rem;
+		font-weight: 600;
+	}
+	.query-turn-answer-body :global(ul) {
+		list-style: disc;
+		padding-left: 1.5rem;
+	}
+	.query-turn-answer-body :global(ol) {
+		list-style: decimal;
+		padding-left: 1.5rem;
+	}
+	.query-turn-answer-body :global(li) {
+		margin-bottom: 0.25rem;
+	}
+	.query-turn-answer-body :global(blockquote) {
+		padding-left: 0.75rem;
+		border-left: 2px solid var(--color-slate-300);
+	}
+	.query-turn-answer-body :global(pre) {
+		overflow-x: auto;
+		border-radius: 0.375rem;
+		background-color: var(--color-slate-100);
+		padding: 0.5rem 0.75rem;
+	}
+	.query-turn-answer-body :global(code) {
+		font-family: ui-monospace, monospace;
+		font-size: 0.85em;
+	}
+</style>
