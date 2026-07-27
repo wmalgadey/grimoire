@@ -1,0 +1,101 @@
+{
+  "schema_version": 1,
+  "sample": 301,
+  "task_id": "capture-query-follow-up-03-t1-798c8e1b260c433783d9c14aae8d3dc9",
+  "model": "claude-haiku-4-5",
+  "turns": [
+    {
+      "turn": 1,
+      "system_prompt_sha256": "sha256:d848c7c4d2fa585974d4c56a11a60ec824e54b33a95b3e621a552efa6839fa85",
+      "conversation": [
+        {
+          "role": "user",
+          "content_sha256": "sha256:5a9b331ddecc0f2bf27a09e13ff118fb727d40642219017046f00157d714971c"
+        }
+      ],
+      "tool_names": [
+        "list_files",
+        "read_file"
+      ],
+      "stop_reason": "tool_use",
+      "tool_uses": [
+        {
+          "tool_use_id": "toolu_01C8HwWHg6W2nttVhFBtCE4p",
+          "tool_name": "list_files",
+          "input_json": "{\u0022path\u0022: \u0022pages\u0022}"
+        }
+      ],
+      "assistant_text": "I\u0027ll look up the Guarded Write Journal page for you.",
+      "input_tokens": 1916,
+      "output_tokens": 68
+    },
+    {
+      "turn": 2,
+      "system_prompt_sha256": "sha256:d848c7c4d2fa585974d4c56a11a60ec824e54b33a95b3e621a552efa6839fa85",
+      "conversation": [
+        {
+          "role": "user",
+          "content_sha256": "sha256:5a9b331ddecc0f2bf27a09e13ff118fb727d40642219017046f00157d714971c"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:e8ba91204e8f7fe42acf3c49d2fc245d8c2bcab597d5786c68c6001ac30ca384"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:e9a016b4a88eb1508dbaeb3e8ae82c63267f14f906edcbb43c465b169924e536"
+        }
+      ],
+      "tool_names": [
+        "list_files",
+        "read_file"
+      ],
+      "stop_reason": "tool_use",
+      "tool_uses": [
+        {
+          "tool_use_id": "toolu_017zNuk3MU3LtMptGPNJ8RgA",
+          "tool_name": "read_file",
+          "input_json": "{\u0022path\u0022: \u0022pages/write-journal.md\u0022}"
+        }
+      ],
+      "assistant_text": "Let me read the write-journal page:",
+      "input_tokens": 2020,
+      "output_tokens": 69
+    },
+    {
+      "turn": 3,
+      "system_prompt_sha256": "sha256:d848c7c4d2fa585974d4c56a11a60ec824e54b33a95b3e621a552efa6839fa85",
+      "conversation": [
+        {
+          "role": "user",
+          "content_sha256": "sha256:5a9b331ddecc0f2bf27a09e13ff118fb727d40642219017046f00157d714971c"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:e8ba91204e8f7fe42acf3c49d2fc245d8c2bcab597d5786c68c6001ac30ca384"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:e9a016b4a88eb1508dbaeb3e8ae82c63267f14f906edcbb43c465b169924e536"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:dc63e21e241d19595cf34d665dc46c97a78a817e9ade17e8a86281bf96ae70a3"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:e3cb80731f87ba32731634c84fc38e528c5e91c40e5a2a97a9d51c19623a4c65"
+        }
+      ],
+      "tool_names": [
+        "list_files",
+        "read_file"
+      ],
+      "stop_reason": "end_turn",
+      "tool_uses": [],
+      "assistant_text": "The [[write-journal|Guarded Write Journal]] page describes **how the guarded write path journals prior file state for rollback on failure**. \n\nSpecifically, it explains that:\n\n- Before the guarded tool executor overwrites any file, it records that file\u0027s prior state in an in-memory write journal (either the file\u0027s previous content, or a record that it didn\u0027t exist)\n- If an agent run fails (due to turn cap, unrecoverable error, or denied writes), the journal rolls back every write in reverse order\n- This provides all-or-nothing semantics for writes without requiring a database transaction \u2014 the journal itself serves as the transaction log, kept in process memory for the duration of a run\n- The Query agent doesn\u0027t use the rollback functionality since it has no write capability",
+      "input_tokens": 2373,
+      "output_tokens": 176
+    }
+  ]
+}

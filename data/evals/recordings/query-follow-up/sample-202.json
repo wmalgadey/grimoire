@@ -1,0 +1,42 @@
+{
+  "schema_version": 1,
+  "sample": 202,
+  "task_id": "capture-query-follow-up-02-t2-9fd43fc35d884f36988368d8a423600a",
+  "model": "claude-haiku-4-5",
+  "turns": [
+    {
+      "turn": 1,
+      "system_prompt_sha256": "sha256:d848c7c4d2fa585974d4c56a11a60ec824e54b33a95b3e621a552efa6839fa85",
+      "conversation": [
+        {
+          "role": "user",
+          "content_sha256": "sha256:5a9b331ddecc0f2bf27a09e13ff118fb727d40642219017046f00157d714971c"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:8308fb6b89cfe52276274b99d7cdc0d2d4b8354624125352fce44517a8fc0440"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:82c768069ee62384fb9a690e141dd0ad29a96b62238c0398ac630746611ee671"
+        }
+      ],
+      "tool_names": [
+        "list_files",
+        "read_file"
+      ],
+      "stop_reason": "end_turn",
+      "tool_uses": [],
+      "assistant_text": "No, it does not use a database transaction for rollback. According to [[write-journal]], the guarded write path provides all-or-nothing semantics for writes \u0022without requiring a database transaction\u0022 \u2014 the journal itself acts as the transaction log, held in process memory for the duration of one run.",
+      "input_tokens": 2136,
+      "output_tokens": 66
+    }
+  ],
+  "outcome": {
+    "status": "completed",
+    "checks": {
+      "resolves_reference": true,
+      "no_clarification_needed": true
+    }
+  }
+}

@@ -1073,7 +1073,7 @@ steps rather than one monolithic task.
   `Skipped: 0` (was 4); full backend suite re-run clean (34/34 ArchTests, 14/14
   Domain.UnitTests, 228/228 IntegrationTests, 40/44 AgentEvals — the 4 failures are
   exactly T101's pending live capture, not a regression).
-- [ ] T101 Run a genuine live-credentialed capture for the 4 scenarios from T096
+- [X] T101 Run a genuine live-credentialed capture for the 4 scenarios from T096
   (`missing` — cannot be fabricated): via `Grimoire.EvalRunner`'s capture command against
   a real Anthropic credential (`data/.env`, same class of action as T083 — requires
   explicit user go-ahead to spend real API budget), producing real
@@ -1083,8 +1083,29 @@ steps rather than one monolithic task.
   `data/evals/recordings/query-read-only-decline/` recording sets (manifest + samples),
   committed to the repo per the existing 6-scenario pattern. Per
   `SyntheticRecordings.cs`'s own doc comment, synthetic data is never trusted evidence
-  for an agent-judgment claim — this step cannot be skipped or faked.
-- [ ] T102 Final verification (`missing`): `dotnet test backend/tests/Grimoire.AgentEvals
+  for an agent-judgment claim — this step cannot be skipped or faked. Done, with explicit
+  user go-ahead: a 1-sample validation run against all 4 scenarios first (capture then
+  replay, into a scratch recordings root) proved the whole pipeline end-to-end, then a
+  real 10-sample capture (`claude-haiku-4-5`, `GRIMOIRE_QUERY_MODEL`). That first full run
+  surfaced a genuine, real agent-behavior gap: `query-grounding-covered` scored 70%
+  and `query-follow-up` 80%, both below the 90% threshold — root-caused by inspecting the
+  failing recordings' tool-call transcripts, which showed the exact navigation friction
+  T083 had already flagged (Phase 8): the agent guessed a bare filename
+  (`read_file("credential-scoping.md")`) or the bare root (`list_files(".")`) from
+  `index.md`'s wikilink syntax (`[[credential-scoping]]`), got denied by policy both
+  times, and then honestly reported it couldn't access the page rather than fabricating
+  — correct guardrail behavior, but it starves the grounding/follow-up criteria of any
+  content to cite. Root cause was the system prompt never stating the wikilink-to-file-path
+  mapping at all (Ingest's own system-prompt.md already documents this; Query's did not).
+  Fixed `data/agents/query/system-prompt.md` (agentic core, Constitution V — a wiki
+  *behavior* fix belongs in the instruction file, not backend/harness code) with an
+  explicit path-convention paragraph, then re-ran the full capture: all 4 scenarios now
+  score 100%. Re-verified via replay: all 4 `Trusted`/`ThresholdMet`. No credential
+  material in any committed recording (grepped for the token value and `sk-ant-` — no
+  hits, `RecordingStore`'s own write-time credential scan is a second, redundant check).
+- [X] T102 Final verification (`missing`): `dotnet test backend/tests/Grimoire.AgentEvals
   --configuration Release --no-build` reports `Skipped: 0` in the standard run (no
   `GRIMOIRE_EVAL` set), confirming CI's replay-eval gate (`.github/workflows/ci.yml`
-  "Run replay agent evals") passes end-to-end.
+  "Run replay agent evals") passes end-to-end. Done: 44/44 passed, 0 skipped, 0 failed.
+  Full backend suite re-run clean alongside it (34/34 ArchTests, 14/14 Domain.UnitTests,
+  228/228 IntegrationTests, `dotnet format --verify-no-changes` clean).

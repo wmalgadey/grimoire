@@ -1,0 +1,42 @@
+{
+  "schema_version": 1,
+  "sample": 102,
+  "task_id": "capture-query-follow-up-01-t2-3eb19c2afb6d442b971434102681fab0",
+  "model": "claude-haiku-4-5",
+  "turns": [
+    {
+      "turn": 1,
+      "system_prompt_sha256": "sha256:d848c7c4d2fa585974d4c56a11a60ec824e54b33a95b3e621a552efa6839fa85",
+      "conversation": [
+        {
+          "role": "user",
+          "content_sha256": "sha256:5a9b331ddecc0f2bf27a09e13ff118fb727d40642219017046f00157d714971c"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:18b090200c1ffcb36a67ea7afade877290d856a6235f778d354be46ddc519e29"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:82c768069ee62384fb9a690e141dd0ad29a96b62238c0398ac630746611ee671"
+        }
+      ],
+      "tool_names": [
+        "list_files",
+        "read_file"
+      ],
+      "stop_reason": "end_turn",
+      "tool_uses": [],
+      "assistant_text": "No, according to the [[write-journal]] page, it does **not** use a database transaction for rollback. The page explicitly states:\n\n\u003E \u0022This provides all-or-nothing semantics for writes without requiring a database transaction \u2014 the journal itself serves as the transaction log and is held only in the process\u0027s memory during a single run.\u0022\n\nSo instead of relying on a database transaction, the rollback mechanism uses an in-memory write journal that records prior file states and can replay them in reverse order if needed.",
+      "input_tokens": 2151,
+      "output_tokens": 112
+    }
+  ],
+  "outcome": {
+    "status": "completed",
+    "checks": {
+      "resolves_reference": true,
+      "no_clarification_needed": true
+    }
+  }
+}

@@ -1,0 +1,42 @@
+{
+  "schema_version": 1,
+  "sample": 902,
+  "task_id": "capture-query-follow-up-09-t2-d55330322cfd4414bd72beeba5535660",
+  "model": "claude-haiku-4-5",
+  "turns": [
+    {
+      "turn": 1,
+      "system_prompt_sha256": "sha256:d848c7c4d2fa585974d4c56a11a60ec824e54b33a95b3e621a552efa6839fa85",
+      "conversation": [
+        {
+          "role": "user",
+          "content_sha256": "sha256:5a9b331ddecc0f2bf27a09e13ff118fb727d40642219017046f00157d714971c"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:3d16105ad70149b60c834bdea5ef44d081c900fc9b5f00db221e96b9d404b08a"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:82c768069ee62384fb9a690e141dd0ad29a96b62238c0398ac630746611ee671"
+        }
+      ],
+      "tool_names": [
+        "list_files",
+        "read_file"
+      ],
+      "stop_reason": "end_turn",
+      "tool_uses": [],
+      "assistant_text": "No, according to [[write-journal]], it does **not** use a database transaction for rollback. \n\nThe page explicitly states that the guarded write journal \u0022provides all-or-nothing semantics for writes **without** needing a database transaction\u0022 \u2014 instead, the journal itself acts as the transaction log, held in memory for the duration of one run.",
+      "input_tokens": 2147,
+      "output_tokens": 79
+    }
+  ],
+  "outcome": {
+    "status": "completed",
+    "checks": {
+      "resolves_reference": true,
+      "no_clarification_needed": true
+    }
+  }
+}

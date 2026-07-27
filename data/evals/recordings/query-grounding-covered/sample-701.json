@@ -1,0 +1,113 @@
+{
+  "schema_version": 1,
+  "sample": 701,
+  "task_id": "capture-query-grounding-covered-07-t1-5b99331423934b5281d131ecf19b9a55",
+  "model": "claude-haiku-4-5",
+  "turns": [
+    {
+      "turn": 1,
+      "system_prompt_sha256": "sha256:d848c7c4d2fa585974d4c56a11a60ec824e54b33a95b3e621a552efa6839fa85",
+      "conversation": [
+        {
+          "role": "user",
+          "content_sha256": "sha256:1f682c8faf9186252447d3e7b219354380da0ce97fc22d67be77b11b6d1e071c"
+        }
+      ],
+      "tool_names": [
+        "list_files",
+        "read_file"
+      ],
+      "stop_reason": "tool_use",
+      "tool_uses": [
+        {
+          "tool_use_id": "toolu_01RBM5eaXCv9BN9Z6oQyK98Z",
+          "tool_name": "read_file",
+          "input_json": "{\u0022path\u0022: \u0022index.md\u0022}"
+        },
+        {
+          "tool_use_id": "toolu_01Pk3pLTs59na1rQwKKsCbvB",
+          "tool_name": "list_files",
+          "input_json": "{\u0022path\u0022: \u0022pages\u0022}"
+        }
+      ],
+      "assistant_text": "I\u0027ll help you find information about how the Hub keeps the Anthropic API key out of its process environment. Let me start by exploring the wiki.",
+      "input_tokens": 1923,
+      "output_tokens": 123
+    },
+    {
+      "turn": 2,
+      "system_prompt_sha256": "sha256:d848c7c4d2fa585974d4c56a11a60ec824e54b33a95b3e621a552efa6839fa85",
+      "conversation": [
+        {
+          "role": "user",
+          "content_sha256": "sha256:1f682c8faf9186252447d3e7b219354380da0ce97fc22d67be77b11b6d1e071c"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:caab15196f6f9369a98edb742b49fa6dc752bbe6282354e2ecdd97f26ad5a1de"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:135026075e56fd60ec12b9ff0f718bb38fe8cc0676289f9f72d31a2b294b3358"
+        }
+      ],
+      "tool_names": [
+        "list_files",
+        "read_file"
+      ],
+      "stop_reason": "tool_use",
+      "tool_uses": [
+        {
+          "tool_use_id": "toolu_01U5fr7QedpjZjXwFKDDv9Qe",
+          "tool_name": "read_file",
+          "input_json": "{\u0022path\u0022: \u0022pages/credential-scoping.md\u0022}"
+        }
+      ],
+      "assistant_text": "Perfect! The index mentions [[credential-scoping]] which seems directly relevant. Let me read that page:",
+      "input_tokens": 2215,
+      "output_tokens": 83
+    },
+    {
+      "turn": 3,
+      "system_prompt_sha256": "sha256:d848c7c4d2fa585974d4c56a11a60ec824e54b33a95b3e621a552efa6839fa85",
+      "conversation": [
+        {
+          "role": "user",
+          "content_sha256": "sha256:1f682c8faf9186252447d3e7b219354380da0ce97fc22d67be77b11b6d1e071c"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:caab15196f6f9369a98edb742b49fa6dc752bbe6282354e2ecdd97f26ad5a1de"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:135026075e56fd60ec12b9ff0f718bb38fe8cc0676289f9f72d31a2b294b3358"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:14ff07a365ad9c8273c8168cf3b571271f2d51bd4fb693df6de4241bc582889f"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:866820eec0471d80d30c72afe68ce68953c21f77833b2285b2931e821965d360"
+        }
+      ],
+      "tool_names": [
+        "list_files",
+        "read_file"
+      ],
+      "stop_reason": "end_turn",
+      "tool_uses": [],
+      "assistant_text": "Based on [[credential-scoping]], here\u0027s how the Hub keeps the Anthropic API key out of its own process environment:\n\n**The Hub never holds the API key in its own process.** Instead:\n\n1. **A local secrets loader** reads the Anthropic API key from a git-ignored \u0060.env\u0060 file at startup\n2. **The key is injected directly into the child process environment** of the spawned Ingest agent immediately before that process starts\n3. **The Hub\u0027s process environment is never mutated** \u2014 it never contains the credential\n\nThis architecture provides a security boundary: even if the Hub process is compromised or misbehaves, an attacker cannot leak the Anthropic API key by inspecting the Hub\u0027s own environment variables. The key only exists in the short-lived child process that actually makes the API calls.\n\nThe same model also applies to the Query agent \u2014 it receives the credential injected into its own environment at spawn, never inherited from or stored in the Hub\u0027s process.",
+      "input_tokens": 2561,
+      "output_tokens": 219
+    }
+  ],
+  "outcome": {
+    "status": "completed",
+    "checks": {
+      "mentions_scoping_concept": true,
+      "cites_source_page": true
+    }
+  }
+}
