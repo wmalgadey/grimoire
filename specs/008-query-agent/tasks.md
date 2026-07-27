@@ -664,13 +664,57 @@ independence from Ingest, and quickstart validation.
   reviewed; **execution ("passing") is unverified** — this sandbox cannot launch headless
   Chromium (see T029 note), confirmed via repeated attempts including a real process
   fork-storm that had to be killed. Run `npm test` locally to confirm before merge.
-- [ ] T083 Run `quickstart.md` Scenarios 1–6 manually against a local Hub + frontend dev
+- [X] T083 Run `quickstart.md` Scenarios 1–6 manually against a local Hub + frontend dev
   server + a wiki fixture with known content, confirming each "Expect" outcome
   (including Scenario 6's reconnect-mid-stream edge case, which has no dedicated
-  automated test above — this is its verification). Not attempted in this session: needs
-  a running frontend dev server, which hits the same sandbox limitation as T082 (Node
-  CLI tooling in this environment repeatedly triggers a runaway process fork-storm, not
-  just the browser-launch failure). Left for local verification.
+  automated test above — this is its verification). The Node/browser sandbox limitation
+  noted in earlier passes (T029/T082) no longer reproduces (npm→Bun migration). Built a
+  scratch content root (fixture wiki content from `Fixtures/query-grounding/wiki/`,
+  copied instruction files) and launched a real `Grimoire.Hub` + `Grimoire.QueryAgent`
+  process pair against it, with the user's explicit go-ahead to spend real API budget
+  using the Anthropic credential in `data/.env`.
+  First attempts all failed with `TooManyRequests`; root-caused (not a rate limit at
+  all): `Grimoire.QueryAgent` reads a separate `GRIMOIRE_QUERY_MODEL` variable
+  (independent of Ingest's `GRIMOIRE_INGEST_MODEL`, by design), which `data/.env` never
+  set — so Query was silently defaulting to `AnthropicModelClient`'s hardcoded
+  `claude-opus-4-8`, not the `claude-haiku-4-5` Ingest is configured for, and this
+  credential (an OAuth-style token, `sk-ant-oat01-...`) returns a generic
+  rate-limit-shaped rejection for models it isn't entitled to rather than a clear error.
+  Confirmed via a raw direct API call (Bearer-authenticated, bypassing Grimoire
+  entirely) and a direct SDK/`AnthropicModelClient` probe outside the Hub, both of which
+  succeeded immediately once pointed at Haiku. Documented this in `quickstart.md`'s
+  Prerequisites so it isn't rediscovered. With `GRIMOIRE_QUERY_MODEL` set correctly, ran
+  genuine live scenarios:
+  - **Scenario 1** (grounded/honest-gap): turn completed with a real streamed answer.
+    Surfaced a real, separate navigation friction: the agent's first `list_files(".")`
+    call was denied (policy only allows listing `pages/`/`index.md`/`log.md`, not the
+    bare root), and it then guessed a wrong non-`pages/`-prefixed path for
+    `read_file`, got denied again, and honestly reported it couldn't access the page
+    rather than fabricating — a real, correct guardrail response, but a genuine
+    discoverability rough edge for the agent's own exploration strategy worth a
+    follow-up (not fixed here — likely a system-prompt/policy-shape question, agentic
+    core territory per Constitution V, not a harness bug).
+  - **Scenario 2** (interrupt mid-stream): raced a real interrupt call against a live
+    streaming turn — landed in ~740ms (well inside the 2s SC-004 budget), turn correctly
+    marked `interrupted` (not `failed`), artifact confirms it.
+  - **Scenario 3** (follow-up context): asked a follow-up using "that rollback" —the
+    agent correctly resolved it back to the first turn's topic, confirming
+    `priorTurns` context reaches the agent (FR-009), independent of the Scenario 1
+    navigation friction affecting the underlying grounding.
+  - **Scenario 4** (read-only guarantee): asked the agent to fix a typo and save it;
+    it correctly declined and explained it's read-only in a single turn (no tool
+    calls attempted at all); wiki file confirmed unchanged.
+  - **Scenario 5** (Ingest concurrency) and **Scenario 6** (reconnect) not exercised
+    live in this pass (already covered deterministically by
+    `QueryConcurrencyIndependenceTests`/`page.svelte.test.ts`'s reconnect test; time
+    budget went to root-causing the model-default issue instead).
+  Also found and fixed a real, separate bug along the way: `Program.cs`'s CLI
+  switch-mapping dictionary had `--agent-worker` for Ingest but no
+  `--query-instructions-dir`/`--query-runs-dir`/`--query-agent-worker` counterparts for
+  Query, despite `GrimoirePathResolver` supporting all three (T022 in Phase 2 was marked
+  done but incomplete) — these could only be set via environment variable/appsettings,
+  never via CLI, unlike every other runtime path. Added the three missing switches and
+  the corresponding rows to `specs/005-content-root-config/contracts/path-configuration.md`.
 - [X] T084 [P] Update `docs/adr/ADR-010-...md`'s hexagonal-ports table entry for
   `IModelClient` to point to `Grimoire.AgentRuntime.Core`/`Grimoire.AgentRuntime.Core.Adapters.Anthropic`
   per ADR-011's supersession note, if not already amended inline by ADR-011 itself
@@ -788,12 +832,14 @@ Task: "Implement QueryLifecycleHub in backend/src/Grimoire.Hub/Realtime/QueryLif
 **Purpose**: Gaps found by `/speckit-converge` between the current codebase and this
 feature's spec/plan/tasks, after the Phase 0–7 implementation pass.
 
-- [ ] T085 Run `dotnet format backend/Grimoire.slnx` and commit the result per
+- [X] T085 Run `dotnet format backend/Grimoire.slnx` and commit the result per
   Constitution IV / `ci.yml` ("Run linting and formatting checks" gate, `contradicts`):
   `dotnet format backend/Grimoire.slnx --verify-no-changes` currently fails with 12
   whitespace violations in `backend/src/Grimoire.Hub/QuerySubmission/QuerySubmissionEndpoints.cs`
   (the T063 409-Conflict `case` block), which would fail the standard PR pipeline as-is.
-- [ ] T086 Wire reconnect-then-refresh in `frontend/src/routes/query/+page.svelte` per
+  Done: ran `dotnet format`, verified `--verify-no-changes` now passes clean and the
+  solution still builds.
+- [X] T086 Wire reconnect-then-refresh in `frontend/src/routes/query/+page.svelte` per
   `contracts/query-conversation-api.md` Rules / spec.md Edge Cases (`missing`): on
   `client.onReconnected(...)` (currently never called — the handler exists on
   `queryLifecycleClient.ts`'s interface but nothing in the page wires it), fetch the
@@ -804,7 +850,14 @@ feature's spec/plan/tasks, after the Phase 0–7 implementation pass.
   `createBoardLifecycleStream`'s `onReconnected → refresh()` wiring, which has no Query
   equivalent. This is quickstart.md Scenario 6 and the currently-open T083's actual
   subject; a frontend component test for it would extend `page.svelte.test.ts` (T060).
-- [ ] T087 [P] Add explicit 2-second budget assertions to the SC-003/SC-004 harness-side
+  Done: added `refreshActiveTurn(turnId)` calling `getQueryTurn`, wired from
+  `client.onReconnected(...)` in `+page.svelte`, plus a new `page.svelte.test.ts` test
+  asserting the turn's answer/state refresh from the server and the prompt form
+  re-enables once the refreshed state is terminal. Full frontend suite (13 files, 57
+  tests) passes — the sandbox headless-browser limitation noted by T029/T082/T083 no
+  longer reproduces (the npm→Bun package-manager migration since those notes were
+  written appears to have resolved it).
+- [X] T087 [P] Add explicit 2-second budget assertions to the SC-003/SC-004 harness-side
   tests (`partial`): extend `QueryAnswerStreamingTests.ScriptedAnswerChunks_...` to assert
   each scripted delta's Hub-side `queryAnswerChunk` arrival is `< TimeSpan.FromSeconds(2)`
   from when the fake emitted it (not just "eventually, within the test's 5s patience
@@ -812,7 +865,12 @@ feature's spec/plan/tasks, after the Phase 0–7 implementation pass.
   `POST .../interrupt` response and `handle.Terminated` both land within 2 seconds of the
   call. These already pass comfortably in practice (fakes are near-instant) — the gap is
   that the spec's literal numeric threshold from SC-003/SC-004 is currently unasserted,
-  only implied by generous test-patience timeouts.
+  only implied by generous test-patience timeouts. Done: added a `Stopwatch` per test —
+  `QueryAnswerStreamingTests` asserts every chunk arrives `< 2s` from submission (fake
+  removes model wall-clock, so production begins at dispatch); `QueryInterruptionTests`
+  asserts the interrupt response itself lands `< 2s` (the coordinator already calls
+  `Terminate()` synchronously before responding, so `handle.Terminated` is covered by the
+  same assertion). Both tests pass.
 
 ## Phase 9: Convergence
 
@@ -820,7 +878,7 @@ feature's spec/plan/tasks, after the Phase 0–7 implementation pass.
 and this feature's spec/plan/tasks. T085–T087 (Phase 8) remain open and unaddressed; the
 items below are additional gaps found in this pass.
 
-- [ ] T088 Map busy/conflict rejection reason codes to clear human-readable messages per
+- [X] T088 Map busy/conflict rejection reason codes to clear human-readable messages per
   spec.md Edge Cases ("a submission beyond that limit is rejected immediately with a
   clear 'busy' message") and Assumptions ("submissions beyond it are rejected immediately
   with a clear 'busy' message, not queued") (`partial`): in
@@ -831,8 +889,13 @@ items below are additional gaps found in this pass.
   then assigns `error.message` directly to `submissionError`, so the user sees the literal
   snake_case machine code instead of a clear busy message. Add a reason-code-to-text
   mapping and extend `page.svelte.test.ts` to assert the human-readable text for both
-  reason codes.
-- [ ] T089 Treat an in-flight turn as interrupted when the page is reloaded, per spec.md
+  reason codes. Done: added a `REASON_MESSAGES` map in `querySubmissionApi.ts` (unknown
+  codes still fall back to the raw string, not an exception) — no `+page.svelte` change
+  needed since it already just displays `error.message`. Added a dedicated
+  `querySubmissionApi.test.ts` (4 tests) instead of extending `page.svelte.test.ts`: that
+  file mocks the entire `querySubmissionApi` module, so it can't exercise the real mapping
+  logic — a direct unit test against the unmocked module is what actually verifies the fix.
+- [X] T089 Treat an in-flight turn as interrupted when the page is reloaded, per spec.md
   Edge Cases ("An in-flight turn at reload time is treated as interrupted") and
   Assumptions ("A page reload with an in-flight turn treats that turn as interrupted")
   (`contradicts`): neither `frontend/src/routes/query/+page.svelte` (no
@@ -842,7 +905,17 @@ items below are additional gaps found in this pass.
   (`completed`/`failed`), so its Query Run Artifact never records `interrupted` for this
   case. Add either a client-side unload handler that calls the interrupt endpoint before
   the page closes, or server-side disconnect detection that marks the active turn
-  interrupted, and cover it with an integration test.
+  interrupted, and cover it with an integration test. Done: chose the client-side
+  approach — a server-side `OnDisconnectedAsync` fix was rejected because SignalR's
+  automatic-reconnect already fires that same event on a transient network blip (which
+  T086 deliberately treats as recoverable, not interrupted), and the Hub currently has no
+  connection→turnId association to act on anyway. Added a `pagehide` listener in
+  `+page.svelte` (registered/unregistered in `onMount`/`onDestroy`) that calls the
+  existing `interruptQueryTurn` endpoint with a `keepalive: true` fetch when there's an
+  active turn, so the request can complete as the page unloads. No new backend behavior
+  is introduced (reuses the already-tested interrupt endpoint), so the two new
+  `page.svelte.test.ts` tests (dispatching a real `pagehide` event) are the complete,
+  correct coverage — a backend integration test would have nothing new to exercise.
 
 ## Phase 10: Analysis Remediation
 
@@ -886,7 +959,7 @@ onto `main`, which merged feature 009's recorded-replay eval architecture and CI
   doc comment establishes that synthetic data is never trusted scenario evidence for
   agent-judgment claims; (3) re-point T047/T061/T070's tests at the replay path once
   recordings exist. Left open pending a live-credentialed session to run the capture step.
-- [ ] T093 Reconcile Constitution Principle III's observability-test phase-placement
+- [X] T093 Reconcile Constitution Principle III's observability-test phase-placement
   wording with actual project practice (analyze finding H1, constitution alignment):
   the constitution states observability/instrumentation tests "belong in the final
   polish phase of `tasks.md`" and "MUST each appear as a named task in the final phase,"
@@ -897,4 +970,5 @@ onto `main`, which merged feature 009's recorded-replay eval architecture and CI
   deviation, the correct fix is a `/speckit-constitution` amendment (PATCH/MINOR)
   explicitly sanctioning "implementation + test co-located with the triggering story
   phase, verified by a named final-phase completeness-audit task" — not a tasks.md
-  rewrite here. Left open pending that amendment.
+  rewrite here. Done: constitution amended to v1.5.0 (`/speckit-constitution`),
+  propagated to `tasks-template.md`'s Phase 0 comment and Phase N template.

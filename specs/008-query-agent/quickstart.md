@@ -10,7 +10,14 @@ worker, and frontend are built per `plan.md`'s Project Structure. See
   existing content works; the "wiki does not cover this" scenario needs a question
   clearly outside that content).
 - `data/.env` populated with the Anthropic API key (same secrets file Ingest already
-  uses, ADR-004 — no new credential).
+  uses, ADR-004 — no new credential). Note: Query reads its own `GRIMOIRE_QUERY_MODEL`
+  variable (independent of Ingest's `GRIMOIRE_INGEST_MODEL`, ADR-004) — if unset,
+  `AnthropicModelClient` falls back to its hardcoded default (`claude-opus-4-8`), not
+  whatever model Ingest is configured for. Set `GRIMOIRE_QUERY_MODEL` explicitly in
+  `data/.env` if you want Query to use the same (typically cheaper/faster) model as
+  Ingest, or any model your credential is actually entitled to — some credentials
+  (e.g. OAuth-style tokens) return a generic rate-limit-shaped error for models they
+  aren't entitled to, which is easy to mistake for a real rate limit or quota issue.
 - `agents/query/system-prompt.md` and `agents/query/policy.json` present (fail-closed:
   removing either lets you exercise US1 Acceptance Scenario 5).
 - Hub running (`dotnet run --project backend/src/Grimoire.Hub`) with the frontend dev
