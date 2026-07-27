@@ -943,7 +943,7 @@ onto `main`, which merged feature 009's recorded-replay eval architecture and CI
   `QuerySubmissionValidator.PromptMaxLength`, mirrored in `QueryPromptForm.svelte`) existed
   only in code. Updated all three spec-layer references to state "8000 characters"
   explicitly, so the limit is traceable without reading code.
-- [ ] T092 Migrate Query's agent-judgment eval tests to feature 009's recorded-replay
+- [X] T092 Migrate Query's agent-judgment eval tests to feature 009's recorded-replay
   pattern (analyze finding C1, `contradicts` — **blocks CI**): `.github/workflows/ci.yml`
   now runs `Grimoire.AgentEvals` on every PR with a hard zero-skip gate
   (`grep -Eq "Skipped:\s+0,"` else `exit 1`, feature 009's own SC-008). Query's
@@ -958,7 +958,11 @@ onto `main`, which merged feature 009's recorded-replay eval architecture and CI
   produce real recordings — this cannot be fabricated, since `SyntheticRecordings.cs`'s own
   doc comment establishes that synthetic data is never trusted scenario evidence for
   agent-judgment claims; (3) re-point T047/T061/T070's tests at the replay path once
-  recordings exist. Left open pending a live-credentialed session to run the capture step.
+  recordings exist. Done: this was the umbrella tracking task for the whole migration;
+  broken into concrete sub-tasks T094–T102 (Phase 11) below, all of which completed,
+  including the genuine live-credentialed capture (T101) and final zero-skip verification
+  (T102, 44/44 passed). Checking this box now that its decomposition is fully closed —
+  left unchecked at the time it was split apart.
 - [X] T093 Reconcile Constitution Principle III's observability-test phase-placement
   wording with actual project practice (analyze finding H1, constitution alignment):
   the constitution states observability/instrumentation tests "belong in the final
@@ -1109,3 +1113,104 @@ steps rather than one monolithic task.
   "Run replay agent evals") passes end-to-end. Done: 44/44 passed, 0 skipped, 0 failed.
   Full backend suite re-run clean alongside it (34/34 ArchTests, 14/14 Domain.UnitTests,
   228/228 IntegrationTests, `dotnet format --verify-no-changes` clean).
+
+## Phase 12: Convergence
+
+**Purpose**: Gap found by a third `/speckit-converge` pass — a user-reported discoverability
+issue: the query surface at `/query` is fully functional but unreachable from the root UI.
+
+- [X] T103 Add a discoverable link from the root ingest UI to the query surface per FR-001
+  (`missing`): `frontend/src/routes/+page.svelte` (the root/ingest board) has no
+  navigation to `/query`, and `frontend/src/routes/board/+page.svelte` only redirects
+  back to `/` (no nav component exists anywhere in `frontend/src/lib/components/` or
+  `+layout.svelte`). Today the only way to reach the query surface is typing the URL
+  directly, per `quickstart.md`'s literal instruction ("Open the query surface (`/query`)
+  in the browser") — acceptable for a quickstart script, not for a discoverable product
+  surface. Add a simple nav element (e.g. a header link/tab) visible from the root page
+  that navigates to `/query`, and from `/query` back to `/`, following whatever minimal
+  nav pattern fits the existing header markup in `+page.svelte`/`query/+page.svelte`.
+  Cover with a frontend component test asserting the link is present and points to the
+  right route.
+
+## Phase 13: Convergence
+
+**Purpose**: Gap found by a fourth `/speckit-converge` pass — a user-reported behavior gap:
+the Query agent does not match its answer's language to the question's language.
+
+- [X] T104 Add an answer-language instruction to the Query System Prompt Document per
+  spec.md's Assumptions ("Answer language follows the question") (`missing`):
+  `data/agents/query/system-prompt.md` has no section instructing the agent to answer in
+  the language the question was asked in — unlike `data/agents/ingest/system-prompt.md`'s
+  analogous `## Page Language` section (line 170), Query's document is silent on language
+  entirely. This is agentic core behavior per Constitution V (Agentic Core & Deterministic
+  Harness) and FR-018 (behavior changes go through the instruction document only, no
+  backend change) — the fix belongs in the instruction file, not in
+  `Grimoire.QueryAgent`/`Grimoire.Hub` code. Add a short instruction (e.g. under `## Tone`
+  or a new `## Answer Language` section) directing the agent to answer in German when
+  asked in German, English when asked in English, and otherwise follow the question's
+  language generally — regardless of the wiki content's own language. Verify with a live
+  or recorded query in each language against the fixture wiki (mirrors the existing
+  `Grimoire.AgentEvals`/recorded-replay evaluation pattern for SC-007..SC-010, e.g. add a
+  scenario/assertion if one doesn't already cover this, or a manual quickstart check
+  otherwise). Done: added a `## Answer Language` section to
+  `data/agents/query/system-prompt.md` and a manual `quickstart.md` Scenario 7 (German
+  question → German answer, English question → English answer). Editing the system
+  prompt invalidated the 4 recorded eval scenarios' staleness fingerprint (`system_prompt`
+  hash changed), so — with the user's explicit go-ahead to spend real API budget, same
+  precedent as T101/T083 — re-ran a genuine live capture (`claude-haiku-4-5`,
+  `GRIMOIRE_QUERY_MODEL`, 10 samples/scenario) via `Grimoire.EvalRunner`. All 4 scenarios
+  pass their threshold (`query-grounding-covered` 100%, `query-grounding-uncovered` 90%,
+  `query-follow-up` 100%, `query-read-only-decline` 100%); re-verified via
+  `dotnet test Grimoire.AgentEvals` (44/44 passed, 0 skipped). No credential material in
+  the new recordings (grepped for the token value and `sk-ant-` — no hits).
+
+## Phase 14: Convergence
+
+**Purpose**: Gaps found by a fifth `/speckit-converge` pass — three user-reported UI clarity
+issues in the query surface: unrendered markdown, an insufficiently obvious in-progress
+indicator, and undisclosed conversation-context behavior.
+
+- [X] T105 Render `turn.answer` as formatted markdown instead of raw text per FR-005
+  (`partial`): `frontend/src/lib/components/QueryConversation.svelte` (lines 29-35)
+  displays `{turn.answer}` as plain `whitespace-pre-wrap` text — a real user reported
+  seeing raw markup (e.g. `**bold**`, list dashes, `[[wikilink]]` citations per
+  `data/agents/query/system-prompt.md`'s citation convention) instead of rendered
+  formatting. The codebase already has the exact pattern needed:
+  `frontend/src/lib/components/TaskRecordView.svelte` (lines 2-3, 16) uses
+  `marked.parse(...)` piped through `DOMPurify.sanitize(...)` for the same
+  agent-authored-markdown-is-untrusted-content reasoning (Constitution V). Apply the same
+  `marked`+`DOMPurify` rendering to `turn.answer`, re-rendering as new `answer_chunk` text
+  arrives during streaming. Cover with a component test asserting markdown syntax (e.g. a
+  bold marker) renders as the corresponding HTML element, and that a script-injection
+  payload in the answer text is sanitized (mirrors `TaskRecordView.svelte.test.ts`'s
+  sanitization coverage if present). Done: added a `renderAnswer` helper
+  (`marked.parse` piped through `DOMPurify.sanitize`, mirrors `TaskRecordView.svelte`
+  verbatim) and rendered via `{@html}`, re-evaluated on every `turn.answer` change
+  (including mid-stream). Two new component tests cover formatted-markdown rendering and
+  script-injection sanitization.
+- [X] T106 Make the in-progress ("still streaming") state more prominent per US3/AC3's
+  "the UI makes this state obvious" (`partial`): the only indicator that a turn is still
+  producing its answer is a small `text-slate-400` "Answering…" label below the answer
+  text (`QueryConversation.svelte` lines 38-47); a real user reported not noticing it and
+  mistakenly believing a still-streaming answer was complete. Add a visual cue attached
+  directly to the in-progress answer text itself (e.g. an animated cursor/ellipsis at the
+  point streaming has reached, or a distinct border/background while `state === 'running'`)
+  so the incomplete state is obvious without having to notice a separate label. Cover with
+  a component test asserting the in-progress cue is present while `state === 'running'`
+  and absent once terminal. Done: added an animated (`animate-pulse`) inline cursor glyph
+  immediately after the rendered answer text while `state === 'running'`, plus a distinct
+  blue border/background on the whole turn `<article>` while running (both removed once
+  terminal). Covered by a new component test asserting the cursor testid is visible while
+  running and absent once completed.
+- [X] T107 Disclose to the user that follow-up questions carry the conversation's prior
+  turns as context per US3 (`missing`): FR-009 is fully implemented (`priorTurns` sent on
+  every submission, `frontend/src/routes/query/+page.svelte` lines 44-49) but nothing in
+  the UI tells the user this is happening — a real user was unsure whether context
+  persisted across questions in the same conversation. Add a short, unobtrusive UI hint
+  (e.g. near the prompt form's label, or a one-line note under the conversation header)
+  stating that follow-up questions in this conversation see everything asked and answered
+  so far, and that starting a new conversation clears that context. Cover with a component
+  test asserting the hint text is present. Done: added a one-line hint under the
+  conversation header in `frontend/src/routes/query/+page.svelte` stating that follow-ups
+  see everything asked/answered so far and that a new conversation clears it. Covered by
+  a new `page.svelte.test.ts` test.
