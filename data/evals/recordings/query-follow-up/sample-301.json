@@ -1,12 +1,12 @@
 {
   "schema_version": 1,
   "sample": 301,
-  "task_id": "capture-query-follow-up-03-t1-798c8e1b260c433783d9c14aae8d3dc9",
+  "task_id": "capture-query-follow-up-03-t1-fa41ccd06f0842abb2591ff4df902033",
   "model": "claude-haiku-4-5",
   "turns": [
     {
       "turn": 1,
-      "system_prompt_sha256": "sha256:d848c7c4d2fa585974d4c56a11a60ec824e54b33a95b3e621a552efa6839fa85",
+      "system_prompt_sha256": "sha256:f12118972f6262fdb4b990a7b94486f5811f7f67583d9023ec3421ddcb35c9b4",
       "conversation": [
         {
           "role": "user",
@@ -20,18 +20,18 @@
       "stop_reason": "tool_use",
       "tool_uses": [
         {
-          "tool_use_id": "toolu_01C8HwWHg6W2nttVhFBtCE4p",
+          "tool_use_id": "toolu_01DAtX31NwPLfU133WBnjqkc",
           "tool_name": "list_files",
           "input_json": "{\u0022path\u0022: \u0022pages\u0022}"
         }
       ],
-      "assistant_text": "I\u0027ll look up the Guarded Write Journal page for you.",
-      "input_tokens": 1916,
-      "output_tokens": 68
+      "assistant_text": "I\u0027ll search for the Guarded Write Journal page in the wiki.",
+      "input_tokens": 1984,
+      "output_tokens": 69
     },
     {
       "turn": 2,
-      "system_prompt_sha256": "sha256:d848c7c4d2fa585974d4c56a11a60ec824e54b33a95b3e621a552efa6839fa85",
+      "system_prompt_sha256": "sha256:f12118972f6262fdb4b990a7b94486f5811f7f67583d9023ec3421ddcb35c9b4",
       "conversation": [
         {
           "role": "user",
@@ -39,11 +39,11 @@
         },
         {
           "role": "assistant",
-          "content_sha256": "sha256:e8ba91204e8f7fe42acf3c49d2fc245d8c2bcab597d5786c68c6001ac30ca384"
+          "content_sha256": "sha256:f8ac66fe12518f386bbe46c354ca3d124d6acd3eb1b42a915e92ac131bb1c5eb"
         },
         {
           "role": "user",
-          "content_sha256": "sha256:e9a016b4a88eb1508dbaeb3e8ae82c63267f14f906edcbb43c465b169924e536"
+          "content_sha256": "sha256:99cb11d6f924e15f2bc88ddb1f0e5295acbd5716a234dfece8e43d20bf8c9e55"
         }
       ],
       "tool_names": [
@@ -53,18 +53,18 @@
       "stop_reason": "tool_use",
       "tool_uses": [
         {
-          "tool_use_id": "toolu_017zNuk3MU3LtMptGPNJ8RgA",
+          "tool_use_id": "toolu_01MtToQQeTnSXf225JJHSLy9",
           "tool_name": "read_file",
           "input_json": "{\u0022path\u0022: \u0022pages/write-journal.md\u0022}"
         }
       ],
-      "assistant_text": "Let me read the write-journal page:",
-      "input_tokens": 2020,
+      "assistant_text": "Let me check the write-journal page:",
+      "input_tokens": 2089,
       "output_tokens": 69
     },
     {
       "turn": 3,
-      "system_prompt_sha256": "sha256:d848c7c4d2fa585974d4c56a11a60ec824e54b33a95b3e621a552efa6839fa85",
+      "system_prompt_sha256": "sha256:f12118972f6262fdb4b990a7b94486f5811f7f67583d9023ec3421ddcb35c9b4",
       "conversation": [
         {
           "role": "user",
@@ -72,19 +72,19 @@
         },
         {
           "role": "assistant",
-          "content_sha256": "sha256:e8ba91204e8f7fe42acf3c49d2fc245d8c2bcab597d5786c68c6001ac30ca384"
+          "content_sha256": "sha256:f8ac66fe12518f386bbe46c354ca3d124d6acd3eb1b42a915e92ac131bb1c5eb"
         },
         {
           "role": "user",
-          "content_sha256": "sha256:e9a016b4a88eb1508dbaeb3e8ae82c63267f14f906edcbb43c465b169924e536"
+          "content_sha256": "sha256:99cb11d6f924e15f2bc88ddb1f0e5295acbd5716a234dfece8e43d20bf8c9e55"
         },
         {
           "role": "assistant",
-          "content_sha256": "sha256:dc63e21e241d19595cf34d665dc46c97a78a817e9ade17e8a86281bf96ae70a3"
+          "content_sha256": "sha256:6ece1a97f594b055a6ac3c33a7fc569b23d78630b3ccc6b172d9caf31349189f"
         },
         {
           "role": "user",
-          "content_sha256": "sha256:e3cb80731f87ba32731634c84fc38e528c5e91c40e5a2a97a9d51c19623a4c65"
+          "content_sha256": "sha256:bc9db0df9edcfd65bc5028bb0622c8641e48a354db9f1c11ed3542c73b2560ac"
         }
       ],
       "tool_names": [
@@ -93,9 +93,9 @@
       ],
       "stop_reason": "end_turn",
       "tool_uses": [],
-      "assistant_text": "The [[write-journal|Guarded Write Journal]] page describes **how the guarded write path journals prior file state for rollback on failure**. \n\nSpecifically, it explains that:\n\n- Before the guarded tool executor overwrites any file, it records that file\u0027s prior state in an in-memory write journal (either the file\u0027s previous content, or a record that it didn\u0027t exist)\n- If an agent run fails (due to turn cap, unrecoverable error, or denied writes), the journal rolls back every write in reverse order\n- This provides all-or-nothing semantics for writes without requiring a database transaction \u2014 the journal itself serves as the transaction log, kept in process memory for the duration of a run\n- The Query agent doesn\u0027t use the rollback functionality since it has no write capability",
-      "input_tokens": 2373,
-      "output_tokens": 176
+      "assistant_text": "The [[write-journal|Guarded Write Journal]] page describes a mechanism used by the guarded tool executor to enable rollback of file writes on failure.\n\nSpecifically, it explains that:\n\n- **Before any file is overwritten**, the guarded write path records the file\u0027s prior state in an in-memory write journal. This includes either the previous content if the file existed, or a record that the file did not exist.\n\n- **On failure**, if the agent run fails (due to a turn cap being exceeded, an unrecoverable error, or all writes being denied), the journal can roll all recorded writes back in reverse order. This restores previous content for files that existed, and deletes any newly created files.\n\n- **All-or-nothing semantics**: This design gives each agent run atomic semantics for its writes without requiring a database transaction\u2014the in-memory journal itself serves as the transaction log for the duration of one run.\n\nThe page also notes that the Query agent never uses the journal\u0027s rollback functionality, since it has no write capability at all.",
+      "input_tokens": 2442,
+      "output_tokens": 231
     }
   ]
 }
