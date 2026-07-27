@@ -1214,3 +1214,51 @@ indicator, and undisclosed conversation-context behavior.
   conversation header in `frontend/src/routes/query/+page.svelte` stating that follow-ups
   see everything asked/answered so far and that a new conversation clears it. Covered by
   a new `page.svelte.test.ts` test.
+
+## Phase 15: Convergence
+
+**Purpose**: Gap found by a sixth `/speckit-converge` pass — a user-reported UX gap: the
+query surface offers no keyboard shortcut to submit a question.
+
+- [X] T108 Add a Ctrl+Enter / Cmd+Enter keyboard shortcut to submit the Query Prompt form
+  per US1/AC1 (`missing`): `frontend/src/lib/components/QueryPromptForm.svelte`'s
+  `<textarea>` has no `onkeydown` handler at all — unlike an `<input>`, a bare `<textarea>`
+  inside a `<form>` does not submit on Enter, so today the only way to submit a question
+  is clicking the "Ask" button; a real user expected the standard Ctrl+Enter (Cmd+Enter on
+  Mac) convention for multi-line submit fields. Add a keydown handler on the textarea that
+  triggers the same submit path as the button when Ctrl+Enter or Cmd+Enter is pressed
+  (plain Enter continues to insert a newline, unaffected). Cover with a component test
+  asserting Ctrl+Enter (and Cmd+Enter) in the textarea submits the form, and that plain
+  Enter does not. Done: added a `handleKeydown` on the textarea that calls
+  `event.currentTarget.form?.requestSubmit()` when `ctrlKey`/`metaKey` + Enter is pressed
+  (`preventDefault` stops the newline first). Three new component tests cover Ctrl+Enter,
+  Cmd+Enter, and plain Enter (no-op).
+
+## Phase 16: Convergence
+
+**Purpose**: Gap found by a seventh `/speckit-converge` pass — a user-reported UX gap: the
+rendered answer's markdown formatting looks wrong, with missing blank-line spacing between
+blocks.
+
+- [X] T109 Restore block-level spacing and list styling for the rendered answer per
+  FR-005/T105 (`partial`): `frontend/src/lib/components/QueryConversation.svelte`'s
+  `.query-turn-answer-body` renders `marked.parse()` output via `{@html}` with no scoped
+  CSS of its own; the project's Tailwind v4 Preflight (`@import 'tailwindcss'` in
+  `frontend/src/app.css`, no `@tailwindcss/typography` plugin, no override) zeroes
+  `margin`/`padding`/`list-style` on all block elements, so multiple `<p>` paragraphs,
+  `<ul>`/`<ol>` lists, and headings in an agent answer render flush together with no
+  blank-line separation, and lists lose their bullets/indentation — confirmed by rendering
+  a representative two-paragraph-plus-list answer through `marked.parse` and inspecting the
+  output against Preflight's known reset rules. Add scoped CSS restoring spacing between
+  block elements (paragraphs, lists, headings, blockquotes, code blocks) and list
+  markers/indentation within `.query-turn-answer-body`. Cover with a component test
+  asserting computed spacing (e.g. non-zero margin between two rendered paragraphs) and
+  visible list markers. Done: added a component-scoped `<style>` block using
+  `:global()` (required since `{@html}`-injected elements never receive Svelte's scoping
+  hash) restoring margins on `p`/`ul`/`ol`/`blockquote`/`pre`/headings and
+  `list-style`/indentation on `ul`/`ol`. A component `<style>` block is bundled with the
+  component regardless of whether `app.css` is imported (unlike Tailwind utility classes,
+  which need the global stylesheet loaded — the same gap T106 hit for its streaming-cursor
+  sizing), so it's also reliably testable. Covered by a new component test asserting
+  non-zero computed `margin-bottom` between paragraphs and a non-`none` `list-style-type`
+  on the rendered list.
