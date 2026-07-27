@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Net.Http.Json;
 using Grimoire.Hub.Realtime;
 using Grimoire.IntegrationTests.Fakes;
@@ -34,6 +35,7 @@ public class QueryAnswerStreamingTests
         var client = host.GetTestClient();
 
         var received = new List<QueryAnswerChunkEvent>();
+        var arrivalElapsed = new List<TimeSpan>();
         var allReceived = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
 
         await using var connection = new HubConnectionBuilder()
@@ -43,8 +45,11 @@ public class QueryAnswerStreamingTests
             })
             .Build();
 
+        var stopwatch = new Stopwatch();
+
         connection.On<QueryAnswerChunkEvent>("queryAnswerChunk", chunk =>
         {
+            arrivalElapsed.Add(stopwatch.Elapsed);
             received.Add(chunk);
             if (received.Count >= 3)
             {
@@ -54,6 +59,10 @@ public class QueryAnswerStreamingTests
 
         await connection.StartAsync();
 
+        // SC-003: first/subsequent answer content must be visible within 2s (p95) of the
+        // agent producing it. The fake removes model wall-clock entirely, so the budget
+        // is measured from submission (production begins immediately on dispatch, T032).
+        stopwatch.Start();
         var response = await client.PostAsJsonAsync(
             "/api/query-conversations/c-stream/turns", new { prompt = "What decisions does the wiki cover?" });
         response.EnsureSuccessStatusCode();
@@ -67,5 +76,9 @@ public class QueryAnswerStreamingTests
         Assert.Equal("describes three ", received[1].Text);
         Assert.Equal("decisions.", received[2].Text);
         Assert.True(received.Select(c => c.TurnId).Distinct().Count() == 1);
+
+        Assert.All(arrivalElapsed, elapsed => Assert.True(
+            elapsed < TimeSpan.FromSeconds(2),
+            $"SC-003 budget exceeded: a chunk arrived {elapsed.TotalMilliseconds:0}ms after submission (budget: 2000ms)."));
     }
 }

@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
@@ -42,13 +43,21 @@ public class QueryInterruptionTests
             return !string.IsNullOrEmpty(json.GetProperty("answer").GetString());
         });
 
+        // SC-004: interruption must halt answer delivery within 2 seconds.
+        var interruptStopwatch = Stopwatch.StartNew();
         var interruptResponse = await client.PostAsync($"/api/query-turns/{turnId}/interrupt", content: null);
+        interruptStopwatch.Stop();
         Assert.Equal(HttpStatusCode.OK, interruptResponse.StatusCode);
+        Assert.True(
+            interruptStopwatch.Elapsed < TimeSpan.FromSeconds(2),
+            $"SC-004 budget exceeded: interrupt response took {interruptStopwatch.ElapsedMilliseconds}ms (budget: 2000ms).");
 
         var interruptJson = await interruptResponse.Content.ReadFromJsonAsync<JsonElement>();
         Assert.Equal(turnId, interruptJson.GetProperty("turnId").GetString());
         Assert.Equal("interrupted", interruptJson.GetProperty("state").GetString());
 
+        // QueryRunCoordinator.InterruptAsync calls Terminate() synchronously before
+        // returning (SC-004) — already true by the time the response above arrived.
         Assert.True(handle.Terminated, "Interrupting an active turn must terminate the agent process.");
 
         var finalResponse = await client.GetAsync($"/api/query-turns/{turnId}");
