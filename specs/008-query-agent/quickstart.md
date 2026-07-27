@@ -99,6 +99,14 @@ is a behavioral spot-check, not the structural proof.
    authoritative state (still streaming / completed / interrupted / failed) without a
    page reload — verifies the `GET /api/query-turns/{turnId}` refresh-then-resume rule.
 
+## Scenario 7 — Answer language follows the question (spec.md Assumptions)
+
+1. Ask a question in German (e.g. "Was regelt ADR-004?").
+2. **Expect**: the answer streams in German, regardless of the wiki content's own
+   language.
+3. Ask a question in English in the same or a new conversation.
+4. **Expect**: the answer streams in English.
+
 ## Verifying observability
 
 - Open the local OTel viewer (ADR-005 Aspire Dashboard) and confirm, for one completed
