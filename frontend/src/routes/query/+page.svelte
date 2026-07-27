@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { onDestroy, onMount } from 'svelte';
+	import { SvelteMap, SvelteSet } from 'svelte/reactivity';
 	import ConnectionStatusIndicator from '$lib/components/ConnectionStatusIndicator.svelte';
 	import QueryConversation from '$lib/components/QueryConversation.svelte';
 	import QueryPromptForm from '$lib/components/QueryPromptForm.svelte';
@@ -9,7 +10,11 @@
 		createQueryLifecycleClient,
 		type QueryLifecycleClient
 	} from '$lib/services/queryLifecycleClient';
-	import { getQueryTurn, interruptQueryTurn, submitQueryTurn } from '$lib/services/querySubmissionApi';
+	import {
+		getQueryTurn,
+		interruptQueryTurn,
+		submitQueryTurn
+	} from '$lib/services/querySubmissionApi';
 	import type { ConnectionState, QueryTurn, QueryTurnStatus } from '$lib/types';
 
 	function newConversationId(): string {
@@ -24,8 +29,8 @@
 	let submissionError: string | null = $state(null);
 
 	let client: QueryLifecycleClient | undefined;
-	const seenTurnChangedKeys = new Set<string>();
-	const lastAppliedSequenceByTurnId = new Map<string, number>();
+	const seenTurnChangedKeys = new SvelteSet<string>();
+	const lastAppliedSequenceByTurnId = new SvelteMap<string, number>();
 
 	function updateTurn(turnId: string, update: (turn: QueryTurn) => QueryTurn) {
 		turns = turns.map((t) => (t.turnId === turnId ? update(t) : t));
@@ -106,7 +111,9 @@
 	// `keepalive: true` lets the request complete even as the page is unloading.
 	function handlePageHide() {
 		if (!activeTurnId) return;
-		void interruptQueryTurn(activeTurnId, (input, init) => fetch(input, { ...init, keepalive: true }));
+		void interruptQueryTurn(activeTurnId, (input, init) =>
+			fetch(input, { ...init, keepalive: true })
+		);
 	}
 
 	onMount(() => {

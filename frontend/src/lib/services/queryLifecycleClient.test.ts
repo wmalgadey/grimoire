@@ -15,7 +15,11 @@ test('applyAnswerChunk appends in-order deltas and advances the high-water mark'
 	let result = applyAnswerChunk('', chunk({ sequence: 1, text: 'The wiki ' }), 0);
 	expect(result).toEqual({ answer: 'The wiki ', lastAppliedSequence: 1 });
 
-	result = applyAnswerChunk(result.answer, chunk({ sequence: 2, text: 'covers ADRs.' }), result.lastAppliedSequence);
+	result = applyAnswerChunk(
+		result.answer,
+		chunk({ sequence: 2, text: 'covers ADRs.' }),
+		result.lastAppliedSequence
+	);
 	expect(result).toEqual({ answer: 'The wiki covers ADRs.', lastAppliedSequence: 2 });
 });
 

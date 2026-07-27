@@ -50,8 +50,7 @@
 		bind:value={prompt}
 		maxlength={PROMPT_MAX_LENGTH}
 		disabled={disabled || submitting}
-		data-testid="query-prompt-input"
-	></textarea>
+		data-testid="query-prompt-input"></textarea>
 
 	{#if disabled}
 		<p class="text-xs text-slate-400" data-testid="query-prompt-disabled-hint">

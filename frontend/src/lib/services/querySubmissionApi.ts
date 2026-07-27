@@ -22,7 +22,9 @@ const REASON_MESSAGES: Record<string, string> = {
 	conversation_already_active: 'This conversation already has a question in progress.'
 };
 
-async function parseErrorMessage(response: Response): Promise<{ message: string; reason?: string }> {
+async function parseErrorMessage(
+	response: Response
+): Promise<{ message: string; reason?: string }> {
 	try {
 		const body = await response.json();
 		if (typeof body?.message === 'string') return { message: body.message };
@@ -46,11 +48,14 @@ export async function submitQueryTurn(
 	priorTurns: QueryPriorTurn[] = [],
 	fetchImpl: typeof fetch = fetch
 ): Promise<QueryTurnAcceptedResponse> {
-	const response = await fetchImpl(`${CONVERSATIONS_BASE_PATH}/${encodeURIComponent(conversationId)}/turns`, {
-		method: 'POST',
-		headers: { 'Content-Type': 'application/json' },
-		body: JSON.stringify({ prompt, priorTurns })
-	});
+	const response = await fetchImpl(
+		`${CONVERSATIONS_BASE_PATH}/${encodeURIComponent(conversationId)}/turns`,
+		{
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify({ prompt, priorTurns })
+		}
+	);
 
 	if (!response.ok) {
 		const { message, reason } = await parseErrorMessage(response);
@@ -61,7 +66,10 @@ export async function submitQueryTurn(
 }
 
 /** GET /api/query-turns/{turnId} — current authoritative state (used on reconnect). */
-export async function getQueryTurn(turnId: string, fetchImpl: typeof fetch = fetch): Promise<QueryTurn> {
+export async function getQueryTurn(
+	turnId: string,
+	fetchImpl: typeof fetch = fetch
+): Promise<QueryTurn> {
 	const response = await fetchImpl(`${TURNS_BASE_PATH}/${encodeURIComponent(turnId)}`);
 	if (!response.ok) {
 		const { message } = await parseErrorMessage(response);
@@ -72,7 +80,10 @@ export async function getQueryTurn(turnId: string, fetchImpl: typeof fetch = fet
 }
 
 /** POST /api/query-turns/{turnId}/interrupt (FR-006). */
-export async function interruptQueryTurn(turnId: string, fetchImpl: typeof fetch = fetch): Promise<QueryTurn> {
+export async function interruptQueryTurn(
+	turnId: string,
+	fetchImpl: typeof fetch = fetch
+): Promise<QueryTurn> {
 	const response = await fetchImpl(`${TURNS_BASE_PATH}/${encodeURIComponent(turnId)}/interrupt`, {
 		method: 'POST'
 	});

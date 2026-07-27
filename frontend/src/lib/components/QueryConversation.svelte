@@ -18,8 +18,13 @@
 
 <div class="flex flex-col gap-4" data-testid="query-conversation">
 	{#each turns as turn (turn.turnId)}
-		<article class="flex flex-col gap-2 rounded border border-slate-200 p-3" data-testid="query-turn">
-			<p class="text-sm font-medium text-slate-900" data-testid="query-turn-prompt">{turn.prompt}</p>
+		<article
+			class="flex flex-col gap-2 rounded border border-slate-200 p-3"
+			data-testid="query-turn"
+		>
+			<p class="text-sm font-medium text-slate-900" data-testid="query-turn-prompt">
+				{turn.prompt}
+			</p>
 
 			<div
 				class="whitespace-pre-wrap text-sm text-slate-700"

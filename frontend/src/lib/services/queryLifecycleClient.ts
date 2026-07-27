@@ -18,7 +18,10 @@ export interface QueryLifecycleClient {
  * is structurally independent (research.md R8): its own connection, its own hub route.
  */
 export function createQueryLifecycleClient(hubUrl: string = HUB_PATH): QueryLifecycleClient {
-	const connection = new signalR.HubConnectionBuilder().withUrl(hubUrl).withAutomaticReconnect().build();
+	const connection = new signalR.HubConnectionBuilder()
+		.withUrl(hubUrl)
+		.withAutomaticReconnect()
+		.build();
 
 	let connectionStateHandler: ((state: ConnectionState) => void) | undefined;
 	connection.onreconnecting(() => connectionStateHandler?.('reconnecting'));

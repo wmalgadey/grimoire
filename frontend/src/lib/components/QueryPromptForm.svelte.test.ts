@@ -12,9 +12,9 @@ test('empty prompt is rejected client-side without calling onSubmit', async () =
 
 	await screen.getByTestId('query-prompt-submit-button').click();
 
-	await expect.element(screen.getByTestId('query-prompt-error')).toHaveTextContent(
-		'Enter a question'
-	);
+	await expect
+		.element(screen.getByTestId('query-prompt-error'))
+		.toHaveTextContent('Enter a question');
 	expect(onSubmit).not.toHaveBeenCalled();
 });
 
@@ -25,9 +25,9 @@ test('whitespace-only prompt is rejected client-side without calling onSubmit', 
 	await screen.getByTestId('query-prompt-input').fill('   \n\t  ');
 	await screen.getByTestId('query-prompt-submit-button').click();
 
-	await expect.element(screen.getByTestId('query-prompt-error')).toHaveTextContent(
-		'Enter a question'
-	);
+	await expect
+		.element(screen.getByTestId('query-prompt-error'))
+		.toHaveTextContent('Enter a question');
 	expect(onSubmit).not.toHaveBeenCalled();
 });
 
@@ -43,9 +43,9 @@ test('over-max-length prompt is rejected client-side without calling onSubmit', 
 	await screen.getByTestId('query-prompt-input').fill(overLong);
 	await screen.getByTestId('query-prompt-submit-button').click();
 
-	await expect.element(screen.getByTestId('query-prompt-error')).toHaveTextContent(
-		'exceeds the maximum'
-	);
+	await expect
+		.element(screen.getByTestId('query-prompt-error'))
+		.toHaveTextContent('exceeds the maximum');
 	expect(onSubmit).not.toHaveBeenCalled();
 });
 

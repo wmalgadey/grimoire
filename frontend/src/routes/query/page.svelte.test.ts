@@ -48,8 +48,13 @@ vi.mock('$lib/services/queryLifecycleClient', () => ({
 		},
 		onConnectionStateChanged: () => () => {}
 	}),
-	applyAnswerChunk: (currentAnswer: string, event: { text: string; sequence: number }, lastAppliedSequence: number) => {
-		if (event.sequence <= lastAppliedSequence) return { answer: currentAnswer, lastAppliedSequence };
+	applyAnswerChunk: (
+		currentAnswer: string,
+		event: { text: string; sequence: number },
+		lastAppliedSequence: number
+	) => {
+		if (event.sequence <= lastAppliedSequence)
+			return { answer: currentAnswer, lastAppliedSequence };
 		return { answer: currentAnswer + event.text, lastAppliedSequence: event.sequence };
 	},
 	applyTurnChanged: (event: { eventId: string; turnId: string }, seen: Set<string>) => {
@@ -83,7 +88,9 @@ test('submitting a question shows a running turn and disables the prompt form wi
 	await screen.getByTestId('query-prompt-input').fill('What does ADR-004 decide?');
 	await screen.getByTestId('query-prompt-submit-button').click();
 
-	await expect.element(screen.getByTestId('query-turn-prompt')).toHaveTextContent('What does ADR-004 decide?');
+	await expect
+		.element(screen.getByTestId('query-turn-prompt'))
+		.toHaveTextContent('What does ADR-004 decide?');
 	await expect.element(screen.getByTestId('query-turn-state')).toHaveTextContent('Answering…');
 	await expect.element(screen.getByTestId('query-prompt-input')).toBeDisabled();
 	await expect.element(screen.getByTestId('query-prompt-disabled-hint')).toBeVisible();

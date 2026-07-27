@@ -24,16 +24,16 @@ function turn(overrides: Partial<QueryTurn> = {}): QueryTurn {
 test('renders the prompt and progressively-arriving answer text as it grows', async () => {
 	const screen = await render(QueryConversation, { turns: [turn({ answer: 'ADR-004 ' })] });
 
-	await expect.element(screen.getByTestId('query-turn-prompt')).toHaveTextContent(
-		'What does ADR-004 decide?'
-	);
+	await expect
+		.element(screen.getByTestId('query-turn-prompt'))
+		.toHaveTextContent('What does ADR-004 decide?');
 	await expect.element(screen.getByTestId('query-turn-answer')).toHaveTextContent('ADR-004');
 	await expect.element(screen.getByTestId('query-turn-state')).toHaveTextContent('Answering…');
 
 	await screen.rerender({ turns: [turn({ answer: 'ADR-004 scopes the API key ' })] });
-	await expect.element(screen.getByTestId('query-turn-answer')).toHaveTextContent(
-		'ADR-004 scopes the API key'
-	);
+	await expect
+		.element(screen.getByTestId('query-turn-answer'))
+		.toHaveTextContent('ADR-004 scopes the API key');
 });
 
 test('displays the full answer with page-reference wikilinks once the turn completes', async () => {
@@ -59,7 +59,10 @@ test('shows the failure reason when a turn fails', async () => {
 
 test('shows a stop control only while the turn is running, and calls onInterrupt', async () => {
 	const onInterrupt = vi.fn();
-	const screen = await render(QueryConversation, { turns: [turn({ state: 'running' })], onInterrupt });
+	const screen = await render(QueryConversation, {
+		turns: [turn({ state: 'running' })],
+		onInterrupt
+	});
 
 	await expect.element(screen.getByTestId('query-turn-stop-button')).toBeVisible();
 	await screen.getByTestId('query-turn-stop-button').click();
