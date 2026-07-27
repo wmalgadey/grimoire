@@ -57,6 +57,43 @@ test('shows the failure reason when a turn fails', async () => {
 		.toHaveTextContent('Query agent process crashed.');
 });
 
+// T105 (Convergence) - the answer is agent-authored markdown (bold, lists, [[wikilink]]
+// citations); it must render as formatted HTML, not raw markup, and untrusted content
+// must be sanitized (mirrors TaskRecordView.svelte's marked+DOMPurify rendering).
+test('renders the answer as formatted markdown, not raw markup', async () => {
+	const screen = await render(QueryConversation, {
+		turns: [turn({ answer: '**ADR-004** scopes the key. See [[adr-004]].', state: 'completed' })]
+	});
+
+	const answerEl = screen.getByTestId('query-turn-answer').element();
+	expect(answerEl.querySelector('strong')?.textContent).toBe('ADR-004');
+	expect(answerEl.innerHTML).not.toContain('**ADR-004**');
+});
+
+test('sanitizes a script-injection payload in the answer text', async () => {
+	const screen = await render(QueryConversation, {
+		turns: [turn({ answer: '<img src=x onerror="alert(1)">safe text', state: 'completed' })]
+	});
+
+	const answerEl = screen.getByTestId('query-turn-answer').element();
+	expect(answerEl.innerHTML).not.toContain('onerror');
+	expect(answerEl.textContent).toContain('safe text');
+});
+
+// T106 (Convergence) - a real user missed the small "Answering…" label and mistook a
+// still-streaming answer for a complete one; a cue attached to the answer text itself
+// must make the in-progress state obvious, and disappear once the turn is terminal.
+test('shows an in-progress streaming cue while running, absent once terminal', async () => {
+	const screen = await render(QueryConversation, {
+		turns: [turn({ answer: 'partial answer ', state: 'running' })]
+	});
+
+	await expect.element(screen.getByTestId('query-turn-streaming-cursor')).toBeVisible();
+
+	await screen.rerender({ turns: [turn({ answer: 'partial answer done.', state: 'completed' })] });
+	await expect.element(screen.getByTestId('query-turn-streaming-cursor')).not.toBeInTheDocument();
+});
+
 test('shows a stop control only while the turn is running, and calls onInterrupt', async () => {
 	const onInterrupt = vi.fn();
 	const screen = await render(QueryConversation, {
