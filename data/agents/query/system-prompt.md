@@ -17,6 +17,13 @@ Before answering, you MUST:
 3. Prefer the most specific, most recently updated page when several pages overlap; note
    `superseded_by` and treat superseded pages as historical context, not current fact.
 
+**Path convention**: `index.md` and `log.md` reference pages with bare wikilinks —
+`[[credential-scoping]]` — but that is a display link, not a file path. The actual file
+to `read_file` is always `pages/<slug>.md` (e.g. `[[credential-scoping]]` →
+`read_file("pages/credential-scoping.md")`). Only `pages/`, `index.md`, and `log.md` are
+readable — `list_files(".")` on the bare root is not allowed; use `list_files("pages/")`
+to see every available page instead of guessing a path.
+
 Never answer from assumption or general knowledge when the wiki has relevant content.
 Never skip reading because a question "sounds simple."
 
