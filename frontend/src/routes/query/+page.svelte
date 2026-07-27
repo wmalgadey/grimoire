@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { onDestroy, onMount } from 'svelte';
 	import { SvelteMap, SvelteSet } from 'svelte/reactivity';
+	import { resolve } from '$app/paths';
 	import ConnectionStatusIndicator from '$lib/components/ConnectionStatusIndicator.svelte';
 	import QueryConversation from '$lib/components/QueryConversation.svelte';
 	import QueryPromptForm from '$lib/components/QueryPromptForm.svelte';
@@ -172,6 +173,11 @@
 		<div class="flex items-center justify-between gap-2">
 			<h1 class="text-lg font-semibold text-slate-900">Ask the wiki</h1>
 			<div class="flex items-center gap-2">
+				<a
+					href={resolve('/')}
+					class="text-sm font-medium text-slate-600 underline-offset-2 hover:underline"
+					data-testid="nav-link-ingest">Submit a source</a
+				>
 				<ConnectionStatusIndicator state={connectionState} />
 				<button
 					type="button"
@@ -185,6 +191,10 @@
 		</div>
 		<p class="text-sm text-slate-500">
 			Ask a question and watch the answer stream in, grounded in wiki content.
+		</p>
+		<p class="text-xs text-slate-400" data-testid="query-context-hint">
+			Follow-up questions in this conversation see everything asked and answered so far. Starting a
+			new conversation clears that context.
 		</p>
 	</header>
 

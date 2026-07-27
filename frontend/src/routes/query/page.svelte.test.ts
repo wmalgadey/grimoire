@@ -71,6 +71,26 @@ vi.mock('$lib/services/querySubmissionApi', () => ({
 	getQueryTurn: (...args: unknown[]) => getQueryTurnMock(...args)
 }));
 
+// T103 (Convergence) - the query surface had no way back to the ingest UI either;
+// asserts the nav link back to root exists.
+test('renders a nav link back to the ingest UI', async () => {
+	const screen = await render(Page);
+
+	const link = screen.getByTestId('nav-link-ingest');
+	await expect.element(link).toBeVisible();
+	await expect.element(link).toHaveAttribute('href', '/');
+});
+
+// T107 (Convergence) - FR-009's priorTurns behavior was undisclosed in the UI; asserts
+// a hint explaining that follow-up questions carry the conversation's context so far.
+test('discloses that follow-up questions carry the conversation context so far', async () => {
+	const screen = await render(Page);
+
+	await expect
+		.element(screen.getByTestId('query-context-hint'))
+		.toHaveTextContent(/everything asked and answered so far/i);
+});
+
 test('submitting a question shows a running turn and disables the prompt form with the one-turn-at-a-time hint', async () => {
 	onAnswerChunkHandlers.length = 0;
 	onTurnChangedHandlers.length = 0;
