@@ -31,9 +31,9 @@
 
 ## Notes
 
-- Scope call made: lint is report-only except the mechanical Inbound-Link Refresh
-  (the original conventions' "offer to fix problems" is deferred to future work).
-  If the user wants lint to apply fixes, `/speckit-clarify` should revisit.
+- Scope confirmed by owner (Clarifications 2026-07-28): report-only except the
+  mechanical Inbound-Link Refresh; fixes deferred to future work. Trigger model
+  confirmed: manual via Web UI, no scheduling.
 - SC-008 (inbound-link accuracy) is an evaluation threshold, not a 100%
   guarantee, because the refresh is executed by the agent (Principle II split);
   accuracy is measured against the wiki state the run read, tolerating concurrent

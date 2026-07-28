@@ -40,6 +40,17 @@ pages; refresh inbound-link counts; produce a findings report."
 - **Review Window**: The age threshold (default: 90 days since last review) after
   which a low-confidence page becomes a review candidate.
 
+## Clarifications
+
+### Session 2026-07-28
+
+- Q: Should lint also fix the problems it finds, or only report them? → A:
+  Report-only. The Findings Report proposes remediations; the single write
+  action remains the mechanical Inbound-Link Refresh in page frontmatter.
+  Applying fixes (metadata or content) is future work, out of scope here.
+- Q: How are lint runs triggered? → A: Manually from the Web UI, like ingest
+  submissions. Scheduled/periodic runs are out of scope for this feature.
+
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - Run lint, read the findings (Priority: P1)
