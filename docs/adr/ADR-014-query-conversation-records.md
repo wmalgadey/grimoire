@@ -1,5 +1,5 @@
 ---
-status: proposed
+status: accepted
 ---
 
 # ADR-014: Query Conversation Records and Record-Sourced Follow-Up Context
