@@ -1,5 +1,5 @@
 ---
-status: proposed
+status: accepted
 ---
 
 # ADR-013: Unified Agent Platform Packaging and Agent-Artifact Naming Convention
