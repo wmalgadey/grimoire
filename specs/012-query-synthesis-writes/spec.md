@@ -28,6 +28,21 @@ synthesis, as in the original wiki-maintenance conventions."
   policy permits. Everything outside it is denied at the tool boundary,
   deny-by-default, as for every agent.
 
+## Clarifications
+
+### Session 2026-07-28
+
+- Q: May the Query agent update existing synthesis pages when a new insight
+  extends or supersedes one (update-over-duplicate), or only create new pages?
+  → A: Create-only. The Write Scope covers creating new Synthesis Pages and
+  maintaining index and log; consolidating near-duplicate syntheses is the Lint
+  agent's job (feature 013).
+- Q: When the user explicitly asks "save this as a wiki page" — must the agent
+  save, or does the Synthesis Decision remain the agent's judgment? → A: The
+  agent decides. An explicit user request is strong signal, but the agent may
+  decline (and say why) when the answer contains no genuinely new insight — the
+  wiki must not fill with answer-echoes.
+
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - A good answer becomes a wiki page (Priority: P1)

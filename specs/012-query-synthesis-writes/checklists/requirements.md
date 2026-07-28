@@ -31,10 +31,10 @@
 
 ## Notes
 
-- Write Scope default chosen: create Synthesis Pages + maintain index/log; no
-  edits to existing content pages. If the user wants query to also *update*
-  existing synthesis pages (update-over-duplicate), `/speckit-clarify` should
-  confirm — the spec currently routes duplicate consolidation to the Lint agent.
+- Write Scope confirmed by owner (Clarifications 2026-07-28): create-only —
+  Synthesis Pages + index/log maintenance; no edits to existing pages; duplicate
+  consolidation routed to the Lint agent. Explicit user save-requests remain
+  subject to the agent's Synthesis Decision.
 - The writer-coordination mechanism is deliberately a planning decision (FR-009
   pins the integrity outcome, not the mechanism); it must land in the superseding
   ADR shared with feature 013.
