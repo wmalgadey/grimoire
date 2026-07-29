@@ -584,7 +584,7 @@ complete.
 **Purpose**: Final DoD gates — the named completeness audit, CI enforcement of the new
 rules, and quickstart validation.
 
-- [ ] T049 **Completeness audit** (MANDATORY named final-phase task — Constitution
+- [X] T049 **Completeness audit** (MANDATORY named final-phase task — Constitution
   Principle III/IV): cross-reference, in `specs/010-unified-agent-platform/tasks.md`
   completion notes or the PR description, (a) every row of
   `plan.md ## Observability > Preserved observability contract` — Ingest agent + Hub
@@ -601,25 +601,101 @@ rules, and quickstart validation.
   gate for feature 013's plan, which must cite the `AgentProfile`/`AgentHost` seam and
   rules D1/D2 (plan Test Strategy). File any gap found as a new task in this file
   before declaring the DoD met.
-- [ ] T050 CI enforcement (Constitution Principle IV): verify `.github/workflows/ci.yml`
+  **Audit result**:
+  (a) Observability rows — all three preserved-contract rows verified against their
+  passing (renamed where applicable) tests inside T044's green run: Ingest agent +
+  Hub ingest pipeline → `IngestObservability{Log,Metrics,Trace}Tests` (renamed T034)
+  + `IngestLifecycle{LogEventTests,TraceTests}` + `IngestSubmission{LogEvent,Metrics,
+  Trace}Tests` (unrenamed, already Ingest-prefixed) — all present, all green (T047).
+  Query agent + Hub query pipeline → `QueryLifecycle{LogEvent,Metrics,Trace}Tests` —
+  present, unrenamed (already conformant), green (T047). Hub request tracing +
+  eval-runner telemetry → `HubRequestTracingTests`, `EvalRunnerObservabilityTests`,
+  `EvalObservabilityTests` — present, green (T047). Business-Metrics/Log-Events/
+  Trace-Spans tables in `plan.md ## Observability`: confirmed zero new rows — no gap.
+  (b) Success criteria: SC-001 (single implementation, probe-verified) →
+  T003/T005 (rules written) + T018/T021 (bootstraps deleted, both hosts delegate) +
+  T023 (empty-baseline re-probe) + T026 (grep confirms zero duplicate R2 concerns) —
+  all done, all green. SC-002 (100% naming compliance, probe-verified) →
+  T001/T002 (rule + probe) + T027–T043 (convention doc, full rename/classification
+  batch, N1 baseline emptied, doc↔fixture mirror, final enforcing-state probe) — all
+  done, N1 41-suite-inclusive green with empty baseline. SC-003 (full suite passes,
+  no weakened assertions, structural identity) → T035 (replay rename-safety) +
+  T044–T046 (full-suite gate, no-weakening audit, artifact/event shape identity) —
+  all done, all green. SC-004 (capabilities == profile, Query no-write probe-verified)
+  → T023 (D2 re-probe) + T024 (Query write-boundary re-probe) + T025 (profile-fidelity
+  test) + T048 (sign-off cross-reference) — all done, all green. **SC-005** (feature
+  013 adds zero duplicated platform code) is **explicitly deferred**: not measurable
+  inside this feature; recorded here as feature 013's entry gate — that feature's
+  `plan.md` MUST cite the `AgentProfile`/`AgentHost` seam (`backend/src/Grimoire.AgentRuntime/Host/`)
+  and structural rules **D1** (`AgentHostTelemetryContainmentRuleTests`) and **D2**
+  (`AgentHostModelCompositionContainmentRuleTests`) as the mechanism that makes
+  scaffold duplication for the Lint agent a build failure, and its own Phase-N
+  completeness audit must confirm D1/D2 stayed green with no new baseline reintroduced.
+  **No gap found** — DoD criteria for this feature are met (SC-005 gate recorded and
+  deferred, not a gap).
+- [X] T050 CI enforcement (Constitution Principle IV): verify `.github/workflows/ci.yml`
   runs `backend/tests/Grimoire.ArchTests` (now containing N1/D1/D2 and the
   renamed/re-probed rules) and all renamed test classes in the standard PR pipeline
   with the zero-skip eval gate intact; verify no baseline/ratchet machinery from
   Phase 0 survives anywhere in `backend/tests/Grimoire.ArchTests/` (D1/D2 emptied in
   T023-adjacent tasks, N1's removed in T042) — the rules now enforce outright.
-- [ ] T051 [P] Stale-reference sweep: update code comments and non-spec documentation
+  **Result**: `.github/workflows/ci.yml` runs `dotnet test backend/tests/Grimoire.ArchTests`
+  and `backend/tests/Grimoire.IntegrationTests` unfiltered (no `--filter`/category/
+  skip), plus the `Skipped:\s+0,` zero-skip gate on `Grimoire.AgentEvals` (unchanged
+  by this feature). `dotnet format Grimoire.slnx --verify-no-changes` clean (no
+  formatting drift on any new/renamed file — CI's lint gate would pass). Baseline/
+  ratchet machinery check: `grep -rln "Baseline\|ratchet\|Ratchet" tests/Grimoire.ArchTests/*.cs`
+  returns only one historical doc-comment sentence in `AgentArtifactNamingRuleTests.cs`
+  ("The feature-010 legacy-rename baseline ... was fully emptied by ...") — no active
+  field, list, or `IsBaselined`-style helper remains anywhere; N1/D1/D2 all enforce
+  outright.
+- [X] T051 [P] Stale-reference sweep: update code comments and non-spec documentation
   that name renamed artifacts as *current* code (e.g. comments referencing
   `ReplayEvalTests`, `ScenarioDefinitions`, `Grimoire.Hub.Submission`), excluding
   historical spec/ADR records (specs 002–009 and accepted ADRs describe their own
   point in time; ADR-013 and the convention document carry the mapping). Check
   `.specify/` agent-context files via the managed update flow if they reference moved
   paths.
-- [ ] T052 Run `specs/010-unified-agent-platform/quickstart.md` validation end-to-end
+  **Result**: grepped every old name (`ReplayEvalTests`, `ScenarioDefinitions`,
+  `Grimoire.Hub.Submission`, `Grimoire.Hub.TaskArtifact`, `AgentCliOptions`,
+  `Grimoire.IngestAgent.AgentCore`, `GuardedWriteBoundaryRuleTests`,
+  `Observability{Log,Metrics,Trace}Tests`) repo-wide. Every hit outside specs 002–009
+  and the accepted ADRs (010/011/012) is either (a) a substring match inside the
+  already-renamed identifier itself (e.g. `IngestObservabilityLogTests.cs` matching
+  `ObservabilityLogTests`) — not stale, or (b) `docs/befunde-remediation-prompts.md`,
+  a source-material prompt log describing a past `/speckit-converge` run against
+  spec 002 at its own point in time (not a current-code claim; excluded like the
+  historical specs it discusses per the doc map's "source material only" role). No
+  code comment or non-spec doc asserts a renamed/moved artifact as current under its
+  old name. `CLAUDE.md` and `.specify/extensions/agent-context/` contain no
+  references to any moved path — nothing to update.
+- [X] T052 Run `specs/010-unified-agent-platform/quickstart.md` validation end-to-end
   (steps 1–4: full suite, structural rules incl. manual probe repeatability, optional
   replay-driven agent runs, convention-document spot checks — `ls
   backend/tests/Grimoire.AgentEvals/` shows `IngestReplayEvalTests.cs` next to
   `QueryReplayEvalTests.cs`; `grep -r "class ReplayEvalTests" backend/` is empty) and
   confirm every Expected outcome.
+  **Result**: Step 1 (`cd backend && dotnet build && dotnet test`) — build clean,
+  all four projects green (ArchTests 41, Domain.UnitTests 14, IntegrationTests 232,
+  AgentEvals 44), zero skipped; no-weakening check re-confirmed (T045). Step 2
+  (`dotnet test tests/Grimoire.ArchTests`) — 41/41 green; manually re-ran the N1
+  probe (temporary `MisnamedEvalTests` referencing `Grimoire.IngestAgent.IngestCliOptions`)
+  to confirm repeatability outside the implementation session: red with the exact
+  documented reason, green after removal. Step 3 (nothing observable changed) —
+  the manual CLI run is explicitly optional corroboration ("the hermetic integration
+  suite in step 1 asserts the same shapes automatically"); confirmed its automated
+  equivalent instead: `Grimoire.AgentEvals`'s 44/44 green run spawns the real
+  `Grimoire.IngestAgent`/`Grimoire.QueryAgent` executables via
+  `AgentProcessInvoker` (`Process.Start`, `backend/src/Grimoire.EvalRunner/Workspace/AgentProcessInvoker.cs`)
+  against the replay adapter and the unchanged `data/evals/recordings/` fixtures —
+  the exact end-to-end path step 3 describes, exercised for both agents on every
+  CI run. Step 4 — `docs/conventions/agent-artifact-naming.md` contains the rule,
+  rationale, cross-agent definition, exemption list, and full rename map (headline
+  `ReplayEvalTests` → `IngestReplayEvalTests` present); `ls backend/tests/Grimoire.AgentEvals/`
+  shows `IngestReplayEvalTests.cs` next to `QueryReplayEvalTests.cs`;
+  `grep -r "class ReplayEvalTests" backend/` empty; N1's
+  `ExemptionFixture_MustMirror_TheConventionDocument` (T042) passing is the
+  live doc↔fixture identity check. All Expected outcomes confirmed.
 
 ---
 
