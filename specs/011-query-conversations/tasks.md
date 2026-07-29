@@ -43,7 +43,7 @@ and blocks everything else.
 **⚠️ NON-NEGOTIABLE**: No feature implementation can begin until Phase 0 is
 complete.
 
-- [ ] T001 Write `backend/tests/Grimoire.ArchTests/RetiredQueryRunsLocationRuleTests.cs`:
+- [X] T001 Write `backend/tests/Grimoire.ArchTests/RetiredQueryRunsLocationRuleTests.cs`:
   Mono.Cecil IL-literal scan (same idiom as `RuntimePathsBoundaryRuleTests.cs`)
   asserting **no production assembly** (`Grimoire.Hub`, `Grimoire.QueryAgent`,
   `Grimoire.IngestAgent`, `Grimoire.AgentRuntime`, `Grimoire.Domain`,
@@ -54,19 +54,27 @@ complete.
   rule carries a **temporary, explicitly-commented allowlist** naming exactly
   those two declaring types ("cutover debt — emptied by T019"), keeping CI green
   until the US1 cutover task deletes them and empties the allowlist.
-- [ ] T002 Red/Green probe for T001 (controlled, per constitution Phase 0
+- [X] T002 Red/Green probe for T001 (controlled, per constitution Phase 0
   requirement): add a scratch class in `backend/src/Grimoire.Hub/` (outside the
   allowlisted types) containing the literal `"query-runs"`, run
   `dotnet test backend/tests/Grimoire.ArchTests` — the rule MUST fail naming the
   scratch type; delete the scratch class, run again — it MUST pass. Commit
   message documents the probe result. (A second Red/Green cycle is re-run at
   T019 when the allowlist is emptied — see that task.)
+  *Probe executed 2026-07-29: Red — scratch class `Grimoire.Hub.RedGreenProbeScratch`
+  with `Path.Combine("data", "query-runs", "probe.md")` made the rule fail naming
+  `Grimoire.Hub: Grimoire.Hub.RedGreenProbeScratch.RetiredPath → "query-runs"`;
+  Green — scratch deleted, full `Grimoire.ArchTests` suite passed (35/35). Note:
+  `GrimoirePathOptions.DefaultQueryRunsDirName` is a C# const whose literal is
+  compiler-inlined at the use site, so its allowlist entry names
+  `GrimoirePathResolver` (the IL site); Program.cs's `"--query-runs-dir"` maps to
+  the namespace-less `Program` type — two entries, as specified.*
 
 **Definition of Done**:
 
-- [ ] Rule (T001) written and committed with the two-entry allowlist documented
-- [ ] Red/Green probe (T002) completed with commit message documenting the result
-- [ ] `Grimoire.ArchTests` passes in CI with no active violations (probe code
+- [X] Rule (T001) written and committed with the two-entry allowlist documented
+- [X] Red/Green probe (T002) completed with commit message documenting the result
+- [X] `Grimoire.ArchTests` passes in CI with no active violations (probe code
   removed)
 
 **Checkpoint**: The retired location is guarded. Feature code may now begin.
@@ -78,7 +86,7 @@ complete.
 **Purpose**: Minimal repo plumbing for the new runtime location. No new projects,
 packages, or infrastructure are needed (plan.md Technical Context).
 
-- [ ] T003 Add `data/conversations/` to `.gitignore` (ADR-003/ADR-009 pattern,
+- [X] T003 Add `data/conversations/` to `.gitignore` (ADR-003/ADR-009 pattern,
   next to the existing `data/query-runs/` entry, which stays until T019 retires
   it).
 
