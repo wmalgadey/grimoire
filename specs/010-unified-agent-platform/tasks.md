@@ -283,7 +283,7 @@ concern exists twice; full suite green after each host switch.
   `backend/tests/Grimoire.AgentEvals` (ingest replay suite) — all green against
   unchanged recordings; any `stale`/`mismatch` replay failure is a defect in the
   consolidation (research.md R7), not an occasion to re-capture.
-- [ ] T020 [US1] Switch `backend/src/Grimoire.QueryAgent/Program.cs` onto the
+- [X] T020 [US1] Switch `backend/src/Grimoire.QueryAgent/Program.cs` onto the
   platform: declare the Query `AgentProfile` (ServiceName `Grimoire.QueryAgent`, run
   span `query_agent.run`, correlation `turn_id`,
   `GRIMOIRE_QUERY_MODEL`/`GRIMOIRE_QUERY_BASE_URL`, existing `QueryToolRegistry`
@@ -291,34 +291,34 @@ concern exists twice; full suite green after each host switch.
   stdin-conversation intent hook, and replace the duplicated
   `ParseArgs`/`CreateModelClient`/`SanitizeErrorText`/inline sequencing with the
   platform components, mirroring T017.
-- [ ] T021 [US1] Delete `backend/src/Grimoire.QueryAgent/QueryAgentTelemetryBootstrap.cs`
+- [X] T021 [US1] Delete `backend/src/Grimoire.QueryAgent/QueryAgentTelemetryBootstrap.cs`
   and make `backend/src/Grimoire.QueryAgent/QueryAgentTracing.cs` delegate to
   `AgentTracing`; remove the remaining Query entries from D1's and D2's legacy
   baselines — **both baselines are now empty**.
-- [ ] T022 [US1] Query preservation gate: run
+- [X] T022 [US1] Query preservation gate: run
   `dotnet test backend/tests/Grimoire.IntegrationTests` (Query lifecycle
   log/metric/trace, streaming, interruption, guardrail tests) and the
   `QueryReplayEvalTests` replay suite — all green, assertions untouched.
-- [ ] T023 [US1] Post-consolidation Red/Green re-probe of D1 and D2 in their final
+- [X] T023 [US1] Post-consolidation Red/Green re-probe of D1 and D2 in their final
   (empty-baseline) state, per spec US1 acceptance scenario 3: re-introduce a private
   `Sdk.CreateTracerProviderBuilder()` bootstrap in a host → D1 red → remove → green;
   re-introduce a direct `new AnthropicModelClient(...)` in a host composition root
   bypassing the factory → D2 red → remove → green. Commit messages document both
   probe results.
-- [ ] T024 [US1] Re-probe `backend/tests/Grimoire.ArchTests/QueryAgentGuardedWriteBoundaryRuleTests.cs`
+- [X] T024 [US1] Re-probe `backend/tests/Grimoire.ArchTests/QueryAgentGuardedWriteBoundaryRuleTests.cs`
   after the Query host restructuring (FR-004/FR-010, plan Test Strategy SC-004): the
   rule's scan must cover the new `AgentHost`-routed tool-dispatch path; add a
   deliberate `File.WriteAllText(...)` call in a `Grimoire.QueryAgent` scratch class →
   red → remove → green. Update the rule's namespace anchors only as far as the
   restructuring moved them (the rule moves with the boundary, it is not weakened).
-- [ ] T025 [P] [US1] Profile-fidelity test (SC-004, plan Test Strategy): new hermetic
+- [X] T025 [P] [US1] Profile-fidelity test (SC-004, plan Test Strategy): new hermetic
   integration test `backend/tests/Grimoire.IntegrationTests/AgentProfileFidelityTests.cs`
   (cross-agent — covers both agents, stays unprefixed by the convention) asserting (a)
   each host's registered tool set is exactly its profile declaration (Ingest:
   `list_files`/`read_file`/`write_file`; Query: `list_files`/`read_file`), and (b) a
   `FakeModelClient` scripted to request an out-of-profile tool is denied at the guarded
   tool boundary and the run continues.
-- [ ] T026 [US1] US1 acceptance-scenario-1 verification: enumerate the per-agent code
+- [X] T026 [US1] US1 acceptance-scenario-1 verification: enumerate the per-agent code
   of `backend/src/Grimoire.IngestAgent/` and `backend/src/Grimoire.QueryAgent/` and
   confirm each contains only: composition root (`Program.cs`), CLI option record, tool
   registry, instrumentation adapters + frozen metric/log-event/tracing identity
@@ -327,6 +327,18 @@ concern exists twice; full suite green after each host switch.
   `grep -rn "CreateModelClient\|SanitizeErrorText\|ParseArgs\|CreateTracerProviderBuilder" backend/src/Grimoire.IngestAgent backend/src/Grimoire.QueryAgent`
   returns nothing. Record the enumeration in the PR description (input to T048's
   audit).
+
+  **T026 enumeration (US1 acceptance scenario 1)**: Ingest host = `Program.cs`
+  (profile + `IngestIntentHandler` hooks), `AgentCliOptions.cs`,
+  `IngestToolRegistry.cs`, `AgentCore/IngestAgentInstrumentation.cs`,
+  `IngestAgent{LogEvents,Metrics,Tracing}.cs` (frozen identities; Tracing delegates
+  to the platform), `TaskArtifact/`, `IngestLog/`, `Source/`. Query host =
+  `Program.cs` (profile + `QueryIntentHandler` conversation scaffold),
+  `QueryCliOptions.cs`, `QueryToolRegistry.cs`,
+  `QueryAgent{Instrumentation,LogEvents,Metrics,Tracing}.cs`. Grep for
+  `CreateModelClient|SanitizeErrorText|ParseArgs|CreateTracerProviderBuilder` over
+  both host directories returns nothing — every R2 concern exists exactly once in
+  `Grimoire.AgentRuntime`.
 
 **Checkpoint**: One platform, two thin hosts, D1/D2 green with empty baselines and
 proven live, full suite green. US1 is independently complete.

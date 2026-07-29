@@ -32,10 +32,7 @@ public class AgentHostModelCompositionContainmentRuleTests
     /// Legacy pre-consolidation composition sites as "AssemblyName::TopLevelTypeFullName".
     /// REMOVE-ONLY.
     /// </summary>
-    internal static readonly List<string> LegacyBaseline =
-    [
-        "Grimoire.QueryAgent::Program",
-    ];
+    internal static readonly List<string> LegacyBaseline = [];
 
     [Fact]
     public void AgentHostAssemblies_MustNotConstructModelClientAdaptersDirectly()

@@ -30,11 +30,10 @@ public class AgentHostTelemetryContainmentRuleTests
         "OpenTelemetry.Logs.OpenTelemetryLoggingExtensions::AddOpenTelemetry",
     ];
 
-    /// <summary>Legacy pre-consolidation bootstraps (full type names). REMOVE-ONLY.</summary>
-    internal static readonly List<string> LegacyBaseline =
-    [
-        "Grimoire.QueryAgent.QueryAgentTelemetryBootstrap",
-    ];
+    /// <summary>Legacy pre-consolidation bootstraps (full type names). REMOVE-ONLY —
+    /// emptied by the US1 host switches (T018/T021); the mechanism is deleted with the
+    /// feature's polish phase.</summary>
+    internal static readonly List<string> LegacyBaseline = [];
 
     [Fact]
     public void AgentHostAssemblies_MustNotConstructTelemetryProviders()

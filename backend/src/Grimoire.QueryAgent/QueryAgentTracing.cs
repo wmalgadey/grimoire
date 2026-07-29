@@ -1,27 +1,22 @@
 using System.Diagnostics;
+using Grimoire.AgentRuntime.Telemetry;
 
 namespace Grimoire.QueryAgent;
 
+/// <summary>
+/// Query's frozen tracing identities (ADR-005: source `Grimoire.QueryAgent`, root span
+/// `query_agent.run`, correlation attribute `turn_id`), delegating to the shared
+/// <see cref="AgentTracing"/> scaffold (ADR-013 — the TRACEPARENT/TRACESTATE parenting
+/// that links the Hub's `hub.query.spawn_agent` span to this agent run into a single
+/// end-to-end trace now lives once in the platform).
+/// </summary>
 public static class QueryAgentTracing
 {
-    public static readonly ActivitySource ActivitySource = new("Grimoire.QueryAgent", "1.0.0");
+    private static readonly AgentTracing _tracing = new(
+        "Grimoire.QueryAgent", "query_agent.run", "turn_id");
 
-    /// <summary>
-    /// Starts the `query_agent.run` root span, parented to the `TRACEPARENT`/`TRACESTATE`
-    /// environment variables the Hub propagates when it dispatches this process (mirrors
-    /// `IngestAgentTracing.StartRunActivity`), so the Hub's `hub.query.spawn_agent` span
-    /// and this agent run form a single end-to-end trace (Constitution IV).
-    /// </summary>
+    public static ActivitySource ActivitySource => _tracing.ActivitySource;
+
     public static Activity? StartRunActivity(string turnId)
-    {
-        var traceParent = Environment.GetEnvironmentVariable("TRACEPARENT");
-        var traceState = Environment.GetEnvironmentVariable("TRACESTATE");
-
-        var activity = !string.IsNullOrEmpty(traceParent) && ActivityContext.TryParse(traceParent, traceState, out var parentContext)
-            ? ActivitySource.StartActivity("query_agent.run", ActivityKind.Internal, parentContext)
-            : ActivitySource.StartActivity("query_agent.run");
-
-        activity?.SetTag("turn_id", turnId);
-        return activity;
-    }
+        => _tracing.StartRunActivity(turnId);
 }
