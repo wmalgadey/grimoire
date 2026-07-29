@@ -19,10 +19,16 @@ public class NonBlockingDispatchRuleTests
     // The dispatch path (ADR-008): everything that starts or schedules agent runs.
     // Other Hub child processes (git in Program, markitdown in its ADR-010 adapter
     // namespace) are not agent runs and may legitimately be awaited.
+    // ADR-013 (feature 010) split the dispatch surface: the shared port/adapter stays
+    // in AgentDispatch, IngestRunCoordinator moved to IngestDispatch, and
+    // QueryRunCoordinator lives in QueryDispatch — the rule's anchors move with the
+    // boundary (FR-010), so all dispatch namespaces are scanned. Grimoire.Hub.Submission
+    // merged into IngestSubmission (also covered).
     private static readonly string[] _dispatchPathNamespaces =
     [
         "Grimoire.Hub.AgentDispatch",
-        "Grimoire.Hub.Submission",
+        "Grimoire.Hub.IngestDispatch",
+        "Grimoire.Hub.QueryDispatch",
         "Grimoire.Hub.IngestSubmission",
     ];
 

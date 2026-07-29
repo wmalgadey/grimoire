@@ -3,6 +3,7 @@ using Grimoire.Domain.Ingest;
 using Grimoire.Hub.AgentDispatch;
 using Grimoire.Hub.ContentRoot;
 using Microsoft.Extensions.Logging;
+using Grimoire.Hub.IngestDispatch;
 
 namespace Grimoire.Hub.IngestSubmission;
 

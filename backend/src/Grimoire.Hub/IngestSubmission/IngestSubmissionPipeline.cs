@@ -4,9 +4,10 @@ using Grimoire.Hub.AgentDispatch;
 using Grimoire.Hub.ContentRoot;
 using Grimoire.Hub.Conversion;
 using Grimoire.Hub.Realtime;
-using Grimoire.Hub.TaskArtifact;
+using Grimoire.Hub.IngestTaskArtifact;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
+using Grimoire.Hub.IngestDispatch;
 
 namespace Grimoire.Hub.IngestSubmission;
 

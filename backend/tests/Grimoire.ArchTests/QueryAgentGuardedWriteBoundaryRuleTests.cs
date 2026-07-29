@@ -5,7 +5,7 @@ namespace Grimoire.ArchTests;
 
 /// <summary>
 /// Structural boundary rule for ADR-011 (C7): the Query agent has no write capability at
-/// all (FR-011, FR-014) — unlike Grimoire.IngestAgent's GuardedWriteBoundaryRuleTests,
+/// all (FR-011, FR-014) — unlike Grimoire.IngestAgent's IngestAgentGuardedWriteBoundaryRuleTests,
 /// which allows filesystem-write APIs in three designated namespaces, this rule allows
 /// none: zero filesystem-write API calls may be reachable anywhere in the
 /// Grimoire.QueryAgent assembly, full stop. Proven live by a Red/Green probe (T004): a
@@ -15,7 +15,7 @@ namespace Grimoire.ArchTests;
 public class QueryAgentGuardedWriteBoundaryRuleTests
 {
     // Method name substrings that indicate filesystem-write operations. Kept in sync
-    // with GuardedWriteBoundaryRuleTests's _writeMethods list.
+    // with IngestAgentGuardedWriteBoundaryRuleTests's _writeMethods list.
     private static readonly string[] _writeMethods =
     [
         "System.IO.File::WriteAllText",

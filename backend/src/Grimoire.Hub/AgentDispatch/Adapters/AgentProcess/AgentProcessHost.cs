@@ -1,4 +1,6 @@
 using System.Diagnostics;
+using Grimoire.Hub.IngestDispatch;
+using Grimoire.Hub.QueryDispatch;
 
 namespace Grimoire.Hub.AgentDispatch.Adapters.AgentProcess;
 

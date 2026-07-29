@@ -7,8 +7,9 @@ using Grimoire.Hub.IngestSubmission.Adapters.MarkItDown;
 using Grimoire.Hub.OperationalState;
 using Grimoire.Hub.Realtime;
 using Grimoire.Hub.Runtime.Paths;
-using Grimoire.Hub.TaskArtifact;
+using Grimoire.Hub.IngestTaskArtifact;
 using Microsoft.AspNetCore.SignalR;
+using Grimoire.Hub.IngestDispatch;
 
 namespace Grimoire.IntegrationTests.Fakes;
 

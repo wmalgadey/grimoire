@@ -6,7 +6,7 @@ namespace Grimoire.ArchTests;
 /// <summary>
 /// Structural boundary rule for ADR-009: every runtime location is composed in exactly
 /// one place. Uses IL-level inspection (Mono.Cecil, same idiom as
-/// GuardedWriteBoundaryRuleTests) to detect (a) ambient-directory API usage outside the
+/// IngestAgentGuardedWriteBoundaryRuleTests) to detect (a) ambient-directory API usage outside the
 /// single composition point and (b) any remaining git-repo-root discovery.
 /// </summary>
 public class RuntimePathsBoundaryRuleTests
@@ -133,7 +133,7 @@ public class RuntimePathsBoundaryRuleTests
     private static IEnumerable<string> ProductionAssemblyPaths() =>
     [
         typeof(Grimoire.Hub.HubMetrics).Assembly.Location,
-        typeof(Grimoire.IngestAgent.AgentCliOptions).Assembly.Location,
+        typeof(Grimoire.IngestAgent.IngestCliOptions).Assembly.Location,
         typeof(Grimoire.Domain.DomainAssemblyMarker).Assembly.Location,
     ];
 

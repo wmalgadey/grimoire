@@ -1,6 +1,8 @@
 using System.Text.Json;
 using System.Threading.Channels;
 using Grimoire.Hub.AgentDispatch;
+using Grimoire.Hub.IngestDispatch;
+using Grimoire.Hub.QueryDispatch;
 
 namespace Grimoire.IntegrationTests.Fakes;
 

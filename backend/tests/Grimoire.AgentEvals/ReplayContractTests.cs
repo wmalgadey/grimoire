@@ -68,9 +68,9 @@ public class ReplayContractTests : IDisposable
     [Fact]
     public async Task Replay_SyntheticRecording_ZeroConfig_ExecutesTrusted_WithProvenance()
     {
-        SyntheticRecordings.WriteScenario(_store, ScenarioDefinitions.ConventionAdherence, _paths, sampleCount: 1);
+        SyntheticRecordings.WriteScenario(_store, IngestScenarioDefinitions.ConventionAdherence, _paths, sampleCount: 1);
 
-        var result = await _pipeline.RunScenarioAsync(ScenarioDefinitions.ConventionAdherence, CancellationToken.None);
+        var result = await _pipeline.RunScenarioAsync(IngestScenarioDefinitions.ConventionAdherence, CancellationToken.None);
 
         Assert.Equal(TrustStatus.Trusted, result.TrustStatus);
         var sample = Assert.Single(result.Samples);
@@ -90,10 +90,10 @@ public class ReplayContractTests : IDisposable
     [Fact]
     public async Task Replay_SameRecordingTwice_ProducesIdenticalOutcomes()
     {
-        SyntheticRecordings.WriteScenario(_store, ScenarioDefinitions.ConventionAdherence, _paths, sampleCount: 1);
+        SyntheticRecordings.WriteScenario(_store, IngestScenarioDefinitions.ConventionAdherence, _paths, sampleCount: 1);
 
-        var first = await _pipeline.RunScenarioAsync(ScenarioDefinitions.ConventionAdherence, CancellationToken.None);
-        var second = await _pipeline.RunScenarioAsync(ScenarioDefinitions.ConventionAdherence, CancellationToken.None);
+        var first = await _pipeline.RunScenarioAsync(IngestScenarioDefinitions.ConventionAdherence, CancellationToken.None);
+        var second = await _pipeline.RunScenarioAsync(IngestScenarioDefinitions.ConventionAdherence, CancellationToken.None);
 
         Assert.Equal(first.TrustStatus, second.TrustStatus);
         Assert.Equal(first.SuccessRate, second.SuccessRate);
@@ -106,7 +106,7 @@ public class ReplayContractTests : IDisposable
     [Fact]
     public async Task Replay_MissingScenario_ReportsMissingWithCaptureCommand()
     {
-        var result = await _pipeline.RunScenarioAsync(ScenarioDefinitions.UpdateOverDuplicate, CancellationToken.None);
+        var result = await _pipeline.RunScenarioAsync(IngestScenarioDefinitions.UpdateOverDuplicate, CancellationToken.None);
 
         Assert.Equal(TrustStatus.Missing, result.TrustStatus);
         Assert.NotNull(result.Detail);
@@ -116,10 +116,10 @@ public class ReplayContractTests : IDisposable
     [Fact]
     public async Task Replay_MissingSampleFile_ReportsMissingWithCaptureCommand()
     {
-        SyntheticRecordings.WriteScenario(_store, ScenarioDefinitions.ConventionAdherence, _paths, sampleCount: 1);
+        SyntheticRecordings.WriteScenario(_store, IngestScenarioDefinitions.ConventionAdherence, _paths, sampleCount: 1);
         File.Delete(_store.SamplePath("convention-adherence", "sample-01.json"));
 
-        var result = await _pipeline.RunScenarioAsync(ScenarioDefinitions.ConventionAdherence, CancellationToken.None);
+        var result = await _pipeline.RunScenarioAsync(IngestScenarioDefinitions.ConventionAdherence, CancellationToken.None);
 
         var sample = Assert.Single(result.Samples);
         Assert.Equal(TrustStatus.Missing, sample.TrustStatus);
@@ -129,11 +129,11 @@ public class ReplayContractTests : IDisposable
     [Fact]
     public async Task Replay_TamperedSampleFile_ReportsMismatch_NotJudgment()
     {
-        SyntheticRecordings.WriteScenario(_store, ScenarioDefinitions.ConventionAdherence, _paths, sampleCount: 1);
+        SyntheticRecordings.WriteScenario(_store, IngestScenarioDefinitions.ConventionAdherence, _paths, sampleCount: 1);
         var samplePath = _store.SamplePath("convention-adherence", "sample-01.json");
         File.AppendAllText(samplePath, " ");
 
-        var result = await _pipeline.RunScenarioAsync(ScenarioDefinitions.ConventionAdherence, CancellationToken.None);
+        var result = await _pipeline.RunScenarioAsync(IngestScenarioDefinitions.ConventionAdherence, CancellationToken.None);
 
         var sample = Assert.Single(result.Samples);
         Assert.Equal(TrustStatus.Mismatch, sample.TrustStatus);
@@ -145,9 +145,9 @@ public class ReplayContractTests : IDisposable
     public async Task Replay_DivergentRecordedConversation_ReportsReplayMismatch()
     {
         SyntheticRecordings.WriteScenario(
-            _store, ScenarioDefinitions.ConventionAdherence, _paths, sampleCount: 1, divergentConversation: true);
+            _store, IngestScenarioDefinitions.ConventionAdherence, _paths, sampleCount: 1, divergentConversation: true);
 
-        var result = await _pipeline.RunScenarioAsync(ScenarioDefinitions.ConventionAdherence, CancellationToken.None);
+        var result = await _pipeline.RunScenarioAsync(IngestScenarioDefinitions.ConventionAdherence, CancellationToken.None);
 
         var sample = Assert.Single(result.Samples);
         Assert.Equal(TrustStatus.Mismatch, sample.TrustStatus);

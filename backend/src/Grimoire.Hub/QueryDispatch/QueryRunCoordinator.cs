@@ -81,7 +81,7 @@ public sealed class QueryRunCoordinator
         string conversationId,
         int position,
         string prompt,
-        IReadOnlyList<AgentDispatch.QueryPriorTurn> priorTurns,
+        IReadOnlyList<QueryPriorTurn> priorTurns,
         CancellationToken cancellationToken = default)
     {
         if (!await _concurrencySlots.WaitAsync(0, cancellationToken))
@@ -111,7 +111,7 @@ public sealed class QueryRunCoordinator
 
         QueryLifecycleLogEvents.LogTurnCreated(_logger, conversationId, turnId);
 
-        var request = new AgentDispatch.QueryAgentRequest(
+        var request = new QueryAgentRequest(
             TurnId: turnId,
             ConversationId: conversationId,
             Prompt: prompt,
