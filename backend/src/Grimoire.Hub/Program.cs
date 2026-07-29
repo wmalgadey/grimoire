@@ -13,7 +13,6 @@ using Grimoire.Hub.QueryRunArtifact;
 using Grimoire.Hub.QuerySubmission;
 using Grimoire.Hub.Realtime;
 using Grimoire.Hub.Runtime.Paths;
-using Grimoire.Hub.IngestSubmission;
 using Grimoire.Hub.IngestTaskArtifact;
 using Grimoire.Hub;
 
