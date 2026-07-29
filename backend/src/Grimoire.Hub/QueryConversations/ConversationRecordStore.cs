@@ -137,18 +137,18 @@ public sealed class ConversationRecordStore
             switch (ConversationRecordFormat.Parse(content))
             {
                 case ConversationRecordParseResult.Parsed parsed:
-                {
-                    if (parsed.DroppedTrailingFragment)
                     {
-                        ConversationRecordLogEvents.LogTrailingFragmentDropped(_logger, conversationId);
-                    }
+                        if (parsed.DroppedTrailingFragment)
+                        {
+                            ConversationRecordLogEvents.LogTrailingFragmentDropped(_logger, conversationId);
+                        }
 
-                    IReadOnlyList<QueryPriorTurn> turns = [.. parsed.Turns.Select(t => t.ToPriorTurn())];
-                    _contextCache[conversationId] = turns;
-                    ConversationRecordLogEvents.LogContextLoaded(_logger, conversationId, turns.Count, "record");
-                    HubMetrics.RecordConversationContextLoad("record");
-                    return new ConversationContextResult.Loaded(turns, "record");
-                }
+                        IReadOnlyList<QueryPriorTurn> turns = [.. parsed.Turns.Select(t => t.ToPriorTurn())];
+                        _contextCache[conversationId] = turns;
+                        ConversationRecordLogEvents.LogContextLoaded(_logger, conversationId, turns.Count, "record");
+                        HubMetrics.RecordConversationContextLoad("record");
+                        return new ConversationContextResult.Loaded(turns, "record");
+                    }
 
                 case ConversationRecordParseResult.Unreadable unreadable:
                     ConversationRecordLogEvents.LogRecordLoadFailed(_logger, conversationId, unreadable.Reason);

@@ -481,7 +481,7 @@ regression guarantee, and final validation. Observability implementation + tests
 are co-located in Phases 3–5 above (sanctioned placement); the audit below is
 what gates the DoD.
 
-- [ ] T038 **Completeness audit** (MANDATORY, named — Constitution Principle
+- [X] T038 **Completeness audit** (MANDATORY, named — Constitution Principle
   III/IV): cross-reference every row of `plan.md ## Observability` against its
   implementing task and passing test — metrics
   `query.conversation.turns_recorded_total` (T023/T024),
@@ -498,17 +498,46 @@ what gates the DoD.
   (T014 in-memory + T034 from-file), all deterministic (no agent-judgment
   criteria exist in this spec). File any gap found as a new task in this
   tasks.md before declaring the DoD met.
-- [ ] T039 Logging-contract CI enforcement (MANDATORY — Constitution Principle
+  *Audit executed 2026-07-29 — every row cross-referenced, no gaps found, no new
+  tasks filed. Metrics: `turns_recorded_total{outcome}` emitted in the store
+  append (`HubMetrics.RecordConversationTurnRecorded`), tested in
+  `QueryConversationMetricsTests` via the real append path;
+  `record_append_failures_total` in the coordinator guard, tested there;
+  `context_loads_total{memory|empty}` tested there and `{record}` in
+  `ConversationRecordDurabilityTests` (T034); `record_load_failures_total`
+  tested directly and e2e in `ConversationRecordFailClosedTests` (T036).
+  Log events: all five implemented in `ConversationRecordLogEvents` and
+  validated (name/level/mandatory fields) in `QueryConversationLogEventTests`;
+  `record_append_failed` proven e2e with a rigged store incl. the isolation
+  guarantee (terminal state + `queryTurnChanged` publish observed);
+  `context_loaded source=record` and `record_load_failed` proven e2e in the US3
+  tests. Spans: both rows implemented in `QueryRunCoordinator` and
+  parentage/correlation-tested in `QueryConversationTraceTests`, including the
+  interrupt-HTTP-request parent variant (T032). Retired span asserted absent in
+  `QueryLifecycleTraceTests` (T027). Unchanged-008 signals: all pre-existing
+  008 log/metric/trace tests pass unchanged (285/285 IntegrationTests). Success
+  criteria SC-001..SC-005 each map to their named passing tests as listed
+  above.*
+- [X] T039 Logging-contract CI enforcement (MANDATORY — Constitution Principle
   IV): confirm the new logging tests (T022, T036) run in the standard PR
   pipeline — they live in `Grimoire.IntegrationTests`, executed unfiltered by
   `.github/workflows/ci.yml`'s "Run hermetic integration tests" step; verify no
   test filter/category excludes them and document the verification in the task
   close-out (no workflow change expected).
-- [ ] T040 Trace-contract CI enforcement (MANDATORY — Constitution Principle
+  *Verified 2026-07-29: the "Run hermetic integration tests" step runs
+  `dotnet test backend/tests/Grimoire.IntegrationTests` with no `--filter`, and
+  no category/trait attributes exist on `QueryConversationLogEventTests` or
+  `ConversationRecordFailClosedTests` — they run in every PR. No workflow
+  change needed.*
+- [X] T040 Trace-contract CI enforcement (MANDATORY — Constitution Principle
   IV): same confirmation for the trace tests (T026, T032) under "Run hermetic
   integration tests" and for the T001 tripwire under "Run architecture tests"
   in `.github/workflows/ci.yml`.
-- [ ] T041 Feature-008 evaluation regression (spec: "must still pass
+  *Verified 2026-07-29: `QueryConversationTraceTests` runs unfiltered in the
+  integration-tests step; `RetiredQueryRunsLocationRuleTests` runs in "Run
+  architecture tests" (unfiltered `dotnet test backend/tests/Grimoire.ArchTests`).
+  No workflow change needed.*
+- [X] T041 Feature-008 evaluation regression (spec: "must still pass
   unchanged"): run `dotnet test backend/tests/Grimoire.AgentEvals
   --configuration Release` — all four query replay scenarios
   (`query-grounding-covered`, `query-grounding-uncovered`, `query-follow-up`,
@@ -516,22 +545,35 @@ what gates the DoD.
   proving the agent stdin contract and replay fingerprints did not drift
   (ADR-012, research.md R7). If a fingerprint drifts, that is a defect in this
   feature's changes — fix the drift; do NOT re-capture recordings.
-- [ ] T042 [P] Annotate
+  *Run 2026-07-29 (Release): 44 passed, 0 failed, 0 skipped — including all
+  four query replay scenarios against the committed recordings under
+  `data/evals/recordings/`. No fingerprint drift; no recordings re-captured.*
+- [X] T042 [P] Annotate
   `docs/adr/ADR-011-query-agent-shared-runtime-and-concurrency-model.md` with a
   partial-supersession pointer: its
   "Persistence and conversation context" section is superseded by ADR-014;
   everything else remains in force (MADR status hygiene, Constitution
   Principle III).
-- [ ] T043 Full-suite verification: `dotnet test backend/tests/Grimoire.ArchTests`,
+- [X] T043 Full-suite verification: `dotnet test backend/tests/Grimoire.ArchTests`,
   `backend/tests/Grimoire.Domain.UnitTests`,
   `backend/tests/Grimoire.IntegrationTests` (all green, zero skips),
   `dotnet format --verify-no-changes` on `backend/`, and the frontend gates
   (`npm run check`, lint, `npm test`, build) in `frontend/` — mirrors
   `.github/workflows/ci.yml`.
+  *Run 2026-07-29: ArchTests 35/35, Domain.UnitTests 14/14, IntegrationTests
+  285/285 (0 skipped), `dotnet format Grimoire.slnx --verify-no-changes` clean;
+  frontend (via bun, the repo's declared packageManager): `check` 0 errors,
+  `lint` clean, `test` 75/75, `build` succeeded.*
 - [ ] T044 Run `specs/011-query-conversations/quickstart.md` scenarios 1–5 plus
   its Observability check against a live local Hub (manual validation; the only
   non-hermetic step, requires an API key for the live conversation), and record
   the outcome in the task close-out.
+  *NOT RUN (2026-07-29): this implementation session is hermetic — no
+  `ANTHROPIC_AUTH_TOKEN`/secrets are available, and quickstart scenarios 1–5
+  require a live Hub holding a real API key for live conversations. All
+  hermetic counterparts of the scenarios pass (see T012–T036). This manual
+  validation remains for the project owner to run locally before declaring the
+  DoD met.*
 
 ---
 

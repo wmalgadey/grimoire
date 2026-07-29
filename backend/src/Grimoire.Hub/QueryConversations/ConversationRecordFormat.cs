@@ -427,51 +427,51 @@ public static class ConversationRecordFormat
                     }
                     break;
                 case "instruction_file":
-                {
-                    if (!TryParseNestedMapping(lines, ref i, out var nested, ref error)) return false;
-                    if (!TryGetNullableString(nested, "path", out result.InstructionFilePath, ref error)) return false;
-                    if (!TryGetNullableString(nested, "sha256", out result.InstructionFileSha256, ref error)) return false;
-                    break;
-                }
-                case "policy":
-                {
-                    if (!TryParseNestedMapping(lines, ref i, out var nested, ref error)) return false;
-                    if (!TryGetNullableString(nested, "path", out result.PolicyPath, ref error)) return false;
-                    if (!TryGetNullableString(nested, "sha256", out result.PolicySha256, ref error)) return false;
-                    if (nested.TryGetValue("version", out var versionRaw))
                     {
-                        if (versionRaw == "null")
-                        {
-                            result.PolicyVersion = null;
-                        }
-                        else if (int.TryParse(versionRaw, NumberStyles.None, CultureInfo.InvariantCulture, out var version))
-                        {
-                            result.PolicyVersion = version;
-                        }
-                        else
-                        {
-                            error = $"policy version is not an integer: '{versionRaw}'";
-                            return false;
-                        }
-                    }
-                    break;
-                }
-                case "denied_actions":
-                {
-                    if (raw == "[]")
-                    {
+                        if (!TryParseNestedMapping(lines, ref i, out var nested, ref error)) return false;
+                        if (!TryGetNullableString(nested, "path", out result.InstructionFilePath, ref error)) return false;
+                        if (!TryGetNullableString(nested, "sha256", out result.InstructionFileSha256, ref error)) return false;
                         break;
                     }
-
-                    if (raw.Length != 0)
+                case "policy":
                     {
-                        error = $"denied_actions must be '[]' or a block list, got: '{raw}'";
-                        return false;
+                        if (!TryParseNestedMapping(lines, ref i, out var nested, ref error)) return false;
+                        if (!TryGetNullableString(nested, "path", out result.PolicyPath, ref error)) return false;
+                        if (!TryGetNullableString(nested, "sha256", out result.PolicySha256, ref error)) return false;
+                        if (nested.TryGetValue("version", out var versionRaw))
+                        {
+                            if (versionRaw == "null")
+                            {
+                                result.PolicyVersion = null;
+                            }
+                            else if (int.TryParse(versionRaw, NumberStyles.None, CultureInfo.InvariantCulture, out var version))
+                            {
+                                result.PolicyVersion = version;
+                            }
+                            else
+                            {
+                                error = $"policy version is not an integer: '{versionRaw}'";
+                                return false;
+                            }
+                        }
+                        break;
                     }
+                case "denied_actions":
+                    {
+                        if (raw == "[]")
+                        {
+                            break;
+                        }
 
-                    if (!TryParseDeniedActions(lines, ref i, result.DeniedActions, ref error)) return false;
-                    break;
-                }
+                        if (raw.Length != 0)
+                        {
+                            error = $"denied_actions must be '[]' or a block list, got: '{raw}'";
+                            return false;
+                        }
+
+                        if (!TryParseDeniedActions(lines, ref i, result.DeniedActions, ref error)) return false;
+                        break;
+                    }
                 default:
                     // Unknown key — tolerated (forward compatibility, e.g. feature 012's
                     // created_pages). Skip any nested/indented continuation lines.
