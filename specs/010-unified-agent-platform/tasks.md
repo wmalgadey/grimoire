@@ -500,7 +500,7 @@ observability contracts are still asserted in the standard PR pipeline.
 
 ### Verification for User Story 3
 
-- [ ] T044 [US3] Full-suite preservation gate (SC-003, quickstart step 1):
+- [X] T044 [US3] Full-suite preservation gate (SC-003, quickstart step 1):
   `dotnet build backend/Grimoire.slnx` then `dotnet test` for
   `backend/tests/Grimoire.ArchTests`, `backend/tests/Grimoire.Domain.UnitTests`,
   `backend/tests/Grimoire.IntegrationTests`, `backend/tests/Grimoire.AgentEvals` —
@@ -508,7 +508,14 @@ observability contracts are still asserted in the standard PR pipeline.
   `QueryReplayEvalTests`) green against unchanged recordings. Compare passing-test
   counts against T007's baseline: count may only grow (new N1/D1/D2/profile-fidelity
   tests), never shrink.
-- [ ] T045 [US3] No-weakening audit (FR-009, quickstart step 1): review
+  **Result**: build clean (0 warnings/errors). ArchTests **41/41** (T007 baseline
+  34; +7 = N1 x3 incl. T042's doc-mirror assertion, D1 x2, D2 x2). Domain.UnitTests
+  **14/14** (unchanged, as expected — no domain-layer change). IntegrationTests
+  **232/232** (T007 baseline 228; +4 = T025's `AgentProfileFidelityTests`).
+  AgentEvals **44/44** (T007 baseline 44, unchanged count — renamed classes only),
+  `IngestReplayEvalTests`/`QueryReplayEvalTests` green against unchanged recordings.
+  Zero skipped everywhere; every count grew or held, none shrank.
+- [X] T045 [US3] No-weakening audit (FR-009, quickstart step 1): review
   `git diff main -- backend/tests` and confirm it contains only file/class renames,
   namespace/`using` updates, the new rule files
   (`AgentArtifactNamingRuleTests.cs`, `AgentHostTelemetryContainmentRuleTests.cs`,
@@ -516,13 +523,28 @@ observability contracts are still asserted in the standard PR pipeline.
   `AgentProfileFidelityTests.cs`), and anchor updates from T040 — **no assertion
   edited, weakened, or removed**. Record the audit result in the PR description
   (reviewers re-verify per the plan's Test Strategy).
-- [ ] T046 [US3] Artifact/event shape identity (FR-008, spec US3 acceptance
+  **Result**: `git diff main -- backend/tests` is 49 files changed, 911(+)/84(-).
+  New files: `AgentArtifactNamingRuleTests.cs`, `AgentHostTelemetryContainmentRuleTests.cs`,
+  `AgentHostModelCompositionContainmentRuleTests.cs`, `ArchScan.cs` (shared IL-scan
+  helper extracted for D1/D2), `AgentProfileFidelityTests.cs`. Every one of the 84
+  removed lines is a pure identifier rename with a matching added line
+  (`ScenarioDefinitions` → `IngestScenarioDefinitions`, `AgentCliOptions` →
+  `IngestCliOptions`, `CaptureLogger<ObservabilityLogTests>` →
+  `CaptureLogger<IngestObservabilityLogTests>`, `"Grimoire.Hub.Submission"` →
+  `"Grimoire.Hub.IngestSubmission"` in a rule's allowed-namespace list) or a
+  moved-anchor update (T040) — verified line-by-line, no assertion value, threshold,
+  or expected output changed.
+- [X] T046 [US3] Artifact/event shape identity (FR-008, spec US3 acceptance
   scenario 2): confirm the existing contract-pinning tests ran **unmodified** inside
   T044 — task-artifact schema, query-run-artifact schema, NDJSON run-event tests,
   SignalR payload tests — their green state is the structural-identity proof
   (research.md R7). Optionally corroborate via quickstart step 3's replay-driven
   manual runs of both agents (no credentials).
-- [ ] T047 [US3] Preserved-observability regression (plan.md ## Observability
+  **Result**: targeted re-run of `IngestTaskArtifactTests`, `QueryRunArtifact*`,
+  `IngestSubmissionApiTests`, `QueryTurnSubmissionApiTests`,
+  `QueryAnswerStreamingTests` — 27/27 green (subset of T044's 232/232), assertions
+  unmodified.
+- [X] T047 [US3] Preserved-observability regression (plan.md ## Observability
   derivation rule (a)): confirm every preserved-contract test class still executes in
   the standard PR pipeline after the renames — `IngestObservability{Log,Metrics,Trace}Tests`,
   `IngestLifecycleLogEventTests`/`IngestLifecycleTraceTests`/
@@ -535,13 +557,22 @@ observability contracts are still asserted in the standard PR pipeline.
   CI test output. Frozen identities (service/meter/source names, span names/parents,
   metric/log-event names + mandatory fields) are asserted by these untouched tests —
   their green state is the identity check (ADR-005).
-- [ ] T048 [US3] Capability preservation sign-off (FR-004/SC-004, spec US3 acceptance
+  **Result**: all 14 listed classes confirmed present as `.cs` files under
+  `backend/tests/Grimoire.IntegrationTests/`; `.github/workflows/ci.yml` runs
+  `Grimoire.ArchTests` and `Grimoire.IntegrationTests` with no `--filter`, category,
+  or skip. All 14 executed inside T044's green 232/232 IntegrationTests run.
+- [X] T048 [US3] Capability preservation sign-off (FR-004/SC-004, spec US3 acceptance
   scenario 3): confirm `QueryReadOnlyGuardrailTests` and
   `QueryAgentGuardedWriteBoundaryRuleTests` are green post-consolidation (T024's
   re-probe evidence), the Query profile declares exactly `list_files`/`read_file`
   (T025's fidelity test), and the Ingest profile declares exactly today's three tools
   — no agent's capabilities widened or narrowed. Cross-reference T025/T024 results;
   record in the PR description.
+  **Result**: `QueryReadOnlyGuardrailTests` 2/2 green,
+  `QueryAgentGuardedWriteBoundaryRuleTests` 1/1 green,
+  `AgentProfileFidelityTests` 4/4 green (Query = `list_files`/`read_file`, Ingest =
+  `list_files`/`read_file`/`write_file`, both matching the shared frozen tool
+  definitions) — no capability widened or narrowed by the consolidation.
 
 **Checkpoint**: The consolidation is provably invisible. All three user stories are
 complete.
