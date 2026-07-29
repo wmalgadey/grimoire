@@ -34,7 +34,6 @@ public class AgentHostModelCompositionContainmentRuleTests
     /// </summary>
     internal static readonly List<string> LegacyBaseline =
     [
-        "Grimoire.IngestAgent::Program",
         "Grimoire.QueryAgent::Program",
     ];
 

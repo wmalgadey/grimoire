@@ -1,28 +1,22 @@
 using System.Diagnostics;
+using Grimoire.AgentRuntime.Telemetry;
 
 namespace Grimoire.IngestAgent;
 
+/// <summary>
+/// Ingest's frozen tracing identities (ADR-005: source `Grimoire.IngestAgent`, root
+/// span `ingest_agent.run`, correlation attribute `task_id`), delegating to the shared
+/// <see cref="AgentTracing"/> scaffold (ADR-013 — the TRACEPARENT/TRACESTATE parenting
+/// that links the Hub's `hub.ingest_run.trigger` span to this agent run into a single
+/// end-to-end trace now lives once in the platform).
+/// </summary>
 public static class IngestAgentTracing
 {
-    public static readonly ActivitySource ActivitySource = new("Grimoire.IngestAgent", "1.0.0");
+    private static readonly AgentTracing _tracing = new(
+        "Grimoire.IngestAgent", "ingest_agent.run", "task_id");
 
-    /// <summary>
-    /// Starts the `ingest_agent.run` root span, parented to the `TRACEPARENT`/`TRACESTATE`
-    /// environment variables the Hub propagates when it dispatches this process (see
-    /// `IngestAgentDispatcher.BuildChildEnvironment`), so the Hub's `hub.ingest_run.trigger` span
-    /// and this agent run form a single end-to-end trace instead of two disconnected trees
-    /// (Constitution IV).
-    /// </summary>
+    public static ActivitySource ActivitySource => _tracing.ActivitySource;
+
     public static Activity? StartRunActivity(string taskId)
-    {
-        var traceParent = Environment.GetEnvironmentVariable("TRACEPARENT");
-        var traceState = Environment.GetEnvironmentVariable("TRACESTATE");
-
-        var activity = !string.IsNullOrEmpty(traceParent) && ActivityContext.TryParse(traceParent, traceState, out var parentContext)
-            ? ActivitySource.StartActivity("ingest_agent.run", ActivityKind.Internal, parentContext)
-            : ActivitySource.StartActivity("ingest_agent.run");
-
-        activity?.SetTag("task_id", taskId);
-        return activity;
-    }
+        => _tracing.StartRunActivity(taskId);
 }

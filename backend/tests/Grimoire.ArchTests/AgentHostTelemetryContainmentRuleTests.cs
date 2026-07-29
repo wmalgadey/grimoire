@@ -33,7 +33,6 @@ public class AgentHostTelemetryContainmentRuleTests
     /// <summary>Legacy pre-consolidation bootstraps (full type names). REMOVE-ONLY.</summary>
     internal static readonly List<string> LegacyBaseline =
     [
-        "Grimoire.IngestAgent.TelemetryBootstrap",
         "Grimoire.QueryAgent.QueryAgentTelemetryBootstrap",
     ];
 
