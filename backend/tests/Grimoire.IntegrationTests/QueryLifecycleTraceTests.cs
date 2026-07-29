@@ -16,7 +16,7 @@ namespace Grimoire.IntegrationTests;
 /// ## Observability > Distributed Trace Spans (008-query-agent), split into the Hub-side
 /// subtree (submit → spawn_agent → run_supervision → handle_run_event → publish_update)
 /// and the agent-process-side subtree (run → load_instructions/model_turn/tool_call/
-/// finalize_artifact), since the two are separate processes/ActivitySources in production.
+/// query_agent.finalize_artifact retired by 011/T027), since the two are separate processes/ActivitySources in production.
 /// </summary>
 public class QueryLifecycleTraceTests
 {
@@ -145,12 +145,6 @@ public class QueryLifecycleTraceTests
 
             await loop.RunAsync("You are a test query agent.", [new ConversationMessage("user", "What does the wiki cover?")],
                 "turn-trace-1", CancellationToken.None);
-
-            using (var finalizeSpan = QueryAgentTracing.ActivitySource.StartActivity("query_agent.finalize_artifact"))
-            {
-                finalizeSpan?.SetTag("turn_id", "turn-trace-1");
-                finalizeSpan?.SetTag("outcome", "completed");
-            }
         }
 
         var run = Assert.Single(activities.Where(a => a.OperationName == "query_agent.run"));
@@ -158,16 +152,20 @@ public class QueryLifecycleTraceTests
         var load = Assert.Single(all.Where(a => a.OperationName == "query_agent.load_instructions"));
         var turns = all.Where(a => a.OperationName == "query_agent.model_turn").ToList();
         var tool = Assert.Single(all.Where(a => a.OperationName == "query_agent.tool_call"));
-        var finalize = Assert.Single(all.Where(a => a.OperationName == "query_agent.finalize_artifact"));
 
         Assert.Equal(2, turns.Count);
         Assert.Equal(run.SpanId.ToHexString(), load.ParentSpanId.ToHexString());
         Assert.All(turns, a => Assert.Equal(run.SpanId.ToHexString(), a.ParentSpanId.ToHexString()));
         var toolTurn = turns.Single(t => GetTag(t, "stop_reason") == "tool_use");
         Assert.Equal(toolTurn.SpanId.ToHexString(), tool.ParentSpanId.ToHexString());
-        Assert.Equal(run.SpanId.ToHexString(), finalize.ParentSpanId.ToHexString());
         Assert.Equal("allowed", GetTag(tool, "decision"));
         Assert.Equal("read_file", GetTag(tool, "tool"));
+
+        // 011-query-conversations (T027, ADR-014): the vestigial
+        // query_agent.finalize_artifact span is retired — absent from a completed
+        // turn's trace (removed from Grimoire.QueryAgent/Program.cs; this scenario
+        // mirrors that program flow).
+        Assert.Empty(all.Where(a => a.OperationName == "query_agent.finalize_artifact"));
     }
 
     [Fact]

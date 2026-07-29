@@ -285,7 +285,7 @@ context equals the recorded transcript.
 
 ### Observability for User Story 1 (co-located, plan.md ## Observability)
 
-- [ ] T021 [US1] Implement `backend/src/Grimoire.Hub/QueryConversations/ConversationRecordLogEvents.cs`
+- [X] T021 [US1] Implement `backend/src/Grimoire.Hub/QueryConversations/ConversationRecordLogEvents.cs`
   (extends `QueryLifecycleLogEvents.cs`'s idiom) defining all five
   `query.conversation.*` events with stable names and mandatory fields, and emit
   them at their triggers: `query.conversation.record_created` (INFO,
@@ -296,7 +296,7 @@ context equals the recorded transcript.
   `query.conversation.context_loaded` (INFO, `conversation_id`, `turn_count`,
   `source`) and `query.conversation.record_load_failed` (ERROR,
   `conversation_id`, `reason`) in T018's submission path.
-- [ ] T022 [P] [US1] Deterministic integration tests
+- [X] T022 [P] [US1] Deterministic integration tests
   `backend/tests/Grimoire.IntegrationTests/QueryConversationLogEventTests.cs`
   (mirrors `QueryLifecycleLogEventTests.cs`): validate event name, level, and
   every mandatory field for `record_created`, `turn_recorded`, and
@@ -305,35 +305,35 @@ context equals the recorded transcript.
   guarantee — the turn still reaches its terminal state and the
   `queryTurnChanged` publish still fires. (`record_load_failed` is validated in
   US3, T036.)
-- [ ] T023 [US1] Add the four `query.conversation.*` metrics to
+- [X] T023 [US1] Add the four `query.conversation.*` metrics to
   `backend/src/Grimoire.Hub/HubMetrics.cs`:
   `query.conversation.turns_recorded_total{outcome}`,
   `query.conversation.record_append_failures_total`,
   `query.conversation.context_loads_total{source=memory|record|empty}`,
   `query.conversation.record_load_failures_total`, emitted at the same trigger
   points as T021's events, within the active span context.
-- [ ] T024 [P] [US1] Deterministic integration tests
+- [X] T024 [P] [US1] Deterministic integration tests
   `backend/tests/Grimoire.IntegrationTests/QueryConversationMetricsTests.cs`
   (mirrors `QueryLifecycleMetricsTests.cs`): `turns_recorded_total` increments
   with the correct `outcome` label on append, `record_append_failures_total` on
   the rigged append failure, `context_loads_total` with `source=memory` (cached)
   and `source=empty` (new conversation). (`source=record` and
   `record_load_failures_total` are covered in US3, T034/T036.)
-- [ ] T025 [US1] Add trace spans per plan.md:
+- [X] T025 [US1] Add trace spans per plan.md:
   `hub.query.load_conversation_context` (child of `hub.query.submit`; attributes
   `conversation_id`, `turn_count`, `source`) around T018's context load, and
   `hub.query.record_turn` (child of `hub.query.run_supervision` for
   supervision-detected terminals; attributes `conversation_id`, `turn_id`,
   `outcome`) around T017's append — existing OTel bootstrap pattern, logs/metrics
   of the recording path emitted within these span contexts (ADR-005).
-- [ ] T026 [P] [US1] Deterministic integration tests
+- [X] T026 [P] [US1] Deterministic integration tests
   `backend/tests/Grimoire.IntegrationTests/QueryConversationTraceTests.cs`
   (mirrors `QueryLifecycleTraceTests.cs`, in-memory exporter per ADR-005):
   validate span names, `hub.query.submit` → `hub.query.load_conversation_context`
   and `hub.query.run_supervision` → `hub.query.record_turn` parent/child
   linkage, and `turn_id`/`conversation_id` correlation attributes shared with
   the events/metrics of the same turn.
-- [ ] T027 [US1] Retire the vestigial `query_agent.finalize_artifact` span:
+- [X] T027 [US1] Retire the vestigial `query_agent.finalize_artifact` span:
   remove its `StartActivity` block from
   `backend/src/Grimoire.QueryAgent/Program.cs` (line ~89; stdin/scaffold contract
   otherwise untouched — ADR-012 fingerprints must not drift) and update
