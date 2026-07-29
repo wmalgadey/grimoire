@@ -144,14 +144,6 @@ export interface QueryTurnAcceptedResponse {
 	acceptedAt: string;
 }
 
-/** One prior turn sent with a follow-up submission (FR-009, includes interrupted partials). */
-export interface QueryPriorTurn {
-	position: number;
-	prompt: string;
-	answer: string;
-	state: QueryTurnStatus;
-}
-
 /** SignalR `queryAnswerChunk` payload (contracts/query-conversation-api.md). */
 export interface QueryAnswerChunkEvent {
 	turnId: string;

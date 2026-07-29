@@ -1,4 +1,4 @@
-import type { QueryPriorTurn, QueryTurn, QueryTurnAcceptedResponse } from '$lib/types';
+import type { QueryTurn, QueryTurnAcceptedResponse } from '$lib/types';
 
 const CONVERSATIONS_BASE_PATH = '/api/query-conversations';
 const TURNS_BASE_PATH = '/api/query-turns';
@@ -38,14 +38,13 @@ async function parseErrorMessage(
 }
 
 /**
- * Submits one Query Turn (contracts/query-conversation-api.md). `priorTurns` is empty/
- * absent for a conversation's first turn; follow-ups send the full history so far,
- * including partial answers of interrupted turns (FR-009).
+ * Submits one Query Turn (contracts/query-conversation-api.md, revised by ADR-014):
+ * the body carries only the prompt — the Hub builds the follow-up context from its
+ * Conversation Record, so the browser no longer sends `priorTurns`.
  */
 export async function submitQueryTurn(
 	conversationId: string,
 	prompt: string,
-	priorTurns: QueryPriorTurn[] = [],
 	fetchImpl: typeof fetch = fetch
 ): Promise<QueryTurnAcceptedResponse> {
 	const response = await fetchImpl(
@@ -53,7 +52,7 @@ export async function submitQueryTurn(
 		{
 			method: 'POST',
 			headers: { 'Content-Type': 'application/json' },
-			body: JSON.stringify({ prompt, priorTurns })
+			body: JSON.stringify({ prompt })
 		}
 	);
 

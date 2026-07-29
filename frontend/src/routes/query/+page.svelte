@@ -40,17 +40,11 @@
 	async function handleSubmit(prompt: string) {
 		submissionError = null;
 
-		// US3 groundwork (inert for a single-turn conversation): every prior turn,
-		// including partial answers of interrupted ones, goes with every submission.
-		const priorTurns = turns.map((t) => ({
-			position: t.position,
-			prompt: t.prompt,
-			answer: t.answer,
-			state: t.state
-		}));
-
+		// ADR-014 (011-query-conversations): the submission carries only the prompt —
+		// the Hub sources follow-up context from its Conversation Record. The client-side
+		// `turns` state stays for on-screen display only (UI/UX unchanged, FR-009).
 		try {
-			const accepted = await submitQueryTurn(conversationId, prompt, priorTurns);
+			const accepted = await submitQueryTurn(conversationId, prompt);
 			const turn: QueryTurn = {
 				turnId: accepted.turnId,
 				conversationId: accepted.conversationId,

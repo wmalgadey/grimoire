@@ -229,7 +229,7 @@ context equals the recorded transcript.
   T012's file) for the cutover guarantee (SC-004, runtime half): after full turn
   lifecycles (completed, interrupted, failed), `<base>/data/query-runs/` does not
   exist or contains zero files.
-- [ ] T016 [P] [US1] Frontend tests: extend
+- [X] T016 [P] [US1] Frontend tests: extend
   `frontend/src/lib/services/querySubmissionApi.test.ts` (request body contains
   exactly `prompt` — no `priorTurns` key) and
   `frontend/src/routes/query/page.svelte.test.ts` (follow-up submission sends
@@ -274,7 +274,7 @@ context equals the recorded transcript.
   probe: with the allowlist empty and the deletions in place the rule MUST pass;
   re-add a scratch `"query-runs"` literal, it MUST fail; remove it, it MUST pass
   (commit message documents this second probe).
-- [ ] T020 [US1] Frontend implementation: change
+- [X] T020 [US1] Frontend implementation: change
   `frontend/src/lib/services/querySubmissionApi.ts` (drop `priorTurns` from the
   request body/type) and `frontend/src/routes/query/+page.svelte` (stop
   assembling `priorTurns` on submission; the client-side conversation state stays
