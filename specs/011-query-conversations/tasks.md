@@ -360,7 +360,7 @@ and the denial with its reason.
 
 ### Tests for User Story 2
 
-- [ ] T028 [P] [US2] Append-on-terminal-transition per state (SC-001/SC-003
+- [X] T028 [P] [US2] Append-on-terminal-transition per state (SC-001/SC-003
   groundwork): extend `backend/tests/Grimoire.IntegrationTests/QueryInterruptionTests.cs`
   — user-triggered interrupt appends a block with `state: interrupted`,
   `failure_reason: null`, and the accumulated partial answer; extend
@@ -371,7 +371,7 @@ and the denial with its reason.
   (`completed` appends are covered by T012.) Each terminal transition appends
   **exactly one** block (first-transition-wins: interrupt racing supervision
   yields a single block).
-- [ ] T029 [P] [US2] Denied-action traceability test (SC-002) in
+- [X] T029 [P] [US2] Denied-action traceability test (SC-002) in
   `backend/tests/Grimoire.IntegrationTests/ConversationRecordBookkeepingTests.cs`:
   `FakeAgentProcess` scripts terminal metadata with denials (fixture: `read_file`
   out-of-scope) — the turn's `denied_actions` list matches the scripted denials
@@ -379,7 +379,7 @@ and the denial with its reason.
   hostile target strings containing `-->`, quotes, and newlines survive the
   escape/unescape round-trip via the contract parser and cannot terminate the
   bookkeeping comment early.
-- [ ] T030 [P] [US2] Bookkeeping completeness test (SC-001 field-level, in
+- [X] T030 [P] [US2] Bookkeeping completeness test (SC-001 field-level, in
   `ConversationRecordBookkeepingTests.cs`, T029's file): for each terminal state,
   every field of data-model.md's Turn Bookkeeping table (`turn_id`, `position`,
   `state`, `failure_reason`, `started_at`/`completed_at` from `QueryTurnState`,
@@ -391,7 +391,7 @@ and the denial with its reason.
 
 ### Implementation for User Story 2
 
-- [ ] T031 [US2] Close any terminal-metadata mapping gaps T028–T030 surface in
+- [X] T031 [US2] Close any terminal-metadata mapping gaps T028–T030 surface in
   `backend/src/Grimoire.Hub/QueryDispatch/QueryRunCoordinator.cs` /
   `backend/src/Grimoire.Hub/QueryConversations/ConversationRecordStore.cs`
   (denied actions preserved verbatim from the ADR-006 terminal-event metadata,
@@ -399,7 +399,7 @@ and the denial with its reason.
   `QueryTurnState`), and add the user-interruption span-parent variant:
   `hub.query.record_turn` parented by the **interrupt HTTP request root** when
   the append is triggered by `InterruptAsync` (plan.md trace table).
-- [ ] T032 [P] [US2] Extend `backend/tests/Grimoire.IntegrationTests/QueryConversationTraceTests.cs`
+- [X] T032 [P] [US2] Extend `backend/tests/Grimoire.IntegrationTests/QueryConversationTraceTests.cs`
   (T026's file): on user interruption, `hub.query.record_turn` is a child of the
   interrupt HTTP request span (not `hub.query.run_supervision`), with
   `outcome=interrupted` and correlated `turn_id`/`conversation_id`.

@@ -94,6 +94,55 @@ public class QueryInterruptionTests
         Assert.Equal("completed", interruptJson.GetProperty("state").GetString());
     }
 
+    // T028 (011-query-conversations, US2): a user-triggered interrupt appends exactly
+    // one block with state: interrupted, failure_reason: null, and the accumulated
+    // partial answer — and interrupt racing supervision (short liveness window) still
+    // yields a single block (first-transition-wins).
+    [Fact]
+    public async Task Interrupt_AppendsExactlyOneInterruptedBlock_WithPartialAnswer_EvenRacingSupervision()
+    {
+        var launcher = new FakeAgentProcessLauncher(autoPlay: false);
+        var root = QueryTurnSubmissionApiTests.CreateTempRoot();
+        using var host = await QueryTurnSubmissionApiTests.BuildHostAsync(
+            launcher, root, livenessWindow: TimeSpan.FromMilliseconds(150));
+        var client = host.GetTestClient();
+
+        var submitResponse = await client.PostAsJsonAsync(
+            "/api/query-conversations/c-interrupt-record/turns", new { prompt = "Interrupted midway?" });
+        submitResponse.EnsureSuccessStatusCode();
+        var submitJson = await submitResponse.Content.ReadFromJsonAsync<JsonElement>();
+        var turnId = submitJson.GetProperty("turnId").GetString()!;
+
+        var handle = Assert.Single(launcher.Handles);
+        handle.EmitEvent("started", turnId);
+        handle.EmitEvent("answer_chunk", turnId, new { text = "The partial answer so " });
+        await WaitUntilAsync(async () =>
+        {
+            var response = await client.GetAsync($"/api/query-turns/{turnId}");
+            var json = await response.Content.ReadFromJsonAsync<JsonElement>();
+            return !string.IsNullOrEmpty(json.GetProperty("answer").GetString());
+        });
+
+        (await client.PostAsync($"/api/query-turns/{turnId}/interrupt", content: null)).EnsureSuccessStatusCode();
+
+        var paths = QueryTurnSubmissionApiTests.BuildResolvedPaths(root);
+        var recordPath = paths.ConversationRecordPathFor("c-interrupt-record");
+        await WaitUntilAsync(() => Task.FromResult(File.Exists(recordPath)));
+
+        // Let the liveness watchdog fire well past its window: supervision must not
+        // append a second (failed) block for the already-interrupted turn.
+        await Task.Delay(500);
+
+        var parsed = Assert.IsType<Grimoire.Hub.QueryConversations.ConversationRecordParseResult.Parsed>(
+            Grimoire.Hub.QueryConversations.ConversationRecordFormat.Parse(await File.ReadAllTextAsync(recordPath)));
+        var recordedTurn = Assert.Single(parsed.Turns);
+        Assert.Equal(turnId, recordedTurn.TurnId);
+        Assert.Equal("interrupted", recordedTurn.State);
+        Assert.Null(recordedTurn.FailureReason);
+        Assert.Equal("The partial answer so ", recordedTurn.Answer);
+        Assert.Equal("Interrupted midway?", recordedTurn.Prompt);
+    }
+
     [Fact]
     public async Task Interrupt_UnknownTurnId_Returns404()
     {
