@@ -258,12 +258,12 @@ concern exists twice; full suite green after each host switch.
 
 ### Implementation for User Story 1
 
-- [ ] T016 [US1] Create `backend/src/Grimoire.IngestAgent/IngestToolRegistry.cs`:
+- [X] T016 [US1] Create `backend/src/Grimoire.IngestAgent/IngestToolRegistry.cs`:
   explicit profile tool set registering exactly today's Ingest tools (`list_files`,
   `read_file`, `write_file` — unchanged schemas) against the shared
   `GuardedToolExecutor`, replacing any inline/implicit registration in `Program.cs`
   (FR-004: capabilities == declaration).
-- [ ] T017 [US1] Switch `backend/src/Grimoire.IngestAgent/Program.cs` onto the
+- [X] T017 [US1] Switch `backend/src/Grimoire.IngestAgent/Program.cs` onto the
   platform: declare the Ingest `AgentProfile` (ServiceName `Grimoire.IngestAgent`,
   run span `ingest_agent.run`, correlation `task_id`, default model env-var names,
   `IngestToolRegistry`, required documents: system prompt + default user prompt), wire
@@ -272,13 +272,13 @@ concern exists twice; full suite green after each host switch.
   and the inline startup sequencing with `AgentHost` (T015). CLI surface, NDJSON event
   sequence, exit codes, and artifact behavior byte-identical (FR-008; ADR-002/008
   spawn/event contracts).
-- [ ] T018 [US1] Delete `backend/src/Grimoire.IngestAgent/TelemetryBootstrap.cs` and
+- [X] T018 [US1] Delete `backend/src/Grimoire.IngestAgent/TelemetryBootstrap.cs` and
   make `backend/src/Grimoire.IngestAgent/IngestAgentTracing.cs` delegate to
   `AgentTracing` (T011) with its frozen identities; bootstrap via
   `AgentTelemetryBootstrap` (T010). Remove the Ingest entries from D1's legacy
   baseline in `AgentHostTelemetryContainmentRuleTests.cs` and the Ingest entry from
   D2's baseline in `AgentHostModelCompositionContainmentRuleTests.cs`.
-- [ ] T019 [US1] Ingest preservation gate: run
+- [X] T019 [US1] Ingest preservation gate: run
   `dotnet test backend/tests/Grimoire.IntegrationTests` and
   `backend/tests/Grimoire.AgentEvals` (ingest replay suite) — all green against
   unchanged recordings; any `stale`/`mismatch` replay failure is a defect in the
