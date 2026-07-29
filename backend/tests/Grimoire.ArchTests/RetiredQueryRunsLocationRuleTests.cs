@@ -16,26 +16,15 @@ public class RetiredQueryRunsLocationRuleTests
 {
     private const string RetiredLocationLiteral = "query-runs";
 
-    // Cutover debt — emptied by T019. The current codebase has exactly two genuine
-    // source occurrences of the retired literal, both deleted by the US1 cutover task
-    // (T019):
-    //
-    //   1. GrimoirePathOptions.DefaultQueryRunsDirName (= "query-runs"). As a C# const
-    //      its literal surfaces in IL at the *use site* (compiler inlining), i.e. inside
-    //      GrimoirePathResolver.Resolve — which is why the resolver type is the
-    //      allowlisted entry for this occurrence.
-    //   2. Program.cs's "--query-runs-dir" CLI switch mapping (top-level statements
-    //      compile into the namespace-less "Program" type).
-    //
-    // Keyed by (assembly, type) like RuntimePathsBoundaryRuleTests' allowlist so an
-    // entry can never accidentally cover a same-named type in another assembly. Once
-    // T019 deletes both occurrences this set MUST become empty, making the tripwire's
-    // guarantee unconditional.
-    private static readonly HashSet<(string Assembly, string TypeFullName)> _cutoverDebtAllowlist =
-    [
-        ("Grimoire.Hub", "Grimoire.Hub.Runtime.Paths.GrimoirePathResolver"),
-        ("Grimoire.Hub", "Program"),
-    ];
+    // Cutover debt allowlist — EMPTIED by T019 (the US1 cutover deleted
+    // GrimoirePathOptions.DefaultQueryRunsDirName — whose const literal used to surface,
+    // compiler-inlined, in GrimoirePathResolver.Resolve — and Program.cs's
+    // "--query-runs-dir" CLI switch mapping). The tripwire's guarantee is unconditional
+    // from that commit onward: any new entry here requires an ADR revisiting ADR-014.
+    // Keyed by (assembly, type) like RuntimePathsBoundaryRuleTests' allowlist so a
+    // future documented exception could never accidentally cover a same-named type in
+    // another assembly.
+    private static readonly HashSet<(string Assembly, string TypeFullName)> _cutoverDebtAllowlist = [];
 
     [Fact]
     public void ProductionAssemblies_MustNotContainRetiredQueryRunsLocationLiterals()

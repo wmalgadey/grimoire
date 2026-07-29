@@ -40,7 +40,7 @@ public class QueryLifecycleTraceTests
         using var host = await QueryTurnSubmissionApiTests.BuildHostAsync(launcher, root);
         var coordinator = host.Services.GetRequiredService<Grimoire.Hub.QueryDispatch.QueryRunCoordinator>();
 
-        var submission = await coordinator.SubmitTurnAsync("c-trace", 1, "What decisions exist?", []);
+        var submission = await coordinator.SubmitTurnAsync("c-trace", "What decisions exist?");
         var accepted = Assert.IsType<Grimoire.Hub.QueryDispatch.QuerySubmissionResult.Accepted>(submission);
         var turnId = accepted.Turn.TurnId;
 
@@ -84,7 +84,7 @@ public class QueryLifecycleTraceTests
         using var host = await QueryTurnSubmissionApiTests.BuildHostAsync(launcher, root, livenessWindow: TimeSpan.FromMilliseconds(100));
         var coordinator = host.Services.GetRequiredService<Grimoire.Hub.QueryDispatch.QueryRunCoordinator>();
 
-        var submission = await coordinator.SubmitTurnAsync("c-trace-interrupt", 1, "What decisions exist?", []);
+        var submission = await coordinator.SubmitTurnAsync("c-trace-interrupt", "What decisions exist?");
         var accepted = Assert.IsType<Grimoire.Hub.QueryDispatch.QuerySubmissionResult.Accepted>(submission);
         var turnId = accepted.Turn.TurnId;
 

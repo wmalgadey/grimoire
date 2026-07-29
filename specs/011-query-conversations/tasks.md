@@ -201,7 +201,7 @@ context equals the recorded transcript.
 
 > **NOTE: Write these tests FIRST, ensure they FAIL before implementation**
 
-- [ ] T012 [P] [US1] Integration test `backend/tests/Grimoire.IntegrationTests/ConversationRecordLifecycleTests.cs`
+- [X] T012 [P] [US1] Integration test `backend/tests/Grimoire.IntegrationTests/ConversationRecordLifecycleTests.cs`
   (SC-001): scripted 3-turn conversation incl. a follow-up — exactly one file at
   `<base>/data/conversations/<conversationId>.md`; frontmatter with
   `record_format: grimoire-conversation/1`; `## Turn 1..3` blocks in position
@@ -210,7 +210,7 @@ context equals the recorded transcript.
   in the same document. Two concurrent conversations (within concurrency limit 3)
   each get exactly one record containing only their own turns
   (cross-contamination check).
-- [ ] T013 [P] [US1] Extend `backend/tests/Grimoire.IntegrationTests/QueryTurnSubmissionApiTests.cs`
+- [X] T013 [P] [US1] Extend `backend/tests/Grimoire.IntegrationTests/QueryTurnSubmissionApiTests.cs`
   per `contracts/query-conversation-api.md`: 202 with Hub-assigned `position`
   (recorded turns + 1) for a body containing only `prompt`; 400 for
   `conversationId` violating `^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$` (path-traversal
@@ -218,14 +218,14 @@ context equals the recorded transcript.
   client still sending `priorTurns` is accepted and the extra field ignored
   (record stays authoritative); 409 `conversation_already_active` and 503
   `query_concurrency_limit_reached` semantics unchanged (FR-009).
-- [ ] T014 [P] [US1] Rework `backend/tests/Grimoire.IntegrationTests/QueryFollowUpContextTests.cs`
+- [X] T014 [P] [US1] Rework `backend/tests/Grimoire.IntegrationTests/QueryFollowUpContextTests.cs`
   (SC-005, in-memory path): capture the `QueryAgentRequest` handed to the
   launcher port on a follow-up submission and assert its `PriorTurns`
   tuple-equal (`position`, `prompt`, `answer`, `state`) to the turns parsed from
   the record file with the contract parser — incl. a prior interrupted turn whose
   partial answer must appear in both. Delete the browser-supplied-`priorTurns`
   propagation assertions this file carried from 008 (mechanism retired).
-- [ ] T015 [P] [US1] Integration test (in `ConversationRecordLifecycleTests.cs`,
+- [X] T015 [P] [US1] Integration test (in `ConversationRecordLifecycleTests.cs`,
   T012's file) for the cutover guarantee (SC-004, runtime half): after full turn
   lifecycles (completed, interrupted, failed), `<base>/data/query-runs/` does not
   exist or contains zero files.
@@ -238,7 +238,7 @@ context equals the recorded transcript.
 
 ### Implementation for User Story 1
 
-- [ ] T017 [US1] Change `backend/src/Grimoire.Hub/QueryDispatch/QueryRunCoordinator.cs`:
+- [X] T017 [US1] Change `backend/src/Grimoire.Hub/QueryDispatch/QueryRunCoordinator.cs`:
   inject `ConversationRecordStore` (replacing `QueryRunArtifactWriter`); in
   `FinishTurnAsync`, after the `TryTransitionTo` first-transition-wins point,
   call `AppendTurnAsync` with the turn's full terminal data (prompt, accumulated
@@ -249,7 +249,7 @@ context equals the recorded transcript.
   `PublishTurnChangedAsync` broadcast — fixing in passing the current unguarded
   `_artifactWriter.WriteAsync` call (line ~306) that would skip the publish on
   throw (research.md R6, spec edge case).
-- [ ] T018 [US1] Change `backend/src/Grimoire.Hub/QuerySubmission/QuerySubmissionEndpoints.cs`
+- [X] T018 [US1] Change `backend/src/Grimoire.Hub/QuerySubmission/QuerySubmissionEndpoints.cs`
   and `QuerySubmissionValidator.cs`: remove `priorTurns` from the request model
   (extra fields ignored by JSON binding); add the `conversationId` regex rule
   (400 per contract; prompt rules unchanged); load prior-turn context from
@@ -258,7 +258,7 @@ context equals the recorded transcript.
   `{ "reason": "conversation_record_unreadable" }` fail-closed (no turn created,
   no agent spawned) when the store reports the record unreadable. Register
   `ConversationRecordStore` in `backend/src/Grimoire.Hub/Program.cs` DI.
-- [ ] T019 [US1] Cutover deletion (FR-007/FR-008): delete
+- [X] T019 [US1] Cutover deletion (FR-007/FR-008): delete
   `backend/src/Grimoire.Hub/QueryRunArtifact/QueryRunArtifactWriter.cs` and the
   `QueryRunArtifact/` directory; delete `QueryRunsDir` +
   `DefaultQueryRunsDirName` from `GrimoirePathOptions.cs`, the `query_runs_dir`

@@ -55,7 +55,6 @@ public static class GrimoirePathResolver
         var secretsFilePath = ResolveAgainst(options.SecretsFile, dataDir, GrimoirePathOptions.DefaultSecretsFileName);
         var instructionsDir = ResolveAgainst(options.InstructionsDir, dataDir, GrimoirePathOptions.DefaultInstructionsDirRelativePath);
         var queryInstructionsDir = ResolveAgainst(options.QueryInstructionsDir, dataDir, GrimoirePathOptions.DefaultQueryInstructionsDirRelativePath);
-        var queryRunsDir = ResolveAgainst(options.QueryRunsDir, dataDir, GrimoirePathOptions.DefaultQueryRunsDirName);
         var conversationsDir = ResolveAgainst(options.ConversationsDir, dataDir, GrimoirePathOptions.DefaultConversationsDirName);
 
         var agentWorkerPath = ResolveAgainst(options.AgentWorker, AppContext.BaseDirectory, GrimoirePathOptions.DefaultAgentWorkerFileName);
@@ -84,7 +83,6 @@ public static class GrimoirePathResolver
             BuildLocation("instructions_dir", "InstructionsDir", options.InstructionsDir, instructionsDir, PathLocationKind.RequiredInput, configRoot),
             BuildLocation("agent_worker", "AgentWorker", options.AgentWorker, agentWorkerPath, PathLocationKind.RequiredInput, configRoot),
             BuildLocation("query_instructions_dir", "QueryInstructionsDir", options.QueryInstructionsDir, queryInstructionsDir, PathLocationKind.RequiredInput, configRoot),
-            BuildLocation("query_runs_dir", "QueryRunsDir", options.QueryRunsDir, queryRunsDir, PathLocationKind.WritableData, configRoot),
             BuildLocation("conversations_dir", "ConversationsDir", options.ConversationsDir, conversationsDir, PathLocationKind.WritableData, configRoot),
             BuildLocation("query_agent_worker", "QueryAgentWorker", options.QueryAgentWorker, queryAgentWorkerPath, PathLocationKind.RequiredInput, configRoot),
         };
@@ -110,7 +108,6 @@ public static class GrimoirePathResolver
         CreateDirectoryIfMissing(logger, "raw_dir", options.RawDir, rawDir);
         CreateDirectoryIfMissing(logger, "raw_originals_dir", options.RawDir, rawOriginalsDir);
         CreateDirectoryIfMissing(logger, "raw_sources_dir", options.RawDir, rawSourcesDir);
-        CreateDirectoryIfMissing(logger, "query_runs_dir", options.QueryRunsDir, queryRunsDir);
         CreateDirectoryIfMissing(logger, "conversations_dir", options.ConversationsDir, conversationsDir);
         var stateDbDir = Path.GetDirectoryName(stateDbPath);
         if (!string.IsNullOrEmpty(stateDbDir))
@@ -138,7 +135,6 @@ public static class GrimoirePathResolver
             QueryInstructionsDir: queryInstructionsDir,
             QuerySystemPromptPath: querySystemPromptPath,
             QueryPolicyPath: queryPolicyPath,
-            QueryRunsDir: queryRunsDir,
             ConversationsDir: conversationsDir,
             QueryAgentWorkerPath: queryAgentWorkerPath,
             Locations: locations);

@@ -64,7 +64,7 @@ public class QueryInstructionLoadTests
     }
 
     [Fact]
-    public async Task EndToEnd_InstructionLoadFailure_MarksTurnFailed_WithReasonOnArtifact_AndNoAnswer()
+    public async Task EndToEnd_InstructionLoadFailure_MarksTurnFailed_WithReasonOnConversationRecord_AndNoAnswer()
     {
         var reason = "Instruction document not found at 'agents/query/system-prompt.md'. Cannot start a run without agent operating rules.";
         var launcher = new FakeAgentProcessLauncher(terminalStatus: "failed", failureReason: reason, autoPlay: true);
@@ -72,7 +72,7 @@ public class QueryInstructionLoadTests
         using var host = await QueryTurnSubmissionApiTests.BuildHostAsync(launcher, root);
 
         var coordinator = host.Services.GetRequiredService<Grimoire.Hub.QueryDispatch.QueryRunCoordinator>();
-        var submission = await coordinator.SubmitTurnAsync("c-fail", 1, "What is in the wiki?", []);
+        var submission = await coordinator.SubmitTurnAsync("c-fail", "What is in the wiki?");
         var accepted = Assert.IsType<Grimoire.Hub.QueryDispatch.QuerySubmissionResult.Accepted>(submission);
         var turnId = accepted.Turn.TurnId;
 
@@ -95,21 +95,29 @@ public class QueryInstructionLoadTests
         Assert.Equal(string.Empty, turn.Answer);
 
         // The turn's in-memory status flips synchronously before FinishTurnAsync's own
-        // await of the artifact write completes (QueryRunCoordinator.FinishTurnAsync),
+        // await of the record append completes (QueryRunCoordinator.FinishTurnAsync),
         // so the file write is still a separate, slightly-later async operation — poll
         // for it too rather than assuming it's already on disk the instant Status flips.
+        // 011-query-conversations (T019 cutover): the reason lands in the Conversation
+        // Record's turn bookkeeping instead of the retired per-turn artifact.
         var resolvedPaths = QueryTurnSubmissionApiTests.BuildResolvedPaths(root);
-        var artifactPath = resolvedPaths.QueryRunArtifactPathFor("c-fail", turnId);
-        var artifactDeadline = DateTime.UtcNow.AddSeconds(5);
-        while (!File.Exists(artifactPath) && DateTime.UtcNow < artifactDeadline)
+        var recordPath = resolvedPaths.ConversationRecordPathFor("c-fail");
+        var recordDeadline = DateTime.UtcNow.AddSeconds(5);
+        while (!File.Exists(recordPath) && DateTime.UtcNow < recordDeadline)
         {
             await Task.Delay(25);
         }
 
-        Assert.True(File.Exists(artifactPath));
-        var artifact = await File.ReadAllTextAsync(artifactPath);
-        Assert.Contains("state: failed", artifact);
-        Assert.Contains(reason, artifact);
+        Assert.True(File.Exists(recordPath));
+        var record = await File.ReadAllTextAsync(recordPath);
+        var parsed = Assert.IsType<Grimoire.Hub.QueryConversations.ConversationRecordParseResult.Parsed>(
+            Grimoire.Hub.QueryConversations.ConversationRecordFormat.Parse(record));
+        var recordedTurn = Assert.Single(parsed.Turns);
+        Assert.Equal("failed", recordedTurn.State);
+        Assert.Equal(reason, recordedTurn.FailureReason);
+        // Pre-load failure: nullable instruction identity, empty answer, block parseable.
+        Assert.Null(recordedTurn.InstructionFileSha256);
+        Assert.Equal(string.Empty, recordedTurn.Answer);
     }
 
     private static string FindRepositoryRoot()

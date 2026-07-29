@@ -119,7 +119,6 @@ public sealed class IngestSubmissionPipelineFixture : IDisposable
             QueryInstructionsDir: Path.Combine(Root, "agents", "query"),
             QuerySystemPromptPath: Path.Combine(Root, "agents", "query", "system-prompt.md"),
             QueryPolicyPath: Path.Combine(Root, "agents", "query", "policy.json"),
-            QueryRunsDir: Path.Combine(Root, "query-runs"),
             ConversationsDir: Path.Combine(Root, "conversations"),
             QueryAgentWorkerPath: "unused",
             Locations: []);

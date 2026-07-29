@@ -41,12 +41,6 @@ public sealed class GrimoirePathOptions
     public string? QueryInstructionsDir { get; set; }
 
     /// <summary>
-    /// Query Run Artifact storage (008-query-agent, ADR-009/ADR-011 R7) — Hub-written
-    /// only, git-ignored. Default: <c>query-runs</c> under the data directory.
-    /// </summary>
-    public string? QueryRunsDir { get; set; }
-
-    /// <summary>
     /// Conversation Record storage (011-query-conversations, ADR-014) — Hub-written
     /// only, git-ignored, one append-only file per conversation. Default:
     /// <c>conversations</c> under the data directory.
@@ -63,7 +57,6 @@ public sealed class GrimoirePathOptions
     public const string DefaultDataDirName = "data";
     public const string DefaultRawDirName = "raw";
     public const string DefaultSecretsFileName = ".env";
-    public const string DefaultQueryRunsDirName = "query-runs";
     public const string DefaultConversationsDirName = "conversations";
 
     // Not a `const`: NetArchTest's HaveDependencyOn scan treats string *field constants*

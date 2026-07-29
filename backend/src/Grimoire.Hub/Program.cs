@@ -7,8 +7,8 @@ using Grimoire.Hub.IngestSubmission.Adapters.HttpFetch;
 using Grimoire.Hub.IngestSubmission.Adapters.MarkItDown;
 using Grimoire.Hub.OperationalState;
 using Microsoft.AspNetCore.SignalR;
+using Grimoire.Hub.QueryConversations;
 using Grimoire.Hub.QueryDispatch;
-using Grimoire.Hub.QueryRunArtifact;
 using Grimoire.Hub.QuerySubmission;
 using Grimoire.Hub.Realtime;
 using Grimoire.Hub.Runtime.Paths;
@@ -72,17 +72,19 @@ using (var bootstrapLoggerFactory = TelemetryExtensions.CreateBootstrapLoggerFac
     builder.Services.AddSingleton<IngestSubmissionPipeline>();
 
     // 008-query-agent: fully decoupled from Ingest's coordinator (no shared lock/slot,
-    // ADR-011/SC-006) — its own SignalR channel, artifact writer, and bounded-concurrency
-    // dispatch.
+    // ADR-011/SC-006) — its own SignalR channel, bounded-concurrency dispatch, and (011,
+    // ADR-014) the Conversation Record store as both audit trail and context source.
     builder.Services.AddSingleton<QueryLifecyclePublisher>(sp => new QueryLifecyclePublisher(
         sp.GetRequiredService<IHubContext<QueryLifecycleHub>>(),
         sp.GetRequiredService<ILogger<QueryLifecyclePublisher>>()));
-    builder.Services.AddSingleton<QueryRunArtifactWriter>();
+    builder.Services.AddSingleton<ConversationRecordStore>(sp => new ConversationRecordStore(
+        resolvedPaths,
+        logger: sp.GetRequiredService<ILogger<ConversationRecordStore>>()));
     builder.Services.AddSingleton<QuerySubmissionValidator>();
     builder.Services.AddSingleton<QueryRunCoordinator>(sp => new QueryRunCoordinator(
         sp.GetRequiredService<IAgentProcessLauncher>(),
         sp.GetRequiredService<QueryLifecyclePublisher>(),
-        sp.GetRequiredService<QueryRunArtifactWriter>(),
+        sp.GetRequiredService<ConversationRecordStore>(),
         resolvedPaths,
         sp.GetRequiredService<QueryConcurrencyOptions>(),
         logger: sp.GetRequiredService<ILogger<QueryRunCoordinator>>()));
@@ -151,7 +153,6 @@ static Dictionary<string, string> PathConfigurationSwitchMappingsFactory() => ne
     ["--instructions-dir"] = "Grimoire:Paths:InstructionsDir",
     ["--agent-worker"] = "Grimoire:Paths:AgentWorker",
     ["--query-instructions-dir"] = "Grimoire:Paths:QueryInstructionsDir",
-    ["--query-runs-dir"] = "Grimoire:Paths:QueryRunsDir",
     ["--conversations-dir"] = "Grimoire:Paths:ConversationsDir",
     ["--query-agent-worker"] = "Grimoire:Paths:QueryAgentWorker",
 };
