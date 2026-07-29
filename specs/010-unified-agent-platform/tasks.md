@@ -144,14 +144,18 @@ code may now begin.
 **Purpose**: Freeze the pre-consolidation baseline that US3's preservation guarantee is
 measured against, and finalize the rename inventory the convention document needs.
 
-- [ ] T007 Verify the branch-point baseline: `dotnet build backend/Grimoire.slnx` and
+- [X] T007 Verify the branch-point baseline: `dotnet build backend/Grimoire.slnx` and
   `dotnet test` for `backend/tests/Grimoire.ArchTests`,
   `backend/tests/Grimoire.Domain.UnitTests`, `backend/tests/Grimoire.IntegrationTests`,
   and `backend/tests/Grimoire.AgentEvals` — all green, **zero skipped** (ADR-012
   zero-skip gate). Record the passing test counts per project (in the task-completion
   note / commit message); this is the SC-003/FR-009 reference point for "full
   pre-existing suite passes with no weakened assertions".
-- [ ] T008 [P] Finalize the authoritative N1 violation inventory: run T001's rule in
+  **Baseline recorded (branch point, before Phase 0 rules)**: build 0 warnings /
+  0 errors; Grimoire.ArchTests **34/34**, Grimoire.Domain.UnitTests **14/14**,
+  Grimoire.IntegrationTests **228/228**, Grimoire.AgentEvals **44/44** — all passed,
+  **zero skipped**. (After Phase 0 the ArchTests count is 40: +2 N1, +2 D1, +2 D2.)
+- [X] T008 [P] Finalize the authoritative N1 violation inventory: run T001's rule in
   report mode (or temporarily list the baseline contents) and cross-check against
   research.md R5, capturing any single-agent-owned unprefixed artifact R5 missed
   (candidates seen in survey: `OperationalStateAndDispatchTests`,
@@ -160,6 +164,20 @@ measured against, and finalize the rename inventory the convention document need
   `IngestSubmissionPipelineFixture` naming). Output: the confirmed old→new mapping
   (input to T029's convention document) plus the confirmed cross-agent list (input to
   the exemption fixture). Do not rename anything yet.
+  **Inventory confirmed (report-mode run of N1)**: R5 list confirmed; additional
+  single-agent-owned unprefixed artifacts found and baselined —
+  `Grimoire.Hub.AgentDispatch.QueryPriorTurn` (Query-owned, moves with
+  `QueryAgentRequest` in T036), `DispatchPathArgumentsTests`, `RepoLessStartupTests`
+  (both reference only ingest-owned namespaces; settled by T041). Confirmed
+  cross-agent (added to exemption fixture): `QueryConcurrencyIndependenceTests`
+  (ingest/query interaction test), `HexagonalPortsAdapterRuleTests`,
+  `RuntimePathsBoundaryRuleTests` (solution-wide rules with incidental ingest
+  anchors). Remaining survey candidates (`OperationalStateAndDispatchTests`,
+  `KanbanBoardApiTests`, `GovernanceIdentityTests`, `ReplayAdapterTests`,
+  `UrlContentFetcherTests`, `CredentialScopingTests`, `TaskRecord*Tests`) are
+  baselined pending their T028/T029/T041 classification; other `PathConfiguration/*`
+  files and `IngestSubmissionPipelineFixture` were NOT flagged by the mechanical scan
+  (cross-agent references or already prefixed).
 
 **Checkpoint**: Baseline recorded, inventory authoritative. Foundational work can begin.
 
