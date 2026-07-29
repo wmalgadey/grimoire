@@ -103,7 +103,7 @@ config is deleted in the US1 cutover (T019) so the build stays green throughout.
 
 **⚠️ CRITICAL**: No user story work can begin until this phase is complete.
 
-- [ ] T004 Extend `backend/src/Grimoire.Hub/Runtime/Paths/GrimoirePathOptions.cs`
+- [X] T004 Extend `backend/src/Grimoire.Hub/Runtime/Paths/GrimoirePathOptions.cs`
   (add `ConversationsDir` property + `DefaultConversationsDirName = "conversations"`),
   `GrimoirePathResolver.cs` (resolve beneath the data dir, report as
   `conversations_dir`, auto-create as `PathLocationKind.WritableData`),
@@ -113,13 +113,13 @@ config is deleted in the US1 cutover (T019) so the build stays green throughout.
   `"Grimoire:Paths:ConversationsDir"` CLI mapping) — single composition point,
   ADR-009, no ambient discovery. `QueryRunsDir`/`QueryRunArtifactPathFor` remain
   untouched until T019.
-- [ ] T005 [P] Extend `backend/tests/Grimoire.IntegrationTests/PathConfiguration/QueryRuntimePathsTests.cs`:
+- [X] T005 [P] Extend `backend/tests/Grimoire.IntegrationTests/PathConfiguration/QueryRuntimePathsTests.cs`:
   `conversations_dir` resolves beneath `data/` under default layout, honors
   explicit `--base`/`--conversations-dir`/env-var (`Grimoire__Paths__ConversationsDir`)
   overrides with correct source reporting, and is auto-created — mirrors the
   existing `query_runs_dir` cases (which are rewritten to `conversations_dir`
   expectations in T019).
-- [ ] T006 Implement `backend/src/Grimoire.Hub/QueryConversations/ConversationRecordFormat.cs`
+- [X] T006 Implement `backend/src/Grimoire.Hub/QueryConversations/ConversationRecordFormat.cs`
   — the **writer** half of `contracts/conversation-record-format.md`
   (`grimoire-conversation/1`): frontmatter (`conversation_id`, `created_at`,
   `record_format`) + `# Conversation <id>` heading on create; per-turn block =
@@ -130,7 +130,7 @@ config is deleted in the US1 cutover (T019) so the build stays green throughout.
   values (failure_reason, denied-action targets/reasons, paths) as double-quoted
   JSON-escaped strings with `-->` neutralized (its `>` written as the JSON
   unicode escape `\u003e`, per the contract's escaping rules).
-- [ ] T007 Implement `backend/src/Grimoire.Hub/QueryConversations/RecordedTurn.cs`
+- [X] T007 Implement `backend/src/Grimoire.Hub/QueryConversations/RecordedTurn.cs`
   (parsed turn: full bookkeeping + prompt/answer, plus the
   `{ position, prompt, answer, state }` context projection matching the existing
   `QueryPriorTurn` shape) and the **parser** half in
@@ -141,7 +141,7 @@ config is deleted in the US1 cutover (T019) so the build stays green throughout.
   trailing-incomplete-block recovery (drop fragment, WARN diagnostic, file still
   readable), any other structural violation ⇒ unreadable classification (contract
   Parsing rules 1–5). Depends on T006 (shared format constants).
-- [ ] T008 [P] Integration tests `backend/tests/Grimoire.IntegrationTests/ConversationRecordFormatTests.cs`:
+- [X] T008 [P] Integration tests `backend/tests/Grimoire.IntegrationTests/ConversationRecordFormatTests.cs`:
   writer→parser round-trip preserves every bookkeeping field and body verbatim;
   injection fixtures — prompt/answer bodies containing `## Turn`, `### Answer`,
   and `<!-- grimoire:turn -->` sentinels parse without forged/broken structure;
@@ -150,7 +150,7 @@ config is deleted in the US1 cutover (T019) so the build stays green throughout.
   `answer_chars: 0` yields an empty body; trailing partial block is dropped with
   the remaining turns intact; truncated frontmatter / malformed bookkeeping YAML
   / body shorter than declared length each classify as unreadable.
-- [ ] T009 Implement `backend/src/Grimoire.Hub/QueryConversations/ConversationRecordStore.cs`
+- [X] T009 Implement `backend/src/Grimoire.Hub/QueryConversations/ConversationRecordStore.cs`
   (concrete class, directly injected — persistence exemption, Constitution I /
   ADR-010): `AppendTurnAsync` creates the file (frontmatter + first block) in a
   single write on the conversation's first terminal turn, appends one complete
@@ -162,14 +162,14 @@ config is deleted in the US1 cutover (T019) so the build stays green throughout.
   (new conversation), and surfaces a fail-closed unreadable result (never partial
   context) when parsing fails (research.md R5). Uses
   `ResolvedGrimoirePaths.ConversationRecordPathFor` (T004).
-- [ ] T010 [P] Integration tests `backend/tests/Grimoire.IntegrationTests/ConversationRecordStoreTests.cs`:
+- [X] T010 [P] Integration tests `backend/tests/Grimoire.IntegrationTests/ConversationRecordStoreTests.cs`:
   create-on-first-append vs. append-on-later; earlier bytes byte-identical after
   a later append (never-rewrite, FR-003); `position` strictly increasing from 1;
   cache serves loads after appends without re-reading the file; cache miss
   hydrates from disk; missing file ⇒ empty context; unreadable file ⇒ fail-closed
   result; concurrent appends to two different conversations land in their own
   files only.
-- [ ] T011 [P] Extend `backend/tests/Grimoire.IntegrationTests/Fakes/FakeAgentProcess.cs`
+- [X] T011 [P] Extend `backend/tests/Grimoire.IntegrationTests/Fakes/FakeAgentProcess.cs`
   (and `Fakes/FakeModelClient.cs` if needed) so tests can script terminal-event
   metadata deterministically: denied actions (action/requested_target/
   canonical_target/reason/turn), instruction identity + sha256, policy identity/

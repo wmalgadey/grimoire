@@ -46,6 +46,13 @@ public sealed class GrimoirePathOptions
     /// </summary>
     public string? QueryRunsDir { get; set; }
 
+    /// <summary>
+    /// Conversation Record storage (011-query-conversations, ADR-014) — Hub-written
+    /// only, git-ignored, one append-only file per conversation. Default:
+    /// <c>conversations</c> under the data directory.
+    /// </summary>
+    public string? ConversationsDir { get; set; }
+
     /// <summary>Ingest agent worker (.csproj/.dll/executable). Default: beside the Hub binaries.</summary>
     public string? AgentWorker { get; set; }
 
@@ -57,6 +64,7 @@ public sealed class GrimoirePathOptions
     public const string DefaultRawDirName = "raw";
     public const string DefaultSecretsFileName = ".env";
     public const string DefaultQueryRunsDirName = "query-runs";
+    public const string DefaultConversationsDirName = "conversations";
 
     // Not a `const`: NetArchTest's HaveDependencyOn scan treats string *field constants*
     // as candidate dependency evidence, and this filename's "Grimoire.IngestAgent" prefix

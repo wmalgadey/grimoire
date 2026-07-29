@@ -192,6 +192,44 @@ public static class HubMetrics
         _queryConcurrentRuns.Add(delta);
     }
 
+    // --- 011-query-conversations (plan.md ## Observability > Business Metrics) ---
+
+    private static readonly Counter<long> _conversationTurnsRecordedTotal =
+        Meter.CreateCounter<long>("query.conversation.turns_recorded_total",
+            description: "Turns appended to a Conversation Record");
+
+    public static void RecordConversationTurnRecorded(string outcome)
+    {
+        _conversationTurnsRecordedTotal.Add(1, new KeyValuePair<string, object?>("outcome", outcome));
+    }
+
+    private static readonly Counter<long> _conversationRecordAppendFailuresTotal =
+        Meter.CreateCounter<long>("query.conversation.record_append_failures_total",
+            description: "Failed record appends (turn outcome unaffected)");
+
+    public static void RecordConversationRecordAppendFailure()
+    {
+        _conversationRecordAppendFailuresTotal.Add(1);
+    }
+
+    private static readonly Counter<long> _conversationContextLoadsTotal =
+        Meter.CreateCounter<long>("query.conversation.context_loads_total",
+            description: "Prior-turn context loads at submission");
+
+    public static void RecordConversationContextLoad(string source)
+    {
+        _conversationContextLoadsTotal.Add(1, new KeyValuePair<string, object?>("source", source));
+    }
+
+    private static readonly Counter<long> _conversationRecordLoadFailuresTotal =
+        Meter.CreateCounter<long>("query.conversation.record_load_failures_total",
+            description: "Fail-closed context loads (unreadable record)");
+
+    public static void RecordConversationRecordLoadFailure()
+    {
+        _conversationRecordLoadFailuresTotal.Add(1);
+    }
+
     // Note: query.tool_calls_total is emitted by Grimoire.QueryAgent itself (the guarded
     // tool executor runs in that process, not the Hub) — see QueryAgentMetrics there,
     // mirroring Grimoire.IngestAgent.IngestAgentMetrics.RecordToolCall.

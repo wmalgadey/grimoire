@@ -37,6 +37,17 @@ public class QueryRuntimePathsTests
             Assert.Equal(Path.GetFullPath(Path.Combine(cwd, "data", "query-runs")), resolved.QueryRunsDir);
             Assert.True(Directory.Exists(resolved.QueryRunsDir));
 
+            // 011-query-conversations (T005, ADR-014/ADR-009): the Conversation Record
+            // location resolves beneath data/ and is auto-created as writable data.
+            Assert.Equal(Path.GetFullPath(Path.Combine(cwd, "data", "conversations")), resolved.ConversationsDir);
+            Assert.True(Directory.Exists(resolved.ConversationsDir));
+            var conversationsLocation = resolved.Locations.Single(l => l.Name == "conversations_dir");
+            Assert.Equal("default", conversationsLocation.Source);
+            Assert.Equal(PathLocationKind.WritableData, conversationsLocation.Kind);
+            Assert.Equal(
+                Path.Combine(resolved.ConversationsDir, "c-1.md"),
+                resolved.ConversationRecordPathFor("c-1"));
+
             // Query's instructions never nest inside Ingest's, and vice versa.
             Assert.NotEqual(resolved.InstructionsDir, resolved.QueryInstructionsDir);
         }
@@ -65,6 +76,7 @@ public class QueryRuntimePathsTests
 
             Assert.Equal(Path.GetFullPath(Path.Combine(baseDir, "data", "agents", "query")), resolved.QueryInstructionsDir);
             Assert.Equal(Path.GetFullPath(Path.Combine(baseDir, "data", "query-runs")), resolved.QueryRunsDir);
+            Assert.Equal(Path.GetFullPath(Path.Combine(baseDir, "data", "conversations")), resolved.ConversationsDir);
         }
         finally
         {
@@ -101,6 +113,85 @@ public class QueryRuntimePathsTests
         finally
         {
             Environment.SetEnvironmentVariable(envVarName, null);
+            if (Directory.Exists(baseDir))
+            {
+                Directory.Delete(baseDir, recursive: true);
+            }
+            if (Directory.Exists(overrideDir))
+            {
+                Directory.Delete(overrideDir, recursive: true);
+            }
+        }
+    }
+
+    [Fact]
+    public void EnvironmentVariableOverride_ForConversationsDir_WinsOverDefault_AndSourceReportsEnvironment()
+    {
+        const string envVarName = "Grimoire__Paths__ConversationsDir";
+        var baseDir = Path.Combine(Path.GetTempPath(), $"grimoire-conversations-paths-env-{Guid.NewGuid():N}");
+        var overrideDir = Path.Combine(Path.GetTempPath(), $"grimoire-conversations-override-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(baseDir);
+
+        Environment.SetEnvironmentVariable(envVarName, null);
+        try
+        {
+            var options = PathConfigurationTestHelpers.SeedRequiredInputs(baseDir);
+
+            Environment.SetEnvironmentVariable(envVarName, overrideDir);
+            var configRoot = new ConfigurationBuilder().AddEnvironmentVariables().Build();
+            configRoot.GetSection(GrimoirePathOptions.SectionName).Bind(options);
+
+            var resolved = GrimoirePathResolver.Resolve(options, configRoot, NullLogger.Instance);
+
+            Assert.Equal(Path.GetFullPath(overrideDir), resolved.ConversationsDir);
+            Assert.True(Directory.Exists(resolved.ConversationsDir));
+            var location = resolved.Locations.Single(l => l.Name == "conversations_dir");
+            Assert.Equal("environment", location.Source);
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable(envVarName, null);
+            if (Directory.Exists(baseDir))
+            {
+                Directory.Delete(baseDir, recursive: true);
+            }
+            if (Directory.Exists(overrideDir))
+            {
+                Directory.Delete(overrideDir, recursive: true);
+            }
+        }
+    }
+
+    [Fact]
+    public void CommandLineOverride_ForConversationsDir_WinsOverDefault_AndSourceReportsCommandLine()
+    {
+        var baseDir = Path.Combine(Path.GetTempPath(), $"grimoire-conversations-paths-cli-{Guid.NewGuid():N}");
+        var overrideDir = Path.Combine(Path.GetTempPath(), $"grimoire-conversations-cli-override-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(baseDir);
+
+        try
+        {
+            var options = PathConfigurationTestHelpers.SeedRequiredInputs(baseDir);
+
+            // Same switch mapping Program.cs registers for --conversations-dir (ADR-009).
+            var configRoot = new ConfigurationBuilder()
+                .AddCommandLine(
+                    ["--conversations-dir", overrideDir],
+                    new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+                    {
+                        ["--conversations-dir"] = "Grimoire:Paths:ConversationsDir",
+                    })
+                .Build();
+            configRoot.GetSection(GrimoirePathOptions.SectionName).Bind(options);
+
+            var resolved = GrimoirePathResolver.Resolve(options, configRoot, NullLogger.Instance);
+
+            Assert.Equal(Path.GetFullPath(overrideDir), resolved.ConversationsDir);
+            var location = resolved.Locations.Single(l => l.Name == "conversations_dir");
+            Assert.Equal("command-line", location.Source);
+        }
+        finally
+        {
             if (Directory.Exists(baseDir))
             {
                 Directory.Delete(baseDir, recursive: true);

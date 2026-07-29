@@ -37,6 +37,27 @@ public sealed class ScriptedAgentProcessHandle : IAgentProcessHandle
         EmitLine(JsonSerializer.Serialize(payload));
     }
 
+    /// <summary>
+    /// T011 (011-query-conversations): dictionary-shaped variant of <see cref="EmitEvent"/>
+    /// so callers can merge scripted terminal-event metadata (denied actions, instruction/
+    /// policy identity, model, turns used) into one event payload deterministically.
+    /// </summary>
+    public void EmitEventWithFields(string type, string taskId, IReadOnlyDictionary<string, object?> fields)
+    {
+        var payload = new Dictionary<string, object?>
+        {
+            ["type"] = type,
+            ["taskId"] = taskId,
+            ["timestamp"] = DateTimeOffset.UtcNow,
+        };
+        foreach (var (key, value) in fields)
+        {
+            payload[key] = value;
+        }
+
+        EmitLine(JsonSerializer.Serialize(payload));
+    }
+
     /// <summary>Closes the stdout pipe without a terminal event (process exit / crash).</summary>
     public void ClosePipe() => _lines.Writer.TryComplete();
 
@@ -181,6 +202,16 @@ public sealed class FakeAgentProcessLauncher : IAgentProcessLauncher
     /// </summary>
     public IReadOnlyList<(string Text, TimeSpan Delay)>? ScriptedAnswerChunks { get; set; }
 
+    /// <summary>
+    /// T011 (011-query-conversations): optional terminal-event metadata merged into the
+    /// auto-play query terminal event (ADR-006/ADR-011 terminal metadata: instruction
+    /// identity + sha256, policy identity/version/sha256, model, turns used, denied
+    /// actions) — camelCase keys exactly as <c>AgentRunEvent</c> deserializes them, e.g.
+    /// <c>["systemPromptSha256"] = "abc"</c>, <c>["deniedActions"] = new[] { ... }</c>.
+    /// When unset, the emitted events are byte-for-byte what they were before this hook.
+    /// </summary>
+    public IReadOnlyDictionary<string, object?>? ScriptedQueryTerminalMetadata { get; set; }
+
     public Task<IAgentProcessHandle> StartAsync(QueryAgentRequest request, CancellationToken cancellationToken = default)
     {
         lock (QueryRequests)
@@ -215,7 +246,21 @@ public sealed class FakeAgentProcessLauncher : IAgentProcessLauncher
                     await handle.EmitAnswerChunksAsync(request.TurnId, ScriptedAnswerChunks, CancellationToken.None);
                 }
 
-                if (_terminalStatus == "failed")
+                if (ScriptedQueryTerminalMetadata is { } metadata)
+                {
+                    var fields = new Dictionary<string, object?>(metadata.ToDictionary(kv => kv.Key, kv => kv.Value));
+                    if (_terminalStatus == "failed")
+                    {
+                        fields.TryAdd("reason", _failureReason ?? "Fake query run failed.");
+                        handle.EmitEventWithFields("failed", request.TurnId, fields);
+                    }
+                    else
+                    {
+                        fields.TryAdd("summary", "Fake query run completed.");
+                        handle.EmitEventWithFields("completed", request.TurnId, fields);
+                    }
+                }
+                else if (_terminalStatus == "failed")
                 {
                     handle.EmitEvent("failed", request.TurnId, new { reason = _failureReason ?? "Fake query run failed." });
                 }
