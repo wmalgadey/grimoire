@@ -40,7 +40,11 @@ public class EvalRunnerReplayBoundaryTests
 
     // ---- C6b: no namespace outside an .Adapters. segment references the concrete
     // replay adapter types (composition roots exempt by construction — each agent's
-    // Program.cs compiles into the global namespace, outside these prefix filters) ----
+    // Program.cs compiles into the global namespace, outside these prefix filters).
+    // ADR-013 (feature 010) moves the composition-root selection into the single shared
+    // ModelClientFactory (rule D2 pins it as the only permitted construction site), so
+    // that one type joins the exemption — the boundary moved, the rule moved with it
+    // (FR-010); everything else in Grimoire.AgentRuntime stays forbidden. ----
 
     [Fact]
     public void AgentRuntimeCore_MustNotReferenceConcreteReplayAdapters_OutsideAdaptersNamespace()
@@ -48,6 +52,7 @@ public class EvalRunnerReplayBoundaryTests
         var result = Types.InAssembly(AgentRuntimeAssembly)
             .That().ResideInNamespaceStartingWith("Grimoire.AgentRuntime")
             .And().DoNotResideInNamespaceContaining(".Adapters.")
+            .And().DoNotHaveNameMatching("^ModelClientFactory$")
             .Should().NotHaveDependencyOnAny(
             [
                 "Grimoire.AgentRuntime.Core.Adapters.Replay.ReplayModelClient",

@@ -7,6 +7,9 @@
   <ItemGroup>
     <PackageReference Include="Anthropic" />
     <PackageReference Include="OpenTelemetry" />
+    <!-- ADR-013 D1: the OTel provider bootstrap (incl. OTLP export) lives exactly once,
+         in Grimoire.AgentRuntime.Telemetry — hosts no longer wire exporters themselves. -->
+    <PackageReference Include="OpenTelemetry.Exporter.OpenTelemetryProtocol" />
   </ItemGroup>
 
 </Project>

@@ -193,13 +193,13 @@ the moment the hosts adopt them (Phase 3), which is the actual verification.
 
 **⚠️ CRITICAL**: No user story work can begin until this phase is complete.
 
-- [ ] T009 [P] Implement `backend/src/Grimoire.AgentRuntime/Host/AgentProfile.cs`
+- [X] T009 [P] Implement `backend/src/Grimoire.AgentRuntime/Host/AgentProfile.cs`
   (namespace `Grimoire.AgentRuntime.Host`): plain record per data-model.md — `AgentName`,
   `ServiceName`, `ActivitySourceName`/`MeterName`, `RunSpanName`,
   `CorrelationAttribute`, `ToolRegistry`, `RequiredInstructionDocuments`,
   `ModelEnvVarNames` (model + base-url env-var name pair). In-memory only, never
   serialized; no behavior, no agent-conditional logic.
-- [ ] T010 [P] Implement `backend/src/Grimoire.AgentRuntime/Telemetry/AgentTelemetryBootstrap.cs`
+- [X] T010 [P] Implement `backend/src/Grimoire.AgentRuntime/Telemetry/AgentTelemetryBootstrap.cs`
   (namespace `Grimoire.AgentRuntime.Telemetry`): OTel tracer/meter/logger provider
   construction + OTLP export, parameterized by the profile's
   service/source/meter names — must reproduce the provider wiring of
@@ -208,12 +208,12 @@ the moment the hosts adopt them (Phase 3), which is the actual verification.
   resources, sources, meters, exporter setup); the frozen identities
   (`Grimoire.IngestAgent`, `Grimoire.QueryAgent`) arrive as inputs, never as literals
   in the platform (ADR-005/ADR-013).
-- [ ] T011 [P] Implement `backend/src/Grimoire.AgentRuntime/Telemetry/AgentTracing.cs`:
+- [X] T011 [P] Implement `backend/src/Grimoire.AgentRuntime/Telemetry/AgentTracing.cs`:
   ActivitySource holder + run-span start helper, parameterized by source name, run-span
   name, and correlation-attribute name (`task_id`/`turn_id`) — consolidates the 28/27-line
   scaffolds of `IngestAgentTracing.cs`/`QueryAgentTracing.cs`; span names are inputs,
   unchanged (research.md R2).
-- [ ] T012 [P] Implement `backend/src/Grimoire.AgentRuntime/Composition/ModelClientFactory.cs`
+- [X] T012 [P] Implement `backend/src/Grimoire.AgentRuntime/Composition/ModelClientFactory.cs`
   (namespace `Grimoire.AgentRuntime.Composition`): the ADR-012 replay/capture/live
   selection (`GRIMOIRE_MODEL_REPLAY_PATH`/`GRIMOIRE_MODEL_CAPTURE_PATH`, fail-fast when
   both set) implemented once, taking the per-agent model/base-url env-var names from
@@ -222,16 +222,16 @@ the moment the hosts adopt them (Phase 3), which is the actual verification.
   `CreateModelClient` implementations byte-compatibly (behavioral reference:
   `backend/src/Grimoire.IngestAgent/Program.cs` and
   `backend/src/Grimoire.QueryAgent/Program.cs`).
-- [ ] T013 [P] Implement `backend/src/Grimoire.AgentRuntime/Composition/ErrorSanitizer.cs`:
+- [X] T013 [P] Implement `backend/src/Grimoire.AgentRuntime/Composition/ErrorSanitizer.cs`:
   single implementation of the credential-bearing error-text sanitization currently
   duplicated as `SanitizeErrorText` in both hosts' `Program.cs` (identical output for
   identical input — terminal `failed` event text is observable behavior, FR-008).
-- [ ] T014 [P] Implement `backend/src/Grimoire.AgentRuntime/Composition/AgentArgumentReader.cs`:
+- [X] T014 [P] Implement `backend/src/Grimoire.AgentRuntime/Composition/AgentArgumentReader.cs`:
   the shared `--key value` CLI parsing scaffold (required/optional helpers, heartbeat
   default) currently duplicated as `ParseArgs` in both hosts; each host keeps only its
   own option record (`AgentCliOptions`→`IngestCliOptions` in US2, `QueryCliOptions`).
   Unknown-argument/missing-argument error text unchanged (spawn contract, ADR-002).
-- [ ] T015 Implement `backend/src/Grimoire.AgentRuntime/Host/AgentHost.cs`: the
+- [X] T015 Implement `backend/src/Grimoire.AgentRuntime/Host/AgentHost.cs`: the
   startup/shutdown template — fail-closed instruction + policy load (existing
   `SystemPromptLoader`/`PolicyLoader`, unchanged) → `started` event → heartbeat →
   `AgentLoop` → terminal event — consuming an `AgentProfile` (T009) plus intent hooks
