@@ -425,21 +425,21 @@ after restart receives context equal to the parsed record.
 
 ### Tests for User Story 3
 
-- [ ] T033 [P] [US3] Integration test `backend/tests/Grimoire.IntegrationTests/ConversationRecordDurabilityTests.cs`
+- [X] T033 [P] [US3] Integration test `backend/tests/Grimoire.IntegrationTests/ConversationRecordDurabilityTests.cs`
   (SC-003): two finished turns + one mid-stream kill (`FakeAgentProcess`
   termination / controlled silence with fake `TimeProvider`); re-instantiate
   coordinator + store over the same temp base dir (= Hub restart); the record on
   disk contains the finished turns byte-complete and the killed turn with its
   accumulated partial answer and the terminal state/reason the existing
   supervision rules determine — never truncated or rewritten.
-- [ ] T034 [P] [US3] SC-005 hydration variant (in
+- [X] T034 [P] [US3] SC-005 hydration variant (in
   `ConversationRecordDurabilityTests.cs`, T033's file): after the simulated
   restart (cold cache), submit a follow-up to the same `conversationId` — the
   captured `QueryAgentRequest.PriorTurns` tuple-equals the record parsed with
   the contract parser; `query.conversation.context_loaded` reports
   `source=record` and `query.conversation.context_loads_total{source=record}`
   increments (from-file counterpart to T014/T024).
-- [ ] T035 [P] [US3] Fail-closed corrupt-record test
+- [X] T035 [P] [US3] Fail-closed corrupt-record test
   `backend/tests/Grimoire.IntegrationTests/ConversationRecordFailClosedTests.cs`
   (FR-006): corrupt an existing record (truncated frontmatter; malformed
   bookkeeping YAML; body shorter than declared length) — a follow-up submission
@@ -448,7 +448,7 @@ after restart receives context equal to the parsed record.
   NOT unreadable — the submission succeeds with context = the complete recorded
   turns and a WARN diagnostic for the dropped fragment (contract Parsing rule 4
   vs. 5); starting a new conversation afterwards works normally.
-- [ ] T036 [P] [US3] Failure-row observability tests (in
+- [X] T036 [P] [US3] Failure-row observability tests (in
   `ConversationRecordFailClosedTests.cs`, T035's file, plus
   `QueryConversationLogEventTests.cs`/`QueryConversationMetricsTests.cs`
   extensions): `query.conversation.record_load_failed` emitted at ERROR with
@@ -459,7 +459,7 @@ after restart receives context equal to the parsed record.
 
 ### Implementation for User Story 3
 
-- [ ] T037 [US3] Close any durability/hydration gaps T033–T036 surface in
+- [X] T037 [US3] Close any durability/hydration gaps T033–T036 surface in
   `backend/src/Grimoire.Hub/QueryConversations/ConversationRecordStore.cs` and
   `backend/src/Grimoire.Hub/QuerySubmission/QuerySubmissionEndpoints.cs`
   (cache hydration correctness after restart, WARN diagnostic for the trailing
