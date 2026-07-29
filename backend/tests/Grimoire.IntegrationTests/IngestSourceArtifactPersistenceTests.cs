@@ -9,7 +9,7 @@ namespace Grimoire.IntegrationTests;
 /// T021 (US1) - a URL submission is fetched, converted (via the real `markitdown` CLI), and
 /// persisted as both the original and normalized artifacts (SC-002).
 /// </summary>
-public class SourceArtifactPersistenceTests
+public class IngestSourceArtifactPersistenceTests
 {
     [Fact]
     public async Task UrlSubmission_PersistsOriginalAndNormalizedArtifacts()

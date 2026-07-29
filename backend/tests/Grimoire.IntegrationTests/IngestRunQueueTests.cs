@@ -9,7 +9,7 @@ namespace Grimoire.IntegrationTests;
 /// exactly one agent at a time, FIFO auto-advance, restart pauses the queue until an
 /// explicit resume/re-trigger, re-trigger of a non-queued task is refused.
 /// </summary>
-public class RunQueueTests
+public class IngestRunQueueTests
 {
     [Fact]
     public async Task ThreeEnqueues_RunOneAtATime_InFifoOrder_WithAutoAdvance()

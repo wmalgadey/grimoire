@@ -7,7 +7,7 @@ namespace Grimoire.IntegrationTests;
 /// completed artifacts that recorded denials carry a "## Denied actions" body
 /// section mirroring the denied_actions frontmatter (US3/AC3).
 /// </summary>
-public class AgentTaskArtifactTests
+public class IngestTaskArtifactTests
 {
     private static TaskArtifactDocument CompletedDocument(IReadOnlyList<DeniedActionEntry>? deniedActions) =>
         new(

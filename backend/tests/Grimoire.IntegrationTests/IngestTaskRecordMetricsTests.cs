@@ -11,7 +11,7 @@ namespace Grimoire.IntegrationTests;
 /// correct outcome label per read path, hub.task_record_change_events_total increments
 /// once per debounced publish.
 /// </summary>
-public class TaskRecordMetricsTests
+public class IngestTaskRecordMetricsTests
 {
     [Theory]
     [InlineData("ok")]

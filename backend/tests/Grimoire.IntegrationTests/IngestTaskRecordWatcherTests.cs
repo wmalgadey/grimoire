@@ -16,7 +16,7 @@ namespace Grimoire.IntegrationTests;
 /// IngestLifecycleRealtimeTests, and a real temp `TasksDir` (Principle II — no port for a
 /// local-filesystem observer).
 /// </summary>
-public class TaskRecordWatcherTests
+public class IngestTaskRecordWatcherTests
 {
     [Fact]
     public async Task AtomicRenameWrite_PublishesExactlyOneEvent_WithinFreshnessBudget()

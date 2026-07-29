@@ -14,7 +14,7 @@ namespace Grimoire.IntegrationTests;
 /// the same instruments, so every callback synchronizes its list, assertions run on a
 /// snapshot, and expectations are containment-based rather than exact global counts.
 /// </summary>
-public class ObservabilityMetricsTests
+public class IngestObservabilityMetricsTests
 {
     private static IReadOnlyList<T> Snapshot<T>(List<T> measurements)
     {

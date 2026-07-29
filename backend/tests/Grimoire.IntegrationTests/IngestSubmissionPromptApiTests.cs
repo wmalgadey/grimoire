@@ -17,7 +17,7 @@ namespace Grimoire.IntegrationTests;
 /// of truth (fail-closed 500), prompt length rejection before task creation, and the
 /// extended acceptance payload.
 /// </summary>
-public class SubmissionPromptApiTests
+public class IngestSubmissionPromptApiTests
 {
     [Fact]
     public async Task GetDefaults_ReturnsVerbatimDefaultPrompt_MaxLength_AndStepRegistry()

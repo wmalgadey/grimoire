@@ -9,7 +9,7 @@ namespace Grimoire.IntegrationTests;
 /// Events): task_record.served for each trigger outcome, task_record.change_published on
 /// a debounced publish, and task_record.watch_failed on a watcher IO failure.
 /// </summary>
-public class TaskRecordLogEventTests
+public class IngestTaskRecordLogEventTests
 {
     [Theory]
     [InlineData("ok")]
@@ -17,7 +17,7 @@ public class TaskRecordLogEventTests
     [InlineData("unparseable")]
     public void LogTaskRecordServed_EmitsExpectedNameLevelAndFields_ForEveryOutcome(string outcome)
     {
-        var logger = new CaptureLogger<TaskRecordLogEventTests>();
+        var logger = new CaptureLogger<IngestTaskRecordLogEventTests>();
 
         IngestSubmissionLogEvents.LogTaskRecordServed(logger, "task-1", outcome, contentLength: 42);
 
@@ -32,7 +32,7 @@ public class TaskRecordLogEventTests
     [Fact]
     public void LogTaskRecordChangePublished_EmitsExpectedNameLevelAndFields()
     {
-        var logger = new CaptureLogger<TaskRecordLogEventTests>();
+        var logger = new CaptureLogger<IngestTaskRecordLogEventTests>();
         var changedAt = DateTimeOffset.UtcNow;
 
         IngestSubmissionLogEvents.LogTaskRecordChangePublished(logger, "task-2", "evt-1", changedAt);
@@ -48,7 +48,7 @@ public class TaskRecordLogEventTests
     [Fact]
     public void LogTaskRecordWatchFailed_EmitsExpectedNameLevelAndFields()
     {
-        var logger = new CaptureLogger<TaskRecordLogEventTests>();
+        var logger = new CaptureLogger<IngestTaskRecordLogEventTests>();
 
         IngestSubmissionLogEvents.LogTaskRecordWatchFailed(logger, "/data/wiki/tasks", "simulated watch handle loss");
 

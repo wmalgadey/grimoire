@@ -10,7 +10,7 @@ namespace Grimoire.IntegrationTests.PathConfiguration;
 /// row in plan.md ## Observability &gt; Structured Log Events: <c>paths_resolved</c>,
 /// <c>paths_location_created</c>, and <c>paths_validation_failed</c>, driven through the
 /// real <see cref="GrimoirePathResolver"/> trigger paths (not called in isolation), using
-/// the same <c>CaptureLogger&lt;T&gt;</c> idiom as <c>ObservabilityLogTests</c> (ADR-005).
+/// the same <c>CaptureLogger&lt;T&gt;</c> idiom as <c>IngestObservabilityLogTests</c> (ADR-005).
 /// </summary>
 public class PathLoggingContractTests
 {

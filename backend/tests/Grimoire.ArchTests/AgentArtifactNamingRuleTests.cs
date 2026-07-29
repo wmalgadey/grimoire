@@ -89,6 +89,11 @@ public class AgentArtifactNamingRuleTests
         // ingest adapters, which does not make the rules ingest-owned.
         "HexagonalPortsAdapterRuleTests",
         "RuntimePathsBoundaryRuleTests",
+        // T028 classification: exercises only the shared spawn/credential machinery
+        // (AgentProcessHost.BuildChildEnvironment, LocalSecretsLoader) in cross-agent
+        // Grimoire.Hub.AgentDispatch — the ADR-004 credential scoping applies to every
+        // agent spawn, so the test is cross-agent and stays unprefixed.
+        "CredentialScopingTests",
     ];
 
     // Shared fixture namespaces: everything under *.Fakes is cross-agent by definition
@@ -106,46 +111,23 @@ public class AgentArtifactNamingRuleTests
     /// </summary>
     internal static readonly List<string> LegacyRenameBaseline =
     [
-        // research.md R5 inventory (renamed by T031-T039)
-        "ReplayEvalTests",
-        "ScenarioDefinitions",
-        "GuardedWriteBoundaryRuleTests",
-        "ObservabilityLogTests",
-        "ObservabilityMetricsTests",
-        "ObservabilityTraceTests",
-        "AgentRunLifecycleTests",
-        "AgentTaskArtifactTests",
-        "InstructionContextTests",
-        "InstructionLoadFailureTests",
-        "UserPromptTests",
-        "RunQueueTests",
-        "RunSupervisionTests",
-        "RunActivityRealtimeTests",
-        "FailureAndReconciliationTests",
-        "ConvertStepTests",
-        "SourceArtifactPersistenceTests",
-        "SubmissionPromptApiTests",
-        "Grimoire.Hub.AgentDispatch.IngestRunCoordinator",
-        "Grimoire.Hub.AgentDispatch.IngestAgentRequest",
-        "Grimoire.Hub.AgentDispatch.QueryAgentRequest",
-        "Grimoire.Hub.AgentDispatch.QueryPriorTurn", // report-mode find: moves to QueryDispatch with QueryAgentRequest (T036)
-        "Grimoire.Hub.Submission.*",
-        "Grimoire.Hub.TaskArtifact.*",
-        "AgentCliOptions",
-        "Grimoire.IngestAgent.AgentCore.*",
-        // T008 report-mode sweep: additional single-agent-owned unprefixed artifacts
-        // R5 missed (settled by T029/T041: rename or classify cross-agent).
-        "TaskRecordApiTests",
-        "TaskRecordLogEventTests",
-        "TaskRecordMetricsTests",
-        "TaskRecordTraceTests",
-        "TaskRecordWatcherTests",
+        // research.md R5 inventory — remaining entries only; the T031/T033/T034/T029
+        // rename batch (ReplayEvalTests, GuardedWriteBoundaryRuleTests, the sixteen
+        // Ingest integration tests, TaskRecord*Tests) emptied its share of this list.
+        "Grimoire.Hub.AgentDispatch.IngestRunCoordinator", // T036
+        "Grimoire.Hub.AgentDispatch.IngestAgentRequest", // T036
+        "Grimoire.Hub.AgentDispatch.QueryAgentRequest", // T036
+        "Grimoire.Hub.AgentDispatch.QueryPriorTurn", // T036 (report-mode find: moves with QueryAgentRequest)
+        "Grimoire.Hub.Submission.*", // T037
+        "Grimoire.Hub.TaskArtifact.*", // T038
+        "AgentCliOptions", // T039
+        "Grimoire.IngestAgent.AgentCore.*", // T039
+        // T008 report-mode sweep remainder (settled by T041: rename or classify).
         "OperationalStateAndDispatchTests",
         "KanbanBoardApiTests",
         "GovernanceIdentityTests",
         "ReplayAdapterTests",
         "UrlContentFetcherTests",
-        "CredentialScopingTests",
         "DispatchPathArgumentsTests",
         "RepoLessStartupTests",
     ];

@@ -34,7 +34,7 @@ var queryScenarios = ResolveQueryScenarios(options.Scenarios);
 if (scenarios.Count == 0 && queryScenarios.Count == 0)
 {
     Console.Error.WriteLine(
-        $"No matching scenarios. Known: {string.Join(", ", ScenarioDefinitions.All.Select(s => s.Id)
+        $"No matching scenarios. Known: {string.Join(", ", IngestScenarioDefinitions.All.Select(s => s.Id)
             .Concat(QueryScenarioDefinitions.All.Select(s => s.Id)))}");
     return 2;
 }
@@ -112,7 +112,7 @@ switch (subcommand)
                 return 2;
             }
 
-            var sampleCount = options.Samples ?? ScenarioDefinitions.ResolveSampleCount();
+            var sampleCount = options.Samples ?? IngestScenarioDefinitions.ResolveSampleCount();
             var pipeline = new CapturePipeline(store, paths, invoker, logger, CreateJudgeClient);
             var results = new List<CaptureScenarioResult>();
             var queryPipeline = new QueryCapturePipeline(store, paths, queryInvoker, logger);
@@ -164,8 +164,8 @@ switch (subcommand)
 
 static IReadOnlyList<ScenarioDefinition> ResolveScenarios(IReadOnlyList<string> requested)
     => requested.Count == 0
-        ? ScenarioDefinitions.All
-        : requested.Select(ScenarioDefinitions.Find).Where(s => s is not null).Cast<ScenarioDefinition>().ToList();
+        ? IngestScenarioDefinitions.All
+        : requested.Select(IngestScenarioDefinitions.Find).Where(s => s is not null).Cast<ScenarioDefinition>().ToList();
 
 static IReadOnlyList<QueryScenarioDefinition> ResolveQueryScenarios(IReadOnlyList<string> requested)
     => requested.Count == 0

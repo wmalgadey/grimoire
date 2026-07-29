@@ -8,7 +8,7 @@ namespace Grimoire.AgentEvals;
 
 /// <summary>
 /// T100 (008-query-agent) — the always-running Query replay eval tier, mirroring
-/// <see cref="ReplayEvalTests"/> for Ingest: one fact per scenario, replaying the
+/// <see cref="IngestReplayEvalTests"/> for Ingest: one fact per scenario, replaying the
 /// versioned genuine recordings under `data/evals/recordings/` through the real
 /// Grimoire.QueryAgent executable and asserting the unchanged spec thresholds. No
 /// provider, no credential, no skip. Supersedes the pre-migration

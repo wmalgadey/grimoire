@@ -51,11 +51,11 @@ public class StalenessTests : IDisposable
     [Fact]
     public void InstructionFileDrift_FlagsScenarioStale_NamingFingerprintAndRefreshCommand()
     {
-        SyntheticRecordings.WriteScenario(_store, ScenarioDefinitions.ConventionAdherence, _paths, sampleCount: 1);
+        SyntheticRecordings.WriteScenario(_store, IngestScenarioDefinitions.ConventionAdherence, _paths, sampleCount: 1);
 
         File.AppendAllText(_paths.SystemPromptPath, "\n- drift probe\n");
 
-        var report = StalenessCheck.Evaluate(ScenarioDefinitions.ConventionAdherence, _store, _paths);
+        var report = StalenessCheck.Evaluate(IngestScenarioDefinitions.ConventionAdherence, _store, _paths);
 
         Assert.Equal(TrustStatus.Stale, report.Status);
         Assert.Contains("system_prompt", report.ChangedFingerprints);
@@ -65,16 +65,16 @@ public class StalenessTests : IDisposable
     [Fact]
     public void FixtureDrift_FlagsOnlyTheAffectedScenario()
     {
-        SyntheticRecordings.WriteScenario(_store, ScenarioDefinitions.ConventionAdherence, _paths, sampleCount: 1);
-        SyntheticRecordings.WriteScenario(_store, ScenarioDefinitions.UpdateOverDuplicate, _paths, sampleCount: 1);
+        SyntheticRecordings.WriteScenario(_store, IngestScenarioDefinitions.ConventionAdherence, _paths, sampleCount: 1);
+        SyntheticRecordings.WriteScenario(_store, IngestScenarioDefinitions.UpdateOverDuplicate, _paths, sampleCount: 1);
 
         // overlapping-topic is UpdateOverDuplicate's fixture; ConventionAdherence uses empty-topic.
         File.AppendAllText(
             Path.Combine(_paths.FixtureWikiRoot("overlapping-topic"), "pages", "concepts", "retrieval-patterns.md"),
             "\ndrift probe\n");
 
-        var affected = StalenessCheck.Evaluate(ScenarioDefinitions.UpdateOverDuplicate, _store, _paths);
-        var unaffected = StalenessCheck.Evaluate(ScenarioDefinitions.ConventionAdherence, _store, _paths);
+        var affected = StalenessCheck.Evaluate(IngestScenarioDefinitions.UpdateOverDuplicate, _store, _paths);
+        var unaffected = StalenessCheck.Evaluate(IngestScenarioDefinitions.ConventionAdherence, _store, _paths);
 
         Assert.Equal(TrustStatus.Stale, affected.Status);
         Assert.Contains("fixture", affected.ChangedFingerprints);
@@ -84,13 +84,13 @@ public class StalenessTests : IDisposable
     [Fact]
     public async Task StaleScenario_NeverReplaysAsTrustedPass_AndSkipsAgentSpawns()
     {
-        SyntheticRecordings.WriteScenario(_store, ScenarioDefinitions.ConventionAdherence, _paths, sampleCount: 1);
+        SyntheticRecordings.WriteScenario(_store, IngestScenarioDefinitions.ConventionAdherence, _paths, sampleCount: 1);
         File.AppendAllText(_paths.SystemPromptPath, "\n- drift probe\n");
 
         // The invoker resolves the agent from the REAL repo build output; the stale path
         // never spawns it, which is part of what this test asserts.
         var pipeline = new ReplayPipeline(_store, _paths, AgentProcessInvoker.ForRepo(EvalPaths.Discover()), NullLogger.Instance);
-        var result = await pipeline.RunScenarioAsync(ScenarioDefinitions.ConventionAdherence, CancellationToken.None);
+        var result = await pipeline.RunScenarioAsync(IngestScenarioDefinitions.ConventionAdherence, CancellationToken.None);
 
         Assert.Equal(TrustStatus.Stale, result.TrustStatus);
         Assert.False(result.IsTrustedPass);
@@ -101,8 +101,8 @@ public class StalenessTests : IDisposable
     [Fact]
     public void JudgePromptFingerprint_TracksOnlyJudgeScoredScenarios()
     {
-        var steeringFingerprints = StalenessCheck.CurrentFingerprints(ScenarioDefinitions.SteeringAdoption, _paths);
-        var deterministicFingerprints = StalenessCheck.CurrentFingerprints(ScenarioDefinitions.ConventionAdherence, _paths);
+        var steeringFingerprints = StalenessCheck.CurrentFingerprints(IngestScenarioDefinitions.SteeringAdoption, _paths);
+        var deterministicFingerprints = StalenessCheck.CurrentFingerprints(IngestScenarioDefinitions.ConventionAdherence, _paths);
 
         Assert.True(steeringFingerprints.ContainsKey(Fingerprints.JudgePromptKey));
         Assert.False(deterministicFingerprints.ContainsKey(Fingerprints.JudgePromptKey));
@@ -111,7 +111,7 @@ public class StalenessTests : IDisposable
     [Fact]
     public void ScenarioDefinitionDrift_ChangesTheScenarioDefinitionFingerprint()
     {
-        var baseline = ScenarioDefinitions.ConventionAdherence;
+        var baseline = IngestScenarioDefinitions.ConventionAdherence;
         var drifted = baseline with { Threshold = 0.42 };
 
         var baselineFingerprints = StalenessCheck.CurrentFingerprints(baseline, _paths);

@@ -12,7 +12,7 @@ namespace Grimoire.IntegrationTests;
 /// byte-identical, defaults reproduce 003 behavior, and the applied configuration is
 /// recorded on the artifact.
 /// </summary>
-public class ConvertStepTests
+public class IngestConvertStepTests
 {
     [Fact]
     public void Validator_RejectsUnknownStep_NotApplicableStep_AndRequiredStepDisabled()

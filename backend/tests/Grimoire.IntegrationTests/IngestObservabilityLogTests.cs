@@ -11,12 +11,12 @@ using Microsoft.Extensions.Logging;
 namespace Grimoire.IntegrationTests;
 
 /// <summary>T036 — Structured log event emission (ADR-005).</summary>
-public class ObservabilityLogTests
+public class IngestObservabilityLogTests
 {
     [Fact]
     public void IngestAgentStructuredEvents_EmitExpectedNamesLevelsAndFields()
     {
-        var logger = new CaptureLogger<ObservabilityLogTests>();
+        var logger = new CaptureLogger<IngestObservabilityLogTests>();
 
         IngestAgentLogEvents.LogInstructionsLoaded(
             logger,
@@ -91,7 +91,7 @@ public class ObservabilityLogTests
     [Fact]
     public void IngestAgentUserPromptResolvedEvent_EmitsExpectedNameLevelAndFields()
     {
-        var logger = new CaptureLogger<ObservabilityLogTests>();
+        var logger = new CaptureLogger<IngestObservabilityLogTests>();
 
         IngestAgentLogEvents.LogUserPromptResolved(
             logger,
@@ -106,7 +106,7 @@ public class ObservabilityLogTests
     [Fact]
     public void HubSubmissionStructuredEvents_EmitExpectedNamesLevelsAndFields()
     {
-        var logger = new CaptureLogger<ObservabilityLogTests>();
+        var logger = new CaptureLogger<IngestObservabilityLogTests>();
 
         IngestSubmissionLogEvents.LogConfigRejected(
             logger,
@@ -168,7 +168,7 @@ public class ObservabilityLogTests
             sourceContent: "# source",
             cancellationToken: CancellationToken.None);
 
-        var logger = new CaptureLogger<ObservabilityLogTests>();
+        var logger = new CaptureLogger<IngestObservabilityLogTests>();
         IngestAgentLogEvents.LogAgentCompleted(
             logger, "task-mixed", result.TurnsUsed, journal, executor.Denials.Count);
 

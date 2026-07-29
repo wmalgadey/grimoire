@@ -9,7 +9,7 @@ namespace Grimoire.IntegrationTests;
 /// FR-015/SC-005 (analysis follow-up C2) — a Query agent run that goes silent
 /// (crash/hang, no heartbeat/activity, no terminal event) is marked <c>failed</c> with a
 /// liveness reason within the configured liveness window, and the leftover agent process
-/// is terminated. Mirrors <see cref="RunSupervisionTests"/>'s
+/// is terminated. Mirrors <see cref="IngestRunSupervisionTests"/>'s
 /// <c>EventSilence_BeyondLivenessWindow_FailsRun_TerminatesProcess_AndAdvancesQueue</c> for
 /// Ingest, applied to <c>QueryRunCoordinator.SuperviseAsync</c>'s watchdog.
 /// </summary>

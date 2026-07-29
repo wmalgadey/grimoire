@@ -9,7 +9,7 @@ namespace Grimoire.IntegrationTests;
 /// T021 - Hermetic agent lifecycle and rollback tests using FakeModelClient.
 /// Validates end-to-end agent loop execution, artifact creation, and failure recovery.
 /// </summary>
-public class AgentRunLifecycleTests
+public class IngestRunLifecycleTests
 {
     private const string SourceContent = "# Test Source\n\nSome test content for ingest.";
 

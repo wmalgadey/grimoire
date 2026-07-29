@@ -108,7 +108,7 @@ public class CaptureHygieneTests : IDisposable
         var pipeline = new CapturePipeline(store, paths, AgentProcessInvoker.ForRepo(paths), NullLogger.Instance);
 
         var result = await pipeline.RunScenarioAsync(
-            ScenarioDefinitions.ConventionAdherence, gate.Configuration, requestedSampleCount: 1, CancellationToken.None);
+            IngestScenarioDefinitions.ConventionAdherence, gate.Configuration, requestedSampleCount: 1, CancellationToken.None);
 
         Assert.False(result.Stored);
         Assert.False(store.HasScenario("convention-adherence"));

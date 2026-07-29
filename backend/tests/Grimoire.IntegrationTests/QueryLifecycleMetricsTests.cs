@@ -6,7 +6,7 @@ namespace Grimoire.IntegrationTests;
 
 /// <summary>
 /// T046/T058/T075/T078/T080 (008-query-agent) — business metric emission via in-process
-/// MeterListener (mirrors ObservabilityMetricsTests.cs's pattern), for every metric row
+/// MeterListener (mirrors IngestObservabilityMetricsTests.cs's pattern), for every metric row
 /// in plan.md ## Observability > Business Metrics that this feature owns: the Hub-side
 /// `query.turns_total`/`query.turn_duration_seconds`/`query.answer_chunks_total`/
 /// `query.submissions_rejected_total`/`query.concurrent_runs` and the agent-side

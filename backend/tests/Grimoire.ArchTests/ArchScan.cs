@@ -5,7 +5,7 @@ namespace Grimoire.ArchTests;
 
 /// <summary>
 /// Shared Mono.Cecil scan helpers for the ADR-013 rules (D1/D2). Same IL-scan idiom as
-/// GuardedWriteBoundaryRuleTests; extracted because the duplication-containment rules
+/// IngestAgentGuardedWriteBoundaryRuleTests; extracted because the duplication-containment rules
 /// share the call-site walk.
 /// </summary>
 internal static class ArchScan

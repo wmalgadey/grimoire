@@ -12,7 +12,7 @@ namespace Grimoire.IntegrationTests;
 /// harness scaffold always wraps the prompt, guardrails are independent of prompt
 /// content, and the effective prompt is recorded verbatim on the task artifact.
 /// </summary>
-public class UserPromptTests
+public class IngestUserPromptTests
 {
     [Fact]
     public async Task Scaffold_AlwaysWrapsTheEffectivePrompt_WithDelimitersAndInjectionFraming()

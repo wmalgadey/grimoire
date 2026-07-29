@@ -12,7 +12,7 @@ namespace Grimoire.IntegrationTests;
 /// missing, unreadable, or whitespace-only document fails the run before any model
 /// call or wiki write.
 /// </summary>
-public class InstructionLoadFailureTests
+public class IngestInstructionLoadFailureTests
 {
     [Fact]
     public async Task Loader_Fails_WhenDocumentMissingUnreadableOrWhitespaceOnly()

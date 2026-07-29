@@ -19,7 +19,7 @@ namespace Grimoire.IntegrationTests;
 /// Trace Spans): hub.task_record.serve (child of the ASP.NET Core request span) and
 /// hub.task_record.publish_change (watcher-initiated root span).
 /// </summary>
-public class TaskRecordTraceTests
+public class IngestTaskRecordTraceTests
 {
     [Fact]
     public async Task GetTaskRecord_EmitsServeSpan_AsChildOfAspNetCoreRequestSpan()

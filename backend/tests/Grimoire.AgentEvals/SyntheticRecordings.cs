@@ -12,7 +12,7 @@ namespace Grimoire.AgentEvals;
 /// Builds synthetic recordings for HARNESS-MECHANICS tests only (replay contract:
 /// determinism, provenance, missing/mismatch outcomes, staleness). These are never
 /// trusted scenario evidence — spec 009 FR-004 requires genuine captured model output
-/// for that — and `ReplayEvalTests` never reads them; they live in test-created temp
+/// for that — and `IngestReplayEvalTests` never reads them; they live in test-created temp
 /// stores, not in `data/evals/recordings/`.
 /// </summary>
 public static class SyntheticRecordings

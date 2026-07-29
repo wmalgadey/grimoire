@@ -18,7 +18,7 @@ namespace Grimoire.IntegrationTests;
 /// unavailable case (never a 5xx for a malformed file), and byte-for-byte invariance of the
 /// existing detail/board endpoints.
 /// </summary>
-public class TaskRecordApiTests
+public class IngestTaskRecordApiTests
 {
     [Fact]
     public async Task GetTaskRecord_ValidV2Record_Returns200_WithParsedMetadataAndStrippedBody()

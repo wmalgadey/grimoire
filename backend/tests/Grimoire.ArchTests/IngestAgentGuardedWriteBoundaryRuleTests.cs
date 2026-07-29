@@ -13,7 +13,7 @@ namespace Grimoire.ArchTests;
 /// only Grimoire.IngestAgent post-move would silently stop covering the real write path.
 /// Uses IL-level inspection (Mono.Cecil) to distinguish write calls from reads.
 /// </summary>
-public class GuardedWriteBoundaryRuleTests
+public class IngestAgentGuardedWriteBoundaryRuleTests
 {
     private static readonly System.Reflection.Assembly[] _scannedAssemblies =
     [

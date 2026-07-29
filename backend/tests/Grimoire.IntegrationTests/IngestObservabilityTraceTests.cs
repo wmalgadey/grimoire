@@ -13,7 +13,7 @@ namespace Grimoire.IntegrationTests;
 
 /// <summary>T037 — Trace span emission via in-process ActivityListener (ADR-005).</summary>
 [Collection("IngestAgentObservabilityListeners")]
-public class ObservabilityTraceTests
+public class IngestObservabilityTraceTests
 {
     // Old trace tests for deprecated WikiPageWriter/WikiIndexWriter removed as part of T020.
     // Agent loop span coverage is asserted below.
@@ -67,7 +67,7 @@ public class ObservabilityTraceTests
         };
         ActivitySource.AddActivityListener(listener);
 
-        var ingestLogger = new CaptureLogger<ObservabilityTraceTests>();
+        var ingestLogger = new CaptureLogger<IngestObservabilityTraceTests>();
         IngestAgentLogEvents.LogInstructionsLoaded(
             ingestLogger,
             taskId: "task-obs-1",
@@ -139,7 +139,7 @@ public class ObservabilityTraceTests
         var journal = new WriteJournal();
         var executor = new GuardedToolExecutor(
             policy, journal, root, taskId: "task-123",
-            instrumentation: new IngestToolCallInstrumentation(new CaptureLogger<ObservabilityTraceTests>()));
+            instrumentation: new IngestToolCallInstrumentation(new CaptureLogger<IngestObservabilityTraceTests>()));
         var fakeModel = new FakeModelClient([
             FakeModelClient.WriteFileTurn("tool-1", "wiki/pages/new.md", "# New page"),
             FakeModelClient.FinalTurn("Trace contract run complete.")]);

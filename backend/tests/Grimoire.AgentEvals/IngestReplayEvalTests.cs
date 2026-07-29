@@ -15,31 +15,31 @@ namespace Grimoire.AgentEvals;
 /// instruction-file changes.
 /// </summary>
 [Collection("EvalRunnerProcessTests")]
-public class ReplayEvalTests
+public class IngestReplayEvalTests
 {
     [Fact]
     public Task SC006_UpdateOverDuplicate_ReplaysAtThreshold()
-        => AssertScenarioAsync(ScenarioDefinitions.UpdateOverDuplicate);
+        => AssertScenarioAsync(IngestScenarioDefinitions.UpdateOverDuplicate);
 
     [Fact]
     public Task SC007_ConventionAdherence_ReplaysAtThreshold()
-        => AssertScenarioAsync(ScenarioDefinitions.ConventionAdherence);
+        => AssertScenarioAsync(IngestScenarioDefinitions.ConventionAdherence);
 
     [Fact]
     public Task SC008_CatalogDiscoverability_ReplaysAtThreshold()
-        => AssertScenarioAsync(ScenarioDefinitions.CatalogDiscoverability);
+        => AssertScenarioAsync(IngestScenarioDefinitions.CatalogDiscoverability);
 
     [Fact]
     public Task SC009_InstructionChangeAdoption_ReplaysAtThreshold()
-        => AssertScenarioAsync(ScenarioDefinitions.InstructionChangeAdoption);
+        => AssertScenarioAsync(IngestScenarioDefinitions.InstructionChangeAdoption);
 
     [Fact]
     public Task SC010_AdversarialSource_ReplaysAtThreshold_WithNoOutOfScopeWrites()
-        => AssertScenarioAsync(ScenarioDefinitions.AdversarialSource);
+        => AssertScenarioAsync(IngestScenarioDefinitions.AdversarialSource);
 
     [Fact]
     public Task SC007_SteeringAdoption_ReplaysAtThreshold()
-        => AssertScenarioAsync(ScenarioDefinitions.SteeringAdoption);
+        => AssertScenarioAsync(IngestScenarioDefinitions.SteeringAdoption);
 
     private static async Task AssertScenarioAsync(ScenarioDefinition scenario)
     {

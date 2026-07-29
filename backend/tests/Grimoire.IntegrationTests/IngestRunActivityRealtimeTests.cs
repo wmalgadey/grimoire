@@ -8,7 +8,7 @@ namespace Grimoire.IntegrationTests;
 /// from the agent reaches connected clients as `run_activity` within 2 seconds (p95),
 /// carrying loop mechanics only.
 /// </summary>
-public class RunActivityRealtimeTests
+public class IngestRunActivityRealtimeTests
 {
     [Fact]
     public async Task ActivityEvents_PropagateToClients_Within2Seconds_P95()

@@ -8,7 +8,7 @@ namespace Grimoire.IntegrationTests;
 /// silence beyond the liveness window is the sole failure authority; terminal events
 /// end supervision; late and malformed input never breaks a run.
 /// </summary>
-public class RunSupervisionTests
+public class IngestRunSupervisionTests
 {
     private static readonly TimeSpan ShortWindow = TimeSpan.FromMilliseconds(400);
 

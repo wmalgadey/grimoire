@@ -4,7 +4,7 @@ using Grimoire.Hub.OperationalState;
 
 namespace Grimoire.IntegrationTests;
 
-public class FailureAndReconciliationTests
+public class IngestFailureAndReconciliationTests
 {
     [Fact]
     public async Task FailurePath_LeavesWikiUntouched_AndMarksTaskFailed()

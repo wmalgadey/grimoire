@@ -12,7 +12,7 @@ namespace Grimoire.IntegrationTests;
 /// system prompt — byte-exact, no concatenation, no header injection — and the SHA-256
 /// recorded per run matches the document on disk.
 /// </summary>
-public class InstructionContextTests
+public class IngestInstructionContextTests
 {
     [Fact]
     public async Task SystemPrompt_IsExactlyTheDocumentContent_AndHashMatchesDisk()
