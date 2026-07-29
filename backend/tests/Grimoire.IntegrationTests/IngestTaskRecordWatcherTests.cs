@@ -129,7 +129,7 @@ public class IngestTaskRecordWatcherTests
                 QueryInstructionsDir: Path.Combine(root, "agents", "query"),
                 QuerySystemPromptPath: Path.Combine(root, "agents", "query", "system-prompt.md"),
                 QueryPolicyPath: Path.Combine(root, "agents", "query", "policy.json"),
-                QueryRunsDir: Path.Combine(root, "query-runs"),
+                ConversationsDir: Path.Combine(root, "conversations"),
                 QueryAgentWorkerPath: "unused",
                 Locations: []);
 

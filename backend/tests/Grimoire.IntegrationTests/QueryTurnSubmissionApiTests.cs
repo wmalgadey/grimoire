@@ -3,7 +3,7 @@ using System.Net.Http.Json;
 using System.Text.Json;
 using Grimoire.Hub.AgentDispatch;
 using Grimoire.Hub.QueryDispatch;
-using Grimoire.Hub.QueryRunArtifact;
+using Grimoire.Hub.QueryConversations;
 using Grimoire.Hub.QuerySubmission;
 using Grimoire.Hub.Realtime;
 using Grimoire.Hub.Runtime.Paths;
@@ -14,6 +14,7 @@ using Microsoft.AspNetCore.SignalR;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 
 namespace Grimoire.IntegrationTests;
@@ -76,6 +77,94 @@ public class QueryTurnSubmissionApiTests
         Assert.Empty(launcher.QueryRequests);
     }
 
+    // T013 (011-query-conversations, contracts/query-conversation-api.md): the body
+    // contains only `prompt`; `position` is Hub-assigned = recorded turns + 1.
+    [Fact]
+    public async Task PostTurn_FollowUpWithPromptOnlyBody_GetsHubAssignedPosition()
+    {
+        var launcher = new FakeAgentProcessLauncher(autoPlay: true)
+        {
+            ScriptedAnswerChunks = [("First answer.", TimeSpan.Zero)],
+        };
+        using var host = await BuildHostAsync(launcher, root: CreateTempRoot());
+        var client = host.GetTestClient();
+
+        var firstTurnId = await QueryConversationRecordLifecycleTests.SubmitAsync(client, "c-position", "First question?");
+        await QueryConversationRecordLifecycleTests.WaitForStateAsync(client, firstTurnId, "completed");
+
+        var response = await client.PostAsJsonAsync(
+            "/api/query-conversations/c-position/turns", new { prompt = "Second question?" });
+
+        Assert.Equal(HttpStatusCode.Accepted, response.StatusCode);
+        var json = await response.Content.ReadFromJsonAsync<JsonElement>();
+        Assert.Equal(2, json.GetProperty("position").GetInt32());
+    }
+
+    // T013: conversationId names the record file, so path safety is enforced at the
+    // boundary — violations of ^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$ are rejected 400 with
+    // no turn created (path-traversal fixtures included).
+    [Theory]
+    [InlineData("../x")]
+    [InlineData("a/b")]
+    [InlineData("-leading-dash")]
+    [InlineData("_leading-underscore")]
+    public async Task PostTurn_InvalidConversationId_Returns400_NoTurnCreated(string conversationId)
+    {
+        var launcher = new FakeAgentProcessLauncher();
+        using var host = await BuildHostAsync(launcher, root: CreateTempRoot());
+        var client = host.GetTestClient();
+
+        var response = await client.PostAsJsonAsync(
+            $"/api/query-conversations/{Uri.EscapeDataString(conversationId)}/turns",
+            new { prompt = "Valid prompt?" });
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Empty(launcher.QueryRequests);
+    }
+
+    [Fact]
+    public async Task PostTurn_ConversationIdOver64Chars_Returns400_NoTurnCreated()
+    {
+        var launcher = new FakeAgentProcessLauncher();
+        using var host = await BuildHostAsync(launcher, root: CreateTempRoot());
+        var client = host.GetTestClient();
+
+        var overLong = new string('a', 65);
+        var response = await client.PostAsJsonAsync(
+            $"/api/query-conversations/{overLong}/turns", new { prompt = "Valid prompt?" });
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Empty(launcher.QueryRequests);
+    }
+
+    // T013: a stale client still sending priorTurns is accepted; the extra field is
+    // ignored by JSON binding and the record stays authoritative (FR-006).
+    [Fact]
+    public async Task PostTurn_StaleClientStillSendingPriorTurns_IsAccepted_AndTheFieldIsIgnored()
+    {
+        var launcher = new FakeAgentProcessLauncher(autoPlay: true, simulatedRunDuration: TimeSpan.FromSeconds(5));
+        using var host = await BuildHostAsync(launcher, root: CreateTempRoot());
+        var client = host.GetTestClient();
+
+        var stalePriorTurns = new object[]
+        {
+            new { position = 1, prompt = "Fabricated?", answer = "Fabricated answer.", state = "completed" },
+            new { position = 2, prompt = "Also fabricated?", answer = "Another one.", state = "completed" },
+        };
+
+        var response = await client.PostAsJsonAsync(
+            "/api/query-conversations/c-stale/turns",
+            new { prompt = "Real question?", priorTurns = stalePriorTurns });
+
+        Assert.Equal(HttpStatusCode.Accepted, response.StatusCode);
+        var json = await response.Content.ReadFromJsonAsync<JsonElement>();
+
+        // The record (empty — nothing recorded yet) is authoritative, not the stale payload.
+        Assert.Equal(1, json.GetProperty("position").GetInt32());
+        var request = Assert.Single(launcher.QueryRequests);
+        Assert.Empty(request.PriorTurns);
+    }
+
     [Fact]
     public async Task GetTurn_UnknownTurnId_Returns404()
     {
@@ -114,12 +203,17 @@ public class QueryTurnSubmissionApiTests
         QueryInstructionsDir: Path.Combine(root, "agents", "query"),
         QuerySystemPromptPath: Path.Combine(root, "agents", "query", "system-prompt.md"),
         QueryPolicyPath: Path.Combine(root, "agents", "query", "policy.json"),
-        QueryRunsDir: Path.Combine(root, "query-runs"),
+        ConversationsDir: Path.Combine(root, "conversations"),
         QueryAgentWorkerPath: "unused",
         Locations: []);
 
     internal static async Task<IHost> BuildHostAsync(
-        FakeAgentProcessLauncher launcher, string root, int concurrencyLimit = 3, TimeSpan? livenessWindow = null)
+        FakeAgentProcessLauncher launcher,
+        string root,
+        int concurrencyLimit = 3,
+        TimeSpan? livenessWindow = null,
+        ConversationRecordStore? recordStore = null,
+        ILogger<QueryRunCoordinator>? coordinatorLogger = null)
     {
         var resolvedPaths = BuildResolvedPaths(root);
 
@@ -135,18 +229,19 @@ public class QueryTurnSubmissionApiTests
                     services.AddSingleton<IAgentProcessLauncher>(launcher);
                     services.AddSingleton(resolvedPaths);
                     services.AddSingleton(new QueryConcurrencyOptions { QueryConcurrencyLimit = concurrencyLimit });
-                    services.AddSingleton<QueryRunArtifactWriter>();
+                    services.AddSingleton<ConversationRecordStore>(sp =>
+                        recordStore ?? new ConversationRecordStore(resolvedPaths));
                     services.AddSingleton<QuerySubmissionValidator>();
                     services.AddSingleton<QueryLifecyclePublisher>(sp => new QueryLifecyclePublisher(
                         sp.GetRequiredService<IHubContext<QueryLifecycleHub>>(), NullLogger<QueryLifecyclePublisher>.Instance));
                     services.AddSingleton<QueryRunCoordinator>(sp => new QueryRunCoordinator(
                         sp.GetRequiredService<IAgentProcessLauncher>(),
                         sp.GetRequiredService<QueryLifecyclePublisher>(),
-                        sp.GetRequiredService<QueryRunArtifactWriter>(),
+                        sp.GetRequiredService<ConversationRecordStore>(),
                         resolvedPaths,
                         sp.GetRequiredService<QueryConcurrencyOptions>(),
                         livenessWindow: livenessWindow,
-                        logger: NullLogger<QueryRunCoordinator>.Instance));
+                        logger: coordinatorLogger ?? NullLogger<QueryRunCoordinator>.Instance));
                 });
                 webHost.Configure(app =>
                 {

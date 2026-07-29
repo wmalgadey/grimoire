@@ -81,14 +81,70 @@ test('renders a nav link back to the ingest UI', async () => {
 	await expect.element(link).toHaveAttribute('href', '/');
 });
 
-// T107 (Convergence) - FR-009's priorTurns behavior was undisclosed in the UI; asserts
-// a hint explaining that follow-up questions carry the conversation's context so far.
+// T107 (Convergence) / 011 T020 - the context hint stays accurate under
+// record-sourced context (ADR-014): follow-up questions still see the whole
+// conversation so far, only the Hub now assembles it from the Conversation Record.
 test('discloses that follow-up questions carry the conversation context so far', async () => {
 	const screen = await render(Page);
 
 	await expect
 		.element(screen.getByTestId('query-context-hint'))
 		.toHaveTextContent(/everything asked and answered so far/i);
+});
+
+// T016 (011-query-conversations, FR-009/ADR-014): a follow-up submission sends only
+// the prompt — the page no longer assembles a priorTurns payload from its on-screen
+// conversation state.
+test('a follow-up submission sends only the conversationId and prompt, no priorTurns', async () => {
+	onAnswerChunkHandlers.length = 0;
+	onTurnChangedHandlers.length = 0;
+	submitQueryTurnMock.mockReset();
+	submitQueryTurnMock.mockResolvedValue({
+		turnId: 't-follow-1',
+		conversationId: 'ignored-by-page-state',
+		position: 1,
+		state: 'running',
+		acceptedAt: new Date().toISOString()
+	});
+
+	const screen = await render(Page);
+
+	await screen.getByTestId('query-prompt-input').fill('What does ADR-004 decide?');
+	await screen.getByTestId('query-prompt-submit-button').click();
+	await expect.element(screen.getByTestId('query-turn-state')).toHaveTextContent('Answering…');
+
+	// Complete the first turn so a follow-up becomes possible.
+	for (const handler of onTurnChangedHandlers) {
+		handler({
+			eventId: 'e-follow-1',
+			turnId: 't-follow-1',
+			fromState: 'running',
+			toState: 'completed',
+			timestamp: new Date().toISOString(),
+			failureReason: null
+		});
+	}
+	await expect.element(screen.getByTestId('query-prompt-input')).not.toBeDisabled();
+
+	submitQueryTurnMock.mockResolvedValue({
+		turnId: 't-follow-2',
+		conversationId: 'ignored-by-page-state',
+		position: 2,
+		state: 'running',
+		acceptedAt: new Date().toISOString()
+	});
+
+	await screen.getByTestId('query-prompt-input').fill('And how does that relate?');
+	await screen.getByTestId('query-prompt-submit-button').click();
+
+	expect(submitQueryTurnMock).toHaveBeenCalledTimes(2);
+	for (const call of submitQueryTurnMock.mock.calls) {
+		// Exactly (conversationId, prompt) — no third priorTurns argument.
+		expect(call).toHaveLength(2);
+		expect(typeof call[0]).toBe('string');
+		expect(typeof call[1]).toBe('string');
+	}
+	expect(submitQueryTurnMock.mock.calls[1][1]).toBe('And how does that relate?');
 });
 
 test('submitting a question shows a running turn and disables the prompt form with the one-turn-at-a-time hint', async () => {

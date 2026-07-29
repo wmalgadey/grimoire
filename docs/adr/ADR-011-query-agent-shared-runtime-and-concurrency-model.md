@@ -135,6 +135,14 @@ Chosen option: **Option 1.**
 
 ### Persistence and conversation context
 
+> **Partially superseded by [ADR-014](ADR-014-query-conversation-records.md)
+> (011-query-conversations):** this section only. Per-turn Query Run Artifacts and
+> browser-supplied `priorTurns` are replaced by one append-only Conversation Record
+> per conversation at `<base>/data/conversations/<conversationId>.md`, which is also
+> the Hub-side source of follow-up context. Everything else in this ADR — shared
+> runtime, streaming, bounded concurrency (limit 3, reject-over-limit), interruption
+> semantics, realtime delivery, and the port table — remains in force.
+
 - Query Run Artifacts are written **entirely by the Hub** — the Query agent process has
   no write capability at all, so unlike Ingest's agent-owned task artifact, 100% of the
   Query Run Artifact's fields are harness-written. Stored as one file per turn under

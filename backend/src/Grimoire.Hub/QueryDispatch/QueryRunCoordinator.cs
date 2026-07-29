@@ -1,5 +1,5 @@
 using System.Collections.Concurrent;
-using Grimoire.Hub.QueryRunArtifact;
+using Grimoire.Hub.QueryConversations;
 using Grimoire.Hub.Realtime;
 using Grimoire.Hub.Runtime.Paths;
 using Microsoft.Extensions.Logging;
@@ -17,6 +17,13 @@ public abstract record QuerySubmissionResult
 
     /// <summary>FR-008: the conversation already has a running turn — at most one active turn per conversation.</summary>
     public sealed record ConversationAlreadyActive : QuerySubmissionResult;
+
+    /// <summary>
+    /// FR-006 (011-query-conversations): the conversation's record exists but is
+    /// structurally unreadable — rejected fail-closed, no turn created, no agent
+    /// spawned (<c>conversation_record_unreadable</c>).
+    /// </summary>
+    public sealed record RecordUnreadable(string Reason) : QuerySubmissionResult;
 }
 
 /// <summary>
@@ -25,14 +32,16 @@ public abstract record QuerySubmissionResult
 /// <c>IngestRunCoordinator</c>: a counting semaphore (not a single slot + FIFO queue)
 /// sized by <see cref="QueryConcurrencyOptions.QueryConcurrencyLimit"/>, no persisted
 /// operational state (Query runs are not queued the way Ingest runs are, R7), and no
-/// artifact write path in the agent process — the Hub finalizes every Query Run
-/// Artifact itself via <see cref="QueryRunArtifactWriter"/> (R3).
+/// artifact write path in the agent process — on every terminal transition the Hub
+/// appends the turn to the Conversation Record via
+/// <see cref="ConversationRecordStore"/> (ADR-014), which is also the single source of
+/// the prior-turn context handed to the agent on follow-ups (research.md R1).
 /// </summary>
 public sealed class QueryRunCoordinator
 {
     private readonly AgentDispatch.IAgentProcessLauncher _launcher;
     private readonly QueryLifecyclePublisher _publisher;
-    private readonly QueryRunArtifactWriter _artifactWriter;
+    private readonly ConversationRecordStore _recordStore;
     private readonly ResolvedGrimoirePaths _paths;
     private readonly TimeProvider _timeProvider;
     private readonly TimeSpan _livenessWindow;
@@ -46,7 +55,7 @@ public sealed class QueryRunCoordinator
     public QueryRunCoordinator(
         AgentDispatch.IAgentProcessLauncher launcher,
         QueryLifecyclePublisher publisher,
-        QueryRunArtifactWriter artifactWriter,
+        ConversationRecordStore recordStore,
         ResolvedGrimoirePaths paths,
         QueryConcurrencyOptions concurrencyOptions,
         TimeProvider? timeProvider = null,
@@ -55,7 +64,7 @@ public sealed class QueryRunCoordinator
     {
         _launcher = launcher;
         _publisher = publisher;
-        _artifactWriter = artifactWriter;
+        _recordStore = recordStore;
         _paths = paths;
         _timeProvider = timeProvider ?? TimeProvider.System;
         _livenessWindow = livenessWindow ?? TimeSpan.FromSeconds(60);
@@ -75,13 +84,15 @@ public sealed class QueryRunCoordinator
 
     /// <summary>
     /// Accepts and immediately dispatches one Query Turn, or rejects it over the
-    /// concurrency limit (FR-017) — there is no queue to wait in either way.
+    /// concurrency limit (FR-017) — there is no queue to wait in either way. The
+    /// prior-turn context comes from the Conversation Record (ADR-014): the Hub assigns
+    /// <c>position</c> = recorded turns + 1 and rejects fail-closed
+    /// (<see cref="QuerySubmissionResult.RecordUnreadable"/>) when the record exists
+    /// but cannot be parsed — no turn created, no agent spawned (FR-006).
     /// </summary>
     public async Task<QuerySubmissionResult> SubmitTurnAsync(
         string conversationId,
-        int position,
         string prompt,
-        IReadOnlyList<QueryPriorTurn> priorTurns,
         CancellationToken cancellationToken = default)
     {
         if (!await _concurrencySlots.WaitAsync(0, cancellationToken))
@@ -105,6 +116,31 @@ public sealed class QueryRunCoordinator
         submitSpan?.SetTag("turn_id", turnId);
         submitSpan?.SetTag("conversation_id", conversationId);
 
+        // Record-sourced context (ADR-014, SC-005): served from the in-memory cache,
+        // hydrated from the record file after a Hub restart, empty for a new
+        // conversation. The one-active-turn guard above means every prior turn is
+        // terminal and therefore already recorded (research.md R1).
+        IReadOnlyList<QueryPriorTurn> priorTurns;
+        using (var loadSpan = HubTracing.ActivitySource.StartActivity("hub.query.load_conversation_context"))
+        {
+            loadSpan?.SetTag("conversation_id", conversationId);
+
+            var contextResult = await _recordStore.LoadContextAsync(conversationId, cancellationToken);
+            if (contextResult is ConversationContextResult.Unreadable unreadable)
+            {
+                loadSpan?.SetTag("source", "unreadable");
+                _activeTurnByConversation.TryRemove(new KeyValuePair<string, string>(conversationId, turnId));
+                _concurrencySlots.Release();
+                return new QuerySubmissionResult.RecordUnreadable(unreadable.Reason);
+            }
+
+            var loaded = (ConversationContextResult.Loaded)contextResult;
+            priorTurns = loaded.Turns;
+            loadSpan?.SetTag("turn_count", priorTurns.Count);
+            loadSpan?.SetTag("source", loaded.Source);
+        }
+
+        var position = priorTurns.Count + 1;
         var turn = new QueryTurnState(turnId, conversationId, position, prompt, _timeProvider.GetUtcNow());
         _turns[turnId] = turn;
         HubMetrics.AdjustQueryConcurrentRuns(1);
@@ -303,9 +339,56 @@ public sealed class QueryRunCoordinator
             QueryLifecycleLogEvents.LogTurnFailed(_logger, turnId, failureReason ?? "unknown");
         }
 
-        await _artifactWriter.WriteAsync(_paths, turn, cancellationToken);
+        // Guarded record append (ADR-014, research.md R6): a record-write failure is
+        // logged and counted but never alters the turn's outcome nor suppresses the
+        // queryTurnChanged broadcast below — deliberately isolated (own try/catch, own
+        // non-cancellable token), fixing in passing 008's unguarded artifact write that
+        // would have skipped the publish on throw.
+        try
+        {
+            using var recordSpan = HubTracing.ActivitySource.StartActivity("hub.query.record_turn");
+            recordSpan?.SetTag("conversation_id", turn.ConversationId);
+            recordSpan?.SetTag("turn_id", turnId);
+            recordSpan?.SetTag("outcome", outcome);
+
+            await _recordStore.AppendTurnAsync(turn.ConversationId, BuildRecordedTurn(turn, outcome), CancellationToken.None);
+        }
+        catch (Exception ex)
+        {
+            ConversationRecordLogEvents.LogRecordAppendFailed(_logger, turn.ConversationId, turnId, ex.Message);
+            HubMetrics.RecordConversationRecordAppendFailure();
+        }
 
         var fromState = "running";
         await _publisher.PublishTurnChangedAsync(turnId, fromState, outcome, failureReason, cancellationToken);
+    }
+
+    /// <summary>
+    /// Maps a terminal turn's full data (prompt, accumulated answer buffer, state,
+    /// failure reason, timestamps from <see cref="QueryTurnState"/>, instruction/policy
+    /// identity, model, turns used, denied actions from the ADR-006 terminal-event
+    /// metadata) to its Recorded Turn (data-model.md Turn Bookkeeping).
+    /// </summary>
+    private static RecordedTurn BuildRecordedTurn(QueryTurnState turn, string outcome)
+    {
+        var metadata = turn.CompletionMetadata;
+        return new RecordedTurn(
+            TurnId: turn.TurnId,
+            Position: turn.Position,
+            State: outcome,
+            FailureReason: turn.FailureReason,
+            StartedAt: turn.StartedAt,
+            CompletedAt: turn.CompletedAt,
+            Model: metadata?.Model,
+            TurnsUsed: metadata?.TurnsUsed,
+            InstructionFilePath: metadata?.SystemPromptSha256 is null ? null : "agents/query/system-prompt.md",
+            InstructionFileSha256: metadata?.SystemPromptSha256,
+            PolicyPath: metadata?.PolicyPath,
+            PolicyVersion: metadata?.PolicyVersion,
+            PolicySha256: metadata?.PolicySha256,
+            DeniedActions: [.. (metadata?.DeniedActions ?? []).Select(d =>
+                new RecordedDeniedAction(d.Action, d.RequestedTarget, d.CanonicalTarget, d.Reason, d.Turn))],
+            Prompt: turn.Prompt,
+            Answer: turn.Answer);
     }
 }

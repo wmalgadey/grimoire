@@ -1,12 +1,12 @@
-using Grimoire.Hub.AgentDispatch;
 using Grimoire.Hub.QueryDispatch;
 using Microsoft.Extensions.Logging;
 
 namespace Grimoire.Hub.QuerySubmission;
 
-internal sealed record QueryPriorTurnRequest(int Position, string Prompt, string Answer, string State);
-
-internal sealed record QueryTurnSubmissionRequest(string Prompt, IReadOnlyList<QueryPriorTurnRequest>? PriorTurns);
+// The body carries only the prompt (ADR-014): prior-turn context is record-sourced.
+// Extra fields from stale clients (e.g. a legacy `priorTurns` array) are ignored by
+// JSON binding — the record remains authoritative (FR-006).
+internal sealed record QueryTurnSubmissionRequest(string Prompt);
 
 /// <summary>
 /// HTTP endpoints for Query Turn submission and status (contracts/query-conversation-api.md).
@@ -39,19 +39,21 @@ public static class QuerySubmissionEndpoints
             return Results.BadRequest(new { message = "Request body is required." });
         }
 
+        // conversationId names the Conversation Record file, so path safety is enforced
+        // server-side at the boundary (contracts/query-conversation-api.md).
+        var conversationIdValidation = validator.ValidateConversationId(conversationId);
+        if (!conversationIdValidation.IsValid)
+        {
+            return Results.BadRequest(new { message = conversationIdValidation.ErrorMessage });
+        }
+
         var validation = validator.ValidatePrompt(body.Prompt);
         if (!validation.IsValid)
         {
             return Results.BadRequest(new { message = validation.ErrorMessage });
         }
 
-        var priorTurns = (body.PriorTurns ?? [])
-            .Select(t => new QueryPriorTurn(t.Position, t.Prompt, t.Answer, t.State))
-            .ToList();
-        var position = priorTurns.Count + 1;
-
-        var result = await coordinator.SubmitTurnAsync(
-            conversationId, position, body.Prompt.Trim(), priorTurns, cancellationToken);
+        var result = await coordinator.SubmitTurnAsync(conversationId, body.Prompt.Trim(), cancellationToken);
 
         switch (result)
         {
@@ -80,6 +82,13 @@ public static class QuerySubmissionEndpoints
                     QueryLifecycleLogEvents.LogSubmissionRejected(logger, conversationId);
                     return Results.Conflict(new { reason = "conversation_already_active" });
                 }
+
+            case QuerySubmissionResult.RecordUnreadable:
+                // FR-006 fail-closed: no turn created, no agent spawned; the store
+                // already reported query.conversation.record_load_failed with the
+                // structural reason. Recovery: start a new conversation.
+                return Results.Json(new { reason = "conversation_record_unreadable" },
+                    statusCode: StatusCodes.Status500InternalServerError);
 
             default:
                 throw new InvalidOperationException($"Unknown submission result: {result.GetType().Name}");

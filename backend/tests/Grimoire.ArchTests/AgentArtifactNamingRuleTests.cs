@@ -175,7 +175,9 @@ public class AgentArtifactNamingRuleTests
     [
         "Grimoire.Hub.QueryDispatch",
         "Grimoire.Hub.QuerySubmission",
-        "Grimoire.Hub.QueryRunArtifact",
+        // QueryRunArtifact was retired by 011-query-conversations (ADR-014): the
+        // per-turn artifact writer is gone, replaced by the Conversation Record.
+        "Grimoire.Hub.QueryConversations",
     ];
 
     // Cross-agent Hub namespaces. Realtime/Runtime/ContentRoot/OperationalState/

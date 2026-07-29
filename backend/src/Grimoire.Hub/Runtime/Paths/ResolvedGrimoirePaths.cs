@@ -44,14 +44,14 @@ public sealed record ResolvedGrimoirePaths(
     string QueryInstructionsDir,
     string QuerySystemPromptPath,
     string QueryPolicyPath,
-    string QueryRunsDir,
+    string ConversationsDir,
     string QueryAgentWorkerPath,
     IReadOnlyList<PathLocation> Locations)
 {
     /// <summary>Per-task artifact path within <see cref="TasksDir"/> (mirrors IngestCliOptions.TaskArtifactPath).</summary>
     public string TaskArtifactPathFor(string taskId) => Path.Combine(TasksDir, $"{taskId}.md");
 
-    /// <summary>Per-turn Query Run Artifact path within <see cref="QueryRunsDir"/> (data-model.md, ADR-011 R7).</summary>
-    public string QueryRunArtifactPathFor(string conversationId, string turnId)
-        => Path.Combine(QueryRunsDir, conversationId, $"{turnId}.md");
+    /// <summary>Per-conversation Conversation Record path within <see cref="ConversationsDir"/> (ADR-014, 011-query-conversations data-model.md).</summary>
+    public string ConversationRecordPathFor(string conversationId)
+        => Path.Combine(ConversationsDir, $"{conversationId}.md");
 }

@@ -167,11 +167,10 @@ internal sealed class QueryIntentHandler : IAgentIntentHandler
             _options.TurnId,
             CancellationToken.None);
 
-        using (var finalizeSpan = QueryAgentTracing.ActivitySource.StartActivity("query_agent.finalize_artifact"))
-        {
-            finalizeSpan?.SetTag("turn_id", _options.TurnId);
-            finalizeSpan?.SetTag("outcome", "completed");
-        }
+        // 011-query-conversations (T027): the vestigial query_agent.finalize_artifact span
+        // was removed with the artifact mechanism (ADR-014) — the Query agent never wrote
+        // the artifact, and the Hub now records the turn into the Conversation Record. The
+        // stdin/scaffold contract is untouched (ADR-012 fingerprints must not drift).
 
         _runEvents.EmitCompleted(result.Narrative, new RunCompletionMetadata(
             SystemPromptSha256: instructions.SystemPrompt.Sha256,
