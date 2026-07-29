@@ -8,7 +8,7 @@ namespace Grimoire.QueryAgent;
 /// <summary>
 /// Wires the shared <c>AgentLoop</c>'s instrumentation seam (ADR-011) to Query's own
 /// <c>query_agent.model_turn</c> span shape (plan.md Observability). Mirrors
-/// <c>Grimoire.IngestAgent.AgentCore.IngestAgentLoopInstrumentation</c>.
+/// <c>Grimoire.IngestAgent.IngestAgentLoopInstrumentation</c>.
 /// </summary>
 public sealed class QueryAgentLoopInstrumentation : IAgentLoopInstrumentation
 {
@@ -33,7 +33,7 @@ public sealed class QueryAgentLoopInstrumentation : IAgentLoopInstrumentation
 /// Wires the shared <c>GuardedToolExecutor</c>'s instrumentation seam (ADR-011) to
 /// Query's own <c>query_agent.tool_call</c> span shape, <c>query.tool_calls_total</c>
 /// metric, and <c>query.tool.denied</c> log event. Mirrors
-/// <c>Grimoire.IngestAgent.AgentCore.IngestToolCallInstrumentation</c>.
+/// <c>Grimoire.IngestAgent.IngestToolCallInstrumentation</c>.
 /// </summary>
 public sealed class QueryToolCallInstrumentation : IToolCallInstrumentation
 {

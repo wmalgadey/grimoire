@@ -787,3 +787,33 @@ finalize it in the same PR, never after.
   013's entry gate
 - Any replay `stale`/`mismatch` failure at any point is a defect in this change set —
   never re-capture recordings inside this feature (research.md R7)
+
+---
+
+## Phase 7: Convergence
+
+- [X] T053 Fix stale XML doc-comment references in
+  `backend/src/Grimoire.QueryAgent/QueryAgentInstrumentation.cs` (lines 11 and 36):
+  `QueryAgentLoopInstrumentation`'s and `QueryToolCallInstrumentation`'s doc comments
+  say "Mirrors `Grimoire.IngestAgent.AgentCore.IngestAgentLoopInstrumentation`" /
+  "`Grimoire.IngestAgent.AgentCore.IngestToolCallInstrumentation`" — but T039
+  dissolved the `Grimoire.IngestAgent.AgentCore` namespace and moved
+  `IngestAgentLoopInstrumentation`/`IngestToolCallInstrumentation` to the top-level
+  `Grimoire.IngestAgent` namespace (confirmed: both types now live in
+  `backend/src/Grimoire.IngestAgent/IngestAgentInstrumentation.cs` under namespace
+  `Grimoire.IngestAgent`, no `AgentCore` segment). Update the two doc comments to
+  reference `Grimoire.IngestAgent.IngestAgentLoopInstrumentation` /
+  `Grimoire.IngestAgent.IngestToolCallInstrumentation`. This is a comment-only fix (no
+  behavior/test change); it closes a gap in T051's stale-reference sweep, whose
+  recorded evidence ("No code comment ... asserts a renamed/moved artifact as current
+  under its old name") did not in fact cover these two doc comments per FR-006/US2
+  (partial).
+  **Result**: both doc comments updated to
+  `Grimoire.IngestAgent.IngestAgentLoopInstrumentation` /
+  `Grimoire.IngestAgent.IngestToolCallInstrumentation` (comment-only change, no
+  code/behavior touched); `grep -rn "IngestAgent\.AgentCore\." backend/src
+  backend/tests` now returns only the three pre-existing, already-documented-vacuous
+  ADR-010/ADR-011 references in `HexagonalPortsAdapterRuleTests.cs` (predate feature
+  010, out of its scope, explicitly justified in that file's own comment block); full
+  suite re-run green (ArchTests 41/41, Domain.UnitTests 14/14, IntegrationTests
+  232/232, AgentEvals 44/44, zero skipped); `dotnet format --verify-no-changes` clean.
