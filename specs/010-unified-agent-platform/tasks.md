@@ -357,7 +357,7 @@ build (probe); replay recordings and scenario ids are untouched.
 
 ### Implementation for User Story 2
 
-- [ ] T027 [US2] Create `docs/conventions/agent-artifact-naming.md` (FR-005): (a) the
+- [X] T027 [US2] Create `docs/conventions/agent-artifact-naming.md` (FR-005): (a) the
   rule — agent-specific code artifacts carry their agent's name, unprefixed names are
   reserved for genuinely cross-agent artifacts; (b) rationale (ownership legibility
   ahead of agent three); (c) the explicit cross-agent definition (serves ≥2 agents or
@@ -366,7 +366,7 @@ build (probe); replay recordings and scenario ids are untouched.
   justification per entry; (e) the complete old→new rename map from T008's confirmed
   inventory (headline: `ReplayEvalTests` → `IngestReplayEvalTests`), which parallel
   branches (011/012/013) use to rebase mechanically.
-- [ ] T028 [P] [US2] Classification: `backend/tests/Grimoire.IntegrationTests/CredentialScopingTests.cs`
+- [X] T028 [P] [US2] Classification: `backend/tests/Grimoire.IntegrationTests/CredentialScopingTests.cs`
   — run N1's reference analysis; if it exercises both agents' spawn/credential paths
   (survey suggests it references Query path options), classify cross-agent: keep the
   name, add a justified exemption entry to `docs/conventions/agent-artifact-naming.md`
@@ -374,7 +374,7 @@ build (probe); replay recordings and scenario ids are untouched.
   `IngestCredentialScopingTests.cs` and add it to the rename map. Record the decision
   and evidence in the convention document either way (ADR-013 directs tasks to settle
   this).
-- [ ] T029 [P] [US2] Classification: `TaskRecordApiTests.cs`,
+- [X] T029 [P] [US2] Classification: `TaskRecordApiTests.cs`,
   `TaskRecordLogEventTests.cs`, `TaskRecordMetricsTests.cs`,
   `TaskRecordTraceTests.cs`, `TaskRecordWatcherTests.cs` in
   `backend/tests/Grimoire.IntegrationTests/` — Task Records are the ingest Kanban
@@ -382,32 +382,32 @@ build (probe); replay recordings and scenario ids are untouched.
   `IngestTaskRecord*Tests.cs` (classes likewise) and add to the rename map; if the
   analysis instead shows genuine cross-agent references, exempt with justification.
   Decision recorded in the convention document.
-- [ ] T030 [P] [US2] Classification: `ScenarioDefinition` vs `ScenarioDefinitions` in
+- [X] T030 [P] [US2] Classification: `ScenarioDefinition` vs `ScenarioDefinitions` in
   `backend/src/Grimoire.EvalRunner/Scenarios/ScenarioDefinitions.cs` — the
   `ScenarioDefinition` record is consumed by both `ScenarioDefinitions` (Ingest) and
   `QueryScenarioDefinitions` (Query): classify it cross-agent, extract it to its own
   file `backend/src/Grimoire.EvalRunner/Scenarios/ScenarioDefinition.cs`, keep it
   unprefixed, and document the justification. The Ingest-only `ScenarioDefinitions`
   static class is renamed by T032. Decision recorded in the convention document.
-- [ ] T031 [P] [US2] Rename `backend/tests/Grimoire.AgentEvals/ReplayEvalTests.cs` →
+- [X] T031 [P] [US2] Rename `backend/tests/Grimoire.AgentEvals/ReplayEvalTests.cs` →
   `IngestReplayEvalTests.cs` (class `ReplayEvalTests` → `IngestReplayEvalTests`) via
   `git mv`, assertions untouched — the headline FR-006 rename; sibling
   `QueryReplayEvalTests.cs` already conforms. The AgentEvals infra tests
   (`ReplayContractTests`, `StalenessTests`, `CaptureHygieneTests`, etc.) stay
   unprefixed per the exemption list.
-- [ ] T032 [US2] Rename `ScenarioDefinitions` → `IngestScenarioDefinitions`
+- [X] T032 [US2] Rename `ScenarioDefinitions` → `IngestScenarioDefinitions`
   (file `backend/src/Grimoire.EvalRunner/Scenarios/ScenarioDefinitions.cs` →
   `IngestScenarioDefinitions.cs`, class likewise) via `git mv`; update references in
   `backend/src/Grimoire.EvalRunner/Program.cs` and the AgentEvals suites. Scenario
   **ids/slugs and `data/evals/recordings/<scenario>/` directory names stay unchanged**
   (research.md R5/R7) — verified by T035.
-- [ ] T033 [US2] Rename `backend/tests/Grimoire.ArchTests/GuardedWriteBoundaryRuleTests.cs`
+- [X] T033 [US2] Rename `backend/tests/Grimoire.ArchTests/GuardedWriteBoundaryRuleTests.cs`
   → `IngestAgentGuardedWriteBoundaryRuleTests.cs` (class likewise) via `git mv`
   (sibling `QueryAgentGuardedWriteBoundaryRuleTests.cs` already conforms;
   shared-runtime coverage remains inside both rules), update its namespace anchors to
   the post-US1 Ingest host structure, and **re-probe** (FR-010): deliberate
   out-of-allowed-namespace write call → red → remove → green.
-- [ ] T034 [P] [US2] Batch-rename the Ingest-owned integration tests in
+- [X] T034 [P] [US2] Batch-rename the Ingest-owned integration tests in
   `backend/tests/Grimoire.IntegrationTests/` via `git mv`, classes and file names,
   assertions untouched: `ObservabilityLogTests` → `IngestObservabilityLogTests`,
   `ObservabilityMetricsTests` → `IngestObservabilityMetricsTests`,
@@ -422,13 +422,13 @@ build (probe); replay recordings and scenario ids are untouched.
   `IngestFailureAndReconciliationTests`, `ConvertStepTests` → `IngestConvertStepTests`,
   `SourceArtifactPersistenceTests` → `IngestSourceArtifactPersistenceTests`,
   `SubmissionPromptApiTests` → `IngestSubmissionPromptApiTests`.
-- [ ] T035 [US2] Recording/replay rename-safety verification (research.md R7): after
+- [X] T035 [US2] Recording/replay rename-safety verification (research.md R7): after
   T031/T032, run `dotnet test backend/tests/Grimoire.AgentEvals` — green against the
   **unchanged** recordings; `git status --porcelain data/evals/recordings/` is empty;
   grep confirms scenario ids/slugs and recording paths are byte-identical to `main`.
   Any staleness-fingerprint drift is a defect in the change set, never an occasion to
   re-capture.
-- [ ] T036 [US2] Hub namespace move (owner-confirmed scope): create
+- [X] T036 [US2] Hub namespace move (owner-confirmed scope): create
   `backend/src/Grimoire.Hub/IngestDispatch/` and move `IngestRunCoordinator.cs` and
   `IngestAgentRequest.cs` there from `backend/src/Grimoire.Hub/AgentDispatch/`
   (namespace `Grimoire.Hub.IngestDispatch`) via `git mv`; move `QueryAgentRequest.cs`
@@ -437,24 +437,24 @@ build (probe); replay recordings and scenario ids are untouched.
   `Adapters/` **stay** in cross-agent `Grimoire.Hub.AgentDispatch` — the ADR-010/011
   port table and containment rules keep their anchor. Update all `using` references
   (Hub `Program.cs`, tests, fakes).
-- [ ] T037 [P] [US2] Hub namespace merge: move `SubmissionService.cs` and
+- [X] T037 [P] [US2] Hub namespace merge: move `SubmissionService.cs` and
   `SubmitSourceOptions.cs` from `backend/src/Grimoire.Hub/Submission/` into
   `backend/src/Grimoire.Hub/IngestSubmission/` (namespace
   `Grimoire.Hub.IngestSubmission`) via `git mv`; delete the emptied `Submission/`
   folder; update references.
-- [ ] T038 [P] [US2] Hub namespace rename: `backend/src/Grimoire.Hub/TaskArtifact/` →
+- [X] T038 [P] [US2] Hub namespace rename: `backend/src/Grimoire.Hub/TaskArtifact/` →
   `backend/src/Grimoire.Hub/IngestTaskArtifact/` (namespace
   `Grimoire.Hub.IngestTaskArtifact`; `HubTaskArtifactDocument.cs`/
   `HubTaskArtifactWriter.cs` move with it) via `git mv`; update references. Persisted
   artifact locations/formats are untouched — this is a code-namespace move only
   (FR-008).
-- [ ] T039 [P] [US2] Ingest host internal renames: `backend/src/Grimoire.IngestAgent/AgentCliOptions.cs`
+- [X] T039 [P] [US2] Ingest host internal renames: `backend/src/Grimoire.IngestAgent/AgentCliOptions.cs`
   → `IngestCliOptions.cs` (record `AgentCliOptions` → `IngestCliOptions`); dissolve
   the `Grimoire.IngestAgent.AgentCore` namespace by moving
   `backend/src/Grimoire.IngestAgent/AgentCore/IngestAgentInstrumentation.cs` up into
   `backend/src/Grimoire.IngestAgent/` (namespace `Grimoire.IngestAgent`) and deleting
   the empty folder, via `git mv`.
-- [ ] T040 [US2] Update every arch rule whose namespace/type anchors were moved by
+- [X] T040 [US2] Update every arch rule whose namespace/type anchors were moved by
   T036–T039 and re-probe each updated rule (FR-010 — the rule moves with the
   boundary, it is never dropped): survey and update
   `backend/tests/Grimoire.ArchTests/HubAgentDispatchBoundaryRuleTests.cs` (C4/C5 —
@@ -464,20 +464,20 @@ build (probe); replay recordings and scenario ids are untouched.
   `EvalRunnerReplayBoundaryTests.cs` (post-T032 type names). Each updated rule gets a
   fresh deliberate-violation → red → remove → green probe documented in the commit
   message.
-- [ ] T041 [US2] Sweep the remaining N1 baseline: for every artifact still on T001's
+- [X] T041 [US2] Sweep the remaining N1 baseline: for every artifact still on T001's
   legacy list after T028–T039 (candidates from T008: `OperationalStateAndDispatchTests`,
   `KanbanBoardApiTests`, `GovernanceIdentityTests`, `ReplayAdapterTests`,
   `UrlContentFetcherTests`, `PathConfiguration/*`, `Fakes/IngestSubmissionPipelineFixture.cs`
   naming) either rename per the convention or classify cross-agent with a justified
   exemption entry — until the baseline list is empty. Every outcome lands in the
   convention document's map or exemption list.
-- [ ] T042 [US2] Wire the doc↔fixture mirror assertion into
+- [X] T042 [US2] Wire the doc↔fixture mirror assertion into
   `backend/tests/Grimoire.ArchTests/AgentArtifactNamingRuleTests.cs`: N1 parses the
   exemption list out of `docs/conventions/agent-artifact-naming.md` and fails on any
   drift between document and in-test fixture (data-model.md Naming Convention
   Document validation); delete the (now empty) legacy-rename baseline mechanism from
   N1 — from here on the rule enforces the convention outright.
-- [ ] T043 [US2] Final FR-007/SC-002 Red/Green probe of N1 in its enforcing state:
+- [X] T043 [US2] Final FR-007/SC-002 Red/Green probe of N1 in its enforcing state:
   introduce a deliberately misnamed agent-specific artifact (e.g.
   `public class MisnamedEvalTests` referencing only `Grimoire.QueryAgent`) → build
   fails on N1 → remove → green. Commit message documents the probe; this is the spec
