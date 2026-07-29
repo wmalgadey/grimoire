@@ -5,7 +5,7 @@ using Grimoire.Hub.IngestDispatch;
 
 namespace Grimoire.IntegrationTests;
 
-public class OperationalStateAndDispatchTests
+public class IngestOperationalStateAndDispatchTests
 {
     [Fact]
     public async Task OperationalStateRepository_Stores_And_Updates_Status()

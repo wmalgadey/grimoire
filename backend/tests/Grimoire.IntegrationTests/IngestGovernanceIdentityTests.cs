@@ -6,7 +6,7 @@ using System.Text;
 
 namespace Grimoire.IntegrationTests;
 
-public class GovernanceIdentityTests
+public class IngestGovernanceIdentityTests
 {
     [Fact]
     public async Task InstructionAndPolicyIdentities_AreRecorded_AndSkillEditChangesHash()

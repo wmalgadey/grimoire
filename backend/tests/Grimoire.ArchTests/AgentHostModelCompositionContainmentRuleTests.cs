@@ -14,10 +14,10 @@ namespace Grimoire.ArchTests;
 /// unchanged), invoked from each host's composition root with the profile's per-agent
 /// model/base-url env-var names (ADR-004).
 ///
-/// Legacy baseline (ratchet, REMOVE-ONLY): the two pre-consolidation CreateModelClient
-/// implementations (top-level-statement Program classes). Emptied by the US1 host
-/// switches (T017/T018, T020/T021); the mechanism is dismantled with the feature
-/// (T050 verifies). Proven live by a Red/Green probe (T006).
+/// The feature-010 legacy baseline (both hosts' pre-consolidation CreateModelClient
+/// sites) was emptied by the US1 host switches (T017/T018, T020/T021) and the
+/// mechanism deleted — the rule enforces outright. Proven live by Red/Green probes
+/// (T006/T023).
 /// </summary>
 public class AgentHostModelCompositionContainmentRuleTests
 {
@@ -27,12 +27,6 @@ public class AgentHostModelCompositionContainmentRuleTests
         "Grimoire.AgentRuntime.Core.Adapters.Replay.ReplayModelClient",
         "Grimoire.AgentRuntime.Core.Adapters.Replay.TurnCaptureModelClient",
     ];
-
-    /// <summary>
-    /// Legacy pre-consolidation composition sites as "AssemblyName::TopLevelTypeFullName".
-    /// REMOVE-ONLY.
-    /// </summary>
-    internal static readonly List<string> LegacyBaseline = [];
 
     [Fact]
     public void AgentHostAssemblies_MustNotConstructModelClientAdaptersDirectly()
@@ -45,9 +39,6 @@ public class AgentHostModelCompositionContainmentRuleTests
 
             foreach (var construction in ArchScan.FindConstructions(assembly, _modelClientAdapterTypes))
             {
-                if (LegacyBaseline.Contains($"{assembly.Name.Name}::{construction.TopLevelTypeFullName}"))
-                    continue;
-
                 violations.Add($"{assembly.Name.Name}: {construction.Description}");
             }
         }

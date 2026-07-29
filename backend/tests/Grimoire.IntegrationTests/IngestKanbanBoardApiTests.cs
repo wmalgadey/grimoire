@@ -8,7 +8,7 @@ namespace Grimoire.IntegrationTests;
 /// T039 (US2) - the board projection (backing `GET /api/ingest-submissions`) lists every accepted
 /// task exactly once, grouped by its current stage (FR-007, Acceptance Scenario 1).
 /// </summary>
-public class KanbanBoardApiTests
+public class IngestKanbanBoardApiTests
 {
     [Fact]
     public async Task GetAll_ListsEveryAcceptedTask_ExactlyOnce_GroupedByStage()

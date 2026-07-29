@@ -27,12 +27,10 @@ namespace Grimoire.ArchTests;
 /// docs/conventions/agent-artifact-naming.md; the doc↔fixture mirror assertion is
 /// wired by T042 once the document exists).
 ///
-/// Legacy-rename baseline (ratchet): the complete inventory of today's violations
-/// (research.md R5 + the T008 report-mode sweep). Entries may only ever be REMOVED
-/// (as US2's rename tasks land) — adding an entry is a review-reject. The whole
-/// mechanism is deleted by T042/T050 once the baseline is empty; some entries
-/// double as the authoritative rename inventory even where this scan cannot flag
-/// them mechanically. Proven live by a Red/Green probe (T002).
+/// The feature-010 legacy-rename baseline (remove-only ratchet) was fully emptied by
+/// the US2 rename tasks and deleted by T042 — the rule now enforces the convention
+/// outright, with no suppression mechanism. Proven live by Red/Green probes
+/// (T002/T043).
 /// </summary>
 public class AgentArtifactNamingRuleTests
 {
@@ -99,25 +97,6 @@ public class AgentArtifactNamingRuleTests
         ".Fakes",
     ];
 
-    /// <summary>
-    /// Legacy-rename baseline. Matches by simple type name, by full name, or — for
-    /// entries ending in ".*" — by namespace prefix. REMOVE-ONLY (see class docs).
-    /// </summary>
-    internal static readonly List<string> LegacyRenameBaseline =
-    [
-        // research.md R5 inventory: fully emptied — the T031/T033/T034/T029 rename
-        // batch, the T036-T038 Hub namespace moves, and the T039 Ingest host renames
-        // removed every entry (remove-only ratchet).
-        // T008 report-mode sweep remainder (settled by T041: rename or classify).
-        "OperationalStateAndDispatchTests",
-        "KanbanBoardApiTests",
-        "GovernanceIdentityTests",
-        "ReplayAdapterTests",
-        "UrlContentFetcherTests",
-        "DispatchPathArgumentsTests",
-        "RepoLessStartupTests",
-    ];
-
     // -------------------------------------------------------------------------
     // Part 1: reference-based ownership in the shared assemblies
     // -------------------------------------------------------------------------
@@ -147,9 +126,6 @@ public class AgentArtifactNamingRuleTests
                         continue;
 
                     if (ExemptedTypeNames.Contains(type.Name, StringComparer.Ordinal))
-                        continue;
-
-                    if (IsBaselined(type))
                         continue;
 
                     var referencesIngest = false;
@@ -239,9 +215,6 @@ public class AgentArtifactNamingRuleTests
                 if (ns.Length == 0 || ns == "Grimoire.Hub")
                     continue;
 
-                if (IsBaselined(type))
-                    continue;
-
                 var mapped = _hubIngestOwnedNamespaces.Concat(_hubQueryOwnedNamespaces).Concat(_hubCrossAgentNamespaces)
                     .Any(m => ns == m || ns.StartsWith(m + ".", StringComparison.Ordinal));
                 if (!mapped)
@@ -282,6 +255,56 @@ public class AgentArtifactNamingRuleTests
     }
 
     // -------------------------------------------------------------------------
+    // Doc↔fixture mirror (T042): the exemption list lives in the convention document
+    // with a justification per entry; this test parses it and fails on any drift
+    // between document and in-test fixture, in either direction.
+    // -------------------------------------------------------------------------
+
+    [Fact]
+    public void ExemptionFixture_MustMirror_TheConventionDocument()
+    {
+        var documentPath = FindConventionDocument();
+        var documentText = File.ReadAllText(documentPath);
+
+        var sectionStart = documentText.IndexOf("## Exemption list", StringComparison.Ordinal);
+        Assert.True(sectionStart >= 0, $"'{documentPath}' must contain an '## Exemption list' section.");
+        var sectionEnd = documentText.IndexOf("\n## ", sectionStart + 1, StringComparison.Ordinal);
+        var section = sectionEnd > 0 ? documentText[sectionStart..sectionEnd] : documentText[sectionStart..];
+
+        var documented = System.Text.RegularExpressions.Regex
+            .Matches(section, @"^\| `([A-Za-z0-9_]+)` \|", System.Text.RegularExpressions.RegexOptions.Multiline)
+            .Select(m => m.Groups[1].Value)
+            .ToHashSet(StringComparer.Ordinal);
+
+        var fixture = ExemptedTypeNames.ToHashSet(StringComparer.Ordinal);
+
+        var onlyInDocument = documented.Except(fixture).Order().ToList();
+        var onlyInFixture = fixture.Except(documented).Order().ToList();
+
+        Assert.True(
+            onlyInDocument.Count == 0 && onlyInFixture.Count == 0,
+            "N1 (ADR-013): the exemption list in docs/conventions/agent-artifact-naming.md and the " +
+            "in-test fixture must mirror each other exactly. " +
+            $"Only in document: [{string.Join(", ", onlyInDocument)}]; " +
+            $"only in fixture: [{string.Join(", ", onlyInFixture)}]");
+    }
+
+    private static string FindConventionDocument()
+    {
+        var directory = new DirectoryInfo(AppContext.BaseDirectory);
+        while (directory is not null)
+        {
+            var candidate = Path.Combine(directory.FullName, "docs", "conventions", "agent-artifact-naming.md");
+            if (File.Exists(candidate))
+                return candidate;
+            directory = directory.Parent;
+        }
+
+        throw new FileNotFoundException(
+            "docs/conventions/agent-artifact-naming.md not found in any parent of " + AppContext.BaseDirectory);
+    }
+
+    // -------------------------------------------------------------------------
     // Helpers
     // -------------------------------------------------------------------------
 
@@ -298,25 +321,6 @@ public class AgentArtifactNamingRuleTests
     private static bool IsCompilerGenerated(TypeDefinition type)
         => type.Name.StartsWith("<", StringComparison.Ordinal) ||
            type.CustomAttributes.Any(a => a.AttributeType.Name == "CompilerGeneratedAttribute");
-
-    private static bool IsBaselined(TypeDefinition type)
-    {
-        foreach (var entry in LegacyRenameBaseline)
-        {
-            if (entry.EndsWith(".*", StringComparison.Ordinal))
-            {
-                var prefix = entry[..^2];
-                if ((type.Namespace ?? string.Empty).StartsWith(prefix, StringComparison.Ordinal))
-                    return true;
-            }
-            else if (type.Name == entry || type.FullName == entry)
-            {
-                return true;
-            }
-        }
-
-        return false;
-    }
 
     /// <summary>
     /// Every namespace the type (incl. nested/state-machine types) references: base

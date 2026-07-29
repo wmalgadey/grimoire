@@ -15,9 +15,9 @@ namespace Grimoire.ArchTests;
 /// This makes the 68+63-line telemetry-bootstrap duplication structurally
 /// unrepeatable for agent three (SC-001).
 ///
-/// Legacy baseline (ratchet, REMOVE-ONLY): the two pre-consolidation host bootstraps.
-/// Emptied by the US1 host switches (T018/T021); the mechanism is dismantled with the
-/// feature (T050 verifies). Proven live by a Red/Green probe (T004).
+/// The feature-010 legacy baseline (the two pre-consolidation host bootstraps) was
+/// emptied by the US1 host switches (T018/T021) and the mechanism deleted — the rule
+/// enforces outright. Proven live by Red/Green probes (T004/T023).
 /// </summary>
 public class AgentHostTelemetryContainmentRuleTests
 {
@@ -30,11 +30,6 @@ public class AgentHostTelemetryContainmentRuleTests
         "OpenTelemetry.Logs.OpenTelemetryLoggingExtensions::AddOpenTelemetry",
     ];
 
-    /// <summary>Legacy pre-consolidation bootstraps (full type names). REMOVE-ONLY —
-    /// emptied by the US1 host switches (T018/T021); the mechanism is deleted with the
-    /// feature's polish phase.</summary>
-    internal static readonly List<string> LegacyBaseline = [];
-
     [Fact]
     public void AgentHostAssemblies_MustNotConstructTelemetryProviders()
     {
@@ -46,9 +41,6 @@ public class AgentHostTelemetryContainmentRuleTests
 
             foreach (var violation in ArchScan.FindCalls(assembly, _providerConstructionApis))
             {
-                if (LegacyBaseline.Contains(violation.TopLevelTypeFullName))
-                    continue;
-
                 violations.Add($"{assembly.Name.Name}: {violation.Description}");
             }
         }

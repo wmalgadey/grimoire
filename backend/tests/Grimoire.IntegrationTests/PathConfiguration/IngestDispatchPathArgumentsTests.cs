@@ -14,7 +14,7 @@ namespace Grimoire.IntegrationTests.PathConfiguration;
 /// (<see cref="IngestAgentRequest.WikiRoot"/>) plus absolute paths for every other path
 /// argument; the agent performs no discovery of its own.
 /// </summary>
-public class DispatchPathArgumentsTests
+public class IngestDispatchPathArgumentsTests
 {
     [Fact]
     public async Task EveryDispatch_CarriesWikiRoot_AndOnlyAbsoluteHubResolvedPaths()

@@ -13,7 +13,7 @@ namespace Grimoire.IntegrationTests.PathConfiguration;
 /// directory that has no <c>.git</c> and no project layout, without ever discovering a
 /// repository, and every subsequent write lands under the configured roots.
 /// </summary>
-public class RepoLessStartupTests
+public class IngestRepoLessStartupTests
 {
     [Fact]
     public async Task StartsSuccessfully_InDirectoryWithNoRepositoryStructure_AndAllWritesLandUnderConfiguredRoots()

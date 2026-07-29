@@ -10,7 +10,7 @@ namespace Grimoire.IntegrationTests;
 /// of being silently converted and stored as if it were the requested article (spec.md Edge Cases,
 /// FR-009: "a URL ... requires authentication the system does not have").
 /// </summary>
-public class UrlContentFetcherTests
+public class IngestUrlContentFetcherTests
 {
     [Fact]
     public async Task FetchAsync_Succeeds_ForOrdinaryHtmlArticle()
