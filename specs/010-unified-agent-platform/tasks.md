@@ -50,7 +50,7 @@ This phase is first, non-negotiable, and blocks everything else.
 
 **⚠️ NON-NEGOTIABLE**: No feature implementation can begin until Phase 0 is complete.
 
-- [ ] T001 Write `backend/tests/Grimoire.ArchTests/AgentArtifactNamingRuleTests.cs`
+- [X] T001 Write `backend/tests/Grimoire.ArchTests/AgentArtifactNamingRuleTests.cs`
   (rule **N1**, ADR-013): Mono.Cecil scan (same idiom as
   `HubAgentDispatchBoundaryRuleTests.cs`) over the shared assemblies
   `Grimoire.IntegrationTests`, `Grimoire.AgentEvals`, `Grimoire.ArchTests`, and
@@ -83,13 +83,15 @@ This phase is first, non-negotiable, and blocks everything else.
   `Grimoire.IngestAgent.AgentCore.*`) so the rule is green today and ratchets. The
   doc↔fixture mirror assertion against `docs/conventions/agent-artifact-naming.md` is
   deferred to T042 (the document is a US2 deliverable).
-- [ ] T002 Red/Green probe for T001 (FR-007/SC-002): add a temporary
+- [X] T002 Red/Green probe for T001 (FR-007/SC-002): add a temporary
   `public class MisnamedEvalTests` referencing only `Grimoire.IngestAgent` types to
   `backend/tests/Grimoire.IntegrationTests/`, run
   `dotnet test backend/tests/Grimoire.ArchTests` — N1 MUST fail; delete the class, run
   again — MUST pass. Commit message documents the probe result per the constitution's
-  Phase 0 requirement.
-- [ ] T003 Write `backend/tests/Grimoire.ArchTests/AgentHostTelemetryContainmentRuleTests.cs`
+  Phase 0 requirement. Probe result: `MisnamedEvalTests` (field of type
+  `Grimoire.IngestAgent.AgentCliOptions`) turned N1 RED naming exactly that type;
+  after deletion 40/40 ArchTests GREEN.
+- [X] T003 Write `backend/tests/Grimoire.ArchTests/AgentHostTelemetryContainmentRuleTests.cs`
   (rule **D1**, ADR-013): in agent host assemblies (`Grimoire.IngestAgent`,
   `Grimoire.QueryAgent`, and by naming pattern any future `Grimoire.*Agent`
   executable), OpenTelemetry SDK provider-construction APIs
@@ -98,11 +100,13 @@ This phase is first, non-negotiable, and blocks everything else.
   `Grimoire.AgentRuntime.Telemetry`. Legacy baseline (removed by T024/T027):
   `Grimoire.IngestAgent/TelemetryBootstrap.cs`,
   `Grimoire.QueryAgent/QueryAgentTelemetryBootstrap.cs`.
-- [ ] T004 Red/Green probe for T003 (SC-001): paste a temporary private
+- [X] T004 Red/Green probe for T003 (SC-001): paste a temporary private
   `Sdk.CreateTracerProviderBuilder()` call into a scratch type in
   `backend/src/Grimoire.QueryAgent/`, run the ArchTests — D1 MUST fail; remove, run
-  again — MUST pass. Commit message documents the probe result.
-- [ ] T005 Write `backend/tests/Grimoire.ArchTests/AgentHostModelCompositionContainmentRuleTests.cs`
+  again — MUST pass. Commit message documents the probe result. Probe result:
+  scratch `TelemetryProbe.Build` calling `Sdk.CreateTracerProviderBuilder()` turned
+  D1 RED naming exactly that call site; after deletion 40/40 ArchTests GREEN.
+- [X] T005 Write `backend/tests/Grimoire.ArchTests/AgentHostModelCompositionContainmentRuleTests.cs`
   (rule **D2**, ADR-013): agent host assemblies must not construct
   `AnthropicModelClient`/`ReplayModelClient`/`TurnCaptureModelClient` directly (IL scan
   for constructor references); the only permitted construction site is
@@ -111,16 +115,23 @@ This phase is first, non-negotiable, and blocks everything else.
   baseline (removed by T023/T026): `CreateModelClient` in
   `backend/src/Grimoire.IngestAgent/Program.cs` and
   `backend/src/Grimoire.QueryAgent/Program.cs`.
-- [ ] T006 Red/Green probe for T005 (SC-001): add a temporary direct
+- [X] T006 Red/Green probe for T005 (SC-001): add a temporary direct
   `new AnthropicModelClient(...)` construction in a scratch class in
   `backend/src/Grimoire.IngestAgent/`, run the ArchTests — D2 MUST fail; remove, run
-  again — MUST pass. Commit message documents the probe result.
+  again — MUST pass. Commit message documents the probe result. Probe result: scratch
+  `ModelClientProbe.Create` doing `new AnthropicModelClient(...)` turned D2 RED
+  naming exactly that construction; after deletion 40/40 ArchTests GREEN.
 
 **Definition of Done**:
 
-- [ ] All three rules (T001, T003, T005) written and committed, green in CI with their
-  seeded legacy baselines and no other violations
-- [ ] All three Red/Green probes (T002, T004, T006) completed with commit messages
+- [X] All three rules (T001, T003, T005) written and committed, green in CI with their
+  seeded legacy baselines and no other violations (seeding note: T001's report-mode
+  run surfaced four artifacts beyond the R5 list — `QueryPriorTurn` in
+  `Grimoire.Hub.AgentDispatch` (baselined, moves in T036),
+  `DispatchPathArgumentsTests`/`RepoLessStartupTests` (baselined, settled by T041),
+  and `QueryConcurrencyIndependenceTests`/`HexagonalPortsAdapterRuleTests`/
+  `RuntimePathsBoundaryRuleTests` classified cross-agent in the exemption fixture)
+- [X] All three Red/Green probes (T002, T004, T006) completed with commit messages
   documenting the probe result
 
 **Checkpoint**: ADR-013's structural boundaries are guarded and ratcheting. Feature

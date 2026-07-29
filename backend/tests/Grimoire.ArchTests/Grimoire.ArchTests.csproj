@@ -16,6 +16,10 @@
     <ProjectReference Include="..\..\src\Grimoire.AgentRuntime\Grimoire.AgentRuntime.csproj" />
     <ProjectReference Include="..\..\src\Grimoire.QueryAgent\Grimoire.QueryAgent.csproj" />
     <ProjectReference Include="..\Grimoire.AgentEvals\Grimoire.AgentEvals.csproj" />
+    <!-- N1 (ADR-013) scans the shared test assemblies by reference analysis; the
+         project reference makes Grimoire.IntegrationTests loadable from this test's
+         output directory (same idiom as the Grimoire.AgentEvals reference above). -->
+    <ProjectReference Include="..\Grimoire.IntegrationTests\Grimoire.IntegrationTests.csproj" />
   </ItemGroup>
 
 </Project>
