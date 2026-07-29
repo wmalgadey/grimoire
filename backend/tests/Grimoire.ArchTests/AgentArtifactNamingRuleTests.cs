@@ -31,9 +31,8 @@ namespace Grimoire.ArchTests;
 /// (research.md R5 + the T008 report-mode sweep). Entries may only ever be REMOVED
 /// (as US2's rename tasks land) — adding an entry is a review-reject. The whole
 /// mechanism is deleted by T042/T050 once the baseline is empty; some entries
-/// (e.g. AgentCliOptions, Grimoire.IngestAgent.AgentCore.*) double as the
-/// authoritative rename inventory even where this scan cannot flag them mechanically.
-/// Proven live by a Red/Green probe (T002).
+/// double as the authoritative rename inventory even where this scan cannot flag
+/// them mechanically. Proven live by a Red/Green probe (T002).
 /// </summary>
 public class AgentArtifactNamingRuleTests
 {
@@ -41,17 +40,12 @@ public class AgentArtifactNamingRuleTests
     private const string QueryToken = "Query";
 
     // Agent-owned namespace prefixes used for reference-based ownership detection.
-    // Grimoire.Hub.Submission / Grimoire.Hub.TaskArtifact are the legacy (pre-rename)
-    // ingest-owned Hub namespaces; they move to IngestSubmission / IngestTaskArtifact
-    // in US2 (T037/T038).
     private static readonly string[] _ingestOwnedNamespacePrefixes =
     [
         "Grimoire.IngestAgent",
         "Grimoire.Hub.IngestSubmission",
         "Grimoire.Hub.IngestDispatch",
         "Grimoire.Hub.IngestTaskArtifact",
-        "Grimoire.Hub.Submission",
-        "Grimoire.Hub.TaskArtifact",
     ];
 
     private static readonly string[] _queryOwnedNamespacePrefixes =
@@ -111,17 +105,9 @@ public class AgentArtifactNamingRuleTests
     /// </summary>
     internal static readonly List<string> LegacyRenameBaseline =
     [
-        // research.md R5 inventory — remaining entries only; the T031/T033/T034/T029
-        // rename batch (ReplayEvalTests, GuardedWriteBoundaryRuleTests, the sixteen
-        // Ingest integration tests, TaskRecord*Tests) emptied its share of this list.
-        "Grimoire.Hub.AgentDispatch.IngestRunCoordinator", // T036
-        "Grimoire.Hub.AgentDispatch.IngestAgentRequest", // T036
-        "Grimoire.Hub.AgentDispatch.QueryAgentRequest", // T036
-        "Grimoire.Hub.AgentDispatch.QueryPriorTurn", // T036 (report-mode find: moves with QueryAgentRequest)
-        "Grimoire.Hub.Submission.*", // T037
-        "Grimoire.Hub.TaskArtifact.*", // T038
-        "AgentCliOptions", // T039
-        "Grimoire.IngestAgent.AgentCore.*", // T039
+        // research.md R5 inventory: fully emptied — the T031/T033/T034/T029 rename
+        // batch, the T036-T038 Hub namespace moves, and the T039 Ingest host renames
+        // removed every entry (remove-only ratchet).
         // T008 report-mode sweep remainder (settled by T041: rename or classify).
         "OperationalStateAndDispatchTests",
         "KanbanBoardApiTests",

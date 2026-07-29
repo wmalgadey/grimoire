@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using IHubContext = Microsoft.AspNetCore.SignalR.IHubContext<Grimoire.Hub.Realtime.IngestLifecycleHub>;
+using Grimoire.Hub.IngestDispatch;
 
 namespace Grimoire.Hub.Realtime;
 
@@ -85,7 +86,7 @@ public sealed class IngestLifecyclePublisher
     /// Loop mechanics only — no wiki-content interpretation (Principle V).
     /// </summary>
     public async Task PublishRunActivityAsync(
-        string taskId, AgentDispatch.RunActivitySnapshot snapshot, CancellationToken cancellationToken = default)
+        string taskId, IngestDispatch.RunActivitySnapshot snapshot, CancellationToken cancellationToken = default)
     {
         await _hubContext.Clients.All.SendAsync("runActivityChanged", new
         {

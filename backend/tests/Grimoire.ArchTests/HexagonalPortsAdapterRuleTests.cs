@@ -18,7 +18,7 @@ namespace Grimoire.ArchTests;
 public class HexagonalPortsAdapterRuleTests
 {
     private static Assembly HubAssembly => typeof(Grimoire.Hub.HubMetrics).Assembly;
-    private static Assembly IngestAgentAssembly => typeof(Grimoire.IngestAgent.AgentCliOptions).Assembly;
+    private static Assembly IngestAgentAssembly => typeof(Grimoire.IngestAgent.IngestCliOptions).Assembly;
     private static Assembly AgentEvalsAssembly => typeof(Grimoire.AgentEvals.EvalProviderResolverTests).Assembly;
 
     // NOTE (ADR-011): IModelClient/AnthropicModelClient relocated from

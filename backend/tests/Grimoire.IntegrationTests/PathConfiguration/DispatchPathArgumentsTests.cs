@@ -5,6 +5,7 @@ using Grimoire.Hub.Runtime.Paths;
 using Grimoire.IntegrationTests.Fakes;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging.Abstractions;
+using Grimoire.Hub.IngestDispatch;
 
 namespace Grimoire.IntegrationTests.PathConfiguration;
 

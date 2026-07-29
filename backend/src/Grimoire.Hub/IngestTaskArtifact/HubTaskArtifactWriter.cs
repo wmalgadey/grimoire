@@ -1,6 +1,6 @@
 using System.Text;
 
-namespace Grimoire.Hub.TaskArtifact;
+namespace Grimoire.Hub.IngestTaskArtifact;
 
 /// <summary>
 /// Creates and updates the Task Artifact markdown file for the Hub-owned pre-agent stages

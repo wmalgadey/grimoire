@@ -2,6 +2,7 @@ using Grimoire.Hub.AgentDispatch;
 using Grimoire.Hub.AgentDispatch.Adapters.AgentProcess;
 using Grimoire.Hub.ContentRoot;
 using Grimoire.Hub.Conversion;
+using Grimoire.Hub.IngestDispatch;
 using Grimoire.Hub.IngestSubmission;
 using Grimoire.Hub.IngestSubmission.Adapters.HttpFetch;
 using Grimoire.Hub.IngestSubmission.Adapters.MarkItDown;
@@ -12,8 +13,8 @@ using Grimoire.Hub.QueryRunArtifact;
 using Grimoire.Hub.QuerySubmission;
 using Grimoire.Hub.Realtime;
 using Grimoire.Hub.Runtime.Paths;
-using Grimoire.Hub.Submission;
-using Grimoire.Hub.TaskArtifact;
+using Grimoire.Hub.IngestSubmission;
+using Grimoire.Hub.IngestTaskArtifact;
 using Grimoire.Hub;
 
 var builder = WebApplication.CreateBuilder(args);

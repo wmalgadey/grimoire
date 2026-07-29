@@ -17,7 +17,7 @@ public class IngestAgentGuardedWriteBoundaryRuleTests
 {
     private static readonly System.Reflection.Assembly[] _scannedAssemblies =
     [
-        typeof(Grimoire.IngestAgent.AgentCliOptions).Assembly,
+        typeof(Grimoire.IngestAgent.IngestCliOptions).Assembly,
         typeof(Grimoire.AgentRuntime.Guardrails.ToolRegistry).Assembly,
     ];
 

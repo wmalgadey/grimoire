@@ -4,8 +4,9 @@ using Grimoire.Hub.OperationalState;
 using Grimoire.Hub.Runtime.Paths;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
+using Grimoire.Hub.IngestDispatch;
 
-namespace Grimoire.Hub.Submission;
+namespace Grimoire.Hub.IngestSubmission;
 
 public sealed class SubmissionService
 {

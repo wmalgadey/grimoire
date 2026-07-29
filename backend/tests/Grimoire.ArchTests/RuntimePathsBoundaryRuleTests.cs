@@ -133,7 +133,7 @@ public class RuntimePathsBoundaryRuleTests
     private static IEnumerable<string> ProductionAssemblyPaths() =>
     [
         typeof(Grimoire.Hub.HubMetrics).Assembly.Location,
-        typeof(Grimoire.IngestAgent.AgentCliOptions).Assembly.Location,
+        typeof(Grimoire.IngestAgent.IngestCliOptions).Assembly.Location,
         typeof(Grimoire.Domain.DomainAssemblyMarker).Assembly.Location,
     ];
 

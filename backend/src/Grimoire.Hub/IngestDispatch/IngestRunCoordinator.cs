@@ -4,11 +4,12 @@ using Grimoire.Hub.ContentRoot;
 using Grimoire.Hub.IngestSubmission;
 using Grimoire.Hub.OperationalState;
 using Grimoire.Hub.Realtime;
-using Grimoire.Hub.TaskArtifact;
+using Grimoire.Hub.IngestTaskArtifact;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
+using Grimoire.Hub.AgentDispatch;
 
-namespace Grimoire.Hub.AgentDispatch;
+namespace Grimoire.Hub.IngestDispatch;
 
 /// <summary>Latest loop-activity snapshot for a running task (data-model.md Agent Run Event).</summary>
 public sealed record RunActivitySnapshot(

@@ -1,6 +1,6 @@
-namespace Grimoire.Hub.AgentDispatch;
+namespace Grimoire.IngestAgent;
 
-public sealed record IngestAgentRequest(
+public sealed record IngestCliOptions(
     string TaskId,
     string SourceRef,
     string SourceKind,
@@ -12,5 +12,9 @@ public sealed record IngestAgentRequest(
     string? PastedText,
     string SystemPromptPath,
     string DefaultUserPromptPath,
+    string? UserPrompt,
     string PolicyPath,
-    string? UserPrompt = null);
+    int HeartbeatSeconds = 10)
+{
+    public string TaskArtifactPath => Path.Combine(TasksDir, $"{TaskId}.md");
+}

@@ -4,7 +4,6 @@ using Grimoire.Domain.Guardrails;
 using Grimoire.Hub.OperationalState;
 using Grimoire.AgentRuntime.Core;
 using Grimoire.IngestAgent;
-using Grimoire.IngestAgent.AgentCore;
 using Grimoire.AgentRuntime.Guardrails;
 using Grimoire.IngestAgent.IngestLog;
 using Grimoire.IntegrationTests.Fakes;

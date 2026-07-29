@@ -1,6 +1,7 @@
 using Grimoire.Hub.AgentDispatch;
-using Grimoire.Hub.TaskArtifact;
+using Grimoire.Hub.IngestTaskArtifact;
 using Grimoire.IntegrationTests.Fakes;
+using Grimoire.Hub.IngestDispatch;
 
 namespace Grimoire.IntegrationTests;
 

@@ -1,4 +1,5 @@
-namespace Grimoire.Hub.AgentDispatch;
+using Grimoire.Hub.AgentDispatch;
+namespace Grimoire.Hub.QueryDispatch;
 
 /// <summary>One prior turn of the conversation, as supplied by the client (research.md R6, FR-009).</summary>
 public sealed record QueryPriorTurn(int Position, string Prompt, string Answer, string State);

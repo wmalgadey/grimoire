@@ -3,7 +3,7 @@ using Grimoire.AgentRuntime.Core;
 using Grimoire.AgentRuntime.Guardrails;
 using Microsoft.Extensions.Logging;
 
-namespace Grimoire.IngestAgent.AgentCore;
+namespace Grimoire.IngestAgent;
 
 /// <summary>
 /// Wires the shared <c>AgentLoop</c>'s instrumentation seam (ADR-011) to Ingest's

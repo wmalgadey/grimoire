@@ -6,7 +6,6 @@ using Grimoire.AgentRuntime.Instructions;
 using Grimoire.AgentRuntime.RunEvents;
 using Grimoire.AgentRuntime.Telemetry;
 using Grimoire.IngestAgent;
-using Grimoire.IngestAgent.AgentCore;
 using Grimoire.IngestAgent.IngestLog;
 using Grimoire.IngestAgent.Source;
 using Grimoire.IngestAgent.TaskArtifact;
@@ -81,7 +80,7 @@ return await new AgentHost(profile).RunAsync(
     intent,
     CancellationToken.None);
 
-static AgentCliOptions ReadCliOptions(string[] args)
+static IngestCliOptions ReadCliOptions(string[] args)
 {
     var reader = new AgentArgumentReader(args);
 
@@ -90,7 +89,7 @@ static AgentCliOptions ReadCliOptions(string[] args)
     if (sourceKind == "pasted_text")
         pastedText = Console.In.ReadToEnd();
 
-    return new AgentCliOptions(
+    return new IngestCliOptions(
         TaskId: reader.GetRequired("--task-id"),
         SourceRef: reader.GetRequired("--source-ref"),
         SourceKind: sourceKind,
@@ -116,7 +115,7 @@ static AgentCliOptions ReadCliOptions(string[] args)
 internal sealed class IngestIntentHandler : IAgentIntentHandler
 {
     private readonly AgentProfile _profile;
-    private readonly AgentCliOptions _options;
+    private readonly IngestCliOptions _options;
     private readonly RunEventEmitter _runEvents;
     private readonly TaskArtifactStore _taskStore;
     private readonly IngestLogAppender _logAppender;
@@ -133,7 +132,7 @@ internal sealed class IngestIntentHandler : IAgentIntentHandler
 
     public IngestIntentHandler(
         AgentProfile profile,
-        AgentCliOptions options,
+        IngestCliOptions options,
         RunEventEmitter runEvents,
         TaskArtifactStore taskStore,
         IngestLogAppender logAppender,

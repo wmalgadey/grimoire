@@ -1,4 +1,4 @@
-namespace Grimoire.Hub.TaskArtifact;
+namespace Grimoire.Hub.IngestTaskArtifact;
 
 /// <summary>
 /// Hub-owned view of a Task Artifact during the pre-agent ingest-submission phase

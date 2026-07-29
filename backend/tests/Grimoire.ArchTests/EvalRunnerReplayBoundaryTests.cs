@@ -18,7 +18,7 @@ public class EvalRunnerReplayBoundaryTests
     // Loaded by name (not typeof) so these rules compile regardless of which types each
     // assembly currently declares.
     private static Assembly AgentRuntimeAssembly => Assembly.Load("Grimoire.AgentRuntime");
-    private static Assembly IngestAgentAssembly => typeof(Grimoire.IngestAgent.AgentCliOptions).Assembly;
+    private static Assembly IngestAgentAssembly => typeof(Grimoire.IngestAgent.IngestCliOptions).Assembly;
     private static Assembly QueryAgentAssembly => typeof(Grimoire.QueryAgent.QueryCliOptions).Assembly;
     private static Assembly EvalRunnerAssembly => typeof(Grimoire.EvalRunner.EvalRunnerAssemblyMarker).Assembly;
 
