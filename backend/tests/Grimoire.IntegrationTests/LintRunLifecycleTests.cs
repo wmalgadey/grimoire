@@ -130,6 +130,122 @@ public class LintRunLifecycleTests
 
         Assert.Single(harness.Launcher.LintRequests);
     }
+
+    // ── T034 (013-lint-agent, US2, FR-008/spec.md acceptance scenario 4) ───────────────
+    //
+    // "Review candidate" classification is wiki-content judgment (Constitution Principle
+    // V) and lives entirely in data/agents/lint/system-prompt.md's "Review candidates"
+    // rule — it cannot be re-implemented as a deterministic backend check. What the
+    // harness DOES own, and what is hermetically verifiable here, is two things: (1) the
+    // agent's own review-candidate narrative round-trips into the Findings Report exactly
+    // as written (mirrors T016's honest-empty-result guarantee, applied to a non-empty
+    // Metadata Hygiene sub-section instead), and (2) the effective Review Window value
+    // (T036, Grimoire:LintReviewWindowDays) is correctly threaded into the spawned run's
+    // request — default 90, or the configured override — regardless of what the agent
+    // then does with it.
+
+    [Fact]
+    public async Task TriggerAsync_NarrativeWithReviewCandidateSubSection_RoundTripsVerbatim()
+    {
+        const string narrativeWithReviewCandidate =
+            """
+            ## Content Quality
+
+            No content-quality findings.
+
+            ## Metadata Hygiene
+
+            ### Review candidates
+
+            [[stale-topic]] is `low`-confidence and was last reviewed 2025-01-05, more than
+            90 days ago — due for a fresh look.
+
+            ## Structure
+
+            No structure findings.
+            """;
+
+        using var harness = LintCoordinatorHarness.Create();
+        harness.Launcher.ScriptedLintTerminalMetadata = new Dictionary<string, object?>
+        {
+            ["summary"] = narrativeWithReviewCandidate,
+        };
+
+        var result = await harness.Coordinator.TriggerAsync();
+        var accepted = Assert.IsType<LintSubmissionResult.Accepted>(result);
+        var runId = accepted.Run.RunId;
+
+        await harness.WaitForTerminalAsync(runId);
+
+        var content = await File.ReadAllTextAsync(harness.Paths.FindingsReportPathFor(runId));
+        Assert.Contains("### Review candidates", content, StringComparison.Ordinal);
+        Assert.Contains("[[stale-topic]] is `low`-confidence", content, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task TriggerAsync_NarrativeWithNoReviewCandidates_IsNotFabricated()
+    {
+        // FR-006: an honest "nothing due" sub-section is a valid, expected outcome — the
+        // Hub never invents or suppresses a review candidate the agent didn't report.
+        const string narrativeWithinWindow =
+            """
+            ## Content Quality
+
+            No content-quality findings.
+
+            ## Metadata Hygiene
+
+            ### Review candidates
+
+            No review candidates — every low-confidence page was reviewed within the window.
+
+            ## Structure
+
+            No structure findings.
+            """;
+
+        using var harness = LintCoordinatorHarness.Create();
+        harness.Launcher.ScriptedLintTerminalMetadata = new Dictionary<string, object?>
+        {
+            ["summary"] = narrativeWithinWindow,
+        };
+
+        var result = await harness.Coordinator.TriggerAsync();
+        var accepted = Assert.IsType<LintSubmissionResult.Accepted>(result);
+        var runId = accepted.Run.RunId;
+
+        await harness.WaitForTerminalAsync(runId);
+
+        var content = await File.ReadAllTextAsync(harness.Paths.FindingsReportPathFor(runId));
+        Assert.Contains("No review candidates", content, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task TriggerAsync_NoReviewWindowConfigured_ThreadsTheDefaultNinetyDays_IntoTheAgentRequest()
+    {
+        using var harness = LintCoordinatorHarness.Create();
+
+        var result = await harness.Coordinator.TriggerAsync();
+        var accepted = Assert.IsType<LintSubmissionResult.Accepted>(result);
+        await harness.WaitForTerminalAsync(accepted.Run.RunId);
+
+        var request = Assert.Single(harness.Launcher.LintRequests);
+        Assert.Equal(90, request.ReviewWindowDays);
+    }
+
+    [Fact]
+    public async Task TriggerAsync_ReviewWindowConfigured_ThreadsTheConfiguredValue_IntoTheAgentRequest()
+    {
+        using var harness = LintCoordinatorHarness.Create(
+            reviewWindowOptions: new LintReviewWindowOptions { LintReviewWindowDays = 30 });
+
+        var result = await harness.Coordinator.TriggerAsync();
+        var accepted = Assert.IsType<LintSubmissionResult.Accepted>(result);
+        await harness.WaitForTerminalAsync(accepted.Run.RunId);
+
+        var request = Assert.Single(harness.Launcher.LintRequests);
+        Assert.Equal(30, request.ReviewWindowDays);
+    }
 }
 
 /// <summary>
@@ -154,7 +270,10 @@ internal sealed class LintCoordinatorHarness : IDisposable
         public FakeAgentProcessLauncher Launcher { get; }
         public LintRunCoordinator Coordinator { get; }
 
-        public static LintCoordinatorHarness Create(FakeAgentProcessLauncher? launcher = null, TimeSpan? livenessWindow = null)
+        public static LintCoordinatorHarness Create(
+            FakeAgentProcessLauncher? launcher = null,
+            TimeSpan? livenessWindow = null,
+            LintReviewWindowOptions? reviewWindowOptions = null)
         {
             var root = Path.Combine(Path.GetTempPath(), $"grimoire-lint-lifecycle-{Guid.NewGuid():N}");
             var findingsDir = Path.Combine(root, "findings");
@@ -193,7 +312,8 @@ internal sealed class LintCoordinatorHarness : IDisposable
             var effectiveLauncher = launcher ?? new FakeAgentProcessLauncher(autoPlay: true);
             var reportStore = new FindingsReportStore(paths, NullLogger<FindingsReportStore>.Instance);
             var coordinator = new LintRunCoordinator(
-                effectiveLauncher, reportStore, paths, livenessWindow: livenessWindow, logger: NullLogger<LintRunCoordinator>.Instance);
+                effectiveLauncher, reportStore, paths, livenessWindow: livenessWindow,
+                reviewWindowOptions: reviewWindowOptions, logger: NullLogger<LintRunCoordinator>.Instance);
 
             return new LintCoordinatorHarness(root, paths, effectiveLauncher, coordinator);
         }
