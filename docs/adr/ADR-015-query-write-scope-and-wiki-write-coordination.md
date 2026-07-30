@@ -260,3 +260,10 @@ Constitution Principle III this ADR MUST reach **Accepted** (project-owner sign-
 before `/speckit-tasks` runs for feature 012 (and before feature 013's plan can rely on
 it as an existing, accepted ADR); it is deliberately left `proposed` by this planning
 run.
+
+> **Extended by [ADR-016](ADR-016-lint-write-scope-frontmatter-only-enforcement.md)
+> (013-lint-agent):** adds a third write-scope mode, `frontmatter-only`, alongside
+> `read-write` and `create-only` above — Lint's narrower structural guarantee (may
+> change a page's frontmatter, never its body). The cross-process lock and
+> compare-and-swap mechanism described here are reused entirely unchanged; only the
+> `WriteRule`/`PolicyDecision` mode enumeration gains a third case.
