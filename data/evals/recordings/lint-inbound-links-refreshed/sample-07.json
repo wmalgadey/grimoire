@@ -1,0 +1,260 @@
+{
+  "schema_version": 1,
+  "sample": 7,
+  "task_id": "capture-lint-inbound-links-refreshed-07-2db867b341fb41c1a2c3b3e2a80202d8",
+  "model": "claude-haiku-4-5",
+  "turns": [
+    {
+      "turn": 1,
+      "system_prompt_sha256": "sha256:d48bf4c1791ef31cf4e76d389924233bf04cca9aec429abda1535dfbf6766231",
+      "conversation": [
+        {
+          "role": "user",
+          "content_sha256": "sha256:0e6b028b605c801b435654e93e663930448ac5bae664ac732b5954946d500201"
+        }
+      ],
+      "tool_names": [
+        "list_files",
+        "read_file",
+        "write_file"
+      ],
+      "stop_reason": "tool_use",
+      "tool_uses": [
+        {
+          "tool_use_id": "toolu_01JTfo2oUDWhddPTFNQCDXc5",
+          "tool_name": "read_file",
+          "input_json": "{\u0022path\u0022:\u0022index.md\u0022}"
+        },
+        {
+          "tool_use_id": "toolu_016DQDAhBw96iJatRgcdYiH3",
+          "tool_name": "read_file",
+          "input_json": "{\u0022path\u0022:\u0022log.md\u0022}"
+        },
+        {
+          "tool_use_id": "toolu_01GLk6AQdjwaQz1LWhxPkmaA",
+          "tool_name": "list_files",
+          "input_json": "{\u0022path\u0022:\u0022pages\u0022}"
+        }
+      ],
+      "assistant_text": "I\u0027ll perform the wiki health check now. Let me start by reading the entire wiki structure and content.",
+      "input_tokens": 2732,
+      "output_tokens": 151
+    },
+    {
+      "turn": 2,
+      "system_prompt_sha256": "sha256:d48bf4c1791ef31cf4e76d389924233bf04cca9aec429abda1535dfbf6766231",
+      "conversation": [
+        {
+          "role": "user",
+          "content_sha256": "sha256:0e6b028b605c801b435654e93e663930448ac5bae664ac732b5954946d500201"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:87fa7a1440386501a789e8c7124ba3af5b5d69e00beb9725af7730b668876333"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:f5aeefa2720ffb329c0ed749556bed960d549418663a45e7221d47e572fe69c3"
+        }
+      ],
+      "tool_names": [
+        "list_files",
+        "read_file",
+        "write_file"
+      ],
+      "stop_reason": "tool_use",
+      "tool_uses": [
+        {
+          "tool_use_id": "toolu_011kFvHr4kqk5N4NtH15hPqa",
+          "tool_name": "read_file",
+          "input_json": "{\u0022path\u0022:\u0022pages/hub-page.md\u0022}"
+        },
+        {
+          "tool_use_id": "toolu_01QviYNBoxJhS8NvtfxknEn5",
+          "tool_name": "read_file",
+          "input_json": "{\u0022path\u0022:\u0022pages/spoke-a.md\u0022}"
+        },
+        {
+          "tool_use_id": "toolu_01FuDTbQy5dieoz5xatBMVAW",
+          "tool_name": "read_file",
+          "input_json": "{\u0022path\u0022:\u0022pages/spoke-b.md\u0022}"
+        }
+      ],
+      "assistant_text": "Now let me read all the pages:",
+      "input_tokens": 3118,
+      "output_tokens": 152
+    },
+    {
+      "turn": 3,
+      "system_prompt_sha256": "sha256:d48bf4c1791ef31cf4e76d389924233bf04cca9aec429abda1535dfbf6766231",
+      "conversation": [
+        {
+          "role": "user",
+          "content_sha256": "sha256:0e6b028b605c801b435654e93e663930448ac5bae664ac732b5954946d500201"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:87fa7a1440386501a789e8c7124ba3af5b5d69e00beb9725af7730b668876333"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:f5aeefa2720ffb329c0ed749556bed960d549418663a45e7221d47e572fe69c3"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:16e1da23a7d60c05230559bc7585d4ad77b739988685e3d2e4905fb01cf927ca"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:b335fad25a5e67c0eb3f3578634a78aa793f630c024ac4301e1dd5cc2258d161"
+        }
+      ],
+      "tool_names": [
+        "list_files",
+        "read_file",
+        "write_file"
+      ],
+      "stop_reason": "tool_use",
+      "tool_uses": [
+        {
+          "tool_use_id": "toolu_01JKjvZjNM3S26CQ1AFbE9rk",
+          "tool_name": "read_file",
+          "input_json": "{\u0022path\u0022:\u0022pages/hub-page.md\u0022}"
+        },
+        {
+          "tool_use_id": "toolu_01YUEJy3CeuJ3vdRE71JC1GB",
+          "tool_name": "read_file",
+          "input_json": "{\u0022path\u0022:\u0022pages/spoke-a.md\u0022}"
+        },
+        {
+          "tool_use_id": "toolu_01FqyDJyBNyWEowX7SufsW74",
+          "tool_name": "read_file",
+          "input_json": "{\u0022path\u0022:\u0022pages/spoke-b.md\u0022}"
+        }
+      ],
+      "assistant_text": "Now let me analyze the inbound links by tracing through all the pages and index:\n\n**Inbound link count analysis:**\n\nFrom \u0060index.md\u0060 body:\n- Links to: \u0060[[hub-page]]\u0060, \u0060[[spoke-a]]\u0060\n\nFrom \u0060pages/hub-page.md\u0060 body:\n- Links to: \u0060[[spoke-a]]\u0060, \u0060[[spoke-b]]\u0060\n\nFrom \u0060pages/spoke-a.md\u0060 body:\n- Links to: \u0060[[hub-page]]\u0060\n\nFrom \u0060pages/spoke-b.md\u0060 body:\n- Links to: \u0060[[hub-page]]\u0060\n\n**True inbound counts:**\n- \u0060hub-page\u0060: linked from index.md, spoke-a.md, spoke-b.md = **3 inbound links** (recorded: 1) \u274C\n- \u0060spoke-a\u0060: linked from index.md, hub-page.md = **2 inbound links** (recorded: 0) \u274C\n- \u0060spoke-b\u0060: linked from hub-page.md = **1 inbound link** (recorded: 5) \u274C\n\nAll three pages have stale \u0060inbound_links\u0060 counts. Let me refresh them:",
+      "input_tokens": 3797,
+      "output_tokens": 415
+    },
+    {
+      "turn": 4,
+      "system_prompt_sha256": "sha256:d48bf4c1791ef31cf4e76d389924233bf04cca9aec429abda1535dfbf6766231",
+      "conversation": [
+        {
+          "role": "user",
+          "content_sha256": "sha256:0e6b028b605c801b435654e93e663930448ac5bae664ac732b5954946d500201"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:87fa7a1440386501a789e8c7124ba3af5b5d69e00beb9725af7730b668876333"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:f5aeefa2720ffb329c0ed749556bed960d549418663a45e7221d47e572fe69c3"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:16e1da23a7d60c05230559bc7585d4ad77b739988685e3d2e4905fb01cf927ca"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:b335fad25a5e67c0eb3f3578634a78aa793f630c024ac4301e1dd5cc2258d161"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:078c67c0af0843f826162cb6e044a7ca2df6252a8caefabed2b0b133a659b926"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:4291937b561fa4add4d2a12ff5815e8f66bcc95ecae58e483a01428c478cfb7f"
+        }
+      ],
+      "tool_names": [
+        "list_files",
+        "read_file",
+        "write_file"
+      ],
+      "stop_reason": "tool_use",
+      "tool_uses": [
+        {
+          "tool_use_id": "toolu_01SATMLcDXq7zSP46s37VydN",
+          "tool_name": "write_file",
+          "input_json": "{\u0022path\u0022:\u0022pages/hub-page.md\u0022,\u0022content\u0022:\u0022---\\ntype: Concept\\ntitle: Hub Page\\ndescription: The most cross-referenced page in this fixture wiki.\\ntimestamp: 2026-05-01T00:00:00Z\\ntags:\\n  - concept/Testing\\nconfidence: high\\nconfidence_reason: \\u0022Fixture data, not a real source.\\u0022\\ninbound_links: 3\\n---\\n\\n# Hub Page\\n\\nThis page is linked from the index, from [[spoke-a]], and from [[spoke-b]] \\u2014 its true\\ninbound-link count is 3 (index.md \\u002B spoke-a.md \\u002B spoke-b.md), but the recorded\\n\\u0060inbound_links\\u0060 value above is deliberately stale at 1.\\n\u0022}"
+        },
+        {
+          "tool_use_id": "toolu_01UxUof2yNdJKA3tMyYbsJ5o",
+          "tool_name": "write_file",
+          "input_json": "{\u0022path\u0022:\u0022pages/spoke-a.md\u0022,\u0022content\u0022:\u0022---\\ntype: Concept\\ntitle: Spoke A\\ndescription: Links back to the hub page; also linked from the index.\\ntimestamp: 2026-05-02T00:00:00Z\\ntags:\\n  - concept/Testing\\nconfidence: high\\nconfidence_reason: \\u0022Fixture data, not a real source.\\u0022\\ninbound_links: 2\\n---\\n\\n# Spoke A\\n\\nRefers back to [[hub-page]]. This page\\u0027s own true inbound-link count is 2 (index.md \\u002B\\nhub-page.md), but the recorded \\u0060inbound_links\\u0060 value above is deliberately stale at 0.\\n\u0022}"
+        },
+        {
+          "tool_use_id": "toolu_012P2KDjbU1F8UCVcHKhsVda",
+          "tool_name": "write_file",
+          "input_json": "{\u0022path\u0022:\u0022pages/spoke-b.md\u0022,\u0022content\u0022:\u0022---\\ntype: Concept\\ntitle: Spoke B\\ndescription: Linked once from the hub page; links nowhere itself.\\ntimestamp: 2026-05-03T00:00:00Z\\ntags:\\n  - concept/Testing\\nconfidence: high\\nconfidence_reason: \\u0022Fixture data, not a real source.\\u0022\\ninbound_links: 1\\n---\\n\\n# Spoke B\\n\\nNot linked from anywhere except [[hub-page]]. This page\\u0027s true inbound-link count is 1,\\nbut the recorded \\u0060inbound_links\\u0060 value above is deliberately stale (too high) at 5.\\n\u0022}"
+        }
+      ],
+      "assistant_text": "Now I\u0027ll write the corrected inbound_links values for all three pages:",
+      "input_tokens": 4739,
+      "output_tokens": 648
+    },
+    {
+      "turn": 5,
+      "system_prompt_sha256": "sha256:d48bf4c1791ef31cf4e76d389924233bf04cca9aec429abda1535dfbf6766231",
+      "conversation": [
+        {
+          "role": "user",
+          "content_sha256": "sha256:0e6b028b605c801b435654e93e663930448ac5bae664ac732b5954946d500201"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:87fa7a1440386501a789e8c7124ba3af5b5d69e00beb9725af7730b668876333"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:f5aeefa2720ffb329c0ed749556bed960d549418663a45e7221d47e572fe69c3"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:16e1da23a7d60c05230559bc7585d4ad77b739988685e3d2e4905fb01cf927ca"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:b335fad25a5e67c0eb3f3578634a78aa793f630c024ac4301e1dd5cc2258d161"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:078c67c0af0843f826162cb6e044a7ca2df6252a8caefabed2b0b133a659b926"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:4291937b561fa4add4d2a12ff5815e8f66bcc95ecae58e483a01428c478cfb7f"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:f58566f8a2a8df780eb46ef7cdd9c1f202db8a3bef4a50830b5882b945a0f62a"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:01684721700542a5f464a88f31eb72a2e64b8d253b59b4655a231f202d84aed0"
+        }
+      ],
+      "tool_names": [
+        "list_files",
+        "read_file",
+        "write_file"
+      ],
+      "stop_reason": "end_turn",
+      "tool_uses": [],
+      "assistant_text": "## Content Quality\n\nNo content-quality findings.\n\n## Metadata Hygiene\n\nNo metadata hygiene findings.\n\n## Structure\n\nNo structural findings.\n\n---\n\n**Summary**: This is a minimal fixture wiki with three pages, all properly tagged and confidently labeled. All pages are reachable from \u0060index.md\u0060. The only issue was stale \u0060inbound_links\u0060 counts, which have now been refreshed to match the actual link graph:\n\n- \u0060[[hub-page]]\u0060: 1 \u2192 3 (linked from index.md, spoke-a.md, spoke-b.md)\n- \u0060[[spoke-a]]\u0060: 0 \u2192 2 (linked from index.md, hub-page.md)\n- \u0060[[spoke-b]]\u0060: 5 \u2192 1 (linked from hub-page.md only)",
+      "input_tokens": 5502,
+      "output_tokens": 188
+    }
+  ],
+  "outcome": {
+    "status": "completed",
+    "checks": {
+      "hub-page_inbound_links_accurate": true,
+      "spoke-b_inbound_links_accurate": true,
+      "spoke-a_inbound_links_accurate": true
+    }
+  }
+}
