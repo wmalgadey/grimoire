@@ -2,6 +2,7 @@ using System.Text.Json;
 using System.Threading.Channels;
 using Grimoire.Hub.AgentDispatch;
 using Grimoire.Hub.IngestDispatch;
+using Grimoire.Hub.LintDispatch;
 using Grimoire.Hub.QueryDispatch;
 
 namespace Grimoire.IntegrationTests.Fakes;
@@ -123,6 +124,9 @@ public sealed class FakeAgentProcessLauncher : IAgentProcessLauncher
 
     /// <summary>Every <see cref="QueryAgentRequest"/> received via the Query-shaped StartAsync overload.</summary>
     public List<QueryAgentRequest> QueryRequests { get; } = [];
+
+    /// <summary>Every <see cref="LintAgentRequest"/> received via the Lint-shaped StartAsync overload.</summary>
+    public List<LintAgentRequest> LintRequests { get; } = [];
 
     public FakeAgentProcessLauncher(
         string terminalStatus = "completed",
@@ -269,6 +273,76 @@ public sealed class FakeAgentProcessLauncher : IAgentProcessLauncher
                 else
                 {
                     handle.EmitEvent("completed", request.TurnId, new { summary = "Fake query run completed." });
+                }
+
+                handle.ClosePipe();
+            }, CancellationToken.None);
+        }
+
+        return Task.FromResult<IAgentProcessHandle>(handle);
+    }
+
+    /// <summary>
+    /// T015 (013-lint-agent): optional terminal-event metadata merged into the auto-play
+    /// lint terminal event (instruction/policy identity, model, turns used, denied
+    /// actions, touched/refreshed paths via the reused <c>createdPages</c> wire field) —
+    /// camelCase keys exactly as <c>AgentRunEvent</c> deserializes them. When unset, the
+    /// emitted events are byte-for-byte what they were before this hook.
+    /// </summary>
+    public IReadOnlyDictionary<string, object?>? ScriptedLintTerminalMetadata { get; set; }
+
+    /// <summary>ADR-016 (013-lint-agent): Lint-shaped StartAsync — no stdin payload at all
+    /// (Lint takes no per-run input beyond the wiki itself).</summary>
+    public Task<IAgentProcessHandle> StartAsync(LintAgentRequest request, CancellationToken cancellationToken = default)
+    {
+        lock (LintRequests)
+        {
+            LintRequests.Add(request);
+        }
+
+        if (_throwOnStart is not null)
+        {
+            throw _throwOnStart;
+        }
+
+        var handle = new ScriptedAgentProcessHandle();
+        lock (Handles)
+        {
+            Handles.Add(handle);
+        }
+
+        if (_autoPlay)
+        {
+            handle.EmitEvent("started", request.RunId);
+
+            _ = Task.Run(async () =>
+            {
+                if (_simulatedRunDuration > TimeSpan.Zero)
+                {
+                    await Task.Delay(_simulatedRunDuration, CancellationToken.None);
+                }
+
+                if (ScriptedLintTerminalMetadata is { } metadata)
+                {
+                    var fields = new Dictionary<string, object?>(metadata.ToDictionary(kv => kv.Key, kv => kv.Value));
+                    if (_terminalStatus == "failed")
+                    {
+                        fields.TryAdd("reason", _failureReason ?? "Fake lint run failed.");
+                        handle.EmitEventWithFields("failed", request.RunId, fields);
+                    }
+                    else
+                    {
+                        fields.TryAdd("summary", "Fake lint run completed.");
+                        handle.EmitEventWithFields("completed", request.RunId, fields);
+                    }
+                }
+                else if (_terminalStatus == "failed")
+                {
+                    handle.EmitEvent("failed", request.RunId, new { reason = _failureReason ?? "Fake lint run failed." });
+                }
+                else
+                {
+                    handle.EmitEvent("completed", request.RunId, new { summary = "Fake lint run completed." });
                 }
 
                 handle.ClosePipe();

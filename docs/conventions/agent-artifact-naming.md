@@ -6,9 +6,9 @@
 ## Rule
 
 Every **agent-specific code artifact** — test file/class, evaluation suite, namespace,
-per-agent component — carries its owning agent's name (`Ingest`, `Query`, later
-`Lint`) as a token in its name. **Unprefixed names are reserved for genuinely
-cross-agent artifacts.**
+per-agent component — carries its owning agent's name (`Ingest`, `Query`, `Lint`) as a
+token in its name. **Unprefixed names are reserved for genuinely cross-agent
+artifacts.**
 
 For `Grimoire.Hub`, ownership is expressed at namespace level by an explicit
 ownership map (below): agent-owned types live in agent-prefixed namespaces; the
@@ -19,9 +19,9 @@ Instruction folders already conform: `data/agents/<agent>/`.
 
 ## Rationale
 
-Ahead of agent three (Lint, feature 013), a name must identify its owner without
-archaeology: reviewers, rebasers of parallel branches, and the arch rules themselves
-rely on ownership legibility. The drift this convention removes: Ingest-only
+With the third agent (Lint, feature 013) landed, a name must identify its owner
+without archaeology: reviewers, rebasers of parallel branches, and the arch rules
+themselves rely on ownership legibility. The drift this convention removes: Ingest-only
 artifacts created when Ingest was the sole agent stayed unprefixed
 (`ReplayEvalTests`) while their Query siblings were prefixed
 (`QueryReplayEvalTests`), so absence of a prefix stopped meaning "cross-agent".
@@ -53,6 +53,7 @@ only the shared port surface (`IAgentProcessLauncher`, `AgentRunEvent`,
 |---|---|
 | Ingest | `Grimoire.Hub.IngestSubmission`, `Grimoire.Hub.IngestDispatch`, `Grimoire.Hub.IngestTaskArtifact` |
 | Query | `Grimoire.Hub.QueryDispatch`, `Grimoire.Hub.QuerySubmission`, `Grimoire.Hub.QueryRunArtifact` |
+| Lint | `Grimoire.Hub.LintDispatch`, `Grimoire.Hub.LintFindings` |
 | Cross-agent | `Grimoire.Hub` (root), `Grimoire.Hub.AgentDispatch`, `Grimoire.Hub.Realtime`, `Grimoire.Hub.Runtime`, `Grimoire.Hub.ContentRoot`, `Grimoire.Hub.OperationalState`, `Grimoire.Hub.Conversion` |
 
 ## Exemption list

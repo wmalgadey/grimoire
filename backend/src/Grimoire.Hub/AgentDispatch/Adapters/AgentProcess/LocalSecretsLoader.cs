@@ -30,6 +30,11 @@ public sealed class LocalSecretsLoader
 
     internal string? GetQueryBase() => ReadEnvVar("GRIMOIRE_QUERY_BASE_URL");
 
+    /// <summary>Lint's own model override (ADR-004 applied to 013-lint-agent), independent of Ingest's/Query's.</summary>
+    public string? GetLintModel() => ReadEnvVar("GRIMOIRE_LINT_MODEL");
+
+    internal string? GetLintBase() => ReadEnvVar("GRIMOIRE_LINT_BASE_URL");
+
     private string? ReadEnvVar(string varName)
     {
         if (!File.Exists(_envFilePath))

@@ -1,4 +1,5 @@
 using Grimoire.Hub.IngestDispatch;
+using Grimoire.Hub.LintDispatch;
 using Grimoire.Hub.QueryDispatch;
 namespace Grimoire.Hub.AgentDispatch;
 
@@ -38,4 +39,12 @@ public interface IAgentProcessLauncher
     /// analogous <c>RunToExitAsync</c> overload exists).
     /// </summary>
     Task<IAgentProcessHandle> StartAsync(QueryAgentRequest request, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// ADR-016 (013-lint-agent): spawns a Lint agent process. Port ownership is unchanged
+    /// again — same interface, same <see cref="IAgentProcessHandle"/> contract — only the
+    /// request shape differs (Lint has no per-run stdin payload at all, unlike Query's
+    /// conversation input).
+    /// </summary>
+    Task<IAgentProcessHandle> StartAsync(LintAgentRequest request, CancellationToken cancellationToken = default);
 }

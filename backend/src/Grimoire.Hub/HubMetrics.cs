@@ -233,4 +233,28 @@ public static class HubMetrics
     // Note: query.tool_calls_total is emitted by Grimoire.QueryAgent itself (the guarded
     // tool executor runs in that process, not the Hub) — see QueryAgentMetrics there,
     // mirroring Grimoire.IngestAgent.IngestAgentMetrics.RecordToolCall.
+
+    // --- 013-lint-agent (plan.md ## Observability > Business Metrics) ---
+
+    private static readonly Counter<long> _lintRunsTotal =
+        Meter.CreateCounter<long>("wiki.lint.runs_total",
+            description: "Lint Runs reaching a terminal state");
+
+    public static void RecordLintRun(string outcome)
+        => _lintRunsTotal.Add(1, new KeyValuePair<string, object?>("outcome", outcome));
+
+    /// <summary>T027 gap-fill: plan.md declares this metric but tasks.md assigns it to no
+    /// specific task (T027 names only wiki.lint.runs_total; T037 names only
+    /// findings_total/inbound_links_refreshed_total) — emitted here, at the one call site
+    /// that observes a rejection, rather than left for the Phase 6 completeness audit to
+    /// discover as a gap.</summary>
+    private static readonly Counter<long> _lintTriggersRejectedTotal =
+        Meter.CreateCounter<long>("wiki.lint.triggers_rejected_total",
+            description: "Lint Run trigger attempts rejected because a run was already active");
+
+    public static void RecordLintTriggerRejected() => _lintTriggersRejectedTotal.Add(1);
+
+    // wiki.lint.findings_total{category} and wiki.lint.inbound_links_refreshed_total
+    // (plan.md ## Observability) are T037 (Phase 4, out of this phase's scope) —
+    // intentionally not defined here yet.
 }

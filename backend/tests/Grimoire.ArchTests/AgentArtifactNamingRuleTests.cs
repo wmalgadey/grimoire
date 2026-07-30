@@ -36,6 +36,7 @@ public class AgentArtifactNamingRuleTests
 {
     private const string IngestToken = "Ingest";
     private const string QueryToken = "Query";
+    private const string LintToken = "Lint";
 
     // Agent-owned namespace prefixes used for reference-based ownership detection.
     private static readonly string[] _ingestOwnedNamespacePrefixes =
@@ -52,6 +53,14 @@ public class AgentArtifactNamingRuleTests
         "Grimoire.Hub.QueryDispatch",
         "Grimoire.Hub.QuerySubmission",
         "Grimoire.Hub.QueryRunArtifact",
+    ];
+
+    // 013-lint-agent (ADR-016): same reference-based ownership detection, third agent.
+    private static readonly string[] _lintOwnedNamespacePrefixes =
+    [
+        "Grimoire.LintAgent",
+        "Grimoire.Hub.LintDispatch",
+        "Grimoire.Hub.LintFindings",
     ];
 
     /// <summary>
@@ -130,16 +139,19 @@ public class AgentArtifactNamingRuleTests
 
                     var referencesIngest = false;
                     var referencesQuery = false;
+                    var referencesLint = false;
                     foreach (var ns in ReferencedNamespaces(type))
                     {
                         referencesIngest |= _ingestOwnedNamespacePrefixes.Any(p => ns.StartsWith(p, StringComparison.Ordinal));
                         referencesQuery |= _queryOwnedNamespacePrefixes.Any(p => ns.StartsWith(p, StringComparison.Ordinal));
+                        referencesLint |= _lintOwnedNamespacePrefixes.Any(p => ns.StartsWith(p, StringComparison.Ordinal));
                     }
 
-                    if (referencesIngest == referencesQuery)
-                        continue; // cross-agent (both) or platform-only (neither): unprefixed is correct
+                    var ownerCount = (referencesIngest ? 1 : 0) + (referencesQuery ? 1 : 0) + (referencesLint ? 1 : 0);
+                    if (ownerCount != 1)
+                        continue; // cross-agent (2+ owners) or platform-only (0 owners): unprefixed is correct
 
-                    var requiredToken = referencesIngest ? IngestToken : QueryToken;
+                    var requiredToken = referencesIngest ? IngestToken : referencesQuery ? QueryToken : LintToken;
                     if (!type.Name.Contains(requiredToken, StringComparison.Ordinal))
                     {
                         violations.Add(
@@ -180,6 +192,14 @@ public class AgentArtifactNamingRuleTests
         "Grimoire.Hub.QueryConversations",
     ];
 
+    // 013-lint-agent (ADR-016): the third agent's owned namespaces — dispatch/
+    // coordination and its Findings Report store, mirroring the Ingest/Query shape.
+    private static readonly string[] _hubLintOwnedNamespaces =
+    [
+        "Grimoire.Hub.LintDispatch",
+        "Grimoire.Hub.LintFindings",
+    ];
+
     // Cross-agent Hub namespaces. Realtime/Runtime/ContentRoot/OperationalState/
     // Conversion may contain per-agent endpoint types of the shared infrastructure
     // (IngestLifecycleHub, QueuedIngestRun, ...); AgentDispatch is held to the stricter
@@ -217,34 +237,39 @@ public class AgentArtifactNamingRuleTests
                 if (ns.Length == 0 || ns == "Grimoire.Hub")
                     continue;
 
-                var mapped = _hubIngestOwnedNamespaces.Concat(_hubQueryOwnedNamespaces).Concat(_hubCrossAgentNamespaces)
+                var mapped = _hubIngestOwnedNamespaces.Concat(_hubQueryOwnedNamespaces).Concat(_hubLintOwnedNamespaces).Concat(_hubCrossAgentNamespaces)
                     .Any(m => ns == m || ns.StartsWith(m + ".", StringComparison.Ordinal));
                 if (!mapped)
                 {
                     violations.Add($"{type.FullName}: namespace '{ns}' is not in the ADR-013 Hub ownership map " +
-                                   "(ingest-owned, query-owned, or cross-agent)");
+                                   "(ingest-owned, query-owned, lint-owned, or cross-agent)");
                     continue;
                 }
 
                 var inIngestOwned = _hubIngestOwnedNamespaces.Any(m => ns == m || ns.StartsWith(m + ".", StringComparison.Ordinal));
                 var inQueryOwned = _hubQueryOwnedNamespaces.Any(m => ns == m || ns.StartsWith(m + ".", StringComparison.Ordinal));
+                var inLintOwned = _hubLintOwnedNamespaces.Any(m => ns == m || ns.StartsWith(m + ".", StringComparison.Ordinal));
                 var inSharedDispatch = ns == "Grimoire.Hub.AgentDispatch" || ns.StartsWith("Grimoire.Hub.AgentDispatch.", StringComparison.Ordinal);
 
-                if (inIngestOwned && type.Name.Contains(QueryToken, StringComparison.Ordinal))
-                    violations.Add($"{type.FullName}: Query-token type in the ingest-owned namespace '{ns}'");
+                if (inIngestOwned && (type.Name.Contains(QueryToken, StringComparison.Ordinal) || type.Name.Contains(LintToken, StringComparison.Ordinal)))
+                    violations.Add($"{type.FullName}: another agent's token type in the ingest-owned namespace '{ns}'");
 
-                if (inQueryOwned && type.Name.Contains(IngestToken, StringComparison.Ordinal))
-                    violations.Add($"{type.FullName}: Ingest-token type in the query-owned namespace '{ns}'");
+                if (inQueryOwned && (type.Name.Contains(IngestToken, StringComparison.Ordinal) || type.Name.Contains(LintToken, StringComparison.Ordinal)))
+                    violations.Add($"{type.FullName}: another agent's token type in the query-owned namespace '{ns}'");
+
+                if (inLintOwned && (type.Name.Contains(IngestToken, StringComparison.Ordinal) || type.Name.Contains(QueryToken, StringComparison.Ordinal)))
+                    violations.Add($"{type.FullName}: another agent's token type in the lint-owned namespace '{ns}'");
 
                 // The shared dispatch namespace keeps only the cross-agent port surface
                 // (IAgentProcessLauncher, AgentRunEvent, Adapters.AgentProcess): agent-token
-                // types belong in IngestDispatch / QueryDispatch.
+                // types belong in IngestDispatch / QueryDispatch / LintDispatch.
                 if (inSharedDispatch &&
                     (type.Name.Contains(IngestToken, StringComparison.Ordinal) ||
-                     type.Name.Contains(QueryToken, StringComparison.Ordinal)))
+                     type.Name.Contains(QueryToken, StringComparison.Ordinal) ||
+                     type.Name.Contains(LintToken, StringComparison.Ordinal)))
                 {
                     violations.Add($"{type.FullName}: agent-owned type in the cross-agent namespace '{ns}' " +
-                                   "(belongs in Grimoire.Hub.IngestDispatch / Grimoire.Hub.QueryDispatch)");
+                                   "(belongs in Grimoire.Hub.IngestDispatch / Grimoire.Hub.QueryDispatch / Grimoire.Hub.LintDispatch)");
                 }
             }
         }
