@@ -426,7 +426,7 @@ convention, and the stale page is flagged.
 
 ### Tests for User Story 2
 
-- [ ] T031 [P] [US2] Integration test
+- [X] T031 [P] [US2] Integration test
   `backend/tests/Grimoire.IntegrationTests/LintInboundLinkRefreshTests.cs`
   (SC-004/SC-008 groundwork): a scripted `frontmatter-only` `write_file` call
   updating `inbound_links` succeeds through the real `GuardedToolExecutor`/policy/
@@ -434,43 +434,99 @@ convention, and the stale page is flagged.
   (T020); the page's body is byte-identical before and after; these are the **only**
   page modifications the run performs — no other `write_file` call is scripted or
   attempted by the fixture.
-- [ ] T032 [P] [US2] `Grimoire.EvalRunner` scenario: add `lint-metadata-proposals`
+  *Deviation: exercised through a real `AgentLoop` + `GuardedToolExecutor` +
+  `LintToolRegistry` (mirrors `QueryWriteScopeDenialTests.BuildExecutorAsync`'s
+  "load the real policy file via `PolicyLoader`" idiom), not
+  `LintCoordinatorHarness` — a run-level harness would only let a test script the
+  *outcome* of a write, not the write itself passing through the real guard stack,
+  which is exactly what this task needs. Added a second case (adding
+  `inbound_links` when previously absent entirely, data-model.md R6) beyond the
+  literal task text.*
+- [X] T032 [P] [US2] `Grimoire.EvalRunner` scenario: add `lint-metadata-proposals`
   (SC-007 threshold ≥ 90% tag-taxonomy conformance, ≥ 90% confidence-convention
   conformance) reusing T017's fixture's missing-tags/missing-confidence pages;
   deterministic sub-scorer in `LintDeterministicScorers.cs` parsing proposed
   tags/confidence text against `agents/ingest/system-prompt.md`'s taxonomy/formula.
-- [ ] T033 [P] [US2] `Grimoire.EvalRunner` scenario: add `lint-inbound-links-refreshed`
+  *Deviation: implemented as a proxy check over the narrative (mirrors T018's
+  `GenuineFindings` precedent) since no structured parser exists — checks that the
+  narrative names each seeded page and, near it, proposes something shaped like a
+  real taxonomy prefix or confidence level, never re-implementing the taxonomy/
+  formula's own content (Principle V). Added
+  `backend/tests/Grimoire.AgentEvals/LintDeterministicScorersTests.cs` (not named
+  in the task) — hermetic regression coverage of the scorer function itself
+  (synthetic narrative text, no agent, no live capture), consistent with this
+  task's own "no live budget" deferral.*
+- [X] T033 [P] [US2] `Grimoire.EvalRunner` scenario: add `lint-inbound-links-refreshed`
   (SC-008 threshold ≥ 95%) with a wiki fixture with a known cross-link graph and
   deliberately stale recorded counts; deterministic scorer recomputes the true
   inbound-link graph and compares to post-run frontmatter.
-- [ ] T034 [P] [US2] Integration test (in `LintRunLifecycleTests.cs`, T015's file):
+  *Deviation: new fixture
+  `backend/tests/Grimoire.AgentEvals/Fixtures/lint-inbound-links-fixture/wiki/`
+  (three pages — `hub-page`/`spoke-a`/`spoke-b` — whose true inbound counts 3/2/1
+  are computable from `index.md` and each page's own body, every recorded count
+  deliberately wrong). `LintSampleRunData` gained a `WikiRoot` field (mirrors
+  `QuerySampleRunData.WikiRoot`'s reason for existing) with a single-arg
+  convenience constructor for the two pre-existing narrative-only scorers, so the
+  scorer can inspect post-run frontmatter — unscoreable from the narrative alone.*
+- [X] T034 [P] [US2] Integration test (in `LintRunLifecycleTests.cs`, T015's file):
   a low-confidence page whose `last_reviewed` is older than the Review Window
   (default 90 days, configurable) is listed as a review candidate in the
   Metadata Hygiene section; a low-confidence page within the window is not.
+  *Deviation: "review candidate" classification is wiki-content judgment
+  (Constitution Principle V, `system-prompt.md`'s own rule) and cannot be
+  reimplemented as a deterministic backend check — what the harness actually
+  guarantees, and what these tests verify, is (a) the agent's own
+  review-candidate narrative round-trips into the Findings Report exactly as
+  written (mirrors T016's honest-empty-result guarantee, applied to a populated
+  "Review candidates" sub-section and to an explicit "nothing due" one) and (b)
+  the effective Review Window value (T036) is correctly threaded into the
+  `LintAgentRequest` sent to the launcher — default 90, or a configured
+  override — regardless of what the agent then does with it.*
 
 ### Implementation for User Story 2
 
-- [ ] T035 [US2] Close any gaps T031–T034 surface in `data/agents/lint/system-prompt.md`
+- [X] T035 [US2] Close any gaps T031–T034 surface in `data/agents/lint/system-prompt.md`
   (proposal wording, review-window application) or `FindingsReportFormat.cs`
   (review-candidate rendering). Expected to be small — the mechanism (T009/T020) was
   built with these guarantees; this task exists so the story has an explicit
   implementation home if the tests find drift.
-- [ ] T036 [US2] Make the Review Window configurable (default 90 days) via the same
+  *No gaps found beyond what T036/T037 already implement — as expected.*
+- [X] T036 [US2] Make the Review Window configurable (default 90 days) via the same
   configuration surface as `QueryConcurrencyLimit` (e.g.
   `Grimoire:LintReviewWindowDays`), threaded into `data/agents/lint/system-prompt.md`'s
   effective instructions or a small harness-supplied parameter — exact mechanism
   decided here (instruction-file templating vs. a documented default the agent is
   simply told).
+  *Deviation: implemented interleaved with T034 (which needed it to test anything
+  meaningful about "configurable"), ahead of T035 in file order but not in
+  substance. New `LintReviewWindowOptions` (mirrors `QueryConcurrencyOptions`
+  exactly, `Grimoire:LintReviewWindowDays`, default 90) → threaded through
+  `LintRunCoordinator` → `LintAgentRequest.ReviewWindowDays` →
+  `AgentProcessHost`'s new `--review-window-days` CLI arg → `LintCliOptions` →
+  `LintIntentHandler`'s kickoff message, which states the effective value
+  explicitly ("use this value instead of the default stated in your system
+  prompt") — the harness-supplied-parameter option from this task's own two
+  choices, not instruction-file templating.*
 
 ### Observability for User Story 2
 
-- [ ] T037 [US2] Add `wiki.lint.findings_total{category}` and
+- [X] T037 [US2] Add `wiki.lint.findings_total{category}` and
   `wiki.lint.inbound_links_refreshed_total` metrics, emitted from
   `FindingsReportStore`/`LintRunCoordinator` at the terminal event (findings counted
   from the report's per-category sections; refreshed count from the run's
   frontmatter-only `TouchedPaths`).
-- [ ] T038 [P] [US2] Deterministic integration tests extending `LintMetricsTests.cs`
+  *Deviation: emitted from `LintRunCoordinator.FinishRunAsync` only (not
+  `FindingsReportStore`) — the same call site that already computes
+  `findingsCount`/`effectiveNarrative`/`touchedPaths.Count` for the report itself,
+  using the existing mechanical `FindingsNarrativeStats.CountByCategory` helper.
+  Emitted across every terminal outcome (including a partial/failed run), matching
+  plan.md's "across all runs" description.*
+- [X] T038 [P] [US2] Deterministic integration tests extending `LintMetricsTests.cs`
   (T028's file): validate both new metrics' increments and category labels.
+  *Extended with three tests: two `HubMetrics`-level (mirrors this file's existing
+  per-metric idiom) plus one coordinator-level end-to-end test correlating a
+  scripted narrative's category headings and a scripted `createdPages` list to
+  both metrics' measurements from a single completed run.*
 
 **Checkpoint**: User Stories 1 AND 2 hold independently — findings are accurate,
 metadata proposals conform to convention, inbound-link counts are trustworthy again.
