@@ -1084,3 +1084,23 @@ silently folded into a Phase 3 commit.
   follow-up submitted immediately after `WaitForStateAsync(..., "completed")` can load a
   stale prior-turn count and mis-assign `position`. Out of scope for T018–T029; noted
   here so it isn't mistaken for a Phase 3 regression.
+
+---
+
+## Phase 7: Convergence
+
+- [X] T052 Add a supersession pointer for ADR-015 to
+  `docs/adr/ADR-011-query-agent-shared-runtime-and-concurrency-model.md`'s C7
+  containment rule per Constitution III (MADR status hygiene) (partial).
+  *`/speckit-converge` found ADR-011 already carried a supersession pointer to
+  ADR-014 (feature 011) but none to ADR-015, even though ADR-015 explicitly
+  supersedes this ADR's "Query is structurally write-free" framing and C7.
+  Added a matching blockquote note directly under the C7 bullet, mirroring the
+  existing ADR-014 pointer's style and scope-of-effect wording. No other
+  actionable findings: every FR-001 through FR-011 and SC-001 through SC-008,
+  every plan.md Observability/Test-Strategy/Architectural-Constraints row, and
+  every constitution principle checked out against the implemented code and
+  tests. The pre-existing QueryConversationRecordLifecycleTests flake noted
+  above (and in T036-T040/T048/T049) is confirmed out of this feature's scope
+  — present on the unmodified base commit, an 011-era issue, not a gap in this
+  feature's own artifacts.*
