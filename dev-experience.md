@@ -243,3 +243,15 @@ Das zweite Feature hatte es dann auch in Sich!
 ---
 
 Dazu kommt, dass mein Github Copilot Abo bereits nach dieser Mega-Session auf 85% ist, und mit Fable klappt zwar die implementierung besser (am Beispiel Trace-Spans war das spürbar), aber mein Session-Limit ist damit auch in 20 Minuten weggeatmet.
+
+## 2026-07-27: Max-Abo, SDD-Flow und paralleles Arbeiten in mehreren Worktrees
+
+Erkenntnisse:
+
+- Mit dem Wechsel auf das Claude Code Max-Abo macht "Programmieren lassen" nochmal deutlich mehr Spaß — kein ständiges Rechnen mit dem Session-Limit im Kopf mehr.
+- Es ist einfach befriedigend: Ich sage dem LLM etwas, der Code entsteht, und er funktioniert dann auch.
+- SDD gibt mir dazu einen sehr gut strukturierten, durchdachten Workflow an die Hand — mehr als nur "Code generieren lassen".
+- Specs 010–013 liefen erstmals parallel: mehrere Worktrees gleichzeitig, in denen Specs, Pläne, Tasks und Code entstanden — zuzuschauen, wie das in mehreren Strängen gleichzeitig passiert, war faszinierend.
+- Die Qualität der generierten Specs beeindruckt mich: So präzise und gut strukturiert würde ich selbst keiner Anleitung folgen können, um eine Spezifikation oder einen Plan zu schreiben.
+- Trotzdem muss man höllisch aufpassen, gerade beim Arbeiten mit mehreren Worktrees, dass wirklich das richtige Modell ausgewählt ist — sonst ist das Rate-Limit der 5h-Session schnell aufgebraucht.
+- Ärgerlich: Das Vorauswählen des Modells scheint in Skills nicht zuverlässig zu funktionieren.
