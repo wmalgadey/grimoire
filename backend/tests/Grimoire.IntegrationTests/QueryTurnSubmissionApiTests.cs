@@ -207,6 +207,10 @@ public class QueryTurnSubmissionApiTests
         QueryAgentWorkerPath: "unused",
         WriteLocksDir: Path.Combine(root, "write-locks"),
         FindingsDir: Path.Combine(root, "findings"),
+        LintInstructionsDir: Path.Combine(root, "agents", "lint"),
+        LintSystemPromptPath: Path.Combine(root, "agents", "lint", "system-prompt.md"),
+        LintPolicyPath: Path.Combine(root, "agents", "lint", "policy.json"),
+        LintAgentWorkerPath: "unused",
         Locations: []);
 
     internal static async Task<IHost> BuildHostAsync(

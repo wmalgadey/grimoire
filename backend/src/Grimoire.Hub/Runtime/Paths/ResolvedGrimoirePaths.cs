@@ -48,6 +48,10 @@ public sealed record ResolvedGrimoirePaths(
     string QueryAgentWorkerPath,
     string WriteLocksDir,
     string FindingsDir,
+    string LintInstructionsDir,
+    string LintSystemPromptPath,
+    string LintPolicyPath,
+    string LintAgentWorkerPath,
     IReadOnlyList<PathLocation> Locations)
 {
     /// <summary>Per-task artifact path within <see cref="TasksDir"/> (mirrors IngestCliOptions.TaskArtifactPath).</summary>

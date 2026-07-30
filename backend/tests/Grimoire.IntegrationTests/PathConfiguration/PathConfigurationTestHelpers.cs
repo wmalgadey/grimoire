@@ -15,7 +15,11 @@ internal sealed record SeededRequiredInputs(
     string QueryInstructionsDir,
     string QuerySystemPromptPath,
     string QueryPolicyPath,
-    string QueryAgentWorkerPath);
+    string QueryAgentWorkerPath,
+    string LintInstructionsDir,
+    string LintSystemPromptPath,
+    string LintPolicyPath,
+    string LintAgentWorkerPath);
 
 /// <summary>
 /// Shared fixture setup for the path-configuration hermetic test suite
@@ -49,12 +53,14 @@ internal static class PathConfigurationTestHelpers
     {
         var agentWorker = Path.Combine(baseDir, "agent-worker-stub.dll");
         var queryAgentWorker = Path.Combine(baseDir, "query-agent-worker-stub.dll");
-        var seeded = SeedRequiredInputFiles(baseDir, agentWorker, queryAgentWorker);
+        var lintAgentWorker = Path.Combine(baseDir, "lint-agent-worker-stub.dll");
+        var seeded = SeedRequiredInputFiles(baseDir, agentWorker, queryAgentWorker, lintAgentWorker);
         var options = new GrimoirePathOptions
         {
             BaseDir = baseDir,
             AgentWorker = agentWorker,
             QueryAgentWorker = queryAgentWorker,
+            LintAgentWorker = lintAgentWorker,
         };
         return seeded with { Options = options };
     }
@@ -70,11 +76,18 @@ internal static class PathConfigurationTestHelpers
     {
         var agentWorker = Path.Combine(cwd, "agent-worker-stub.dll");
         var queryAgentWorker = Path.Combine(cwd, "query-agent-worker-stub.dll");
-        SeedRequiredInputFiles(cwd, agentWorker, queryAgentWorker);
-        return new GrimoirePathOptions { AgentWorker = agentWorker, QueryAgentWorker = queryAgentWorker };
+        var lintAgentWorker = Path.Combine(cwd, "lint-agent-worker-stub.dll");
+        SeedRequiredInputFiles(cwd, agentWorker, queryAgentWorker, lintAgentWorker);
+        return new GrimoirePathOptions
+        {
+            AgentWorker = agentWorker,
+            QueryAgentWorker = queryAgentWorker,
+            LintAgentWorker = lintAgentWorker,
+        };
     }
 
-    private static SeededRequiredInputs SeedRequiredInputFiles(string baseDir, string agentWorker, string queryAgentWorker)
+    private static SeededRequiredInputs SeedRequiredInputFiles(
+        string baseDir, string agentWorker, string queryAgentWorker, string lintAgentWorker)
     {
         var dataDir = Path.Combine(baseDir, GrimoirePathOptions.DefaultDataDirName);
         var instructionsDir = Path.Combine(dataDir, GrimoirePathOptions.DefaultInstructionsDirRelativePath);
@@ -85,6 +98,9 @@ internal static class PathConfigurationTestHelpers
         var queryInstructionsDir = Path.Combine(dataDir, GrimoirePathOptions.DefaultQueryInstructionsDirRelativePath);
         var querySystemPromptPath = Path.Combine(queryInstructionsDir, "system-prompt.md");
         var queryPolicyPath = Path.Combine(queryInstructionsDir, "policy.json");
+        var lintInstructionsDir = Path.Combine(dataDir, GrimoirePathOptions.DefaultLintInstructionsDirRelativePath);
+        var lintSystemPromptPath = Path.Combine(lintInstructionsDir, "system-prompt.md");
+        var lintPolicyPath = Path.Combine(lintInstructionsDir, "policy.json");
 
         Directory.CreateDirectory(instructionsDir);
         File.WriteAllText(systemPromptPath, "# Test system prompt\nRules.\n");
@@ -99,6 +115,11 @@ internal static class PathConfigurationTestHelpers
         File.WriteAllText(queryPolicyPath, ValidPolicyJson);
         File.WriteAllText(queryAgentWorker, "stub");
 
+        Directory.CreateDirectory(lintInstructionsDir);
+        File.WriteAllText(lintSystemPromptPath, "# Test lint system prompt\nRules.\n");
+        File.WriteAllText(lintPolicyPath, ValidPolicyJson);
+        File.WriteAllText(lintAgentWorker, "stub");
+
         return new SeededRequiredInputs(
             Options: null!,
             DataDir: dataDir,
@@ -111,6 +132,10 @@ internal static class PathConfigurationTestHelpers
             QueryInstructionsDir: queryInstructionsDir,
             QuerySystemPromptPath: querySystemPromptPath,
             QueryPolicyPath: queryPolicyPath,
-            QueryAgentWorkerPath: queryAgentWorker);
+            QueryAgentWorkerPath: queryAgentWorker,
+            LintInstructionsDir: lintInstructionsDir,
+            LintSystemPromptPath: lintSystemPromptPath,
+            LintPolicyPath: lintPolicyPath,
+            LintAgentWorkerPath: lintAgentWorker);
     }
 }

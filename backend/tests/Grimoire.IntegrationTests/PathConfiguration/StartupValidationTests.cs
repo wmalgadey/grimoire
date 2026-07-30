@@ -159,6 +159,7 @@ public class StartupValidationTests
                 {
                     "base_dir", "data_dir", "content_root", "raw_dir", "state_db", "secrets_file", "instructions_dir", "agent_worker",
                     "query_instructions_dir", "conversations_dir", "query_agent_worker", "write_locks_dir", "findings_dir",
+                    "lint_instructions_dir", "lint_agent_worker",
                 },
                 reportedNames);
             Assert.All(resolved.Locations, l => Assert.True(Path.IsPathRooted(l.ResolvedPath)));
