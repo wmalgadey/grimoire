@@ -184,16 +184,62 @@ public class ConversationRecordFormatTests
         var original = MakeTurn();
         var block = ConversationRecordFormat.BuildTurnBlock(original);
 
-        // Feature 012 forward-compat: an added created_pages list must not break parsing.
+        // A genuinely unrecognized scalar key (a hypothetical future field, not
+        // feature 012's now-recognized `created_pages:`, which is covered by its own
+        // round-trip test below) must not break parsing.
         var extended = block.Replace(
             "prompt_chars:",
-            "created_pages:\n  - \"pages/new-page.md\"\n  - \"pages/other.md\"\nfuture_scalar: 42\nprompt_chars:",
+            "future_scalar: 42\nprompt_chars:",
             StringComparison.Ordinal);
         var content = ConversationRecordFormat.BuildRecordHeader("c-format", DateTimeOffset.UtcNow) + extended;
 
         var turns = ParseOk(content);
 
         Assert.Equal(original, Assert.Single(turns));
+    }
+
+    // 012-query-synthesis-writes (T026, ADR-015): created_pages: round-trips, and is
+    // always written explicitly (never omitted) even when empty.
+
+    [Fact]
+    public void CreatedPages_RoundTripsThroughWriteAndParse()
+    {
+        var original = MakeTurn() with { CreatedPages = ["pages/concepts/a.md", "pages/concepts/b.md"] };
+        var content = BuildRecord(original);
+
+        var turns = ParseOk(content);
+        var parsed = Assert.Single(turns);
+
+        Assert.Equal(original, parsed);
+        Assert.Equal(["pages/concepts/a.md", "pages/concepts/b.md"], parsed.CreatedPagesOrEmpty);
+    }
+
+    [Fact]
+    public void CreatedPages_Empty_IsWrittenAsExplicitEmptyList_NeverOmitted()
+    {
+        var original = MakeTurn();
+        var content = BuildRecord(original);
+
+        Assert.Contains("created_pages: []", content, StringComparison.Ordinal);
+        Assert.Empty(Assert.Single(ParseOk(content)).CreatedPagesOrEmpty);
+    }
+
+    [Fact]
+    public void RecordPredatingFeature012_WithNoCreatedPagesKeyAtAll_ParsesWithEmptyCreatedPages()
+    {
+        var original = MakeTurn();
+        var block = ConversationRecordFormat.BuildTurnBlock(original);
+
+        // Simulates a record written before this feature: no created_pages: line at all
+        // (ADR-014 forward-compat — absence, not an empty list, is the pre-feature shape).
+        var withoutCreatedPages = block.Replace("created_pages: []\n", string.Empty, StringComparison.Ordinal);
+        Assert.DoesNotContain("created_pages", withoutCreatedPages, StringComparison.Ordinal);
+        var content = ConversationRecordFormat.BuildRecordHeader("c-format", DateTimeOffset.UtcNow) + withoutCreatedPages;
+
+        var parsed = Assert.Single(ParseOk(content));
+
+        Assert.Equal(original, parsed);
+        Assert.Empty(parsed.CreatedPagesOrEmpty);
     }
 
     [Fact]

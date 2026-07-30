@@ -13,8 +13,10 @@ namespace Grimoire.IntegrationTests;
 /// <summary>
 /// T068 (US4, SC-002/FR-011/FR-012) — a scripted out-of-scope `read_file` request is
 /// denied by the Query policy, recorded with a reason, and the run continues with
-/// allowed actions afterward; confirms zero wiki writes occur across the scenario (no
-/// `write_file` tool exists at all for the Query agent to even attempt calling, per T021).
+/// allowed actions afterward; confirms zero wiki writes occur across this read-only
+/// scenario. Since ADR-015 (012-query-synthesis-writes) Query's tool registry legitimately
+/// includes `write_file` (scoped by policy, not by omission) — this test's scripted
+/// conversation simply never calls it.
 /// </summary>
 public class QueryReadOnlyGuardrailTests
 {
@@ -36,8 +38,10 @@ public class QueryReadOnlyGuardrailTests
 
         try
         {
-            // Mirrors data/agents/query/policy.json: read is scoped to pages/, index.md,
-            // log.md; write is empty — no write rule exists at all for Query.
+            // This scenario only exercises read-scope denial (SC-002/FR-012); write rules
+            // are deliberately left empty here so any accidental write attempt is denied
+            // out_of_scope rather than silently succeeding — data/agents/query/policy.json
+            // itself does declare write rules since ADR-015 (012-query-synthesis-writes).
             var policy = new SafetyPolicy(
                 wikiDir,
                 readPrefixes: [Path.Combine(wikiDir, "pages") + Path.DirectorySeparatorChar],
@@ -70,8 +74,8 @@ public class QueryReadOnlyGuardrailTests
             // denied tool-call turn, allowed tool-call turn, final narrative turn.
             Assert.Equal(3, fakeModel.CallCount);
 
-            // No write tool exists for QueryToolRegistry at all (FR-011 structural half).
-            Assert.DoesNotContain(QueryToolRegistry.Default.Tools, t => t.Name == "write_file");
+            // The scripted conversation never called write_file — zero writes occurred,
+            // even though the tool is now legitimately in Query's registry (ADR-015).
             Assert.Empty(journal.JournaledPaths);
             Assert.Empty(executor.TouchedPaths);
             Assert.Equal("someone else's conversation", await File.ReadAllTextAsync(outOfScopeFile));
