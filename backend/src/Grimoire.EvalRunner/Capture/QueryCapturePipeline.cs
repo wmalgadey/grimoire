@@ -60,7 +60,7 @@ public sealed class QueryCapturePipeline
         CancellationToken cancellationToken)
     {
         var providerLabel = EvalObservability.ProviderLabel(provider.Kind);
-        var wikiRoot = _paths.FixtureWikiRoot(scenario.FixtureName);
+        var fixtureWikiRoot = _paths.FixtureWikiRoot(scenario.FixtureName);
         var recordings = new List<RecordedSample>();
         var sampleResults = new List<QueryCaptureSampleResult>();
         string? model = null;
@@ -74,6 +74,13 @@ public sealed class QueryCapturePipeline
             string lastTurnId = "-";
             var allTurnsCaptured = true;
             string? failureDetail = null;
+
+            // ADR-015 (012-query-synthesis-writes): each logical sample gets its own
+            // sandbox copy of the fixture wiki + write-locks dir, not the fixture directly
+            // — Query can now write, so sharing the on-disk fixture across samples would
+            // let one sample's created page collide with (or leak into) the next.
+            using var sandbox = QueryEvalSandbox.Create(fixtureWikiRoot, $"capture-{scenario.Id}-{sampleNumber:00}");
+            var wikiRoot = sandbox.WikiRoot;
 
             for (var turnPosition = 1; turnPosition <= turnSequence.Count; turnPosition++)
             {
@@ -92,7 +99,7 @@ public sealed class QueryCapturePipeline
 
                     var run = await _invoker.RunAsync(
                         turnId, wikiRoot, prompt, priorTurns, _paths,
-                        AgentModelMode.Capture(capturePath, provider), CaptureTurnBudget, cancellationToken);
+                        AgentModelMode.Capture(capturePath, provider), CaptureTurnBudget, sandbox.WriteLocksDir, cancellationToken);
 
                     if (run.TimedOut)
                     {
@@ -118,7 +125,8 @@ public sealed class QueryCapturePipeline
                     var isFinalTurn = turnPosition == turnSequence.Count;
                     if (isFinalTurn)
                     {
-                        var score = QueryDeterministicScorers.Score(scenario.ScorerId, new QuerySampleRunData(run.Answer ?? string.Empty));
+                        var score = QueryDeterministicScorers.Score(
+                            scenario.ScorerId, new QuerySampleRunData(run.Answer ?? string.Empty, run.CreatedPages, wikiRoot));
                         outcome = new RecordedOutcome("completed", score.Checks);
                         sampleResults.Add(new QueryCaptureSampleResult(sampleNumber, turnId, Captured: true, score.Pass, Detail: null));
                     }

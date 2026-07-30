@@ -111,12 +111,45 @@ public static class QueryScenarioDefinitions
         ],
         ScorerId: "query-read-only-decline");
 
+    // 012-query-synthesis-writes (ADR-015): the write-capable scenarios below reuse the
+    // read-only `query-grounding` fixture rather than a new one — its two independent
+    // Concept pages (credential-scoping, runtime-paths) jointly imply an insight neither
+    // states alone (both are examples of "resolved/injected at spawn time from a single
+    // composition-point authority"), exactly the spec's own worked example
+    // (spec.md User Story 1: "how do our credential-scoping decisions relate to the
+    // runtime-path decisions?"). Every sample MUST run against its own
+    // <c>QueryEvalSandbox</c> copy of this fixture, not the fixture directly, once it
+    // writes (see QueryCapturePipeline/QueryReplayPipeline) — unlike the three read-only
+    // scenarios above, which never mutate anything they run against.
+
+    public static readonly QueryScenarioDefinition SynthesisCreated = new(
+        Id: "query-synthesis-created",
+        FixtureName: FixtureName,
+        Threshold: 0.85,
+        FixedTurnSequences:
+        [
+            ["How do our credential-scoping decisions relate to the runtime-path decisions?"],
+        ],
+        ScorerId: "query-synthesis-created");
+
+    public static readonly QueryScenarioDefinition SynthesisDeclinedRoutine = new(
+        Id: "query-synthesis-declined-routine",
+        FixtureName: FixtureName,
+        Threshold: 0.90,
+        FixedTurnSequences:
+        [
+            ["What does the Credential Scoping page say about where the Anthropic API key is injected?"],
+        ],
+        ScorerId: "query-synthesis-declined-routine");
+
     public static readonly IReadOnlyList<QueryScenarioDefinition> All =
     [
         GroundingCovered,
         GroundingUncovered,
         FollowUp,
         ReadOnlyDecline,
+        SynthesisCreated,
+        SynthesisDeclinedRoutine,
     ];
 
     public static QueryScenarioDefinition? Find(string scenarioId)

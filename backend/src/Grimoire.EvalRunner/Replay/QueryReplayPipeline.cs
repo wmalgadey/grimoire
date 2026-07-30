@@ -127,7 +127,12 @@ public sealed class QueryReplayPipeline
         CancellationToken cancellationToken)
     {
         var turnSequence = scenario.ResolveTurnSequence(sampleNumber - 1);
-        var wikiRoot = _paths.FixtureWikiRoot(scenario.FixtureName);
+        var fixtureWikiRoot = _paths.FixtureWikiRoot(scenario.FixtureName);
+        // ADR-015 (012-query-synthesis-writes): same per-sample sandbox rationale as
+        // QueryCapturePipeline — replay must not run a write-capable scenario directly
+        // against the shared on-disk fixture either.
+        using var sandbox = QueryEvalSandbox.Create(fixtureWikiRoot, $"replay-{scenario.Id}-{sampleNumber:00}");
+        var wikiRoot = sandbox.WikiRoot;
         var priorTurns = new List<(string Prompt, string Answer)>();
 
         for (var turnPosition = 1; turnPosition <= turnSequence.Count; turnPosition++)
@@ -171,7 +176,7 @@ public sealed class QueryReplayPipeline
             var prompt = turnSequence[turnPosition - 1];
             var run = await _invoker.RunAsync(
                 entry.TaskId, wikiRoot, prompt, priorTurns, _paths,
-                AgentModelMode.Replay(recordingPath), ReplayTurnBudget, cancellationToken);
+                AgentModelMode.Replay(recordingPath), ReplayTurnBudget, sandbox.WriteLocksDir, cancellationToken);
 
             var mismatched = run.FailureReason?.Contains("replay_mismatch", StringComparison.Ordinal) == true
                 || run.StdErr.Contains("replay_mismatch", StringComparison.Ordinal);
@@ -194,7 +199,8 @@ public sealed class QueryReplayPipeline
                 continue;
             }
 
-            var score = QueryDeterministicScorers.Score(scenario.ScorerId, new QuerySampleRunData(run.Answer ?? string.Empty));
+            var score = QueryDeterministicScorers.Score(
+                scenario.ScorerId, new QuerySampleRunData(run.Answer ?? string.Empty, run.CreatedPages, wikiRoot));
             return Finish(new QueryReplaySampleResult(
                 scenario.Id, sampleNumber, entry.TaskId, TrustStatus.Trusted, manifest.Model, manifest.CapturedAt, recordingPath,
                 score.Pass, score.Checks, Detail: null),
