@@ -824,6 +824,26 @@ Task: "T021 EvalRunner scenario query-synthesis-declined-routine — SC-006"
 
 ---
 
+## Out-of-Band Fixes
+
+Small corrections discovered and applied during implementation that fall outside
+`plan.md`'s declared scope ("No frontend changes") but were low-risk and directly
+observed against the running feature — recorded here for traceability rather than
+silently folded into a Phase 3 commit.
+
+- [X] T051 Frontend: `frontend/src/lib/components/QueryConversation.svelte` — a
+  streaming Query answer is necessarily partial/unclosed markdown; rendering it
+  through the same `marked`+DOMPurify formatting pipeline as the finished answer,
+  at the same size/weight, made a still-forming answer look as authoritative as a
+  completed one and collapsed the model's own line breaks (single `\n` swallowed
+  by markdown paragraph handling). While `turn.state === 'running'`, render the
+  raw text (`white-space: pre-wrap`, smaller/muted styling) instead of parsing
+  it; switch to the existing formatted rendering once the turn is terminal.
+  Covered by the existing `QueryConversation.svelte.test.ts` suite (all 8 tests
+  still pass; text-content assertions are unaffected by the markup change).
+
+---
+
 ## Notes
 
 - [P] tasks = different files, no dependencies on incomplete tasks.
