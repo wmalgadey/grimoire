@@ -1,0 +1,68 @@
+{
+  "schema_version": 1,
+  "sample": 401,
+  "task_id": "capture-query-synthesis-declined-routine-04-t1-cf7ceae22d1a4c26949dcc18d96620f6",
+  "model": "claude-haiku-4-5",
+  "turns": [
+    {
+      "turn": 1,
+      "system_prompt_sha256": "sha256:86a115cc3936034a750584b63dbebff745858ea177eaa0a49f03bf1efa61fa17",
+      "conversation": [
+        {
+          "role": "user",
+          "content_sha256": "sha256:840f3335865c1d34631bf8dca8241dea0b6fdb2aa358a29f919b79548cd7658f"
+        }
+      ],
+      "tool_names": [
+        "list_files",
+        "read_file",
+        "write_file"
+      ],
+      "stop_reason": "tool_use",
+      "tool_uses": [
+        {
+          "tool_use_id": "toolu_01Ggq6fs9sWVSupyZdNnEPZ5",
+          "tool_name": "read_file",
+          "input_json": "{\u0022path\u0022: \u0022pages/credential-scoping.md\u0022}"
+        }
+      ],
+      "assistant_text": "I\u0027ll look up the Credential Scoping page to find information about where the Anthropic API key is injected.",
+      "input_tokens": 3677,
+      "output_tokens": 87
+    },
+    {
+      "turn": 2,
+      "system_prompt_sha256": "sha256:86a115cc3936034a750584b63dbebff745858ea177eaa0a49f03bf1efa61fa17",
+      "conversation": [
+        {
+          "role": "user",
+          "content_sha256": "sha256:840f3335865c1d34631bf8dca8241dea0b6fdb2aa358a29f919b79548cd7658f"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:09a1ee1c578c33baba65fe565085a8066effccc168f509f91c9058e5cac4d840"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:bedd023747260876ce949dd5058611ca28341303e5e8f90977edee4dd91e9179"
+        }
+      ],
+      "tool_names": [
+        "list_files",
+        "read_file",
+        "write_file"
+      ],
+      "stop_reason": "end_turn",
+      "tool_uses": [],
+      "assistant_text": "According to [[credential-scoping]], the Anthropic API key is **injected into the environment of the spawned child process immediately before that process starts**. \n\nSpecifically, the page explains that a local secrets loader reads the key from a git-ignored \u0060.env\u0060 file at startup and injects it directly into the environment of the Ingest agent child process. The Hub\u0027s own process environment is never mutated or holds the key itself. This same pattern also applies to the Query agent process\u2014it receives the credential injected into its own environment at spawn time, not inherited from the Hub.\n\nThe key point is that this scoping approach prevents a compromised Hub process from leaking the credential simply by inspecting its own environment variables, since the key only exists inside the short-lived child process that actually uses it.",
+      "input_tokens": 4027,
+      "output_tokens": 175
+    }
+  ],
+  "outcome": {
+    "status": "completed",
+    "checks": {
+      "no_page_created": true
+    }
+  }
+}
