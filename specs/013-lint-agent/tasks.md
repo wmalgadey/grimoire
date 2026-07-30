@@ -38,14 +38,19 @@ exists.
 
 **⚠️ NON-NEGOTIABLE**: No feature implementation can begin until Phase 0 is complete.
 
-- [ ] T001 Add `backend/tests/Grimoire.ArchTests/LintAgentGuardedWriteBoundaryRuleTests.cs`:
+- [X] T001 Add `backend/tests/Grimoire.ArchTests/LintAgentGuardedWriteBoundaryRuleTests.cs`:
   Mono.Cecil IL scan (same allow-listed-namespace idiom as
   `IngestAgentGuardedWriteBoundaryRuleTests`/`QueryAgentGuardedWriteBoundaryRuleTests`)
   asserting reachable filesystem-write API calls anywhere in the (not-yet-existing)
   `Grimoire.LintAgent` assembly are permitted only from
   `Grimoire.AgentRuntime.Guardrails` — every other type must show zero reachable write
   calls. Passes vacuously until T0xx creates the assembly.
-- [ ] T002 Red/Green probe for T001: once `Grimoire.LintAgent` exists (after T0xx
+  *Deviation: `Grimoire.LintAgent` exposes no public type (top-level-statement
+  `Program.cs` generates only an internal `Program` class), so the assembly is loaded
+  by simple name (`Assembly.Load("Grimoire.LintAgent")`) instead of
+  `typeof(...).Assembly` — the ArchTests project's own `ProjectReference` to
+  `Grimoire.LintAgent.csproj` puts it on the probing path regardless.*
+- [X] T002 Red/Green probe for T001: once `Grimoire.LintAgent` exists (after T0xx
   below creates the project skeleton — this probe task runs after that skeleton
   exists but BEFORE any real Lint behavior is implemented), add a scratch class
   calling `File.WriteAllText` directly, run `dotnet test backend/tests/Grimoire.ArchTests`
@@ -55,9 +60,9 @@ exists.
 
 **Definition of Done**:
 
-- [ ] Rule (T001) written and committed
-- [ ] Red/Green probe (T002) completed with commit message documenting the result
-- [ ] `Grimoire.ArchTests` passes in CI with no active violations (probe code removed)
+- [X] Rule (T001) written and committed
+- [X] Red/Green probe (T002) completed with commit message documenting the result
+- [X] `Grimoire.ArchTests` passes in CI with no active violations (probe code removed)
 
 **Checkpoint**: The write-boundary rule is live and proven to detect a real
 violation before any feature behavior exists.
@@ -66,9 +71,9 @@ violation before any feature behavior exists.
 
 ## Phase 1: Setup (Shared Infrastructure)
 
-- [ ] T003 Add `data/findings/` to `.gitignore` (ADR-003/ADR-009 pattern, next to
+- [X] T003 Add `data/findings/` to `.gitignore` (ADR-003/ADR-009 pattern, next to
   `data/write-locks/`).
-- [ ] T004 Create the `Grimoire.LintAgent` project skeleton
+- [X] T004 Create the `Grimoire.LintAgent` project skeleton
   (`backend/src/Grimoire.LintAgent/Grimoire.LintAgent.csproj`, empty `Program.cs`
   entry point, added to `backend/Grimoire.slnx`) — enough for T002's probe to target
   a real assembly, before any real Lint behavior exists.
