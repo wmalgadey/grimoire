@@ -749,7 +749,13 @@ unaffected.
   validate the metric/log event/span name, level, attributes, and parent/child
   linkage, including the `outcome=timeout` path (rig a held lock and a short
   backoff cap to force it).
-  *Added an optional `writeLockBackoffCap` constructor parameter to
+  *Filed as `QueryWriteLockObservabilityTests.cs` (class likewise), not
+  `WriteLockObservabilityTests.cs` as literally named above — it references
+  only Query-owned namespaces (`QueryToolCallInstrumentation`,
+  `QueryToolRegistry`, `QueryAgentTracing`), so the live ADR-013/N1
+  agent-artifact-naming rule (`AgentArtifactNamingRuleTests`) requires the
+  `Query` token; confirmed green against that rule after the rename.
+  Added an optional `writeLockBackoffCap` constructor parameter to
   `GuardedToolExecutor` (threaded into its `SharedFileWriteGuard`; `null` by
   production default, matching `CrossProcessFileLock.DefaultBackoffCap`) so
   the timeout path can be forced deterministically and quickly (200ms) rather

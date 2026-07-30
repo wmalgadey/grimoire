@@ -49,7 +49,7 @@ public interface IToolCallInstrumentation
     /// <c>*_agent.tool_call</c> span for this same write is, by the pre-existing
     /// RecordAllowed/RecordDenied contract, only created afterward once the write's final
     /// allow/deny decision is known, so it cannot yet be Activity.Current at acquisition
-    /// time; see <c>WriteLockObservabilityTests</c> for the documented parent-span note).
+    /// time; see <c>QueryWriteLockObservabilityTests</c> for the documented parent-span note).
     /// Default no-op (<c>null</c>): only agents that construct their
     /// <see cref="GuardedToolExecutor"/> with a <c>writeLocksDir</c> (i.e. actually
     /// participate in write coordination) ever call this.

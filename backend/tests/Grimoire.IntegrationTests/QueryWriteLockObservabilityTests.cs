@@ -17,7 +17,7 @@ namespace Grimoire.IntegrationTests;
 /// and the <c>wiki.write_lock.timeout</c> WARN log event (T042), for both the ordinary
 /// acquired path and the timed-out path.
 /// </summary>
-public class WriteLockObservabilityTests
+public class QueryWriteLockObservabilityTests
 {
     [Fact]
     public async Task SuccessfulAcquisition_EmitsAcquiredMetricAndSpan_NestedUnderTheAmbientActivity_NoTimeoutLogEvent()
@@ -223,7 +223,7 @@ public class WriteLockObservabilityTests
         return (counterMeasurements, histogramMeasurements);
     }
 
-    private static (GuardedToolExecutor Executor, CaptureLogger<WriteLockObservabilityTests> Logger, string PagesDir, string IndexPath)
+    private static (GuardedToolExecutor Executor, CaptureLogger<QueryWriteLockObservabilityTests> Logger, string PagesDir, string IndexPath)
         BuildExecutor(string root, string taskId, TimeSpan? writeLockBackoffCap = null)
     {
         var wikiRoot = Path.Combine(root, "wiki");
@@ -240,7 +240,7 @@ public class WriteLockObservabilityTests
                 new WriteRule(Path.Combine(wikiRoot, "index.md"), CreateOnly: false),
             ]);
 
-        var logger = new CaptureLogger<WriteLockObservabilityTests>();
+        var logger = new CaptureLogger<QueryWriteLockObservabilityTests>();
         var journal = new WriteJournal();
         var executor = new GuardedToolExecutor(
             policy,
