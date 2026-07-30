@@ -7,8 +7,18 @@ namespace Grimoire.EvalRunner.Scoring;
 /// structured parser exists for the Findings Report format (contracts/
 /// findings-report-format.md's "Parsing" section) — scorers read the raw text, per
 /// T017/T018's "lightweight text/wikilink matching ... no structured parser needed".
+/// <paramref name="WikiRoot"/> is the sandbox wiki root a run executed against — T033's
+/// inbound-link scorer needs it to recompute the true link graph and inspect each page's
+/// post-run frontmatter, mirroring <c>QuerySampleRunData.WikiRoot</c>'s reason for
+/// existing (a scorer that must look beyond the narrative at the mutated wiki state).
 /// </summary>
-public sealed record LintSampleRunData(string Narrative);
+public sealed record LintSampleRunData(string Narrative, string WikiRoot)
+{
+    /// <summary>Convenience constructor for scorers that only need the narrative (SC-005/SC-006/SC-007).</summary>
+    public LintSampleRunData(string narrative) : this(narrative, string.Empty)
+    {
+    }
+}
 
 /// <summary>
 /// The deterministic per-sample checks for the two Lint eval scenarios (013-lint-agent
@@ -25,6 +35,8 @@ public static class LintDeterministicScorers
         {
             "lint-defects-found" => DefectsFound(run),
             "lint-genuine-findings" => GenuineFindings(run),
+            "lint-metadata-proposals" => MetadataProposals(run),
+            "lint-inbound-links-refreshed" => InboundLinksRefreshed(run),
             _ => throw new InvalidOperationException($"Unknown Lint scorer '{scorerId}'."),
         };
 
@@ -109,6 +121,120 @@ public static class LintDeterministicScorers
 
     private static bool MentionsAny(string narrative, params string[] pageSlugs)
         => pageSlugs.Any(slug => Mentions(narrative, slug));
+
+    /// <summary>
+    /// T032 (SC-007, ≥ 90% tag-taxonomy conformance / ≥ 90% confidence-convention
+    /// conformance): a proxy check over the narrative text, since — like
+    /// <see cref="GenuineFindings"/> — no structured parser extracts an individual
+    /// proposal's tag/confidence value. Checks that the narrative both names each seeded
+    /// metadata-hygiene defect page (<c>undertagged-topic</c>/<c>unscored-topic</c>, from
+    /// <see cref="Scenarios.LintScenarioDefinitions.SeededDefectsFixtureName"/>) and, near
+    /// it, proposes something shaped like a real tag-taxonomy entry
+    /// (<c>agents/ingest/system-prompt.md</c>'s namespaced prefixes) or a real confidence
+    /// level (<c>high</c>/<c>medium</c>/<c>low</c>) — the taxonomy/formula's own content
+    /// is never re-implemented here (Constitution Principle V): this only recognizes the
+    /// convention's shape in already-agent-authored text.
+    /// </summary>
+    private static SampleScore MetadataProposals(LintSampleRunData run)
+    {
+        var narrative = run.Narrative;
+
+        var mentionsUndertaggedPage = Mentions(narrative, "undertagged-topic");
+        var proposesTaxonomyConformingTag = TagTaxonomyPrefixes.Any(
+            prefix => narrative.Contains(prefix, StringComparison.OrdinalIgnoreCase));
+
+        var mentionsUnscoredPage = Mentions(narrative, "unscored-topic");
+        var proposesConfidenceLevel = ConfidenceLevels.Any(level => System.Text.RegularExpressions.Regex.IsMatch(
+            narrative, $@"\b{level}\b", System.Text.RegularExpressions.RegexOptions.IgnoreCase));
+
+        var checks = new Dictionary<string, bool>
+        {
+            ["mentions_undertagged_page"] = mentionsUndertaggedPage,
+            ["proposes_taxonomy_conforming_tag"] = proposesTaxonomyConformingTag,
+            ["mentions_unscored_page"] = mentionsUnscoredPage,
+            ["proposes_confidence_level"] = proposesConfidenceLevel,
+        };
+
+        var pass = mentionsUndertaggedPage && proposesTaxonomyConformingTag
+            && mentionsUnscoredPage && proposesConfidenceLevel;
+
+        return new SampleScore(pass, false, checks);
+    }
+
+    private static readonly string[] TagTaxonomyPrefixes =
+        ["person/", "company/", "tech/", "pattern/", "concept/", "source-type/"];
+
+    private static readonly string[] ConfidenceLevels = ["high", "medium", "low"];
+
+    /// <summary>
+    /// T033 (SC-008, ≥ 95% accurate inbound-link counts): a fully mechanical recomputation
+    /// — never a judgment about wiki content (Constitution Principle V) — of the true
+    /// <c>[[wikilink]]</c> graph across every post-run page plus <c>index.md</c>/
+    /// <c>log.md</c>, compared against each page's own recorded <c>inbound_links</c>
+    /// frontmatter value. Requires <see cref="LintSampleRunData.WikiRoot"/> (the sandbox
+    /// the sampled run actually executed against) — unscoreable without it.
+    /// </summary>
+    private static SampleScore InboundLinksRefreshed(LintSampleRunData run)
+    {
+        if (string.IsNullOrEmpty(run.WikiRoot) || !Directory.Exists(run.WikiRoot))
+        {
+            return new SampleScore(false, false, new Dictionary<string, bool> { ["wiki_root_available"] = false });
+        }
+
+        var pagesDir = Path.Combine(run.WikiRoot, "pages");
+        var pageFiles = Directory.Exists(pagesDir)
+            ? Directory.GetFiles(pagesDir, "*.md", SearchOption.AllDirectories)
+            : [];
+
+        var sources = new List<string>(pageFiles);
+        foreach (var sideFile in new[] { "index.md", "log.md" })
+        {
+            var sidePath = Path.Combine(run.WikiRoot, sideFile);
+            if (File.Exists(sidePath))
+            {
+                sources.Add(sidePath);
+            }
+        }
+
+        var trueInboundCounts = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+        foreach (var source in sources)
+        {
+            var sourceSlug = Path.GetFileNameWithoutExtension(source);
+            var content = File.ReadAllText(source);
+            foreach (System.Text.RegularExpressions.Match match in WikilinkPattern.Matches(content))
+            {
+                var targetSlug = match.Groups[1].Value.Split('/')[^1];
+                if (string.Equals(targetSlug, sourceSlug, StringComparison.OrdinalIgnoreCase))
+                {
+                    continue; // A page never counts its own self-reference (system-prompt.md: "other pages").
+                }
+
+                trueInboundCounts[targetSlug] = trueInboundCounts.GetValueOrDefault(targetSlug) + 1;
+            }
+        }
+
+        var checks = new Dictionary<string, bool>();
+        foreach (var pageFile in pageFiles)
+        {
+            var slug = Path.GetFileNameWithoutExtension(pageFile);
+            var content = File.ReadAllText(pageFile);
+            var recordedMatch = InboundLinksFieldPattern.Match(content);
+            var recorded = recordedMatch.Success ? int.Parse(recordedMatch.Groups[1].Value) : (int?)null;
+            var expected = trueInboundCounts.GetValueOrDefault(slug);
+
+            checks[$"{slug}_inbound_links_accurate"] = recorded == expected;
+        }
+
+        var pass = checks.Count > 0 && checks.Values.All(v => v);
+        return new SampleScore(pass, false, checks);
+    }
+
+    private static readonly System.Text.RegularExpressions.Regex WikilinkPattern =
+        new(@"\[\[([a-zA-Z0-9/_-]+)\]\]", System.Text.RegularExpressions.RegexOptions.Compiled);
+
+    private static readonly System.Text.RegularExpressions.Regex InboundLinksFieldPattern =
+        new(@"^inbound_links:\s*(\d+)\s*$",
+            System.Text.RegularExpressions.RegexOptions.Compiled | System.Text.RegularExpressions.RegexOptions.Multiline);
 
     /// <summary>
     /// Heuristic only: a genuinely hallucinated page reference cannot be enumerated in

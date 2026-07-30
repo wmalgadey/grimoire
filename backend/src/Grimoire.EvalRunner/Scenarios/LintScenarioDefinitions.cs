@@ -39,6 +39,16 @@ public static class LintScenarioDefinitions
 {
     public const string SeededDefectsFixtureName = "lint-seeded-defects";
 
+    /// <summary>
+    /// T032 (013-lint-agent, US2): a dedicated fixture with a known cross-link graph and
+    /// deliberately stale recorded <c>inbound_links</c> counts
+    /// (<c>backend/tests/Grimoire.AgentEvals/Fixtures/lint-inbound-links-fixture/wiki/</c>)
+    /// — three pages (<c>hub-page</c>, <c>spoke-a</c>, <c>spoke-b</c>) whose true
+    /// inbound-link counts (3/2/1) are mechanically computable from <c>index.md</c> and
+    /// each page's own body, every one of them recorded wrong on disk before a run.
+    /// </summary>
+    public const string InboundLinksFixtureName = "lint-inbound-links-fixture";
+
     /// <summary>SC-005: ≥ 85% of seeded defects found, per category.</summary>
     public static readonly LintScenarioDefinition DefectsFound = new(
         Id: "lint-defects-found",
@@ -53,7 +63,30 @@ public static class LintScenarioDefinitions
         Threshold: 0.90,
         ScorerId: "lint-genuine-findings");
 
-    public static readonly IReadOnlyList<LintScenarioDefinition> All = [DefectsFound, GenuineFindings];
+    /// <summary>
+    /// T032: SC-007 — ≥ 90% of sampled tag proposals conform to the tag taxonomy, and
+    /// ≥ 90% of sampled confidence proposals conform to the confidence-scoring
+    /// convention. Reuses <see cref="SeededDefectsFixtureName"/>'s <c>undertagged-topic</c>
+    /// (missing tags) and <c>unscored-topic</c> (missing confidence) pages.
+    /// </summary>
+    public static readonly LintScenarioDefinition MetadataProposals = new(
+        Id: "lint-metadata-proposals",
+        FixtureName: SeededDefectsFixtureName,
+        Threshold: 0.90,
+        ScorerId: "lint-metadata-proposals");
+
+    /// <summary>
+    /// T033: SC-008 — ≥ 95% of sampled pages have an accurate inbound-link count after a
+    /// run, scored against <see cref="InboundLinksFixtureName"/>'s known graph.
+    /// </summary>
+    public static readonly LintScenarioDefinition InboundLinksRefreshed = new(
+        Id: "lint-inbound-links-refreshed",
+        FixtureName: InboundLinksFixtureName,
+        Threshold: 0.95,
+        ScorerId: "lint-inbound-links-refreshed");
+
+    public static readonly IReadOnlyList<LintScenarioDefinition> All =
+        [DefectsFound, GenuineFindings, MetadataProposals, InboundLinksRefreshed];
 
     public static LintScenarioDefinition? Find(string scenarioId)
         => All.FirstOrDefault(s => string.Equals(s.Id, scenarioId, StringComparison.OrdinalIgnoreCase));
