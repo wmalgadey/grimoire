@@ -1,10 +1,14 @@
 {
-  "version": 1,
+  "version": 2,
   "defaultDecision": "deny",
   "read": [
     { "pathPrefix": "pages/" },
     { "pathPrefix": "index.md" },
     { "pathPrefix": "log.md" }
   ],
-  "write": []
+  "write": [
+    { "pathPrefix": "pages/", "mode": "create-only" },
+    { "pathPrefix": "index.md" },
+    { "pathPrefix": "log.md" }
+  ]
 }

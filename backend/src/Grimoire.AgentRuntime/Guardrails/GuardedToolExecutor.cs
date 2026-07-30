@@ -29,6 +29,7 @@ public sealed class GuardedToolExecutor
     private readonly SharedFileWriteGuard? _writeGuard;
     private readonly List<DeniedActionRecord> _denials = [];
     private readonly List<string> _touchedPaths = [];
+    private readonly List<string> _createdPaths = [];
 
     /// <param name="writeLocksDir">
     /// ADR-015: base directory for cross-process write-coordination lock files. When
@@ -61,6 +62,16 @@ public sealed class GuardedToolExecutor
 
     /// <summary>All file paths successfully written during the run so far.</summary>
     public IReadOnlyList<string> TouchedPaths => _touchedPaths;
+
+    /// <summary>
+    /// ADR-015 (012-query-synthesis-writes): the subset of <see cref="TouchedPaths"/>
+    /// whose matched write rule was <c>create-only</c> — i.e. pages newly created this
+    /// run (as opposed to `index.md`/`log.md` appends, which are plain <c>read-write</c>
+    /// targets). This is the harness-reported source for
+    /// <see cref="Grimoire.AgentRuntime.RunEvents.RunCompletionMetadata.CreatedArtifacts"/>: mechanical, from
+    /// the run's own journal — no judgment about page content (Constitution Principle V).
+    /// </summary>
+    public IReadOnlyList<string> CreatedPaths => _createdPaths;
 
     /// <summary>
     /// Executes one tool call, applying policy, journaling, and telemetry.
@@ -246,6 +257,15 @@ public sealed class GuardedToolExecutor
         // 5. Record touched path, emit telemetry.
         _touchedPaths.Add(canonical);
         _instrumentation.RecordAllowed(_taskId, ToolRegistry.WriteFile, canonical, turn);
+
+        // ADR-015: a create-only write that reaches here has succeeded — this run created
+        // a brand-new page (the existence check in step "guardDecision" above already
+        // ruled out an overwrite). Mechanical bookkeeping only; no content judgment.
+        if (policyResult.IsCreateOnly)
+        {
+            _createdPaths.Add(canonical);
+            _instrumentation.RecordCreateOnlyWriteSucceeded(_taskId, canonical, turn);
+        }
 
         return new ToolExecutionResult(false, $"Written: {relativePath}");
     }

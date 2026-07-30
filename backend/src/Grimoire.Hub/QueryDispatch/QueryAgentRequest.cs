@@ -19,4 +19,9 @@ public sealed record QueryAgentRequest(
     string IndexPath,
     string LogPath,
     string SystemPromptPath,
-    string PolicyPath);
+    string PolicyPath,
+    // ADR-015 (012-query-synthesis-writes): the cross-process write-coordination lock
+    // directory (contracts/query-write-scope-and-coordination.md §4), supplied the same
+    // way as WikiRoot/PolicyPath — a single Hub-resolved composition point
+    // (ResolvedGrimoirePaths.WriteLocksDir, ADR-009), not agent-discovered.
+    string WriteLocksDir);

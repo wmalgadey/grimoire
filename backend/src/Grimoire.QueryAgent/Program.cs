@@ -77,6 +77,7 @@ static QueryCliOptions ReadCliOptions(string[] args)
         LogPath: reader.GetRequired("--log-path"),
         SystemPromptPath: reader.GetRequired("--system-prompt-path"),
         PolicyPath: reader.GetRequired("--policy-path"),
+        WriteLocksDir: reader.GetRequired("--write-locks-dir"),
         HeartbeatSeconds: reader.GetHeartbeatSeconds());
 }
 
@@ -150,7 +151,8 @@ internal sealed class QueryIntentHandler : IAgentIntentHandler
             _options.WikiRoot,
             taskId: _options.TurnId,
             registry: _profile.ToolRegistry,
-            instrumentation: new QueryToolCallInstrumentation(_loggerFactory.CreateLogger<GuardedToolExecutor>()));
+            instrumentation: new QueryToolCallInstrumentation(_loggerFactory.CreateLogger<GuardedToolExecutor>()),
+            writeLocksDir: _options.WriteLocksDir);
 
         var loop = new AgentLoop(
             modelClient,
@@ -179,7 +181,8 @@ internal sealed class QueryIntentHandler : IAgentIntentHandler
             PolicySha256: instructions.Policy.Identity.Sha256,
             Model: modelClient.ModelId,
             TurnsUsed: result.TurnsUsed,
-            DeniedActions: executor.Denials));
+            DeniedActions: executor.Denials,
+            CreatedArtifacts: executor.CreatedPaths));
         return 0;
     }
 

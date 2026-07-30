@@ -16,10 +16,17 @@ public static class QueryAgentMetrics
         Meter.CreateCounter<long>("query.tool_calls_total",
             description: "Guarded tool calls dispatched by the Query agent");
 
+    /// <summary>ADR-015 (012-query-synthesis-writes): plan.md ## Observability > Business Metrics.</summary>
+    private static readonly Counter<long> _synthesisPagesCreatedTotal =
+        Meter.CreateCounter<long>("wiki.query.synthesis_pages_created_total",
+            description: "Synthesis Pages successfully created by a Query turn");
+
     public static void RecordToolCall(string tool, string decision)
     {
         _toolCallsTotal.Add(1,
             new KeyValuePair<string, object?>("tool", tool),
             new KeyValuePair<string, object?>("decision", decision));
     }
+
+    public static void RecordSynthesisPageCreated() => _synthesisPagesCreatedTotal.Add(1);
 }

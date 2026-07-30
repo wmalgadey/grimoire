@@ -69,4 +69,12 @@ public sealed class QueryToolCallInstrumentation : IToolCallInstrumentation
         QueryAgentMetrics.RecordToolCall(tool, "denied");
         QueryAgentLogEvents.LogToolDenied(_logger, taskId, tool, canonicalTarget, reason, turn);
     }
+
+    /// <summary>ADR-015 (012-query-synthesis-writes): emits the metric + log event pair for a
+    /// successful create-only write (a new Synthesis Page).</summary>
+    public void RecordCreateOnlyWriteSucceeded(string taskId, string path, int turn)
+    {
+        QueryAgentMetrics.RecordSynthesisPageCreated();
+        QueryAgentLogEvents.LogSynthesisPageCreated(_logger, taskId, path, turn);
+    }
 }
