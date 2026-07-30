@@ -910,9 +910,54 @@ gates the DoD.
   Re-ran `Grimoire.IntegrationTests` alone immediately after: 339/339 green,
   confirming it is the documented flake recurring, not a regression from this
   session's work.*
-- [ ] T050 Run `specs/012-query-synthesis-writes/quickstart.md` scenarios 1–4
+- [X] T050 Run `specs/012-query-synthesis-writes/quickstart.md` scenarios 1–4
   plus its Observability check against a live local Hub (manual validation,
   requires an API key), and record the outcome in the task close-out.
+  *Built a minimal base-dir (wiki = the `query-grounding` eval fixture's 3
+  pages; `data/agents/{ingest,query}` = the repo's real instruction/policy
+  files; `data/.env` = the same live credential) and ran the real
+  `Grimoire.Hub` (`dotnet run --project backend/src/Grimoire.Hub --
+  --base-dir <fixture> --agent-worker <IngestAgent.csproj>
+  --query-agent-worker <QueryAgent.csproj> --urls http://localhost:5299`),
+  driving it via `curl` against its real HTTP API (no browser in this
+  environment, per the task's own "curl-only equivalent" allowance).
+  **Scenario 1** (US1/SC-002): asked the spec's own worked example
+  ("How do our credential-scoping decisions relate to the runtime-path
+  decisions?"); independently inspected (not just relayed) the result —
+  `pages/concepts/single-composition-point.md` created with complete
+  frontmatter (type, title, description, tags incl. `source-type/synthesis`,
+  confidence + confidence_reason, review_date) and body links to both
+  `[[credential-scoping]]` and `[[runtime-paths]]`; `index.md`/`log.md` both
+  gained a matching entry; the Conversation Record's `created_pages:` listed
+  the page and the answer named it. Matches quickstart's expected outcome
+  exactly. **Scenario 2** (US2/SC-001/SC-008): asked the agent to "fix the
+  typo you noticed on the Credential Scoping page and save the correction
+  directly" — the agent declined in prose ("I need to decline this request
+  ... I cannot modify, fix, or change any page that already exists"),
+  attempted no write at all (`denied_actions: []`, 1 model turn), and
+  `pages/credential-scoping.md` is byte-identical to before. **Scenario 3**
+  (US3/SC-003): fired two genuinely concurrent live Query turns (both HTTP
+  POSTs landed in the same millisecond, confirmed overlapping wall-clock
+  execution — turn B completed at 11:49:01 while turn A was still running
+  until 11:49:27) against two different synthesis-eliciting prompts, both
+  contending on the same `index.md`/`log.md`. Turn A found a genuine
+  cross-page synthesis and created `pages/concepts/composition-point-and-
+  rollback.md`; turn B correctly judged its prompt held no genuinely new,
+  documented insight and created nothing — a live demonstration of the
+  Synthesis Decision working both ways under real concurrency. `index.md`
+  ended with all 5 expected entries and `log.md` with both synthesis lines;
+  no lost update, no interleaved/corrupted entry, both turns' `denied_actions:
+  []`. **Scenario 4** (SC-004): re-ran the exact two filtered commands from
+  quickstart.md — `--filter FullyQualifiedName~GuardedWriteBoundary` (2/2
+  passed) and `--filter FullyQualifiedName~Coordination` (2/2 passed).
+  **Observability check**: not visually confirmed — this headless environment
+  has no Aspire Dashboard/OTLP collector running (quickstart.md's own stated
+  prerequisite), and `Grimoire.AgentRuntime`'s telemetry bootstrap exports
+  only via OTLP (no console exporter) — there was nothing local to inspect.
+  The underlying signals are already proven correct by the deterministic
+  tests this session confirmed green (T028/T029, T034/T035, T042/T043); this
+  gap is an environment limitation, not a functional gap. Hub process stopped
+  cleanly afterward; port 5299 confirmed free.*
 
 ---
 
