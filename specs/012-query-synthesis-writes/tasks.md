@@ -41,7 +41,7 @@ code exists. This phase is first, non-negotiable, and blocks everything else.
 **⚠️ NON-NEGOTIABLE**: No feature implementation can begin until Phase 0 is
 complete.
 
-- [ ] T001 Rewrite `backend/tests/Grimoire.ArchTests/QueryAgentGuardedWriteBoundaryRuleTests.cs`
+- [X] T001 Rewrite `backend/tests/Grimoire.ArchTests/QueryAgentGuardedWriteBoundaryRuleTests.cs`
   from its current "zero reachable writes anywhere" assertion to the
   allow-listed-namespace shape already used by
   `IngestAgentGuardedWriteBoundaryRuleTests.cs` (Mono.Cecil IL scan): reachable
@@ -52,33 +52,52 @@ complete.
   reachable write calls. At this point in Phase 0 the rule fails vacuously green
   (no write tool wired in yet) — that is expected; T002's probe proves it detects
   a real violation.
-- [ ] T002 Add new `backend/tests/Grimoire.ArchTests/GuardrailsCoordinationContainmentRuleTests.cs`:
+  *Implemented also scanning `Grimoire.AgentRuntime` (mirroring Ingest's
+  dual-assembly scan exactly) and kept the existing `Adapters.Replay`
+  eval-capture exemption both rules already share — otherwise the rule
+  false-positived on `RecordingSerialization.Save`.*
+- [X] T002 Add new `backend/tests/Grimoire.ArchTests/GuardrailsCoordinationContainmentRuleTests.cs`:
   types under `Grimoire.AgentRuntime.Guardrails.Coordination` are constructed only
   from `Grimoire.AgentRuntime.Guardrails.GuardedToolExecutor` (or other types
   within `Grimoire.AgentRuntime.Guardrails` itself) — no other namespace may
   reference the coordination types (ADR-010/ADR-013 namespace-containment idiom).
   The namespace does not exist yet, so this rule also passes vacuously until
   T014 introduces it.
-- [ ] T003 Red/Green probe for T001: add a scratch class
+- [X] T003 Red/Green probe for T001: add a scratch class
   `Grimoire.QueryAgent.RedGreenProbeScratch` calling `File.WriteAllText` directly
   (outside the allow-list), run `dotnet test backend/tests/Grimoire.ArchTests` —
   T001's rule MUST fail naming the scratch type; delete the scratch class, run
   again — it MUST pass. Commit message documents the probe result (exact
   violation name, pass count before/after).
-- [ ] T004 Red/Green probe for T002: add a scratch class outside
+  *Probe executed 2026-07-30: Red — scratch class
+  `Grimoire.QueryAgent.RedGreenProbeScratch.WriteSomething` calling
+  `File.WriteAllText` made the rule fail naming
+  `Grimoire.QueryAgent.RedGreenProbeScratch.WriteSomething [Grimoire.QueryAgent]
+  → System.IO.File::WriteAllText`; Green — scratch deleted, full
+  `Grimoire.ArchTests` suite passed 44/44.*
+- [X] T004 Red/Green probe for T002: add a scratch class outside
   `Grimoire.AgentRuntime.Guardrails` (e.g. in `Grimoire.QueryAgent`) that
   `new`s up a scratch type placed under
   `Grimoire.AgentRuntime.Guardrails.Coordination` for the purpose of this probe,
   run the ArchTests — T002's rule MUST fail naming the offending call site;
   delete both scratch types, run again — it MUST pass. Commit message documents
   the probe result.
+  *Probe executed 2026-07-30: Red — scratch type
+  `Grimoire.AgentRuntime.Guardrails.Coordination.RedGreenProbeScratchCoordinationType`
+  constructed from `Grimoire.QueryAgent.RedGreenProbeScratch.ConstructCoordinationTypeFromDisallowedNamespace`
+  made the rule fail naming `Grimoire.QueryAgent:
+  Grimoire.QueryAgent.RedGreenProbeScratch.ConstructCoordinationTypeFromDisallowedNamespace
+  [Grimoire.QueryAgent] →
+  Grimoire.AgentRuntime.Guardrails.Coordination.RedGreenProbeScratchCoordinationType::.ctor`;
+  Green — both scratch types deleted, full `Grimoire.ArchTests` suite passed
+  44/44.*
 
 **Definition of Done**:
 
-- [ ] Rules (T001, T002) written and committed
-- [ ] Both Red/Green probes (T003, T004) completed with commit messages
+- [X] Rules (T001, T002) written and committed
+- [X] Both Red/Green probes (T003, T004) completed with commit messages
   documenting the result
-- [ ] `Grimoire.ArchTests` passes in CI with no active violations (probe code
+- [X] `Grimoire.ArchTests` passes in CI with no active violations (probe code
   removed)
 
 **Checkpoint**: Both write-boundary rules are live and proven to detect real
@@ -91,7 +110,7 @@ violations before any feature code exists.
 **Purpose**: Minimal repo plumbing for the new runtime location. No new
 projects, packages, or infrastructure are needed (plan.md Technical Context).
 
-- [ ] T005 Add `data/write-locks/` to `.gitignore` (ADR-003/ADR-009 pattern,
+- [X] T005 Add `data/write-locks/` to `.gitignore` (ADR-003/ADR-009 pattern,
   next to `data/conversations/`).
 
 **Checkpoint**: Runtime location is ignored; foundational work can begin.
@@ -108,7 +127,7 @@ tool in.
 
 **⚠️ CRITICAL**: No user story work can begin until this phase is complete.
 
-- [ ] T006 Extend `backend/src/Grimoire.Hub/Runtime/Paths/GrimoirePathOptions.cs`
+- [X] T006 Extend `backend/src/Grimoire.Hub/Runtime/Paths/GrimoirePathOptions.cs`
   (add `WriteLocksDir` property + `DefaultWriteLocksDirName = "write-locks"`),
   `GrimoirePathResolver.cs` (resolve beneath `DataDir`, report as
   `write_locks_dir`, auto-create as `PathLocationKind.WritableData`),
@@ -116,41 +135,53 @@ tool in.
   `backend/src/Grimoire.Hub/Program.cs` (add `"--write-locks-dir"` CLI mapping
   passed to both spawned agent processes, mirroring `--wiki-root`) — single
   composition point, ADR-009, no ambient discovery.
-- [ ] T007 [P] Integration tests
+  *Scoped to the Hub-side composition point only, per the Phase 2 checkpoint's
+  "no observed behavior change" guarantee: `Program.cs`'s change is the
+  `--write-locks-dir` switch-mapping entry (so the Hub can resolve/report/
+  auto-create the location), not the `AgentProcessHost`/`*AgentRequest`
+  argument plumbing that actually passes it to a spawned child process — that
+  wiring is Phase 3 (Query, alongside `write_file` registration) and Phase 5
+  (Ingest, T041), where it has an observable effect worth testing end-to-end.*
+- [X] T007 [P] Integration tests
   `backend/tests/Grimoire.IntegrationTests/PathConfiguration/WriteLocksPathTests.cs`:
   `write_locks_dir` resolves beneath `data/` under default layout, honors
   explicit `--write-locks-dir`/env-var overrides with correct source reporting,
   and is auto-created — mirrors the existing `conversations_dir` cases.
-- [ ] T008 Extend `backend/src/Grimoire.Domain/Guardrails/PolicyDecision.cs`
+- [X] T008 Extend `backend/src/Grimoire.Domain/Guardrails/PolicyDecision.cs`
   (`Allow()` gains an `IsCreateOnly` parameter, default `false`) and
   `backend/src/Grimoire.Domain/Guardrails/SafetyPolicy.cs` (write-rule storage
   becomes a list of `(string prefix, bool createOnly)` instead of plain strings;
   `Evaluate` returns `PolicyDecision.Allow(isCreateOnly: matchedRule.CreateOnly)`
   on a write-scope match). Read-scope evaluation is unchanged.
-- [ ] T009 [P] Unit tests `backend/tests/Grimoire.Domain.UnitTests/SafetyPolicyModeTests.cs`:
+  *Implemented as a new `WriteRule(Prefix, CreateOnly)` value type plus a new
+  `SafetyPolicy(root, readPrefixes, IReadOnlyList<WriteRule>)` constructor
+  overload; the original `IReadOnlyList<string> writePrefixes` constructor is
+  kept (delegates to all-`CreateOnly:false` rules) so the ~13 pre-existing
+  call sites across `Grimoire.IntegrationTests` needed no changes.*
+- [X] T009 [P] Unit tests `backend/tests/Grimoire.Domain.UnitTests/SafetyPolicyModeTests.cs`:
   a create-only write rule surfaces `IsCreateOnly = true` on allow; a plain
   (mode-absent) write rule surfaces `IsCreateOnly = false`; read-scope decisions
   never carry the flag; traversal/no-rule/out-of-scope denials unchanged.
-- [ ] T010 Extend `backend/src/Grimoire.AgentRuntime/Instructions/PolicyLoader.cs`:
+- [X] T010 Extend `backend/src/Grimoire.AgentRuntime/Instructions/PolicyLoader.cs`:
   `PolicyRuleSchema` gains an optional `Mode` string property; recognized values
   `"read-write"` (or absent) and `"create-only"`; any other value is a
   `PolicyLoadFailure` (fail-closed, matching the existing `defaultDecision`
   strictness); `ResolveAndNormalize` for write rules carries the parsed mode
   through into the `SafetyPolicy` constructor from T008.
-- [ ] T011 [P] Integration tests `backend/tests/Grimoire.IntegrationTests/PolicyLoaderModeTests.cs`:
+- [X] T011 [P] Integration tests `backend/tests/Grimoire.IntegrationTests/PolicyLoaderModeTests.cs`:
   loading a policy with `"mode": "create-only"` produces a policy whose
   write-scope `Evaluate` returns `IsCreateOnly = true` for a matching path; mode
   absent defaults to `false`; `"mode": "bogus"` fails closed with a clear reason;
   existing `data/agents/ingest/policy.json` (no `mode` field anywhere) still
   loads byte-for-byte identically to today.
-- [ ] T012 Implement `backend/src/Grimoire.AgentRuntime/Guardrails/Coordination/CrossProcessFileLock.cs`:
+- [X] T012 Implement `backend/src/Grimoire.AgentRuntime/Guardrails/Coordination/CrossProcessFileLock.cs`:
   static helper acquiring an OS-level exclusive lock (`FileStream` with
   `FileShare.None`) on a lock file at `<writeLocksDir>/<sha256(canonicalPath)>.lock`
   (creating `writeLocksDir` if missing), with bounded-backoff polling (default
   cap 5000 ms, short exponential backoff per attempt, both configurable), and a
   releasable handle disposed in the caller's `finally`. Times out returning a
   `false`/failure result rather than throwing or blocking indefinitely.
-- [ ] T013 [P] Integration tests `backend/tests/Grimoire.IntegrationTests/CrossProcessFileLockTests.cs`:
+- [X] T013 [P] Integration tests `backend/tests/Grimoire.IntegrationTests/CrossProcessFileLockTests.cs`:
   a second acquisition attempt on the same canonical path blocks/fails while the
   first holder has it open, and succeeds immediately after release; two
   **separate real processes** (spawn a tiny test-harness console entry point
@@ -160,7 +191,14 @@ tool in.
   process is killed outright is acquirable by a new attempt (OS releases on
   process exit); acquisition past the backoff cap returns the timeout result
   within a bounded wall-clock window.
-- [ ] T014 Implement `backend/src/Grimoire.AgentRuntime/Guardrails/Coordination/SharedFileWriteGuard.cs`:
+  *New `backend/tests/Grimoire.WriteLockTestHarness` console project (added to
+  `backend/Grimoire.slnx`, referenced from `Grimoire.IntegrationTests` so its
+  built DLL lands in the test output dir) is the "tiny test-harness console
+  entry point": `lock-probe <writeLocksDir> <targetPath> <backoffCapMs>
+  <holdMs>`, spawned via `dotnet <dll> ...`. Run on macOS/Darwin: all 5 tests
+  passed, confirming `FileStream`+`FileShare.None` provides genuine
+  cross-process exclusion on this platform.*
+- [X] T014 Implement `backend/src/Grimoire.AgentRuntime/Guardrails/Coordination/SharedFileWriteGuard.cs`:
   per-run instance (same lifecycle as `WriteJournal`) holding an in-memory
   `Dictionary<string,string> _readHashes`; `OnReadFile(canonicalPath, content)`
   records `SHA256(content)`; `EvaluateWriteAsync(canonicalPath, isCreateOnly,
@@ -173,7 +211,7 @@ tool in.
   content)` to update `_readHashes` before the guard releases the lock). Lock
   timeout → deny `write_coordination_timeout`. This is the type T002's
   containment rule targets.
-- [ ] T015 [P] Unit/integration tests
+- [X] T015 [P] Unit/integration tests
   `backend/tests/Grimoire.IntegrationTests/SharedFileWriteGuardTests.cs`: a
   create-only write to a non-existent path allows; to an existing path denies
   `create_only_target_exists`; a read-write write to a path this run never read
@@ -182,7 +220,13 @@ tool in.
   this run read, modified on disk by a concurrent writer since, denies
   `write_conflict_stale_read`; a run's second write to a path it created itself
   earlier in the same run allows (`OnWriteCommitted` updates the baseline).
-- [ ] T016 Extend `backend/src/Grimoire.AgentRuntime/Guardrails/DeniedActionRecord.cs`
+  *Also added an explicit test for the "existing path this run never read"
+  case (not enumerated above but directly implied by the algorithm in
+  contracts/query-write-scope-and-coordination.md §3): denies
+  `write_conflict_stale_read` — there is no baseline to safely compare
+  against, so the guard fails closed rather than silently allowing a blind
+  overwrite.*
+- [X] T016 Extend `backend/src/Grimoire.AgentRuntime/Guardrails/DeniedActionRecord.cs`
   doc comment / reason vocabulary (no shape change) and
   `backend/src/Grimoire.AgentRuntime/Guardrails/GuardedToolExecutor.cs`:
   construct a `SharedFileWriteGuard` per executor instance; in
@@ -194,7 +238,19 @@ tool in.
   `OnWriteCommitted`, then release the lock. `ExecuteReadFileAsync` calls
   `OnReadFile` on successful reads. No change to `ExecuteListFilesAsync` or the
   policy-scope-denial path.
-- [ ] T017 [P] Integration tests
+  *`GuardedToolExecutor` gains the guard via a new optional `writeLocksDir`
+  constructor parameter (default `null`). When `null` — every pre-existing
+  call site across ~15 test files, and (until Phase 3/5 wire it in) both
+  agents' own composition roots — no `SharedFileWriteGuard` is constructed and
+  the write path is byte-for-byte unchanged from before this feature. This is
+  what makes the Phase 2 checkpoint's "no agent's observed capability has
+  changed yet" guarantee concretely true rather than aspirational: the literal
+  contract algorithm (deny a write to an existing target this run never read,
+  even absent contention) would otherwise have broken multiple pre-existing
+  `Grimoire.IngestAgent`-flavored `GuardedToolExecutor` integration tests that
+  script a `write_file` straight onto a pre-seeded existing page with no
+  preceding `read_file` call.*
+- [X] T017 [P] Integration tests
   `backend/tests/Grimoire.IntegrationTests/GuardedToolExecutorCoordinationTests.cs`:
   end-to-end through `GuardedToolExecutor` (not the guard in isolation) —
   create-only policy + existing target → `is_error` result containing
@@ -204,6 +260,9 @@ tool in.
   today, `TouchedPaths` updated; a policy-scope denial (`out_of_scope`/`no_rule`)
   never reaches the coordination guard at all (existing behavior unchanged,
   confirmed by absence of lock-file creation for denied targets).
+  *Added a sixth test explicitly proving the T016 backward-compatibility
+  guarantee: an executor built without `writeLocksDir` allows a write to an
+  existing target it never read (today's exact behavior).*
 
 **Checkpoint**: Policy modes and cross-process write coordination exist and are
 hermetically verified in isolation, including genuine multi-process exclusion.
