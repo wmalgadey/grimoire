@@ -60,7 +60,12 @@ static LintCliOptions ReadCliOptions(string[] args)
         SystemPromptPath: reader.GetRequired("--system-prompt-path"),
         PolicyPath: reader.GetRequired("--policy-path"),
         WriteLocksDir: reader.GetRequired("--write-locks-dir"),
-        HeartbeatSeconds: reader.GetHeartbeatSeconds());
+        HeartbeatSeconds: reader.GetHeartbeatSeconds(),
+        // T036: mirrors GetHeartbeatSeconds' own "parse or frozen default" shape — no
+        // shared AgentArgumentReader helper, since only Lint has this option.
+        ReviewWindowDays: int.TryParse(reader.GetOptional("--review-window-days"), out var parsedReviewWindow) && parsedReviewWindow > 0
+            ? parsedReviewWindow
+            : 90);
 }
 
 /// <summary>
@@ -71,10 +76,12 @@ static LintCliOptions ReadCliOptions(string[] args)
 /// </summary>
 internal sealed class LintIntentHandler : IAgentIntentHandler
 {
-    private const string KickoffMessage =
+    private const string KickoffMessageTemplate =
         "Perform the wiki health check now: read the whole wiki, judge its condition " +
         "across all three Finding Categories, refresh any stale inbound-link counts you " +
-        "find, and produce the Findings Report as your final message.";
+        "find, and produce the Findings Report as your final message.\n\n" +
+        "Effective Review Window for this run: {0} days (use this value instead of the " +
+        "default stated in your system prompt).";
 
     private readonly AgentProfile _profile;
     private readonly LintCliOptions _options;
@@ -144,9 +151,11 @@ internal sealed class LintIntentHandler : IAgentIntentHandler
             registry: _profile.ToolRegistry,
             instrumentation: new LintAgentLoopInstrumentation());
 
+        var kickoffMessage = string.Format(
+            System.Globalization.CultureInfo.InvariantCulture, KickoffMessageTemplate, _options.ReviewWindowDays);
         var initialConversation = new List<ConversationMessage>
         {
-            new("user", KickoffMessage),
+            new("user", kickoffMessage),
         };
 
         var result = await loop.RunAsync(

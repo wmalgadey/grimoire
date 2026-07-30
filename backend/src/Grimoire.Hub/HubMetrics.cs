@@ -254,7 +254,24 @@ public static class HubMetrics
 
     public static void RecordLintTriggerRejected() => _lintTriggersRejectedTotal.Add(1);
 
-    // wiki.lint.findings_total{category} and wiki.lint.inbound_links_refreshed_total
-    // (plan.md ## Observability) are T037 (Phase 4, out of this phase's scope) —
-    // intentionally not defined here yet.
+    /// <summary>T037 (013-lint-agent, US2): findings tallied per category, mechanically
+    /// counted from the agent's own narrative headings (<c>FindingsNarrativeStats</c>) —
+    /// never a judgment about what counts as a finding (Constitution Principle V).</summary>
+    private static readonly Counter<long> _lintFindingsTotal =
+        Meter.CreateCounter<long>("wiki.lint.findings_total",
+            description: "Findings produced across all runs, by category");
+
+    public static void RecordLintFindings(string category, int count)
+        => _lintFindingsTotal.Add(count, new KeyValuePair<string, object?>("category", category));
+
+    /// <summary>T037 (013-lint-agent, US2): pages whose <c>inbound_links</c> frontmatter
+    /// was refreshed this run — sourced from the harness's own write journal
+    /// (<c>GuardedToolExecutor.TouchedPaths</c> via the run's terminal event), since
+    /// ADR-016's policy has exactly one write rule.</summary>
+    private static readonly Counter<long> _lintInboundLinksRefreshedTotal =
+        Meter.CreateCounter<long>("wiki.lint.inbound_links_refreshed_total",
+            description: "Pages whose inbound-link count was updated");
+
+    public static void RecordLintInboundLinksRefreshed(int count)
+        => _lintInboundLinksRefreshedTotal.Add(count);
 }

@@ -161,6 +161,8 @@ public sealed class AgentProcessHost : IAgentProcessLauncher
         startInfo.ArgumentList.Add(request.PolicyPath);
         startInfo.ArgumentList.Add("--write-locks-dir");
         startInfo.ArgumentList.Add(request.WriteLocksDir);
+        startInfo.ArgumentList.Add("--review-window-days");
+        startInfo.ArgumentList.Add(request.ReviewWindowDays.ToString(System.Globalization.CultureInfo.InvariantCulture));
 
         var authToken = _secretsLoader.GetAnthropicAuthToken();
         var lintModel = _secretsLoader.GetLintModel();

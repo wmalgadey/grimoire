@@ -16,4 +16,9 @@ public sealed record LintCliOptions(
     // required, mirroring --wiki-root/--policy-path (Lint's frontmatter-only writes
     // reuse the same cross-process write-coordination lock unchanged).
     string WriteLocksDir,
-    int HeartbeatSeconds = 10);
+    int HeartbeatSeconds = 10,
+    // T036 (013-lint-agent, US2): the Hub-computed effective Review Window (days,
+    // Grimoire:LintReviewWindowDays, default 90) — threaded into the kickoff message so
+    // the agent's own stated default (data/agents/lint/system-prompt.md) can be
+    // overridden without an instruction-file edit.
+    int ReviewWindowDays = 90);

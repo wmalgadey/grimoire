@@ -31,6 +31,7 @@ public sealed class LintRunCoordinator
     private readonly ResolvedGrimoirePaths _paths;
     private readonly TimeProvider _timeProvider;
     private readonly TimeSpan _livenessWindow;
+    private readonly LintReviewWindowOptions _reviewWindowOptions;
     private readonly ILogger<LintRunCoordinator> _logger;
     private readonly SemaphoreSlim _slot = new(1, 1);
 
@@ -44,6 +45,7 @@ public sealed class LintRunCoordinator
         ResolvedGrimoirePaths paths,
         TimeProvider? timeProvider = null,
         TimeSpan? livenessWindow = null,
+        LintReviewWindowOptions? reviewWindowOptions = null,
         ILogger<LintRunCoordinator>? logger = null)
     {
         _launcher = launcher;
@@ -51,6 +53,7 @@ public sealed class LintRunCoordinator
         _paths = paths;
         _timeProvider = timeProvider ?? TimeProvider.System;
         _livenessWindow = livenessWindow ?? TimeSpan.FromSeconds(60);
+        _reviewWindowOptions = reviewWindowOptions ?? new LintReviewWindowOptions();
         _logger = logger ?? NullLogger<LintRunCoordinator>.Instance;
     }
 
@@ -92,7 +95,8 @@ public sealed class LintRunCoordinator
             WikiRoot: _paths.ContentRoot,
             SystemPromptPath: _paths.LintSystemPromptPath,
             PolicyPath: _paths.LintPolicyPath,
-            WriteLocksDir: _paths.WriteLocksDir);
+            WriteLocksDir: _paths.WriteLocksDir,
+            ReviewWindowDays: _reviewWindowOptions.LintReviewWindowDays);
 
         AgentDispatch.IAgentProcessHandle handle;
         try
@@ -219,6 +223,19 @@ public sealed class LintRunCoordinator
         var partial = status == LintRunStatus.Failed;
         var effectiveNarrative = narrative ?? $"Run failed before completion. Reason: {failureReason ?? "unknown"}.";
         var findingsCount = FindingsNarrativeStats.CountFindings(effectiveNarrative);
+
+        // T037 (013-lint-agent, US2, plan.md ## Observability): mechanical counting only
+        // (Constitution Principle V) — the per-category tallies are headings the agent
+        // already wrote (FindingsNarrativeStats), and the refreshed-page count is the
+        // harness's own journal (touchedPaths, ADR-016's sole write rule), never a
+        // judgment about wiki content. Emitted across every terminal outcome (including a
+        // partial/failed run's narrative-so-far) — "across all runs" per plan.md's metric
+        // description.
+        foreach (var (category, count) in FindingsNarrativeStats.CountByCategory(effectiveNarrative))
+        {
+            HubMetrics.RecordLintFindings(category, count);
+        }
+        HubMetrics.RecordLintInboundLinksRefreshed(touchedPaths.Count);
 
         if (status == LintRunStatus.Completed)
         {

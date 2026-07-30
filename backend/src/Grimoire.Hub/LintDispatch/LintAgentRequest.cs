@@ -16,4 +16,10 @@ public sealed record LintAgentRequest(
     // cross-process write-coordination lock directory, supplied the same way as
     // WikiRoot/PolicyPath — a single Hub-resolved composition point
     // (ResolvedGrimoirePaths.WriteLocksDir, ADR-009), not agent-discovered.
-    string WriteLocksDir);
+    string WriteLocksDir,
+    // T036 (013-lint-agent, US2): the effective Review Window (days), sourced from
+    // LintReviewWindowOptions (Grimoire:LintReviewWindowDays, default 90) — threaded into
+    // the spawned process's kickoff context so the agent's own default (also 90, stated
+    // in data/agents/lint/system-prompt.md) can be overridden without an instruction-file
+    // edit. Optional/defaulted so every pre-existing positional call site keeps compiling.
+    int ReviewWindowDays = 90);
