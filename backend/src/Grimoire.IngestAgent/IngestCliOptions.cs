@@ -14,6 +14,7 @@ public sealed record IngestCliOptions(
     string DefaultUserPromptPath,
     string? UserPrompt,
     string PolicyPath,
+    string WriteLocksDir,
     int HeartbeatSeconds = 10)
 {
     public string TaskArtifactPath => Path.Combine(TasksDir, $"{TaskId}.md");

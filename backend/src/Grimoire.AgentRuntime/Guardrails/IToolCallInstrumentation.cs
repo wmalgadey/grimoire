@@ -1,3 +1,5 @@
+using System.Diagnostics;
+
 namespace Grimoire.AgentRuntime.Guardrails;
 
 /// <summary>
@@ -35,6 +37,34 @@ public interface IToolCallInstrumentation
     /// Observability rows. Default no-op, mirroring <see cref="RecordCreateOnlyWriteSucceeded"/>.
     /// </summary>
     void RecordWriteConflictRejected(string taskId, string path, string reason, int turn) { }
+
+    /// <summary>
+    /// ADR-015 (012-query-synthesis-writes, T042): plan.md's <c>guardrails.acquire_write_lock</c>
+    /// trace span, covering one write-coordination lock-acquisition attempt (the
+    /// <see cref="Coordination.SharedFileWriteGuard.EvaluateWriteAsync"/> call). The caller
+    /// (<see cref="GuardedToolExecutor"/>) sets the <c>path</c>/<c>outcome</c>/<c>wait_ms</c>
+    /// attributes once the acquisition attempt completes and disposes the returned
+    /// activity. Nests under whatever this agent's ambient activity is at acquisition
+    /// time (in practice the active <c>*_agent.model_turn</c> span — the corresponding
+    /// <c>*_agent.tool_call</c> span for this same write is, by the pre-existing
+    /// RecordAllowed/RecordDenied contract, only created afterward once the write's final
+    /// allow/deny decision is known, so it cannot yet be Activity.Current at acquisition
+    /// time; see <c>WriteLockObservabilityTests</c> for the documented parent-span note).
+    /// Default no-op (<c>null</c>): only agents that construct their
+    /// <see cref="GuardedToolExecutor"/> with a <c>writeLocksDir</c> (i.e. actually
+    /// participate in write coordination) ever call this.
+    /// </summary>
+    Activity? StartAcquireWriteLockActivity(string taskId, string path, int turn) => null;
+
+    /// <summary>
+    /// ADR-015 (012-query-synthesis-writes, T042): plan.md's
+    /// <c>wiki.write_lock.acquisitions_total</c> (<c>outcome=acquired|timeout</c>) counter
+    /// and <c>wiki.write_lock.wait_seconds</c> histogram, plus — for
+    /// <paramref name="outcome"/> <c>"timeout"</c> only — the <c>wiki.write_lock.timeout</c>
+    /// WARN log event. Emitted once per write-coordination lock-acquisition attempt,
+    /// mirroring <see cref="StartAcquireWriteLockActivity"/>'s trigger point.
+    /// </summary>
+    void RecordWriteLockAcquisition(string taskId, string path, string outcome, double waitSeconds, int turn) { }
 }
 
 /// <summary>No-op default so hermetic tests that don't assert on telemetry don't need to wire an adapter.</summary>

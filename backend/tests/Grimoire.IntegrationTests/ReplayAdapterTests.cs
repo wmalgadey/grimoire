@@ -169,6 +169,7 @@ public class ReplayAdapterTests : IDisposable
             ("--system-prompt-path", Path.Combine(agentDir, "system-prompt.md")),
             ("--default-user-prompt-path", Path.Combine(agentDir, "default-user-prompt.md")),
             ("--policy-path", Path.Combine(agentDir, "policy.json")),
+            ("--write-locks-dir", Path.Combine(_scratch, "write-locks")),
         })
         {
             startInfo.ArgumentList.Add(name);

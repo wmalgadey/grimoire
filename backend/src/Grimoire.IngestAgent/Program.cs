@@ -103,6 +103,7 @@ static IngestCliOptions ReadCliOptions(string[] args)
         DefaultUserPromptPath: reader.GetRequired("--default-user-prompt-path"),
         UserPrompt: reader.GetOptional("--user-prompt"),
         PolicyPath: reader.GetRequired("--policy-path"),
+        WriteLocksDir: reader.GetRequired("--write-locks-dir"),
         HeartbeatSeconds: reader.GetHeartbeatSeconds());
 }
 
@@ -229,7 +230,8 @@ internal sealed class IngestIntentHandler : IAgentIntentHandler
             _options.WikiRoot,
             taskId: _options.TaskId,
             registry: _profile.ToolRegistry,
-            instrumentation: new IngestToolCallInstrumentation(_loggerFactory.CreateLogger<GuardedToolExecutor>()));
+            instrumentation: new IngestToolCallInstrumentation(_loggerFactory.CreateLogger<GuardedToolExecutor>()),
+            writeLocksDir: _options.WriteLocksDir);
         var tokenCap = ResolveTokenCapFromEnvironment();
         var loop = new AgentLoop(
             _modelClient!,

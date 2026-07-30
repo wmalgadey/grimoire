@@ -65,7 +65,8 @@ public class IngestOperationalStateAndDispatchTests
             PastedText: null,
             SystemPromptPath: Path.Combine(repoRootForPaths, "data", "agents", "ingest", "system-prompt.md"),
             DefaultUserPromptPath: Path.Combine(repoRootForPaths, "data", "agents", "ingest", "default-user-prompt.md"),
-            PolicyPath: Path.Combine(repoRootForPaths, "data", "agents", "ingest", "policy.json")));
+            PolicyPath: Path.Combine(repoRootForPaths, "data", "agents", "ingest", "policy.json"),
+            WriteLocksDir: Path.Combine(root, "write-locks")));
 
         // Agent should fail (exit 1) due to missing source, without making any LLM call.
         Assert.Equal(1, exitCode);

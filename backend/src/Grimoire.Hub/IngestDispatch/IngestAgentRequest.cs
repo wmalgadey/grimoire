@@ -14,4 +14,5 @@ public sealed record IngestAgentRequest(
     string SystemPromptPath,
     string DefaultUserPromptPath,
     string PolicyPath,
+    string WriteLocksDir,
     string? UserPrompt = null);

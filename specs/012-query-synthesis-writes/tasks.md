@@ -660,12 +660,27 @@ unaffected.
   with these guarantees; this task exists so the story has an explicit
   implementation home if the tests find drift (e.g. lock scope too coarse,
   backoff cap misconfigured).
-- [ ] T041 [US3] Change `backend/src/Grimoire.IngestAgent/Program.cs`: pass
+- [X] T041 [US3] Change `backend/src/Grimoire.IngestAgent/Program.cs`: pass
   `--write-locks-dir` through to its `GuardedToolExecutor` composition (T006's
   new CLI argument) — Ingest's writes now benefit from the same coordination
   guard against a concurrent Query synthesis write, closing the cross-agent
   half of R1's race with zero behavior change to Ingest's own content-authoring
   flow.
+  *`--write-locks-dir` made required on `IngestCliOptions`/`Program.cs`'s CLI
+  reader, threaded through `ContentRootPaths`/`IngestAgentRequest`/
+  `IngestRunCoordinator`/`SubmissionService`/`AgentProcessHost` from the
+  Hub-side `WriteLocksDir` composition point (T006), and into
+  `GuardedToolExecutor`'s `writeLocksDir` parameter exactly as Query's Phase 3
+  wiring did. Updated three test fixtures/harnesses that spawn the real
+  `IngestAgent` process or construct `IngestCliOptions` directly
+  (`IngestSubmissionPipelineFixture`, `IngestFailureAndReconciliationTests`,
+  `IngestOperationalStateAndDispatchTests`) plus one that spawns it via a raw
+  `ProcessStartInfo` argument list (`ReplayAdapterTests` —
+  `Agent_BothReplayAndCaptureEnvSet_ExitsNonZeroNamingTheConflict` failed with
+  the task artifact never written until `--write-locks-dir` was added to its
+  hand-built arg list, since a missing required CLI arg now aborts before the
+  failure-artifact-writing path). Full suite green after the fix: ArchTests
+  44/44, Domain.UnitTests 21/21, IntegrationTests 333/333.*
 
 ### Observability for User Story 3
 

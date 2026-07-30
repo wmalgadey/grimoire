@@ -56,7 +56,8 @@ public sealed class SubmissionService
             PastedText: options.PastedText,
             SystemPromptPath: contentPaths.SystemPromptPath,
             DefaultUserPromptPath: contentPaths.DefaultUserPromptPath,
-            PolicyPath: contentPaths.PolicyPath);
+            PolicyPath: contentPaths.PolicyPath,
+            WriteLocksDir: contentPaths.WriteLocksDir);
 
         using (var spawnSpan = HubTracing.ActivitySource.StartActivity("hub.ingest.spawn_agent"))
         {

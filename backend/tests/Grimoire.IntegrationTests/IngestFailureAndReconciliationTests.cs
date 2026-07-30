@@ -38,7 +38,8 @@ public class IngestFailureAndReconciliationTests
             PastedText: null,
             SystemPromptPath: Path.Combine(repoRootForPaths, "data", "agents", "ingest", "system-prompt.md"),
             DefaultUserPromptPath: Path.Combine(repoRootForPaths, "data", "agents", "ingest", "default-user-prompt.md"),
-            PolicyPath: Path.Combine(repoRootForPaths, "data", "agents", "ingest", "policy.json")));
+            PolicyPath: Path.Combine(repoRootForPaths, "data", "agents", "ingest", "policy.json"),
+            WriteLocksDir: Path.Combine(root, "write-locks")));
 
         Assert.Equal(1, exitCode);
         Assert.Empty(Directory.GetFiles(pagesDir));
