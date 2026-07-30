@@ -263,3 +263,13 @@ Erkenntnisse:
 - Der neue "Query"-Modus im Claude-Code-Eingabe-Prompt lässt mich die laufende Aufgabe nachträglich anpassen: Das LLM nimmt den Zusatz-Prompt an, verarbeitet ihn parallel zur laufenden Bearbeitung und baut ihn entweder direkt ein oder führt ihn am Ende aus.
 - Genau das hatte ich mir schon vom `/btw`-Feature erhofft. Das hatte tatsächlich gewissen Einfluss auf die laufende Ausführung, ist inzwischen aber quasi zu einem zweiten Agenten geworden, der auch direkt mit mir interagiert — nicht mehr nur ein Seiteneinwurf in die laufende Aufgabe.
 - Offen: Ich weiß nicht, ob der Query-Modus im Terminal und im Web-UI identisch funktioniert — das müsste ich noch vergleichen.
+
+### Nachtrag: Offene Ideen als GitHub Issues statt in Docs
+
+Erkenntnisse:
+
+- Offene Fragen aus `docs/decision-context-overview.md` (§2, §10, §11) und liegengebliebene `tasks.md`-Reste lebten bisher unbegrenzt in Dokumenten weiter, die niemand konsequent abarbeitet oder schließt.
+- Neuer Ansatz: repo-weiter Scan (Specs, Branches, offene Task-Checkboxen, offene Decision-Context-Abschnitte) → GitHub Issues, so formuliert, dass sie direkt in `/speckit-specify` einfließen können.
+- Drei Kategorien bewährt: `spec-candidate` (neue Idee, noch kein Spec), `tail-tasks` (Rest einer bereits spezifizierten Feature), `housekeeping` (Branch-/Repo-Pflege, keine Spec nötig).
+- Vorteil gegenüber Docs: Issues haben einen Lebenszyklus (offen/geschlossen) und werden bei einem erneuten Scan gegen den aktuellen `main`-Stand re-verifiziert, statt einfach liegen zu bleiben.
+- Beim Re-Scan wichtig: nicht blind neue Issues anlegen, sondern zuerst prüfen, ob gemergte Branches/Code die alten Punkte schon erledigt haben — einmal fielen mir dabei veraltete Task-Checkboxen auf, die dem tatsächlichen Implementierungsstand hinterherhinkten.
