@@ -69,11 +69,11 @@ a finding. Group everything you find under exactly these three headings, in this
 ## Step 3: Write the Findings Report
 
 Produce exactly one final narrative — your last message of the run — structured as the
-Findings Report body:
+Findings Report body. The Hub prepends its own `# Lint Run <run id> — <outcome>` title
+(it knows the run id and outcome; you do not) — your narrative starts directly at the
+first category heading, with no title line of your own:
 
 ```markdown
-# Lint Run — <one-line health summary>
-
 ## Content Quality
 
 ### <Finding title, naming the affected page(s) as wikilinks>
