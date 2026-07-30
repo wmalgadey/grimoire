@@ -39,18 +39,26 @@
 				{turn.prompt}
 			</p>
 
-			<div
-				class="query-turn-answer-body text-sm text-slate-700"
-				class:query-turn-answer-streaming={turn.state === 'running'}
-				data-testid="query-turn-answer"
-				data-turn-state={turn.state}
-			>
-				<!-- eslint-disable-next-line svelte/no-at-html-tags -->
-				{@html renderAnswer(turn.answer)}{#if turn.state === 'running'}<span
-						class="ml-0.5 animate-pulse font-bold text-blue-500"
-						data-testid="query-turn-streaming-cursor"
-						aria-hidden="true">▌</span
-					>{/if}
+			<div data-testid="query-turn-answer" data-turn-state={turn.state}>
+				{#if turn.state === 'running'}
+					<!-- Streamed text is partial/unclosed markdown (e.g. a list or bold span mid-word),
+					     so it is shown as plain text rather than parsed — parsing incomplete markdown
+					     produces broken HTML. `white-space: pre-wrap` keeps the model's own line breaks
+					     visible, and the muted, smaller styling signals "still forming", distinct from
+					     the fully-formatted answer shown once the turn is terminal. -->
+					<p class="query-turn-answer-streaming-text text-xs whitespace-pre-wrap text-slate-400">
+						{turn.answer}<span
+							class="ml-0.5 animate-pulse font-bold text-blue-500"
+							data-testid="query-turn-streaming-cursor"
+							aria-hidden="true">▌</span
+						>
+					</p>
+				{:else}
+					<div class="query-turn-answer-body text-sm text-slate-700">
+						<!-- eslint-disable-next-line svelte/no-at-html-tags -->
+						{@html renderAnswer(turn.answer)}
+					</div>
+				{/if}
 			</div>
 
 			<div class="flex items-center gap-2">
