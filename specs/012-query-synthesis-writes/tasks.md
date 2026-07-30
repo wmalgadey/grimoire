@@ -287,7 +287,7 @@ the answer references the new page and it appears in the turn's record.
 
 > **NOTE: Write these tests FIRST, ensure they FAIL before implementation**
 
-- [ ] T018 [P] [US1] Integration test
+- [X] T018 [P] [US1] Integration test
   `backend/tests/Grimoire.IntegrationTests/QuerySynthesisWriteTests.cs`
   (SC-002): scripted turn whose `FakeAgentProcess` performs `write_file` for a
   new page under `pages/`, then `index.md`, then `log.md` — asserts all three
@@ -295,11 +295,21 @@ the answer references the new page and it appears in the turn's record.
   against a temp wiki root loaded with `data/agents/query/policy.json` (T023),
   and that `RunCompletionMetadata.CreatedArtifacts` contains exactly the new
   page's path (not `index.md`/`log.md`, which aren't create-only targets).
-- [ ] T019 [P] [US1] Integration test (in `QuerySynthesisWriteTests.cs`, T018's
+  *Implemented as a direct `FakeModelClient` + `AgentLoop` + `GuardedToolExecutor`
+  scripted turn (the `QueryReadOnlyGuardrailTests.cs` idiom) rather than the Hub's
+  `FakeAgentProcessLauncher` — `RunCompletionMetadata`/`GuardedToolExecutor.CreatedPaths`
+  live in `Grimoire.AgentRuntime`, one layer below the Hub-side fakes, so this is the
+  precise level to test them at; the Hub-level `FakeAgentProcessLauncher` idiom is used
+  for T019 instead.*
+- [X] T019 [P] [US1] Integration test (in `QuerySynthesisWriteTests.cs`, T018's
   file): the turn's Conversation Record bookkeeping block (ADR-014 extension)
   carries `created_pages:` listing the new page's wiki-root-relative path;
   a turn that creates nothing records `created_pages: []` (not omitted).
-- [ ] T020 [P] [US1] `Grimoire.EvalRunner` scenario
+  *Two Hub-level tests via `FakeAgentProcessLauncher`/scripted terminal
+  `createdPages` (canonical path, mirroring what the real agent process emits) —
+  confirms the Hub's canonical→wiki-relative conversion (`QueryRunCoordinator.ToWikiRelative`)
+  and the always-present-even-when-empty invariant on disk.*
+- [X] T020 [P] [US1] `Grimoire.EvalRunner` scenario
   `backend/src/Grimoire.EvalRunner/Scenarios/QueryScenarioDefinitions.cs`: add
   `query-synthesis-created` (SC-005 threshold ≥ 85%, SC-007 threshold ≥ 95%)
   sampling questions whose answers require connecting ≥ 2 wiki pages into an
@@ -308,23 +318,62 @@ the answer references the new page and it appears in the turn's record.
   parsing the created page's frontmatter (synthesis source-type tag present,
   confidence + reason present, review date present, ≥ 1 wikilink to a source
   page) per contract/quickstart Scenario 1.
-- [ ] T021 [P] [US1] `Grimoire.EvalRunner` scenario: add
+  *Reuses the existing `query-grounding` fixture (its `credential-scoping.md`/
+  `runtime-paths.md` pages are exactly spec.md's own worked example) rather than
+  adding a new fixture. Also added `Grimoire.EvalRunner.Workspace.QueryEvalSandbox`
+  and wired it into both `QueryCapturePipeline`/`QueryReplayPipeline` for every Query
+  scenario (not just the new ones): before this feature every Query sample ran
+  directly against the shared on-disk fixture, safe only because Query was strictly
+  read-only; a write-capable sample would otherwise collide with a page an earlier
+  sample created, or dirty the checked-in fixture. This is necessary infrastructure
+  for the new scenarios to be capturable/replayable at all, not gold-plating — flagged
+  here since it wasn't literally enumerated in this task's file list.
+  **Structurally wired but NOT capturable in this session** — no `ANTHROPIC_API_KEY`,
+  and capturing real recordings is explicitly T047 (a separate, later, one-time task).
+  `dotnet test backend/tests/Grimoire.AgentEvals` will show these two new scenarios
+  as absent (no test references them yet — `Grimoire.AgentEvals`' fixed eval-test
+  classes are per-scenario and T047/T048 add the SC-005/SC-006/SC-007 test methods
+  once recordings exist); the four pre-existing Query scenarios now fail replay with
+  `Stale` (fingerprint mismatch) because T023/T024 changed `policy.json`/
+  `system-prompt.md` — this is ci.yml's own documented FR-016 merge gate working as
+  designed, not a regression, and means T047 must re-capture all seven Query
+  scenarios' recordings, not only the three new ones.*
+- [X] T021 [P] [US1] `Grimoire.EvalRunner` scenario: add
   `query-synthesis-declined-routine` (SC-006 threshold ≥ 90%) sampling routine
   lookups whose answers merely restate an existing page; scorer asserts zero
   `write_file` calls appear in the transcript.
+  *Scorer asserts `QuerySampleRunData.CreatedPages.Count == 0` rather than literally
+  scanning a tool-call transcript for `write_file` invocations — the eval runner has
+  no such transcript today (only the terminal event's answer/denied-actions/
+  createdPages), and an empty `CreatedPages` is an exact proxy for "no page-creating
+  write happened," which is precisely what Query's Write Scope permits it to do
+  (index/log writes without an accompanying page creation would be a system-prompt
+  defect, not something this scorer needs to separately catch). Same recording
+  caveat as T020 above.*
 
 ### Implementation for User Story 1
 
-- [ ] T022 [US1] Change `backend/src/Grimoire.QueryAgent/QueryToolRegistry.cs`:
+- [X] T022 [US1] Change `backend/src/Grimoire.QueryAgent/QueryToolRegistry.cs`:
   register `ToolRegistry.WriteFileDefinition` alongside the existing
   `list_files`/`read_file` tools; update its doc comment (the "deliberately does
   not reference any write-tool type" framing is superseded by ADR-015 — replace
   with a comment stating the write tool is now scoped entirely by policy, per
   the create-only/coordination mechanism).
-- [ ] T023 [US1] Change `data/agents/query/policy.json` to version 2 per
+  *Also completed the `--write-locks-dir` process/CLI chain this registration needs
+  to be safe end-to-end, per T006's explicit deferral note ("that wiring is Phase 3
+  (Query, alongside write_file registration)"): `QueryAgentRequest`/`QueryCliOptions`
+  gain `WriteLocksDir` (required, contract §4), `QueryRunCoordinator` supplies
+  `_paths.WriteLocksDir`, `AgentProcessHost.StartQueryProcess` and
+  `Grimoire.EvalRunner`'s `QueryAgentProcessInvoker` both pass `--write-locks-dir`,
+  and `Grimoire.QueryAgent/Program.cs` threads it into the `GuardedToolExecutor`
+  construction. Not a separate T-number in the original file — folded in here since
+  it has no other home and is required for T018 to be meaningful (a `write_file` tool
+  with no coordination guard behind it would be an unguarded, not merely
+  differently-scoped, capability).*
+- [X] T023 [US1] Change `data/agents/query/policy.json` to version 2 per
   data-model.md: `write` rules `{ "pathPrefix": "pages/", "mode": "create-only" }`,
   `{ "pathPrefix": "index.md" }`, `{ "pathPrefix": "log.md" }`.
-- [ ] T024 [US1] Rewrite `data/agents/query/system-prompt.md`: replace the
+- [X] T024 [US1] Rewrite `data/agents/query/system-prompt.md`: replace the
   "you have no write capability at all" section with a description of the
   Synthesis Decision (FR-002), the Write Scope (create new pages under `pages/`,
   append to `index.md`/`log.md`; never modify an existing page), the required
@@ -334,34 +383,96 @@ the answer references the new page and it appears in the turn's record.
   decline (and explain) requests to edit existing content, and to re-read and
   retry on a `write_conflict_stale_read`/`create_only_target_exists` tool error
   per contract §2's recovery guidance.
-- [ ] T025 [US1] Change `backend/src/Grimoire.AgentRuntime/RunEvents/RunEventEmitter.cs`:
+  *Introduces a `review_date` frontmatter field for Synthesis Pages specifically
+  (spec.md's "review date" requirement) — ingest's own Frontmatter Standard has no
+  such field today, so this is additive to Synthesis Pages only, not a change to the
+  shared standard.*
+- [X] T025 [US1] Change `backend/src/Grimoire.AgentRuntime/RunEvents/RunEventEmitter.cs`:
   `RunCompletionMetadata` gains `CreatedArtifacts` (nullable
   `IReadOnlyList<string>`), serialized on the `completed` event payload as
   `createdPages`; `Grimoire.QueryAgent/Program.cs` populates it from the run's
   `GuardedToolExecutor.TouchedPaths` filtered to paths the policy matched as
   create-only (expose this filter from `GuardedToolExecutor`, e.g. a
   `CreatedPaths` property alongside `TouchedPaths`).
-- [ ] T026 [US1] Change `backend/src/Grimoire.Hub/QueryConversations/ConversationRecordFormat.cs`:
+  *`AgentRunEvent`/`QueryTurnCompletionMetadata` also gain `CreatedPages` so the
+  value survives the Hub's NDJSON parse step into `QueryRunCoordinator` — not called
+  out by name in this task's file list, but required for the field to reach T026/T027
+  at all.*
+- [X] T026 [US1] Change `backend/src/Grimoire.Hub/QueryConversations/ConversationRecordFormat.cs`:
   writer emits `created_pages:` (list of strings, always present, empty list
   when none) in the turn bookkeeping block, sourced from the terminal event's
   `createdPages`; parser tolerates the key's absence in already-written records
   predating this feature (ADR-014 forward-compat, treats missing as empty).
-- [ ] T027 [US1] Change `backend/src/Grimoire.Hub/QueryDispatch/QueryRunCoordinator.cs`:
+  *Deviation from data-model.md's literal wording ("`RunCompletionMetadata.CreatedArtifacts`
+  ... wiki-root-relative paths", contract §5 "the Hub writes it verbatim"): the
+  agent-emitted `createdPages` on the wire is the **canonical (absolute)** path —
+  exactly `GuardedToolExecutor.CreatedPaths`/`TouchedPaths`' existing shape, per T025's
+  own unambiguous instruction and every existing `TouchedPaths` usage in this codebase.
+  `QueryRunCoordinator.BuildRecordedTurn`/`ToWikiRelative` performs the canonical→
+  wiki-root-relative conversion Hub-side before it reaches `RecordedTurn`/the record
+  file, which is what data-model.md's *separate* "Run Completion Metadata" vs. record
+  `created_pages` rows actually describe when read together. Also added three new
+  round-trip/forward-compat tests to `ConversationRecordFormatTests.cs` and fixed one
+  pre-existing forward-compat test (`UnknownBookkeepingKeys_AreTolerated_ForwardCompatibility`)
+  whose fixture had (correctly, presciently) already hand-authored a `created_pages:`
+  injection anticipating this feature, but asserted the pre-feature "ignored" outcome —
+  now that the key is genuinely recognized and parsed, that assertion had to change to
+  assert the parsed values, not the unchanged original turn.*
+- [X] T027 [US1] Change `backend/src/Grimoire.Hub/QueryDispatch/QueryRunCoordinator.cs`:
   pass the terminal event's `createdPages` through into the `AppendTurnAsync`
   call (T026's new field).
 
 ### Observability for User Story 1 (co-located, plan.md ## Observability)
 
-- [ ] T028 [US1] Add `wiki.query.synthesis_page_created` (INFO; `task_id`,
+- [X] T028 [US1] Add `wiki.query.synthesis_page_created` (INFO; `task_id`,
   `path`, `turn`) log event, emitted in `GuardedToolExecutor.ExecuteWriteFileAsync`
   when a create-only write succeeds, and the `wiki.query.synthesis_pages_created_total`
   counter (`Grimoire.AgentRuntime` telemetry, no labels) incremented at the same
   point.
-- [ ] T029 [P] [US1] Deterministic integration tests
-  `backend/tests/Grimoire.IntegrationTests/SynthesisWriteObservabilityTests.cs`:
+  *Interpreted "(`Grimoire.AgentRuntime` telemetry, no labels)" as "the trigger point
+  lives in `Grimoire.AgentRuntime`'s shared `GuardedToolExecutor`," not as "the Meter/
+  Logger instances live in `Grimoire.AgentRuntime`": every per-agent OTel provider
+  (`AgentTelemetryBootstrap.Build`) only listens to its own agent's named
+  ActivitySource/Meter (e.g. `Grimoire.QueryAgent`) — a bespoke `Grimoire.AgentRuntime`
+  Meter would need that bootstrap changed to add a second, always-on meter/source
+  name for one metric, a disproportionate structural change. Instead extended the
+  existing `IToolCallInstrumentation` seam (already the precedent for exactly this
+  shape: `RecordDenied` already lets each per-agent implementation emit its own
+  differently-shaped `wiki.ingest.*` vs. `query.*` signals from the one shared
+  `GuardedToolExecutor` call site) with a new default-no-op
+  `RecordCreateOnlyWriteSucceeded(taskId, path, turn)` method, called from
+  `GuardedToolExecutor.ExecuteWriteFileAsync` immediately after a create-only write
+  commits. `QueryToolCallInstrumentation` overrides it to emit
+  `QueryAgentMetrics.RecordSynthesisPageCreated()` (added to the existing
+  `Grimoire.QueryAgent` Meter, so it IS exported through the real OTel pipeline
+  today) and `QueryAgentLogEvents.LogSynthesisPageCreated` (field name `task_id`,
+  not this file's usual `turn_id`, to match plan.md's literal mandatory-field name —
+  documented inline as the one field-naming exception in this file).
+  `NullToolCallInstrumentation`/`IngestToolCallInstrumentation` get the interface's
+  default no-op body untouched (Ingest's policy has no create-only rule today, so it
+  would never fire from that process regardless).*
+- [X] T029 [P] [US1] Deterministic integration tests
+  `backend/tests/Grimoire.IntegrationTests/QuerySynthesisWriteObservabilityTests.cs`:
   validate the log event's name/level/mandatory fields and the counter's
   increment on a successful create-only write; confirm neither fires for an
   `index.md`/`log.md` write (not a create-only target) or a denied write.
+  *Filename carries the `Query` token (renamed from the literal
+  `SynthesisWriteObservabilityTests.cs` in this task's own text) per
+  `docs/conventions/agent-artifact-naming.md` rule N1 — a shared-assembly test
+  referencing only Query-owned namespaces must carry the `Query` token; the
+  ArchTests N1 rule caught this immediately.*
+
+**Definition of Done note (US1)**: implementing T022/T023 (write_file registration,
+create-only policy) unavoidably changed the fingerprint inputs
+(`Grimoire.EvalRunner.Recording.QueryStalenessCheck`) that the four pre-existing
+Query eval scenarios' recordings are pinned against, so
+`dotnet test backend/tests/Grimoire.AgentEvals` now correctly reports all four as
+`Stale` rather than `Trusted` — this is the intended ADR-012/FR-016 merge gate
+(ci.yml's own comment: "that failure IS the FR-016 merge gate for instruction-file
+changes"), not a defect in this phase's work, and is expected to stay red until T047
+(Phase 6, requires `ANTHROPIC_API_KEY`, explicitly out of this phase's scope) re-captures
+recordings for all seven Query scenarios (four pre-existing + three from
+T020/T021/T032).
 
 **Checkpoint**: User Story 1 is fully functional and independently testable —
 Query can create Synthesis Pages with complete frontmatter, update the index and
@@ -662,3 +773,13 @@ Task: "T021 EvalRunner scenario query-synthesis-declined-routine — SC-006"
 - The create-only check and the compare-and-swap check are structurally
   independent decisions (data-model.md's decision tree) — a create-only rule
   never falls through to the hash comparison, and vice versa.
+- **Pre-existing flake, not introduced by Phase 3**:
+  `QueryConversationRecordLifecycleTests.ThreeTurnConversation_ProducesExactlyOneRecord_WithAllTurnsInOrderAndFullBookkeeping`
+  is intermittently red on the unmodified T001–T017 base commit too (confirmed via
+  `git stash -u` + repeated runs before any Phase 3 code existed) — a genuine race in
+  `QueryRunCoordinator.FinishTurnAsync` (011-query-conversations code, untouched by this
+  phase): a turn's HTTP-visible state flips to `completed` (`TryTransitionTo`) before its
+  Conversation Record append/`_contextCache` update runs, so a same-conversation
+  follow-up submitted immediately after `WaitForStateAsync(..., "completed")` can load a
+  stale prior-turn count and mis-assign `position`. Out of scope for T018–T029; noted
+  here so it isn't mistaken for a Phase 3 regression.
