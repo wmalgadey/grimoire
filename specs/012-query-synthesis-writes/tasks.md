@@ -841,7 +841,7 @@ gates the DoD.
   `QueryWriteLockObservabilityTests.cs`'s span/parent-linkage assertions (T043)
   run in the same unfiltered `Grimoire.IntegrationTests` step confirmed under
   T045.*
-- [ ] T047 Capture new eval recordings (one-time, non-hermetic step, requires
+- [X] T047 Capture new eval recordings (one-time, non-hermetic step, requires
   `ANTHROPIC_API_KEY`): run the `Grimoire.EvalRunner` capture command for the
   three new scenarios (T020, T021, T032) against the live provider, producing
   `data/evals/recordings/query-synthesis-created/`,
@@ -849,17 +849,67 @@ gates the DoD.
   `query-synthesis-decline-edit-request/` with ≥ 10 samples each per the
   existing recording-count convention; commit the recordings. Replay
   thereafter is fully hermetic (ADR-012).
-- [ ] T048 Run the captured scenarios via replay and confirm SC-005/SC-006/
+  *A real `ANTHROPIC_AUTH_TOKEN` (`data/.env`, model `claude-haiku-4-5`,
+  matching the existing recordings' captured model) was available in this
+  session — copied into this worktree's git-ignored `data/.env` from the main
+  checkout (worktrees don't share git-ignored files). Ran
+  `dotnet run --project backend/src/Grimoire.EvalRunner -- capture --scenario
+  query-grounding-covered --scenario query-grounding-uncovered --scenario
+  query-follow-up --scenario query-read-only-decline --scenario
+  query-synthesis-created --scenario query-synthesis-declined-routine
+  --scenario query-synthesis-decline-edit-request --samples 10` — all seven
+  scenarios (the four pre-existing ones, confirmed `Stale` beforehand via
+  `-- status`, per T023/T024's fingerprint-changing edits; plus the three new
+  ones) captured successfully with 10 samples each. Committed (commit
+  `8bcfed6`).*
+- [X] T048 Run the captured scenarios via replay and confirm SC-005/SC-006/
   SC-007/SC-008 thresholds are met (`dotnet test backend/tests/Grimoire.AgentEvals`
   or the equivalent eval-runner replay command); if a threshold is not met, the
   gap is either an instruction-file defect (fix `agents/query/system-prompt.md`,
   Principle V — never fix by adding backend heuristics) or a scenario-design
   defect (fix the scenario) — re-capture only if the scenario itself changes.
-- [ ] T049 Full-suite verification: `dotnet test backend/tests/Grimoire.ArchTests`,
+  *Capture-time scoring showed `query-synthesis-decline-edit-request` at 70%
+  (threshold 90%); the other six scenarios passed at 100%. Manually inspected
+  all 10 transcripts for the failing scenario: every single one is an
+  unambiguous, well-explained decline ("I need to decline this request", "I'm
+  not able to edit existing wiki pages", "I cannot modify existing content").
+  This was a **scorer defect**, not an instruction-file defect —
+  `QueryDeterministicScorers.SynthesisDeclineEditRequest`'s `declines` keyword
+  list (`cannot`/`can't`/`unable to`/...) didn't cover "not able to" or the
+  literal word "decline" every sample used. Broadened the keyword list (commit
+  `1f167f8`); re-ran `-- replay` against the *same* recordings (no re-capture,
+  no API spend) — all 10 samples now score `declines=true`, scenario at 100%.
+  Final replay results, all scenarios: query-grounding-covered 100% (≥90%),
+  query-grounding-uncovered 100% (≥90%), query-follow-up 100% (≥90%),
+  query-read-only-decline 100% (≥90%), **query-synthesis-created 100% (SC-005
+  ≥85%)**, **query-synthesis-declined-routine 100% (SC-006 ≥90%)**, SC-007
+  (frontmatter completeness sub-check on query-synthesis-created) 10/10
+  samples fully compliant (≥95%), **query-synthesis-decline-edit-request 100%
+  (SC-008 ≥90%)**. All four agent-judgment thresholds met with margin; no
+  instruction-file change was needed — `agents/query/system-prompt.md` was
+  correct on the first live capture. Also discovered and fixed, in the same
+  close-out, an unrelated pre-existing regression (`AgentProcessInvoker`
+  missing `--write-locks-dir`, broken by T041) that was silently failing 8 of
+  `Grimoire.AgentEvals`' Ingest-side tests — see commit `1f167f8`;
+  `Grimoire.AgentEvals` is now 47/47 green.*
+- [X] T049 Full-suite verification: `dotnet test backend/tests/Grimoire.ArchTests`,
   `backend/tests/Grimoire.Domain.UnitTests`,
   `backend/tests/Grimoire.IntegrationTests` (all green, zero skips), and
   `dotnet format --verify-no-changes` on `backend/` — mirrors
   `.github/workflows/ci.yml`.
+  *Results: `Grimoire.ArchTests` 44/44, `Grimoire.Domain.UnitTests` 21/21,
+  `Grimoire.AgentEvals` 47/47 (all now covered after the T048 fixes),
+  `dotnet format --verify-no-changes` clean (exit 0, no diff).
+  `Grimoire.IntegrationTests` showed 1 failure on the first full-solution run
+  (338/339) — `QueryConversationRecordLifecycleTests.ThreeTurnConversation_
+  ProducesExactlyOneRecord_WithAllTurnsInOrderAndFullBookkeeping`, collection
+  `[1, 2, 2]` instead of `[1, 2, 3]`. This is exactly the pre-existing flake
+  already documented in this file's own "Notes" section (a genuine race in
+  `QueryRunCoordinator.FinishTurnAsync` from 011-query-conversations, confirmed
+  present on the unmodified T001–T017 base commit, unrelated to this feature).
+  Re-ran `Grimoire.IntegrationTests` alone immediately after: 339/339 green,
+  confirming it is the documented flake recurring, not a regression from this
+  session's work.*
 - [ ] T050 Run `specs/012-query-synthesis-writes/quickstart.md` scenarios 1–4
   plus its Observability check against a live local Hub (manual validation,
   requires an API key), and record the outcome in the task close-out.
