@@ -26,6 +26,17 @@ public static class QueryAgentMetrics
         Meter.CreateCounter<long>("wiki.write_conflict.rejections_total",
             description: "Writes rejected by compare-and-swap (stale read) or create-only check");
 
+    /// <summary>T042 (012-query-synthesis-writes, US3): plan.md ## Observability > Business Metrics.</summary>
+    private static readonly Counter<long> _writeLockAcquisitionsTotal =
+        Meter.CreateCounter<long>("wiki.write_lock.acquisitions_total",
+            description: "Write-coordination lock acquisition attempts");
+
+    /// <summary>T042 (012-query-synthesis-writes, US3): plan.md ## Observability > Business Metrics.</summary>
+    private static readonly Histogram<double> _writeLockWaitSeconds =
+        Meter.CreateHistogram<double>("wiki.write_lock.wait_seconds",
+            unit: "s",
+            description: "Time spent waiting to acquire a write-coordination lock");
+
     public static void RecordToolCall(string tool, string decision)
     {
         _toolCallsTotal.Add(1,
@@ -37,4 +48,13 @@ public static class QueryAgentMetrics
 
     public static void RecordWriteConflictRejected(string reason)
         => _writeConflictRejectionsTotal.Add(1, new KeyValuePair<string, object?>("reason", reason));
+
+    /// <summary>T042 (012-query-synthesis-writes, US3): emits the acquisitions counter (labeled
+    /// <c>outcome=acquired|timeout</c>) and the wait-time histogram for one write-coordination
+    /// lock-acquisition attempt.</summary>
+    public static void RecordWriteLockAcquisition(string outcome, double waitSeconds)
+    {
+        _writeLockAcquisitionsTotal.Add(1, new KeyValuePair<string, object?>("outcome", outcome));
+        _writeLockWaitSeconds.Record(waitSeconds);
+    }
 }

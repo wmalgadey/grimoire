@@ -76,4 +76,27 @@ public sealed class IngestToolCallInstrumentation : IToolCallInstrumentation
         IngestAgentMetrics.RecordActionDenied(tool, reason);
         IngestAgentLogEvents.LogToolDenied(_logger, taskId, tool, canonicalTarget, reason, turn);
     }
+
+    /// <summary>T042 (012-query-synthesis-writes, US3): plan.md's `guardrails.acquire_write_lock`
+    /// span for one write-coordination lock-acquisition attempt — Ingest shares the same guard
+    /// as Query (T041).</summary>
+    public Activity? StartAcquireWriteLockActivity(string taskId, string path, int turn)
+    {
+        var span = IngestAgentTracing.ActivitySource.StartActivity("guardrails.acquire_write_lock");
+        span?.SetTag("task_id", taskId);
+        span?.SetTag("turn", turn);
+        return span;
+    }
+
+    /// <summary>T042 (012-query-synthesis-writes, US3): emits the wiki.write_lock.* metric pair,
+    /// plus the wiki.write_lock.timeout WARN log event when the acquisition timed out.</summary>
+    public void RecordWriteLockAcquisition(string taskId, string path, string outcome, double waitSeconds, int turn)
+    {
+        IngestAgentMetrics.RecordWriteLockAcquisition(outcome, waitSeconds);
+
+        if (outcome == "timeout")
+        {
+            IngestAgentLogEvents.LogWriteLockTimeout(_logger, taskId, path, waitSeconds * 1000);
+        }
+    }
 }

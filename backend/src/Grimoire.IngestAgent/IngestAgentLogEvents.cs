@@ -15,6 +15,7 @@ public static class IngestAgentLogEvents
     private static readonly EventId AgentCompletedEvent = new(7, "ingest.agent.completed");
     private static readonly EventId AgentCapExceededEvent = new(8, "ingest.agent.cap_exceeded");
     private static readonly EventId UserPromptResolvedEvent = new(9, "ingest.agent.user_prompt_resolved");
+    private static readonly EventId WriteLockTimeoutEvent = new(10, "wiki.write_lock.timeout");
 
     public static void LogInstructionsLoaded(
         ILogger logger,
@@ -206,6 +207,27 @@ public static class IngestAgentLogEvents
             taskId,
             cap,
             turns);
+    }
+
+    /// <summary>
+    /// T042 (012-query-synthesis-writes, US3), plan.md ## Observability > Structured Log
+    /// Events: lock acquisition exceeded the bounded backoff cap
+    /// (<c>write_coordination_timeout</c>). Ingest shares the same write-coordination guard
+    /// as Query (T041), so it emits the same event.
+    /// </summary>
+    public static void LogWriteLockTimeout(ILogger logger, string taskId, string path, double waitMs)
+    {
+        using var span = StartLogEventSpan(WriteLockTimeoutEvent.Name ?? "wiki.write_lock.timeout", "Warning");
+        span?.SetTag("task_id", taskId);
+        span?.SetTag("path", path);
+        span?.SetTag("wait_ms", waitMs);
+
+        logger.LogWarning(
+            WriteLockTimeoutEvent,
+            "Write-coordination lock acquisition timed out. task_id={task_id} path={path} wait_ms={wait_ms}",
+            taskId,
+            path,
+            waitMs);
     }
 
     private static Activity? StartLogEventSpan(string eventName, string level)

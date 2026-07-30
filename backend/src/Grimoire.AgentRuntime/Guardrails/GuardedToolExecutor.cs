@@ -1,5 +1,6 @@
 using Grimoire.Domain.Guardrails;
 using Grimoire.AgentRuntime.Guardrails.Coordination;
+using System.Diagnostics;
 using System.Text;
 using System.Text.Json;
 
@@ -204,7 +205,29 @@ public sealed class GuardedToolExecutor
         IDisposable? lockHandle = null;
         if (_writeGuard is not null)
         {
+            // T042 (012-query-synthesis-writes, US3): plan.md's `guardrails.acquire_write_lock`
+            // span covers exactly this acquisition attempt (lock acquire + create-only/CAS
+            // decision, taken together since the lock is held for both — contract §3). The
+            // corresponding `*_agent.tool_call` span for this same write is only created
+            // afterward (RecordAllowed/RecordDenied), once the final decision is known, so it
+            // is not yet Activity.Current here; see IToolCallInstrumentation's doc comment.
+            using var lockActivity = _instrumentation.StartAcquireWriteLockActivity(_taskId, canonical, turn);
+            var stopwatch = Stopwatch.StartNew();
             var guardDecision = await _writeGuard.EvaluateWriteAsync(canonical, policyResult.IsCreateOnly, cancellationToken);
+            stopwatch.Stop();
+
+            // "timeout" only for write_coordination_timeout — every other denial reason
+            // (create_only_target_exists, write_conflict_stale_read) and the allow path all
+            // required the lock to actually be acquired first (contract §3).
+            var lockOutcome = guardDecision.DenialReason == "write_coordination_timeout" ? "timeout" : "acquired";
+            var waitSeconds = stopwatch.Elapsed.TotalSeconds;
+
+            lockActivity?.SetTag("path", canonical);
+            lockActivity?.SetTag("outcome", lockOutcome);
+            lockActivity?.SetTag("wait_ms", stopwatch.Elapsed.TotalMilliseconds);
+
+            _instrumentation.RecordWriteLockAcquisition(_taskId, canonical, lockOutcome, waitSeconds, turn);
+
             if (!guardDecision.IsAllowed)
             {
                 var reason = guardDecision.DenialReason!;
