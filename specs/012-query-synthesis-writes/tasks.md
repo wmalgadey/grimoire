@@ -776,7 +776,7 @@ capture step, and final validation. Observability implementation + tests are
 co-located in Phases 3–5 above (sanctioned placement); the audit below is what
 gates the DoD.
 
-- [ ] T044 **Completeness audit** (MANDATORY, named — Constitution Principle
+- [X] T044 **Completeness audit** (MANDATORY, named — Constitution Principle
   III/IV): cross-reference every row of `plan.md ## Observability` against its
   implementing task and passing test — metrics
   `wiki.query.synthesis_pages_created_total` (T028/T029),
@@ -790,14 +790,57 @@ gates the DoD.
   deterministic guarantee 100%-tested and each agent-judgment criterion mapped
   to its evaluation threshold. File any gap found as a new task in this
   tasks.md before declaring the DoD met.
-- [ ] T045 Logging-contract CI enforcement (MANDATORY — Constitution Principle
+  *Audit result: all seven Observability rows confirmed emitted+tested at the
+  cited call sites (`grep`-verified: `QueryAgentMetrics.cs`/`IngestAgentMetrics.cs`
+  for the three counters/histogram, `QueryAgentLogEvents`/`IngestAgentLogEvents`
+  for the three log events, `QueryAgentInstrumentation.cs`/`IngestAgentInstrumentation.cs`/
+  `GuardedToolExecutor.cs` for the `guardrails.acquire_write_lock` span, all
+  covered by `QuerySynthesisWriteObservabilityTests.cs`,
+  `QueryWriteConflictObservabilityTests.cs`, `QueryWriteLockObservabilityTests.cs`).
+  SC-001–SC-004 deterministic tests confirmed present and green
+  (`QueryWriteScopeDenialTests.cs`, `QuerySynthesisWriteTests.cs`,
+  `ConcurrentWikiWriteIntegrityTests.cs`, `Grimoire.ArchTests` 44/44). SC-005–
+  SC-008 scenario/scorer definitions confirmed present in
+  `QueryScenarioDefinitions.cs`/`QueryDeterministicScorers.cs`.
+  **Real gap found and fixed**: `backend/tests/Grimoire.AgentEvals/QueryReplayEvalTests.cs`
+  (the always-running, zero-skip replay-fact tier that is CI's actual SC-005..
+  SC-010-style enforcement mechanism for the four pre-existing Query
+  scenarios) had no fact methods for the three new scenarios
+  (`query-synthesis-created`, `query-synthesis-declined-routine`,
+  `query-synthesis-decline-edit-request`) — T020/T021/T032 added the scenario
+  definitions and scorers but never wired a permanent CI-enforced test, so
+  after this session `ci.yml`'s "Run replay agent evals" step would silently
+  never check SC-005/SC-006/SC-007/SC-008 again, unlike every other criterion
+  in this feature. Fixed by adding
+  `SC005_SC007_SynthesisCreated_ReplaysAtThreshold`,
+  `SC006_SynthesisDeclinedRoutine_ReplaysAtThreshold`, and
+  `SC008_SynthesisDeclineEditRequest_ReplaysAtThreshold` to
+  `QueryReplayEvalTests.cs`, mirroring the existing four methods exactly (same
+  `AssertScenarioAsync` helper, same trust/threshold assertions). These three
+  fail until T047 captures recordings and T048 confirms thresholds — expected,
+  not a regression.*
+- [X] T045 Logging-contract CI enforcement (MANDATORY — Constitution Principle
   IV): confirm the new logging tests (T029, T035, T043) run in the standard PR
   pipeline (`Grimoire.IntegrationTests`, unfiltered in
   `.github/workflows/ci.yml`'s "Run hermetic integration tests" step); document
   the verification in the task close-out.
-- [ ] T046 Trace-contract CI enforcement (MANDATORY — Constitution Principle
+  *Verified: `.github/workflows/ci.yml` has zero `--filter`/`GRIMOIRE_EVAL`
+  occurrences anywhere; the "Run hermetic integration tests" step runs
+  `dotnet test backend/tests/Grimoire.IntegrationTests --configuration Release
+  --no-build` with no test-name filter, so `QuerySynthesisWriteObservabilityTests.cs`
+  (T029), `QueryWriteConflictObservabilityTests.cs` (T035), and
+  `QueryWriteLockObservabilityTests.cs` (T043) all run as part of the assembly
+  in every PR, unconditionally.*
+- [X] T046 Trace-contract CI enforcement (MANDATORY — Constitution Principle
   IV): same confirmation for the trace test (T043) and for the Phase 0
   structural rules (T001, T002) under "Run architecture tests".
+  *Verified: the "Run architecture tests" step runs `dotnet test
+  backend/tests/Grimoire.ArchTests --configuration Release --no-build`
+  unfiltered — `QueryAgentGuardedWriteBoundaryRuleTests.cs` (T001) and
+  `GuardrailsCoordinationContainmentRuleTests.cs` (T002) both run on every PR.
+  `QueryWriteLockObservabilityTests.cs`'s span/parent-linkage assertions (T043)
+  run in the same unfiltered `Grimoire.IntegrationTests` step confirmed under
+  T045.*
 - [ ] T047 Capture new eval recordings (one-time, non-hermetic step, requires
   `ANTHROPIC_API_KEY`): run the `Grimoire.EvalRunner` capture command for the
   three new scenarios (T020, T021, T032) against the live provider, producing
