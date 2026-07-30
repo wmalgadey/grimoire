@@ -47,6 +47,7 @@ public sealed record ResolvedGrimoirePaths(
     string ConversationsDir,
     string QueryAgentWorkerPath,
     string WriteLocksDir,
+    string FindingsDir,
     IReadOnlyList<PathLocation> Locations)
 {
     /// <summary>Per-task artifact path within <see cref="TasksDir"/> (mirrors IngestCliOptions.TaskArtifactPath).</summary>
@@ -55,4 +56,7 @@ public sealed record ResolvedGrimoirePaths(
     /// <summary>Per-conversation Conversation Record path within <see cref="ConversationsDir"/> (ADR-014, 011-query-conversations data-model.md).</summary>
     public string ConversationRecordPathFor(string conversationId)
         => Path.Combine(ConversationsDir, $"{conversationId}.md");
+
+    /// <summary>Per-run Findings Report path within <see cref="FindingsDir"/> (013-lint-agent data-model.md/contracts/findings-report-format.md).</summary>
+    public string FindingsReportPathFor(string runId) => Path.Combine(FindingsDir, $"{runId}.md");
 }

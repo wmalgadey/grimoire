@@ -132,6 +132,7 @@ public class IngestTaskRecordWatcherTests
                 ConversationsDir: Path.Combine(root, "conversations"),
                 QueryAgentWorkerPath: "unused",
                 WriteLocksDir: Path.Combine(root, "write-locks"),
+                FindingsDir: Path.Combine(root, "findings"),
                 Locations: []);
 
             var builder = WebApplication.CreateBuilder();

@@ -156,4 +156,5 @@ static Dictionary<string, string> PathConfigurationSwitchMappingsFactory() => ne
     ["--conversations-dir"] = "Grimoire:Paths:ConversationsDir",
     ["--query-agent-worker"] = "Grimoire:Paths:QueryAgentWorker",
     ["--write-locks-dir"] = "Grimoire:Paths:WriteLocksDir",
+    ["--findings-dir"] = "Grimoire:Paths:FindingsDir",
 };

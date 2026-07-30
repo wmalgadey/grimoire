@@ -55,6 +55,13 @@ public sealed class GrimoirePathOptions
     /// </summary>
     public string? WriteLocksDir { get; set; }
 
+    /// <summary>
+    /// Findings Report storage (013-lint-agent, ADR-009/ADR-003) — Hub-written only,
+    /// git-ignored, one file per Lint Run. Outside <c>wiki/</c> and git. Default:
+    /// <c>findings</c> under the data directory.
+    /// </summary>
+    public string? FindingsDir { get; set; }
+
     /// <summary>Ingest agent worker (.csproj/.dll/executable). Default: beside the Hub binaries.</summary>
     public string? AgentWorker { get; set; }
 
@@ -67,6 +74,7 @@ public sealed class GrimoirePathOptions
     public const string DefaultSecretsFileName = ".env";
     public const string DefaultConversationsDirName = "conversations";
     public const string DefaultWriteLocksDirName = "write-locks";
+    public const string DefaultFindingsDirName = "findings";
 
     // Not a `const`: NetArchTest's HaveDependencyOn scan treats string *field constants*
     // as candidate dependency evidence, and this filename's "Grimoire.IngestAgent" prefix

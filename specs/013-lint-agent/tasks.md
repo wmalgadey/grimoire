@@ -174,13 +174,24 @@ Query's existing behavior, policy files, and tests are unaffected.
   each of T010's cases reproduced through the full executor (not the guard in
   isolation), confirming `DeniedActionRecord`/`Denials`/`TouchedPaths` behave
   correctly for the new reasons.
-- [ ] T013 Extend `backend/src/Grimoire.Hub/Runtime/Paths/GrimoirePathOptions.cs`
+- [X] T013 Extend `backend/src/Grimoire.Hub/Runtime/Paths/GrimoirePathOptions.cs`
   (add `FindingsDir` + `DefaultFindingsDirName = "findings"`), `GrimoirePathResolver.cs`
   (resolve beneath `DataDir`, report as `findings_dir`, auto-create as
   `PathLocationKind.WritableData`), `ResolvedGrimoirePaths.cs` (add
   `FindingsReportPathFor(runId) => Path.Combine(FindingsDir, $"{runId}.md")`) — ADR-009
   single composition point.
-- [ ] T014 [P] Integration tests
+  *Deviation: also registered `--findings-dir` in `Grimoire.Hub/Program.cs`'s
+  `PathConfigurationSwitchMappingsFactory` (the same composition point already mapping
+  `--write-locks-dir`, etc.) — not explicitly named in this task's description, but
+  necessary for the CLI-override half of ADR-009's contract to actually exist for this
+  new location, matching the existing pattern exactly. Also updated three pre-existing
+  `ResolvedGrimoirePaths` test-construction call sites
+  (`IngestTaskRecordWatcherTests.cs`, `Fakes/IngestSubmissionPipelineFixture.cs`,
+  `QueryTurnSubmissionApiTests.cs`) and `StartupValidationTests.cs`'s hardcoded
+  reported-location-name set — required, since `FindingsDir` is a new required
+  positional record parameter (mechanical updates only, no behavior change to those
+  tests' own assertions).*
+- [X] T014 [P] Integration tests
   `backend/tests/Grimoire.IntegrationTests/PathConfiguration/FindingsPathTests.cs`:
   `findings_dir` resolves beneath `data/`, honors explicit override + env var with
   correct source reporting, auto-created — mirrors existing path-config test idiom.
