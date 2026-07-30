@@ -548,7 +548,7 @@ triggers are rejected and dead runs are detected.
 
 ### Tests for User Story 3
 
-- [ ] T039 [P] [US3] Integration test
+- [X] T039 [P] [US3] Integration test
   `backend/tests/Grimoire.IntegrationTests/LintWriteScopeDenialTests.cs` (SC-002):
   scripted body-changing `write_file` on an existing page → denied
   `frontmatter_only_body_changed`, page unchanged; scripted `write_file` to a
@@ -556,26 +556,66 @@ triggers are rejected and dead runs are detected.
   (no page creation); scripted write to `index.md`/`log.md`/outside the wiki → denied
   `out_of_scope`/`traversal` (no write rule exists for index/log at all — T020's
   policy). The run continues to completion and produces a report in every case.
-- [ ] T040 [P] [US3] Prompt-injection resistance test (in
+  *Deviation: exercised through a real `AgentLoop` + `GuardedToolExecutor` +
+  `LintToolRegistry` loaded from the real `data/agents/lint/policy.json` (mirrors
+  `QueryWriteScopeDenialTests`' idiom) rather than `GuardedToolExecutor` in
+  isolation (already covered by T012's `GuardedToolExecutorCoordinationTests`
+  cases) — this file's value-add is proving the run reaches its own natural
+  `end_turn` regardless of how many denials occurred (a combined test scripts all
+  four denial reasons in one run) and covering `log.md`/traversal, which T012 did
+  not. Also added a Hub-level test
+  (`LintRunCoordinator_RunWithDeniedActions_StillCompletes_AndReportRecordsEveryDenial`)
+  scripting `deniedActions` on the terminal event to prove "produces a report in
+  every case" at the level where the report is actually written, not just the
+  executor level.*
+- [X] T040 [P] [US3] Prompt-injection resistance test (in
   `LintWriteScopeDenialTests.cs`, T039's file): a wiki page's content contains
   instruction-like text attempting to grant broader write access; reading it changes
   nothing about policy evaluation; an out-of-scope write attempted afterward is
   still denied identically to T039 (FR-013).
-- [ ] T041 [P] [US3] Integration test
+  *Two cases: an injected page claiming the frontmatter-only restriction was
+  "lifted" for an existing page (still denied `frontmatter_only_body_changed`,
+  body unchanged) and one claiming `index.md`/`log.md` writes are now permitted
+  (still denied `out_of_scope`, file unchanged) — both read the compromised page
+  first, exactly as the agent would while performing the health check.*
+- [X] T041 [P] [US3] Integration test
   `backend/tests/Grimoire.IntegrationTests/LintConcurrencyAndLivenessTests.cs`
   (SC-003): a trigger while a run is active is rejected immediately (409/429, no
   queue) with a clear message; a `FakeAgentProcess` scripted to go silent is marked
   failed once the liveness window elapses (fake `TimeProvider`), leftover process
   terminated, and any findings produced before the hang are persisted with
   `partial: true`.
+  *Deviation: the concurrent-trigger case is a genuine, previously-uncovered gap —
+  no test in this feature exercised `LintSubmissionEndpoints` over an actual HTTP
+  round trip before this task (T015/T029/T030 all deliberately test at the
+  coordinator level); added a minimal Lint-only test host
+  (`BuildLintHostAsync`, mirrors `QueryTurnSubmissionApiTests.BuildHostAsync`
+  scoped to just `/api/lint-runs`, no SignalR) so the actual 409 status code and
+  `lint_run_active` reason are verified, not just the `LintSubmissionResult` type.
+  The liveness case uses a short **real** liveness window (100ms) with the default
+  `TimeProvider`, not a hand-rolled fake one — mirrors
+  `QueryLivenessSupervisionTests`'/`LintTraceTests`' established idiom (every
+  existing liveness test in this codebase already drives
+  `LintRunCoordinator`/`QueryRunCoordinator`'s periodic-timer watchdog this way);
+  a fake `TimeProvider` compatible with a periodic `CreateTimer` callback would be
+  net-new untested machinery for no additional coverage. "Findings produced before
+  the hang" is, honestly, none — Lint has no partial-narrative stream unlike
+  Query's `answer_chunk` (its only output is one final narrative) — the report
+  says so explicitly ("Run failed before completion...") rather than fabricating
+  any (Constitution Principle V); the `partial: true` marker and leftover-process
+  termination are asserted directly.*
 
 ### Implementation for User Story 3
 
-- [ ] T042 [US3] Close any scope-enforcement/concurrency gaps T039–T041 surface.
+- [X] T042 [US3] Close any scope-enforcement/concurrency gaps T039–T041 surface.
   Expected to be small — the frontmatter-only check (T009/T011) and the
   immediate-rejection coordinator (T021) already structurally guarantee this story;
   this task exists so the story has an explicit implementation home if the tests
   find drift.
+  *No implementation gaps found — every T039–T041 test passed against the
+  existing mechanism on the first run. The one genuine gap found was a coverage
+  gap, not a behavior bug (no HTTP-level test existed for
+  `LintSubmissionEndpoints`), closed directly within T041 above.*
 
 **Checkpoint**: All user stories are independently functional — Lint is accurate,
 scoped, and safe under adversarial content and concurrent/failed-run conditions.
