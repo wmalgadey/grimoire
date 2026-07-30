@@ -49,6 +49,13 @@ public sealed class GuardedToolExecutor
     /// coordination guard is constructed and writes behave exactly as before this
     /// feature — existing callers that do not yet supply this argument are unaffected.
     /// </param>
+    /// <param name="writeLockBackoffCap">
+    /// T043 (012-query-synthesis-writes, US3): overrides <see cref="SharedFileWriteGuard"/>'s
+    /// lock-acquisition backoff cap (default <see cref="CrossProcessFileLock.DefaultBackoffCap"/>,
+    /// 5 seconds). Exists so deterministic tests can force the
+    /// <c>write_coordination_timeout</c>/<c>wiki.write_lock.timeout</c> path without a
+    /// multi-second wait; production callers leave this <c>null</c>.
+    /// </param>
     public GuardedToolExecutor(
         SafetyPolicy policy,
         WriteJournal journal,
@@ -56,7 +63,8 @@ public sealed class GuardedToolExecutor
         string? taskId = null,
         ToolRegistry? registry = null,
         IToolCallInstrumentation? instrumentation = null,
-        string? writeLocksDir = null)
+        string? writeLocksDir = null,
+        TimeSpan? writeLockBackoffCap = null)
     {
         _policy = policy;
         _journal = journal;
@@ -64,7 +72,7 @@ public sealed class GuardedToolExecutor
         _taskId = taskId ?? string.Empty;
         _registry = registry ?? ToolRegistry.Default;
         _instrumentation = instrumentation ?? NullToolCallInstrumentation.Instance;
-        _writeGuard = writeLocksDir is not null ? new SharedFileWriteGuard(writeLocksDir) : null;
+        _writeGuard = writeLocksDir is not null ? new SharedFileWriteGuard(writeLocksDir, writeLockBackoffCap) : null;
     }
 
     /// <summary>All policy denials that occurred during the run so far.</summary>
