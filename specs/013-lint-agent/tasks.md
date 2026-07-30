@@ -91,7 +91,7 @@ Query's existing behavior, policy files, and tests are unaffected.
 
 **⚠️ CRITICAL**: No user story work can begin until this phase is complete.
 
-- [ ] T005 Extend `backend/src/Grimoire.Domain/Guardrails/PolicyDecision.cs` and
+- [X] T005 Extend `backend/src/Grimoire.Domain/Guardrails/PolicyDecision.cs` and
   `SafetyPolicy.cs`: introduce `WriteMode { ReadWrite, CreateOnly, FrontmatterOnly }`;
   `WriteRule` gains a `Mode` property (default `ReadWrite`) **alongside** its existing
   `CreateOnly` bool (keep `CreateOnly` as a computed convenience —
@@ -102,15 +102,21 @@ Query's existing behavior, policy files, and tests are unaffected.
   passing unchanged); `PolicyDecision.Allow` gains a `WriteMode mode = WriteMode.ReadWrite`
   parameter, `IsCreateOnly` becomes the same kind of computed convenience. `Evaluate`
   returns the matched rule's `Mode`.
-- [ ] T006 [P] Unit tests `backend/tests/Grimoire.Domain.UnitTests/WriteModeTests.cs`:
+  *Deviation: `WriteRule`/`PolicyDecision` are no longer declared with a single
+  primary-constructor parameter list — each gained a second, explicit `bool`-shaped
+  constructor/overload (`WriteRule(string, bool)`, `PolicyDecision.Allow(bool)`)
+  delegating to the new `WriteMode`-shaped one, so every named-argument call site using
+  `CreateOnly:`/`isCreateOnly:` keeps binding to a real `bool` parameter and compiles
+  byte-for-byte unchanged.*
+- [X] T006 [P] Unit tests `backend/tests/Grimoire.Domain.UnitTests/WriteModeTests.cs`:
   a `frontmatter-only` rule surfaces `Mode == WriteMode.FrontmatterOnly` on allow and
   `IsCreateOnly == false`; existing `read-write`/`create-only` behavior (including the
   `IsCreateOnly` convenience) is unchanged — run the full existing
   `SafetyPolicyModeTests` suite unmodified to confirm zero regressions.
-- [ ] T007 Extend `backend/src/Grimoire.AgentRuntime/Instructions/PolicyLoader.cs`:
+- [X] T007 Extend `backend/src/Grimoire.AgentRuntime/Instructions/PolicyLoader.cs`:
   recognize `"frontmatter-only"` as a third `mode` value; any other value remains a
   fail-closed load error, unchanged.
-- [ ] T008 [P] Integration tests
+- [X] T008 [P] Integration tests
   `backend/tests/Grimoire.IntegrationTests/PolicyLoaderFrontmatterOnlyModeTests.cs`:
   loading a policy with `"mode": "frontmatter-only"` produces a policy whose
   write-scope `Evaluate` returns `Mode == FrontmatterOnly`; existing

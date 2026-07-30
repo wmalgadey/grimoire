@@ -107,6 +107,7 @@ public sealed class PolicyLoader
 
     private const string ReadWriteMode = "read-write";
     private const string CreateOnlyMode = "create-only";
+    private const string FrontmatterOnlyMode = "frontmatter-only";
 
     /// <summary>Thrown internally to fail closed on an unrecognized <c>mode</c> value; never escapes <see cref="LoadAsync"/>.</summary>
     private sealed class PolicyModeException(string message) : Exception(message);
@@ -126,11 +127,13 @@ public sealed class PolicyLoader
     }
 
     /// <summary>
-    /// Resolves write-scope rules, carrying each rule's <c>mode</c> (ADR-015) into a
-    /// <see cref="WriteRule"/>. <c>mode</c> is optional: absent or <c>"read-write"</c>
-    /// means plain read-write (byte-for-byte the pre-ADR-015 behavior); <c>"create-only"</c>
-    /// marks the rule create-only; any other value fails closed (<see cref="PolicyModeException"/>),
-    /// matching the existing <c>defaultDecision</c> strictness — never silently defaulted.
+    /// Resolves write-scope rules, carrying each rule's <c>mode</c> (ADR-015, extended by
+    /// ADR-016) into a <see cref="WriteRule"/>. <c>mode</c> is optional: absent or
+    /// <c>"read-write"</c> means plain read-write (byte-for-byte the pre-ADR-015 behavior);
+    /// <c>"create-only"</c> marks the rule create-only; <c>"frontmatter-only"</c> (ADR-016,
+    /// 013-lint-agent) marks the rule frontmatter-only; any other value fails closed
+    /// (<see cref="PolicyModeException"/>), matching the existing <c>defaultDecision</c>
+    /// strictness — never silently defaulted.
     /// </summary>
     private IReadOnlyList<WriteRule> ResolveAndNormalizeWriteRules(IReadOnlyList<PolicyRuleSchema> rules)
     {
@@ -141,17 +144,18 @@ public sealed class PolicyLoader
             if (normalized is null)
                 continue;
 
-            var createOnly = rule.Mode switch
+            var mode = rule.Mode switch
             {
-                null => false,
-                ReadWriteMode => false,
-                CreateOnlyMode => true,
+                null => WriteMode.ReadWrite,
+                ReadWriteMode => WriteMode.ReadWrite,
+                CreateOnlyMode => WriteMode.CreateOnly,
+                FrontmatterOnlyMode => WriteMode.FrontmatterOnly,
                 _ => throw new PolicyModeException(
                     $"write rule for \"{rule.PathPrefix}\" has unrecognized mode \"{rule.Mode}\" " +
-                    $"(expected \"{ReadWriteMode}\" or \"{CreateOnlyMode}\")."),
+                    $"(expected \"{ReadWriteMode}\", \"{CreateOnlyMode}\", or \"{FrontmatterOnlyMode}\")."),
             };
 
-            writeRules.Add(new WriteRule(normalized, createOnly));
+            writeRules.Add(new WriteRule(normalized, mode));
         }
         return writeRules;
     }
@@ -204,8 +208,9 @@ public sealed class PolicyLoader
         public string PathPrefix { get; set; } = string.Empty;
 
         /// <summary>
-        /// ADR-015: optional write-rule mode. Recognized: <c>"read-write"</c> (or absent,
-        /// the pre-ADR-015 default) and <c>"create-only"</c>. Any other value is a
+        /// ADR-015 (extended by ADR-016): optional write-rule mode. Recognized:
+        /// <c>"read-write"</c> (or absent, the pre-ADR-015 default), <c>"create-only"</c>,
+        /// and <c>"frontmatter-only"</c> (ADR-016, 013-lint-agent). Any other value is a
         /// fail-closed load error — never silently defaulted. Ignored for read rules.
         /// </summary>
         public string? Mode { get; set; }
