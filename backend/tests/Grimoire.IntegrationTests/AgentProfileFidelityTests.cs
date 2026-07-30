@@ -33,21 +33,22 @@ public class AgentProfileFidelityTests
     }
 
     [Fact]
-    public void QueryProfile_ToolSet_IsExactly_ListRead_NoWriteTool()
+    public void QueryProfile_ToolSet_IsExactly_ListReadWrite()
     {
+        // ADR-015 (012-query-synthesis-writes) supersedes the "no write tool at all"
+        // framing of ADR-011/feature 008: Query's write capability is now scoped by
+        // policy (create-only pages/ + index.md/log.md), not by omitting the tool.
         Assert.Equal(
-            ["list_files", "read_file"],
+            ["list_files", "read_file", "write_file"],
             QueryToolRegistry.Default.Tools.Select(t => t.Name).ToArray());
 
         Assert.Equal(
-            [ToolRegistry.ListFilesDefinition, ToolRegistry.ReadFileDefinition],
+            [ToolRegistry.ListFilesDefinition, ToolRegistry.ReadFileDefinition, ToolRegistry.WriteFileDefinition],
             QueryToolRegistry.Default.Tools);
-
-        Assert.DoesNotContain(QueryToolRegistry.Default.Tools, t => t.Name == "write_file");
     }
 
     [Fact]
-    public async Task Query_OutOfProfileWriteRequest_IsRejectedAtTheGuardedBoundary_AndTheRunContinues()
+    public async Task Query_OutOfProfileToolRequest_IsRejectedAtTheGuardedBoundary_AndTheRunContinues()
     {
         var root = Path.Combine(Path.GetTempPath(), $"profile-fidelity-query-{Guid.NewGuid():N}");
         var pagesDir = Path.Combine(root, "pages");
@@ -64,31 +65,34 @@ public class AgentProfileFidelityTests
             var executor = new GuardedToolExecutor(
                 policy, journal, root, taskId: "turn-fidelity-1", registry: QueryToolRegistry.Default);
 
-            // The model requests write_file — a tool the Query profile does not declare.
+            // The model requests a tool no Grimoire profile declares at all (mirrors the
+            // Ingest variant below) — write_file is now legitimately in Query's profile
+            // (ADR-015), so it no longer demonstrates an out-of-profile rejection.
             var fakeModel = new FakeModelClient([
-                FakeModelClient.WriteFileTurn("tool-1", "pages/new.md", "# should never be written"),
-                FakeModelClient.FinalTurn("I cannot write; here is the answer instead.")]);
+                FakeModelClient.ToolCallTurn("tool-1", "delete_file", """{"path":"pages/adr.md"}"""),
+                FakeModelClient.FinalTurn("I cannot do that; here is the answer instead.")]);
 
             var loop = new AgentLoop(fakeModel, executor, registry: QueryToolRegistry.Default);
 
             var result = await loop.RunAsync(
                 "You are a test query agent.",
-                [new ConversationMessage("user", "Please write a page.")],
+                [new ConversationMessage("user", "Please delete a page.")],
                 "turn-fidelity-1",
                 CancellationToken.None);
 
             // (a) the tool list offered to the model was exactly the profile declaration.
             Assert.All(fakeModel.Calls, call => Assert.Equal(
-                ["list_files", "read_file"],
+                ["list_files", "read_file", "write_file"],
                 call.Tools.Select(t => t.Name).ToArray()));
 
             // (b) the out-of-profile request was rejected at the boundary and the run
             // continued to a normal completion; nothing was written anywhere.
-            Assert.Equal("I cannot write; here is the answer instead.", result.Narrative);
+            Assert.Equal("I cannot do that; here is the answer instead.", result.Narrative);
             Assert.Equal(2, fakeModel.CallCount);
             Assert.Empty(journal.JournaledPaths);
             Assert.Empty(executor.TouchedPaths);
             Assert.False(File.Exists(Path.Combine(pagesDir, "new.md")));
+            Assert.False(File.Exists(Path.Combine(pagesDir, "adr.md")));
         }
         finally
         {

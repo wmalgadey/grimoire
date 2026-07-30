@@ -17,7 +17,8 @@ public sealed record ContentRootPaths(
     string LogPath,
     string SystemPromptPath,
     string DefaultUserPromptPath,
-    string PolicyPath)
+    string PolicyPath,
+    string WriteLocksDir)
 {
     public static ContentRootPaths FromResolved(ResolvedGrimoirePaths resolved) =>
         new(
@@ -28,5 +29,6 @@ public sealed record ContentRootPaths(
             LogPath: resolved.LogPath,
             SystemPromptPath: resolved.SystemPromptPath,
             DefaultUserPromptPath: resolved.DefaultUserPromptPath,
-            PolicyPath: resolved.PolicyPath);
+            PolicyPath: resolved.PolicyPath,
+            WriteLocksDir: resolved.WriteLocksDir);
 }

@@ -14,7 +14,11 @@ public sealed record QueryTurnCompletionMetadata(
     string? PolicySha256,
     string? Model,
     int? TurnsUsed,
-    IReadOnlyList<AgentRunEventDeniedAction> DeniedActions);
+    IReadOnlyList<AgentRunEventDeniedAction> DeniedActions,
+    // ADR-015 (012-query-synthesis-writes): canonical paths of pages this turn created;
+    // defaults to empty so pre-feature call sites (none currently — all Query terminal
+    // events flow through QueryRunCoordinator) need no change.
+    IReadOnlyList<string> CreatedPages);
 
 /// <summary>Terminal-inclusive state machine for one Query Turn (data-model.md QueryTurn).</summary>
 public enum QueryTurnStatus

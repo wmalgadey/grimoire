@@ -185,6 +185,16 @@ New/updated containment rules in `Grimoire.ArchTests` (each with a Red/Green pro
   Extends the existing guarded-write boundary rule to cover both agent process
   assemblies.
 
+  > **Superseded by [ADR-015](ADR-015-query-write-scope-and-wiki-write-coordination.md)
+  > (012-query-synthesis-writes):** Query is no longer structurally write-free — its
+  > tool registry now includes a scoped `write_file`, and C7 is rewritten to an
+  > allow-listed-namespace rule (the same shape as Ingest's) permitting reachable
+  > writes only from `Grimoire.AgentRuntime.Guardrails` (incl. its `Coordination`
+  > sub-namespace). FR-011 above and the "no wiki-write capability at all" framing
+  > throughout this ADR are superseded accordingly. Everything else in this ADR —
+  > shared runtime, streaming, bounded concurrency, interruption semantics, the port
+  > table, and containment rules C1–C6/C8 — remains in force.
+
 ### Consequences
 
 - Good, because Ingest and Query share one tested loop, model-client seam, and guarded

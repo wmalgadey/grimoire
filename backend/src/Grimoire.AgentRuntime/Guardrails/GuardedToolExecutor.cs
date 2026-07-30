@@ -1,4 +1,6 @@
 using Grimoire.Domain.Guardrails;
+using Grimoire.AgentRuntime.Guardrails.Coordination;
+using System.Diagnostics;
 using System.Text;
 using System.Text.Json;
 
@@ -19,22 +21,50 @@ public sealed record ToolExecutionResult(
 /// </summary>
 public sealed class GuardedToolExecutor
 {
+    // T040 (012-query-synthesis-writes, US3): plain `Encoding.UTF8` writes a byte-order-mark
+    // preamble; `SharedFileWriteGuard`'s compare-and-swap hashes the raw on-disk bytes
+    // (including any BOM) against a hash computed from the decoded string content (which
+    // never includes one) — a BOM/no-BOM mismatch that spuriously denied every second
+    // guarded write to the same target as `write_conflict_stale_read`, discovered by
+    // ConcurrentWikiWriteIntegrityTests' multi-writer contention scenario (T036/T039).
+    // Wiki markdown files carry no BOM by convention either way.
+    private static readonly Encoding Utf8NoBom = new UTF8Encoding(encoderShouldEmitUTF8Identifier: false);
+
     private readonly SafetyPolicy _policy;
     private readonly WriteJournal _journal;
     private readonly string _repositoryRoot;
     private readonly string _taskId;
     private readonly ToolRegistry _registry;
     private readonly IToolCallInstrumentation _instrumentation;
+    private readonly SharedFileWriteGuard? _writeGuard;
     private readonly List<DeniedActionRecord> _denials = [];
     private readonly List<string> _touchedPaths = [];
+    private readonly List<string> _createdPaths = [];
 
+    /// <param name="writeLocksDir">
+    /// ADR-015: base directory for cross-process write-coordination lock files. When
+    /// supplied, every guarded write is additionally coordinated through a
+    /// <see cref="SharedFileWriteGuard"/> (create-only existence check /
+    /// read-then-write compare-and-swap, ADR-015). When <c>null</c> (the default), no
+    /// coordination guard is constructed and writes behave exactly as before this
+    /// feature — existing callers that do not yet supply this argument are unaffected.
+    /// </param>
+    /// <param name="writeLockBackoffCap">
+    /// T043 (012-query-synthesis-writes, US3): overrides <see cref="SharedFileWriteGuard"/>'s
+    /// lock-acquisition backoff cap (default <see cref="CrossProcessFileLock.DefaultBackoffCap"/>,
+    /// 5 seconds). Exists so deterministic tests can force the
+    /// <c>write_coordination_timeout</c>/<c>wiki.write_lock.timeout</c> path without a
+    /// multi-second wait; production callers leave this <c>null</c>.
+    /// </param>
     public GuardedToolExecutor(
         SafetyPolicy policy,
         WriteJournal journal,
         string repositoryRoot,
         string? taskId = null,
         ToolRegistry? registry = null,
-        IToolCallInstrumentation? instrumentation = null)
+        IToolCallInstrumentation? instrumentation = null,
+        string? writeLocksDir = null,
+        TimeSpan? writeLockBackoffCap = null)
     {
         _policy = policy;
         _journal = journal;
@@ -42,6 +72,7 @@ public sealed class GuardedToolExecutor
         _taskId = taskId ?? string.Empty;
         _registry = registry ?? ToolRegistry.Default;
         _instrumentation = instrumentation ?? NullToolCallInstrumentation.Instance;
+        _writeGuard = writeLocksDir is not null ? new SharedFileWriteGuard(writeLocksDir, writeLockBackoffCap) : null;
     }
 
     /// <summary>All policy denials that occurred during the run so far.</summary>
@@ -49,6 +80,16 @@ public sealed class GuardedToolExecutor
 
     /// <summary>All file paths successfully written during the run so far.</summary>
     public IReadOnlyList<string> TouchedPaths => _touchedPaths;
+
+    /// <summary>
+    /// ADR-015 (012-query-synthesis-writes): the subset of <see cref="TouchedPaths"/>
+    /// whose matched write rule was <c>create-only</c> — i.e. pages newly created this
+    /// run (as opposed to `index.md`/`log.md` appends, which are plain <c>read-write</c>
+    /// targets). This is the harness-reported source for
+    /// <see cref="Grimoire.AgentRuntime.RunEvents.RunCompletionMetadata.CreatedArtifacts"/>: mechanical, from
+    /// the run's own journal — no judgment about page content (Constitution Principle V).
+    /// </summary>
+    public IReadOnlyList<string> CreatedPaths => _createdPaths;
 
     /// <summary>
     /// Executes one tool call, applying policy, journaling, and telemetry.
@@ -147,6 +188,7 @@ public sealed class GuardedToolExecutor
         }
 
         var content = await File.ReadAllTextAsync(canonical, Encoding.UTF8, cancellationToken);
+        _writeGuard?.OnReadFile(canonical, content);
         return new ToolExecutionResult(false, content);
     }
 
@@ -174,36 +216,109 @@ public sealed class GuardedToolExecutor
             return RecordDenial(ToolRegistry.WriteFile, relativePath, canonical, policyResult.DenialReason!, turn);
         }
 
-        // Executor obligations (contract order):
-        // 1. Journal prior state.
-        await _journal.RecordAsync(canonical, cancellationToken);
-
-        // 2. Create parent dirs inside the write scope.
-        var parentDir = Path.GetDirectoryName(canonical);
-        if (!string.IsNullOrEmpty(parentDir))
+        // ADR-015: coordinate with other writers (Ingest/Query/future Lint) sharing the
+        // same guarded tool boundary. Absent (no writeLocksDir supplied), this is a no-op
+        // and behavior is unchanged from before this feature.
+        IDisposable? lockHandle = null;
+        if (_writeGuard is not null)
         {
-            Directory.CreateDirectory(parentDir);
+            // T042 (012-query-synthesis-writes, US3): plan.md's `guardrails.acquire_write_lock`
+            // span covers exactly this acquisition attempt (lock acquire + create-only/CAS
+            // decision, taken together since the lock is held for both — contract §3). The
+            // corresponding `*_agent.tool_call` span for this same write is only created
+            // afterward (RecordAllowed/RecordDenied), once the final decision is known, so it
+            // is not yet Activity.Current here; see IToolCallInstrumentation's doc comment.
+            using var lockActivity = _instrumentation.StartAcquireWriteLockActivity(_taskId, canonical, turn);
+            var stopwatch = Stopwatch.StartNew();
+            var guardDecision = await _writeGuard.EvaluateWriteAsync(canonical, policyResult.IsCreateOnly, cancellationToken);
+            stopwatch.Stop();
+
+            // "timeout" only for write_coordination_timeout — every other denial reason
+            // (create_only_target_exists, write_conflict_stale_read) and the allow path all
+            // required the lock to actually be acquired first (contract §3).
+            var lockOutcome = guardDecision.DenialReason == "write_coordination_timeout" ? "timeout" : "acquired";
+            var waitSeconds = stopwatch.Elapsed.TotalSeconds;
+
+            lockActivity?.SetTag("path", canonical);
+            lockActivity?.SetTag("outcome", lockOutcome);
+            lockActivity?.SetTag("wait_ms", stopwatch.Elapsed.TotalMilliseconds);
+
+            _instrumentation.RecordWriteLockAcquisition(_taskId, canonical, lockOutcome, waitSeconds, turn);
+
+            if (!guardDecision.IsAllowed)
+            {
+                var reason = guardDecision.DenialReason!;
+
+                // ADR-015 (012-query-synthesis-writes): create_only_target_exists and
+                // write_conflict_stale_read are write-coordination rejections, distinct from
+                // write_coordination_timeout (its own wiki.write_lock.timeout signal) and
+                // from the pre-existing out_of_scope/no_rule/traversal policy-scope denials
+                // (their own established RecordDenied-only signals) — plan.md's
+                // wiki.write_conflict.rejected/wiki.write_conflict.rejections_total rows.
+                if (reason is "create_only_target_exists" or "write_conflict_stale_read")
+                {
+                    _instrumentation.RecordWriteConflictRejected(_taskId, canonical, reason, turn);
+                }
+
+                return RecordDenial(ToolRegistry.WriteFile, relativePath, canonical, reason, turn);
+            }
+
+            lockHandle = guardDecision.LockHandle;
         }
 
-        // 3. Atomic write via temp + rename within the same directory.
-        var tempPath = canonical + ".tmp." + Guid.NewGuid().ToString("N");
         try
         {
-            await File.WriteAllTextAsync(tempPath, content, Encoding.UTF8, cancellationToken);
-            File.Move(tempPath, canonical, overwrite: true);
-        }
-        catch
-        {
-            if (File.Exists(tempPath))
+            // Executor obligations (contract order):
+            // 1. Journal prior state.
+            await _journal.RecordAsync(canonical, cancellationToken);
+
+            // 2. Create parent dirs inside the write scope.
+            var parentDir = Path.GetDirectoryName(canonical);
+            if (!string.IsNullOrEmpty(parentDir))
             {
-                try { File.Delete(tempPath); } catch { /* best-effort cleanup */ }
+                Directory.CreateDirectory(parentDir);
             }
-            throw;
+
+            // 3. Atomic write via temp + rename within the same directory.
+            var tempPath = canonical + ".tmp." + Guid.NewGuid().ToString("N");
+            try
+            {
+                await File.WriteAllTextAsync(tempPath, content, Utf8NoBom, cancellationToken);
+                File.Move(tempPath, canonical, overwrite: true);
+            }
+            catch
+            {
+                if (File.Exists(tempPath))
+                {
+                    try { File.Delete(tempPath); } catch { /* best-effort cleanup */ }
+                }
+                throw;
+            }
+
+            // 4. Update the write guard's read-hash baseline for this path (so this run's
+            // own next write/read of the same path is never mistaken for a stale read).
+            _writeGuard?.OnWriteCommitted(canonical, content);
+        }
+        finally
+        {
+            // Release the coordination lock unconditionally — including on failure or
+            // cancellation — so an interrupted run can never wedge a target (ADR-015,
+            // FR-011).
+            lockHandle?.Dispose();
         }
 
-        // 4. Record touched path, emit telemetry.
+        // 5. Record touched path, emit telemetry.
         _touchedPaths.Add(canonical);
         _instrumentation.RecordAllowed(_taskId, ToolRegistry.WriteFile, canonical, turn);
+
+        // ADR-015: a create-only write that reaches here has succeeded — this run created
+        // a brand-new page (the existence check in step "guardDecision" above already
+        // ruled out an overwrite). Mechanical bookkeeping only; no content judgment.
+        if (policyResult.IsCreateOnly)
+        {
+            _createdPaths.Add(canonical);
+            _instrumentation.RecordCreateOnlyWriteSucceeded(_taskId, canonical, turn);
+        }
 
         return new ToolExecutionResult(false, $"Written: {relativePath}");
     }

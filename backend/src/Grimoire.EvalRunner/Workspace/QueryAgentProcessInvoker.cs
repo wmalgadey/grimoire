@@ -25,7 +25,10 @@ public sealed record QueryAgentRunResult(
     bool Completed,
     string? Answer,
     string? FailureReason,
-    IReadOnlyList<QueryEvalDeniedAction> DeniedActions);
+    IReadOnlyList<QueryEvalDeniedAction> DeniedActions,
+    // ADR-015 (012-query-synthesis-writes): wiki-root-relative paths of pages this turn
+    // created, read back from the terminal event's `createdPages` field.
+    IReadOnlyList<string> CreatedPages);
 
 /// <summary>
 /// Spawns the real <c>Grimoire.QueryAgent</c> executable per sample through its
@@ -89,6 +92,10 @@ public sealed class QueryAgentProcessInvoker
         EvalPaths paths,
         AgentModelMode mode,
         TimeSpan budget,
+        // ADR-015 (012-query-synthesis-writes): per-sample write-coordination lock
+        // directory (contracts/query-write-scope-and-coordination.md §4) — the CLI
+        // argument is required, so every caller must supply one now that Query can write.
+        string writeLocksDir,
         CancellationToken cancellationToken)
     {
         var startInfo = new ProcessStartInfo
@@ -108,6 +115,7 @@ public sealed class QueryAgentProcessInvoker
         AddOption(startInfo, "--log-path", Path.Combine(wikiRoot, "log.md"));
         AddOption(startInfo, "--system-prompt-path", paths.QuerySystemPromptPath);
         AddOption(startInfo, "--policy-path", paths.QueryPolicyPath);
+        AddOption(startInfo, "--write-locks-dir", writeLocksDir);
 
         foreach (var variable in ScrubbedVariables)
         {
@@ -185,14 +193,18 @@ public sealed class QueryAgentProcessInvoker
 
             return new QueryAgentRunResult(
                 ExitCode: -1, TimedOut: true, StdErr: SafeResult(stdErrTask),
-                Completed: false, Answer: null, FailureReason: null, DeniedActions: []);
+                Completed: false, Answer: null, FailureReason: null, DeniedActions: [], CreatedPages: []);
         }
 
         var stdout = SafeResult(stdOutTask);
         var stderr = SafeResult(stdErrTask);
-        var (completed, answer, failureReason, denials) = ParseTerminalEvent(stdout);
+        var (completed, answer, failureReason, denials, createdPages) = ParseTerminalEvent(stdout);
+        var relativeCreatedPages = createdPages
+            .Select(canonical => Path.GetRelativePath(wikiRoot, canonical).Replace('\\', '/'))
+            .ToList();
 
-        return new QueryAgentRunResult(process.ExitCode, TimedOut: false, StdErr: stderr, completed, answer, failureReason, denials);
+        return new QueryAgentRunResult(
+            process.ExitCode, TimedOut: false, StdErr: stderr, completed, answer, failureReason, denials, relativeCreatedPages);
     }
 
     /// <summary>
@@ -202,7 +214,7 @@ public sealed class QueryAgentProcessInvoker
     /// surfaces, per Program.cs's catch-all handler), and any denied actions — there is
     /// nothing else to read the outcome from (R3: Query writes no Task-Artifact-equivalent).
     /// </summary>
-    private static (bool Completed, string? Answer, string? FailureReason, IReadOnlyList<QueryEvalDeniedAction> Denials) ParseTerminalEvent(string stdout)
+    private static (bool Completed, string? Answer, string? FailureReason, IReadOnlyList<QueryEvalDeniedAction> Denials, IReadOnlyList<string> CreatedPages) ParseTerminalEvent(string stdout)
     {
         foreach (var line in stdout.Split('\n', StringSplitOptions.RemoveEmptyEntries))
         {
@@ -250,10 +262,23 @@ public sealed class QueryAgentProcessInvoker
                 }
             }
 
-            return (type == "completed", summary, reason, denials);
+            var createdPages = new List<string>();
+            if (root.TryGetProperty("createdPages", out var createdPagesProperty)
+                && createdPagesProperty.ValueKind == JsonValueKind.Array)
+            {
+                foreach (var page in createdPagesProperty.EnumerateArray())
+                {
+                    if (page.ValueKind == JsonValueKind.String && page.GetString() is { } value)
+                    {
+                        createdPages.Add(value);
+                    }
+                }
+            }
+
+            return (type == "completed", summary, reason, denials, createdPages);
         }
 
-        return (false, null, null, []);
+        return (false, null, null, [], []);
     }
 
     private static void AddOption(ProcessStartInfo startInfo, string name, string value)

@@ -17,7 +17,12 @@ public sealed record RunCompletionMetadata(
     string? PolicySha256 = null,
     string? Model = null,
     int? TurnsUsed = null,
-    IReadOnlyList<DeniedActionRecord>? DeniedActions = null);
+    IReadOnlyList<DeniedActionRecord>? DeniedActions = null,
+    // ADR-015 (012-query-synthesis-writes): canonical paths from this run's
+    // GuardedToolExecutor.CreatedPaths (create-only writes that succeeded) — mechanical
+    // reporting of what the run's own journal already recorded, no content judgment
+    // (Constitution Principle V). Null/empty for a turn that created nothing.
+    IReadOnlyList<string>? CreatedArtifacts = null);
 
 /// <summary>
 /// Emits Agent Run Events as NDJSON on stdout (contracts/agent-run-events.md, ADR-008):
@@ -104,6 +109,7 @@ public sealed class RunEventEmitter : IDisposable
                 reason = d.Reason,
                 turn = d.Turn,
             }).ToList(),
+            createdPages = metadata?.CreatedArtifacts,
         };
 
     private void Emit(object payload)

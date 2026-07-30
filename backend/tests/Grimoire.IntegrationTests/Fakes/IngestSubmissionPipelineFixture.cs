@@ -85,7 +85,8 @@ public sealed class IngestSubmissionPipelineFixture : IDisposable
                 LogPath: Path.Combine(contentRoot, "log.md"),
                 SystemPromptPath: Path.Combine(instructionsDir, "system-prompt.md"),
                 DefaultUserPromptPath: Path.Combine(instructionsDir, "default-user-prompt.md"),
-                PolicyPath: Path.Combine(instructionsDir, "policy.json"));
+                PolicyPath: Path.Combine(instructionsDir, "policy.json"),
+                WriteLocksDir: Path.Combine(Root, "write-locks"));
             Directory.CreateDirectory(ContentPaths.PagesDir);
             Directory.CreateDirectory(ContentPaths.TasksDir);
             File.WriteAllText(ContentPaths.IndexPath, "# Index\n");
@@ -122,6 +123,7 @@ public sealed class IngestSubmissionPipelineFixture : IDisposable
             QueryPolicyPath: Path.Combine(Root, "agents", "query", "policy.json"),
             ConversationsDir: Path.Combine(Root, "conversations"),
             QueryAgentWorkerPath: "unused",
+            WriteLocksDir: Path.Combine(Root, "write-locks"),
             Locations: []);
 
         var dbPath = Path.Combine(Root, "operational-state.db");

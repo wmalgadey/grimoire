@@ -148,6 +148,8 @@ public sealed class AgentProcessHost : IAgentProcessLauncher
         startInfo.ArgumentList.Add(request.SystemPromptPath);
         startInfo.ArgumentList.Add("--policy-path");
         startInfo.ArgumentList.Add(request.PolicyPath);
+        startInfo.ArgumentList.Add("--write-locks-dir");
+        startInfo.ArgumentList.Add(request.WriteLocksDir);
 
         var authToken = _secretsLoader.GetAnthropicAuthToken();
         var queryModel = _secretsLoader.GetQueryModel();
@@ -267,6 +269,8 @@ public sealed class AgentProcessHost : IAgentProcessLauncher
         startInfo.ArgumentList.Add(request.DefaultUserPromptPath);
         startInfo.ArgumentList.Add("--policy-path");
         startInfo.ArgumentList.Add(request.PolicyPath);
+        startInfo.ArgumentList.Add("--write-locks-dir");
+        startInfo.ArgumentList.Add(request.WriteLocksDir);
         if (!string.IsNullOrWhiteSpace(request.UserPrompt))
         {
             startInfo.ArgumentList.Add("--user-prompt");

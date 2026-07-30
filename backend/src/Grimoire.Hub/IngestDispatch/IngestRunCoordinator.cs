@@ -211,6 +211,7 @@ public sealed class IngestRunCoordinator
             SystemPromptPath: _contentPaths.SystemPromptPath,
             DefaultUserPromptPath: _contentPaths.DefaultUserPromptPath,
             PolicyPath: _contentPaths.PolicyPath,
+            WriteLocksDir: _contentPaths.WriteLocksDir,
             UserPrompt: run.UserPrompt);
 
         IAgentProcessHandle handle;

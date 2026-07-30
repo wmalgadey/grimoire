@@ -54,6 +54,19 @@ public static class IngestAgentMetrics
         Meter.CreateCounter<long>("wiki.ingest.no_tool_turns_total",
             description: "Model turns with zero tool requests, labeled by stop reason and loop outcome");
 
+    /// <summary>T042 (012-query-synthesis-writes, US3): plan.md ## Observability > Business
+    /// Metrics — Ingest shares the same write-coordination guard as Query (T041), so it emits
+    /// the same signal pair.</summary>
+    private static readonly Counter<long> _writeLockAcquisitionsTotal =
+        Meter.CreateCounter<long>("wiki.write_lock.acquisitions_total",
+            description: "Write-coordination lock acquisition attempts");
+
+    /// <summary>T042 (012-query-synthesis-writes, US3): plan.md ## Observability > Business Metrics.</summary>
+    private static readonly Histogram<double> _writeLockWaitSeconds =
+        Meter.CreateHistogram<double>("wiki.write_lock.wait_seconds",
+            unit: "s",
+            description: "Time spent waiting to acquire a write-coordination lock");
+
     public static void RecordIngest(string outcome, double durationSeconds)
     {
         using var span = StartMetricSpan("wiki.ingest.operations_total");
@@ -166,6 +179,19 @@ public static class IngestAgentMetrics
         _noToolTurnsTotal.Add(1,
             new KeyValuePair<string, object?>("stop_reason", stopReason.ToProtocolString()),
             new KeyValuePair<string, object?>("outcome", outcome));
+    }
+
+    /// <summary>T042 (012-query-synthesis-writes, US3): emits the acquisitions counter (labeled
+    /// <c>outcome=acquired|timeout</c>) and the wait-time histogram for one write-coordination
+    /// lock-acquisition attempt.</summary>
+    public static void RecordWriteLockAcquisition(string outcome, double waitSeconds)
+    {
+        using var span = StartMetricSpan("wiki.write_lock.acquisitions_total");
+        span?.SetTag("outcome", outcome);
+        span?.SetTag("wait_seconds", waitSeconds);
+
+        _writeLockAcquisitionsTotal.Add(1, new KeyValuePair<string, object?>("outcome", outcome));
+        _writeLockWaitSeconds.Record(waitSeconds);
     }
 
     private static Activity? StartMetricSpan(string metricName)

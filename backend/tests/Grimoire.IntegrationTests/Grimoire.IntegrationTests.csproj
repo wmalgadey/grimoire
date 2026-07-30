@@ -29,6 +29,11 @@
     <ProjectReference Include="..\..\src\Grimoire.QueryAgent\Grimoire.QueryAgent.csproj" />
     <ProjectReference Include="..\Grimoire.AgentEvals\Grimoire.AgentEvals.csproj" />
     <ProjectReference Include="..\..\src\Grimoire.EvalRunner\Grimoire.EvalRunner.csproj" />
+    <!-- T013 (012-query-synthesis-writes): the real multi-process CrossProcessFileLock
+         test spawns this tiny console harness twice via `dotnet <dll>`; the project
+         reference makes its output DLL land in this test project's own output
+         directory (same idiom as the ArchTests -> IntegrationTests reference above). -->
+    <ProjectReference Include="..\Grimoire.WriteLockTestHarness\Grimoire.WriteLockTestHarness.csproj" />
   </ItemGroup>
 
 </Project>

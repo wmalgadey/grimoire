@@ -69,4 +69,42 @@ public sealed class QueryToolCallInstrumentation : IToolCallInstrumentation
         QueryAgentMetrics.RecordToolCall(tool, "denied");
         QueryAgentLogEvents.LogToolDenied(_logger, taskId, tool, canonicalTarget, reason, turn);
     }
+
+    /// <summary>ADR-015 (012-query-synthesis-writes): emits the metric + log event pair for a
+    /// successful create-only write (a new Synthesis Page).</summary>
+    public void RecordCreateOnlyWriteSucceeded(string taskId, string path, int turn)
+    {
+        QueryAgentMetrics.RecordSynthesisPageCreated();
+        QueryAgentLogEvents.LogSynthesisPageCreated(_logger, taskId, path, turn);
+    }
+
+    /// <summary>T034 (012-query-synthesis-writes, US2): emits the metric + log event pair for a
+    /// write rejected by the write-coordination guard (create-only or compare-and-swap).</summary>
+    public void RecordWriteConflictRejected(string taskId, string path, string reason, int turn)
+    {
+        QueryAgentMetrics.RecordWriteConflictRejected(reason);
+        QueryAgentLogEvents.LogWriteConflictRejected(_logger, taskId, path, reason, turn);
+    }
+
+    /// <summary>T042 (012-query-synthesis-writes, US3): plan.md's `guardrails.acquire_write_lock`
+    /// span for one write-coordination lock-acquisition attempt.</summary>
+    public Activity? StartAcquireWriteLockActivity(string taskId, string path, int turn)
+    {
+        var span = QueryAgentTracing.ActivitySource.StartActivity("guardrails.acquire_write_lock");
+        span?.SetTag("turn_id", taskId);
+        span?.SetTag("turn", turn);
+        return span;
+    }
+
+    /// <summary>T042 (012-query-synthesis-writes, US3): emits the wiki.write_lock.* metric pair,
+    /// plus the wiki.write_lock.timeout WARN log event when the acquisition timed out.</summary>
+    public void RecordWriteLockAcquisition(string taskId, string path, string outcome, double waitSeconds, int turn)
+    {
+        QueryAgentMetrics.RecordWriteLockAcquisition(outcome, waitSeconds);
+
+        if (outcome == "timeout")
+        {
+            QueryAgentLogEvents.LogWriteLockTimeout(_logger, taskId, path, waitSeconds * 1000);
+        }
+    }
 }

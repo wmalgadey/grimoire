@@ -105,6 +105,22 @@ public static class ConversationRecordFormat
             }
         }
 
+        // ADR-015 (012-query-synthesis-writes): always present, never omitted — a turn
+        // that created nothing records an explicit empty list, so parsers never need to
+        // distinguish "no field" from "no pages" (contract §5).
+        if (turn.CreatedPagesOrEmpty.Count == 0)
+        {
+            sb.Append("created_pages: []\n");
+        }
+        else
+        {
+            sb.Append("created_pages:\n");
+            foreach (var page in turn.CreatedPagesOrEmpty)
+            {
+                sb.Append("  - ").Append(EscapeString(page)).Append('\n');
+            }
+        }
+
         sb.Append("prompt_chars: ").Append(turn.Prompt.Length).Append('\n');
         sb.Append("answer_chars: ").Append(turn.Answer.Length).Append('\n');
         sb.Append(CommentClose).Append('\n');
@@ -292,7 +308,8 @@ public static class ConversationRecordFormat
                 PolicySha256: bookkeeping.PolicySha256,
                 DeniedActions: bookkeeping.DeniedActions,
                 Prompt: prompt,
-                Answer: answer));
+                Answer: answer,
+                CreatedPages: bookkeeping.CreatedPages));
         }
 
         return new ConversationRecordParseResult.Parsed(turns, droppedTrailingFragment);
@@ -317,6 +334,10 @@ public static class ConversationRecordFormat
         public int? PolicyVersion;
         public string? PolicySha256;
         public List<RecordedDeniedAction> DeniedActions = [];
+        // ADR-015 (012-query-synthesis-writes): absent on records predating this feature —
+        // stays the default empty list (forward-compat, ADR-014), tolerated by the
+        // "unknown key" default case below for old records that omit the key entirely.
+        public List<string> CreatedPages = [];
         public int PromptChars = -1;
         public int AnswerChars = -1;
     }
@@ -472,6 +493,25 @@ public static class ConversationRecordFormat
                         if (!TryParseDeniedActions(lines, ref i, result.DeniedActions, ref error)) return false;
                         break;
                     }
+                case "created_pages":
+                    {
+                        // ADR-015 (012-query-synthesis-writes): '[]' or a flat block list of
+                        // JSON-escaped strings — same grammar shape as denied_actions, but
+                        // each entry is a bare string rather than a nested mapping.
+                        if (raw == "[]")
+                        {
+                            break;
+                        }
+
+                        if (raw.Length != 0)
+                        {
+                            error = $"created_pages must be '[]' or a block list, got: '{raw}'";
+                            return false;
+                        }
+
+                        if (!TryParseStringList(lines, ref i, result.CreatedPages, ref error)) return false;
+                        break;
+                    }
                 default:
                     // Unknown key — tolerated (forward compatibility, e.g. feature 012's
                     // created_pages). Skip any nested/indented continuation lines.
@@ -567,6 +607,24 @@ public static class ConversationRecordFormat
                 canonicalTarget ?? string.Empty,
                 reason ?? string.Empty,
                 turn));
+        }
+
+        return true;
+    }
+
+    /// <summary>Parses a flat `  - "value"` block list (created_pages) into <paramref name="target"/>.</summary>
+    private static bool TryParseStringList(List<string> lines, ref int i, List<string> target, ref string error)
+    {
+        while (i < lines.Count && lines[i].StartsWith("  - ", StringComparison.Ordinal))
+        {
+            var raw = lines[i][4..];
+            if (!TryParseNullableString(raw, out var value, ref error))
+            {
+                return false;
+            }
+
+            target.Add(value ?? string.Empty);
+            i++;
         }
 
         return true;

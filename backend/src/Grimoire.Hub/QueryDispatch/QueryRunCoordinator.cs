@@ -157,7 +157,8 @@ public sealed class QueryRunCoordinator
             IndexPath: _paths.IndexPath,
             LogPath: _paths.LogPath,
             SystemPromptPath: _paths.QuerySystemPromptPath,
-            PolicyPath: _paths.QueryPolicyPath);
+            PolicyPath: _paths.QueryPolicyPath,
+            WriteLocksDir: _paths.WriteLocksDir);
 
         AgentDispatch.IAgentProcessHandle handle;
         try
@@ -278,7 +279,8 @@ public sealed class QueryRunCoordinator
                 terminalEvent.PolicySha256,
                 terminalEvent.Model,
                 terminalEvent.TurnsUsed,
-                terminalEvent.DeniedActions ?? []);
+                terminalEvent.DeniedActions ?? [],
+                terminalEvent.CreatedPages ?? []);
             await FinishTurnAsync(turnId, status, terminalEvent.Reason, metadata, CancellationToken.None);
         }
 
@@ -351,7 +353,7 @@ public sealed class QueryRunCoordinator
             recordSpan?.SetTag("turn_id", turnId);
             recordSpan?.SetTag("outcome", outcome);
 
-            await _recordStore.AppendTurnAsync(turn.ConversationId, BuildRecordedTurn(turn, outcome), CancellationToken.None);
+            await _recordStore.AppendTurnAsync(turn.ConversationId, BuildRecordedTurn(turn, outcome, _paths.ContentRoot), CancellationToken.None);
         }
         catch (Exception ex)
         {
@@ -369,7 +371,7 @@ public sealed class QueryRunCoordinator
     /// identity, model, turns used, denied actions from the ADR-006 terminal-event
     /// metadata) to its Recorded Turn (data-model.md Turn Bookkeeping).
     /// </summary>
-    private static RecordedTurn BuildRecordedTurn(QueryTurnState turn, string outcome)
+    private static RecordedTurn BuildRecordedTurn(QueryTurnState turn, string outcome, string wikiRoot)
     {
         var metadata = turn.CompletionMetadata;
         return new RecordedTurn(
@@ -389,6 +391,13 @@ public sealed class QueryRunCoordinator
             DeniedActions: [.. (metadata?.DeniedActions ?? []).Select(d =>
                 new RecordedDeniedAction(d.Action, d.RequestedTarget, d.CanonicalTarget, d.Reason, d.Turn))],
             Prompt: turn.Prompt,
-            Answer: turn.Answer);
+            Answer: turn.Answer,
+            // ADR-015 (012-query-synthesis-writes): the agent process reports canonical
+            // (absolute) paths; the record stores wiki-root-relative paths
+            // (data-model.md "Run Completion Metadata").
+            CreatedPages: [.. (metadata?.CreatedPages ?? []).Select(canonical => ToWikiRelative(canonical, wikiRoot))]);
     }
+
+    private static string ToWikiRelative(string canonicalPath, string wikiRoot)
+        => Path.GetRelativePath(wikiRoot, canonicalPath).Replace('\\', '/');
 }

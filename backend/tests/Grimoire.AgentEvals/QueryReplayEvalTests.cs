@@ -35,6 +35,25 @@ public class QueryReplayEvalTests
     public Task SC010_ReadOnlyDecline_ReplaysAtThreshold()
         => AssertScenarioAsync(QueryScenarioDefinitions.ReadOnlyDecline);
 
+    // 012-query-synthesis-writes (ADR-015): T044 completeness-audit gap fix — the three
+    // new Query scenarios below had scorers/recordings but no permanent replay-fact
+    // enforcement in the standard PR pipeline, unlike the four scenarios above. Without
+    // these, ci.yml's "Run replay agent evals" step would never check SC-005/SC-006/
+    // SC-007/SC-008 again after this session, silently losing CI coverage for this
+    // feature's agent-judgment thresholds (spec.md Success Criteria; Constitution
+    // Principle II/III completeness-audit requirement).
+    [Fact]
+    public Task SC005_SC007_SynthesisCreated_ReplaysAtThreshold()
+        => AssertScenarioAsync(QueryScenarioDefinitions.SynthesisCreated);
+
+    [Fact]
+    public Task SC006_SynthesisDeclinedRoutine_ReplaysAtThreshold()
+        => AssertScenarioAsync(QueryScenarioDefinitions.SynthesisDeclinedRoutine);
+
+    [Fact]
+    public Task SC008_SynthesisDeclineEditRequest_ReplaysAtThreshold()
+        => AssertScenarioAsync(QueryScenarioDefinitions.SynthesisDeclineEditRequest);
+
     private static async Task AssertScenarioAsync(QueryScenarioDefinition scenario)
     {
         var paths = EvalPaths.Discover();

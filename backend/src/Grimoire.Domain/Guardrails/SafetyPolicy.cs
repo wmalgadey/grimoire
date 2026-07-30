@@ -1,6 +1,13 @@
 namespace Grimoire.Domain.Guardrails;
 
 /// <summary>
+/// One write-scope rule (data-model.md "Write Rule", ADR-015): a canonical path prefix
+/// plus whether it is <c>create-only</c> (denied by the harness when the canonical target
+/// already exists on disk) or the default <c>read-write</c>.
+/// </summary>
+public readonly record struct WriteRule(string Prefix, bool CreateOnly);
+
+/// <summary>
 /// Deny-by-default safety policy evaluated for every guarded tool call.
 /// All paths supplied to <see cref="Evaluate"/> MUST be pre-canonicalized
 /// absolute paths with lexical normalization applied (<c>..</c> segments removed).
@@ -9,12 +16,14 @@ namespace Grimoire.Domain.Guardrails;
 public sealed class SafetyPolicy
 {
     private readonly IReadOnlyList<string> _readPrefixes;
-    private readonly IReadOnlyList<string> _writePrefixes;
+    private readonly IReadOnlyList<WriteRule> _writeRules;
     private readonly string _repositoryRoot;
 
     /// <summary>
     /// Initializes a policy with absolute-path canonical prefixes already resolved
-    /// against the repository root.
+    /// against the repository root. Every write prefix is plain <c>read-write</c> — use
+    /// the <see cref="SafetyPolicy(string, IReadOnlyList{string}, IReadOnlyList{WriteRule})"/>
+    /// overload to supply <c>create-only</c> rules (ADR-015).
     /// </summary>
     /// <param name="repositoryRoot">
     /// Canonical absolute path to the repository root, used for traversal detection.
@@ -29,10 +38,32 @@ public sealed class SafetyPolicy
         string repositoryRoot,
         IReadOnlyList<string> readPrefixes,
         IReadOnlyList<string> writePrefixes)
+        : this(repositoryRoot, readPrefixes, writePrefixes.Select(p => new WriteRule(p, CreateOnly: false)).ToList())
+    {
+    }
+
+    /// <summary>
+    /// Initializes a policy with absolute-path canonical prefixes already resolved
+    /// against the repository root, and per-write-rule <c>create-only</c> mode (ADR-015).
+    /// </summary>
+    /// <param name="repositoryRoot">
+    /// Canonical absolute path to the repository root, used for traversal detection.
+    /// </param>
+    /// <param name="readPrefixes">
+    /// Canonical absolute path prefixes that allow read-scope tool calls.
+    /// </param>
+    /// <param name="writeRules">
+    /// Canonical absolute path prefixes (each with its <c>create-only</c>/<c>read-write</c>
+    /// mode) that allow write-scope tool calls.
+    /// </param>
+    public SafetyPolicy(
+        string repositoryRoot,
+        IReadOnlyList<string> readPrefixes,
+        IReadOnlyList<WriteRule> writeRules)
     {
         _repositoryRoot = repositoryRoot;
         _readPrefixes = readPrefixes;
-        _writePrefixes = writePrefixes;
+        _writeRules = writeRules;
     }
 
     /// <summary>
@@ -53,17 +84,28 @@ public sealed class SafetyPolicy
             return PolicyDecision.Deny("traversal");
         }
 
-        var prefixes = isWrite ? _writePrefixes : _readPrefixes;
-
-        foreach (var prefix in prefixes)
+        if (!isWrite)
         {
-            if (PrefixMatches(prefix, canonicalTarget))
+            foreach (var prefix in _readPrefixes)
             {
-                return PolicyDecision.Allow();
+                if (PrefixMatches(prefix, canonicalTarget))
+                {
+                    return PolicyDecision.Allow();
+                }
+            }
+
+            return PolicyDecision.Deny("no_rule");
+        }
+
+        foreach (var rule in _writeRules)
+        {
+            if (PrefixMatches(rule.Prefix, canonicalTarget))
+            {
+                return PolicyDecision.Allow(isCreateOnly: rule.CreateOnly);
             }
         }
 
-        return PolicyDecision.Deny(isWrite ? "out_of_scope" : "no_rule");
+        return PolicyDecision.Deny("out_of_scope");
     }
 
     private bool IsWithinRepositoryRoot(string canonicalTarget)

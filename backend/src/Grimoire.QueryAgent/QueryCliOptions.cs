@@ -14,6 +14,11 @@ public sealed record QueryCliOptions(
     string LogPath,
     string SystemPromptPath,
     string PolicyPath,
+    // ADR-015 (012-query-synthesis-writes): required, mirroring --wiki-root/--policy-path
+    // (contracts/query-write-scope-and-coordination.md §4) — missing/unwritable is
+    // fail-closed before any tool call is dispatched, same posture as a missing policy
+    // file.
+    string WriteLocksDir,
     int HeartbeatSeconds = 10);
 
 /// <summary>One prior turn of the conversation, supplied by the client (research.md R6).</summary>

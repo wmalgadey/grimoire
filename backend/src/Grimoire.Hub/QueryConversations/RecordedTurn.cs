@@ -36,8 +36,18 @@ public sealed record RecordedTurn(
     string? PolicySha256,
     IReadOnlyList<RecordedDeniedAction> DeniedActions,
     string Prompt,
-    string Answer)
+    string Answer,
+    // ADR-015 (012-query-synthesis-writes): wiki-root-relative paths of pages this turn
+    // created — always present (empty list, never omitted, when none), data-model.md
+    // "Run Completion Metadata". Defaults to `[]` so the many pre-feature call sites
+    // (parser reconstruction from records predating this feature, existing tests) need
+    // no change.
+    IReadOnlyList<string>? CreatedPages = null)
 {
+    /// <summary>Non-null view of <see cref="CreatedPages"/> (constructor default is null so
+    /// positional pre-feature call sites compile unchanged).</summary>
+    public IReadOnlyList<string> CreatedPagesOrEmpty => CreatedPages ?? [];
+
     /// <summary>
     /// The <c>{ position, prompt, answer, state }</c> context projection — exactly the
     /// <see cref="QueryPriorTurn"/> shape the launcher port already carries, so the
@@ -67,7 +77,8 @@ public sealed record RecordedTurn(
         PolicySha256 == other.PolicySha256 &&
         Prompt == other.Prompt &&
         Answer == other.Answer &&
-        DeniedActions.SequenceEqual(other.DeniedActions);
+        DeniedActions.SequenceEqual(other.DeniedActions) &&
+        CreatedPagesOrEmpty.SequenceEqual(other.CreatedPagesOrEmpty);
 
     public override int GetHashCode() => HashCode.Combine(TurnId, Position, State, Prompt, Answer);
 }

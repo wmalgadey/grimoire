@@ -1,0 +1,110 @@
+{
+  "schema_version": 1,
+  "sample": 101,
+  "task_id": "capture-query-synthesis-declined-routine-01-t1-8148c08ff3114800924f09a787d39ecb",
+  "model": "claude-haiku-4-5",
+  "turns": [
+    {
+      "turn": 1,
+      "system_prompt_sha256": "sha256:86a115cc3936034a750584b63dbebff745858ea177eaa0a49f03bf1efa61fa17",
+      "conversation": [
+        {
+          "role": "user",
+          "content_sha256": "sha256:840f3335865c1d34631bf8dca8241dea0b6fdb2aa358a29f919b79548cd7658f"
+        }
+      ],
+      "tool_names": [
+        "list_files",
+        "read_file",
+        "write_file"
+      ],
+      "stop_reason": "tool_use",
+      "tool_uses": [
+        {
+          "tool_use_id": "toolu_01RWMD5Y4PwC1bz11jk3oFTS",
+          "tool_name": "read_file",
+          "input_json": "{\u0022path\u0022: \u0022index.md\u0022}"
+        }
+      ],
+      "assistant_text": "I\u0027ll start by reading the index to understand the wiki\u0027s structure, then locate and read the Credential Scoping page.",
+      "input_tokens": 3677,
+      "output_tokens": 82
+    },
+    {
+      "turn": 2,
+      "system_prompt_sha256": "sha256:86a115cc3936034a750584b63dbebff745858ea177eaa0a49f03bf1efa61fa17",
+      "conversation": [
+        {
+          "role": "user",
+          "content_sha256": "sha256:840f3335865c1d34631bf8dca8241dea0b6fdb2aa358a29f919b79548cd7658f"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:ad1f6cde368b35b5905af66ff3d8427a0b7ee4b73491f6b0b74f6c6694b4f8af"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:20649dd16296d25bee7cf38f5404962eff854fca8924a677bb3ebc44b3f240be"
+        }
+      ],
+      "tool_names": [
+        "list_files",
+        "read_file",
+        "write_file"
+      ],
+      "stop_reason": "tool_use",
+      "tool_uses": [
+        {
+          "tool_use_id": "toolu_012STvNMQ18xzuSMA6eoagYX",
+          "tool_name": "read_file",
+          "input_json": "{\u0022path\u0022: \u0022pages/credential-scoping.md\u0022}"
+        }
+      ],
+      "assistant_text": "Now let me read the Credential Scoping page:",
+      "input_tokens": 3853,
+      "output_tokens": 73
+    },
+    {
+      "turn": 3,
+      "system_prompt_sha256": "sha256:86a115cc3936034a750584b63dbebff745858ea177eaa0a49f03bf1efa61fa17",
+      "conversation": [
+        {
+          "role": "user",
+          "content_sha256": "sha256:840f3335865c1d34631bf8dca8241dea0b6fdb2aa358a29f919b79548cd7658f"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:ad1f6cde368b35b5905af66ff3d8427a0b7ee4b73491f6b0b74f6c6694b4f8af"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:20649dd16296d25bee7cf38f5404962eff854fca8924a677bb3ebc44b3f240be"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:fbb04060a65c9318daa8a2dbbe7e665f37d59a5671d6bcde55e9d4feb2a50991"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:2bb0f995f5af5116ff073287fc2c840f61d983363a0b3287c8e1e41cb340e5d1"
+        }
+      ],
+      "tool_names": [
+        "list_files",
+        "read_file",
+        "write_file"
+      ],
+      "stop_reason": "end_turn",
+      "tool_uses": [],
+      "assistant_text": "According to [[credential-scoping]], the Anthropic API key is injected **into the environment of the spawned child process** \u2014 specifically, the Ingest agent (or Query agent) child process \u2014 immediately before that process starts. The key is loaded from a git-ignored \u0060.env\u0060 file by a local secrets loader at startup, but crucially, it is **never** held in the Hub\u0027s own process environment. The key exists only in the short-lived child process that actually calls the Anthropic API.",
+      "input_tokens": 4189,
+      "output_tokens": 112
+    }
+  ],
+  "outcome": {
+    "status": "completed",
+    "checks": {
+      "no_page_created": true
+    }
+  }
+}

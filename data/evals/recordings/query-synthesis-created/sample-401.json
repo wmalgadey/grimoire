@@ -1,0 +1,308 @@
+{
+  "schema_version": 1,
+  "sample": 401,
+  "task_id": "capture-query-synthesis-created-04-t1-acd8d3b60a5c4293849396ffbe95d10b",
+  "model": "claude-haiku-4-5",
+  "turns": [
+    {
+      "turn": 1,
+      "system_prompt_sha256": "sha256:86a115cc3936034a750584b63dbebff745858ea177eaa0a49f03bf1efa61fa17",
+      "conversation": [
+        {
+          "role": "user",
+          "content_sha256": "sha256:073c66f71c8338c718768e71e35c31fc5bca6d6113a913f36b9411c1fc927b53"
+        }
+      ],
+      "tool_names": [
+        "list_files",
+        "read_file",
+        "write_file"
+      ],
+      "stop_reason": "tool_use",
+      "tool_uses": [
+        {
+          "tool_use_id": "toolu_0118P6bMBTWAqhBTJYTYRidb",
+          "tool_name": "read_file",
+          "input_json": "{\u0022path\u0022: \u0022index.md\u0022}"
+        },
+        {
+          "tool_use_id": "toolu_01FGKLXjNGVqd26Lh8hTRhUD",
+          "tool_name": "list_files",
+          "input_json": "{\u0022path\u0022: \u0022pages\u0022}"
+        }
+      ],
+      "assistant_text": "I\u0027ll explore the wiki to understand both credential-scoping and runtime-path decisions, then connect them.",
+      "input_tokens": 3671,
+      "output_tokens": 114
+    },
+    {
+      "turn": 2,
+      "system_prompt_sha256": "sha256:86a115cc3936034a750584b63dbebff745858ea177eaa0a49f03bf1efa61fa17",
+      "conversation": [
+        {
+          "role": "user",
+          "content_sha256": "sha256:073c66f71c8338c718768e71e35c31fc5bca6d6113a913f36b9411c1fc927b53"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:17d79598c003f8a4474b5f63b05f1e28a204b4b0860ffefa255aed54c8cff259"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:8a080d77ba7bd691b9e98c999b6f3391202c4e6fd4b0ac88f49accdd12f88039"
+        }
+      ],
+      "tool_names": [
+        "list_files",
+        "read_file",
+        "write_file"
+      ],
+      "stop_reason": "tool_use",
+      "tool_uses": [
+        {
+          "tool_use_id": "toolu_01Gf9SE6GZ85LXngPDHMBB2P",
+          "tool_name": "read_file",
+          "input_json": "{\u0022path\u0022: \u0022pages/credential-scoping.md\u0022}"
+        },
+        {
+          "tool_use_id": "toolu_01LJUTXQRVjnNXpmsS1HwpPb",
+          "tool_name": "read_file",
+          "input_json": "{\u0022path\u0022: \u0022pages/runtime-paths.md\u0022}"
+        }
+      ],
+      "assistant_text": "Now let me read both the credential-scoping and runtime-paths pages:",
+      "input_tokens": 3954,
+      "output_tokens": 119
+    },
+    {
+      "turn": 3,
+      "system_prompt_sha256": "sha256:86a115cc3936034a750584b63dbebff745858ea177eaa0a49f03bf1efa61fa17",
+      "conversation": [
+        {
+          "role": "user",
+          "content_sha256": "sha256:073c66f71c8338c718768e71e35c31fc5bca6d6113a913f36b9411c1fc927b53"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:17d79598c003f8a4474b5f63b05f1e28a204b4b0860ffefa255aed54c8cff259"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:8a080d77ba7bd691b9e98c999b6f3391202c4e6fd4b0ac88f49accdd12f88039"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:81afc8c337fa3169b5822f4c3d58a55e38075fb979e31ae53f05e7516a3ccd49"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:d5b23a86b15ada4d414577c05553d22a29b24b89d3d13c0bd4e3f3417cc1f89c"
+        }
+      ],
+      "tool_names": [
+        "list_files",
+        "read_file",
+        "write_file"
+      ],
+      "stop_reason": "tool_use",
+      "tool_uses": [
+        {
+          "tool_use_id": "toolu_01MDw3Kjee9CQPUGFpikTQtC",
+          "tool_name": "write_file",
+          "input_json": "{\u0022path\u0022: \u0022pages/concepts/centralized-ambient-prevention.md\u0022, \u0022content\u0022: \u0022---\\ntype: Concept\\ntitle: Centralized Ambient Prevention\\ndescription: Parallel architectural pattern in credential-scoping and runtime-paths that prevents ambient environment discovery.\\ntags:\\n  - source-type/synthesis\\n  - concept/Centralized-Ambient-Prevention\\n  - tech/dotnet\\nconfidence: high\\nconfidence_reason: Both credential-scoping and runtime-paths pages explicitly describe the same pattern applied to different domains \u2014 centralizing setup at a checkpoint and preventing ambient discovery.\\nreview_date: 2027-02-14\\n---\\n\\n[[credential-scoping]] and [[runtime-paths]] are two instances of the same architectural pattern: **centralize resource setup at a known checkpoint and prevent ambient environment discovery**.\\n\\n**Credential Scoping (Credentials)**: The Hub never holds the Anthropic API key in its own process environment. Instead, a secrets loader injects the key only into the spawned agent\u0027s child-process environment at spawn time. The Hub\u0027s own environment remains clean. This prevents a compromised Hub from leaking credentials it never held.\\n\\n**Runtime Paths (File Locations)**: The Hub resolves every file-system location in exactly one place at startup \u2014 a single path resolver reads configuration, validates every location, and provides the canonical set to all downstream code. No code is allowed to read the ambient working directory directly; all path discovery happens centralized and upfront.\\n\\n**The Pattern**: Both decisions identify a resource that downstream code needs, centralize its setup and distribution at a known, early checkpoint (spawn time or startup), and explicitly prevent the ambient environment (process environment variables, working directory, inherited defaults) from being the discovery mechanism. This makes the system:\\n\\n- **Auditable**: a reviewer can find all instances of resource setup in one place.\\n- **Testable**: tests can inject or mock a resource set without polluting the ambient environment.\\n- **Resistant to accidental misuse**: code cannot accidentally use an un-scoped or un-resolved resource that happens to be in the environment.\\n- **Resistant to compromise**: a compromised component cannot leak resources it was never given.\\n\\nWhen adding a new resource to Grimoire (whether a credential, a path, or another dependency), this pattern suggests extending the centralized setup mechanism rather than allowing downstream code to discover it from the ambient environment.\\n\u0022}"
+        }
+      ],
+      "assistant_text": "These two pages reveal a meaningful connection. Let me synthesize this:\n\n**Credential-scoping and runtime-paths are parallel architectural patterns that solve the same class of problem in different domains:**\n\nBoth [[credential-scoping]] and [[runtime-paths]] reflect a common design principle: **centralize authority and prevent ambient leakage**. \n\n- **Credential-scoping** prevents credentials from polluting the Hub\u0027s ambient process environment by injecting them into the child agent\u0027s isolated environment only at spawn time. A compromised Hub cannot leak credentials it never holds.\n\n- **Runtime-paths** prevents path discovery from scattering across the codebase by resolving every file location in a single startup phase. No code can accidentally use an ambient working directory; everything consumes the pre-validated, centralized path set.\n\nIn both cases, the pattern is: **identify a resource (credential or path) that downstream code needs, centralize its setup and distribution at a known checkpoint (spawn time for credentials, startup for paths), and prevent the ambient environment from being the discovery mechanism.** This makes the system more auditable, testable, and resistant to accidental misuse or compromise.\n\nThis is a genuine synthesis \u2014 the relationship between these two decisions isn\u0027t stated on either page individually, but both exemplify the same architectural discipline. I\u0027ll preserve this as a new page:",
+      "input_tokens": 4659,
+      "output_tokens": 874
+    },
+    {
+      "turn": 4,
+      "system_prompt_sha256": "sha256:86a115cc3936034a750584b63dbebff745858ea177eaa0a49f03bf1efa61fa17",
+      "conversation": [
+        {
+          "role": "user",
+          "content_sha256": "sha256:073c66f71c8338c718768e71e35c31fc5bca6d6113a913f36b9411c1fc927b53"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:17d79598c003f8a4474b5f63b05f1e28a204b4b0860ffefa255aed54c8cff259"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:8a080d77ba7bd691b9e98c999b6f3391202c4e6fd4b0ac88f49accdd12f88039"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:81afc8c337fa3169b5822f4c3d58a55e38075fb979e31ae53f05e7516a3ccd49"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:d5b23a86b15ada4d414577c05553d22a29b24b89d3d13c0bd4e3f3417cc1f89c"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:a5205f4fb2ef175d5bbe726d970787cfaa6a6911fa7f428be5c7ce06bfcc5e90"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:98da371b73a9aa3e18344f5dd9a828ec0276c7e96d8f7b3caea67cb40c35e935"
+        }
+      ],
+      "tool_names": [
+        "list_files",
+        "read_file",
+        "write_file"
+      ],
+      "stop_reason": "tool_use",
+      "tool_uses": [
+        {
+          "tool_use_id": "toolu_01PfiD76ABgMx8gkvy8Y9C9g",
+          "tool_name": "read_file",
+          "input_json": "{\u0022path\u0022: \u0022index.md\u0022}"
+        },
+        {
+          "tool_use_id": "toolu_016P25KFQyZWv6mmPsw2dzoo",
+          "tool_name": "read_file",
+          "input_json": "{\u0022path\u0022: \u0022log.md\u0022}"
+        }
+      ],
+      "assistant_text": "Now let me update the index and log:",
+      "input_tokens": 5559,
+      "output_tokens": 103
+    },
+    {
+      "turn": 5,
+      "system_prompt_sha256": "sha256:86a115cc3936034a750584b63dbebff745858ea177eaa0a49f03bf1efa61fa17",
+      "conversation": [
+        {
+          "role": "user",
+          "content_sha256": "sha256:073c66f71c8338c718768e71e35c31fc5bca6d6113a913f36b9411c1fc927b53"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:17d79598c003f8a4474b5f63b05f1e28a204b4b0860ffefa255aed54c8cff259"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:8a080d77ba7bd691b9e98c999b6f3391202c4e6fd4b0ac88f49accdd12f88039"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:81afc8c337fa3169b5822f4c3d58a55e38075fb979e31ae53f05e7516a3ccd49"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:d5b23a86b15ada4d414577c05553d22a29b24b89d3d13c0bd4e3f3417cc1f89c"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:a5205f4fb2ef175d5bbe726d970787cfaa6a6911fa7f428be5c7ce06bfcc5e90"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:98da371b73a9aa3e18344f5dd9a828ec0276c7e96d8f7b3caea67cb40c35e935"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:ca159f64eb76c90e570a53fce8e7297df66c033189ebdbecaf3f94f16fff2caf"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:dc8731d188097fcb238237c9e2517f0f751444fe951892e277f3a5889fc87768"
+        }
+      ],
+      "tool_names": [
+        "list_files",
+        "read_file",
+        "write_file"
+      ],
+      "stop_reason": "tool_use",
+      "tool_uses": [
+        {
+          "tool_use_id": "toolu_01HQrSGHvisChA9Zbsc2GgSx",
+          "tool_name": "write_file",
+          "input_json": "{\u0022path\u0022: \u0022index.md\u0022, \u0022content\u0022: \u0022# Wiki Index\\n\\n- [[credential-scoping]] \u2014 How the Ingest agent\u0027s Anthropic API key is scoped to its own child-process environment.\\n- [[runtime-paths]] \u2014 How Grimoire resolves runtime file locations from a single composition point.\\n- [[write-journal]] \u2014 How the guarded write path journals prior file state for rollback on failure.\\n- [[concepts/centralized-ambient-prevention]] \u2014 Parallel architectural pattern in credential-scoping and runtime-paths that prevents ambient environment discovery.\\n\u0022}"
+        },
+        {
+          "tool_use_id": "toolu_01GjBBXwESDEummUKCiGbUMD",
+          "tool_name": "write_file",
+          "input_json": "{\u0022path\u0022: \u0022log.md\u0022, \u0022content\u0022: \u0022# Ingest Log\\n\\n* **Synthesis**: created [[concepts/centralized-ambient-prevention]] connecting [[credential-scoping]] and [[runtime-paths]] \u2014 query: \\\u0022How do our credential-scoping decisions relate to the runtime-path decisions?\\\u0022\\n\u0022}"
+        }
+      ],
+      "assistant_text": "Let me create the log file and update the index:",
+      "input_tokens": 5814,
+      "output_tokens": 308
+    },
+    {
+      "turn": 6,
+      "system_prompt_sha256": "sha256:86a115cc3936034a750584b63dbebff745858ea177eaa0a49f03bf1efa61fa17",
+      "conversation": [
+        {
+          "role": "user",
+          "content_sha256": "sha256:073c66f71c8338c718768e71e35c31fc5bca6d6113a913f36b9411c1fc927b53"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:17d79598c003f8a4474b5f63b05f1e28a204b4b0860ffefa255aed54c8cff259"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:8a080d77ba7bd691b9e98c999b6f3391202c4e6fd4b0ac88f49accdd12f88039"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:81afc8c337fa3169b5822f4c3d58a55e38075fb979e31ae53f05e7516a3ccd49"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:d5b23a86b15ada4d414577c05553d22a29b24b89d3d13c0bd4e3f3417cc1f89c"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:a5205f4fb2ef175d5bbe726d970787cfaa6a6911fa7f428be5c7ce06bfcc5e90"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:98da371b73a9aa3e18344f5dd9a828ec0276c7e96d8f7b3caea67cb40c35e935"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:ca159f64eb76c90e570a53fce8e7297df66c033189ebdbecaf3f94f16fff2caf"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:dc8731d188097fcb238237c9e2517f0f751444fe951892e277f3a5889fc87768"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:270a6ebde5c3eccc08563d24270d7b2678817c84c86636ef3b2bcf9fe2f5e44d"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:cd939c80ccbc07270b4103a754a58ada214b1c16b5366f5b3678b5dea9fe1ff7"
+        }
+      ],
+      "tool_names": [
+        "list_files",
+        "read_file",
+        "write_file"
+      ],
+      "stop_reason": "end_turn",
+      "tool_uses": [],
+      "assistant_text": "## Answer\n\nYour credential-scoping and runtime-path decisions follow the **same architectural principle**, though they apply it to different domains:\n\n**[[credential-scoping]]** prevents credentials from leaking by centralizing their setup: the Hub never holds the Anthropic API key in its own process environment. Instead, a secrets loader injects the key only into the spawned agent\u0027s child-process environment at spawn time. The Hub\u0027s own environment remains clean, so a compromised Hub cannot leak a credential it never held.\n\n**[[runtime-paths]]** prevents path discovery from scattering across the codebase by centralizing it at startup: a single path resolver reads configuration, validates every required location, and provides the canonical set to all downstream code. No code reads the ambient working directory directly; all path resolution happens upfront and centralized.\n\n**The connection**: Both decisions follow the pattern of **centralizing resource setup at a known checkpoint and explicitly preventing the ambient environment from being the discovery mechanism**. This makes Grimoire more auditable (all resource setup is in one place), more testable (resources can be mocked without polluting the environment), and more resistant to both accidental misuse and compromise.\n\nI\u0027ve saved this connection as a new page, [[concepts/centralized-ambient-prevention]], since it represents a genuine architectural insight spanning both decisions.",
+      "input_tokens": 6195,
+      "output_tokens": 289
+    }
+  ],
+  "outcome": {
+    "status": "completed",
+    "checks": {
+      "page_created": true,
+      "has_synthesis_tag": true,
+      "has_confidence_with_reason": true,
+      "has_review_date": true,
+      "links_a_source_page": true
+    }
+  }
+}

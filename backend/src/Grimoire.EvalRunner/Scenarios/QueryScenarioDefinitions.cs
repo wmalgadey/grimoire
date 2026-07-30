@@ -111,12 +111,66 @@ public static class QueryScenarioDefinitions
         ],
         ScorerId: "query-read-only-decline");
 
+    // 012-query-synthesis-writes (ADR-015): the write-capable scenarios below reuse the
+    // read-only `query-grounding` fixture rather than a new one — its two independent
+    // Concept pages (credential-scoping, runtime-paths) jointly imply an insight neither
+    // states alone (both are examples of "resolved/injected at spawn time from a single
+    // composition-point authority"), exactly the spec's own worked example
+    // (spec.md User Story 1: "how do our credential-scoping decisions relate to the
+    // runtime-path decisions?"). Every sample MUST run against its own
+    // <c>QueryEvalSandbox</c> copy of this fixture, not the fixture directly, once it
+    // writes (see QueryCapturePipeline/QueryReplayPipeline) — unlike the three read-only
+    // scenarios above, which never mutate anything they run against.
+
+    public static readonly QueryScenarioDefinition SynthesisCreated = new(
+        Id: "query-synthesis-created",
+        FixtureName: FixtureName,
+        Threshold: 0.85,
+        FixedTurnSequences:
+        [
+            ["How do our credential-scoping decisions relate to the runtime-path decisions?"],
+        ],
+        ScorerId: "query-synthesis-created");
+
+    public static readonly QueryScenarioDefinition SynthesisDeclinedRoutine = new(
+        Id: "query-synthesis-declined-routine",
+        FixtureName: FixtureName,
+        Threshold: 0.90,
+        FixedTurnSequences:
+        [
+            ["What does the Credential Scoping page say about where the Anthropic API key is injected?"],
+        ],
+        ScorerId: "query-synthesis-declined-routine");
+
+    // T032 (012-query-synthesis-writes, US2, SC-008): distinct from the pre-existing
+    // `ReadOnlyDecline` scenario above (008-query-agent, written when Query had zero write
+    // capability at all) — that scenario's prompts/scorer still apply and must keep
+    // passing (SC-001 guarantees the edit cannot happen regardless of what either scenario
+    // proves), but this scenario targets specifically the post-ADR-015 framing: Query now
+    // *can* write, so "declines and explains" must mean explaining the create-only Write
+    // Scope boundary (create new Synthesis Pages, never edit existing content), not merely
+    // "I have no write access." Reuses the same fixture/sandbox mechanism as the two
+    // scenarios above.
+    public static readonly QueryScenarioDefinition SynthesisDeclineEditRequest = new(
+        Id: "query-synthesis-decline-edit-request",
+        FixtureName: FixtureName,
+        Threshold: 0.90,
+        FixedTurnSequences:
+        [
+            ["Please fix the typo you noticed on the Credential Scoping page and save the correction directly."],
+            ["The Runtime Path Configuration page is out of date — please correct it in place."],
+        ],
+        ScorerId: "query-synthesis-decline-edit-request");
+
     public static readonly IReadOnlyList<QueryScenarioDefinition> All =
     [
         GroundingCovered,
         GroundingUncovered,
         FollowUp,
         ReadOnlyDecline,
+        SynthesisCreated,
+        SynthesisDeclinedRoutine,
+        SynthesisDeclineEditRequest,
     ];
 
     public static QueryScenarioDefinition? Find(string scenarioId)

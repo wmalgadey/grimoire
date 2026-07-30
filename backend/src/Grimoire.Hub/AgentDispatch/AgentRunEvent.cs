@@ -35,7 +35,11 @@ public sealed record AgentRunEvent(
     [property: JsonPropertyName("policySha256")] string? PolicySha256 = null,
     [property: JsonPropertyName("model")] string? Model = null,
     [property: JsonPropertyName("turnsUsed")] int? TurnsUsed = null,
-    [property: JsonPropertyName("deniedActions")] IReadOnlyList<AgentRunEventDeniedAction>? DeniedActions = null)
+    [property: JsonPropertyName("deniedActions")] IReadOnlyList<AgentRunEventDeniedAction>? DeniedActions = null,
+    // ADR-015 (012-query-synthesis-writes): canonical paths of pages this turn created
+    // (RunCompletionMetadata.CreatedArtifacts, contracts/query-write-scope-and-coordination.md
+    // §5) — null/empty when the turn created nothing.
+    [property: JsonPropertyName("createdPages")] IReadOnlyList<string>? CreatedPages = null)
 {
     public const string TypeStarted = "started";
     public const string TypeHeartbeat = "heartbeat";

@@ -4,16 +4,43 @@ using Mono.Cecil.Cil;
 namespace Grimoire.ArchTests;
 
 /// <summary>
-/// Structural boundary rule for ADR-011 (C7): the Query agent has no write capability at
-/// all (FR-011, FR-014) — unlike Grimoire.IngestAgent's IngestAgentGuardedWriteBoundaryRuleTests,
-/// which allows filesystem-write APIs in three designated namespaces, this rule allows
-/// none: zero filesystem-write API calls may be reachable anywhere in the
-/// Grimoire.QueryAgent assembly, full stop. Proven live by a Red/Green probe (T004): a
-/// temporary scratch class calling File.WriteAllText is added, the rule is confirmed to
-/// fail, then the scratch class is removed and the rule is confirmed to pass again.
+/// Structural boundary rule for ADR-015 (supersedes ADR-011 C7): the Query agent gains a
+/// narrow, structurally-guarded write capability (create Synthesis Pages, maintain
+/// index/log) instead of no write capability at all. The rule is rewritten from its
+/// former "zero reachable writes anywhere" assertion to the allow-listed-namespace shape
+/// already used by <see cref="IngestAgentGuardedWriteBoundaryRuleTests"/>: reachable
+/// filesystem-write API calls anywhere in Grimoire.QueryAgent (and the shared
+/// Grimoire.AgentRuntime library it depends on) are permitted only from types in
+/// Grimoire.AgentRuntime.Guardrails — which now also contains the
+/// Grimoire.AgentRuntime.Guardrails.Coordination sub-namespace (ADR-015's
+/// SharedFileWriteGuard/CrossProcessFileLock), covered by the same prefix match — every
+/// other type must still show zero reachable write calls. At Phase 0 (012-query-synthesis-writes
+/// T001) this rule passes vacuously: no write tool is wired into QueryToolRegistry yet
+/// (that is Phase 3, T022). Proven live by a Red/Green probe (T003): a temporary scratch
+/// class calling File.WriteAllText directly (outside the allow-list) is added, confirmed
+/// to fail the rule naming the violation, then removed and confirmed green again.
 /// </summary>
 public class QueryAgentGuardedWriteBoundaryRuleTests
 {
+    private static readonly System.Reflection.Assembly[] _scannedAssemblies =
+    [
+        typeof(Grimoire.QueryAgent.QueryToolRegistry).Assembly,
+        typeof(Grimoire.AgentRuntime.Guardrails.ToolRegistry).Assembly,
+    ];
+
+    // Namespace prefixes permitted to use filesystem-write APIs (ADR-015).
+    // Grimoire.AgentRuntime.Guardrails is a prefix match so it also covers the
+    // yet-to-exist Coordination sub-namespace (Grimoire.AgentRuntime.Guardrails.Coordination)
+    // without a second entry. Adapters.Replay (ADR-012, shared with
+    // IngestAgentGuardedWriteBoundaryRuleTests) writes only the captured turn stream to the
+    // eval runner's GRIMOIRE_MODEL_CAPTURE_PATH — never wiki content; wiki writes remain
+    // confined to the guarded tool layer above.
+    private static readonly HashSet<string> _allowedNamespacePrefixes =
+    [
+        "Grimoire.AgentRuntime.Guardrails",
+        "Grimoire.AgentRuntime.Core.Adapters.Replay",
+    ];
+
     // Method name substrings that indicate filesystem-write operations. Kept in sync
     // with IngestAgentGuardedWriteBoundaryRuleTests's _writeMethods list.
     private static readonly string[] _writeMethods =
@@ -40,38 +67,45 @@ public class QueryAgentGuardedWriteBoundaryRuleTests
     ];
 
     [Fact]
-    public void QueryAgent_FilesystemWriteAPIs_MustNeverBeReachable()
+    public void QueryAgent_FilesystemWriteAPIs_MustOnlyBeCalledFromAllowedNamespaces()
     {
-        // Loaded by name (not typeof) so this rule compiles regardless of which types
-        // Grimoire.QueryAgent currently declares.
-        var assemblyPath = System.Reflection.Assembly.Load("Grimoire.QueryAgent").Location;
-        var assembly = AssemblyDefinition.ReadAssembly(assemblyPath);
-
         var violations = new List<string>();
 
-        foreach (var module in assembly.Modules)
+        foreach (var scannedAssembly in _scannedAssemblies)
         {
-            foreach (var (type, effectiveNamespace) in module.Types.SelectMany(t => GetAllTypesWithNamespace(t, t.Namespace)))
+            var assembly = AssemblyDefinition.ReadAssembly(scannedAssembly.Location);
+
+            foreach (var module in assembly.Modules)
             {
-                foreach (var method in type.Methods)
+                foreach (var (type, effectiveNamespace) in module.Types.SelectMany(t => GetAllTypesWithNamespace(t, t.Namespace)))
                 {
-                    if (!method.HasBody)
+                    if (string.IsNullOrEmpty(effectiveNamespace))
                         continue;
 
-                    foreach (var instruction in method.Body.Instructions)
+                    // Skip types in the allowed namespaces.
+                    if (_allowedNamespacePrefixes.Any(ns => effectiveNamespace.StartsWith(ns, StringComparison.Ordinal)))
+                        continue;
+
+                    foreach (var method in type.Methods)
                     {
-                        if (instruction.OpCode != OpCodes.Call &&
-                            instruction.OpCode != OpCodes.Callvirt &&
-                            instruction.OpCode != OpCodes.Newobj)
+                        if (!method.HasBody)
                             continue;
 
-                        if (instruction.Operand is not MethodReference callee)
-                            continue;
-
-                        var callSig = $"{callee.DeclaringType.FullName}::{callee.Name}";
-                        if (_writeMethods.Any(w => callSig.StartsWith(w, StringComparison.Ordinal)))
+                        foreach (var instruction in method.Body.Instructions)
                         {
-                            violations.Add($"{type.FullName}.{method.Name} [{effectiveNamespace}] → {callSig}");
+                            if (instruction.OpCode != OpCodes.Call &&
+                                instruction.OpCode != OpCodes.Callvirt &&
+                                instruction.OpCode != OpCodes.Newobj)
+                                continue;
+
+                            if (instruction.Operand is not MethodReference callee)
+                                continue;
+
+                            var callSig = $"{callee.DeclaringType.FullName}::{callee.Name}";
+                            if (_writeMethods.Any(w => callSig.StartsWith(w, StringComparison.Ordinal)))
+                            {
+                                violations.Add($"{type.FullName}.{method.Name} [{effectiveNamespace}] → {callSig}");
+                            }
                         }
                     }
                 }
@@ -80,9 +114,9 @@ public class QueryAgentGuardedWriteBoundaryRuleTests
 
         Assert.True(
             violations.Count == 0,
-            "C7 (ADR-011): the Grimoire.QueryAgent assembly must contain zero reachable " +
-            "filesystem-write API calls (no allowed namespace — the agent has no write " +
-            "capability at all). Violations:\n" + string.Join("\n", violations));
+            "ADR-015 (supersedes ADR-011 C7): filesystem-write APIs reachable from " +
+            "Grimoire.QueryAgent must only be called from Grimoire.AgentRuntime.Guardrails " +
+            "(incl. its Coordination sub-namespace). Violations:\n" + string.Join("\n", violations));
     }
 
     private static IEnumerable<(TypeDefinition Type, string EffectiveNamespace)> GetAllTypesWithNamespace(
