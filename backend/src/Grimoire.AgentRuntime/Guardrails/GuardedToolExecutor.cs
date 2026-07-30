@@ -207,7 +207,20 @@ public sealed class GuardedToolExecutor
             var guardDecision = await _writeGuard.EvaluateWriteAsync(canonical, policyResult.IsCreateOnly, cancellationToken);
             if (!guardDecision.IsAllowed)
             {
-                return RecordDenial(ToolRegistry.WriteFile, relativePath, canonical, guardDecision.DenialReason!, turn);
+                var reason = guardDecision.DenialReason!;
+
+                // ADR-015 (012-query-synthesis-writes): create_only_target_exists and
+                // write_conflict_stale_read are write-coordination rejections, distinct from
+                // write_coordination_timeout (its own wiki.write_lock.timeout signal) and
+                // from the pre-existing out_of_scope/no_rule/traversal policy-scope denials
+                // (their own established RecordDenied-only signals) — plan.md's
+                // wiki.write_conflict.rejected/wiki.write_conflict.rejections_total rows.
+                if (reason is "create_only_target_exists" or "write_conflict_stale_read")
+                {
+                    _instrumentation.RecordWriteConflictRejected(_taskId, canonical, reason, turn);
+                }
+
+                return RecordDenial(ToolRegistry.WriteFile, relativePath, canonical, reason, turn);
             }
 
             lockHandle = guardDecision.LockHandle;

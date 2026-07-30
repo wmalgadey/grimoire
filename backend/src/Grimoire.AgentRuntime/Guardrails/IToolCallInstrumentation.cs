@@ -22,6 +22,19 @@ public interface IToolCallInstrumentation
     /// and Ingest (no create-only rule in its policy) never need to.
     /// </summary>
     void RecordCreateOnlyWriteSucceeded(string taskId, string path, int turn) { }
+
+    /// <summary>
+    /// ADR-015 (012-query-synthesis-writes): a write was rejected by the write-coordination
+    /// guard's create-only existence check or its read-then-write compare-and-swap check —
+    /// <paramref name="reason"/> is one of <c>create_only_target_exists</c> or
+    /// <c>write_conflict_stale_read</c> (never <c>write_coordination_timeout</c>, which has
+    /// its own <c>wiki.write_lock.timeout</c> signal, nor the pre-existing
+    /// <c>out_of_scope</c>/<c>no_rule</c>/<c>traversal</c> policy-scope denials, which
+    /// already have their own established signals via <see cref="RecordDenied"/>). Maps to
+    /// plan.md's <c>wiki.write_conflict.rejected</c>/<c>wiki.write_conflict.rejections_total</c>
+    /// Observability rows. Default no-op, mirroring <see cref="RecordCreateOnlyWriteSucceeded"/>.
+    /// </summary>
+    void RecordWriteConflictRejected(string taskId, string path, string reason, int turn) { }
 }
 
 /// <summary>No-op default so hermetic tests that don't assert on telemetry don't need to wire an adapter.</summary>

@@ -18,6 +18,7 @@ public static class QueryAgentLogEvents
     private static readonly EventId InstructionsLoadFailedEvent = new(61, "query.instructions.load_failed");
     private static readonly EventId ToolDeniedEvent = new(62, "query.tool.denied");
     private static readonly EventId SynthesisPageCreatedEvent = new(63, "wiki.query.synthesis_page_created");
+    private static readonly EventId WriteConflictRejectedEvent = new(64, "wiki.write_conflict.rejected");
 
     public static void LogInstructionsLoaded(
         ILogger logger, string turnId, string systemPromptSha256, int policyVersion, string policySha256)
@@ -77,6 +78,27 @@ public static class QueryAgentLogEvents
         logger.LogInformation(SynthesisPageCreatedEvent,
             "Synthesis page created. task_id={task_id} path={path} turn={turn}",
             taskId, path, turn);
+    }
+
+    /// <summary>
+    /// T034 (012-query-synthesis-writes, US2), plan.md ## Observability > Structured Log
+    /// Events: a write was rejected by the write-coordination guard's create-only or
+    /// compare-and-swap check (<paramref name="reason"/> is <c>create_only_target_exists</c>
+    /// or <c>write_conflict_stale_read</c>). Field name is <c>task_id</c>, matching
+    /// <see cref="LogSynthesisPageCreated"/> for the same reason — the emission point
+    /// (<c>GuardedToolExecutor</c>) is shared harness code, not Query-specific.
+    /// </summary>
+    public static void LogWriteConflictRejected(ILogger logger, string taskId, string path, string reason, int turn)
+    {
+        using var span = StartLogEventSpan("wiki.write_conflict.rejected", "Warning");
+        span?.SetTag("task_id", taskId);
+        span?.SetTag("path", path);
+        span?.SetTag("reason", reason);
+        span?.SetTag("turn", turn);
+
+        logger.LogWarning(WriteConflictRejectedEvent,
+            "Write rejected by coordination guard. task_id={task_id} path={path} reason={reason} turn={turn}",
+            taskId, path, reason, turn);
     }
 
     private static Activity? StartLogEventSpan(string eventName, string level)

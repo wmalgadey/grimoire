@@ -77,4 +77,12 @@ public sealed class QueryToolCallInstrumentation : IToolCallInstrumentation
         QueryAgentMetrics.RecordSynthesisPageCreated();
         QueryAgentLogEvents.LogSynthesisPageCreated(_logger, taskId, path, turn);
     }
+
+    /// <summary>T034 (012-query-synthesis-writes, US2): emits the metric + log event pair for a
+    /// write rejected by the write-coordination guard (create-only or compare-and-swap).</summary>
+    public void RecordWriteConflictRejected(string taskId, string path, string reason, int turn)
+    {
+        QueryAgentMetrics.RecordWriteConflictRejected(reason);
+        QueryAgentLogEvents.LogWriteConflictRejected(_logger, taskId, path, reason, turn);
+    }
 }
