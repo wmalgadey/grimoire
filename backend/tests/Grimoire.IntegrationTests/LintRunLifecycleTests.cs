@@ -256,102 +256,102 @@ public class LintRunLifecycleTests
 /// </summary>
 internal sealed class LintCoordinatorHarness : IDisposable
 {
-        private readonly string _root;
+    private readonly string _root;
 
-        private LintCoordinatorHarness(string root, ResolvedGrimoirePaths paths, FakeAgentProcessLauncher launcher, LintRunCoordinator coordinator)
+    private LintCoordinatorHarness(string root, ResolvedGrimoirePaths paths, FakeAgentProcessLauncher launcher, LintRunCoordinator coordinator)
+    {
+        _root = root;
+        Paths = paths;
+        Launcher = launcher;
+        Coordinator = coordinator;
+    }
+
+    public ResolvedGrimoirePaths Paths { get; }
+    public FakeAgentProcessLauncher Launcher { get; }
+    public LintRunCoordinator Coordinator { get; }
+
+    public static LintCoordinatorHarness Create(
+        FakeAgentProcessLauncher? launcher = null,
+        TimeSpan? livenessWindow = null,
+        LintReviewWindowOptions? reviewWindowOptions = null)
+    {
+        var root = Path.Combine(Path.GetTempPath(), $"grimoire-lint-lifecycle-{Guid.NewGuid():N}");
+        var findingsDir = Path.Combine(root, "findings");
+        Directory.CreateDirectory(findingsDir);
+
+        var paths = new ResolvedGrimoirePaths(
+            BaseDir: root,
+            DataDir: root,
+            ContentRoot: Path.Combine(root, "wiki"),
+            PagesDir: Path.Combine(root, "wiki", "pages"),
+            TasksDir: Path.Combine(root, "wiki", "tasks"),
+            IndexPath: Path.Combine(root, "wiki", "index.md"),
+            LogPath: Path.Combine(root, "wiki", "log.md"),
+            RawOriginalsDir: Path.Combine(root, "raw", "originals"),
+            RawSourcesDir: Path.Combine(root, "raw", "sources"),
+            StateDbPath: Path.Combine(root, "state.db"),
+            SecretsFilePath: Path.Combine(root, ".env"),
+            InstructionsDir: Path.Combine(root, "agents", "ingest"),
+            SystemPromptPath: Path.Combine(root, "agents", "ingest", "system-prompt.md"),
+            DefaultUserPromptPath: Path.Combine(root, "agents", "ingest", "default-user-prompt.md"),
+            PolicyPath: Path.Combine(root, "agents", "ingest", "policy.json"),
+            AgentWorkerPath: "unused",
+            QueryInstructionsDir: Path.Combine(root, "agents", "query"),
+            QuerySystemPromptPath: Path.Combine(root, "agents", "query", "system-prompt.md"),
+            QueryPolicyPath: Path.Combine(root, "agents", "query", "policy.json"),
+            ConversationsDir: Path.Combine(root, "conversations"),
+            QueryAgentWorkerPath: "unused",
+            WriteLocksDir: Path.Combine(root, "write-locks"),
+            FindingsDir: findingsDir,
+            LintInstructionsDir: Path.Combine(root, "agents", "lint"),
+            LintSystemPromptPath: Path.Combine(root, "agents", "lint", "system-prompt.md"),
+            LintPolicyPath: Path.Combine(root, "agents", "lint", "policy.json"),
+            LintAgentWorkerPath: "unused",
+            Locations: []);
+
+        var effectiveLauncher = launcher ?? new FakeAgentProcessLauncher(autoPlay: true);
+        var reportStore = new FindingsReportStore(paths, NullLogger<FindingsReportStore>.Instance);
+        var coordinator = new LintRunCoordinator(
+            effectiveLauncher, reportStore, paths, livenessWindow: livenessWindow,
+            reviewWindowOptions: reviewWindowOptions, logger: NullLogger<LintRunCoordinator>.Instance);
+
+        return new LintCoordinatorHarness(root, paths, effectiveLauncher, coordinator);
+    }
+
+    public async Task<LintRunState> WaitForTerminalAsync(string runId)
+    {
+        var deadline = DateTime.UtcNow.AddSeconds(5);
+        LintRunState? run;
+        do
         {
-            _root = root;
-            Paths = paths;
-            Launcher = launcher;
-            Coordinator = coordinator;
-        }
-
-        public ResolvedGrimoirePaths Paths { get; }
-        public FakeAgentProcessLauncher Launcher { get; }
-        public LintRunCoordinator Coordinator { get; }
-
-        public static LintCoordinatorHarness Create(
-            FakeAgentProcessLauncher? launcher = null,
-            TimeSpan? livenessWindow = null,
-            LintReviewWindowOptions? reviewWindowOptions = null)
-        {
-            var root = Path.Combine(Path.GetTempPath(), $"grimoire-lint-lifecycle-{Guid.NewGuid():N}");
-            var findingsDir = Path.Combine(root, "findings");
-            Directory.CreateDirectory(findingsDir);
-
-            var paths = new ResolvedGrimoirePaths(
-                BaseDir: root,
-                DataDir: root,
-                ContentRoot: Path.Combine(root, "wiki"),
-                PagesDir: Path.Combine(root, "wiki", "pages"),
-                TasksDir: Path.Combine(root, "wiki", "tasks"),
-                IndexPath: Path.Combine(root, "wiki", "index.md"),
-                LogPath: Path.Combine(root, "wiki", "log.md"),
-                RawOriginalsDir: Path.Combine(root, "raw", "originals"),
-                RawSourcesDir: Path.Combine(root, "raw", "sources"),
-                StateDbPath: Path.Combine(root, "state.db"),
-                SecretsFilePath: Path.Combine(root, ".env"),
-                InstructionsDir: Path.Combine(root, "agents", "ingest"),
-                SystemPromptPath: Path.Combine(root, "agents", "ingest", "system-prompt.md"),
-                DefaultUserPromptPath: Path.Combine(root, "agents", "ingest", "default-user-prompt.md"),
-                PolicyPath: Path.Combine(root, "agents", "ingest", "policy.json"),
-                AgentWorkerPath: "unused",
-                QueryInstructionsDir: Path.Combine(root, "agents", "query"),
-                QuerySystemPromptPath: Path.Combine(root, "agents", "query", "system-prompt.md"),
-                QueryPolicyPath: Path.Combine(root, "agents", "query", "policy.json"),
-                ConversationsDir: Path.Combine(root, "conversations"),
-                QueryAgentWorkerPath: "unused",
-                WriteLocksDir: Path.Combine(root, "write-locks"),
-                FindingsDir: findingsDir,
-                LintInstructionsDir: Path.Combine(root, "agents", "lint"),
-                LintSystemPromptPath: Path.Combine(root, "agents", "lint", "system-prompt.md"),
-                LintPolicyPath: Path.Combine(root, "agents", "lint", "policy.json"),
-                LintAgentWorkerPath: "unused",
-                Locations: []);
-
-            var effectiveLauncher = launcher ?? new FakeAgentProcessLauncher(autoPlay: true);
-            var reportStore = new FindingsReportStore(paths, NullLogger<FindingsReportStore>.Instance);
-            var coordinator = new LintRunCoordinator(
-                effectiveLauncher, reportStore, paths, livenessWindow: livenessWindow,
-                reviewWindowOptions: reviewWindowOptions, logger: NullLogger<LintRunCoordinator>.Instance);
-
-            return new LintCoordinatorHarness(root, paths, effectiveLauncher, coordinator);
-        }
-
-        public async Task<LintRunState> WaitForTerminalAsync(string runId)
-        {
-            var deadline = DateTime.UtcNow.AddSeconds(5);
-            LintRunState? run;
-            do
+            run = Coordinator.GetRun(runId);
+            if (run is { Status: not LintRunStatus.Running })
             {
-                run = Coordinator.GetRun(runId);
-                if (run is { Status: not LintRunStatus.Running })
-                {
-                    break;
-                }
-                await Task.Delay(25);
-            } while (DateTime.UtcNow < deadline);
-
-            Assert.NotNull(run);
-
-            // The report write is a separate, slightly-later async step after the status
-            // flips (LintRunCoordinator.FinishRunAsync) — poll for the file too.
-            var reportDeadline = DateTime.UtcNow.AddSeconds(5);
-            var reportPath = Paths.FindingsReportPathFor(runId);
-            while (!File.Exists(reportPath) && DateTime.UtcNow < reportDeadline)
-            {
-                await Task.Delay(25);
+                break;
             }
+            await Task.Delay(25);
+        } while (DateTime.UtcNow < deadline);
 
-            Assert.True(File.Exists(reportPath), $"Expected a Findings Report at '{reportPath}'.");
-            return run!;
+        Assert.NotNull(run);
+
+        // The report write is a separate, slightly-later async step after the status
+        // flips (LintRunCoordinator.FinishRunAsync) — poll for the file too.
+        var reportDeadline = DateTime.UtcNow.AddSeconds(5);
+        var reportPath = Paths.FindingsReportPathFor(runId);
+        while (!File.Exists(reportPath) && DateTime.UtcNow < reportDeadline)
+        {
+            await Task.Delay(25);
         }
 
-        public void Dispose()
+        Assert.True(File.Exists(reportPath), $"Expected a Findings Report at '{reportPath}'.");
+        return run!;
+    }
+
+    public void Dispose()
+    {
+        if (Directory.Exists(_root))
         {
-            if (Directory.Exists(_root))
-            {
-                try { Directory.Delete(_root, recursive: true); } catch { /* best-effort */ }
-            }
+            try { Directory.Delete(_root, recursive: true); } catch { /* best-effort */ }
         }
     }
+}
