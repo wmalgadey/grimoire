@@ -1,4 +1,5 @@
 using Grimoire.Domain.Guardrails;
+using Grimoire.AgentRuntime.Guardrails.Coordination;
 using System.Text;
 using System.Text.Json;
 
@@ -25,16 +26,26 @@ public sealed class GuardedToolExecutor
     private readonly string _taskId;
     private readonly ToolRegistry _registry;
     private readonly IToolCallInstrumentation _instrumentation;
+    private readonly SharedFileWriteGuard? _writeGuard;
     private readonly List<DeniedActionRecord> _denials = [];
     private readonly List<string> _touchedPaths = [];
 
+    /// <param name="writeLocksDir">
+    /// ADR-015: base directory for cross-process write-coordination lock files. When
+    /// supplied, every guarded write is additionally coordinated through a
+    /// <see cref="SharedFileWriteGuard"/> (create-only existence check /
+    /// read-then-write compare-and-swap, ADR-015). When <c>null</c> (the default), no
+    /// coordination guard is constructed and writes behave exactly as before this
+    /// feature — existing callers that do not yet supply this argument are unaffected.
+    /// </param>
     public GuardedToolExecutor(
         SafetyPolicy policy,
         WriteJournal journal,
         string repositoryRoot,
         string? taskId = null,
         ToolRegistry? registry = null,
-        IToolCallInstrumentation? instrumentation = null)
+        IToolCallInstrumentation? instrumentation = null,
+        string? writeLocksDir = null)
     {
         _policy = policy;
         _journal = journal;
@@ -42,6 +53,7 @@ public sealed class GuardedToolExecutor
         _taskId = taskId ?? string.Empty;
         _registry = registry ?? ToolRegistry.Default;
         _instrumentation = instrumentation ?? NullToolCallInstrumentation.Instance;
+        _writeGuard = writeLocksDir is not null ? new SharedFileWriteGuard(writeLocksDir) : null;
     }
 
     /// <summary>All policy denials that occurred during the run so far.</summary>
@@ -147,6 +159,7 @@ public sealed class GuardedToolExecutor
         }
 
         var content = await File.ReadAllTextAsync(canonical, Encoding.UTF8, cancellationToken);
+        _writeGuard?.OnReadFile(canonical, content);
         return new ToolExecutionResult(false, content);
     }
 
@@ -174,34 +187,63 @@ public sealed class GuardedToolExecutor
             return RecordDenial(ToolRegistry.WriteFile, relativePath, canonical, policyResult.DenialReason!, turn);
         }
 
-        // Executor obligations (contract order):
-        // 1. Journal prior state.
-        await _journal.RecordAsync(canonical, cancellationToken);
-
-        // 2. Create parent dirs inside the write scope.
-        var parentDir = Path.GetDirectoryName(canonical);
-        if (!string.IsNullOrEmpty(parentDir))
+        // ADR-015: coordinate with other writers (Ingest/Query/future Lint) sharing the
+        // same guarded tool boundary. Absent (no writeLocksDir supplied), this is a no-op
+        // and behavior is unchanged from before this feature.
+        IDisposable? lockHandle = null;
+        if (_writeGuard is not null)
         {
-            Directory.CreateDirectory(parentDir);
+            var guardDecision = await _writeGuard.EvaluateWriteAsync(canonical, policyResult.IsCreateOnly, cancellationToken);
+            if (!guardDecision.IsAllowed)
+            {
+                return RecordDenial(ToolRegistry.WriteFile, relativePath, canonical, guardDecision.DenialReason!, turn);
+            }
+
+            lockHandle = guardDecision.LockHandle;
         }
 
-        // 3. Atomic write via temp + rename within the same directory.
-        var tempPath = canonical + ".tmp." + Guid.NewGuid().ToString("N");
         try
         {
-            await File.WriteAllTextAsync(tempPath, content, Encoding.UTF8, cancellationToken);
-            File.Move(tempPath, canonical, overwrite: true);
-        }
-        catch
-        {
-            if (File.Exists(tempPath))
+            // Executor obligations (contract order):
+            // 1. Journal prior state.
+            await _journal.RecordAsync(canonical, cancellationToken);
+
+            // 2. Create parent dirs inside the write scope.
+            var parentDir = Path.GetDirectoryName(canonical);
+            if (!string.IsNullOrEmpty(parentDir))
             {
-                try { File.Delete(tempPath); } catch { /* best-effort cleanup */ }
+                Directory.CreateDirectory(parentDir);
             }
-            throw;
+
+            // 3. Atomic write via temp + rename within the same directory.
+            var tempPath = canonical + ".tmp." + Guid.NewGuid().ToString("N");
+            try
+            {
+                await File.WriteAllTextAsync(tempPath, content, Encoding.UTF8, cancellationToken);
+                File.Move(tempPath, canonical, overwrite: true);
+            }
+            catch
+            {
+                if (File.Exists(tempPath))
+                {
+                    try { File.Delete(tempPath); } catch { /* best-effort cleanup */ }
+                }
+                throw;
+            }
+
+            // 4. Update the write guard's read-hash baseline for this path (so this run's
+            // own next write/read of the same path is never mistaken for a stale read).
+            _writeGuard?.OnWriteCommitted(canonical, content);
+        }
+        finally
+        {
+            // Release the coordination lock unconditionally — including on failure or
+            // cancellation — so an interrupted run can never wedge a target (ADR-015,
+            // FR-011).
+            lockHandle?.Dispose();
         }
 
-        // 4. Record touched path, emit telemetry.
+        // 5. Record touched path, emit telemetry.
         _touchedPaths.Add(canonical);
         _instrumentation.RecordAllowed(_taskId, ToolRegistry.WriteFile, canonical, turn);
 
