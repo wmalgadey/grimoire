@@ -205,6 +205,7 @@ public class QueryTurnSubmissionApiTests
         QueryPolicyPath: Path.Combine(root, "agents", "query", "policy.json"),
         ConversationsDir: Path.Combine(root, "conversations"),
         QueryAgentWorkerPath: "unused",
+        WriteLocksDir: Path.Combine(root, "write-locks"),
         Locations: []);
 
     internal static async Task<IHost> BuildHostAsync(

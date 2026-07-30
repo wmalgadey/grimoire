@@ -56,6 +56,7 @@ public static class GrimoirePathResolver
         var instructionsDir = ResolveAgainst(options.InstructionsDir, dataDir, GrimoirePathOptions.DefaultInstructionsDirRelativePath);
         var queryInstructionsDir = ResolveAgainst(options.QueryInstructionsDir, dataDir, GrimoirePathOptions.DefaultQueryInstructionsDirRelativePath);
         var conversationsDir = ResolveAgainst(options.ConversationsDir, dataDir, GrimoirePathOptions.DefaultConversationsDirName);
+        var writeLocksDir = ResolveAgainst(options.WriteLocksDir, dataDir, GrimoirePathOptions.DefaultWriteLocksDirName);
 
         var agentWorkerPath = ResolveAgainst(options.AgentWorker, AppContext.BaseDirectory, GrimoirePathOptions.DefaultAgentWorkerFileName);
         var queryAgentWorkerPath = ResolveAgainst(options.QueryAgentWorker, AppContext.BaseDirectory, GrimoirePathOptions.DefaultQueryAgentWorkerFileName);
@@ -85,6 +86,7 @@ public static class GrimoirePathResolver
             BuildLocation("query_instructions_dir", "QueryInstructionsDir", options.QueryInstructionsDir, queryInstructionsDir, PathLocationKind.RequiredInput, configRoot),
             BuildLocation("conversations_dir", "ConversationsDir", options.ConversationsDir, conversationsDir, PathLocationKind.WritableData, configRoot),
             BuildLocation("query_agent_worker", "QueryAgentWorker", options.QueryAgentWorker, queryAgentWorkerPath, PathLocationKind.RequiredInput, configRoot),
+            BuildLocation("write_locks_dir", "WriteLocksDir", options.WriteLocksDir, writeLocksDir, PathLocationKind.WritableData, configRoot),
         };
 
         // Validate required inputs — fail fast, before any writable location is touched.
@@ -109,6 +111,7 @@ public static class GrimoirePathResolver
         CreateDirectoryIfMissing(logger, "raw_originals_dir", options.RawDir, rawOriginalsDir);
         CreateDirectoryIfMissing(logger, "raw_sources_dir", options.RawDir, rawSourcesDir);
         CreateDirectoryIfMissing(logger, "conversations_dir", options.ConversationsDir, conversationsDir);
+        CreateDirectoryIfMissing(logger, "write_locks_dir", options.WriteLocksDir, writeLocksDir);
         var stateDbDir = Path.GetDirectoryName(stateDbPath);
         if (!string.IsNullOrEmpty(stateDbDir))
         {
@@ -137,6 +140,7 @@ public static class GrimoirePathResolver
             QueryPolicyPath: queryPolicyPath,
             ConversationsDir: conversationsDir,
             QueryAgentWorkerPath: queryAgentWorkerPath,
+            WriteLocksDir: writeLocksDir,
             Locations: locations);
 
         GrimoirePathLogEvents.LogPathsResolved(logger, resolved);

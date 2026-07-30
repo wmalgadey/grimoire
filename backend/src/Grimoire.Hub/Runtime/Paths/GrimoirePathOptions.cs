@@ -47,6 +47,14 @@ public sealed class GrimoirePathOptions
     /// </summary>
     public string? ConversationsDir { get; set; }
 
+    /// <summary>
+    /// Cross-process write-coordination lock directory (012-query-synthesis-writes,
+    /// ADR-015) — one empty lock file per contested wiki target, named by SHA-256 of its
+    /// canonical path. Outside <c>wiki/</c> and git, git-ignored. Default:
+    /// <c>write-locks</c> under the data directory.
+    /// </summary>
+    public string? WriteLocksDir { get; set; }
+
     /// <summary>Ingest agent worker (.csproj/.dll/executable). Default: beside the Hub binaries.</summary>
     public string? AgentWorker { get; set; }
 
@@ -58,6 +66,7 @@ public sealed class GrimoirePathOptions
     public const string DefaultRawDirName = "raw";
     public const string DefaultSecretsFileName = ".env";
     public const string DefaultConversationsDirName = "conversations";
+    public const string DefaultWriteLocksDirName = "write-locks";
 
     // Not a `const`: NetArchTest's HaveDependencyOn scan treats string *field constants*
     // as candidate dependency evidence, and this filename's "Grimoire.IngestAgent" prefix

@@ -157,7 +157,7 @@ public class StartupValidationTests
                 new HashSet<string>
                 {
                     "base_dir", "data_dir", "content_root", "raw_dir", "state_db", "secrets_file", "instructions_dir", "agent_worker",
-                    "query_instructions_dir", "conversations_dir", "query_agent_worker",
+                    "query_instructions_dir", "conversations_dir", "query_agent_worker", "write_locks_dir",
                 },
                 reportedNames);
             Assert.All(resolved.Locations, l => Assert.True(Path.IsPathRooted(l.ResolvedPath)));

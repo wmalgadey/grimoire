@@ -85,9 +85,19 @@ public sealed class PolicyLoader
                 $"Policy file '{policyPath}': version must be >= 1 (got {schema.Version}).");
         }
 
-        var readPrefixes = ResolveAndNormalize(schema.Read ?? [], isWrite: false);
-        var writePrefixes = ResolveAndNormalize(schema.Write ?? [], isWrite: true);
-        var policy = new SafetyPolicy(_wikiRoot, readPrefixes, writePrefixes);
+        var readPrefixes = ResolveAndNormalize(schema.Read ?? []);
+
+        IReadOnlyList<WriteRule> writeRules;
+        try
+        {
+            writeRules = ResolveAndNormalizeWriteRules(schema.Write ?? []);
+        }
+        catch (PolicyModeException ex)
+        {
+            return new PolicyLoadFailure($"Policy file '{policyPath}': {ex.Message}");
+        }
+
+        var policy = new SafetyPolicy(_wikiRoot, readPrefixes, writeRules);
 
         var sha256 = Convert.ToHexStringLower(SHA256.HashData(fileBytes));
         var identity = new PolicyIdentity(policyPath, schema.Version, sha256);
@@ -95,36 +105,80 @@ public sealed class PolicyLoader
         return new LoadedPolicy(policy, identity);
     }
 
-    private IReadOnlyList<string> ResolveAndNormalize(
-        IReadOnlyList<PolicyRuleSchema> rules,
-        bool isWrite)
+    private const string ReadWriteMode = "read-write";
+    private const string CreateOnlyMode = "create-only";
+
+    /// <summary>Thrown internally to fail closed on an unrecognized <c>mode</c> value; never escapes <see cref="LoadAsync"/>.</summary>
+    private sealed class PolicyModeException(string message) : Exception(message);
+
+    private IReadOnlyList<string> ResolveAndNormalize(IReadOnlyList<PolicyRuleSchema> rules)
     {
         var prefixes = new List<string>(rules.Count);
         foreach (var rule in rules)
         {
-            if (string.IsNullOrWhiteSpace(rule.PathPrefix))
-                continue;
-
-            var platformPathPrefix = rule.PathPrefix
-                .Replace(Path.AltDirectorySeparatorChar, Path.DirectorySeparatorChar);
-
-            // Resolve relative prefix against the wiki root (ADR-009).
-            var absolute = Path.IsPathRooted(platformPathPrefix)
-                ? platformPathPrefix
-                : Path.Combine(_wikiRoot, platformPathPrefix);
-            var canonical = Path.GetFullPath(absolute);
-
-            // Ensure directory prefixes end with the directory separator so prefix
-            // matching does not accidentally permit sibling paths.
-            var normalized = canonical;
-            if (platformPathPrefix.EndsWith(Path.DirectorySeparatorChar))
+            var normalized = NormalizeRulePrefix(rule);
+            if (normalized is not null)
             {
-                normalized = normalized.TrimEnd(Path.DirectorySeparatorChar) + Path.DirectorySeparatorChar;
+                prefixes.Add(normalized);
             }
-
-            prefixes.Add(normalized);
         }
         return prefixes;
+    }
+
+    /// <summary>
+    /// Resolves write-scope rules, carrying each rule's <c>mode</c> (ADR-015) into a
+    /// <see cref="WriteRule"/>. <c>mode</c> is optional: absent or <c>"read-write"</c>
+    /// means plain read-write (byte-for-byte the pre-ADR-015 behavior); <c>"create-only"</c>
+    /// marks the rule create-only; any other value fails closed (<see cref="PolicyModeException"/>),
+    /// matching the existing <c>defaultDecision</c> strictness — never silently defaulted.
+    /// </summary>
+    private IReadOnlyList<WriteRule> ResolveAndNormalizeWriteRules(IReadOnlyList<PolicyRuleSchema> rules)
+    {
+        var writeRules = new List<WriteRule>(rules.Count);
+        foreach (var rule in rules)
+        {
+            var normalized = NormalizeRulePrefix(rule);
+            if (normalized is null)
+                continue;
+
+            var createOnly = rule.Mode switch
+            {
+                null => false,
+                ReadWriteMode => false,
+                CreateOnlyMode => true,
+                _ => throw new PolicyModeException(
+                    $"write rule for \"{rule.PathPrefix}\" has unrecognized mode \"{rule.Mode}\" " +
+                    $"(expected \"{ReadWriteMode}\" or \"{CreateOnlyMode}\")."),
+            };
+
+            writeRules.Add(new WriteRule(normalized, createOnly));
+        }
+        return writeRules;
+    }
+
+    private string? NormalizeRulePrefix(PolicyRuleSchema rule)
+    {
+        if (string.IsNullOrWhiteSpace(rule.PathPrefix))
+            return null;
+
+        var platformPathPrefix = rule.PathPrefix
+            .Replace(Path.AltDirectorySeparatorChar, Path.DirectorySeparatorChar);
+
+        // Resolve relative prefix against the wiki root (ADR-009).
+        var absolute = Path.IsPathRooted(platformPathPrefix)
+            ? platformPathPrefix
+            : Path.Combine(_wikiRoot, platformPathPrefix);
+        var canonical = Path.GetFullPath(absolute);
+
+        // Ensure directory prefixes end with the directory separator so prefix
+        // matching does not accidentally permit sibling paths.
+        var normalized = canonical;
+        if (platformPathPrefix.EndsWith(Path.DirectorySeparatorChar))
+        {
+            normalized = normalized.TrimEnd(Path.DirectorySeparatorChar) + Path.DirectorySeparatorChar;
+        }
+
+        return normalized;
     }
 
     private static readonly JsonSerializerOptions _jsonOptions = new()
@@ -148,6 +202,13 @@ public sealed class PolicyLoader
     private sealed class PolicyRuleSchema
     {
         public string PathPrefix { get; set; } = string.Empty;
+
+        /// <summary>
+        /// ADR-015: optional write-rule mode. Recognized: <c>"read-write"</c> (or absent,
+        /// the pre-ADR-015 default) and <c>"create-only"</c>. Any other value is a
+        /// fail-closed load error — never silently defaulted. Ignored for read rules.
+        /// </summary>
+        public string? Mode { get; set; }
     }
 }
 

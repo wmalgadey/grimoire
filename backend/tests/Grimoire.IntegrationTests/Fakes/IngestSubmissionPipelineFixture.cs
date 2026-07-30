@@ -122,6 +122,7 @@ public sealed class IngestSubmissionPipelineFixture : IDisposable
             QueryPolicyPath: Path.Combine(Root, "agents", "query", "policy.json"),
             ConversationsDir: Path.Combine(Root, "conversations"),
             QueryAgentWorkerPath: "unused",
+            WriteLocksDir: Path.Combine(Root, "write-locks"),
             Locations: []);
 
         var dbPath = Path.Combine(Root, "operational-state.db");
