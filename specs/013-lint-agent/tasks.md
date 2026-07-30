@@ -217,7 +217,7 @@ findings in their categories.
 
 > **NOTE: Write these tests FIRST, ensure they FAIL before implementation**
 
-- [ ] T015 [P] [US1] Integration test
+- [X] T015 [P] [US1] Integration test
   `backend/tests/Grimoire.IntegrationTests/LintRunLifecycleTests.cs` (SC-001):
   triggering a run with `FakeAgentProcess` scripted to produce a narrative → exactly
   one Findings Report file at `<base>/data/findings/<runId>.md`, frontmatter with
@@ -225,11 +225,21 @@ findings in their categories.
   identity + sha256 recorded; a missing/unreadable/empty system-prompt fixture fails
   the run before any agent output with a human-readable reason and instruction
   identity omitted, mirroring `IngestInstructionLoadTests`/`QueryInstructionLoadTests`.
-- [ ] T016 [P] [US1] Integration test (in `LintRunLifecycleTests.cs`, T015's file):
+  *Deviation: exercised at the `LintRunCoordinator` level against a hermetic
+  `LintCoordinatorHarness` (temp `ResolvedGrimoirePaths` + `FindingsReportStore`), not
+  a full ASP.NET test host — mirrors `QueryInstructionLoadTests`' coordinator-level
+  idiom exactly (that file also skips the HTTP layer for this class of assertion); the
+  harness class is top-level `internal` (not nested) so `LintTraceTests.cs` reuses it
+  too. Writing this test first surfaced a real inconsistency between the drafted
+  system-prompt.md and `FindingsReportFormat`'s design (both independently assumed the
+  top-level "# Lint Run ..." heading belonged to them) — fixed by making the Hub own
+  that heading mechanically (run id + outcome are harness facts) and having the
+  agent's narrative start directly at its first category heading.*
+- [X] T016 [P] [US1] Integration test (in `LintRunLifecycleTests.cs`, T015's file):
   an empty/healthy wiki fixture produces a report whose three categories each state
   "No <category> findings." explicitly — never omitted, never fabricated (FR-006
   acceptance scenario 4).
-- [ ] T017 [P] [US1] `Grimoire.EvalRunner` scenario
+- [X] T017 [P] [US1] `Grimoire.EvalRunner` scenario
   `backend/src/Grimoire.EvalRunner/Scenarios/LintScenarioDefinitions.cs`: add
   `lint-defects-found` (SC-005 threshold ≥ 85%, per-category) with a seeded wiki
   fixture containing one instance of each defect category (contradiction, orphan,
@@ -239,14 +249,32 @@ findings in their categories.
   seeded defect's affected page(s) appear in the report under the expected category
   (lightweight text/wikilink matching over the raw report body — no structured
   parser needed, per contracts/findings-report-format.md's Parsing section).
-- [ ] T018 [P] [US1] `Grimoire.EvalRunner` scenario: add `lint-genuine-findings`
+  *Deviation: `LintScenarioDefinition` is a new, narrower record (no per-sample input
+  at all — unlike Ingest's one-pasted-source shape or Query's turn-sequence shape,
+  Lint takes none), not a reuse of `ScenarioDefinition`/`QueryScenarioDefinition`. The
+  seeded-defect fixture lives at
+  `backend/tests/Grimoire.AgentEvals/Fixtures/lint-seeded-defects/wiki/` (the
+  established fixture location for both prior agents) with all six defects organic
+  (no "this is the seeded X defect" hint text in any page body), so a future capture
+  run genuinely exercises judgment. No `LintEvalSandbox`/`LintAgentProcessInvoker`/
+  `LintCapturePipeline`/`LintReplayPipeline` were built — that Query-equivalent
+  subsystem is substantial standalone infrastructure outside this task's literal file
+  list; the scenario/scorer/fixture are correctly wired and ready for it, but running
+  them end-to-end is deferred to the Phase 6 capture task (T046/T047), consistent with
+  this task's own instruction not to fabricate recordings.*
+- [X] T018 [P] [US1] `Grimoire.EvalRunner` scenario: add `lint-genuine-findings`
   (SC-006 threshold ≥ 90%) reusing T017's fixture; scorer cross-checks a sample of
   reported findings against the actual pages named, confirming the described problem
   genuinely exists (not fabricated).
+  *Deviation: no structured parser exists for the Findings Report format (by design,
+  per the contract), so "cross-checks a sample of reported findings" is implemented as
+  a proxy check (a proposed-remediation marker present, at least one known fixture
+  page named, no wikilink to a page absent from the fixture) rather than a per-finding
+  structured comparison — documented in the scorer's own doc comment.*
 
 ### Implementation for User Story 1
 
-- [ ] T019 [US1] Implement `Grimoire.LintAgent`'s composition root
+- [X] T019 [US1] Implement `Grimoire.LintAgent`'s composition root
   (`backend/src/Grimoire.LintAgent/Program.cs`, `LintCliOptions.cs`,
   `LintToolRegistry.cs`): follows the exact `Grimoire.QueryAgent/Program.cs` shape
   (`AgentProfile` with `RequiredInstructionDocuments = { SystemPrompt }`, no
@@ -254,7 +282,24 @@ findings in their categories.
   `--write-locks-dir`/`--heartbeat-seconds` CLI args; `GuardedToolExecutor` construction
   with `writeLocksDir`; `RunEventEmitter` over stdout). `LintToolRegistry` offers all
   three tools (`list_files`, `read_file`, `write_file`) unlike Query's two.
-- [ ] T020 [US1] Create `data/agents/lint/policy.json` (data-model.md's exact
+  *Deviation: also added `LintAgentTracing.cs`/`LintAgentMetrics.cs`/
+  `LintAgentLogEvents.cs`/`LintAgentInstrumentation.cs` (mirroring
+  `Grimoire.QueryAgent`'s equivalent files one-for-one) — not named in this task's
+  literal file list, but required for the composition root to satisfy
+  `IAgentLoopInstrumentation`/`IToolCallInstrumentation` and to emit the agent-side
+  observability rows T027/T029 need; also extended `GrimoirePathOptions`/
+  `GrimoirePathResolver`/`ResolvedGrimoirePaths` with `LintInstructionsDir`/
+  `LintSystemPromptPath`/`LintPolicyPath`/`LintAgentWorkerPath` (ADR-009 single
+  composition point, mirroring Query's shape) and `AgentProcessHost`/
+  `IAgentProcessLauncher`/`LocalSecretsLoader` with the Lint-shaped `StartAsync`
+  overload and `GRIMOIRE_LINT_MODEL`/`GRIMOIRE_LINT_BASE_URL` env scoping — all
+  necessary for `LintRunCoordinator` (T021) to actually spawn a real process, same
+  "keep the boolean/overload shape compiling" precedent as T005/T009/T013's own
+  deviations. Registered the new `Grimoire.Hub.LintDispatch`/`Grimoire.Hub.LintFindings`
+  namespaces in the ADR-013 Hub namespace-ownership map
+  (`AgentArtifactNamingRuleTests`/`docs/conventions/agent-artifact-naming.md`) — a real
+  gap the full-suite run caught (44/45 ArchTests), not anticipated by this task.*
+- [X] T020 [US1] Create `data/agents/lint/policy.json` (data-model.md's exact
   frontmatter-only shape) and `data/agents/lint/system-prompt.md`: instructs the
   agent to read the whole wiki (`list_files` on `pages/` and its topic folders,
   `read_file` each page, plus `index.md`/`log.md`), judge health across all three
@@ -264,12 +309,20 @@ findings in their categories.
   confidence-scoring conventions by reference, introducing `inbound_links`/
   `last_reviewed` as new optional frontmatter fields Lint alone maintains
   (research.md R6).
-- [ ] T021 [US1] Implement `backend/src/Grimoire.Hub/LintDispatch/LintRunCoordinator.cs`:
+  *Deviation: the narrative's own leading heading was removed from the agent's
+  contract (Hub-generated instead) after T015 surfaced the inconsistency — see T015's
+  note.*
+- [X] T021 [US1] Implement `backend/src/Grimoire.Hub/LintDispatch/LintRunCoordinator.cs`:
   copies `QueryRunCoordinator`'s immediate-rejection `SemaphoreSlim(1,1)` shape
   (research.md R3) — `TryStartAsync` returns a busy result on
   `WaitAsync(0, cancellationToken)` failure, no queue; reuses the liveness-supervision
   loop (heartbeat, silence-window failure) unchanged from the existing coordinators.
-- [ ] T022 [US1] Implement `backend/src/Grimoire.Hub/LintFindings/FindingsReportFormat.cs`
+  *Deviation: named `TriggerAsync` (bare trigger, no arguments) rather than
+  `TryStartAsync` — Lint has no per-call input to pass, unlike Query's
+  `SubmitTurnAsync(conversationId, prompt)`. Also added `LintRunState.cs`
+  (`LintRunStatus` enum + the in-memory run record data-model.md describes as "not
+  itself a durable file") since no existing type fit Lint's shape.*
+- [X] T022 [US1] Implement `backend/src/Grimoire.Hub/LintFindings/FindingsReportFormat.cs`
   (writer only, per contracts/findings-report-format.md: frontmatter + single
   `<!-- grimoire:findings ... -->` bookkeeping block with sentinel-neutralized string
   escaping mirroring `ConversationRecordFormat`'s existing escaping rule + the
@@ -277,42 +330,79 @@ findings in their categories.
   run, `WriteAsync(runId, narrative, bookkeeping)` called from
   `LintRunCoordinator`'s terminal-event handling — mirrors
   `QueryRunCoordinator.FinishTurnAsync` → `ConversationRecordStore.AppendTurnAsync`).
-- [ ] T023 [P] [US1] Integration tests
+  *Deviation: `WriteAsync` takes one `FindingsReport` record (run-level facts +
+  narrative bundled) rather than separate `(runId, narrative, bookkeeping)` positional
+  args — a cleaner shape once the bookkeeping fields were enumerated. Also added
+  `FindingsNarrativeStats.cs` (mechanical `### ` heading counting per category, over
+  the agent's own narrative structure — Constitution Principle V: counts headings the
+  agent already wrote, decides nothing) for `lint.run.completed`'s mandatory
+  `findings_count` field (T027).*
+- [X] T023 [P] [US1] Integration tests
   `backend/tests/Grimoire.IntegrationTests/FindingsReportFormatTests.cs`: writer
   round-trip produces the documented layout; injection fixtures (narrative containing
   `-->`, `##` headings, quotes) cannot break or forge the bookkeeping block's
   structure; a `partial: true` run's report is clearly headed accordingly.
-- [ ] T024 [US1] Implement `backend/src/Grimoire.Hub/LintDispatch/LintSubmissionEndpoints.cs`:
+  *Deviation: file renamed to `LintFindingsReportFormatTests.cs` — the ArchTests
+  naming-convention rule (extended in T019) correctly flagged the original name as a
+  single-agent-referencing type missing its "Lint" token.*
+- [X] T024 [US1] Implement `backend/src/Grimoire.Hub/LintDispatch/LintSubmissionEndpoints.cs`:
   `POST /api/lint-runs` (bare trigger, no body) → `Results.Accepted`/`Results.Conflict`
   (busy) via `LintRunCoordinator`; `GET /api/lint-runs/{runId}`/`GET /api/findings/{runId}`
   (or equivalent) to fetch a report for display — exact route shape decided here,
   mirroring `IngestSubmissionEndpoints`'s Minimal-API route-group pattern.
-- [ ] T025 [US1] Frontend: `frontend/src/routes/lint/+page.svelte` (a "Run Lint"
+  *Deviation: the report-fetch route is `GET /api/lint-runs/{runId}/findings` (nested
+  under the run, not a sibling `/api/findings/{runId}` collection — there is no other
+  reason to address a Findings Report except via its run). Also added
+  `GET /api/lint-runs/latest` so the frontend can recover in-progress/completed state
+  across a page reload without persisting a runId client-side (Lint has no
+  conversationId-equivalent to key off of).*
+- [X] T025 [US1] Frontend: `frontend/src/routes/lint/+page.svelte` (a "Run Lint"
   button, current-run status, Findings Report viewer rendering the report's markdown
   similar to `QueryConversation.svelte`'s `renderAnswer` pattern) and
   `frontend/src/lib/services/lintApi.ts` (typed fetch client, mirrors
   `ingestSubmissionsApi.ts`'s pattern).
-- [ ] T026 [P] [US1] Frontend tests: `frontend/src/routes/lint/page.svelte.test.ts`
+  *Deviation: status is polled via `GET /api/lint-runs/{runId}` on a 1s interval
+  rather than pushed — Lint has no SignalR channel (plan.md declares none; a bare
+  trigger with at most one run ever active has no per-event update stream to
+  justify one).*
+- [X] T026 [P] [US1] Frontend tests: `frontend/src/routes/lint/page.svelte.test.ts`
   and `frontend/src/lib/services/lintApi.test.ts` — trigger button posts, busy
   response shows a clear message, completed report renders formatted findings.
 
 ### Observability for User Story 1 (co-located, plan.md ## Observability)
 
-- [ ] T027 [US1] Implement `lint.run.triggered`/`lint.run.rejected`/
+- [X] T027 [US1] Implement `lint.run.triggered`/`lint.run.rejected`/
   `lint.instructions.loaded`/`lint.instructions.load_failed`/`lint.run.completed`/
   `lint.run.failed`/`lint.findings_report.created` log events
   (`backend/src/Grimoire.Hub/LintDispatch/LintLogEvents.cs`, mirroring
   `QueryLifecycleLogEvents`' idiom) and the `wiki.lint.runs_total{outcome}` metric,
   emitted at their triggers in `LintRunCoordinator`/`FindingsReportStore`.
-- [ ] T028 [P] [US1] Deterministic integration tests
+  *Deviation: Hub-side events live in `LintLifecycleLogEvents.cs` (mirrors
+  `QueryLifecycleLogEvents.cs`'s exact naming); `lint.instructions.loaded`/
+  `load_failed` live in `Grimoire.LintAgent/LintAgentLogEvents.cs` instead (agent-side
+  — that is where instruction loading actually happens, mirroring
+  `QueryAgentLogEvents.cs`'s split); `lint.findings_report.created` lives in
+  `Grimoire.Hub.LintFindings/LintFindingsLogEvents.cs` (co-located with
+  `FindingsReportStore`, its only emitter). Also emitted
+  `wiki.lint.triggers_rejected_total` at the same `TriggerAsync` busy-rejection call
+  site — plan.md declares this metric but assigns it to no task (T027 names only
+  `runs_total`; T037 names only `findings_total`/`inbound_links_refreshed_total`);
+  filed and closed here rather than left for the Phase 6 completeness audit to
+  discover. `wiki.lint.findings_total`/`inbound_links_refreshed_total` themselves are
+  intentionally NOT implemented here — T037, Phase 4, out of this phase's scope.*
+- [X] T028 [P] [US1] Deterministic integration tests
   `backend/tests/Grimoire.IntegrationTests/LintLogEventTests.cs` and
   `LintMetricsTests.cs`: validate event name/level/mandatory fields and metric
   increments for all rows above.
-- [ ] T029 [US1] Add trace spans `hub.lint.trigger` (root)/`hub.lint.run_supervision`
+- [X] T029 [US1] Add trace spans `hub.lint.trigger` (root)/`hub.lint.run_supervision`
   (child)/`hub.lint.write_findings_report` (child) and agent-side
   `lint_agent.run`/`lint_agent.load_instructions`/`lint_agent.tool_call` — existing
   OTel bootstrap pattern (ADR-005), same shape as Query's/Ingest's agent-side spans.
-- [ ] T030 [P] [US1] Deterministic integration tests
+  *Deviation: implemented alongside T021 (`LintRunCoordinator`)/T019 (agent
+  instrumentation) rather than as a separate pass — the span-creation code lives at
+  the exact call sites those tasks already touch, per the constitution's allowance
+  that observability implementation may be co-located with its triggering task.*
+- [X] T030 [P] [US1] Deterministic integration tests
   `backend/tests/Grimoire.IntegrationTests/LintTraceTests.cs`: validate span
   names, parent/child linkage, and `run_id` correlation across events/metrics/spans
   of the same run.
