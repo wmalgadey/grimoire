@@ -41,6 +41,12 @@ public sealed class GrimoirePathOptions
     public string? QueryInstructionsDir { get; set; }
 
     /// <summary>
+    /// Lint agent instruction surface directory (013-lint-agent, ADR-007/ADR-009).
+    /// Default: <c>agents/lint</c> under the data directory.
+    /// </summary>
+    public string? LintInstructionsDir { get; set; }
+
+    /// <summary>
     /// Conversation Record storage (011-query-conversations, ADR-014) — Hub-written
     /// only, git-ignored, one append-only file per conversation. Default:
     /// <c>conversations</c> under the data directory.
@@ -55,11 +61,21 @@ public sealed class GrimoirePathOptions
     /// </summary>
     public string? WriteLocksDir { get; set; }
 
+    /// <summary>
+    /// Findings Report storage (013-lint-agent, ADR-009/ADR-003) — Hub-written only,
+    /// git-ignored, one file per Lint Run. Outside <c>wiki/</c> and git. Default:
+    /// <c>findings</c> under the data directory.
+    /// </summary>
+    public string? FindingsDir { get; set; }
+
     /// <summary>Ingest agent worker (.csproj/.dll/executable). Default: beside the Hub binaries.</summary>
     public string? AgentWorker { get; set; }
 
     /// <summary>Query agent worker (.csproj/.dll/executable). Default: beside the Hub binaries.</summary>
     public string? QueryAgentWorker { get; set; }
+
+    /// <summary>Lint agent worker (.csproj/.dll/executable). Default: beside the Hub binaries.</summary>
+    public string? LintAgentWorker { get; set; }
 
     public const string DefaultContentRootDirName = "wiki";
     public const string DefaultDataDirName = "data";
@@ -67,6 +83,7 @@ public sealed class GrimoirePathOptions
     public const string DefaultSecretsFileName = ".env";
     public const string DefaultConversationsDirName = "conversations";
     public const string DefaultWriteLocksDirName = "write-locks";
+    public const string DefaultFindingsDirName = "findings";
 
     // Not a `const`: NetArchTest's HaveDependencyOn scan treats string *field constants*
     // as candidate dependency evidence, and this filename's "Grimoire.IngestAgent" prefix
@@ -77,7 +94,11 @@ public sealed class GrimoirePathOptions
     // Same rationale as DefaultAgentWorkerFileName above, for Grimoire.QueryAgent.
     public static readonly string DefaultQueryAgentWorkerFileName = "Grimoire.QueryAgent" + ".dll";
 
+    // Same rationale as DefaultAgentWorkerFileName above, for Grimoire.LintAgent (013-lint-agent).
+    public static readonly string DefaultLintAgentWorkerFileName = "Grimoire.LintAgent" + ".dll";
+
     public static readonly string DefaultStateDbRelativePath = Path.Combine("state", "operational-state.db");
     public static readonly string DefaultInstructionsDirRelativePath = Path.Combine("agents", "ingest");
     public static readonly string DefaultQueryInstructionsDirRelativePath = Path.Combine("agents", "query");
+    public static readonly string DefaultLintInstructionsDirRelativePath = Path.Combine("agents", "lint");
 }

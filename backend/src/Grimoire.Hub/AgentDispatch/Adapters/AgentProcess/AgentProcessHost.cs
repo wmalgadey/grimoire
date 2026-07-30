@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using Grimoire.Hub.IngestDispatch;
+using Grimoire.Hub.LintDispatch;
 using Grimoire.Hub.QueryDispatch;
 
 namespace Grimoire.Hub.AgentDispatch.Adapters.AgentProcess;
@@ -18,20 +19,27 @@ public sealed class AgentProcessHost : IAgentProcessLauncher
     private readonly LocalSecretsLoader _secretsLoader;
     private readonly string _agentWorkerPath;
     private readonly string? _queryAgentWorkerPath;
+    private readonly string? _lintAgentWorkerPath;
 
     /// <summary>
     /// <paramref name="agentWorkerPath"/> is the Hub-resolved agent-worker location
     /// (Grimoire:Paths:AgentWorker, research R4): a <c>.csproj</c> launches via
     /// <c>dotnet run --project</c> (dev convenience), a <c>.dll</c> via <c>dotnet &lt;dll&gt;</c>,
     /// anything else is launched directly as an executable. <paramref name="queryAgentWorkerPath"/>
-    /// (Grimoire:Paths:QueryAgentWorker, ADR-011) is optional so existing Ingest-only call
-    /// sites/tests are unaffected; only Query dispatch requires it.
+    /// (Grimoire:Paths:QueryAgentWorker, ADR-011) and <paramref name="lintAgentWorkerPath"/>
+    /// (Grimoire:Paths:LintAgentWorker, ADR-016/013-lint-agent) are optional so existing
+    /// Ingest-only call sites/tests are unaffected; only Query/Lint dispatch requires them.
     /// </summary>
-    public AgentProcessHost(LocalSecretsLoader secretsLoader, string agentWorkerPath, string? queryAgentWorkerPath = null)
+    public AgentProcessHost(
+        LocalSecretsLoader secretsLoader,
+        string agentWorkerPath,
+        string? queryAgentWorkerPath = null,
+        string? lintAgentWorkerPath = null)
     {
         _secretsLoader = secretsLoader;
         _agentWorkerPath = agentWorkerPath;
         _queryAgentWorkerPath = queryAgentWorkerPath;
+        _lintAgentWorkerPath = lintAgentWorkerPath;
     }
 
     public async Task<IAgentProcessHandle> StartAsync(IngestAgentRequest request, CancellationToken cancellationToken = default)
@@ -98,6 +106,130 @@ public sealed class AgentProcessHost : IAgentProcessLauncher
         process.StandardInput.Close();
 
         return new ProcessHandle(process);
+    }
+
+    /// <summary>ADR-016 (013-lint-agent): spawns a Lint agent process. No stdin payload at
+    /// all — Lint takes no per-run input beyond the wiki itself (research.md).</summary>
+    public Task<IAgentProcessHandle> StartAsync(LintAgentRequest request, CancellationToken cancellationToken = default)
+    {
+        var process = StartLintProcess(request);
+        process.StandardInput.Close();
+        return Task.FromResult<IAgentProcessHandle>(new ProcessHandle(process));
+    }
+
+    private Process StartLintProcess(LintAgentRequest request)
+    {
+        if (string.IsNullOrWhiteSpace(_lintAgentWorkerPath))
+        {
+            throw new InvalidOperationException(
+                "AgentProcessHost was not configured with a Lint agent worker path (Grimoire:Paths:LintAgentWorker).");
+        }
+
+        var startInfo = new ProcessStartInfo
+        {
+            RedirectStandardInput = true,
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+            UseShellExecute = false,
+        };
+
+        if (_lintAgentWorkerPath.EndsWith(".csproj", StringComparison.OrdinalIgnoreCase))
+        {
+            startInfo.FileName = "dotnet";
+            startInfo.ArgumentList.Add("run");
+            startInfo.ArgumentList.Add("--project");
+            startInfo.ArgumentList.Add(_lintAgentWorkerPath);
+            startInfo.ArgumentList.Add("--");
+        }
+        else if (_lintAgentWorkerPath.EndsWith(".dll", StringComparison.OrdinalIgnoreCase))
+        {
+            startInfo.FileName = "dotnet";
+            startInfo.ArgumentList.Add(_lintAgentWorkerPath);
+        }
+        else
+        {
+            startInfo.FileName = _lintAgentWorkerPath;
+        }
+
+        startInfo.ArgumentList.Add("--run-id");
+        startInfo.ArgumentList.Add(request.RunId);
+        startInfo.ArgumentList.Add("--wiki-root");
+        startInfo.ArgumentList.Add(request.WikiRoot);
+        startInfo.ArgumentList.Add("--system-prompt-path");
+        startInfo.ArgumentList.Add(request.SystemPromptPath);
+        startInfo.ArgumentList.Add("--policy-path");
+        startInfo.ArgumentList.Add(request.PolicyPath);
+        startInfo.ArgumentList.Add("--write-locks-dir");
+        startInfo.ArgumentList.Add(request.WriteLocksDir);
+        startInfo.ArgumentList.Add("--review-window-days");
+        startInfo.ArgumentList.Add(request.ReviewWindowDays.ToString(System.Globalization.CultureInfo.InvariantCulture));
+
+        var authToken = _secretsLoader.GetAnthropicAuthToken();
+        var lintModel = _secretsLoader.GetLintModel();
+        var lintBaseUrl = _secretsLoader.GetLintBase();
+
+        var baseEnv = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var (key, value) in startInfo.Environment)
+        {
+            if (value is not null)
+                baseEnv[key] = value;
+        }
+
+        var childEnv = BuildLintChildEnvironment(baseEnv, authToken, lintBaseUrl, lintModel, Activity.Current);
+        startInfo.Environment.Clear();
+        foreach (var (key, value) in childEnv)
+        {
+            startInfo.Environment[key] = value;
+        }
+
+        return Process.Start(startInfo) ?? throw new InvalidOperationException("Failed to start lint agent process.");
+    }
+
+    /// <summary>
+    /// Lint's own credential/model-scoping (ADR-004) and trace-propagation (Constitution
+    /// IV) env-var build — parallels <see cref="BuildQueryChildEnvironment"/> but with
+    /// <c>GRIMOIRE_LINT_*</c> names so Lint's env stays independent of Ingest's/Query's,
+    /// even though all three read the same <c>ANTHROPIC_AUTH_TOKEN</c> secret.
+    /// </summary>
+    private static Dictionary<string, string> BuildLintChildEnvironment(
+        IDictionary<string, string> baseEnv,
+        string? authToken,
+        string? lintBaseUrl,
+        string? lintModel,
+        Activity? currentActivity)
+    {
+        var env = new Dictionary<string, string>(baseEnv, StringComparer.OrdinalIgnoreCase);
+        env.Remove("ANTHROPIC_API_KEY");
+        env.Remove("ANTHROPIC_AUTH_TOKEN");
+        if (!string.IsNullOrWhiteSpace(authToken))
+        {
+            env["ANTHROPIC_AUTH_TOKEN"] = authToken;
+        }
+
+        env.Remove("GRIMOIRE_LINT_MODEL");
+        if (!string.IsNullOrWhiteSpace(lintModel))
+        {
+            env["GRIMOIRE_LINT_MODEL"] = lintModel;
+        }
+
+        env.Remove("GRIMOIRE_LINT_BASE_URL");
+        if (!string.IsNullOrWhiteSpace(lintBaseUrl))
+        {
+            env["GRIMOIRE_LINT_BASE_URL"] = lintBaseUrl;
+        }
+
+        env.Remove("TRACEPARENT");
+        env.Remove("TRACESTATE");
+        if (currentActivity is not null && currentActivity.Recorded)
+        {
+            env["TRACEPARENT"] = $"00-{currentActivity.TraceId}-{currentActivity.SpanId}-01";
+            if (!string.IsNullOrEmpty(currentActivity.TraceStateString))
+            {
+                env["TRACESTATE"] = currentActivity.TraceStateString;
+            }
+        }
+
+        return env;
     }
 
     private Process StartQueryProcess(QueryAgentRequest request)

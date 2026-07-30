@@ -160,3 +160,32 @@ export interface QueryTurnChangedEvent {
 	timestamp: string;
 	failureReason: string | null;
 }
+
+// 013-lint-agent (data-model.md "Lint Run"). A bare trigger with no per-run input —
+// unlike Query, Lint has no streaming/SignalR channel at all; the client polls
+// GET /api/lint-runs/{runId} for status (spec: "at most one run ever active", no
+// per-run task board).
+export type LintRunStatus = 'running' | 'completed' | 'failed';
+
+/** POST /api/lint-runs 202 response. */
+export interface LintRunAcceptedResponse {
+	runId: string;
+	status: LintRunStatus;
+	triggeredAt: string;
+}
+
+/** GET /api/lint-runs/{runId} response. */
+export interface LintRun {
+	runId: string;
+	status: LintRunStatus;
+	triggeredAt: string;
+	completedAt: string | null;
+	failureReason: string | null;
+	hasFindingsReport: boolean;
+}
+
+/** GET /api/lint-runs/{runId}/findings response — the raw Findings Report markdown (contracts/findings-report-format.md). */
+export interface LintFindingsReport {
+	runId: string;
+	content: string;
+}

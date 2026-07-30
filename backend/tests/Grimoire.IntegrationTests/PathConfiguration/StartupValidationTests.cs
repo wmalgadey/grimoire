@@ -150,6 +150,7 @@ public class StartupValidationTests
             Assert.True(Directory.Exists(resolved.RawOriginalsDir));
             Assert.True(Directory.Exists(resolved.RawSourcesDir));
             Assert.True(Directory.Exists(Path.GetDirectoryName(resolved.StateDbPath)));
+            Assert.True(Directory.Exists(resolved.FindingsDir));
 
             // US3 acceptance scenario 3: every effective location is present in the report.
             var reportedNames = resolved.Locations.Select(l => l.Name).ToHashSet();
@@ -157,7 +158,8 @@ public class StartupValidationTests
                 new HashSet<string>
                 {
                     "base_dir", "data_dir", "content_root", "raw_dir", "state_db", "secrets_file", "instructions_dir", "agent_worker",
-                    "query_instructions_dir", "conversations_dir", "query_agent_worker", "write_locks_dir",
+                    "query_instructions_dir", "conversations_dir", "query_agent_worker", "write_locks_dir", "findings_dir",
+                    "lint_instructions_dir", "lint_agent_worker",
                 },
                 reportedNames);
             Assert.All(resolved.Locations, l => Assert.True(Path.IsPathRooted(l.ResolvedPath)));

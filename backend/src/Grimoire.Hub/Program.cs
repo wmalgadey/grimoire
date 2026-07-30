@@ -6,6 +6,8 @@ using Grimoire.Hub.IngestDispatch;
 using Grimoire.Hub.IngestSubmission;
 using Grimoire.Hub.IngestSubmission.Adapters.HttpFetch;
 using Grimoire.Hub.IngestSubmission.Adapters.MarkItDown;
+using Grimoire.Hub.LintDispatch;
+using Grimoire.Hub.LintFindings;
 using Grimoire.Hub.OperationalState;
 using Microsoft.AspNetCore.SignalR;
 using Grimoire.Hub.QueryConversations;
@@ -38,6 +40,13 @@ var queryConcurrencyOptions = new QueryConcurrencyOptions();
 builder.Configuration.GetSection(QueryConcurrencyOptions.SectionName).Bind(queryConcurrencyOptions);
 builder.Services.AddSingleton(queryConcurrencyOptions);
 
+// T036 (013-lint-agent, US2): Lint's Review Window, read alongside the other Grimoire:*
+// settings (same binding convention as QueryConcurrencyOptions above); LintRunCoordinator
+// threads the effective value into each spawned run's kickoff context.
+var lintReviewWindowOptions = new LintReviewWindowOptions();
+builder.Configuration.GetSection(LintReviewWindowOptions.SectionName).Bind(lintReviewWindowOptions);
+builder.Services.AddSingleton(lintReviewWindowOptions);
+
 using (var bootstrapLoggerFactory = TelemetryExtensions.CreateBootstrapLoggerFactory())
 {
     var pathLogger = bootstrapLoggerFactory.CreateLogger("Grimoire.Hub.Runtime.Paths");
@@ -59,7 +68,8 @@ using (var bootstrapLoggerFactory = TelemetryExtensions.CreateBootstrapLoggerFac
     builder.Services.AddSingleton(contentPaths);
     builder.Services.AddSingleton(new LocalSecretsLoader(resolvedPaths.SecretsFilePath));
     builder.Services.AddSingleton<AgentProcessHost>(sp => new AgentProcessHost(
-        sp.GetRequiredService<LocalSecretsLoader>(), resolvedPaths.AgentWorkerPath, resolvedPaths.QueryAgentWorkerPath));
+        sp.GetRequiredService<LocalSecretsLoader>(), resolvedPaths.AgentWorkerPath, resolvedPaths.QueryAgentWorkerPath,
+        resolvedPaths.LintAgentWorkerPath));
     builder.Services.AddSingleton<IAgentProcessLauncher>(sp => sp.GetRequiredService<AgentProcessHost>());
     builder.Services.AddSingleton<IngestRunCoordinator>(sp => new IngestRunCoordinator(
         sp.GetRequiredService<OperationalStateRepository>(),
@@ -88,6 +98,19 @@ using (var bootstrapLoggerFactory = TelemetryExtensions.CreateBootstrapLoggerFac
         resolvedPaths,
         sp.GetRequiredService<QueryConcurrencyOptions>(),
         logger: sp.GetRequiredService<ILogger<QueryRunCoordinator>>()));
+
+    // 013-lint-agent: immediate-rejection single-active-run dispatch (ADR-016), fully
+    // decoupled from Ingest's and Query's coordinators — its own Findings Report store
+    // as the run's sole persistent artifact (data-model.md "Lint Run" note: no separate
+    // run record file).
+    builder.Services.AddSingleton<FindingsReportStore>(sp => new FindingsReportStore(
+        resolvedPaths, logger: sp.GetRequiredService<ILogger<FindingsReportStore>>()));
+    builder.Services.AddSingleton<LintRunCoordinator>(sp => new LintRunCoordinator(
+        sp.GetRequiredService<IAgentProcessLauncher>(),
+        sp.GetRequiredService<FindingsReportStore>(),
+        resolvedPaths,
+        reviewWindowOptions: sp.GetRequiredService<LintReviewWindowOptions>(),
+        logger: sp.GetRequiredService<ILogger<LintRunCoordinator>>()));
 
     var reconciler = new RestartReconciler(repository);
     await reconciler.ReconcileRunningTasksAsync(contentPaths.TasksDir, contentPaths.LogPath);
@@ -125,6 +148,7 @@ app.MapGroup("/api/ingest-queue").MapIngestQueueEndpoints();
 app.MapHub<QueryLifecycleHub>("/hubs/query-lifecycle");
 app.MapGroup("/api/query-conversations").MapQueryConversationEndpoints();
 app.MapGroup("/api/query-turns").MapQueryTurnEndpoints();
+app.MapGroup("/api/lint-runs").MapLintRunEndpoints();
 app.Run();
 
 static string? ParseOption(string[] args, string option)
@@ -156,4 +180,7 @@ static Dictionary<string, string> PathConfigurationSwitchMappingsFactory() => ne
     ["--conversations-dir"] = "Grimoire:Paths:ConversationsDir",
     ["--query-agent-worker"] = "Grimoire:Paths:QueryAgentWorker",
     ["--write-locks-dir"] = "Grimoire:Paths:WriteLocksDir",
+    ["--findings-dir"] = "Grimoire:Paths:FindingsDir",
+    ["--lint-instructions-dir"] = "Grimoire:Paths:LintInstructionsDir",
+    ["--lint-agent-worker"] = "Grimoire:Paths:LintAgentWorker",
 };

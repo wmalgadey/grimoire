@@ -1,11 +1,61 @@
 namespace Grimoire.Domain.Guardrails;
 
 /// <summary>
-/// One write-scope rule (data-model.md "Write Rule", ADR-015): a canonical path prefix
-/// plus whether it is <c>create-only</c> (denied by the harness when the canonical target
-/// already exists on disk) or the default <c>read-write</c>.
+/// Write-scope mode for one <see cref="WriteRule"/> (ADR-015, extended by ADR-016):
+/// <list type="bullet">
+/// <item><see cref="ReadWrite"/> (default): any content change to the target is
+/// permitted, subject only to <c>SharedFileWriteGuard</c>'s compare-and-swap check.</item>
+/// <item><see cref="CreateOnly"/>: the harness denies the write
+/// (<c>create_only_target_exists</c>) if the canonical target already exists on disk.</item>
+/// <item><see cref="FrontmatterOnly"/> (ADR-016, 013-lint-agent): the harness denies the
+/// write (<c>frontmatter_only_target_missing</c>) if the canonical target does NOT
+/// already exist, then — after the same compare-and-swap check <see cref="ReadWrite"/>
+/// uses — denies (<c>frontmatter_only_malformed_document</c> /
+/// <c>frontmatter_only_body_changed</c>) unless the proposed content's body (everything
+/// after the closing <c>---</c> frontmatter delimiter) is byte-identical to the current
+/// on-disk body. Only the frontmatter block may change.</item>
+/// </list>
 /// </summary>
-public readonly record struct WriteRule(string Prefix, bool CreateOnly);
+public enum WriteMode
+{
+    ReadWrite,
+    CreateOnly,
+    FrontmatterOnly,
+}
+
+/// <summary>
+/// One write-scope rule (data-model.md "Write Rule", ADR-015, extended by ADR-016): a
+/// canonical path prefix plus its <see cref="Mode"/>.
+/// </summary>
+public readonly record struct WriteRule
+{
+    public string Prefix { get; }
+
+    public WriteMode Mode { get; }
+
+    /// <summary>
+    /// Pre-ADR-016 computed convenience: <c>true</c> iff <see cref="Mode"/> is
+    /// <see cref="WriteMode.CreateOnly"/>. Retained so every call site and test written
+    /// against the boolean shape (before ADR-016 introduced the three-way <see cref="Mode"/>)
+    /// keeps compiling and passing unchanged.
+    /// </summary>
+    public bool CreateOnly => Mode == WriteMode.CreateOnly;
+
+    public WriteRule(string Prefix, WriteMode Mode = WriteMode.ReadWrite)
+    {
+        this.Prefix = Prefix;
+        this.Mode = Mode;
+    }
+
+    /// <summary>
+    /// Pre-ADR-016 boolean constructor, retained for source compatibility with every
+    /// existing call site (e.g. <c>new WriteRule(prefix, CreateOnly: true)</c>).
+    /// </summary>
+    public WriteRule(string Prefix, bool CreateOnly)
+        : this(Prefix, CreateOnly ? WriteMode.CreateOnly : WriteMode.ReadWrite)
+    {
+    }
+}
 
 /// <summary>
 /// Deny-by-default safety policy evaluated for every guarded tool call.
@@ -23,7 +73,7 @@ public sealed class SafetyPolicy
     /// Initializes a policy with absolute-path canonical prefixes already resolved
     /// against the repository root. Every write prefix is plain <c>read-write</c> — use
     /// the <see cref="SafetyPolicy(string, IReadOnlyList{string}, IReadOnlyList{WriteRule})"/>
-    /// overload to supply <c>create-only</c> rules (ADR-015).
+    /// overload to supply <c>create-only</c>/<c>frontmatter-only</c> rules (ADR-015/ADR-016).
     /// </summary>
     /// <param name="repositoryRoot">
     /// Canonical absolute path to the repository root, used for traversal detection.
@@ -44,7 +94,7 @@ public sealed class SafetyPolicy
 
     /// <summary>
     /// Initializes a policy with absolute-path canonical prefixes already resolved
-    /// against the repository root, and per-write-rule <c>create-only</c> mode (ADR-015).
+    /// against the repository root, and per-write-rule mode (ADR-015/ADR-016).
     /// </summary>
     /// <param name="repositoryRoot">
     /// Canonical absolute path to the repository root, used for traversal detection.
@@ -53,8 +103,8 @@ public sealed class SafetyPolicy
     /// Canonical absolute path prefixes that allow read-scope tool calls.
     /// </param>
     /// <param name="writeRules">
-    /// Canonical absolute path prefixes (each with its <c>create-only</c>/<c>read-write</c>
-    /// mode) that allow write-scope tool calls.
+    /// Canonical absolute path prefixes (each with its <see cref="WriteMode"/>) that allow
+    /// write-scope tool calls.
     /// </param>
     public SafetyPolicy(
         string repositoryRoot,
@@ -101,7 +151,7 @@ public sealed class SafetyPolicy
         {
             if (PrefixMatches(rule.Prefix, canonicalTarget))
             {
-                return PolicyDecision.Allow(isCreateOnly: rule.CreateOnly);
+                return PolicyDecision.Allow(rule.Mode);
             }
         }
 

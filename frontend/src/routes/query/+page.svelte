@@ -172,6 +172,11 @@
 					class="text-sm font-medium text-slate-600 underline-offset-2 hover:underline"
 					data-testid="nav-link-ingest">Submit a source</a
 				>
+				<a
+					href={resolve('/lint')}
+					class="text-sm font-medium text-slate-600 underline-offset-2 hover:underline"
+					data-testid="nav-link-lint">Wiki health check</a
+				>
 				<ConnectionStatusIndicator state={connectionState} />
 				<button
 					type="button"

@@ -24,6 +24,15 @@ public sealed record EvalPaths(string RepoRoot)
 
     public string QueryPolicyPath => Path.Combine(QueryInstructionsDir, "policy.json");
 
+    // Lint's own instruction surface (013-lint-agent, ADR-013 pattern) — a sibling of
+    // Query's, also with no default-user-prompt document (Lint takes no per-run input
+    // at all; the whole wiki is its input, per LintCliOptions).
+    public string LintInstructionsDir => Path.Combine(RepoRoot, "data", "agents", "lint");
+
+    public string LintSystemPromptPath => Path.Combine(LintInstructionsDir, "system-prompt.md");
+
+    public string LintPolicyPath => Path.Combine(LintInstructionsDir, "policy.json");
+
     public string FixturesRoot => Path.Combine(RepoRoot, "backend", "tests", "Grimoire.AgentEvals", "Fixtures");
 
     public string FixtureWikiRoot(string fixtureName) => Path.Combine(FixturesRoot, fixtureName, "wiki");

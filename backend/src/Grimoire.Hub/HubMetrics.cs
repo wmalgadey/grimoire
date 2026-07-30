@@ -233,4 +233,45 @@ public static class HubMetrics
     // Note: query.tool_calls_total is emitted by Grimoire.QueryAgent itself (the guarded
     // tool executor runs in that process, not the Hub) — see QueryAgentMetrics there,
     // mirroring Grimoire.IngestAgent.IngestAgentMetrics.RecordToolCall.
+
+    // --- 013-lint-agent (plan.md ## Observability > Business Metrics) ---
+
+    private static readonly Counter<long> _lintRunsTotal =
+        Meter.CreateCounter<long>("wiki.lint.runs_total",
+            description: "Lint Runs reaching a terminal state");
+
+    public static void RecordLintRun(string outcome)
+        => _lintRunsTotal.Add(1, new KeyValuePair<string, object?>("outcome", outcome));
+
+    /// <summary>T027 gap-fill: plan.md declares this metric but tasks.md assigns it to no
+    /// specific task (T027 names only wiki.lint.runs_total; T037 names only
+    /// findings_total/inbound_links_refreshed_total) — emitted here, at the one call site
+    /// that observes a rejection, rather than left for the Phase 6 completeness audit to
+    /// discover as a gap.</summary>
+    private static readonly Counter<long> _lintTriggersRejectedTotal =
+        Meter.CreateCounter<long>("wiki.lint.triggers_rejected_total",
+            description: "Lint Run trigger attempts rejected because a run was already active");
+
+    public static void RecordLintTriggerRejected() => _lintTriggersRejectedTotal.Add(1);
+
+    /// <summary>T037 (013-lint-agent, US2): findings tallied per category, mechanically
+    /// counted from the agent's own narrative headings (<c>FindingsNarrativeStats</c>) —
+    /// never a judgment about what counts as a finding (Constitution Principle V).</summary>
+    private static readonly Counter<long> _lintFindingsTotal =
+        Meter.CreateCounter<long>("wiki.lint.findings_total",
+            description: "Findings produced across all runs, by category");
+
+    public static void RecordLintFindings(string category, int count)
+        => _lintFindingsTotal.Add(count, new KeyValuePair<string, object?>("category", category));
+
+    /// <summary>T037 (013-lint-agent, US2): pages whose <c>inbound_links</c> frontmatter
+    /// was refreshed this run — sourced from the harness's own write journal
+    /// (<c>GuardedToolExecutor.TouchedPaths</c> via the run's terminal event), since
+    /// ADR-016's policy has exactly one write rule.</summary>
+    private static readonly Counter<long> _lintInboundLinksRefreshedTotal =
+        Meter.CreateCounter<long>("wiki.lint.inbound_links_refreshed_total",
+            description: "Pages whose inbound-link count was updated");
+
+    public static void RecordLintInboundLinksRefreshed(int count)
+        => _lintInboundLinksRefreshedTotal.Add(count);
 }
