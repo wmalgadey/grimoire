@@ -21,6 +21,15 @@ public sealed record ToolExecutionResult(
 /// </summary>
 public sealed class GuardedToolExecutor
 {
+    // T040 (012-query-synthesis-writes, US3): plain `Encoding.UTF8` writes a byte-order-mark
+    // preamble; `SharedFileWriteGuard`'s compare-and-swap hashes the raw on-disk bytes
+    // (including any BOM) against a hash computed from the decoded string content (which
+    // never includes one) — a BOM/no-BOM mismatch that spuriously denied every second
+    // guarded write to the same target as `write_conflict_stale_read`, discovered by
+    // ConcurrentWikiWriteIntegrityTests' multi-writer contention scenario (T036/T039).
+    // Wiki markdown files carry no BOM by convention either way.
+    private static readonly Encoding Utf8NoBom = new UTF8Encoding(encoderShouldEmitUTF8Identifier: false);
+
     private readonly SafetyPolicy _policy;
     private readonly WriteJournal _journal;
     private readonly string _repositoryRoot;
@@ -266,7 +275,7 @@ public sealed class GuardedToolExecutor
             var tempPath = canonical + ".tmp." + Guid.NewGuid().ToString("N");
             try
             {
-                await File.WriteAllTextAsync(tempPath, content, Encoding.UTF8, cancellationToken);
+                await File.WriteAllTextAsync(tempPath, content, Utf8NoBom, cancellationToken);
                 File.Move(tempPath, canonical, overwrite: true);
             }
             catch
