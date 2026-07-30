@@ -621,7 +621,7 @@ unaffected.
 
 ### Tests for User Story 3
 
-- [ ] T036 [P] [US3] Integration test
+- [X] T036 [P] [US3] Integration test
   `backend/tests/Grimoire.IntegrationTests/ConcurrentWikiWriteIntegrityTests.cs`
   (SC-003, SC-009 edge case): two concurrent `FakeAgentProcess` synthesis turns
   each creating a distinct new page and both appending `index.md`/`log.md`,
@@ -630,21 +630,40 @@ unaffected.
   entries (none lost/overwritten), both new pages are complete, and every
   losing compare-and-swap attempt shows a `write_conflict_stale_read` denial
   followed by a successful retry (scripted to re-read and rewrite once denied).
-- [ ] T037 [P] [US3] **Real multi-process** variant (in
+  *Implemented as three concurrent `GuardedToolExecutor` instances (one per
+  writer — the same one-guard-per-run lifecycle as production, not a
+  `FakeAgentProcess`/Hub-level fixture, matching `GuardedToolExecutorCoordinationTests`'
+  existing style for this layer) racing real appends through the real
+  policy/guard/lock stack, with a jittered-retry helper standing in for the
+  agent's own re-read-and-retry loop. Surfaced a real bug, closed in T040.*
+- [X] T037 [P] [US3] **Real multi-process** variant (in
   `ConcurrentWikiWriteIntegrityTests.cs`, T036's file, research.md R6): spawn
   two real child processes (a small test-harness entry point, no network/API
   key) each performing a scripted sequence of `read_file`/`write_file` calls
   through the actual `GuardedToolExecutor` stack against the same temp wiki
   root and write-locks dir — proves the guarantee holds across genuine OS
   processes, not only in-process fakes.
-- [ ] T038 [P] [US3] Interruption test (in
+  *Extended `Grimoire.WriteLockTestHarness` (T013's project) with a new
+  `guarded-append` subcommand driving the real `GuardedToolExecutor` stack
+  (not just the raw `CrossProcessFileLock`), per the task instruction to reuse
+  rather than build a second harness. Two real `dotnet` processes race the
+  same `index.md`; the loser's `write_conflict_stale_read` denial is retried
+  by a third real process, and both entries land.*
+- [X] T038 [P] [US3] Interruption test (in
   `ConcurrentWikiWriteIntegrityTests.cs`, T036's file): a turn is interrupted
   immediately after a successful `write_file` for a new page but before the
   turn reaches its terminal state — the created page, and any index/log entry
   already written, remain on disk untouched (FR-011: no rollback of completed
   writes on interruption); the write-coordination lock for any in-flight target
   is released (a subsequent writer can still acquire it).
-- [ ] T039 [P] [US3] Responsiveness regression test (in
+  *Modeled the interruption as a deterministic real filesystem fault
+  (`Directory.CreateDirectory` throwing because a plain file already occupies
+  the name where a directory is needed) forced deep inside the guarded
+  critical section, rather than a timing-based process kill — deterministic
+  and still exercises the executor's real `try`/`finally` lock-release path,
+  not a stand-in for it. Confirms the prior successful page write survives and
+  the failed target's lock is immediately re-acquirable.*
+- [X] T039 [P] [US3] Responsiveness regression test (in
   `ConcurrentWikiWriteIntegrityTests.cs`, T036's file): under the T036/T037
   contention scenario, per-turn wall-clock time (fake or real small delays,
   hermetic) stays within the existing feature-008/011 streaming/interruption
@@ -652,14 +671,32 @@ unaffected.
   milliseconds to low hundreds under contention, never seconds), i.e. no turn
   is ever blocked long enough to threaten the established responsiveness
   guarantees (FR-010).
+  *Five concurrent writers contend for the same shared targets; a spy
+  `IToolCallInstrumentation` captures the real per-attempt `wait_seconds`
+  values from the T042 instrumentation hook (not a re-derived measurement),
+  asserting every one stays sub-second and the whole scenario finishes in
+  well under 5s (the default backoff cap).*
 
 ### Implementation for User Story 3
 
-- [ ] T040 [US3] Close any integrity/responsiveness gaps T036–T039 surface.
+- [X] T040 [US3] Close any integrity/responsiveness gaps T036–T039 surface.
   Expected to be small — the coordination mechanism (T012/T014/T016) was built
   with these guarantees; this task exists so the story has an explicit
   implementation home if the tests find drift (e.g. lock scope too coarse,
   backoff cap misconfigured).
+  *Not small: T036/T039's repeated-append contention scenarios (the first
+  tests to write more than once to the same guarded target within a run)
+  exposed a real correctness bug. `GuardedToolExecutor.ExecuteWriteFileAsync`
+  wrote guarded content with `Encoding.UTF8`, which emits a byte-order-mark
+  preamble, while `SharedFileWriteGuard`'s compare-and-swap check hashed the
+  raw on-disk bytes (BOM included) against a hash of the decoded string
+  content (never includes one) — a mismatch that spuriously denied every
+  second guarded write to the same target as `write_conflict_stale_read`,
+  even a run rewriting a page it had just created itself. Fixed by writing
+  with a BOM-less UTF8 encoding (`Utf8NoBom`); wiki markdown carries no BOM by
+  convention either way. Latent and untriggered by every prior test (each
+  wrote a given path at most once per run) until this story's multi-write
+  scenarios.*
 - [X] T041 [US3] Change `backend/src/Grimoire.IngestAgent/Program.cs`: pass
   `--write-locks-dir` through to its `GuardedToolExecutor` composition (T006's
   new CLI argument) — Ingest's writes now benefit from the same coordination
@@ -684,18 +721,40 @@ unaffected.
 
 ### Observability for User Story 3
 
-- [ ] T042 [US3] Add `wiki.write_lock.acquisitions_total`
+- [X] T042 [US3] Add `wiki.write_lock.acquisitions_total`
   (`outcome=acquired|timeout`) and `wiki.write_lock.wait_seconds` (histogram),
   plus `wiki.write_lock.timeout` (WARN; `task_id`, `path`, `wait_ms`) log
   event, emitted from `CrossProcessFileLock`/`SharedFileWriteGuard`; add the
   `guardrails.acquire_write_lock` span (child of the agent's active
   `*_agent.tool_call` span; attributes `path`, `outcome`, `wait_ms`) around
   lock acquisition.
-- [ ] T043 [P] [US3] Deterministic integration tests
+  *Wired through the `IToolCallInstrumentation.StartAcquireWriteLockActivity`/
+  `RecordWriteLockAcquisition` hooks already stubbed (no-op) on the interface
+  from earlier US2 observability work: `GuardedToolExecutor.ExecuteWriteFileAsync`
+  now starts the span and times the `SharedFileWriteGuard.EvaluateWriteAsync`
+  call with a `Stopwatch` around it, deriving `outcome` from whether the
+  denial reason is `write_coordination_timeout`. Implemented for both
+  `QueryToolCallInstrumentation` and `IngestToolCallInstrumentation` (Ingest
+  shares the same guard since T041) — new `wiki.write_lock.*` metrics added to
+  `QueryAgentMetrics`/`IngestAgentMetrics`, the `wiki.write_lock.timeout` log
+  event added to `QueryAgentLogEvents`/`IngestAgentLogEvents`. Deviation from
+  the literal wording above: the span's actual parent at acquisition time is
+  the agent's ambient `*_agent.model_turn` span, not `*_agent.tool_call` —
+  that span for this same write is only created afterward, once the
+  allow/deny decision is known (existing `RecordAllowed`/`RecordDenied`
+  contract); documented on `IToolCallInstrumentation.StartAcquireWriteLockActivity`
+  and verified by T043.*
+- [X] T043 [P] [US3] Deterministic integration tests
   `backend/tests/Grimoire.IntegrationTests/WriteLockObservabilityTests.cs`:
   validate the metric/log event/span name, level, attributes, and parent/child
   linkage, including the `outcome=timeout` path (rig a held lock and a short
   backoff cap to force it).
+  *Added an optional `writeLockBackoffCap` constructor parameter to
+  `GuardedToolExecutor` (threaded into its `SharedFileWriteGuard`; `null` by
+  production default, matching `CrossProcessFileLock.DefaultBackoffCap`) so
+  the timeout path can be forced deterministically and quickly (200ms) rather
+  than waiting out the real 5s cap. The timeout test rigs a genuine held
+  `CrossProcessFileLock` on the contested target from outside the executor.*
 
 **Checkpoint**: All user stories are independently functional — synthesis
 writes are created, scoped, and safe under real concurrent load from Ingest and
