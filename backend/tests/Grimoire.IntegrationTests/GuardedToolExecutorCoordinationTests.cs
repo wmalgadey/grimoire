@@ -189,6 +189,238 @@ public class GuardedToolExecutorCoordinationTests
         }
     }
 
+    // ── T012 (013-lint-agent, ADR-016): frontmatter-only mode, end-to-end through the
+    // full executor (not SharedFileWriteGuard in isolation) ──────────────────────────
+
+    private const string SamplePage = """
+        ---
+        title: Sample
+        tags: []
+        ---
+        # Sample
+
+        Body content, unchanged.
+        """;
+
+    [Fact]
+    public async Task FrontmatterOnlyPolicy_WriteToNonExistentTarget_ReturnsIsError_DenialRecorded_FrontmatterOnlyTargetMissing()
+    {
+        var root = CreateTempRoot();
+        try
+        {
+            var executor = BuildFrontmatterOnlyExecutor(root);
+
+            var result = await executor.ExecuteAsync(
+                ToolRegistry.WriteFile,
+                JsonSerializer.Serialize(new { path = "wiki/pages/missing.md", content = SamplePage }),
+                turn: 1,
+                CancellationToken.None);
+
+            Assert.True(result.IsError);
+            Assert.Contains("frontmatter_only_target_missing", result.Content, StringComparison.Ordinal);
+            Assert.False(File.Exists(Path.Combine(root, "wiki", "pages", "missing.md")));
+
+            var denial = Assert.Single(executor.Denials);
+            Assert.Equal("frontmatter_only_target_missing", denial.Reason);
+        }
+        finally
+        {
+            Directory.Delete(root, recursive: true);
+        }
+    }
+
+    [Fact]
+    public async Task FrontmatterOnlyPolicy_IdenticalBody_ChangedFrontmatter_Succeeds_UpdatesTouchedPaths()
+    {
+        var root = CreateTempRoot();
+        try
+        {
+            var pagesDir = Path.Combine(root, "wiki", "pages");
+            Directory.CreateDirectory(pagesDir);
+            var existingPage = Path.Combine(pagesDir, "existing.md");
+            await File.WriteAllTextAsync(existingPage, SamplePage);
+
+            var executor = BuildFrontmatterOnlyExecutor(root);
+
+            var readResult = await executor.ExecuteAsync(
+                ToolRegistry.ReadFile,
+                JsonSerializer.Serialize(new { path = "wiki/pages/existing.md" }),
+                turn: 1,
+                CancellationToken.None);
+            Assert.False(readResult.IsError);
+
+            var proposed = """
+                ---
+                title: Sample
+                tags: [updated]
+                inbound_links: 3
+                ---
+                # Sample
+
+                Body content, unchanged.
+                """;
+
+            var writeResult = await executor.ExecuteAsync(
+                ToolRegistry.WriteFile,
+                JsonSerializer.Serialize(new { path = "wiki/pages/existing.md", content = proposed }),
+                turn: 2,
+                CancellationToken.None);
+
+            Assert.False(writeResult.IsError);
+            Assert.Equal(proposed, await File.ReadAllTextAsync(existingPage));
+            Assert.Empty(executor.Denials);
+            Assert.Contains(existingPage, executor.TouchedPaths);
+        }
+        finally
+        {
+            Directory.Delete(root, recursive: true);
+        }
+    }
+
+    [Fact]
+    public async Task FrontmatterOnlyPolicy_BodyChangingWrite_ReturnsIsError_NoFileModified_DenialRecorded_FrontmatterOnlyBodyChanged()
+    {
+        var root = CreateTempRoot();
+        try
+        {
+            var pagesDir = Path.Combine(root, "wiki", "pages");
+            Directory.CreateDirectory(pagesDir);
+            var existingPage = Path.Combine(pagesDir, "existing.md");
+            await File.WriteAllTextAsync(existingPage, SamplePage);
+
+            var executor = BuildFrontmatterOnlyExecutor(root);
+
+            var readResult = await executor.ExecuteAsync(
+                ToolRegistry.ReadFile,
+                JsonSerializer.Serialize(new { path = "wiki/pages/existing.md" }),
+                turn: 1,
+                CancellationToken.None);
+            Assert.False(readResult.IsError);
+
+            var bodyChanging = """
+                ---
+                title: Sample
+                ---
+                # Sample
+
+                Body content, CHANGED by an out-of-scope attempt.
+                """;
+
+            var writeResult = await executor.ExecuteAsync(
+                ToolRegistry.WriteFile,
+                JsonSerializer.Serialize(new { path = "wiki/pages/existing.md", content = bodyChanging }),
+                turn: 2,
+                CancellationToken.None);
+
+            Assert.True(writeResult.IsError);
+            Assert.Contains("frontmatter_only_body_changed", writeResult.Content, StringComparison.Ordinal);
+            Assert.Equal(SamplePage, await File.ReadAllTextAsync(existingPage));
+
+            var denial = Assert.Single(executor.Denials);
+            Assert.Equal("frontmatter_only_body_changed", denial.Reason);
+            Assert.DoesNotContain(existingPage, executor.TouchedPaths);
+        }
+        finally
+        {
+            Directory.Delete(root, recursive: true);
+        }
+    }
+
+    [Fact]
+    public async Task FrontmatterOnlyPolicy_MalformedProposedContent_ReturnsIsError_DenialRecorded_FrontmatterOnlyMalformedDocument()
+    {
+        var root = CreateTempRoot();
+        try
+        {
+            var pagesDir = Path.Combine(root, "wiki", "pages");
+            Directory.CreateDirectory(pagesDir);
+            var existingPage = Path.Combine(pagesDir, "existing.md");
+            await File.WriteAllTextAsync(existingPage, SamplePage);
+
+            var executor = BuildFrontmatterOnlyExecutor(root);
+
+            var readResult = await executor.ExecuteAsync(
+                ToolRegistry.ReadFile,
+                JsonSerializer.Serialize(new { path = "wiki/pages/existing.md" }),
+                turn: 1,
+                CancellationToken.None);
+            Assert.False(readResult.IsError);
+
+            var writeResult = await executor.ExecuteAsync(
+                ToolRegistry.WriteFile,
+                JsonSerializer.Serialize(new { path = "wiki/pages/existing.md", content = "no frontmatter block at all" }),
+                turn: 2,
+                CancellationToken.None);
+
+            Assert.True(writeResult.IsError);
+            Assert.Contains("frontmatter_only_malformed_document", writeResult.Content, StringComparison.Ordinal);
+            Assert.Equal(SamplePage, await File.ReadAllTextAsync(existingPage));
+
+            var denial = Assert.Single(executor.Denials);
+            Assert.Equal("frontmatter_only_malformed_document", denial.Reason);
+        }
+        finally
+        {
+            Directory.Delete(root, recursive: true);
+        }
+    }
+
+    [Fact]
+    public async Task FrontmatterOnlyPolicy_WriteToIndexMd_ReturnsIsError_DenialRecorded_OutOfScope()
+    {
+        // data-model.md: "no write rule for index.md/log.md — Lint does not maintain the
+        // index or log (only Ingest and Query create pages; Lint only refreshes metadata
+        // on existing pages)."
+        var root = CreateTempRoot();
+        try
+        {
+            var indexPath = Path.Combine(root, "wiki", "index.md");
+            Directory.CreateDirectory(Path.GetDirectoryName(indexPath)!);
+            await File.WriteAllTextAsync(indexPath, "- entry 1");
+
+            var executor = BuildFrontmatterOnlyExecutor(root);
+
+            var result = await executor.ExecuteAsync(
+                ToolRegistry.WriteFile,
+                JsonSerializer.Serialize(new { path = "wiki/index.md", content = "- entry 1\n- injected" }),
+                turn: 1,
+                CancellationToken.None);
+
+            Assert.True(result.IsError);
+            Assert.Contains("out_of_scope", result.Content, StringComparison.Ordinal);
+            Assert.Equal("- entry 1", await File.ReadAllTextAsync(indexPath));
+
+            var denial = Assert.Single(executor.Denials);
+            Assert.Equal("out_of_scope", denial.Reason);
+        }
+        finally
+        {
+            Directory.Delete(root, recursive: true);
+        }
+    }
+
+    private static GuardedToolExecutor BuildFrontmatterOnlyExecutor(string root)
+    {
+        var pagesPrefix = Path.Combine(root, "wiki", "pages") + Path.DirectorySeparatorChar;
+
+        // Mirrors data/agents/lint/policy.json's exact shape (data-model.md): read pages/,
+        // write pages/ at frontmatter-only, no write rule for index.md/log.md at all.
+        var policy = new SafetyPolicy(
+            root,
+            readPrefixes: [Path.Combine(root, "wiki") + Path.DirectorySeparatorChar],
+            writeRules:
+            [
+                new WriteRule(pagesPrefix, WriteMode.FrontmatterOnly),
+            ]);
+
+        var journal = new WriteJournal();
+        return new GuardedToolExecutor(
+            policy,
+            journal,
+            root,
+            writeLocksDir: Path.Combine(root, "write-locks"));
+    }
+
     // ── helpers ──────────────────────────────────────────────────────────────────
 
     private static GuardedToolExecutor BuildExecutor(string root, bool createOnlyPagesPrefix, string? writeLocksDir = null)

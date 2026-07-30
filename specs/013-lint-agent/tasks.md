@@ -121,7 +121,7 @@ Query's existing behavior, policy files, and tests are unaffected.
   loading a policy with `"mode": "frontmatter-only"` produces a policy whose
   write-scope `Evaluate` returns `Mode == FrontmatterOnly`; existing
   `PolicyLoaderModeTests` suite still passes unmodified.
-- [ ] T009 Extend `backend/src/Grimoire.AgentRuntime/Guardrails/Coordination/SharedFileWriteGuard.cs`:
+- [X] T009 Extend `backend/src/Grimoire.AgentRuntime/Guardrails/Coordination/SharedFileWriteGuard.cs`:
   `EvaluateWriteAsync` gains the proposed `content` (already available at the
   `GuardedToolExecutor` call site) and the resolved `WriteMode` (replacing its
   `isCreateOnly` bool param — internally still branches to the existing create-only
@@ -134,7 +134,17 @@ Query's existing behavior, policy files, and tests are unaffected.
   I/O) — deny `frontmatter_only_malformed_document` if either isn't well-formed
   two-delimiter frontmatter, deny `frontmatter_only_body_changed` if the two bodies
   are not byte-identical, otherwise allow.
-- [ ] T010 [P] Unit/integration tests
+  *Deviation: `EvaluateWriteAsync` keeps its pre-ADR-016 `(canonicalPath, bool
+  isCreateOnly, cancellationToken)` overload (delegating to the new
+  `(canonicalPath, WriteMode, proposedContent, cancellationToken)` overload with an
+  unused empty content) — same "keep the boolean shape as a compiling, passing
+  convenience" approach as T005, so `SharedFileWriteGuardTests.cs` keeps calling
+  `EvaluateWriteAsync(target, isCreateOnly: ..., ...)` unmodified. The current-content
+  read for the compare-and-swap check reuses the exact pre-existing
+  `File.ReadAllBytesAsync` + hash comparison, decoded to a string via `Encoding.UTF8`
+  only for the frontmatter/body split — the CAS check's byte-level behavior is
+  unchanged.*
+- [X] T010 [P] Unit/integration tests
   `backend/tests/Grimoire.IntegrationTests/SharedFileWriteGuardFrontmatterOnlyTests.cs`:
   frontmatter-only write to a non-existent target denies
   `frontmatter_only_target_missing`; to an existing target with an identical body but
@@ -144,14 +154,21 @@ Query's existing behavior, policy files, and tests are unaffected.
   read (content changed by another writer since last read) denies
   `write_conflict_stale_read` even when the body would otherwise have matched; the
   full existing `SharedFileWriteGuardTests` suite still passes unmodified.
-- [ ] T011 Update `backend/src/Grimoire.AgentRuntime/Guardrails/GuardedToolExecutor.cs`:
+- [X] T011 Update `backend/src/Grimoire.AgentRuntime/Guardrails/GuardedToolExecutor.cs`:
   `ExecuteWriteFileAsync` passes the resolved `WriteMode` and the call's `content`
   into `EvaluateWriteAsync` (replacing the `isCreateOnly` bool argument); its
   post-write create-only bookkeeping is unchanged (still keyed off
   `Mode == WriteMode.CreateOnly` via the existing convenience). Extend
   `DeniedActionRecord`'s doc comment with the three new reason strings (no shape
   change).
-- [ ] T012 [P] Integration tests (extend
+  *Deviation: `wiki.write_conflict.rejected`/`wiki.write_conflict.rejections_total`'s
+  reason-label extension (plan.md `## Observability` note: reuse the existing signal
+  for the three new frontmatter-only reasons too) is deliberately left untouched here
+  — `RecordDenial` already records every new reason correctly in `DeniedActionRecord`/
+  `Denials` regardless (T012 confirms this end-to-end), so nothing is broken; the
+  metric-label extension itself is observability wiring that belongs with Phase 3's
+  user-story-scoped observability tasks (T027+), not this Phase 2 foundational task.*
+- [X] T012 [P] Integration tests (extend
   `backend/tests/Grimoire.IntegrationTests/GuardedToolExecutorCoordinationTests.cs`):
   end-to-end through `GuardedToolExecutor` with a `frontmatter-only` policy rule —
   each of T010's cases reproduced through the full executor (not the guard in

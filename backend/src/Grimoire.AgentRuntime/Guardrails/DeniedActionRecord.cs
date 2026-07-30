@@ -9,7 +9,14 @@ namespace Grimoire.AgentRuntime.Guardrails;
 /// (the matched write rule is create-only and the canonical target already exists),
 /// <c>write_conflict_stale_read</c> (the target's on-disk content no longer matches this
 /// run's last-read hash for it — re-read and retry), or
-/// <c>write_coordination_timeout</c> (lock acquisition exceeded the bounded backoff cap).
+/// <c>write_coordination_timeout</c> (lock acquisition exceeded the bounded backoff cap);
+/// or, since ADR-016 (013-lint-agent), one of the frontmatter-only reasons also produced
+/// by <see cref="Coordination.SharedFileWriteGuard"/>: <c>frontmatter_only_target_missing</c>
+/// (the matched write rule is frontmatter-only and the canonical target does not exist),
+/// <c>frontmatter_only_malformed_document</c> (the current on-disk content or the proposed
+/// content is not a well-formed two-delimiter frontmatter document), or
+/// <c>frontmatter_only_body_changed</c> (the content after the closing <c>---</c> differs
+/// between current and proposed).
 /// </summary>
 public sealed record DeniedActionRecord(
     string Action,

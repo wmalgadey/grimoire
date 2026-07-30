@@ -230,7 +230,7 @@ public sealed class GuardedToolExecutor
             // is not yet Activity.Current here; see IToolCallInstrumentation's doc comment.
             using var lockActivity = _instrumentation.StartAcquireWriteLockActivity(_taskId, canonical, turn);
             var stopwatch = Stopwatch.StartNew();
-            var guardDecision = await _writeGuard.EvaluateWriteAsync(canonical, policyResult.IsCreateOnly, cancellationToken);
+            var guardDecision = await _writeGuard.EvaluateWriteAsync(canonical, policyResult.Mode, content, cancellationToken);
             stopwatch.Stop();
 
             // "timeout" only for write_coordination_timeout — every other denial reason
