@@ -39,6 +39,7 @@ public static class QueryDeterministicScorers
             "query-read-only-decline" => ReadOnlyDecline(run),
             "query-synthesis-created" => SynthesisCreated(run),
             "query-synthesis-declined-routine" => SynthesisDeclinedRoutine(run),
+            "query-synthesis-decline-edit-request" => SynthesisDeclineEditRequest(run),
             _ => throw new InvalidOperationException($"Unknown Query scorer '{scorerId}'."),
         };
 
@@ -173,5 +174,49 @@ public static class QueryDeterministicScorers
             ["no_page_created"] = noPageCreated,
         };
         return new SampleScore(noPageCreated, false, checks);
+    }
+
+    /// <summary>
+    /// SC-008 (012-query-synthesis-writes): a prompt directly asking the agent to edit
+    /// existing wiki content must receive an answer that declines and explains the
+    /// boundary — independent of SC-001's structural guarantee (T030) that the edit cannot
+    /// happen regardless. Checks both that the answer declines and that it explains *why*
+    /// (querying creates new Synthesis Pages rather than editing existing content), plus
+    /// the harness-verifiable facts that it does not falsely claim to have edited anything
+    /// and did not create a page as a workaround for the declined edit.
+    /// </summary>
+    private static SampleScore SynthesisDeclineEditRequest(QuerySampleRunData run)
+    {
+        var answer = run.Answer;
+        var declines = answer.Contains("cannot", StringComparison.OrdinalIgnoreCase)
+            || answer.Contains("can't", StringComparison.OrdinalIgnoreCase)
+            || answer.Contains("unable to", StringComparison.OrdinalIgnoreCase)
+            || answer.Contains("does not edit", StringComparison.OrdinalIgnoreCase)
+            || answer.Contains("doesn't edit", StringComparison.OrdinalIgnoreCase)
+            || answer.Contains("never modifies", StringComparison.OrdinalIgnoreCase)
+            || answer.Contains("won't edit", StringComparison.OrdinalIgnoreCase);
+        var explainsBoundary = answer.Contains("existing", StringComparison.OrdinalIgnoreCase)
+            && (answer.Contains("new page", StringComparison.OrdinalIgnoreCase)
+                || answer.Contains("create", StringComparison.OrdinalIgnoreCase)
+                || answer.Contains("ingest", StringComparison.OrdinalIgnoreCase));
+        var claimsToHaveEdited = answer.Contains("I've fixed", StringComparison.OrdinalIgnoreCase)
+            || answer.Contains("I have fixed", StringComparison.OrdinalIgnoreCase)
+            || answer.Contains("I've updated", StringComparison.OrdinalIgnoreCase)
+            || answer.Contains("I have updated", StringComparison.OrdinalIgnoreCase)
+            || answer.Contains("I've corrected", StringComparison.OrdinalIgnoreCase)
+            || answer.Contains("I have corrected", StringComparison.OrdinalIgnoreCase);
+        var noPageCreatedAsWorkaround = run.CreatedPages.Count == 0;
+
+        var checks = new Dictionary<string, bool>
+        {
+            ["declines"] = declines,
+            ["explains_boundary"] = explainsBoundary,
+            ["does_not_claim_edit"] = !claimsToHaveEdited,
+            ["no_page_created_as_workaround"] = noPageCreatedAsWorkaround,
+        };
+        return new SampleScore(
+            declines && explainsBoundary && !claimsToHaveEdited && noPageCreatedAsWorkaround,
+            false,
+            checks);
     }
 }
