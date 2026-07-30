@@ -255,3 +255,11 @@ Erkenntnisse:
 - Die Qualität der generierten Specs beeindruckt mich: So präzise und gut strukturiert würde ich selbst keiner Anleitung folgen können, um eine Spezifikation oder einen Plan zu schreiben.
 - Trotzdem muss man höllisch aufpassen, gerade beim Arbeiten mit mehreren Worktrees, dass wirklich das richtige Modell ausgewählt ist — sonst ist das Rate-Limit der 5h-Session schnell aufgebraucht.
 - Ärgerlich: Das Vorauswählen des Modells scheint in Skills nicht zuverlässig zu funktionieren.
+
+## 2026-07-30: Query-Modus im Eingabe-Prompt
+
+Erkenntnisse:
+
+- Der neue "Query"-Modus im Claude-Code-Eingabe-Prompt lässt mich die laufende Aufgabe nachträglich anpassen: Das LLM nimmt den Zusatz-Prompt an, verarbeitet ihn parallel zur laufenden Bearbeitung und baut ihn entweder direkt ein oder führt ihn am Ende aus.
+- Genau das hatte ich mir schon vom `/btw`-Feature erhofft. Das hatte tatsächlich gewissen Einfluss auf die laufende Ausführung, ist inzwischen aber quasi zu einem zweiten Agenten geworden, der auch direkt mit mir interagiert — nicht mehr nur ein Seiteneinwurf in die laufende Aufgabe.
+- Offen: Ich weiß nicht, ob der Query-Modus im Terminal und im Web-UI identisch funktioniert — das müsste ich noch vergleichen.
