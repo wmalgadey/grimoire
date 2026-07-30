@@ -1,5 +1,5 @@
 ---
-status: proposed
+status: accepted
 ---
 
 # ADR-016: Lint Write Scope — Structural Frontmatter-Only Enforcement
