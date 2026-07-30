@@ -117,6 +117,14 @@ public sealed class AgentProcessInvoker
         AddOption(startInfo, "--system-prompt-path", workspace.SystemPromptPath);
         AddOption(startInfo, "--default-user-prompt-path", workspace.DefaultUserPromptPath);
         AddOption(startInfo, "--policy-path", workspace.PolicyPath);
+        // 012-query-synthesis-writes (ADR-015, T041): Grimoire.IngestAgent's CLI now
+        // requires --write-locks-dir (its GuardedToolExecutor is constructed with the
+        // shared write-coordination guard) — this invoker never passed it, so every
+        // spawned Ingest eval run aborted before writing its task artifact. Real
+        // regression found while re-verifying the full Grimoire.AgentEvals suite for
+        // this feature's T049; fixed here rather than deferred, since it silently broke
+        // ci.yml's "Run replay agent evals" gate for every Ingest scenario.
+        AddOption(startInfo, "--write-locks-dir", workspace.WriteLocksDir);
         if (!string.IsNullOrWhiteSpace(userPrompt))
         {
             AddOption(startInfo, "--user-prompt", userPrompt);

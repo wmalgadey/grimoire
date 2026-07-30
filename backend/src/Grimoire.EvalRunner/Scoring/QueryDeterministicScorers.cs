@@ -188,13 +188,27 @@ public static class QueryDeterministicScorers
     private static SampleScore SynthesisDeclineEditRequest(QuerySampleRunData run)
     {
         var answer = run.Answer;
+        // T048 (012-query-synthesis-writes): broadened after live capture showed 3/10
+        // query-synthesis-decline-edit-request samples scoring a false-negative
+        // "declines=false" despite unambiguously declining prose ("I need to decline
+        // this request", "I don't modify or edit existing wiki pages", "I'm not able to
+        // edit existing wiki pages") — a scorer keyword-coverage gap, not an agent
+        // behavior defect (Principle V: the agent's judgment was correct; the harness's
+        // textual check of that judgment's observable output was too narrow). Added
+        // "not able to", "decline" (the single strongest, most literal signal — every
+        // sample used it or an equally explicit cannot/can't), and a stem-tolerant "never
+        // modif"/"never edit" in place of the exact-inflection-only "never modifies".
         var declines = answer.Contains("cannot", StringComparison.OrdinalIgnoreCase)
             || answer.Contains("can't", StringComparison.OrdinalIgnoreCase)
             || answer.Contains("unable to", StringComparison.OrdinalIgnoreCase)
+            || answer.Contains("not able to", StringComparison.OrdinalIgnoreCase)
             || answer.Contains("does not edit", StringComparison.OrdinalIgnoreCase)
             || answer.Contains("doesn't edit", StringComparison.OrdinalIgnoreCase)
-            || answer.Contains("never modifies", StringComparison.OrdinalIgnoreCase)
-            || answer.Contains("won't edit", StringComparison.OrdinalIgnoreCase);
+            || answer.Contains("never modif", StringComparison.OrdinalIgnoreCase)
+            || answer.Contains("never edit", StringComparison.OrdinalIgnoreCase)
+            || answer.Contains("won't edit", StringComparison.OrdinalIgnoreCase)
+            || answer.Contains("will not edit", StringComparison.OrdinalIgnoreCase)
+            || answer.Contains("decline", StringComparison.OrdinalIgnoreCase);
         var explainsBoundary = answer.Contains("existing", StringComparison.OrdinalIgnoreCase)
             && (answer.Contains("new page", StringComparison.OrdinalIgnoreCase)
                 || answer.Contains("create", StringComparison.OrdinalIgnoreCase)

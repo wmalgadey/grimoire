@@ -25,6 +25,12 @@ public sealed class EvalWorkspace : IDisposable
 
     public string LogPath => Path.Combine(WikiRoot, "log.md");
 
+    // 012-query-synthesis-writes (ADR-015): Ingest's GuardedToolExecutor now requires a
+    // write-coordination lock directory (T041 made `--write-locks-dir` a required CLI
+    // argument on Grimoire.IngestAgent) — mirrors QueryEvalSandbox.WriteLocksDir, one
+    // per-sample directory so concurrent samples never share lock files.
+    public string WriteLocksDir => Path.Combine(Root, "write-locks");
+
     public string AgentDir => Path.Combine(Root, "agents", "ingest");
 
     public string SystemPromptPath => Path.Combine(AgentDir, "system-prompt.md");
@@ -54,6 +60,7 @@ public sealed class EvalWorkspace : IDisposable
 
         Directory.CreateDirectory(workspace.PagesDir);
         Directory.CreateDirectory(workspace.TasksDir);
+        Directory.CreateDirectory(workspace.WriteLocksDir);
 
         if (!string.IsNullOrEmpty(systemPromptAppendix))
         {
