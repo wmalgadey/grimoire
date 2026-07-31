@@ -285,13 +285,15 @@ public sealed class GuardedToolExecutor
                 // from the pre-existing out_of_scope/no_rule/traversal policy-scope denials
                 // (their own established RecordDenied-only signals) — plan.md's
                 // wiki.write_conflict.rejected/wiki.write_conflict.rejections_total rows.
-                // ADR-017 (014-wiki-storage-restructure) extends this same signal to its
-                // three log.md format-validation denial reasons (plan.md ## Observability:
-                // "reused unchanged for ADR-017's four new denial reasons" — the fourth,
-                // catalog_entry_malformed, belongs to US4's index.md check, out of this
-                // story's scope).
+                // ADR-017 (014-wiki-storage-restructure) extends this same signal to all
+                // four of its new denial reasons (plan.md ## Observability: "reused
+                // unchanged for ADR-017's four new denial reasons") — three from US3's
+                // log.md format check and one, catalog_entry_malformed, from US4's
+                // index.md check (found missing here by /speckit-analyze's T060
+                // remediation, which needed all four wired to write a passing test).
                 if (reason is "create_only_target_exists" or "write_conflict_stale_read"
-                    or "log_entry_not_appended" or "log_entry_malformed_heading" or "log_entry_missing_paragraph")
+                    or "log_entry_not_appended" or "log_entry_malformed_heading" or "log_entry_missing_paragraph"
+                    or "catalog_entry_malformed")
                 {
                     _instrumentation.RecordWriteConflictRejected(_taskId, canonical, reason, turn);
                 }

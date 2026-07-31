@@ -415,9 +415,31 @@ completeness audit (Constitution Principle III).
   exercisable in this session is a live end-to-end agent run (needs an API key),
   consistent with T061/T062's deferral.
 
-- [ ] T060 [P] Add a `MeterListener`-based test asserting `wiki.log.backstop_appended_total`
+- [X] T060 [P] Add a `MeterListener`-based test asserting `wiki.log.backstop_appended_total`
   increments with the correct `type` label when the backstop fires, mirroring
-  `IngestObservabilityMetricsTests.cs`'s idiom (gap found by T053).
+  `IngestObservabilityMetricsTests.cs`'s idiom (gap found by T053; new file
+  `WikiLogAppenderMetricsTests.cs`, cross-agent/unprefixed per naming convention);
+  extend coverage to also assert `wiki.write_conflict.rejections_total` increments
+  with each of ADR-017's four new `reason` labels (`log_entry_not_appended`,
+  `log_entry_malformed_heading`, `log_entry_missing_paragraph`,
+  `catalog_entry_malformed`) — a second gap against the same repo convention, found
+  by `/speckit-analyze` (finding G2; new file
+  `QueryWriteConflictRejectionAdr017MetricsTests.cs`, Query-prefixed since it
+  exercises `QueryToolCallInstrumentation` exclusively — kept separate from the
+  backstop test per ADR-013's N1 naming rule, which the combined file initially
+  violated). **Writing this test surfaced a real production bug**:
+  `GuardedToolExecutor.cs`'s `RecordWriteConflictRejected` gate only listed three of
+  the four ADR-017 reasons — `catalog_entry_malformed` was missing, so the counter
+  never incremented for catalog denials, contradicting plan.md's "four new denial
+  reasons" claim. Fixed alongside this task.
+- [X] T063 [P] SC-004 searchability test: extended
+  `backend/tests/Grimoire.IntegrationTests/LogEntryFormatEnforcementTests.cs` with
+  `MultiEntryLog_EveryEntryLocatableByHeadingPattern` — two guard-approved appends
+  plus a `WikiLogAppender`-generated backstop entry — asserting the heading regex
+  `^## \[\d{4}-\d{2}-\d{2}\] .+ \| .+$` (Multiline) matches exactly the number of
+  entries written, i.e. every entry is locatable and none lacks a heading (gap
+  found by `/speckit-analyze`, finding G1 — plan.md's Test Strategy named this
+  assertion for SC-004 but no task had implemented it).
 - [ ] T061 Wire `LogParagraphSpecificityScorer`/`CatalogDescriptionSpecificityScorer`
   into `Grimoire.EvalRunner`'s scenario/capture pipeline (new `ScenarioDefinition`
   entries, a `ScorerId` case, seeded fixtures exercising the log/catalog write paths) so
@@ -509,3 +531,14 @@ Task: "Update the remaining pages/-referencing integration test files (T017)"
 - Verify tests fail before implementing (T028/T044 must fail before T036/T046 land).
 - Commit after each task or logical group.
 - Stop at any checkpoint to validate a story independently.
+- Deviation from plan.md as originally drafted: `WikiLogAppender` is wired into
+  Ingest (T034) and Query (T035) only. Lint is not wired — its policy grants no
+  `log.md` write rule, so no backstop can ever apply. `WikiLogAppender` itself
+  supports `type: "lint"` (covered by T029) for when Lint's write scope grows.
+  plan.md's Project Structure/Observability sections have been amended to match
+  (`/speckit-analyze` finding I2).
+- ADR-017's Red/Green probe (T028/T044 → T036/T046) lives in
+  `Grimoire.IntegrationTests`, not `Grimoire.ArchTests` — plan.md's Project
+  Structure/Test Strategy have been corrected to say so (`/speckit-analyze`
+  finding I1). `Grimoire.ArchTests` only carries Phase 0's separate
+  `PagesWrapperRetirementBoundaryRuleTests` (ADR-009).
