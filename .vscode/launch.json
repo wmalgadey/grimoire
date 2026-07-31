@@ -2,7 +2,7 @@
   "version": "0.2.0",
   "configurations": [
     {
-      "name": "Hub (dev: no proxy)",
+      "name": "dev",
       "type": "coreclr",
       "request": "launch",
       "preLaunchTask": "prelaunch: noproxy",
@@ -10,7 +10,11 @@
       "cwd": "${workspaceFolder}",
       "args": [
         "--agent-worker",
-        "${workspaceFolder}/backend/src/Grimoire.IngestAgent/Grimoire.IngestAgent.csproj"
+        "${workspaceFolder}/backend/src/Grimoire.IngestAgent/Grimoire.IngestAgent.csproj",
+        "--query-agent-worker",
+        "${workspaceFolder}/backend/src/Grimoire.QueryAgent/Grimoire.QueryAgent.csproj",
+        "--lint-agent-worker",
+        "${workspaceFolder}/backend/src/Grimoire.LintAgent/Grimoire.LintAgent.csproj"
       ],
       "env": {
         "ASPNETCORE_ENVIRONMENT": "Development",
@@ -20,7 +24,7 @@
       "console": "internalConsole"
     },
     {
-      "name": "Hub (dev: with proxy)",
+      "name": "proxy",
       "type": "coreclr",
       "request": "launch",
       "preLaunchTask": "prelaunch: proxy",
@@ -28,7 +32,11 @@
       "cwd": "${workspaceFolder}",
       "args": [
         "--agent-worker",
-        "${workspaceFolder}/backend/src/Grimoire.IngestAgent/Grimoire.IngestAgent.csproj"
+        "${workspaceFolder}/backend/src/Grimoire.IngestAgent/Grimoire.IngestAgent.csproj",
+        "--query-agent-worker",
+        "${workspaceFolder}/backend/src/Grimoire.QueryAgent/Grimoire.QueryAgent.csproj",
+        "--lint-agent-worker",
+        "${workspaceFolder}/backend/src/Grimoire.LintAgent/Grimoire.LintAgent.csproj"
       ],
       "env": {
         "ASPNETCORE_ENVIRONMENT": "Development",
@@ -40,7 +48,7 @@
       "console": "internalConsole"
     },
     {
-      "name": "Hub (prod: no proxy)",
+      "name": "prod",
       "type": "coreclr",
       "request": "launch",
       "preLaunchTask": "prelaunch: noproxy",
@@ -52,7 +60,9 @@
         "--agent-worker",
         "${workspaceFolder}/backend/src/Grimoire.IngestAgent/Grimoire.IngestAgent.csproj",
         "--query-agent-worker",
-        "${workspaceFolder}/backend/src/Grimoire.QueryAgent/Grimoire.QueryAgent.csproj"
+        "${workspaceFolder}/backend/src/Grimoire.QueryAgent/Grimoire.QueryAgent.csproj",
+        "--lint-agent-worker",
+        "${workspaceFolder}/backend/src/Grimoire.LintAgent/Grimoire.LintAgent.csproj"
       ],
       "env": {
         "ASPNETCORE_ENVIRONMENT": "Production",
