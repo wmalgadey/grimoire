@@ -95,6 +95,13 @@ public class AgentArtifactNamingRuleTests
         // Grimoire.Hub.AgentDispatch — the ADR-004 credential scoping applies to every
         // agent spawn, so the test is cross-agent and stays unprefixed.
         "CredentialScopingTests",
+        // 014-wiki-storage-restructure (US2/SC-002): triggers a real task-artifact write
+        // (Grimoire.IngestAgent.TaskArtifact, ingest-owned) and a real Conversation Record
+        // append (Grimoire.Hub.QueryConversations) side by side against one resolved path
+        // set — genuinely cross-agent, but QueryConversations is not one of Part 1's
+        // reference-detection prefixes (only Part 2's Hub ownership map), so the scan
+        // would otherwise see Ingest as the sole owner.
+        "SiblingDirectoryLayoutTests",
     ];
 
     // Shared fixture namespaces: everything under *.Fakes is cross-agent by definition

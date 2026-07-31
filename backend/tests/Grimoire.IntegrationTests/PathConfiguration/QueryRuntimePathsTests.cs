@@ -7,16 +7,19 @@ namespace Grimoire.IntegrationTests.PathConfiguration;
 /// <summary>
 /// T023 (008-query-agent) / T005+T019 (011-query-conversations) — the Query runtime
 /// locations (<c>agents/query/system-prompt.md</c>, <c>agents/query/policy.json</c>,
-/// <c>data/conversations/</c>) resolve correctly under the default layout and under
+/// <c>conversations/</c>) resolve correctly under the default layout and under
 /// explicit <c>--base</c>/<c>--conversations-dir</c>/env-var overrides, mirroring
 /// DefaultLayoutTests/PathPrecedenceTests for the Ingest paths (ADR-009: single
 /// composition point, no ambient discovery). The former <c>query-runs</c> location is
 /// retired (ADR-014, SC-004) — its cases were rewritten to <c>conversations_dir</c>.
+/// 014-wiki-storage-restructure moved <c>ConversationsDir</c>'s default anchor from the
+/// data directory to the base directory (a sibling of the content root), so it no longer
+/// nests beneath <c>data/</c> the way the Query instruction locations still do.
 /// </summary>
 public class QueryRuntimePathsTests
 {
     [Fact]
-    public void ZeroConfiguration_ResolvesQueryInstructionsAndConversationsDir_BeneathDataDir()
+    public void ZeroConfiguration_ResolvesQueryInstructionsBeneathDataDir_AndConversationsDirBeneathBaseDirectory()
     {
         var cwd = Path.Combine(Path.GetTempPath(), $"grimoire-query-paths-default-{Guid.NewGuid():N}");
         Directory.CreateDirectory(cwd);
@@ -36,9 +39,11 @@ public class QueryRuntimePathsTests
             Assert.Equal(Path.GetFullPath(Path.Combine(cwd, "data", "agents", "query", "system-prompt.md")), resolved.QuerySystemPromptPath);
             Assert.Equal(Path.GetFullPath(Path.Combine(cwd, "data", "agents", "query", "policy.json")), resolved.QueryPolicyPath);
 
-            // 011-query-conversations (T005, ADR-014/ADR-009): the Conversation Record
-            // location resolves beneath data/ and is auto-created as writable data.
-            Assert.Equal(Path.GetFullPath(Path.Combine(cwd, "data", "conversations")), resolved.ConversationsDir);
+            // 011-query-conversations (T005, ADR-014/ADR-009), updated by
+            // 014-wiki-storage-restructure: the Conversation Record location resolves as a
+            // base-level sibling of the content root (not nested under data/) and is
+            // auto-created as writable data.
+            Assert.Equal(Path.GetFullPath(Path.Combine(cwd, "conversations")), resolved.ConversationsDir);
             Assert.True(Directory.Exists(resolved.ConversationsDir));
             var conversationsLocation = resolved.Locations.Single(l => l.Name == "conversations_dir");
             Assert.Equal("default", conversationsLocation.Source);
@@ -74,7 +79,7 @@ public class QueryRuntimePathsTests
             var resolved = GrimoirePathResolver.Resolve(options, configRoot, NullLogger.Instance);
 
             Assert.Equal(Path.GetFullPath(Path.Combine(baseDir, "data", "agents", "query")), resolved.QueryInstructionsDir);
-            Assert.Equal(Path.GetFullPath(Path.Combine(baseDir, "data", "conversations")), resolved.ConversationsDir);
+            Assert.Equal(Path.GetFullPath(Path.Combine(baseDir, "conversations")), resolved.ConversationsDir);
         }
         finally
         {

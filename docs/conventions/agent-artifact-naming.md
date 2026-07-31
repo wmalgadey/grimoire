@@ -80,6 +80,7 @@ the fixture fails the build.
 | `HexagonalPortsAdapterRuleTests` | Solution-wide ADR-010 structural rule; its concrete forbidden-type anchors are incidentally ingest adapters |
 | `RuntimePathsBoundaryRuleTests` | Solution-wide ADR-009 structural rule; anchors incidental, boundary is solution-wide |
 | `CredentialScopingTests` | Exercises only the shared spawn/credential machinery (`AgentProcessHost.BuildChildEnvironment`, `LocalSecretsLoader`) applied to every agent spawn (ADR-004) |
+| `SiblingDirectoryLayoutTests` | 014-wiki-storage-restructure: triggers a real task-artifact write (ingest-owned) and a real Conversation Record append (query-owned) against one resolved path set to prove SC-002; `Grimoire.Hub.QueryConversations` is not in Part 1's reference-detection prefixes, so without this exemption the scan would see only the ingest reference |
 
 Also cross-agent by construction (not name-listed): everything in `*.Fakes`
 namespaces, `Grimoire.AgentRuntime.*`, `Grimoire.EvalRunner` machinery outside the
