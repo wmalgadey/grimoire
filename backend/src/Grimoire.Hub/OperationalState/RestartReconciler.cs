@@ -62,9 +62,21 @@ public sealed class RestartReconciler
         await File.WriteAllTextAsync(taskPath, text, cancellationToken);
     }
 
+    /// <summary>
+    /// 014-wiki-storage-restructure (ADR-017, FR-007/FR-008/FR-011): this is a plain
+    /// direct-file-I/O write outside the guarded tool boundary (Hub-owned operational
+    /// recovery, not an agent tool call), so ADR-017's structural check never runs
+    /// against it — but SC-003's "any agent or the backstop" guarantee still requires the
+    /// same heading-plus-paragraph shape as every other log.md entry
+    /// (contracts/log-and-catalog-entry-format.md), so this composes the line by hand in
+    /// that shape rather than the pre-014 single pipe-delimited line.
+    /// </summary>
     private static async Task AppendReconciliationLogAsync(string logPath, string taskId, CancellationToken cancellationToken)
     {
-        var line = $"## [{DateTime.UtcNow:yyyy-MM-dd}] ingest | failed | reconciled on startup | task: [[tasks/{taskId}.md]]{Environment.NewLine}";
+        var date = DateTime.UtcNow.ToString("yyyy-MM-dd");
+        var paragraph =
+            $"Harness backstop entry: task {taskId} was still running when the Hub restarted, so it was reconciled as failed on startup. Task: [[tasks/{taskId}.md]].";
+        var line = $"## [{date}] ingest | failed (reconciled on startup){Environment.NewLine}{Environment.NewLine}{paragraph}{Environment.NewLine}";
         await File.AppendAllTextAsync(logPath, line, cancellationToken);
     }
 

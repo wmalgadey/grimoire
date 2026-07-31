@@ -1,11 +1,12 @@
 using System.Collections.Concurrent;
 using System.Diagnostics;
+using System.Diagnostics.Metrics;
 using Grimoire.Domain.Guardrails;
 using Grimoire.Hub.OperationalState;
 using Grimoire.AgentRuntime.Core;
 using Grimoire.IngestAgent;
 using Grimoire.AgentRuntime.Guardrails;
-using Grimoire.IngestAgent.IngestLog;
+using Grimoire.AgentRuntime.WikiLog;
 using Grimoire.IntegrationTests.Fakes;
 
 namespace Grimoire.IntegrationTests;
@@ -14,11 +15,16 @@ namespace Grimoire.IntegrationTests;
 [Collection("IngestAgentObservabilityListeners")]
 public class IngestObservabilityTraceTests
 {
+    // IngestAgentMetrics.Meter is internal (no cross-assembly visibility into this test
+    // project) — a throwaway Meter is enough here since these tests assert span emission
+    // only, never wiki.log.backstop_appended_total's value.
+    private static readonly Meter TestMeter = new("IngestObservabilityTraceTests");
+
     // Old trace tests for deprecated WikiPageWriter/WikiIndexWriter removed as part of T020.
     // Agent loop span coverage is asserted below.
 
     [Fact]
-    public async Task IngestLogAppender_Creates_AppendLog_Span()
+    public async Task WikiLogAppender_Creates_BackstopAppend_Span()
     {
         var spanNames = new ConcurrentQueue<string>();
         using var listener = new ActivityListener
@@ -34,20 +40,20 @@ public class IngestObservabilityTraceTests
         Directory.CreateDirectory(root);
         await File.WriteAllTextAsync(logPath, string.Empty);
 
-        var appender = new IngestLogAppender();
-        await appender.AppendAsync(logPath, "completed", "source.md", "Create pages/test.md", "task-001", CancellationToken.None);
+        var appender = new WikiLogAppender(IngestAgentTracing.ActivitySource, TestMeter);
+        await appender.AppendAsync(logPath, "ingest", "completed", "source.md", "Create pages/test.md", "task-001", CancellationToken.None);
 
-        Assert.Contains("ingest_agent.append_log", spanNames);
+        Assert.Contains("wiki_log.backstop_append", spanNames);
     }
 
     [Fact]
-    public async Task IngestLogAppender_EnsureLogEntry_CreatesMissingDirectory()
+    public async Task WikiLogAppender_EnsureLogEntry_CreatesMissingDirectory()
     {
         var root = Path.Combine(Path.GetTempPath(), $"trace-test-{Guid.NewGuid():N}");
         var logPath = Path.Combine(root, "wiki", "log.md");
 
-        var appender = new IngestLogAppender();
-        await appender.EnsureLogEntryAsync(logPath, "completed", "source.md", "task-001", forceAppend: false, CancellationToken.None);
+        var appender = new WikiLogAppender(IngestAgentTracing.ActivitySource, TestMeter);
+        await appender.EnsureLogEntryAsync(logPath, "ingest", "completed", "source.md", "task-001", forceAppend: false, CancellationToken.None);
 
         Assert.True(File.Exists(logPath));
         var content = await File.ReadAllTextAsync(logPath);

@@ -4,6 +4,7 @@ using Grimoire.AgentRuntime.Guardrails;
 using Grimoire.AgentRuntime.Host;
 using Grimoire.AgentRuntime.RunEvents;
 using Grimoire.AgentRuntime.Telemetry;
+using Grimoire.AgentRuntime.WikiLog;
 using Grimoire.QueryAgent;
 using Microsoft.Extensions.Logging;
 using System.Text.Json;
@@ -43,7 +44,14 @@ using var runSpan = QueryAgentTracing.StartRunActivity(options.TurnId);
 
 var conversationInput = await ReadConversationInputAsync();
 
-var intent = new QueryIntentHandler(profile, options, conversationInput, runEvents, loggerFactory, logger);
+// New — Query has no backstop before 014-wiki-storage-restructure (R5): most turns are
+// routine lookups that touch nothing, so EnsureLogEntryAsync is only invoked when this
+// turn actually created a Synthesis Page (see QueryIntentHandler.ExecuteAsync/
+// DescribeUnhandledFailureAsync) — "for a completed action" (FR-010), not every turn.
+var logAppender = new WikiLogAppender(
+    QueryAgentTracing.ActivitySource, QueryAgentMetrics.Meter, loggerFactory.CreateLogger<WikiLogAppender>());
+
+var intent = new QueryIntentHandler(profile, options, conversationInput, runEvents, logAppender, loggerFactory, logger);
 
 return await new AgentHost(profile).RunAsync(
     new AgentHostRun(
@@ -72,7 +80,7 @@ static QueryCliOptions ReadCliOptions(string[] args)
     return new QueryCliOptions(
         TurnId: reader.GetRequired("--turn-id"),
         WikiRoot: reader.GetRequired("--wiki-root"),
-        PagesDir: reader.GetRequired("--pages-dir"),
+        ContentRoot: reader.GetRequired("--content-root"),
         IndexPath: reader.GetRequired("--index-path"),
         LogPath: reader.GetRequired("--log-path"),
         SystemPromptPath: reader.GetRequired("--system-prompt-path"),
@@ -93,14 +101,18 @@ internal sealed class QueryIntentHandler : IAgentIntentHandler
     private readonly QueryCliOptions _options;
     private readonly QueryConversationInput _conversationInput;
     private readonly RunEventEmitter _runEvents;
+    private readonly WikiLogAppender _logAppender;
     private readonly ILoggerFactory _loggerFactory;
     private readonly ILogger _logger;
+
+    private GuardedToolExecutor? _executor;
 
     public QueryIntentHandler(
         AgentProfile profile,
         QueryCliOptions options,
         QueryConversationInput conversationInput,
         RunEventEmitter runEvents,
+        WikiLogAppender logAppender,
         ILoggerFactory loggerFactory,
         ILogger logger)
     {
@@ -108,6 +120,7 @@ internal sealed class QueryIntentHandler : IAgentIntentHandler
         _options = options;
         _conversationInput = conversationInput;
         _runEvents = runEvents;
+        _logAppender = logAppender;
         _loggerFactory = loggerFactory;
         _logger = logger;
     }
@@ -152,7 +165,11 @@ internal sealed class QueryIntentHandler : IAgentIntentHandler
             taskId: _options.TurnId,
             registry: _profile.ToolRegistry,
             instrumentation: new QueryToolCallInstrumentation(_loggerFactory.CreateLogger<GuardedToolExecutor>()),
-            writeLocksDir: _options.WriteLocksDir);
+            writeLocksDir: _options.WriteLocksDir,
+            logPath: _options.LogPath,
+            indexPath: _options.IndexPath,
+            activitySource: QueryAgentTracing.ActivitySource);
+        _executor = executor;
 
         var loop = new AgentLoop(
             modelClient,
@@ -174,6 +191,17 @@ internal sealed class QueryIntentHandler : IAgentIntentHandler
         // the artifact, and the Hub now records the turn into the Conversation Record. The
         // stdin/scaffold contract is untouched (ADR-012 fingerprints must not drift).
 
+        // 014-wiki-storage-restructure (R5, FR-010): only turns that actually created a
+        // Synthesis Page are "a completed action" needing a log.md entry — most turns are
+        // routine lookups that touch nothing (system-prompt.md Step 6), so the backstop
+        // must not fire unconditionally the way Ingest's does.
+        if (executor.CreatedPaths.Count > 0)
+        {
+            await _logAppender.EnsureLogEntryAsync(
+                _options.LogPath, "query", "completed", TruncatePrompt(_conversationInput.Prompt), _options.TurnId,
+                forceAppend: false, CancellationToken.None);
+        }
+
         _runEvents.EmitCompleted(result.Narrative, new RunCompletionMetadata(
             SystemPromptSha256: instructions.SystemPrompt.Sha256,
             PolicyPath: instructions.Policy.Identity.Path,
@@ -186,13 +214,37 @@ internal sealed class QueryIntentHandler : IAgentIntentHandler
         return 0;
     }
 
-    public Task<string> DescribeUnhandledFailureAsync(Exception exception, CancellationToken cancellationToken)
+    public async Task<string> DescribeUnhandledFailureAsync(Exception exception, CancellationToken cancellationToken)
     {
+        string reason;
         if (exception is AgentLoopCapException capEx)
-            return Task.FromResult(capEx.Message);
+        {
+            reason = capEx.Message;
+        }
+        else
+        {
+            _logger.LogError(exception, "Query agent failed for turn {TurnId}.", _options.TurnId);
+            reason = ErrorSanitizer.Sanitize(exception.Message, "Unknown query error.");
+        }
 
-        _logger.LogError(exception, "Query agent failed for turn {TurnId}.", _options.TurnId);
-        return Task.FromResult(ErrorSanitizer.Sanitize(exception.Message, "Unknown query error."));
+        // 014-wiki-storage-restructure (R5, FR-010): a backstop is only owed once this
+        // turn actually created a Synthesis Page — if the failure happened before any
+        // write (the common case, since most turns write nothing), there is no
+        // "completed action" for the fallback entry to describe.
+        if (_executor is { CreatedPaths.Count: > 0 })
+        {
+            await _logAppender.EnsureLogEntryAsync(
+                _options.LogPath, "query", "failed", TruncatePrompt(_conversationInput.Prompt), _options.TurnId,
+                forceAppend: true, CancellationToken.None);
+        }
+
+        return reason;
+    }
+
+    private static string TruncatePrompt(string prompt)
+    {
+        const int maxLength = 120;
+        return prompt.Length <= maxLength ? prompt : prompt[..maxLength] + "…";
     }
 
     private static List<ConversationMessage> BuildInitialConversation(QueryConversationInput input)

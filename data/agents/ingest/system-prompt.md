@@ -41,8 +41,8 @@ After every write:
 - Update `index.md` to list any newly created pages. Existing entries that were
   updated do not need a new index entry, but update the summary if it no longer reflects
   the page's current content. See Catalog Upkeep below for the exact entry format.
-- At run end, add a log entry to `log.md` under today's date heading (newest-first —
-  see Ingest Log Upkeep below).
+- At run end, append one entry to `log.md` — see Ingest Log Upkeep below for the exact
+  heading-plus-paragraph shape and why it must go at the end of the file, not the top.
 
 If supersession occurred, also note it in the log entry.
 
@@ -283,36 +283,58 @@ the bundle's spec version.
 Keep the body current:
 
 - Add a line for every new page you create, grouped under a thematic heading (add
-  headings as needed), using a wikilink and the page's `description`:
-  `- [[folder/slug]] — <one-sentence description>`
-  (e.g. `- [[tech/kubernetes]] — Container orchestration platform.`)
+  headings as needed), using a markdown link — not a wikilink — to the page's path
+  relative to the content root, a short description, and a trailing source-status
+  marker:
+  `- [Title](relative/path/to/article.md) — <short description> — <source-status marker>`
+  (e.g. `- [Kubernetes](tech/kubernetes.md) — Container-Orchestrierungsplattform für
+  automatisiertes Deployment und Skalierung — 4 Quellen`).
+- Write the description and the source-status marker in the wiki's configured content
+  language (German by default, or whichever language the operator has configured) — this
+  is wiki content, not repository documentation, so the description follows the wiki's
+  language, not this file's own English-only convention.
+- The source-status marker names how well-sourced the page is: a count of the distinct
+  sources it draws from (e.g. `3 Quellen`), or, for a page you created with no sourced
+  content yet, a stub indicator (e.g. `Stub — keine Quellen`). This is your own judgment,
+  not a separately tracked field.
+- The guarded write boundary structurally checks this shape for every newly added line —
+  a line that does not match it is denied (`catalog_entry_malformed`). This is a shape
+  check only: it never judges whether a given description is good, only whether the
+  envelope (link, description, status marker) is present.
 - If a page you updated now covers a significantly different scope, update its
   description here to match.
 - Do not remove entries for superseded pages — add `(superseded)` after the description.
 
 ## Ingest Log (log.md) Upkeep
 
-`log.md` records ingest history **newest-first**. Entries are grouped under
-date headings, each a bullet with a bold leading verb:
+`log.md` records ingest history and is **append-only**: every entry — yours or the
+harness backstop's — is added after all existing content, at the very end of the file.
+Never insert a new entry above existing ones and never edit an existing entry; the
+guarded write boundary structurally enforces this (a non-append write is denied).
+
+Every entry is one `##`-level heading, immediately followed by a blank line and one
+short prose paragraph:
 
 ```markdown
-## YYYY-MM-DD
+## [YYYY-MM-DD] ingest | <short summary phrase>
 
-* **Ingest**: <what changed> — source: <source-ref> | completed | task: [[tasks/<task_id>.md]]
+<One short prose paragraph describing what was actually done — name the pages you
+created/updated/superseded and the source reference. Task: [[tasks/<task_id>.md]].>
 ```
 
-Add the new entry as a bullet under today's `## YYYY-MM-DD` heading:
+- `YYYY-MM-DD` is today's date, no time component.
+- The `ingest |` type stays `ingest` for a normal run; use `supersession` instead when
+  the run's defining action was superseding an existing page (name both pages in the
+  paragraph: `superseded [[old-slug]] with [[new-slug]]`).
+- `SUMMARY` is a short phrase (e.g. `updated retrieval-patterns, created hybrid-search`)
+  — not a restatement of the paragraph, and not a re-encoded field list.
+- The paragraph carries all the detail that used to live in the heading: which pages
+  changed and why, the source reference, and — always — a `Task: [[tasks/<task_id>.md]]`
+  reference, so the harness backstop can tell your entry already covers this run and
+  skip appending its own.
 
-- If that heading is already the **topmost** heading in the file (an earlier run today),
-  add your bullet under it.
-- Otherwise, insert a new `## YYYY-MM-DD` heading — with your bullet under it — at the
-  very top of the file, above all existing headings. Never append to the bottom.
-
-For a failed run the harness appends its own minimal entry; you do not need to handle
-that case.
-
-For a run with supersession, use `**Supersession**` as the bullet's leading verb and name
-both pages: `superseded [[old-slug]] with [[new-slug]]`.
+For a failed run the harness appends its own minimal fallback entry in the same shape;
+you do not need to handle that case.
 
 ## Contradiction Marking
 

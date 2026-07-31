@@ -30,7 +30,9 @@ public class IngestAgentGuardedWriteBoundaryRuleTests
     [
         "Grimoire.AgentRuntime.Guardrails",
         "Grimoire.IngestAgent.TaskArtifact",
-        "Grimoire.IngestAgent.IngestLog",
+        // 014-wiki-storage-restructure R5: Grimoire.IngestAgent.IngestLog moved (and
+        // generalized to all three agent types) into Grimoire.AgentRuntime.WikiLog.
+        "Grimoire.AgentRuntime.WikiLog",
         "Grimoire.AgentRuntime.Core.Adapters.Replay",
     ];
 
@@ -108,7 +110,7 @@ public class IngestAgentGuardedWriteBoundaryRuleTests
         Assert.True(
             violations.Count == 0,
             $"Filesystem-write APIs must only be called from allowed namespaces " +
-            $"(Grimoire.AgentRuntime.Guardrails, Grimoire.IngestAgent.TaskArtifact, Grimoire.IngestAgent.IngestLog). Violations:\n" +
+            $"(Grimoire.AgentRuntime.Guardrails, Grimoire.IngestAgent.TaskArtifact, Grimoire.AgentRuntime.WikiLog). Violations:\n" +
             string.Join("\n", violations));
     }
 

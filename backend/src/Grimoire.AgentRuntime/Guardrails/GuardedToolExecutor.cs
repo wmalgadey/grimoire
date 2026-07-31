@@ -56,6 +56,29 @@ public sealed class GuardedToolExecutor
     /// <c>write_coordination_timeout</c>/<c>wiki.write_lock.timeout</c> path without a
     /// multi-second wait; production callers leave this <c>null</c>.
     /// </param>
+    /// <param name="logPath">
+    /// ADR-017 (014-wiki-storage-restructure): the run's <c>log.md</c> path (any rooted
+    /// form — canonicalized the same way every guarded-write target is). When supplied
+    /// together with <paramref name="writeLocksDir"/>, every guarded write to this exact
+    /// target is additionally evaluated against the log-entry format check
+    /// (append-only, heading shape, following paragraph — <see cref="SharedFileWriteGuard"/>).
+    /// <c>null</c> (the default) disables the check, matching every pre-ADR-017 caller.
+    /// </param>
+    /// <param name="indexPath">
+    /// ADR-017 (014-wiki-storage-restructure, US4): the run's <c>index.md</c> path (any
+    /// rooted form — canonicalized the same way every guarded-write target is). When
+    /// supplied together with <paramref name="writeLocksDir"/>, every guarded write to
+    /// this exact target is additionally evaluated against the catalog-entry format check
+    /// (every newly added <c>- [</c>-led line must match the link-description-status
+    /// shape — <see cref="SharedFileWriteGuard"/>). <c>null</c> (the default) disables
+    /// the check, matching every pre-US4 caller.
+    /// </param>
+    /// <param name="activitySource">
+    /// The calling agent process's own frozen <see cref="ActivitySource"/> (ADR-005/
+    /// ADR-013), used only to emit the <c>guardrails.format_validate</c> span around the
+    /// <paramref name="logPath"/>/<paramref name="indexPath"/> format checks. <c>null</c>
+    /// (the default) emits no span.
+    /// </param>
     public GuardedToolExecutor(
         SafetyPolicy policy,
         WriteJournal journal,
@@ -64,7 +87,10 @@ public sealed class GuardedToolExecutor
         ToolRegistry? registry = null,
         IToolCallInstrumentation? instrumentation = null,
         string? writeLocksDir = null,
-        TimeSpan? writeLockBackoffCap = null)
+        TimeSpan? writeLockBackoffCap = null,
+        string? logPath = null,
+        string? indexPath = null,
+        ActivitySource? activitySource = null)
     {
         _policy = policy;
         _journal = journal;
@@ -72,7 +98,11 @@ public sealed class GuardedToolExecutor
         _taskId = taskId ?? string.Empty;
         _registry = registry ?? ToolRegistry.Default;
         _instrumentation = instrumentation ?? NullToolCallInstrumentation.Instance;
-        _writeGuard = writeLocksDir is not null ? new SharedFileWriteGuard(writeLocksDir, writeLockBackoffCap) : null;
+        var canonicalLogPath = logPath is not null ? Canonicalize(logPath) : null;
+        var canonicalIndexPath = indexPath is not null ? Canonicalize(indexPath) : null;
+        _writeGuard = writeLocksDir is not null
+            ? new SharedFileWriteGuard(writeLocksDir, writeLockBackoffCap, canonicalLogPath, canonicalIndexPath, activitySource)
+            : null;
     }
 
     /// <summary>All policy denials that occurred during the run so far.</summary>
@@ -255,7 +285,13 @@ public sealed class GuardedToolExecutor
                 // from the pre-existing out_of_scope/no_rule/traversal policy-scope denials
                 // (their own established RecordDenied-only signals) — plan.md's
                 // wiki.write_conflict.rejected/wiki.write_conflict.rejections_total rows.
-                if (reason is "create_only_target_exists" or "write_conflict_stale_read")
+                // ADR-017 (014-wiki-storage-restructure) extends this same signal to its
+                // three log.md format-validation denial reasons (plan.md ## Observability:
+                // "reused unchanged for ADR-017's four new denial reasons" — the fourth,
+                // catalog_entry_malformed, belongs to US4's index.md check, out of this
+                // story's scope).
+                if (reason is "create_only_target_exists" or "write_conflict_stale_read"
+                    or "log_entry_not_appended" or "log_entry_malformed_heading" or "log_entry_missing_paragraph")
                 {
                     _instrumentation.RecordWriteConflictRejected(_taskId, canonical, reason, turn);
                 }
