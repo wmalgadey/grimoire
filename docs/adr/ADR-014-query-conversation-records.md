@@ -63,8 +63,14 @@ Chosen option: **Option 1.**
 
 ### One record per conversation
 
-- Stored at `<base>/data/conversations/<conversationId>.md` — added via the ADR-009
-  composition point (`GrimoirePathOptions.ConversationsDir`,
+> **Path note (014-wiki-storage-restructure):** `ConversationsDir`'s anchor moved from
+> `<base>/data/` to `<base>/` directly — a sibling of the wiki content root, not nested
+> under the data directory. Everything below (format, lifecycle, the ADR-009
+> composition point itself) is otherwise unchanged.
+
+- Stored at `<base>/conversations/<conversationId>.md` (before
+  014-wiki-storage-restructure: `<base>/data/conversations/<conversationId>.md`) —
+  added via the ADR-009 composition point (`GrimoirePathOptions.ConversationsDir`,
   `DefaultConversationsDirName = "conversations"`, resolver-reported and
   auto-created); `QueryRunsDir`/`DefaultQueryRunsDirName`/`QueryRunArtifactPathFor`
   are deleted. Operational data: outside `wiki/`, git-ignored (ADR-003).

@@ -6,22 +6,31 @@ Defaults and resolution rules: [`specs/005-content-root-config/data-model.md`](.
 Worked examples: [`specs/005-content-root-config/quickstart.md`](../../specs/005-content-root-config/quickstart.md).
 Architectural rationale: [ADR-009](../adr/ADR-009-runtime-path-configuration.md).
 
-## The two-home layout
+## The base-level layout
 
 Every runtime location Grimoire uses is composed in one place
 (`Grimoire.Hub.Runtime.Paths.GrimoirePathResolver`) beneath a single base directory —
 either an explicitly configured `--base-dir`, or the process working directory when none
-is given. There are exactly two homes beneath that base:
+is given. As of 014-wiki-storage-restructure, that base has four top-level homes (up
+from the original two, below), none nested inside one another under any configuration:
 
 - **The wiki content root** (`<base>/wiki` by default) — the knowledge base an agent
-  maintains: pages, tasks, the catalog (`index.md`), and the ingest log (`log.md`).
-  Deliberately kept outside the data directory so it can be committed to its own git
-  repository, independently of the application's internal runtime data.
+  maintains: topical article subfolders directly (no wrapper folder), the catalog
+  (`index.md`), and the ingest log (`log.md`). Deliberately kept outside the data
+  directory so it can be committed to its own git repository, independently of the
+  application's internal runtime data and independently of the task/conversation
+  bookkeeping below.
+- **The tasks directory** (`<base>/tasks` by default) — Hub-written task artifacts, one
+  per Ingest task. A sibling of the content root, not nested inside it (before
+  014-wiki-storage-restructure this lived at `<base>/wiki/tasks`).
+- **The conversations directory** (`<base>/conversations` by default) — Hub-written
+  Conversation Records, one per Query conversation. A sibling of the content root
+  (before 014-wiki-storage-restructure this lived at `<base>/data/conversations`).
 - **The consolidated data directory** (`<base>/data` by default) — every other piece of
   internal runtime data the application owns: raw intake storage, the operational-state
-  database, the secrets file, and the agent instruction set.
-
-The two never nest inside one another under any configuration.
+  database, the secrets file, write-coordination locks, Lint Findings Reports, and the
+  agent instruction set. Unaffected by the 014-wiki-storage-restructure relocation
+  above.
 
 ## Configuration table
 
@@ -64,12 +73,14 @@ mv .env data/.env
 ```
 
 After moving `agents/` to `data/agents/`, the policy file's path prefixes and the
-system prompt's path references both had to become content-root-relative (`pages/`,
-`tasks/`, `index.md`, `log.md` — no `wiki/` prefix), since the agent now addresses
-locations relative to the wiki root it is explicitly given (`--wiki-root`), not a
-discovered repository root. `.gitignore` was updated (`backend/data/` →
-`data/state/` + `data/raw/`), and `.vscode/launch.json` now sets `cwd` to the
-workspace root and passes an absolute `--agent-worker` path — both required because
-`dotnet run --project` changes the process's own working directory to the project's
-directory, and the agent-worker default resolves against the install directory, not
-the base.
+system prompt's path references both had to become content-root-relative (at the time:
+`pages/`, `tasks/`, `index.md`, `log.md` — no `wiki/` prefix; as of
+014-wiki-storage-restructure the policy prefix is `.`, the wiki root itself, since the
+`pages/` wrapper and the in-root `tasks/` folder are both retired — see the base-level
+layout above), since the agent now addresses locations relative to the wiki root it is
+explicitly given (`--wiki-root`), not a discovered repository root. `.gitignore` was
+updated (`backend/data/` → `data/state/` + `data/raw/`), and `.vscode/launch.json` now
+sets `cwd` to the workspace root and passes an absolute `--agent-worker` path — both
+required because `dotnet run --project` changes the process's own working directory to
+the project's directory, and the agent-worker default resolves against the install
+directory, not the base.
