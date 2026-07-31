@@ -375,18 +375,18 @@ completeness audit (Constitution Principle III).
 - [X] T055 Trace contract CI enforcement (MANDATORY — Constitution Principle IV):
   confirmed — same reasoning as T054, same test project, same existing CI step.
 - [X] T056 Agent-behavior evaluation completeness audit (MANDATORY — Constitution
-  Principles II & V): audit performed — **two gaps found and filed as T061/T062**.
-  `LogParagraphSpecificityScorer`/`CatalogDescriptionSpecificityScorer` (SC-005/SC-007)
-  are implemented but not wired into a `ScenarioDefinition`/capture pipeline (T061), and
-  changing `data/agents/*/policy.json`/`system-prompt.md` made 17 existing
-  `Grimoire.AgentEvals` recordings stale (T062) — confirmed by running
-  `dotnet test backend/tests/Grimoire.AgentEvals --configuration Release --no-build`,
-  which fails 17/56 scenarios with "no trusted recordings (Stale)". **Neither gap can be
-  closed in this session** — both require a live `ANTHROPIC_API_KEY` capture run, not
-  available here. Per the constitution, this means the DoD's evaluation-tests-pass
-  condition is **not yet met**; `.github/workflows/ci.yml`'s zero-skip `Run replay
-  agent evals` gate will fail on this branch until T061/T062 are completed in a
-  follow-up live-eval session.
+  Principles II & V): audit performed — **two gaps found and filed as T061/T062, both
+  now closed** in a follow-up live-eval session (a real `ANTHROPIC_AUTH_TOKEN` became
+  available). `LogParagraphSpecificityScorer`/`CatalogDescriptionSpecificityScorer`
+  (SC-005/SC-007) are wired into the capture pipeline and both replay at 100% (T061).
+  All 17 originally-stale recordings were refreshed (T062); 16 of them plus both new
+  scenarios (18/19 total) now replay at/above threshold. **One residual, disclosed
+  gap remains**: `lint-inbound-links-refreshed` (013-lint-agent, unrelated to 014's own
+  changes) replays at 70% against its 95% threshold — a real Lint-agent
+  link-counting reliability issue under `claude-haiku-4-5`, confirmed reproducible
+  across two independent captures, kept as honest recorded evidence per explicit
+  direction rather than discarded or re-rolled (see T062). This is the one remaining
+  DoD blocker for this feature, and it is out of 014's scope to fix.
 - [X] T057 [P] Documentation sweep: grep `docs/` for any remaining reference to the
   retired `pages/`/`wiki/tasks`/`data/conversations` layout and update. Fixed:
   `docs/operations/runtime-configuration.md` (the "two-home layout" section — now
@@ -440,17 +440,48 @@ completeness audit (Constitution Principle III).
   entries written, i.e. every entry is locatable and none lacks a heading (gap
   found by `/speckit-analyze`, finding G1 — plan.md's Test Strategy named this
   assertion for SC-004 but no task had implemented it).
-- [ ] T061 Wire `LogParagraphSpecificityScorer`/`CatalogDescriptionSpecificityScorer`
-  into `Grimoire.EvalRunner`'s scenario/capture pipeline (new `ScenarioDefinition`
-  entries, a `ScorerId` case, seeded fixtures exercising the log/catalog write paths) so
-  SC-005/SC-007 have an actual running evaluation test, not just a correct but unwired
-  scorer function (gap found by T056).
-- [ ] T062 Re-record every stale `Grimoire.AgentEvals` scenario (17 currently reported
-  stale by `dotnet test backend/tests/Grimoire.AgentEvals`) via
+- [X] T061 Wired `LogParagraphSpecificityScorer`/`CatalogDescriptionSpecificityScorer`
+  into `Grimoire.EvalRunner`'s scenario/capture pipeline (gap found by T056): two new
+  `ScenarioDefinition`s in `IngestScenarioDefinitions.cs`
+  (`log-paragraph-specificity`, `catalog-description-specificity`, both on the
+  `empty-topic` fixture so the run's own log entry/catalog line is unambiguously the
+  last one written); `CapturePipeline`'s previously steering-adoption-only judge call
+  generalized into `InvokeJudgeAsync`, dispatching by `ScorerId` to
+  `InvokeLogParagraphJudgeAsync`/`InvokeCatalogDescriptionJudgeAsync` (extracts the
+  last heading/paragraph or catalog line via the scorers' own `FindHeadingLineIndices`/
+  `FindCatalogLineIndices`/`ExtractEntry`, then judges it against the run's actual
+  touched-page content); a shared `DeterministicScorers.JudgeVerdictGate` case
+  (`completed && judge_verdict_pass`, same shape as `SteeringAdoption`) for both new
+  `ScorerId`s; two new `[Fact]`s in `IngestReplayEvalTests.cs`. Added
+  `EvalWorkspace.LogContent()` (mirrors the existing `IndexContent()`). Smoke-tested
+  live with `--samples 1` before the full T062 capture run: both judges produced
+  content-specific PASS rationales (e.g. correctly naming the created page and its
+  actual sections), confirming the wiring reads genuine run output, not a
+  rubber-stamp.
+- [X] T062 Re-recorded all 19 target `Grimoire.AgentEvals` scenarios (the 17 originally
+  reported stale plus T061's 2 new ones) via
   `dotnet run --project backend/src/Grimoire.EvalRunner -- capture --scenario <name>`
-  for each, using a live `ANTHROPIC_API_KEY` — required before `.github/workflows/ci.yml`
-  will pass on this branch (gap found by T056; this is tasks.md's original T042/T051,
-  restated here as the final blocking DoD item).
+  for each, using a live `ANTHROPIC_AUTH_TOKEN` (`data/.env`, model `claude-haiku-4-5`).
+  18 of 19 now replay at/above their threshold (`SC005_LogParagraphSpecificity` and
+  `SC007_CatalogDescriptionSpecificity` both pass at 100%, confirming T061's judge
+  wiring reads genuine run output — see its own note). **One scenario does not close
+  clean**: `lint-inbound-links-refreshed` (013-lint-agent, SC-008 — ≥95% of sampled
+  pages have an accurate inbound-link count) measured 80% then, on an independent
+  re-capture, 70% — both well under its 95% threshold. Inspecting the failing
+  samples' actual written output showed the Lint agent under `claude-haiku-4-5`
+  genuinely miscounting one page's (`spoke-a`) inbound-link total in ~20-30% of
+  runs — a real agent-behavior gap in feature 013's Lint agent, not a regression
+  from 014's path/policy changes (which only touched `pathPrefix` values, not
+  Lint's counting logic or instructions; the other three checks in the same
+  scenario — `hub-page`/`spoke-b` accuracy — passed consistently across both
+  draws). Per explicit direction, the honestly-captured 70% recording is kept
+  as-is rather than discarded or re-rolled further:
+  `Grimoire.AgentEvals.LintReplayEvalTests.SC008_InboundLinksRefreshed_ReplaysAtThreshold`
+  now fails on real evidence, and `.github/workflows/eval.yml`'s replay-eval gate
+  will fail on this one scenario until a **separate, out-of-scope-for-014** fix to
+  the Lint agent's link-counting reliability (or its system-prompt) lands. This is
+  the one open item blocking a fully-green DoD for this feature; every other
+  DoD condition is met.
 
 ---
 

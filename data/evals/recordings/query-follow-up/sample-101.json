@@ -1,12 +1,12 @@
 {
   "schema_version": 1,
   "sample": 101,
-  "task_id": "capture-query-follow-up-01-t1-527d7dd26c7841cca03574ff76b72398",
+  "task_id": "capture-query-follow-up-01-t1-97f2939ecaea4e639ddb14b95e4b14ed",
   "model": "claude-haiku-4-5",
   "turns": [
     {
       "turn": 1,
-      "system_prompt_sha256": "sha256:86a115cc3936034a750584b63dbebff745858ea177eaa0a49f03bf1efa61fa17",
+      "system_prompt_sha256": "sha256:20094d12f7caaac69bf580d328d22c7ffa309de417d0e581e69465d480de9bff",
       "conversation": [
         {
           "role": "user",
@@ -21,18 +21,23 @@
       "stop_reason": "tool_use",
       "tool_uses": [
         {
-          "tool_use_id": "toolu_017jiND5iDSgkqJL3nLcQCjF",
+          "tool_use_id": "toolu_01QDYmNU2zbyC4maLGsBsptg",
           "tool_name": "read_file",
           "input_json": "{\u0022path\u0022: \u0022index.md\u0022}"
+        },
+        {
+          "tool_use_id": "toolu_01CemKHYcNs8vqYcYfweaBAQ",
+          "tool_name": "list_files",
+          "input_json": "{\u0022path\u0022: \u0022pages\u0022}"
         }
       ],
-      "assistant_text": "I\u0027ll look for a page about the Guarded Write Journal. Let me start by checking the index to see what\u0027s available.",
-      "input_tokens": 3666,
-      "output_tokens": 83
+      "assistant_text": "I\u0027ll help you find that page. Let me first explore the wiki structure to locate it.",
+      "input_tokens": 3860,
+      "output_tokens": 111
     },
     {
       "turn": 2,
-      "system_prompt_sha256": "sha256:86a115cc3936034a750584b63dbebff745858ea177eaa0a49f03bf1efa61fa17",
+      "system_prompt_sha256": "sha256:20094d12f7caaac69bf580d328d22c7ffa309de417d0e581e69465d480de9bff",
       "conversation": [
         {
           "role": "user",
@@ -40,11 +45,11 @@
         },
         {
           "role": "assistant",
-          "content_sha256": "sha256:c053fbdeb4c5550c36836522932fdc106b1d3bbf395817f043872af2669b128a"
+          "content_sha256": "sha256:034c4885305eeca3b814db61665c86a74e5c85d9708b3aca73a3f8f283219b30"
         },
         {
           "role": "user",
-          "content_sha256": "sha256:73cf80ffd55e6dc79455da1eb1590e3be415edf45a8617176e3fb803a40b254f"
+          "content_sha256": "sha256:9a5173157280712bed5675068b071f0170cef4259339b8d1faeca4f650ca6cf6"
         }
       ],
       "tool_names": [
@@ -55,18 +60,18 @@
       "stop_reason": "tool_use",
       "tool_uses": [
         {
-          "tool_use_id": "toolu_015CUxK8R6DwSpRVWUbnoRnV",
+          "tool_use_id": "toolu_01SXQDc7bvQS3RH9RtE6ARkb",
           "tool_name": "read_file",
           "input_json": "{\u0022path\u0022: \u0022pages/write-journal.md\u0022}"
         }
       ],
       "assistant_text": "Now let me read the write-journal page:",
-      "input_tokens": 3843,
+      "input_tokens": 4140,
       "output_tokens": 70
     },
     {
       "turn": 3,
-      "system_prompt_sha256": "sha256:86a115cc3936034a750584b63dbebff745858ea177eaa0a49f03bf1efa61fa17",
+      "system_prompt_sha256": "sha256:20094d12f7caaac69bf580d328d22c7ffa309de417d0e581e69465d480de9bff",
       "conversation": [
         {
           "role": "user",
@@ -74,19 +79,19 @@
         },
         {
           "role": "assistant",
-          "content_sha256": "sha256:c053fbdeb4c5550c36836522932fdc106b1d3bbf395817f043872af2669b128a"
+          "content_sha256": "sha256:034c4885305eeca3b814db61665c86a74e5c85d9708b3aca73a3f8f283219b30"
         },
         {
           "role": "user",
-          "content_sha256": "sha256:73cf80ffd55e6dc79455da1eb1590e3be415edf45a8617176e3fb803a40b254f"
+          "content_sha256": "sha256:9a5173157280712bed5675068b071f0170cef4259339b8d1faeca4f650ca6cf6"
         },
         {
           "role": "assistant",
-          "content_sha256": "sha256:06c7735b817c15acf2ddef057d4b0d77796e3351413e0cd0b1085e959525a88d"
+          "content_sha256": "sha256:69311382cdccbf1f01f9c5d0b1c2ba47a94e40e545ea6017f9e7005c1e71541b"
         },
         {
           "role": "user",
-          "content_sha256": "sha256:c7a083523531f9c77ad2dc2f66db97f6f21d7ae031e1a8fd85d493aa7f0e7863"
+          "content_sha256": "sha256:c448e9b6a5a4c9b4dc77ebd3d78a84d76fcd76cd5682dfb1a6f71514b61e142b"
         }
       ],
       "tool_names": [
@@ -96,9 +101,9 @@
       ],
       "stop_reason": "end_turn",
       "tool_uses": [],
-      "assistant_text": "The [[write-journal|Guarded Write Journal]] page describes a mechanism that records file state before the guarded write tool executor overwrites any file. Here\u0027s what it does:\n\n**Core function**: Before making any write, the system journals the prior state of that file \u2014 either its previous content (if it existed) or a record that it did not exist.\n\n**Rollback capability**: If the agent run fails for any reason (turn cap exceeded, unrecoverable error, or denied writes), the journal can roll back all recorded writes in reverse order \u2014 restoring previous content for existing files and deleting newly created ones.\n\n**All-or-nothing semantics**: This gives each run atomic write semantics without requiring a database transaction; the in-memory journal itself acts as the transaction log for the duration of that single run.\n\nThe page also notes that the Query agent never uses the journal\u0027s rollback path, since it has no write tool at all \u2014 the journal exists in the shared agent runtime library but is only populated by agents that actually perform writes.",
-      "input_tokens": 4197,
-      "output_tokens": 225
+      "assistant_text": "The [[write-journal]] page describes **how the guarded write path journals prior file state for rollback on failure**. \n\nSpecifically, it explains that before overwriting any file, the guarded tool executor records that file\u0027s prior state\u2014either its previous content (if it existed) or the fact that it didn\u0027t exist\u2014into an in-memory write journal. If the agent run fails (due to a turn cap being exceeded, an unrecoverable error, or denied writes), the journal can roll every recorded write back in reverse order: restoring previous content for files that existed, and deleting newly created files. This approach provides all-or-nothing semantics for writes without requiring a database transaction\u2014the journal itself serves as the transaction log, kept only in the process\u0027s memory for the duration of one run.\n\nThe page also notes that the Query agent never uses this journal\u0027s rollback path because it has no write tool at all.",
+      "input_tokens": 4494,
+      "output_tokens": 201
     }
   ]
 }
