@@ -12,8 +12,10 @@
 
 ### Session 2026-07-30
 
-- Q: Should adopting the new layout on an existing installation include an automatic migration of content from the old locations (wrapper folder, old tasks/conversations nesting) to the new ones? → A: No — this feature does not implement automatic migration. Existing installations are out of scope; the new layout applies going forward.
+- Q: Should adopting the new layout on an existing installation include an automatic migration of content from the old locations (wrapper folder, old tasks/conversations nesting) to the new ones? → A: No migration is needed or in scope — Grimoire has no production deployment yet; the wiki content root currently starts empty. There is no "old" content to preserve; this feature only needs to change internal directory structure (and any test fixtures), not migrate real content. The final wiki content-root folder itself does not need to change.
 - Q: Should `index.md`'s catalog entry format also be reviewed and, if needed, aligned with the reference wiki, the same way `log.md`'s entry format is being standardized? → A: Yes — `index.md` catalog entries must be reviewed against the reference wiki's convention and aligned to it as part of this feature.
+- Q: What exact date format must the `[DATE] TYPE | SUMMARY` heading use in `log.md`? → A: ISO calendar date only, `YYYY-MM-DD` — matches the reference wiki's convention.
+- Q: What language/wording should the `index.md` source-status marker use? → A: The wiki's own configured content language — German by default, or whichever language the operator sets in the agent system-prompt files. CLAUDE.md's English-only policy governs this repository's own code and documentation (the hub, frontend, and agent harness), not agent-generated wiki content, which is data produced under separate, operator-configurable instructions.
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -75,15 +77,13 @@ As anyone browsing `index.md`, I want every catalog entry to reference its artic
 
 **Acceptance Scenarios**:
 
-1. **Given** an agent creates a new article, **When** it adds the corresponding catalog entry to `index.md`, **Then** the entry is formatted as a link to the article followed by a short description and a trailing source-status marker (a source count, or a stub indicator for a page with no sourced content yet).
+1. **Given** an agent creates a new article, **When** it adds the corresponding catalog entry to `index.md`, **Then** the entry is formatted as a link to the article followed by a short description and a trailing source-status marker (a source count, or a stub indicator for a page with no sourced content yet), written in the wiki's configured content language.
 2. **Given** two different agent types each add a catalog entry, **When** `index.md` is inspected, **Then** both entries share the same link-description-status format — no agent type produces a differently shaped entry.
-3. **Given** `index.md` already contains catalog entries written in the previous format, **When** new entries are added under the new format, **Then** the pre-existing entries are left as they are — this feature does not rewrite historical catalog entries.
 
 ---
 
 ### Edge Cases
 
-- How does the system behave on an installation that already has content under the old locations (wrapper folder, previous tasks/conversations nesting) when it adopts the new layout, given no automatic migration is performed?
 - What happens when a legitimate topical category is named the same as the old wrapper folder (e.g. an article category genuinely called "pages")?
 - What happens when an agent appends a heading line but omits the descriptive paragraph beneath it (empty body)?
 - What happens when two log entries end up with an identical heading (same date, type, and summary) for two distinct actions?
@@ -98,16 +98,14 @@ As anyone browsing `index.md`, I want every catalog entry to reference its artic
 - **FR-003**: System MUST locate the tasks directory as a sibling of the wiki content root, not nested inside it.
 - **FR-004**: System MUST locate the conversations directory as a sibling of the wiki content root, not nested inside the internal runtime data directory and not nested inside the wiki content root.
 - **FR-005**: System MUST leave the location of internal runtime-only data (raw intake storage, operational state, agent instructions/policy files) unchanged by this feature.
-- **FR-006**: System MUST NOT perform automatic migration of pre-existing wiki articles, tasks, or conversation records from their old locations to the new layout; adopting the new layout on an existing installation is out of scope for this feature.
-- **FR-007**: System MUST operate purely against the new layout going forward — reading and writing articles, tasks, and conversations only at their new locations — regardless of whether content still exists at the old locations.
-- **FR-008**: System MUST require every entry appended to `log.md` to start with a heading line formatted as `[DATE] TYPE | SUMMARY`.
-- **FR-009**: System MUST require every `log.md` heading to be immediately followed by a short prose paragraph describing the activity, regardless of which agent type produced the entry.
-- **FR-010**: System MUST apply the identical heading-plus-paragraph log entry format across every agent type that writes to `log.md`, with no agent-type-specific variation in structure.
-- **FR-011**: System MUST append a fallback log entry in the same heading-plus-paragraph format whenever an agent fails to append its own entry or omits a required entry for a completed action.
-- **FR-012**: System MUST keep `log.md` append-only, with every entry's heading independently locatable by searching the file for the heading pattern.
-- **FR-013**: System MUST format every newly added `index.md` catalog entry as a link to the article, followed by a short description and a trailing source-status marker (a source count, or a stub indicator), matching the reference wiki's catalog convention.
-- **FR-014**: System MUST apply the catalog entry format from FR-013 consistently regardless of which agent type adds or updates the entry.
-- **FR-015**: System MUST leave `index.md` catalog entries already written in the previous format unchanged — this feature does not rewrite historical catalog entries, consistent with the no-migration decision in FR-006.
+- **FR-006**: System MUST NOT include any migration mechanism for a previous wiki layout — no prior installation with wiki content exists, so the system operates solely against the new layout from initialization.
+- **FR-007**: System MUST require every entry appended to `log.md` to start with a heading line formatted as `[DATE] TYPE | SUMMARY`, where `DATE` is an ISO 8601 calendar date (`YYYY-MM-DD`) with no time component.
+- **FR-008**: System MUST require every `log.md` heading to be immediately followed by a short prose paragraph describing the activity, regardless of which agent type produced the entry.
+- **FR-009**: System MUST apply the identical heading-plus-paragraph log entry format across every agent type that writes to `log.md`, with no agent-type-specific variation in structure.
+- **FR-010**: System MUST append a fallback log entry in the same heading-plus-paragraph format whenever an agent fails to append its own entry or omits a required entry for a completed action.
+- **FR-011**: System MUST keep `log.md` append-only, with every entry's heading independently locatable by searching the file for the heading pattern.
+- **FR-012**: System MUST format every newly added `index.md` catalog entry as a link to the article, followed by a short description and a trailing source-status marker (a source count, or a stub indicator), matching the reference wiki's catalog convention and written in the wiki's configured content language.
+- **FR-013**: System MUST apply the catalog entry format from FR-012 consistently regardless of which agent type adds or updates the entry.
 
 ### Key Entities
 
@@ -136,7 +134,8 @@ As anyone browsing `index.md`, I want every catalog entry to reference its artic
 - The reference wiki's demonstrated log heading level (a `##`-style heading per entry, with a single top-level title reserved for the log document itself) is the convention this feature follows, since that is the level actually used by entries in the reference wiki this feature is modeled on.
 - Topical subfolder names (e.g. `concepts/`, `tech/`, `tools/`, `sources/`, `events/`, `hobbies/`, `persoenliches/`) are chosen by the agents based on content, not fixed by this specification.
 - The `TYPE` label in a log heading (e.g. `ingest`, `update`, `query`, `lint-fixes`) is open-ended and chosen by the appending agent, not a fixed enum enforced by this feature.
-- Historical `log.md` entries written in the previous single-line format before this change are left as-is; the append-only invariant means this feature governs the format of entries appended going forward, not retroactive rewrites of existing history.
-- No automatic migration is performed for existing installations: pre-existing content under the old wrapper folder, the old tasks/conversations nesting, or the old log/catalog entry formats is out of scope for this feature. Adopting the new layout on an existing installation is the operator's responsibility, outside this feature.
+- `log.md`'s append-only invariant means an entry, once written, is never edited or rewritten by a later run — this feature governs the format of entries appended going forward.
+- Grimoire has no production deployment yet; the wiki content root currently starts empty. This feature therefore requires no migration mechanism — the only artifacts that need to change are internal directory structure and, where applicable, test fixtures, not real pre-existing content.
 - The `index.md` catalog's source-status marker (a count, or a stub indicator) reflects the agent's own judgment about how many distinct sources back an article, mirroring the reference wiki's convention — it is not a new structured field tracked separately by the system.
+- CLAUDE.md's English-only language policy governs this repository's own code and documentation (the hub, frontend, and agent harness). It does not govern agent-generated wiki content, which is data written under separate, operator-configurable instructions and defaults to German (matching the reference wiki), or whichever language the operator sets in the agent system-prompt files.
 - This feature does not change which agent types are permitted to write to `log.md` or `index.md` — it only standardizes the format all of them must use.
