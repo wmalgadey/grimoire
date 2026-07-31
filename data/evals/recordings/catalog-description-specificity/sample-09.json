@@ -1,0 +1,133 @@
+{
+  "schema_version": 1,
+  "sample": 9,
+  "task_id": "capture-catalog-description-specificity-09-09ad3cf4a2a6455da4af1233f9073726",
+  "model": "claude-haiku-4-5",
+  "turns": [
+    {
+      "turn": 1,
+      "system_prompt_sha256": "sha256:ef45f3c3f71075acb05a350d81a004dfd1329b4c7de813f8b4ae08ce49c8aff3",
+      "conversation": [
+        {
+          "role": "user",
+          "content_sha256": "sha256:95dcd324d5576fa23da52a10011b1410f60bd5a5a13475e8345742043fcf8a3d"
+        }
+      ],
+      "tool_names": [
+        "list_files",
+        "read_file",
+        "write_file"
+      ],
+      "stop_reason": "tool_use",
+      "tool_uses": [
+        {
+          "tool_use_id": "toolu_01H1KEgSs8PPUW3ufcwphnPG",
+          "tool_name": "read_file",
+          "input_json": "{\u0022path\u0022:\u0022index.md\u0022}"
+        },
+        {
+          "tool_use_id": "toolu_01LpXtLQ2SSCX2pddQt9KWdb",
+          "tool_name": "list_files",
+          "input_json": "{\u0022path\u0022:\u0022pages\u0022}"
+        }
+      ],
+      "assistant_text": "I\u0027ll start by exploring the wiki structure to understand what currently exists, then integrate this source about backpressure in streaming pipelines.",
+      "input_tokens": 5468,
+      "output_tokens": 120
+    },
+    {
+      "turn": 2,
+      "system_prompt_sha256": "sha256:ef45f3c3f71075acb05a350d81a004dfd1329b4c7de813f8b4ae08ce49c8aff3",
+      "conversation": [
+        {
+          "role": "user",
+          "content_sha256": "sha256:95dcd324d5576fa23da52a10011b1410f60bd5a5a13475e8345742043fcf8a3d"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:1fd1fa952edc5f247c411a0a14749f2bbcb20c3081fa345ea871bc58f5e291f7"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:d16f1822f902cfa5ec27a611225d5913db3442aa7c4b659bf6e3c455929d43bb"
+        }
+      ],
+      "tool_names": [
+        "list_files",
+        "read_file",
+        "write_file"
+      ],
+      "stop_reason": "tool_use",
+      "tool_uses": [
+        {
+          "tool_use_id": "toolu_018jWDgD2JPz6mmkfQ58VjdJ",
+          "tool_name": "write_file",
+          "input_json": "{\u0022path\u0022:\u0022pages/concepts/backpressure.md\u0022,\u0022content\u0022:\u0022---\\ntype: Concept\\ntitle: Backpressure\\ndescription: The mechanism by which a slow downstream consumer signals an upstream producer to reduce its emission rate in streaming pipelines, preventing unbounded buffer growth.\\ntimestamp: 2026-07-14T00:00:00Z\\ntags:\\n  - concept/Backpressure\\n  - pattern/Flow-Control\\n  - tech/Streaming\\nconfidence: medium\\nconfidence_reason: \\u0022Single authoritative source describing the concept and implementation patterns clearly.\\u0022\\n---\\n\\n## Overview\\n\\nBackpressure in a streaming pipeline is the mechanism by which a slow downstream consumer signals an upstream producer to reduce its emission rate, rather than letting an unbounded buffer grow until the process runs out of memory.\\n\\nThis mechanism is crucial in streaming systems to maintain stability and prevent resource exhaustion when data arrives faster than it can be processed downstream.\\n\\n## Common Implementations\\n\\n### Bounded Queues\\n\\nThe producer writes to a queue with a fixed size limit. Once the queue is full, the producer blocks until the consumer processes items and frees up space. This simple approach naturally prevents unbounded growth at the cost of blocking the producer.\\n\\n### Credit-Based Flow Control\\n\\nIn credit-based models, the consumer explicitly grants the producer permission to send N more items. The producer tracks available \\u0022credits\\u0022 and must wait for the consumer to return more credits before continuing to emit. This approach decouples producer and consumer timing while maintaining strict control over queue depth.\\n\\n### Reactive-Pull Models\\n\\nRather than the producer pushing items to the consumer, the consumer requests items on its own schedule. The producer only emits when explicitly requested, making it impossible for the consumer to be overwhelmed. This is the model used by reactive systems and pull-based architectures.\\n\\n## Benefits\\n\\n- Prevents memory exhaustion from unbounded buffers\\n- Maintains system stability under bursty or uneven load\\n- Allows graceful degradation rather than cascading failure\\n- Enables fair resource allocation between producers and consumers\\n\\n## Citations\\n\\n[^1]: Source material on backpressure mechanisms in streaming pipelines.\\n\u0022}"
+        },
+        {
+          "tool_use_id": "toolu_01HDswpBR2dSNdfmVEFKmoD2",
+          "tool_name": "write_file",
+          "input_json": "{\u0022path\u0022:\u0022index.md\u0022,\u0022content\u0022:\u0022---\\nokf_version: \\u00220.1\\u0022\\n---\\n\\n# Wiki Index\\n\\n## Concepts\\n\\n- [Backpressure](pages/concepts/backpressure.md) \\u2014 Mechanism f\\u00FCr die Kommunikation zwischen langsamen Consumer und Producer zur Reduzierung der Emissionsrate in Streaming-Pipelines \\u2014 1 Quelle\\n\u0022}"
+        },
+        {
+          "tool_use_id": "toolu_01MmiborsxzyDSyHe22qMXqF",
+          "tool_name": "write_file",
+          "input_json": "{\u0022path\u0022:\u0022log.md\u0022,\u0022content\u0022:\u0022## [2026-07-14] ingest | created backpressure concept page\\n\\nCreated [[backpressure]] to document the backpressure mechanism in streaming pipelines, covering bounded queues, credit-based flow control, and reactive-pull models. Task: [[tasks/capture-catalog-description-specificity-09-09ad3cf4a2a6455da4af1233f9073726.md]].\\n\u0022}"
+        }
+      ],
+      "assistant_text": "The wiki is empty. I need to create the necessary directory structure and pages from scratch. Based on the source content, I need to:\n\n1. Create a page about **Backpressure** as a concept (since it\u0027s an abstract pattern/mechanism)\n2. Update the index to reference this new page\n3. Add an entry to the log\n\nLet me create the necessary structure:",
+      "input_tokens": 5665,
+      "output_tokens": 904
+    },
+    {
+      "turn": 3,
+      "system_prompt_sha256": "sha256:ef45f3c3f71075acb05a350d81a004dfd1329b4c7de813f8b4ae08ce49c8aff3",
+      "conversation": [
+        {
+          "role": "user",
+          "content_sha256": "sha256:95dcd324d5576fa23da52a10011b1410f60bd5a5a13475e8345742043fcf8a3d"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:1fd1fa952edc5f247c411a0a14749f2bbcb20c3081fa345ea871bc58f5e291f7"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:d16f1822f902cfa5ec27a611225d5913db3442aa7c4b659bf6e3c455929d43bb"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:2e71242bb2567d41c0569f53115e871564941d15ad373de4016db6b257129d71"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:7b40d0afccec697f60a86a3b9ffcc0d318c8c09032ee8594728016f4ae23c3ce"
+        }
+      ],
+      "tool_names": [
+        "list_files",
+        "read_file",
+        "write_file"
+      ],
+      "stop_reason": "end_turn",
+      "tool_uses": [],
+      "assistant_text": "## Summary\n\nI\u0027ve successfully integrated the backpressure source into the wiki:\n\n**Page Created:**\n- **\u0060pages/concepts/backpressure.md\u0060** \u2014 A new Concept page documenting backpressure as a streaming pipeline mechanism. The page covers:\n  - An overview explaining what backpressure is and why it matters\n  - Three common implementation patterns: bounded queues, credit-based flow control, and reactive-pull models\n  - Benefits including memory safety, stability, and fair resource allocation\n  - Proper frontmatter with confidence level \u0060medium\u0060 (single authoritative source, clear description)\n\n**Catalog Updated:**\n- Added the new page to \u0060index.md\u0060 under a \u0022Concepts\u0022 section with a concise German description and source count marker\n\n**Log Updated:**\n- Appended an entry to \u0060log.md\u0060 documenting the creation and linking to this task\n\n**Editorial Judgments:**\n- Classified this as a **Concept** rather than a Technology or Tool because backpressure is an abstract pattern/mechanism rather than a specific platform or tool\n- Used tags \u0060concept/Backpressure\u0060, \u0060pattern/Flow-Control\u0060, and \u0060tech/Streaming\u0060 to connect it to both abstract concepts and technical domains\n- Expanded the source\u0027s description into structured sections (overview, implementations, benefits) for better wiki usability\n- Set confidence to \u0060medium\u0060 since the source is authoritative and clear but represents a single source\n\nNo contradictions or uncertainties were found. All actions were within the allowed write scope.",
+      "input_tokens": 6679,
+      "output_tokens": 343
+    }
+  ],
+  "judge_verdicts": [
+    {
+      "judge_prompt_sha256": "sha256:a21929f0519c8b5ef9e8aee6b488fba54b0e30221137a8e1d9bfe2d25f4d85d2",
+      "verdict": "PASS",
+      "rationale": "VERDICT: PASS\nThe description accurately captures the core mechanism (slow consumer signaling producer to reduce rate) and specific context (streaming pipelines, preventing buffer growth) directly supported by the article\u0027s content."
+    }
+  ],
+  "outcome": {
+    "status": "completed",
+    "checks": {
+      "completed": true,
+      "judge_verdict_pass": true
+    }
+  }
+}

@@ -1,0 +1,133 @@
+{
+  "schema_version": 1,
+  "sample": 7,
+  "task_id": "capture-log-paragraph-specificity-07-a89e80c2fc50491ca0ba7c8633c434f2",
+  "model": "claude-haiku-4-5",
+  "turns": [
+    {
+      "turn": 1,
+      "system_prompt_sha256": "sha256:ef45f3c3f71075acb05a350d81a004dfd1329b4c7de813f8b4ae08ce49c8aff3",
+      "conversation": [
+        {
+          "role": "user",
+          "content_sha256": "sha256:bb439b2da5e51ff61b8514b06f8419872037504f0507209547caab2936428ecf"
+        }
+      ],
+      "tool_names": [
+        "list_files",
+        "read_file",
+        "write_file"
+      ],
+      "stop_reason": "tool_use",
+      "tool_uses": [
+        {
+          "tool_use_id": "toolu_01GM6jSGCyQHH1Kx9VBWSb9c",
+          "tool_name": "read_file",
+          "input_json": "{\u0022path\u0022:\u0022index.md\u0022}"
+        },
+        {
+          "tool_use_id": "toolu_01FBxGHY6S5qztkJ7Zwqkrv8",
+          "tool_name": "list_files",
+          "input_json": "{\u0022path\u0022:\u0022pages\u0022}"
+        }
+      ],
+      "assistant_text": "I\u0027ll start by exploring the wiki state to understand what already exists, then integrate this source about Write-ahead logging.",
+      "input_tokens": 5471,
+      "output_tokens": 116
+    },
+    {
+      "turn": 2,
+      "system_prompt_sha256": "sha256:ef45f3c3f71075acb05a350d81a004dfd1329b4c7de813f8b4ae08ce49c8aff3",
+      "conversation": [
+        {
+          "role": "user",
+          "content_sha256": "sha256:bb439b2da5e51ff61b8514b06f8419872037504f0507209547caab2936428ecf"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:e59d6cb609162781e5b79737895c89d1788fe95492beccdc3e038898e87d6298"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:d80c790010b85b6b0e88852a612b2cd9c210b9f3a62f5c6e5619eb3b92dd9aae"
+        }
+      ],
+      "tool_names": [
+        "list_files",
+        "read_file",
+        "write_file"
+      ],
+      "stop_reason": "tool_use",
+      "tool_uses": [
+        {
+          "tool_use_id": "toolu_01Q8P7A2GLRvjs9XZq18inkT",
+          "tool_name": "write_file",
+          "input_json": "{\u0022path\u0022:\u0022pages/concepts/write-ahead-logging.md\u0022,\u0022content\u0022:\u0022---\\ntype: Concept\\ntitle: Write-Ahead Logging\\ndescription: A durability technique that appends changes to a sequential log before applying them to data pages, enabling crash recovery through log replay.\\ntimestamp: 2025-07-14T00:00:00Z\\ntags:\\n  - concept/Database-Durability\\n  - pattern/Write-Ahead-Logging\\nconfidence: medium\\nconfidence_reason: \\u0022Single authoritative source describing a well-established database technique; no corroboration yet.\\u0022\\n---\\n\\n## Overview\\n\\nWrite-ahead logging (WAL) is a fundamental durability technique in database engines. The core principle is straightforward: every change to the database is **appended to a sequential log file before being applied to the main data pages**.\\n\\n## How It Works\\n\\nThe WAL protocol follows this sequence:\\n\\n1. A transaction issues a change (insert, update, delete).\\n2. The database engine writes this change to the log file and flushes it to disk.\\n3. Only after the log write is confirmed does the engine apply the change to the main data pages.\\n4. If a crash occurs between the log write and the page write, the database can recover by replaying the log from the last checkpoint.\\n\\n## Trade-offs\\n\\n**Write Amplification:**\\nWAL introduces a small overhead: each change is written twice \\u2014 once to the log file, and once eventually to the data page. This is the cost of durability.\\n\\n**Durability Without Synchronous Flushes:**\\nThe key benefit is that durability is achieved without requiring every transaction to force a full-page flush to disk. This is much more efficient than naive approaches that synchronously flush entire pages on every write. The log, being sequential, is optimised for fast disk I/O.\\n\\n## Recovery\\n\\nAfter a crash, the recovery process:\\n\\n1. Identifies the last completed checkpoint.\\n2. Replays all log entries after that checkpoint.\\n3. Reapplies the changes to data pages, restoring the database to its last consistent state.\\n\\nThis replay mechanism ensures that no committed transaction is lost, even if it had not yet reached the data pages at crash time.\\n\\n## Citations\\n\\n[^1]: eval://log-paragraph-specificity/sample-07 \\u2014 Foundational description of WAL mechanism and trade-offs.\\n\u0022}"
+        },
+        {
+          "tool_use_id": "toolu_018zPQgBQGRpDBxSxMNszVf1",
+          "tool_name": "write_file",
+          "input_json": "{\u0022path\u0022:\u0022index.md\u0022,\u0022content\u0022:\u0022---\\nokf_version: \\u00220.1\\u0022\\n---\\n\\n# Wiki Index\\n\\n## Concepts\\n\\n- [Write-Ahead Logging](pages/concepts/write-ahead-logging.md) \\u2014 Durability-Technik, bei der \\u00C4nderungen vor ihrer Anwendung auf Datenseiten in ein Protokoll geschrieben werden \\u2014 1 Quelle\\n\u0022}"
+        },
+        {
+          "tool_use_id": "toolu_01MK58zMx3ojM1nyw1PrWYnL",
+          "tool_name": "write_file",
+          "input_json": "{\u0022path\u0022:\u0022log.md\u0022,\u0022content\u0022:\u0022## [2025-07-14] ingest | created write-ahead-logging concept\\n\\nCreated [[write-ahead-logging]] as a new Concept page covering the fundamental database durability technique. The source provides a clear explanation of how WAL works, the write-amplification trade-off, and recovery semantics. Task: [[tasks/capture-log-paragraph-specificity-07-a89e80c2fc50491ca0ba7c8633c434f2]].\\n\u0022}"
+        }
+      ],
+      "assistant_text": "The wiki is completely empty. I need to create the folder structure and the first page. Based on the source content, I\u0027ll create:\n\n1. A **Concept** page for \u0022Write-ahead logging\u0022 (WAL) \u2014 this is an abstract design pattern/technique used in database engines\n2. Update \u0060index.md\u0060 to list it\n3. Add an entry to \u0060log.md\u0060\n\nLet me create the WAL concept page:",
+      "input_tokens": 5664,
+      "output_tokens": 988
+    },
+    {
+      "turn": 3,
+      "system_prompt_sha256": "sha256:ef45f3c3f71075acb05a350d81a004dfd1329b4c7de813f8b4ae08ce49c8aff3",
+      "conversation": [
+        {
+          "role": "user",
+          "content_sha256": "sha256:bb439b2da5e51ff61b8514b06f8419872037504f0507209547caab2936428ecf"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:e59d6cb609162781e5b79737895c89d1788fe95492beccdc3e038898e87d6298"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:d80c790010b85b6b0e88852a612b2cd9c210b9f3a62f5c6e5619eb3b92dd9aae"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:0ba126569e56fd84633021b1585f8a70b511c9cdf6b7386c791e44f6bc340487"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:80dce950682912819813e36d0a36d971bc8898e471c72bfa6e225effc7f6c610"
+        }
+      ],
+      "tool_names": [
+        "list_files",
+        "read_file",
+        "write_file"
+      ],
+      "stop_reason": "end_turn",
+      "tool_uses": [],
+      "assistant_text": "## Summary\n\nI have successfully integrated the source into the wiki. Here\u0027s what was done:\n\n### Pages Created\n\n1. **[[write-ahead-logging]]** (\u0060pages/concepts/write-ahead-logging.md\u0060)\n   - **Type:** Concept\n   - **Reason:** Write-ahead logging is an abstract database design pattern/technique, not a specific product or technology, so Concept is the correct page type.\n   - **Content:** Expanded the source\u0027s compact description into a structured page covering:\n     - Core mechanism (append to log before applying to pages)\n     - Detailed HOW IT WORKS section with the sequential steps\n     - Trade-offs section explicitly addressing write amplification and durability benefits\n     - Recovery process description\n   - **Confidence:** Medium (single source, well-established technique, no contradictions; corroboration would raise it to high)\n\n### Catalog \u0026 Log Updates\n\n- **index.md**: Created with OKF v0.1 declaration and initial catalog entry in German\n- **log.md**: Appended one entry documenting the creation, with task reference\n\n### No Supersessions or Contradictions\n\nThis was a green-field ingest \u2014 the wiki had no existing content, so no updates or supersessions were needed.\n\n### Quality Checks\n\n- All frontmatter fields are populated (type, title, description, timestamp, tags, confidence, confidence_reason)\n- Tags follow the taxonomy (concept/Database-Durability for category, pattern/Write-Ahead-Logging for specificity)\n- No prompt injection attempts detected in the source\n- The source content is factual (durability technique) and has been expanded into a proper wiki page, not merely summarised",
+      "input_tokens": 6763,
+      "output_tokens": 380
+    }
+  ],
+  "judge_verdicts": [
+    {
+      "judge_prompt_sha256": "sha256:2adfc416306348ce7de0d17ebbb3299437bb83cb822c8797bab1e47baeaf799f",
+      "verdict": "PASS",
+      "rationale": "VERDICT: PASS\n\nThe paragraph accurately names the created page ([[write-ahead-logging]]), specifies its type (Concept page), and correctly describes three substantive sections actually present in the file: how WAL works, the write-amplification trade-off, and recovery semantics."
+    }
+  ],
+  "outcome": {
+    "status": "completed",
+    "checks": {
+      "completed": true,
+      "judge_verdict_pass": true
+    }
+  }
+}

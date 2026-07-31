@@ -18,15 +18,11 @@ namespace Grimoire.EvalRunner.Scoring;
 /// verdict is replayed verbatim thereafter (research.md R6 precedent) — never re-invoked
 /// at replay, so recorded evaluation runs stay fully hermetic.
 ///
-/// NOT YET WIRED into a <see cref="Grimoire.EvalRunner.Scenarios.ScenarioDefinition"/>/
-/// capture-pipeline flow — see this feature's implementation report for what remains:
-/// a scenario definition that carries a sampled ingest/query run's actual touched-page
-/// diff alongside the log.md paragraph it produced, a capture-time call to
-/// <see cref="JudgeAsync"/> analogous to <c>CapturePipeline</c>'s existing
-/// steering-adoption judge call, and a new <c>ScorerId</c> case reading the recorded
-/// verdict at replay (mirrors <c>DeterministicScorers.SteeringAdoption</c>'s shape for
-/// the deterministic half of that same pattern). Deferred pending T042's live
-/// re-recording session (out of this story's scope — no API key available here).
+/// Wired (T061) into <see cref="Grimoire.EvalRunner.Scenarios.IngestScenarioDefinitions.LogParagraphSpecificity"/>
+/// via <c>CapturePipeline.InvokeLogParagraphJudgeAsync</c>, which judges the most
+/// recently appended <c>log.md</c> heading/paragraph against the sample's touched pages;
+/// <c>DeterministicScorers</c>' shared <c>JudgeVerdictGate</c> case reads the recorded
+/// verdict at replay (same shape as <c>SteeringAdoption</c>'s deterministic half).
 /// </summary>
 public static class LogParagraphSpecificityScorer
 {

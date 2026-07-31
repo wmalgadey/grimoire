@@ -83,6 +83,8 @@ public sealed class EvalWorkspace : IDisposable
 
     public string IndexContent() => File.Exists(IndexPath) ? File.ReadAllText(IndexPath) : string.Empty;
 
+    public string LogContent() => File.Exists(LogPath) ? File.ReadAllText(LogPath) : string.Empty;
+
     public void Dispose()
     {
         try

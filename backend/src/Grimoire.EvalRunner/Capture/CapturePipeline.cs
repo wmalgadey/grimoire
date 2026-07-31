@@ -143,9 +143,7 @@ public sealed class CapturePipeline
                     }
 
                     var judge = _judgeClientFactory(provider);
-                    var verdict = await JudgeScoring.JudgeAsync(
-                        judge, spec.UserPrompt ?? string.Empty, artifact?.Narrative ?? string.Empty,
-                        workspace.PageFiles(), cancellationToken);
+                    var verdict = await InvokeJudgeAsync(scenario, judge, spec, artifact, workspace, cancellationToken);
                     judgeVerdicts = [verdict];
                     judgeVerdictValue = verdict.Verdict;
                 }
@@ -222,6 +220,68 @@ public sealed class CapturePipeline
                 // Best-effort scratch cleanup.
             }
         }
+    }
+
+    /// <summary>
+    /// Dispatches to the judge-prompt builder for <paramref name="scenario"/>'s
+    /// <c>ScorerId</c> (014-wiki-storage-restructure T061: generalized from the
+    /// steering-adoption-only call this method replaces, so SC-005/SC-007's scorers can
+    /// share the same capture-time judge-invocation mechanism).
+    /// </summary>
+    private static Task<JudgeVerdict> InvokeJudgeAsync(
+        ScenarioDefinition scenario,
+        IModelClient judge,
+        SampleSpec spec,
+        TaskArtifactDocument? artifact,
+        EvalWorkspace workspace,
+        CancellationToken cancellationToken)
+        => scenario.ScorerId switch
+        {
+            "steering-adoption" => JudgeScoring.JudgeAsync(
+                judge, spec.UserPrompt ?? string.Empty, artifact?.Narrative ?? string.Empty,
+                workspace.PageFiles(), cancellationToken),
+            "log-paragraph-specificity" => InvokeLogParagraphJudgeAsync(judge, workspace, cancellationToken),
+            "catalog-description-specificity" => InvokeCatalogDescriptionJudgeAsync(judge, workspace, cancellationToken),
+            _ => throw new InvalidOperationException(
+                $"Scenario '{scenario.Id}' is judge-scored but scorer '{scenario.ScorerId}' has no judge-invocation mapping."),
+        };
+
+    /// <summary>
+    /// SC-005: judges the most recently appended <c>log.md</c> entry — the one this
+    /// sample's run produced, since every fixture behind this scorer starts with an empty
+    /// log.md so the run's own entry is unambiguously the last (and only) heading.
+    /// </summary>
+    private static Task<JudgeVerdict> InvokeLogParagraphJudgeAsync(
+        IModelClient judge, EvalWorkspace workspace, CancellationToken cancellationToken)
+    {
+        var logContent = workspace.LogContent();
+        var headingIndices = LogParagraphSpecificityScorer.FindHeadingLineIndices(logContent);
+        var (heading, paragraph) = headingIndices.Count == 0
+            ? (string.Empty, string.Empty)
+            : LogParagraphSpecificityScorer.ExtractEntry(logContent, headingIndices[^1]);
+
+        return LogParagraphSpecificityScorer.JudgeAsync(judge, heading, paragraph, workspace.PageFiles(), cancellationToken);
+    }
+
+    /// <summary>
+    /// SC-007: judges the most recently added <c>index.md</c> catalog line — same
+    /// last-entry convention as <see cref="InvokeLogParagraphJudgeAsync"/> — against the
+    /// actual content of the article it links to.
+    /// </summary>
+    private static Task<JudgeVerdict> InvokeCatalogDescriptionJudgeAsync(
+        IModelClient judge, EvalWorkspace workspace, CancellationToken cancellationToken)
+    {
+        var indexContent = workspace.IndexContent();
+        var lineIndices = CatalogDescriptionSpecificityScorer.FindCatalogLineIndices(indexContent);
+        var lines = indexContent.Replace("\r\n", "\n", StringComparison.Ordinal).Split('\n');
+        var (title, path, description, _) = lineIndices.Count == 0
+            ? (string.Empty, string.Empty, string.Empty, string.Empty)
+            : CatalogDescriptionSpecificityScorer.ExtractEntry(lines[lineIndices[^1]]);
+
+        var articlePath = string.IsNullOrEmpty(path) ? null : Path.Combine(workspace.WikiRoot, path);
+        var articleContent = articlePath is not null && File.Exists(articlePath) ? File.ReadAllText(articlePath) : string.Empty;
+
+        return CatalogDescriptionSpecificityScorer.JudgeAsync(judge, title, description, articleContent, cancellationToken);
     }
 
     private static string Truncate(string text)

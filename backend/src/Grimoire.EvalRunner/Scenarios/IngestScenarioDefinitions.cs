@@ -184,6 +184,41 @@ public static class IngestScenarioDefinitions
         ScorerId: "steering-adoption",
         JudgeScored: true);
 
+    public static readonly ScenarioDefinition LogParagraphSpecificity = new(
+        Id: "log-paragraph-specificity",
+        FixtureName: "empty-topic",
+        Threshold: 0.90,
+        RequiresNoOutOfScopeWrites: false,
+        FixedSamples: [],
+        RepeatedSourceContent:
+            "Write-ahead logging (WAL) in a database engine appends every change to a " +
+            "sequential log file before applying it to the main data pages, so a crash between " +
+            "the log write and the page write can always be recovered by replaying the log from " +
+            "the last checkpoint. This trades a small amount of write amplification (the change is " +
+            "written twice: once to the log, once eventually to the page) for durability without " +
+            "requiring every transaction to force a full-page flush to disk.",
+        SystemPromptAppendix: null,
+        ScorerId: "log-paragraph-specificity",
+        JudgeScored: true);
+
+    public static readonly ScenarioDefinition CatalogDescriptionSpecificity = new(
+        Id: "catalog-description-specificity",
+        FixtureName: "empty-topic",
+        Threshold: 0.90,
+        RequiresNoOutOfScopeWrites: false,
+        FixedSamples: [],
+        RepeatedSourceContent:
+            "Backpressure in a streaming pipeline is the mechanism by which a slow downstream " +
+            "consumer signals an upstream producer to reduce its emission rate, rather than letting " +
+            "an unbounded buffer grow until the process runs out of memory. Common implementations " +
+            "include bounded queues that block the producer once full, credit-based flow control " +
+            "where the consumer explicitly grants the producer permission to send N more items, and " +
+            "reactive-pull models where the consumer requests items on its own schedule instead of " +
+            "the producer pushing them.",
+        SystemPromptAppendix: null,
+        ScorerId: "catalog-description-specificity",
+        JudgeScored: true);
+
     public static readonly IReadOnlyList<ScenarioDefinition> All =
     [
         UpdateOverDuplicate,
@@ -192,6 +227,8 @@ public static class IngestScenarioDefinitions
         InstructionChangeAdoption,
         AdversarialSource,
         SteeringAdoption,
+        LogParagraphSpecificity,
+        CatalogDescriptionSpecificity,
     ];
 
     public static ScenarioDefinition? Find(string scenarioId)
