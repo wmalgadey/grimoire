@@ -16,7 +16,18 @@ namespace Grimoire.AgentRuntime.Guardrails;
 /// <c>frontmatter_only_malformed_document</c> (the current on-disk content or the proposed
 /// content is not a well-formed two-delimiter frontmatter document), or
 /// <c>frontmatter_only_body_changed</c> (the content after the closing <c>---</c> differs
-/// between current and proposed).
+/// between current and proposed); or, since ADR-017 (014-wiki-storage-restructure), one of
+/// the <c>log.md</c> format-validation reasons also produced by
+/// <see cref="Coordination.SharedFileWriteGuard"/>: <c>log_entry_not_appended</c> (the
+/// proposed <c>log.md</c> content does not extend the current on-disk content
+/// byte-for-byte — the file must stay append-only, FR-011), <c>log_entry_malformed_heading</c>
+/// (the appended tail's first non-blank line does not match
+/// <c>^## \[\d{4}-\d{2}-\d{2}\] .+ \| .+$</c>), or <c>log_entry_missing_paragraph</c> (a
+/// heading was appended with no following non-blank paragraph line); or, since ADR-017's
+/// US4 extension (014-wiki-storage-restructure), <c>catalog_entry_malformed</c> (a newly
+/// added <c>index.md</c> line starting with <c>- [</c> — present in the proposed content
+/// but absent, byte-for-byte, from the current content — does not match
+/// <c>^- \[.+\]\(.+\) — .+ — .+$</c>).
 /// </summary>
 public sealed record DeniedActionRecord(
     string Action,

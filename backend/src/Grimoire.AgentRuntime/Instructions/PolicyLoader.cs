@@ -155,9 +155,28 @@ public sealed class PolicyLoader
                     $"(expected \"{ReadWriteMode}\", \"{CreateOnlyMode}\", or \"{FrontmatterOnlyMode}\")."),
             };
 
-            writeRules.Add(new WriteRule(normalized, mode));
+            var excludePrefixes = (rule.ExcludePrefixes ?? [])
+                .Select(NormalizeExactPrefix)
+                .ToList();
+
+            writeRules.Add(new WriteRule(normalized, mode, excludePrefixes));
         }
         return writeRules;
+    }
+
+    /// <summary>
+    /// Resolves an <c>excludePrefixes</c> entry (014-wiki-storage-restructure, R3
+    /// correction) — always exact-match, anchored at <see cref="_wikiRoot"/> the same way
+    /// <see cref="NormalizeRulePrefix"/> resolves a plain (non-directory-style) prefix,
+    /// but without the <c>"."</c> root-prefix special case, which is meaningless here.
+    /// </summary>
+    private string NormalizeExactPrefix(string rawPrefix)
+    {
+        var platformPrefix = rawPrefix.Replace(Path.AltDirectorySeparatorChar, Path.DirectorySeparatorChar);
+        var absolute = Path.IsPathRooted(platformPrefix)
+            ? platformPrefix
+            : Path.Combine(_wikiRoot, platformPrefix);
+        return Path.GetFullPath(absolute);
     }
 
     private string? NormalizeRulePrefix(PolicyRuleSchema rule)
@@ -167,6 +186,16 @@ public sealed class PolicyLoader
 
         var platformPathPrefix = rule.PathPrefix
             .Replace(Path.AltDirectorySeparatorChar, Path.DirectorySeparatorChar);
+
+        // "." denotes the wiki root itself (014-wiki-storage-restructure, R3), now that
+        // articles live directly under it with no "pages/" wrapper. Treated directory-style
+        // — matching the wiki root and everything beneath it — the same way a trailing-slash
+        // prefix is treated below, by ensuring the normalized value ends with the directory
+        // separator so SafetyPolicy.PrefixMatches takes its StartsWith (directory) branch.
+        if (platformPathPrefix == ".")
+        {
+            return Path.GetFullPath(_wikiRoot).TrimEnd(Path.DirectorySeparatorChar) + Path.DirectorySeparatorChar;
+        }
 
         // Resolve relative prefix against the wiki root (ADR-009).
         var absolute = Path.IsPathRooted(platformPathPrefix)
@@ -214,6 +243,16 @@ public sealed class PolicyLoader
         /// fail-closed load error — never silently defaulted. Ignored for read rules.
         /// </summary>
         public string? Mode { get; set; }
+
+        /// <summary>
+        /// Optional exact-match exclusions from this rule's prefix match
+        /// (014-wiki-storage-restructure, R3 correction) — e.g. a directory-style
+        /// <c>"."</c> write rule excluding <c>"index.md"</c>/<c>"log.md"</c> so an agent
+        /// whose policy grants no separate rule for those two files never matches them via
+        /// the catch-all, preserving <c>"out_of_scope"</c> as their denial reason. Ignored
+        /// for read rules (matching them via a catch-all read rule is harmless).
+        /// </summary>
+        public IReadOnlyList<string>? ExcludePrefixes { get; set; }
     }
 }
 

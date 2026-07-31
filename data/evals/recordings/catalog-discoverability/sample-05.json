@@ -1,16 +1,16 @@
 {
   "schema_version": 1,
   "sample": 5,
-  "task_id": "capture-catalog-discoverability-05-32d138067bae439a923153687edf164e",
+  "task_id": "capture-catalog-discoverability-05-e658230753ae477c9895ce850f41ae7b",
   "model": "claude-haiku-4-5",
   "turns": [
     {
       "turn": 1,
-      "system_prompt_sha256": "sha256:d58c1db8446cd6ae5232c41ebf8698c211cd1320145cf6219e76a37edf2f5f0e",
+      "system_prompt_sha256": "sha256:ef45f3c3f71075acb05a350d81a004dfd1329b4c7de813f8b4ae08ce49c8aff3",
       "conversation": [
         {
           "role": "user",
-          "content_sha256": "sha256:cd331128cb365f4fb0a7a2fef65bd59c7518457be0ed3a9c8a83aa58fe632151"
+          "content_sha256": "sha256:9b023105643d4d7f1d1775cb5a37756688843abf44e898885f9e18035866bda8"
         }
       ],
       "tool_names": [
@@ -21,35 +21,35 @@
       "stop_reason": "tool_use",
       "tool_uses": [
         {
-          "tool_use_id": "toolu_01Ms2Jnty2YdNHnvNEwkVE1Z",
+          "tool_use_id": "toolu_01H6X4EZf5Xh31K5zJngSLBF",
           "tool_name": "read_file",
           "input_json": "{\u0022path\u0022:\u0022index.md\u0022}"
         },
         {
-          "tool_use_id": "toolu_01FLMPsF72kE5d4dmBSw5iK4",
+          "tool_use_id": "toolu_01LL5m34c8emXZhNABQMppCX",
           "tool_name": "list_files",
           "input_json": "{\u0022path\u0022:\u0022pages\u0022}"
         }
       ],
-      "assistant_text": "I\u0027ll start by exploring the wiki to understand its current state and then integrate this source about evaluation harnesses.",
-      "input_tokens": 4982,
+      "assistant_text": "I\u0027ll start by exploring the wiki structure to understand what\u0027s currently there, then integrate this source appropriately.",
+      "input_tokens": 5460,
       "output_tokens": 114
     },
     {
       "turn": 2,
-      "system_prompt_sha256": "sha256:d58c1db8446cd6ae5232c41ebf8698c211cd1320145cf6219e76a37edf2f5f0e",
+      "system_prompt_sha256": "sha256:ef45f3c3f71075acb05a350d81a004dfd1329b4c7de813f8b4ae08ce49c8aff3",
       "conversation": [
         {
           "role": "user",
-          "content_sha256": "sha256:cd331128cb365f4fb0a7a2fef65bd59c7518457be0ed3a9c8a83aa58fe632151"
+          "content_sha256": "sha256:9b023105643d4d7f1d1775cb5a37756688843abf44e898885f9e18035866bda8"
         },
         {
           "role": "assistant",
-          "content_sha256": "sha256:e2ccfcd4fc519b613c45e4ee38a7bd636626107c8fe24d73a36feb306fd4abfb"
+          "content_sha256": "sha256:1d58b69d92cb822452b784148b1fc81611919ee438b54ef72e30ca2fd032b6fa"
         },
         {
           "role": "user",
-          "content_sha256": "sha256:88a0ddad2ec8de8c2684f2213e88812d68e6eb54b57a5fb7fc138c1e283fdff4"
+          "content_sha256": "sha256:7c4fbe74901ad25dd1479b3631f24cb73f18a740992c0a8a1f1d3ed0fd865292"
         }
       ],
       "tool_names": [
@@ -60,38 +60,43 @@
       "stop_reason": "tool_use",
       "tool_uses": [
         {
-          "tool_use_id": "toolu_01KxgBXGkPnb7Xfhx5Y1Eg6p",
-          "tool_name": "read_file",
-          "input_json": "{\u0022path\u0022:\u0022log.md\u0022}"
+          "tool_use_id": "toolu_01HsCYR6jjzYCTRPQbsXtfpZ",
+          "tool_name": "write_file",
+          "input_json": "{\u0022path\u0022:\u0022pages/concepts/evaluation-harnesses.md\u0022,\u0022content\u0022:\u0022---\\ntype: Concept\\ntitle: Evaluation Harnesses\\ndescription: Automated frameworks for testing systems against fixed scenarios with defined scoring thresholds and pass-rate gating.\\ntimestamp: 2026-01-20T00:00:00Z\\ntags:\\n  - concept/Testing\\n  - concept/AI-Safety\\n  - tech/LLM\\n  - pattern/Validation\\nconfidence: medium\\nconfidence_reason: \\u0022Single source; solid definitional coverage, but no corroboration yet.\\u0022\\n---\\n\\nAn **evaluation harness** is an automated testing framework that validates a system (an agent, model, or pipeline) by running it against a fixed set of predefined scenarios and scoring its output against defined thresholds.\\n\\n## Key Characteristics\\n\\n- **Automation**: Rather than manual inspection of behaviour, harnesses execute scenarios programmatically and score results.\\n- **Scenario-based**: Tests are grounded in fixed, repeatable scenarios that the system must handle consistently.\\n- **Threshold gating**: A definition of done is tied to aggregate pass rate across runs, not individual run outcomes.\\n- **Multi-run sampling**: Multiple runs per scenario are executed to account for non-determinism inherent in LLM systems.\\n- **Separation of concerns**: Deterministic harness checks (correctness checks) are distinct from evaluation-style judgment scoring (semantic or heuristic judgments).\\n\\n## Purpose\\n\\nEvaluation harnesses are particularly valuable in LLM and agent development, where non-determinism means a single run may not be representative. By aggregating results across multiple samples and gating on threshold pass rates, harnesses provide statistical confidence in system behaviour rather than relying on spot-checks.\\n\\n## Citations\\n\\n[^1]: [[sources/catalog-discoverability-sample-05]]\\n\u0022}"
+        },
+        {
+          "tool_use_id": "toolu_019KJALi12Qfa74Kc6czghQm",
+          "tool_name": "write_file",
+          "input_json": "{\u0022path\u0022:\u0022pages/sources/catalog-discoverability-sample-05.md\u0022,\u0022content\u0022:\u0022---\\ntype: Source summary\\ntitle: Evaluation Harnesses Overview\\ndescription: Definition and key characteristics of evaluation harnesses for automated system validation.\\ntimestamp: 2026-01-20T00:00:00Z\\ntags:\\n  - source-type/synthesis\\n  - concept/Testing\\nconfidence: medium\\nconfidence_reason: \\u0022Single source; clear conceptual definition.\\u0022\\nresource: eval://catalog-discoverability/sample-05\\n---\\n\\n## Summary\\n\\nAn evaluation harness is a framework for automating the validation of a system (agent, model, or pipeline) against a fixed set of scenarios. Rather than manual inspection, harnesses execute programmatically and score output against defined thresholds.\\n\\n## Key Points\\n\\n- **Automated testing**: Replaces manual eyeballing of behaviour with programmatic scenario execution and scoring.\\n- **Fixed scenarios**: Tests run against a predefined, repeatable set of test cases.\\n- **Multi-run sampling**: Multiple runs per scenario account for LLM non-determinism.\\n- **Separated concerns**: Deterministic checks distinguish from evaluation-style judgment scoring.\\n- **Threshold gating**: System passes when aggregate pass rate meets a defined threshold, not when every individual run succeeds.\\n\\n## Citations\\n\\n[^1]: Source reference: eval://catalog-discoverability/sample-05\\n\u0022}"
         }
       ],
-      "assistant_text": "The wiki is empty, so I\u0027m creating it from scratch. Let me also check if log.md exists:",
-      "input_tokens": 5174,
-      "output_tokens": 79
+      "assistant_text": "The wiki is empty, so this is a fresh start. The source describes evaluation harnesses \u2014 a concept related to testing, validation, and LLM/agent evaluation. Let me create the appropriate pages.\n\nThe source content is primarily about:\n1. **Evaluation harnesses** as a concept/pattern in AI/ML testing\n2. Key characteristics: automation, scenario-based testing, scoring, multi-run sampling, handling non-determinism, gating on pass rates\n\nI\u0027ll create:\n1. A **Concept** page for \u0022evaluation-harnesses\u0022 (the core idea)\n2. A **Source summary** page capturing this specific source\n\nLet me first create the folder structure and pages:",
+      "input_tokens": 5651,
+      "output_tokens": 980
     },
     {
       "turn": 3,
-      "system_prompt_sha256": "sha256:d58c1db8446cd6ae5232c41ebf8698c211cd1320145cf6219e76a37edf2f5f0e",
+      "system_prompt_sha256": "sha256:ef45f3c3f71075acb05a350d81a004dfd1329b4c7de813f8b4ae08ce49c8aff3",
       "conversation": [
         {
           "role": "user",
-          "content_sha256": "sha256:cd331128cb365f4fb0a7a2fef65bd59c7518457be0ed3a9c8a83aa58fe632151"
+          "content_sha256": "sha256:9b023105643d4d7f1d1775cb5a37756688843abf44e898885f9e18035866bda8"
         },
         {
           "role": "assistant",
-          "content_sha256": "sha256:e2ccfcd4fc519b613c45e4ee38a7bd636626107c8fe24d73a36feb306fd4abfb"
+          "content_sha256": "sha256:1d58b69d92cb822452b784148b1fc81611919ee438b54ef72e30ca2fd032b6fa"
         },
         {
           "role": "user",
-          "content_sha256": "sha256:88a0ddad2ec8de8c2684f2213e88812d68e6eb54b57a5fb7fc138c1e283fdff4"
+          "content_sha256": "sha256:7c4fbe74901ad25dd1479b3631f24cb73f18a740992c0a8a1f1d3ed0fd865292"
         },
         {
           "role": "assistant",
-          "content_sha256": "sha256:d032ac418ddbc8a92feef9079a71efb876a9eecb2f4243196b7f5f55f9981bd5"
+          "content_sha256": "sha256:ff1bdcdcf251004c2a78b7aa593f8f6047d53f831ee1e987585e0abed27e8609"
         },
         {
           "role": "user",
-          "content_sha256": "sha256:2247e3fa7eccde36179c069e2ac86e43c2c684fcaba649eef824b5aca18e435b"
+          "content_sha256": "sha256:9161522919f7c8e02aa73f507c20dcd852683f8351420b369cfaa3f9cdd87bf9"
         }
       ],
       "tool_names": [
@@ -102,56 +107,104 @@
       "stop_reason": "tool_use",
       "tool_uses": [
         {
-          "tool_use_id": "toolu_01Ae7JwL4ME6kxNRfNgVsBhc",
+          "tool_use_id": "toolu_01SgKvZUfZC4kDZCMS4c6Wx9",
           "tool_name": "write_file",
-          "input_json": "{\u0022path\u0022:\u0022pages/concepts/evaluation-harness.md\u0022,\u0022content\u0022:\u0022---\\ntype: Concept\\ntitle: Evaluation Harness\\ndescription: A framework that automates system evaluation against fixed scenarios with statistical pass-rate gating.\\ntimestamp: 2025-07-14T00:00:00Z\\ntags:\\n  - concept/Testing\\n  - concept/Evaluation\\n  - concept/AI-Systems\\nconfidence: medium\\nconfidence_reason: \\u0022Single direct source; core properties clearly described. Practical framing evident but needs corroboration on best practices or adoption patterns.\\u0022\\n---\\n\\nAn **evaluation harness** is a framework that automates the testing and evaluation of a system\\u2014such as an agent, machine learning model, or data pipeline\\u2014by running it against a fixed set of predefined scenarios and scoring the output against established thresholds.\\n\\n## Key Characteristics\\n\\n**Non-determinism handling:** Harnesses typically sample multiple runs per scenario to account for LLM non-determinism and variability in model behavior, rather than relying on single-pass results.\\n\\n**Separated concerns:** They distinguish between:\\n- **Deterministic harness checks**: objective, rule-based validation (input format, presence of required fields, etc.)\\n- **Evaluation-style judgment scoring**: qualitative assessment that may involve heuristics or reference-model comparison\\n\\n**Pass-rate gating:** Rather than making a definition of done dependent on any single run or scenario, evaluation harnesses aggregate results across all runs and scenarios, then gate completion on an aggregate pass rate threshold. This shifts acceptance criteria from individual case inspection to statistical coverage.\\n\\n## Typical Workflow\\n\\n1. Define a fixed set of test scenarios with known or expected behaviors\\n2. Run the system multiple times against each scenario (sampling for non-determinism)\\n3. Collect outputs and apply both deterministic checks and judgment-based scoring\\n4. Aggregate scores and compare against a configured pass-rate threshold\\n5. Gate deployment or acceptance on whether the aggregate result meets the threshold\\n\\n## Motivation\\n\\nEvaluation harnesses address the challenge of manually validating system behavior at scale, especially for stochastic systems where single runs may not be representative. They enable:\\n- Automated regression testing for models and agents\\n- Reproducible, threshold-based acceptance criteria\\n- Statistical confidence in system quality across variable conditions\\n\u0022}"
-        },
-        {
-          "tool_use_id": "toolu_01TjihQoJuF8mV5boGCsv31F",
-          "tool_name": "write_file",
-          "input_json": "{\u0022path\u0022:\u0022index.md\u0022,\u0022content\u0022:\u0022---\\nokf_version: \\u00220.1\\u0022\\n---\\n\\n# Wiki Index\\n\\n## Concepts\\n\\n- [[concepts/evaluation-harness]] \\u2014 A framework that automates system evaluation against fixed scenarios with statistical pass-rate gating.\\n\u0022}"
-        },
-        {
-          "tool_use_id": "toolu_011hadv7C5XhkKdmGkjFcXtt",
-          "tool_name": "write_file",
-          "input_json": "{\u0022path\u0022:\u0022log.md\u0022,\u0022content\u0022:\u0022## 2025-07-14\\n\\n* **Ingest**: Created [[concepts/evaluation-harness]] from source description \\u2014 source: eval://catalog-discoverability/sample-05 | completed | task: capture-catalog-discoverability-05-32d138067bae439a923153687edf164e\\n\u0022}"
+          "input_json": "{\u0022path\u0022:\u0022index.md\u0022,\u0022content\u0022:\u0022---\\nokf_version: \\u00220.1\\u0022\\n---\\n\\n# Wiki Index\\n\\n## Concepts\\n\\n- [Evaluation Harnesses](pages/concepts/evaluation-harnesses.md) \\u2014 Automated frameworks for testing systems against fixed scenarios with defined scoring thresholds \\u2014 1 Quelle\\n\\n## Sources\\n\\n- [Evaluation Harnesses Overview](pages/sources/catalog-discoverability-sample-05.md) \\u2014 Definition and key characteristics of evaluation harnesses for automated system validation \\u2014 1 Quelle\\n\u0022}"
         }
       ],
-      "assistant_text": "Now I\u0027ll create the appropriate pages. The source describes evaluation harnesses, which is a concept in AI/ML systems testing and evaluation. This warrants:\n\n1. **A Concept page** for \u0022evaluation harness\u0022 \u2014 the core abstraction\n2. **Update to index.md** to add the new page and OKF version block\n3. **A log.md entry** to record this ingest\n\nLet me create these:",
-      "input_tokens": 5280,
-      "output_tokens": 898
+      "assistant_text": "Now I\u0027ll update the index to catalog these pages:",
+      "input_tokens": 6723,
+      "output_tokens": 198
     },
     {
       "turn": 4,
-      "system_prompt_sha256": "sha256:d58c1db8446cd6ae5232c41ebf8698c211cd1320145cf6219e76a37edf2f5f0e",
+      "system_prompt_sha256": "sha256:ef45f3c3f71075acb05a350d81a004dfd1329b4c7de813f8b4ae08ce49c8aff3",
       "conversation": [
         {
           "role": "user",
-          "content_sha256": "sha256:cd331128cb365f4fb0a7a2fef65bd59c7518457be0ed3a9c8a83aa58fe632151"
+          "content_sha256": "sha256:9b023105643d4d7f1d1775cb5a37756688843abf44e898885f9e18035866bda8"
         },
         {
           "role": "assistant",
-          "content_sha256": "sha256:e2ccfcd4fc519b613c45e4ee38a7bd636626107c8fe24d73a36feb306fd4abfb"
+          "content_sha256": "sha256:1d58b69d92cb822452b784148b1fc81611919ee438b54ef72e30ca2fd032b6fa"
         },
         {
           "role": "user",
-          "content_sha256": "sha256:88a0ddad2ec8de8c2684f2213e88812d68e6eb54b57a5fb7fc138c1e283fdff4"
+          "content_sha256": "sha256:7c4fbe74901ad25dd1479b3631f24cb73f18a740992c0a8a1f1d3ed0fd865292"
         },
         {
           "role": "assistant",
-          "content_sha256": "sha256:d032ac418ddbc8a92feef9079a71efb876a9eecb2f4243196b7f5f55f9981bd5"
+          "content_sha256": "sha256:ff1bdcdcf251004c2a78b7aa593f8f6047d53f831ee1e987585e0abed27e8609"
         },
         {
           "role": "user",
-          "content_sha256": "sha256:2247e3fa7eccde36179c069e2ac86e43c2c684fcaba649eef824b5aca18e435b"
+          "content_sha256": "sha256:9161522919f7c8e02aa73f507c20dcd852683f8351420b369cfaa3f9cdd87bf9"
         },
         {
           "role": "assistant",
-          "content_sha256": "sha256:41cc4384f71bcc037b1afbe3ef6b8dbd45021fe86a8ecdc602650d804049f97d"
+          "content_sha256": "sha256:5133388da55933796f01aa4269b33e3a12f6076fc877845c94d3a625c4670fbf"
         },
         {
           "role": "user",
-          "content_sha256": "sha256:de6743860e4fe58eee27a543d3c52904d194730f0d4b1d6ada79e45b5fa0f951"
+          "content_sha256": "sha256:d5689e90431232e4ac5e4ce7e5032667703b2d4e149a069ff124f0aa925a227f"
+        }
+      ],
+      "tool_names": [
+        "list_files",
+        "read_file",
+        "write_file"
+      ],
+      "stop_reason": "tool_use",
+      "tool_uses": [
+        {
+          "tool_use_id": "toolu_015K1NzVhGvxiTFJjKM6SCb8",
+          "tool_name": "write_file",
+          "input_json": "{\u0022path\u0022:\u0022log.md\u0022,\u0022content\u0022:\u0022## [2026-01-20] ingest | evaluation harnesses concept and source summary\\n\\nCreated two pages from the provided source: a **Concept** page at [[evaluation-harnesses]] defining evaluation harnesses as automated testing frameworks for systems with scenario-based validation and threshold gating, and a corresponding **Source summary** page at [[catalog-discoverability-sample-05]] capturing the source definition. Task: [[tasks/capture-catalog-discoverability-05-e658230753ae477c9895ce850f41ae7b]].\\n\u0022}"
+        }
+      ],
+      "assistant_text": "Finally, I\u0027ll add an entry to the log:",
+      "input_tokens": 6938,
+      "output_tokens": 203
+    },
+    {
+      "turn": 5,
+      "system_prompt_sha256": "sha256:ef45f3c3f71075acb05a350d81a004dfd1329b4c7de813f8b4ae08ce49c8aff3",
+      "conversation": [
+        {
+          "role": "user",
+          "content_sha256": "sha256:9b023105643d4d7f1d1775cb5a37756688843abf44e898885f9e18035866bda8"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:1d58b69d92cb822452b784148b1fc81611919ee438b54ef72e30ca2fd032b6fa"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:7c4fbe74901ad25dd1479b3631f24cb73f18a740992c0a8a1f1d3ed0fd865292"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:ff1bdcdcf251004c2a78b7aa593f8f6047d53f831ee1e987585e0abed27e8609"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:9161522919f7c8e02aa73f507c20dcd852683f8351420b369cfaa3f9cdd87bf9"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:5133388da55933796f01aa4269b33e3a12f6076fc877845c94d3a625c4670fbf"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:d5689e90431232e4ac5e4ce7e5032667703b2d4e149a069ff124f0aa925a227f"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:7434f08b770177d6ecad8620e56be1ea31b2847f692b4bae9f7c8c4db07558d8"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:86ec7bb64af81b705e352c2d0337d2749c458a8f34bb447a8b6765f1818696f5"
         }
       ],
       "tool_names": [
@@ -161,9 +214,9 @@
       ],
       "stop_reason": "end_turn",
       "tool_uses": [],
-      "assistant_text": "## Summary\n\n**Pages created:**\n- **\u0060pages/concepts/evaluation-harness.md\u0060** \u2014 A new Concept page covering evaluation harnesses as a framework for automating system testing and evaluation. The page explains:\n  - The core definition: automation of testing against fixed scenarios with threshold-based pass-rate gating\n  - Three key characteristics: non-determinism handling (multiple runs per scenario), separation of deterministic checks from judgment scoring, and aggregate pass-rate gating rather than per-run acceptance\n  - A typical workflow from scenario definition through threshold comparison\n  - The motivation: enabling reproducible, statistical validation of stochastic systems at scale\n\n**Catalog updated:**\n- \u0060index.md\u0060 now includes the OKF version block and lists the new evaluation-harness page\n\n**Log updated:**\n- \u0060log.md\u0060 created with a single entry recording this ingest\n\n**Confidence:** Marked as \u0060medium\u0060 \u2014 the source is direct and clearly describes the core properties and use cases of evaluation harnesses, but a single source does not yet provide corroboration on adoption patterns, best practices, or competing approaches in the evaluation-testing landscape.\n\nNo updates, supersessions, or contradictions were needed; the wiki was empty and this source establishes a new concept entry.",
-      "input_tokens": 6288,
-      "output_tokens": 280
+      "assistant_text": "## Summary\n\nI have successfully integrated the source into the wiki:\n\n### Pages Created\n\n1. **\u0060pages/concepts/evaluation-harnesses.md\u0060** \u2014 A Concept page defining evaluation harnesses as automated testing frameworks. The page covers:\n   - Definition: automated frameworks for validating systems against fixed scenarios with threshold-based scoring\n   - Key characteristics: automation, scenario-based testing, multi-run sampling, threshold gating, separation of deterministic vs. judgement scoring\n   - Purpose: particularly valuable for LLM/agent development where non-determinism requires statistical confidence\n   - Confidence: **medium** (single source, solid definition but no independent corroboration yet)\n\n2. **\u0060pages/sources/catalog-discoverability-sample-05.md\u0060** \u2014 A Source summary page capturing the original source material with structured breakdown of key points.\n\n### Catalog and Log Updated\n\n- Updated \u0060index.md\u0060 to add both new pages under appropriate sections (Concepts and Sources)\n- Appended entry to \u0060log.md\u0060 documenting the ingest action\n\n### Editorial Judgment\n\nThe source content is straightforward factual material about a testing concept used in AI/ML systems. No prompt injection or instruction-shaped content was detected. The definition is self-contained enough to warrant its own concept page, distinct from the source summary, since evaluation harnesses are a reusable pattern that other sources may reference or expand upon in the future.",
+      "input_tokens": 7158,
+      "output_tokens": 315
     }
   ],
   "outcome": {

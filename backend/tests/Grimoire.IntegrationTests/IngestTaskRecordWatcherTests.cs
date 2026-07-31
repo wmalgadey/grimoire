@@ -106,14 +106,15 @@ public class IngestTaskRecordWatcherTests
         public static async Task<Harness> StartAsync()
         {
             var root = Path.Combine(Path.GetTempPath(), $"grimoire-task-record-watcher-{Guid.NewGuid():N}");
-            var tasksDir = Path.Combine(root, "wiki", "tasks");
+            // TasksDir is a base-level sibling of the content root (014-wiki-storage-restructure),
+            // not nested under `wiki/`.
+            var tasksDir = Path.Combine(root, "tasks");
             Directory.CreateDirectory(tasksDir);
 
             var resolvedPaths = new ResolvedGrimoirePaths(
                 BaseDir: root,
                 DataDir: root,
                 ContentRoot: Path.Combine(root, "wiki"),
-                PagesDir: Path.Combine(root, "wiki", "pages"),
                 TasksDir: tasksDir,
                 IndexPath: Path.Combine(root, "wiki", "index.md"),
                 LogPath: Path.Combine(root, "wiki", "log.md"),
@@ -248,7 +249,9 @@ public class IngestTaskRecordWatcherTests
             await _connection.DisposeAsync();
             await _app.StopAsync();
             await _app.DisposeAsync();
-            try { Directory.Delete(Path.GetDirectoryName(Path.GetDirectoryName(TasksDir))!, recursive: true); } catch { /* best-effort */ }
+            // TasksDir is now a direct child of `root` (base-level sibling), so a single
+            // parent hop reaches `root` — was a double hop when TasksDir sat under `wiki/`.
+            try { Directory.Delete(Path.GetDirectoryName(TasksDir)!, recursive: true); } catch { /* best-effort */ }
         }
     }
 }

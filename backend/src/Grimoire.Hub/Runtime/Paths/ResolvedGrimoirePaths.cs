@@ -28,7 +28,6 @@ public sealed record ResolvedGrimoirePaths(
     string BaseDir,
     string DataDir,
     string ContentRoot,
-    string PagesDir,
     string TasksDir,
     string IndexPath,
     string LogPath,

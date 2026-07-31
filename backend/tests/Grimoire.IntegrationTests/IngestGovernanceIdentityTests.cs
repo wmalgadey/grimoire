@@ -29,8 +29,8 @@ public class IngestGovernanceIdentityTests
                 {
                   "version": 1,
                   "defaultDecision": "deny",
-                  "read": [{"pathPrefix": "pages/"}],
-                  "write": [{"pathPrefix": "pages/"}]
+                  "read": [{"pathPrefix": "."}],
+                  "write": [{"pathPrefix": "."}]
                 }
                 """);
 

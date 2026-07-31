@@ -49,7 +49,7 @@ public sealed class SubmissionService
             SourceRef: normalizedSourceRef,
             SourceKind: options.SourceKind,
             WikiRoot: contentPaths.Root,
-            PagesDir: contentPaths.PagesDir,
+            ContentRoot: contentPaths.Root,
             TasksDir: contentPaths.TasksDir,
             IndexPath: contentPaths.IndexPath,
             LogPath: contentPaths.LogPath,

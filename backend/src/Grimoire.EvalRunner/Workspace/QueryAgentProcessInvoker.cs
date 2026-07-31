@@ -110,7 +110,7 @@ public sealed class QueryAgentProcessInvoker
         startInfo.ArgumentList.Add(_agentDllPath);
         AddOption(startInfo, "--turn-id", turnId);
         AddOption(startInfo, "--wiki-root", wikiRoot);
-        AddOption(startInfo, "--pages-dir", Path.Combine(wikiRoot, "pages"));
+        AddOption(startInfo, "--content-root", wikiRoot);
         AddOption(startInfo, "--index-path", Path.Combine(wikiRoot, "index.md"));
         AddOption(startInfo, "--log-path", Path.Combine(wikiRoot, "log.md"));
         AddOption(startInfo, "--system-prompt-path", paths.QuerySystemPromptPath);

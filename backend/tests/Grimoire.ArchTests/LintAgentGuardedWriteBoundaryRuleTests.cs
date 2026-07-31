@@ -37,6 +37,14 @@ public class LintAgentGuardedWriteBoundaryRuleTests
     [
         "Grimoire.AgentRuntime.Guardrails",
         "Grimoire.AgentRuntime.Core.Adapters.Replay",
+        // 014-wiki-storage-restructure R5: the shared, harness-side WikiLogAppender
+        // backstop now lives in the scanned Grimoire.AgentRuntime assembly (generalized
+        // from the pre-014 Ingest-only IngestLogAppender, already allow-listed the same
+        // way for IngestAgentGuardedWriteBoundaryRuleTests). Lint itself never
+        // constructs/calls it — Lint has no write rule for log.md — but the IL scan
+        // covers every type in the assembly regardless of caller, so the namespace must
+        // stay allow-listed here too.
+        "Grimoire.AgentRuntime.WikiLog",
     ];
 
     // Method name substrings that indicate filesystem-write operations. Kept in sync with

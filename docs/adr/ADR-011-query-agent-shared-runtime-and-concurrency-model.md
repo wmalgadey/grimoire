@@ -142,6 +142,11 @@ Chosen option: **Option 1.**
 > the Hub-side source of follow-up context. Everything else in this ADR — shared
 > runtime, streaming, bounded concurrency (limit 3, reject-over-limit), interruption
 > semantics, realtime delivery, and the port table — remains in force.
+>
+> **Path note (014-wiki-storage-restructure):** the Conversation Record's location
+> above moved from `<base>/data/conversations/` to `<base>/conversations/` — a sibling
+> of the wiki content root, not nested under the data directory. The record format,
+> lifecycle, and everything else this ADR/ADR-014 describe are unchanged.
 
 - Query Run Artifacts are written **entirely by the Hub** — the Query agent process has
   no write capability at all, so unlike Ingest's agent-owned task artifact, 100% of the

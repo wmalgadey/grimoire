@@ -56,16 +56,15 @@ public static class GrimoirePathResolver
         var instructionsDir = ResolveAgainst(options.InstructionsDir, dataDir, GrimoirePathOptions.DefaultInstructionsDirRelativePath);
         var queryInstructionsDir = ResolveAgainst(options.QueryInstructionsDir, dataDir, GrimoirePathOptions.DefaultQueryInstructionsDirRelativePath);
         var lintInstructionsDir = ResolveAgainst(options.LintInstructionsDir, dataDir, GrimoirePathOptions.DefaultLintInstructionsDirRelativePath);
-        var conversationsDir = ResolveAgainst(options.ConversationsDir, dataDir, GrimoirePathOptions.DefaultConversationsDirName);
+        var conversationsDir = ResolveAgainst(options.ConversationsDir, baseDir, GrimoirePathOptions.DefaultConversationsDirName);
         var writeLocksDir = ResolveAgainst(options.WriteLocksDir, dataDir, GrimoirePathOptions.DefaultWriteLocksDirName);
         var findingsDir = ResolveAgainst(options.FindingsDir, dataDir, GrimoirePathOptions.DefaultFindingsDirName);
+        var tasksDir = ResolveAgainst(options.TasksDir, baseDir, GrimoirePathOptions.DefaultTasksDirName);
 
         var agentWorkerPath = ResolveAgainst(options.AgentWorker, AppContext.BaseDirectory, GrimoirePathOptions.DefaultAgentWorkerFileName);
         var queryAgentWorkerPath = ResolveAgainst(options.QueryAgentWorker, AppContext.BaseDirectory, GrimoirePathOptions.DefaultQueryAgentWorkerFileName);
         var lintAgentWorkerPath = ResolveAgainst(options.LintAgentWorker, AppContext.BaseDirectory, GrimoirePathOptions.DefaultLintAgentWorkerFileName);
 
-        var pagesDir = Path.Combine(contentRoot, "pages");
-        var tasksDir = Path.Combine(contentRoot, "tasks");
         var indexPath = Path.Combine(contentRoot, "index.md");
         var logPath = Path.Combine(contentRoot, "log.md");
         var rawOriginalsDir = Path.Combine(rawDir, "originals");
@@ -90,6 +89,7 @@ public static class GrimoirePathResolver
             BuildLocation("agent_worker", "AgentWorker", options.AgentWorker, agentWorkerPath, PathLocationKind.RequiredInput, configRoot),
             BuildLocation("query_instructions_dir", "QueryInstructionsDir", options.QueryInstructionsDir, queryInstructionsDir, PathLocationKind.RequiredInput, configRoot),
             BuildLocation("conversations_dir", "ConversationsDir", options.ConversationsDir, conversationsDir, PathLocationKind.WritableData, configRoot),
+            BuildLocation("tasks_dir", "TasksDir", options.TasksDir, tasksDir, PathLocationKind.WritableData, configRoot),
             BuildLocation("query_agent_worker", "QueryAgentWorker", options.QueryAgentWorker, queryAgentWorkerPath, PathLocationKind.RequiredInput, configRoot),
             BuildLocation("write_locks_dir", "WriteLocksDir", options.WriteLocksDir, writeLocksDir, PathLocationKind.WritableData, configRoot),
             BuildLocation("findings_dir", "FindingsDir", options.FindingsDir, findingsDir, PathLocationKind.WritableData, configRoot),
@@ -117,14 +117,13 @@ public static class GrimoirePathResolver
         // Auto-create writable data locations.
         CreateDirectoryIfMissing(logger, "data_dir", options.DataDir, dataDir);
         CreateDirectoryIfMissing(logger, "content_root", options.ContentRoot, contentRoot);
-        CreateDirectoryIfMissing(logger, "pages_dir", options.ContentRoot, pagesDir);
-        CreateDirectoryIfMissing(logger, "tasks_dir", options.ContentRoot, tasksDir);
         CreateDirectoryIfMissing(logger, "raw_dir", options.RawDir, rawDir);
         CreateDirectoryIfMissing(logger, "raw_originals_dir", options.RawDir, rawOriginalsDir);
         CreateDirectoryIfMissing(logger, "raw_sources_dir", options.RawDir, rawSourcesDir);
         CreateDirectoryIfMissing(logger, "conversations_dir", options.ConversationsDir, conversationsDir);
         CreateDirectoryIfMissing(logger, "write_locks_dir", options.WriteLocksDir, writeLocksDir);
         CreateDirectoryIfMissing(logger, "findings_dir", options.FindingsDir, findingsDir);
+        CreateDirectoryIfMissing(logger, "tasks_dir", options.TasksDir, tasksDir);
         var stateDbDir = Path.GetDirectoryName(stateDbPath);
         if (!string.IsNullOrEmpty(stateDbDir))
         {
@@ -135,7 +134,6 @@ public static class GrimoirePathResolver
             BaseDir: baseDir,
             DataDir: dataDir,
             ContentRoot: contentRoot,
-            PagesDir: pagesDir,
             TasksDir: tasksDir,
             IndexPath: indexPath,
             LogPath: logPath,

@@ -27,13 +27,13 @@ public class QueryWriteConflictObservabilityTests
         var root = CreateTempRoot();
         try
         {
-            var (executor, logger, pagesDir, _) = BuildExecutor(root);
-            var existingPage = Path.Combine(pagesDir, "existing.md");
+            var (executor, logger, conceptsDir, _) = BuildExecutor(root);
+            var existingPage = Path.Combine(conceptsDir, "existing.md");
             await File.WriteAllTextAsync(existingPage, "already here");
 
             var writeResult = await executor.ExecuteAsync(
                 ToolRegistry.WriteFile,
-                JsonSerializer.Serialize(new { path = "pages/existing.md", content = "overwrite attempt" }),
+                JsonSerializer.Serialize(new { path = "concepts/existing.md", content = "overwrite attempt" }),
                 turn: 3,
                 CancellationToken.None);
 
@@ -171,12 +171,12 @@ public class QueryWriteConflictObservabilityTests
         return listener;
     }
 
-    private static (GuardedToolExecutor Executor, CaptureLogger<QueryWriteConflictObservabilityTests> Logger, string PagesDir, string IndexPath)
+    private static (GuardedToolExecutor Executor, CaptureLogger<QueryWriteConflictObservabilityTests> Logger, string ConceptsDir, string IndexPath)
         BuildExecutor(string root)
     {
         var wikiRoot = Path.Combine(root, "wiki");
-        var pagesDir = Path.Combine(wikiRoot, "pages");
-        Directory.CreateDirectory(pagesDir);
+        var conceptsDir = Path.Combine(wikiRoot, "concepts");
+        Directory.CreateDirectory(conceptsDir);
         var writeLocksDir = Path.Combine(root, "write-locks");
 
         var policy = new SafetyPolicy(
@@ -184,7 +184,7 @@ public class QueryWriteConflictObservabilityTests
             readPrefixes: [wikiRoot + Path.DirectorySeparatorChar],
             writeRules:
             [
-                new WriteRule(pagesDir + Path.DirectorySeparatorChar, CreateOnly: true),
+                new WriteRule(conceptsDir + Path.DirectorySeparatorChar, CreateOnly: true),
                 new WriteRule(Path.Combine(wikiRoot, "index.md"), CreateOnly: false),
             ]);
 
@@ -199,7 +199,7 @@ public class QueryWriteConflictObservabilityTests
             instrumentation: new QueryToolCallInstrumentation(logger),
             writeLocksDir: writeLocksDir);
 
-        return (executor, logger, pagesDir, Path.Combine(wikiRoot, "index.md"));
+        return (executor, logger, conceptsDir, Path.Combine(wikiRoot, "index.md"));
     }
 
     private static string CreateTempRoot()

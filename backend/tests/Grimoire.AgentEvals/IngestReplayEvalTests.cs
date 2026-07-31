@@ -41,6 +41,14 @@ public class IngestReplayEvalTests
     public Task SC007_SteeringAdoption_ReplaysAtThreshold()
         => AssertScenarioAsync(IngestScenarioDefinitions.SteeringAdoption);
 
+    [Fact]
+    public Task SC005_LogParagraphSpecificity_ReplaysAtThreshold()
+        => AssertScenarioAsync(IngestScenarioDefinitions.LogParagraphSpecificity);
+
+    [Fact]
+    public Task SC007_CatalogDescriptionSpecificity_ReplaysAtThreshold()
+        => AssertScenarioAsync(IngestScenarioDefinitions.CatalogDescriptionSpecificity);
+
     private static async Task AssertScenarioAsync(ScenarioDefinition scenario)
     {
         var paths = EvalPaths.Discover();

@@ -4,7 +4,6 @@ using Grimoire.Hub.OperationalState;
 using Grimoire.IngestAgent;
 using Grimoire.AgentRuntime.Core;
 using Grimoire.AgentRuntime.Guardrails;
-using Grimoire.IngestAgent.IngestLog;
 using Grimoire.IntegrationTests.Fakes;
 using Microsoft.Extensions.Logging;
 
@@ -54,11 +53,6 @@ public class IngestObservabilityLogTests
             pathsRestored: 4,
             restoredOk: true);
 
-        IngestAgentLogEvents.LogBackstopAppended(
-            logger,
-            taskId: "task-6",
-            outcome: "failed");
-
         IngestAgentLogEvents.LogAgentCompleted(
             logger,
             taskId: "task-7",
@@ -79,7 +73,8 @@ public class IngestObservabilityLogTests
         AssertEvent(logger.Entries, "ingest.tool.allowed", LogLevel.Information, ["task_id", "tool", "target", "turn"]);
         AssertEvent(logger.Entries, "ingest.tool.denied", LogLevel.Warning, ["task_id", "tool", "target", "reason", "turn"]);
         AssertEvent(logger.Entries, "ingest.run.rolled_back", LogLevel.Warning, ["task_id", "paths_restored", "restored_ok"]);
-        AssertEvent(logger.Entries, "ingest.log.backstop_appended", LogLevel.Warning, ["task_id", "outcome"]);
+        // ingest.log.backstop_appended retired (014-wiki-storage-restructure R5): replaced
+        // by the shared wiki.log.backstop_appended event, asserted in WikiLogAppenderTests.
         AssertEvent(logger.Entries, "ingest.agent.completed", LogLevel.Information, ["task_id", "turns", "pages_created", "pages_updated", "pages_superseded", "denials"]);
         AssertEvent(logger.Entries, "ingest.agent.cap_exceeded", LogLevel.Error, ["task_id", "cap", "turns"]);
     }
@@ -182,26 +177,8 @@ public class IngestObservabilityLogTests
         Assert.Equal("0", entry.Fields["denials"]?.ToString());
     }
 
-    [Fact]
-    public async Task IngestLogBackstop_EmitsEvent_WhenEntryIsAppended()
-    {
-        var root = Path.Combine(Path.GetTempPath(), $"log-backstop-{Guid.NewGuid():N}");
-        var logPath = Path.Combine(root, "log.md");
-        Directory.CreateDirectory(root);
-
-        var logger = new CaptureLogger<IngestLogAppender>();
-        var appender = new IngestLogAppender(logger);
-
-        await appender.EnsureLogEntryAsync(
-            logPath,
-            outcome: "failed",
-            sourceRef: "source.md",
-            taskId: "task-backstop",
-            forceAppend: true,
-            CancellationToken.None);
-
-        AssertEvent(logger.Entries, "ingest.log.backstop_appended", LogLevel.Warning, ["task_id", "outcome"]);
-    }
+    // IngestLogBackstop_EmitsEvent_WhenEntryIsAppended moved to WikiLogAppenderTests
+    // (014-wiki-storage-restructure R5): IngestLogAppender -> shared WikiLogAppender.
 
     [Fact]
     public async Task RestartReconciler_Emits_ReconciliationLogEvent_WithMandatoryFields()

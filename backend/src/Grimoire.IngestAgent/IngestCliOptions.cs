@@ -5,7 +5,7 @@ public sealed record IngestCliOptions(
     string SourceRef,
     string SourceKind,
     string WikiRoot,
-    string PagesDir,
+    string ContentRoot,
     string TasksDir,
     string IndexPath,
     string LogPath,

@@ -49,7 +49,7 @@ public class IngestDispatchPathArgumentsTests
 
             // Every other path argument is absolute and Hub-resolved — never left for the
             // agent to derive or discover itself (FR-007).
-            Assert.True(Path.IsPathRooted(request.PagesDir));
+            Assert.True(Path.IsPathRooted(request.ContentRoot));
             Assert.True(Path.IsPathRooted(request.TasksDir));
             Assert.True(Path.IsPathRooted(request.IndexPath));
             Assert.True(Path.IsPathRooted(request.LogPath));
@@ -57,7 +57,7 @@ public class IngestDispatchPathArgumentsTests
             Assert.True(Path.IsPathRooted(request.DefaultUserPromptPath));
             Assert.True(Path.IsPathRooted(request.PolicyPath));
 
-            Assert.Equal(resolvedPaths.PagesDir, request.PagesDir);
+            Assert.Equal(resolvedPaths.ContentRoot, request.ContentRoot);
             Assert.Equal(resolvedPaths.TasksDir, request.TasksDir);
             Assert.Equal(resolvedPaths.IndexPath, request.IndexPath);
             Assert.Equal(resolvedPaths.LogPath, request.LogPath);

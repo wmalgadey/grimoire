@@ -11,11 +11,9 @@ public class IngestFailureAndReconciliationTests
     public async Task FailurePath_LeavesWikiUntouched_AndMarksTaskFailed()
     {
         var root = Path.Combine(Path.GetTempPath(), $"grimoire-fail-{Guid.NewGuid():N}");
-        var pagesDir = Path.Combine(root, "pages");
         var tasksDir = Path.Combine(root, "tasks");
         var indexPath = Path.Combine(root, "index.md");
         var logPath = Path.Combine(root, "log.md");
-        Directory.CreateDirectory(pagesDir);
         Directory.CreateDirectory(tasksDir);
         await File.WriteAllTextAsync(logPath, string.Empty);
 
@@ -31,7 +29,7 @@ public class IngestFailureAndReconciliationTests
             SourceRef: Path.Combine(root, "missing-source.md"),
             SourceKind: "file",
             WikiRoot: root,
-            PagesDir: pagesDir,
+            ContentRoot: root,
             TasksDir: tasksDir,
             IndexPath: indexPath,
             LogPath: logPath,
@@ -42,7 +40,13 @@ public class IngestFailureAndReconciliationTests
             WriteLocksDir: Path.Combine(root, "write-locks")));
 
         Assert.Equal(1, exitCode);
-        Assert.Empty(Directory.GetFiles(pagesDir));
+        // No new content-root entries (e.g. a topical category folder or article) were
+        // created on the failure path — only the pre-existing tasksDir/log.md remain.
+        var contentEntries = Directory.GetFileSystemEntries(root)
+            .Select(Path.GetFileName)
+            .Where(name => name is not ("tasks" or "log.md"))
+            .ToArray();
+        Assert.Empty(contentEntries);
         Assert.False(File.Exists(indexPath));
 
         var taskArtifact = await File.ReadAllTextAsync(Path.Combine(tasksDir, $"{taskId}.md"));

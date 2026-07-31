@@ -34,6 +34,8 @@ public static class DeterministicScorers
             "instruction-change-adoption" => InstructionChangeAdoption(run),
             "adversarial-source" => AdversarialSource(run),
             "steering-adoption" => SteeringAdoption(run),
+            "log-paragraph-specificity" => JudgeVerdictGate(run),
+            "catalog-description-specificity" => JudgeVerdictGate(run),
             _ => throw new InvalidOperationException($"Unknown scorer '{scenario.ScorerId}'."),
         };
 
@@ -101,14 +103,14 @@ public static class DeterministicScorers
     }
 
     // Index entries use the extensionless wiki-link convention from system-prompt.md:
-    // "- [[pages/<slug>]] — <summary>", not the literal filename.
+    // "- [[<category>/<slug>]] — <summary>" (014-wiki-storage-restructure: no more
+    // "pages/" wrapper segment; the category folder name is agent-chosen and open-ended,
+    // so this checks for the slug itself rather than reconstructing a specific prefix).
     private static bool IsDiscoverable(string indexContent, string pagePath)
     {
         var slug = Path.GetFileNameWithoutExtension(pagePath);
-        var relativeSuffix = $"pages/{slug}";
 
-        return indexContent.Contains(relativeSuffix, StringComparison.OrdinalIgnoreCase)
-            || indexContent.Contains(slug, StringComparison.OrdinalIgnoreCase);
+        return indexContent.Contains(slug, StringComparison.OrdinalIgnoreCase);
     }
 
     private static SampleScore InstructionChangeAdoption(SampleRunData run)
@@ -157,6 +159,27 @@ public static class DeterministicScorers
     }
 
     private static SampleScore SteeringAdoption(SampleRunData run)
+    {
+        var completed = IsCompleted(run);
+        var judgePassed = string.Equals(run.JudgeVerdict, "PASS", StringComparison.Ordinal);
+
+        var checks = new Dictionary<string, bool>
+        {
+            ["completed"] = completed,
+            ["judge_verdict_pass"] = judgePassed,
+        };
+        return new SampleScore(completed && judgePassed, false, checks);
+    }
+
+    /// <summary>
+    /// SC-005/SC-007 (014-wiki-storage-restructure): shared deterministic half of
+    /// <see cref="LogParagraphSpecificityScorer"/>/<see cref="CatalogDescriptionSpecificityScorer"/>
+    /// — same "completed AND judge passed" gate <see cref="SteeringAdoption"/> uses; the
+    /// two scorers differ only in which judge prompt <see cref="Capture.CapturePipeline"/>
+    /// invokes to produce <see cref="SampleRunData.JudgeVerdict"/>, not in how the verdict
+    /// gates the sample.
+    /// </summary>
+    private static SampleScore JudgeVerdictGate(SampleRunData run)
     {
         var completed = IsCompleted(run);
         var judgePassed = string.Equals(run.JudgeVerdict, "PASS", StringComparison.Ordinal);

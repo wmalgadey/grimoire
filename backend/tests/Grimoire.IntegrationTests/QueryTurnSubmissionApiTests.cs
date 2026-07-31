@@ -187,7 +187,6 @@ public class QueryTurnSubmissionApiTests
         BaseDir: root,
         DataDir: root,
         ContentRoot: Path.Combine(root, "wiki"),
-        PagesDir: Path.Combine(root, "wiki", "pages"),
         TasksDir: Path.Combine(root, "wiki", "tasks"),
         IndexPath: Path.Combine(root, "wiki", "index.md"),
         LogPath: Path.Combine(root, "wiki", "log.md"),

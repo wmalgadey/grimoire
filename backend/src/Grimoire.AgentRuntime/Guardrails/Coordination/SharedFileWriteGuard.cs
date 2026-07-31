@@ -1,6 +1,8 @@
 using Grimoire.Domain.Guardrails;
+using System.Diagnostics;
 using System.Security.Cryptography;
 using System.Text;
+using System.Text.RegularExpressions;
 
 namespace Grimoire.AgentRuntime.Guardrails.Coordination;
 
@@ -20,7 +22,10 @@ public sealed record WriteGuardDecision(bool IsAllowed, string? DenialReason, ID
     /// One of: <c>create_only_target_exists</c>, <c>write_conflict_stale_read</c>,
     /// <c>write_coordination_timeout</c>, or, since ADR-016 (013-lint-agent):
     /// <c>frontmatter_only_target_missing</c>, <c>frontmatter_only_malformed_document</c>,
-    /// <c>frontmatter_only_body_changed</c>.
+    /// <c>frontmatter_only_body_changed</c>; or, since ADR-017
+    /// (014-wiki-storage-restructure): <c>log_entry_not_appended</c>,
+    /// <c>log_entry_malformed_heading</c>, <c>log_entry_missing_paragraph</c>, or (US4)
+    /// <c>catalog_entry_malformed</c>.
     /// </param>
     public static WriteGuardDecision Denied(string reason) => new(false, reason, null);
 }
@@ -44,14 +49,63 @@ public sealed record WriteGuardDecision(bool IsAllowed, string? DenialReason, ID
 /// </summary>
 public sealed class SharedFileWriteGuard
 {
+    // ADR-017 (014-wiki-storage-restructure): the appended tail's first non-blank line
+    // must be a "[DATE] TYPE | SUMMARY" heading — contracts/log-and-catalog-entry-format.md.
+    private static readonly Regex LogHeadingPattern =
+        new(@"^## \[\d{4}-\d{2}-\d{2}\] .+ \| .+$", RegexOptions.Compiled);
+
+    // ADR-017 (014-wiki-storage-restructure, US4): a newly added index.md catalog line
+    // must be "[Title](path) — description — status" —
+    // contracts/log-and-catalog-entry-format.md.
+    private static readonly Regex CatalogEntryPattern =
+        new(@"^- \[.+\]\(.+\) — .+ — .+$", RegexOptions.Compiled);
+
     private readonly string _writeLocksDir;
     private readonly TimeSpan _backoffCap;
+    private readonly string? _logPath;
+    private readonly string? _indexPath;
+    private readonly ActivitySource? _activitySource;
     private readonly Dictionary<string, string> _readHashes = new(StringComparer.Ordinal);
 
-    public SharedFileWriteGuard(string writeLocksDir, TimeSpan? backoffCap = null)
+    /// <param name="logPath">
+    /// ADR-017 (014-wiki-storage-restructure): the canonicalized <c>log.md</c> path this
+    /// run's guarded writes are evaluated against — <c>null</c> (the default) disables
+    /// the format-validation step entirely, matching every caller written before this
+    /// feature. Must already be canonicalized the same way <paramref name="logPath"/>-argument
+    /// callers canonicalize every other guarded-write target, so ordinal equality against
+    /// <see cref="EvaluateWriteAsync(string, Grimoire.Domain.Guardrails.WriteMode, string, CancellationToken)"/>'s
+    /// <c>canonicalPath</c> is reliable.
+    /// </param>
+    /// <param name="indexPath">
+    /// ADR-017 (014-wiki-storage-restructure, US4): the canonicalized <c>index.md</c>
+    /// path this run's guarded writes are evaluated against — <c>null</c> (the default)
+    /// disables the catalog-entry format-validation step entirely, matching every caller
+    /// written before US4. Must already be canonicalized the same way every other
+    /// guarded-write target is, so ordinal equality against
+    /// <see cref="EvaluateWriteAsync(string, Grimoire.Domain.Guardrails.WriteMode, string, CancellationToken)"/>'s
+    /// <c>canonicalPath</c> is reliable.
+    /// </param>
+    /// <param name="activitySource">
+    /// The calling agent process's own frozen <see cref="ActivitySource"/> (ADR-005/
+    /// ADR-013) — used only to start the <c>guardrails.format_validate</c> span around the
+    /// format-validation step (for both <paramref name="logPath"/> and
+    /// <paramref name="indexPath"/>, distinguished by the span's <c>target</c> attribute).
+    /// <c>null</c> (the default, and every pre-ADR-017 caller) means the check still runs
+    /// but emits no span — hermetic tests that construct this type directly without an
+    /// OTel listener are unaffected.
+    /// </param>
+    public SharedFileWriteGuard(
+        string writeLocksDir,
+        TimeSpan? backoffCap = null,
+        string? logPath = null,
+        string? indexPath = null,
+        ActivitySource? activitySource = null)
     {
         _writeLocksDir = writeLocksDir;
         _backoffCap = backoffCap ?? CrossProcessFileLock.DefaultBackoffCap;
+        _logPath = logPath;
+        _indexPath = indexPath;
+        _activitySource = activitySource;
     }
 
     /// <summary>Records the content hash of a successful <c>read_file</c>, for later compare-and-swap.</summary>
@@ -154,8 +208,127 @@ public sealed class SharedFileWriteGuard
             }
         }
 
+        // ADR-017 (014-wiki-storage-restructure): format-validation step, gated on the
+        // canonical target being log.md, run after every existing existence/CAS/WriteMode
+        // check above and before the write is committed (contract §3 order). Composes
+        // with, never replaces, the checks above.
+        if (_logPath is not null && string.Equals(canonicalPath, _logPath, StringComparison.Ordinal))
+        {
+            var currentContent = exists ? Encoding.UTF8.GetString(currentBytes!) : string.Empty;
+            var formatDenialReason = ValidateLogEntryFormat(currentContent, proposedContent);
+
+            using var formatSpan = _activitySource?.StartActivity("guardrails.format_validate");
+            formatSpan?.SetTag("path", canonicalPath);
+            formatSpan?.SetTag("target", "log");
+            formatSpan?.SetTag("outcome", formatDenialReason is null ? "allowed" : "denied");
+            if (formatDenialReason is not null)
+            {
+                formatSpan?.SetTag("reason", formatDenialReason);
+                handle.Dispose();
+                return WriteGuardDecision.Denied(formatDenialReason);
+            }
+        }
+
+        // ADR-017 (014-wiki-storage-restructure, US4): the same format-validation step,
+        // gated on the canonical target being index.md — the same guardrails.format_validate
+        // span shape as the log.md check above, distinguished only by target=index.
+        if (_indexPath is not null && string.Equals(canonicalPath, _indexPath, StringComparison.Ordinal))
+        {
+            var currentContent = exists ? Encoding.UTF8.GetString(currentBytes!) : string.Empty;
+            var formatDenialReason = ValidateCatalogEntryFormat(currentContent, proposedContent);
+
+            using var formatSpan = _activitySource?.StartActivity("guardrails.format_validate");
+            formatSpan?.SetTag("path", canonicalPath);
+            formatSpan?.SetTag("target", "index");
+            formatSpan?.SetTag("outcome", formatDenialReason is null ? "allowed" : "denied");
+            if (formatDenialReason is not null)
+            {
+                formatSpan?.SetTag("reason", formatDenialReason);
+                handle.Dispose();
+                return WriteGuardDecision.Denied(formatDenialReason);
+            }
+        }
+
         return WriteGuardDecision.Allowed(handle);
     }
+
+    /// <summary>
+    /// ADR-017 (014-wiki-storage-restructure): the log.md structural shape check —
+    /// append-only (FR-011), then heading pattern, then a following non-blank paragraph
+    /// (contracts/log-and-catalog-entry-format.md). Pure string/regex operation over
+    /// content already resident in memory (no I/O, no judgment about whether a given
+    /// SUMMARY/paragraph is good — Constitution Principle V). Returns the denial reason,
+    /// or <c>null</c> if the proposed content conforms.
+    /// </summary>
+    internal static string? ValidateLogEntryFormat(string currentContent, string proposedContent)
+    {
+        if (!proposedContent.StartsWith(currentContent, StringComparison.Ordinal))
+        {
+            return "log_entry_not_appended";
+        }
+
+        var tail = proposedContent[currentContent.Length..];
+        var lines = tail.Split('\n');
+
+        var i = 0;
+        while (i < lines.Length && string.IsNullOrWhiteSpace(lines[i]))
+        {
+            i++;
+        }
+
+        if (i >= lines.Length || !LogHeadingPattern.IsMatch(lines[i].TrimEnd('\r')))
+        {
+            return "log_entry_malformed_heading";
+        }
+
+        i++;
+        while (i < lines.Length && string.IsNullOrWhiteSpace(lines[i]))
+        {
+            i++;
+        }
+
+        return i >= lines.Length ? "log_entry_missing_paragraph" : null;
+    }
+
+    /// <summary>
+    /// ADR-017 (014-wiki-storage-restructure, US4): the index.md catalog-entry shape
+    /// check, scoped to newly added lines only (contract §"index.md Catalog Entry"; FR-012).
+    /// Computes the set of <c>- [</c>-led lines present in <paramref name="proposedContent"/>
+    /// but absent, byte-for-byte, from <paramref name="currentContent"/>, and denies unless
+    /// every one of them matches the link-description-status shape. Lines that already
+    /// existed verbatim, and any line not starting with <c>- [</c> (section headings,
+    /// blank lines), are never checked — pure string/regex operation over content already
+    /// resident in memory, no judgment about whether a given description is good
+    /// (Constitution Principle V). Returns the denial reason, or <c>null</c> if every new
+    /// catalog line conforms.
+    /// </summary>
+    internal static string? ValidateCatalogEntryFormat(string currentContent, string proposedContent)
+    {
+        var currentLines = new HashSet<string>(SplitLines(currentContent), StringComparer.Ordinal);
+
+        foreach (var line in SplitLines(proposedContent))
+        {
+            if (!line.StartsWith("- [", StringComparison.Ordinal))
+            {
+                continue;
+            }
+
+            if (currentLines.Contains(line))
+            {
+                continue;
+            }
+
+            if (!CatalogEntryPattern.IsMatch(line))
+            {
+                return "catalog_entry_malformed";
+            }
+        }
+
+        return null;
+    }
+
+    private static IEnumerable<string> SplitLines(string content)
+        => content.Split('\n').Select(line => line.TrimEnd('\r'));
 
     /// <summary>
     /// Updates the read-hash baseline for <paramref name="canonicalPath"/> to the content

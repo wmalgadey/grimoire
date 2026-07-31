@@ -11,7 +11,8 @@ public static class IngestAgentLogEvents
     private static readonly EventId ToolAllowedEvent = new(3, "ingest.tool.allowed");
     private static readonly EventId ToolDeniedEvent = new(4, "ingest.tool.denied");
     private static readonly EventId RunRolledBackEvent = new(5, "ingest.run.rolled_back");
-    private static readonly EventId BackstopAppendedEvent = new(6, "ingest.log.backstop_appended");
+    // EventId 6 ("ingest.log.backstop_appended") retired (014-wiki-storage-restructure R5):
+    // replaced by the shared wiki.log.backstop_appended event (Grimoire.AgentRuntime.WikiLog.WikiLogEvents).
     private static readonly EventId AgentCompletedEvent = new(7, "ingest.agent.completed");
     private static readonly EventId AgentCapExceededEvent = new(8, "ingest.agent.cap_exceeded");
     private static readonly EventId UserPromptResolvedEvent = new(9, "ingest.agent.user_prompt_resolved");
@@ -132,19 +133,6 @@ public static class IngestAgentLogEvents
             taskId,
             pathsRestored,
             restoredOk);
-    }
-
-    public static void LogBackstopAppended(ILogger logger, string taskId, string outcome)
-    {
-        using var span = StartLogEventSpan(BackstopAppendedEvent.Name ?? "ingest.log.backstop_appended", "Warning");
-        span?.SetTag("task_id", taskId);
-        span?.SetTag("outcome", outcome);
-
-        logger.LogWarning(
-            BackstopAppendedEvent,
-            "Log backstop appended. task_id={task_id} outcome={outcome}",
-            taskId,
-            outcome);
     }
 
     /// <summary>

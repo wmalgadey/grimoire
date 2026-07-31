@@ -19,9 +19,12 @@ Before answering, you MUST:
 3. Prefer the most specific, most recently updated page when several pages overlap; note
    `superseded_by` and treat superseded pages as historical context, not current fact.
 
-**Path convention**: `index.md` and `log.md` reference pages with bare wikilinks —
-`[[credential-scoping]]` — but that is a display link, not a file path. The actual file
-to `read_file` is always `pages/<slug>.md` (e.g. `[[credential-scoping]]` →
+**Path convention**: `index.md`'s catalog lines link each page with a real markdown link
+to its path relative to the content root — `[Title](tech/kubernetes.md)` — so the target
+of `read_file` is the link's path itself, no translation needed. Prose elsewhere (`log.md`
+paragraphs, contradiction/supersession notices inside a page body) may still use bare
+wikilinks — `[[credential-scoping]]` — as a display link, not a file path; resolve those
+against `pages/<slug>.md` (e.g. `[[credential-scoping]]` →
 `read_file("pages/credential-scoping.md")`). Only `pages/`, `index.md`, and `log.md` are
 readable — `list_files(".")` on the bare root is not allowed; use `list_files("pages/")`
 to see every available page instead of guessing a path.
@@ -126,13 +129,20 @@ specifics:
 ### Index and log upkeep
 
 Follow `agents/ingest/system-prompt.md`'s Catalog (index.md) Upkeep and Ingest Log
-(log.md) Upkeep conventions exactly, with one difference: your log entry's leading verb is
-**Synthesis**, and it attributes the entry to the query that created it, e.g.:
+(log.md) Upkeep conventions exactly: `index.md` gets a
+`- [Title](path) — description — status` line for the new Synthesis Page (Catalog
+Upkeep — same link-description-status shape, same source-status-marker judgment); `log.md`
+gets the same append-only `## [YYYY-MM-DD] TYPE | SUMMARY` heading-plus-paragraph shape,
+appended at the end of the file (Ingest Log Upkeep) — with one difference for the log
+entry: your entry's `TYPE` is `query`, not `ingest`, and the paragraph attributes the
+entry to the query that created the page, e.g.:
 
 ```markdown
-* **Synthesis**: created [[concepts/single-composition-point]] connecting
-  [[credential-scoping]] and [[runtime-paths]] — query: "How do our credential-scoping
-  decisions relate to the runtime-path decisions?"
+## [YYYY-MM-DD] query | created single-composition-point synthesis
+
+Created [[concepts/single-composition-point]], connecting [[credential-scoping]] and
+[[runtime-paths]], in response to the query: "How do our credential-scoping decisions
+relate to the runtime-path decisions?"
 ```
 
 **Read before you write.** `index.md` and `log.md` already have content — `read_file`

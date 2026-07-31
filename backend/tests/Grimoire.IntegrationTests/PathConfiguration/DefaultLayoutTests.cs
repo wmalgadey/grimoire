@@ -119,4 +119,104 @@ public class DefaultLayoutTests
             }
         }
     }
+
+    /// <summary>
+    /// T007 (014-wiki-storage-restructure, Foundational) — with zero path configuration,
+    /// <c>TasksDir</c> and <c>ConversationsDir</c> both resolve as true siblings of the
+    /// content root, anchored at the base directory — not nested under <c>wiki/</c> or
+    /// <c>data/</c> — and both are auto-created.
+    /// </summary>
+    [Fact]
+    public void ZeroConfiguration_ResolvesTasksAndConversationsDirs_AsBaseSiblings()
+    {
+        var cwd = Path.Combine(Path.GetTempPath(), $"grimoire-default-layout-siblings-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(cwd);
+        var originalCwd = Directory.GetCurrentDirectory();
+
+        try
+        {
+            Directory.SetCurrentDirectory(cwd);
+            cwd = Directory.GetCurrentDirectory();
+
+            var options = PathConfigurationTestHelpers.SeedRequiredInputsForZeroConfig(cwd);
+            var configRoot = new ConfigurationBuilder().Build();
+
+            var resolved = GrimoirePathResolver.Resolve(options, configRoot, NullLogger.Instance);
+
+            Assert.Equal(Path.GetFullPath(Path.Combine(cwd, "tasks")), resolved.TasksDir);
+            Assert.Equal(Path.GetFullPath(Path.Combine(cwd, "conversations")), resolved.ConversationsDir);
+
+            // Neither sibling is nested under the content root or the data directory.
+            Assert.DoesNotContain(resolved.ContentRoot, resolved.TasksDir, StringComparison.Ordinal);
+            Assert.DoesNotContain(resolved.DataDir, resolved.TasksDir, StringComparison.Ordinal);
+            Assert.DoesNotContain(resolved.ContentRoot, resolved.ConversationsDir, StringComparison.Ordinal);
+            Assert.DoesNotContain(resolved.DataDir, resolved.ConversationsDir, StringComparison.Ordinal);
+
+            Assert.True(Directory.Exists(resolved.TasksDir));
+            Assert.True(Directory.Exists(resolved.ConversationsDir));
+
+            Assert.Equal("default", resolved.Locations.Single(l => l.Name == "tasks_dir").Source);
+            Assert.Equal("default", resolved.Locations.Single(l => l.Name == "conversations_dir").Source);
+        }
+        finally
+        {
+            Directory.SetCurrentDirectory(originalCwd);
+            if (Directory.Exists(cwd))
+            {
+                Directory.Delete(cwd, recursive: true);
+            }
+        }
+    }
+
+    /// <summary>
+    /// T007 (014-wiki-storage-restructure, Foundational) — <c>TasksDir</c> and
+    /// <c>ConversationsDir</c> are independently overridable via
+    /// <c>Grimoire:Paths:TasksDir</c>/<c>Grimoire:Paths:ConversationsDir</c>, each leaving
+    /// the other at its own default.
+    /// </summary>
+    [Fact]
+    public void OverridingTasksDirAndConversationsDir_AreIndependentlyConfigurable()
+    {
+        var cwd = Path.Combine(Path.GetTempPath(), $"grimoire-default-layout-siblings-override-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(cwd);
+        var originalCwd = Directory.GetCurrentDirectory();
+        var externalTasksDir = Path.Combine(Path.GetTempPath(), $"grimoire-external-tasks-{Guid.NewGuid():N}");
+
+        try
+        {
+            Directory.SetCurrentDirectory(cwd);
+            cwd = Directory.GetCurrentDirectory();
+
+            var options = PathConfigurationTestHelpers.SeedRequiredInputsForZeroConfig(cwd);
+
+            var configRoot = new ConfigurationBuilder()
+                .AddInMemoryCollection([new("Grimoire:Paths:TasksDir", externalTasksDir)])
+                .Build();
+            configRoot.GetSection(GrimoirePathOptions.SectionName).Bind(options);
+
+            var resolved = GrimoirePathResolver.Resolve(options, configRoot, NullLogger.Instance);
+
+            // TasksDir took the override...
+            Assert.Equal(Path.GetFullPath(externalTasksDir), resolved.TasksDir);
+
+            // ...while ConversationsDir stays at its own default beneath the base directory.
+            Assert.Equal(Path.GetFullPath(Path.Combine(cwd, "conversations")), resolved.ConversationsDir);
+
+            var tasksDirLocation = resolved.Locations.Single(l => l.Name == "tasks_dir");
+            Assert.NotEqual("default", tasksDirLocation.Source);
+            Assert.Equal("default", resolved.Locations.Single(l => l.Name == "conversations_dir").Source);
+        }
+        finally
+        {
+            Directory.SetCurrentDirectory(originalCwd);
+            if (Directory.Exists(cwd))
+            {
+                Directory.Delete(cwd, recursive: true);
+            }
+            if (Directory.Exists(externalTasksDir))
+            {
+                Directory.Delete(externalTasksDir, recursive: true);
+            }
+        }
+    }
 }

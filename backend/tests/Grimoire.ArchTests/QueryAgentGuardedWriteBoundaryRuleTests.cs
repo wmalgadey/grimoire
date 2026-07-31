@@ -39,6 +39,12 @@ public class QueryAgentGuardedWriteBoundaryRuleTests
     [
         "Grimoire.AgentRuntime.Guardrails",
         "Grimoire.AgentRuntime.Core.Adapters.Replay",
+        // 014-wiki-storage-restructure R5: the shared, harness-side WikiLogAppender
+        // backstop (same allow-listed status IngestAgentGuardedWriteBoundaryRuleTests
+        // already gives it) — a direct File.AppendAllTextAsync write outside the guarded
+        // tool boundary by design, exactly like the pre-014 Ingest-only IngestLogAppender
+        // it generalizes; Query now shares it (new — Query had no backstop before).
+        "Grimoire.AgentRuntime.WikiLog",
     ];
 
     // Method name substrings that indicate filesystem-write operations. Kept in sync

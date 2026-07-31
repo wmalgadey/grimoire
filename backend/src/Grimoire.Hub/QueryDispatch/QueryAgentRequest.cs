@@ -15,7 +15,7 @@ public sealed record QueryAgentRequest(
     string Prompt,
     IReadOnlyList<QueryPriorTurn> PriorTurns,
     string WikiRoot,
-    string PagesDir,
+    string ContentRoot,
     string IndexPath,
     string LogPath,
     string SystemPromptPath,

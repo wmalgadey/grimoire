@@ -32,11 +32,9 @@ public class IngestOperationalStateAndDispatchTests
     public async Task Dispatcher_Spawns_Agent_And_Produces_Task_Artifact()
     {
         var root = Path.Combine(Path.GetTempPath(), $"grimoire-dispatch-{Guid.NewGuid():N}");
-        var pagesDir = Path.Combine(root, "pages");
         var tasksDir = Path.Combine(root, "tasks");
         var indexPath = Path.Combine(root, "index.md");
         var logPath = Path.Combine(root, "log.md");
-        Directory.CreateDirectory(pagesDir);
         Directory.CreateDirectory(tasksDir);
         await File.WriteAllTextAsync(logPath, string.Empty);
 
@@ -58,7 +56,7 @@ public class IngestOperationalStateAndDispatchTests
             SourceRef: sourcePath,
             SourceKind: "file",
             WikiRoot: root,
-            PagesDir: pagesDir,
+            ContentRoot: root,
             TasksDir: tasksDir,
             IndexPath: indexPath,
             LogPath: logPath,

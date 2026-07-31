@@ -270,8 +270,8 @@ public sealed class AgentProcessHost : IAgentProcessLauncher
         startInfo.ArgumentList.Add(request.TurnId);
         startInfo.ArgumentList.Add("--wiki-root");
         startInfo.ArgumentList.Add(request.WikiRoot);
-        startInfo.ArgumentList.Add("--pages-dir");
-        startInfo.ArgumentList.Add(request.PagesDir);
+        startInfo.ArgumentList.Add("--content-root");
+        startInfo.ArgumentList.Add(request.ContentRoot);
         startInfo.ArgumentList.Add("--index-path");
         startInfo.ArgumentList.Add(request.IndexPath);
         startInfo.ArgumentList.Add("--log-path");
@@ -387,8 +387,8 @@ public sealed class AgentProcessHost : IAgentProcessLauncher
         startInfo.ArgumentList.Add(request.SourceKind);
         startInfo.ArgumentList.Add("--wiki-root");
         startInfo.ArgumentList.Add(request.WikiRoot);
-        startInfo.ArgumentList.Add("--pages-dir");
-        startInfo.ArgumentList.Add(request.PagesDir);
+        startInfo.ArgumentList.Add("--content-root");
+        startInfo.ArgumentList.Add(request.ContentRoot);
         startInfo.ArgumentList.Add("--tasks-dir");
         startInfo.ArgumentList.Add(request.TasksDir);
         startInfo.ArgumentList.Add("--index-path");

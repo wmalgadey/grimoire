@@ -7,9 +7,11 @@ namespace Grimoire.IntegrationTests.PathConfiguration;
 /// T013t (US1, FR-009) — given a wiki root and absolute paths touched beneath it, the
 /// paths recorded for the task artifact (mirroring Program.cs's
 /// <c>Path.GetRelativePath(wikiRoot, touchedPath)</c> computation) are content-root-relative:
-/// <c>pages/foo.md</c>, never <c>wiki/pages/foo.md</c> or any repo-relative form. Exercises
-/// the real guarded-write path (<see cref="GuardedToolExecutor"/> + <see cref="WriteJournal"/>)
-/// against temp directories — no LLM call.
+/// <c>concepts/foo.md</c>, never <c>wiki/concepts/foo.md</c> or any repo-relative form.
+/// Exercises the real guarded-write path (<see cref="GuardedToolExecutor"/> +
+/// <see cref="WriteJournal"/>) against temp directories — no LLM call. "concepts" stands in
+/// for any topical category folder directly under the content root (014-wiki-storage-restructure:
+/// no "pages/" wrapper level).
 /// </summary>
 public class ArtifactRelativePathsTests
 {
@@ -19,32 +21,32 @@ public class ArtifactRelativePathsTests
         // Deliberately named "wiki" so a bug that re-includes the wiki-root's own leaf
         // segment (or a discovered repo root) would surface as a spurious "wiki/" prefix.
         var wikiRoot = Path.Combine(Path.GetTempPath(), $"grimoire-artifact-relpaths-{Guid.NewGuid():N}", "wiki");
-        Directory.CreateDirectory(Path.Combine(wikiRoot, "pages"));
+        Directory.CreateDirectory(Path.Combine(wikiRoot, "concepts"));
 
         try
         {
-            // pages/b.md pre-exists on disk, so the executor's write to it journals as an
+            // concepts/b.md pre-exists on disk, so the executor's write to it journals as an
             // update rather than a creation.
-            var preExistingPath = Path.Combine(wikiRoot, "pages", "b.md");
+            var preExistingPath = Path.Combine(wikiRoot, "concepts", "b.md");
             await File.WriteAllTextAsync(preExistingPath, "old content");
 
             var policy = new SafetyPolicy(
                 wikiRoot,
                 readPrefixes: [],
-                writePrefixes: [Path.Combine(wikiRoot, "pages") + Path.DirectorySeparatorChar]);
+                writePrefixes: [Path.Combine(wikiRoot, "concepts") + Path.DirectorySeparatorChar]);
 
             var journal = new WriteJournal();
             var executor = new GuardedToolExecutor(policy, journal, wikiRoot);
 
             var createResult = await executor.ExecuteAsync(
                 ToolRegistry.WriteFile,
-                System.Text.Json.JsonSerializer.Serialize(new { path = "pages/a.md", content = "new page" }),
+                System.Text.Json.JsonSerializer.Serialize(new { path = "concepts/a.md", content = "new page" }),
                 turn: 1, CancellationToken.None);
             Assert.False(createResult.IsError);
 
             var updateResult = await executor.ExecuteAsync(
                 ToolRegistry.WriteFile,
-                System.Text.Json.JsonSerializer.Serialize(new { path = "pages/b.md", content = "updated content" }),
+                System.Text.Json.JsonSerializer.Serialize(new { path = "concepts/b.md", content = "updated content" }),
                 turn: 2, CancellationToken.None);
             Assert.False(updateResult.IsError);
 
@@ -58,8 +60,8 @@ public class ArtifactRelativePathsTests
             var updatedRelative = journal.UpdatedPaths.Select(p => Path.GetRelativePath(wikiRoot, p)).ToList();
             var supersededRelative = journal.SupersededPaths.Select(p => Path.GetRelativePath(wikiRoot, p)).ToList();
 
-            var expectedCreated = Path.Combine("pages", "a.md");
-            var expectedUpdated = Path.Combine("pages", "b.md");
+            var expectedCreated = Path.Combine("concepts", "a.md");
+            var expectedUpdated = Path.Combine("concepts", "b.md");
 
             Assert.Contains(expectedCreated, touchedRelative);
             Assert.Contains(expectedUpdated, touchedRelative);

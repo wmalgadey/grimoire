@@ -2,13 +2,13 @@
   "version": 2,
   "defaultDecision": "deny",
   "read": [
-    { "pathPrefix": "pages/" },
     { "pathPrefix": "index.md" },
-    { "pathPrefix": "log.md" }
+    { "pathPrefix": "log.md" },
+    { "pathPrefix": "." }
   ],
   "write": [
-    { "pathPrefix": "pages/", "mode": "create-only" },
     { "pathPrefix": "index.md" },
-    { "pathPrefix": "log.md" }
+    { "pathPrefix": "log.md" },
+    { "pathPrefix": ".", "mode": "create-only", "excludePrefixes": ["index.md", "log.md"] }
   ]
 }

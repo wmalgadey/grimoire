@@ -82,7 +82,11 @@ Chosen option: **Option 1.**
   `"frontmatter-only"` as a third recognized value; any other value remains a fail-closed
   load error.
 - `data/agents/lint/policy.json` declares its one write rule as
-  `{ "pathPrefix": "pages/", "mode": "frontmatter-only" }`.
+  `{ "pathPrefix": "pages/", "mode": "frontmatter-only" }` (as of
+  014-wiki-storage-restructure/ADR-017: `{ "pathPrefix": ".", "mode": "frontmatter-only",
+  "excludePrefixes": ["index.md", "log.md"] }` — the `pages/` wrapper is retired and the
+  rule now needs an explicit exclusion so its directory-style catch-all never matches
+  the two reserved files).
 - `Grimoire.AgentRuntime.Guardrails.Coordination.SharedFileWriteGuard.EvaluateWriteAsync`
   gains the proposed new content as a parameter (needed only for this mode; `read-write`/
   `create-only` continue to ignore it) and, for `FrontmatterOnly`:

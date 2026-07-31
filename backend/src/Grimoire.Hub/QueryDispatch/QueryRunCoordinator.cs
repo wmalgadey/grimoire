@@ -153,7 +153,7 @@ public sealed class QueryRunCoordinator
             Prompt: prompt,
             PriorTurns: priorTurns,
             WikiRoot: _paths.ContentRoot,
-            PagesDir: _paths.PagesDir,
+            ContentRoot: _paths.ContentRoot,
             IndexPath: _paths.IndexPath,
             LogPath: _paths.LogPath,
             SystemPromptPath: _paths.QuerySystemPromptPath,

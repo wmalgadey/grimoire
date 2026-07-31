@@ -57,7 +57,7 @@
         {
             "label": "start: aspire-dashboard",
             "type": "shell",
-            "command": "docker run --rm -p 18888:18888 -p 4317:18889 mcr.microsoft.com/dotnet/aspire-dashboard",
+            "command": "if [ -n \"$(docker ps --filter 'publish=18888' -q)\" ]; then echo 'Login to the dashboard at http://localhost:18888/ (already running)'; else docker run --rm -p 18888:18888 -p 4317:18889 mcr.microsoft.com/dotnet/aspire-dashboard; fi",
             "isBackground": true,
             "problemMatcher": {
                 "owner": "aspire-dashboard",

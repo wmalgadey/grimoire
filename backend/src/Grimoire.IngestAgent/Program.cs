@@ -5,8 +5,8 @@ using Grimoire.AgentRuntime.Host;
 using Grimoire.AgentRuntime.Instructions;
 using Grimoire.AgentRuntime.RunEvents;
 using Grimoire.AgentRuntime.Telemetry;
+using Grimoire.AgentRuntime.WikiLog;
 using Grimoire.IngestAgent;
-using Grimoire.IngestAgent.IngestLog;
 using Grimoire.IngestAgent.Source;
 using Grimoire.IngestAgent.TaskArtifact;
 using Microsoft.Extensions.Logging;
@@ -39,7 +39,8 @@ var options = ReadCliOptions(args);
 // Stdout is the NDJSON event channel (ADR-008); all logging goes to stderr/OTLP.
 using var runEvents = new RunEventEmitter(Console.Out, options.TaskId);
 var taskStore = new TaskArtifactStore();
-var logAppender = new IngestLogAppender(loggerFactory.CreateLogger<IngestLogAppender>());
+var logAppender = new WikiLogAppender(
+    IngestAgentTracing.ActivitySource, IngestAgentMetrics.Meter, loggerFactory.CreateLogger<WikiLogAppender>());
 var sourceReader = new SourceReader();
 
 var startTime = DateTimeOffset.UtcNow;
@@ -94,7 +95,7 @@ static IngestCliOptions ReadCliOptions(string[] args)
         SourceRef: reader.GetRequired("--source-ref"),
         SourceKind: sourceKind,
         WikiRoot: reader.GetRequired("--wiki-root"),
-        PagesDir: reader.GetRequired("--pages-dir"),
+        ContentRoot: reader.GetRequired("--content-root"),
         TasksDir: reader.GetRequired("--tasks-dir"),
         IndexPath: reader.GetRequired("--index-path"),
         LogPath: reader.GetRequired("--log-path"),
@@ -119,7 +120,7 @@ internal sealed class IngestIntentHandler : IAgentIntentHandler
     private readonly IngestCliOptions _options;
     private readonly RunEventEmitter _runEvents;
     private readonly TaskArtifactStore _taskStore;
-    private readonly IngestLogAppender _logAppender;
+    private readonly WikiLogAppender _logAppender;
     private readonly SourceReader _sourceReader;
     private readonly ILoggerFactory _loggerFactory;
     private readonly ILogger _logger;
@@ -136,7 +137,7 @@ internal sealed class IngestIntentHandler : IAgentIntentHandler
         IngestCliOptions options,
         RunEventEmitter runEvents,
         TaskArtifactStore taskStore,
-        IngestLogAppender logAppender,
+        WikiLogAppender logAppender,
         SourceReader sourceReader,
         ILoggerFactory loggerFactory,
         ILogger logger,
@@ -231,7 +232,10 @@ internal sealed class IngestIntentHandler : IAgentIntentHandler
             taskId: _options.TaskId,
             registry: _profile.ToolRegistry,
             instrumentation: new IngestToolCallInstrumentation(_loggerFactory.CreateLogger<GuardedToolExecutor>()),
-            writeLocksDir: _options.WriteLocksDir);
+            writeLocksDir: _options.WriteLocksDir,
+            logPath: _options.LogPath,
+            indexPath: _options.IndexPath,
+            activitySource: IngestAgentTracing.ActivitySource);
         var tokenCap = ResolveTokenCapFromEnvironment();
         var loop = new AgentLoop(
             _modelClient!,
@@ -311,7 +315,7 @@ internal sealed class IngestIntentHandler : IAgentIntentHandler
             CancellationToken.None);
 
         await _logAppender.EnsureLogEntryAsync(
-            _options.LogPath, "completed", _options.SourceRef, _options.TaskId,
+            _options.LogPath, "ingest", "completed", _options.SourceRef, _options.TaskId,
             forceAppend: false, CancellationToken.None);
 
         IngestAgentLogEvents.LogAgentCompleted(
@@ -405,7 +409,7 @@ internal sealed class IngestIntentHandler : IAgentIntentHandler
             CancellationToken.None);
 
         await _logAppender.EnsureLogEntryAsync(
-            _options.LogPath, "failed", _options.SourceRef, _options.TaskId,
+            _options.LogPath, "ingest", "failed", _options.SourceRef, _options.TaskId,
             forceAppend: true, CancellationToken.None);
 
         IngestAgentMetrics.RecordIngest("failed",

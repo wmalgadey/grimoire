@@ -112,6 +112,11 @@ Chosen option: **Option 1.**
     ]
   }
   ```
+  (As of 014-wiki-storage-restructure/ADR-017: the `pages/` wrapper is retired —
+  `pathPrefix` values become `.`, reordered after the `index.md`/`log.md` exact-match
+  entries, with an `excludePrefixes: ["index.md", "log.md"]` guard on the catch-all
+  write rule. See ADR-017 for the full mechanism; the CAS/lock/mode machinery this ADR
+  defines is otherwise unchanged.)
   `pages/` is `create-only`: `GuardedToolExecutor.ExecuteWriteFileAsync` denies (reason
   `create_only_target_exists`) any write whose canonical target already exists on disk —
   this is the structural form of "creates new Synthesis Pages, never modifies existing
