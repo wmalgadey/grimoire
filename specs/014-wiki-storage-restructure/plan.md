@@ -69,10 +69,11 @@ it never writes `index.md`).
 
 **Scale/Scope**: One-time layout/format change touching the path composition point,
 three `data/agents/*/policy.json` files, three `system-prompt.md` files, the
-Ingest-only backstop (generalized to all three agent types), and roughly 30 call
-sites across `Grimoire.Hub`, `Grimoire.IngestAgent`, `Grimoire.QueryAgent`,
-`Grimoire.LintAgent`, `Grimoire.EvalRunner`, and their test projects that currently
-reference `PagesDir`/the old `ConversationsDir` anchor.
+Ingest-only backstop (generalized to Ingest and Query; Lint excluded — no
+log-write scope), and roughly 30 call sites across `Grimoire.Hub`,
+`Grimoire.IngestAgent`, `Grimoire.QueryAgent`, `Grimoire.LintAgent`,
+`Grimoire.EvalRunner`, and their test projects that currently reference
+`PagesDir`/the old `ConversationsDir` anchor.
 
 ## Constitution Check
 
@@ -181,10 +182,10 @@ tasks alone.
 |-------------------|----------|-------------------|----------------------------------|-------------------------|-------|
 | SC-001 (100% of articles stored directly under a topical subfolder, zero wrapper segments) | Deterministic guarantee | Hermetic integration test | Real filesystem, temp base dir | Fresh content-root fixture, scripted article-creation write | Extends existing `PathConfiguration/*Tests.cs` idiom with the flattened layout |
 | SC-002 (100% of tasks/conversations under a content-root sibling, zero nested instances) | Deterministic guarantee | Hermetic integration test | Real filesystem, temp base dir | Scripted task + conversation creation | New assertions in `PathConfiguration/DefaultLayoutTests.cs`-style fixture |
-| SC-003 (100% of `log.md` entries — any agent or the backstop — start with a correctly formatted heading) | Deterministic guarantee | Hermetic integration test + structural (ArchTests-style Red/Green probe for ADR-017's `SharedFileWriteGuard` check) | `FakeAgentProcess`, temp wiki root | Well-formed append fixture (allow), non-append write (deny), malformed heading (deny), heading-with-no-paragraph (deny) | New `LogEntryFormatEnforcementTests`, mirrors `PolicyLoaderFrontmatterOnlyModeTests`' idiom |
-| SC-004 (100% of `log.md` entries locatable by heading-pattern search) | Deterministic guarantee | Hermetic integration test | Real filesystem | Multi-entry `log.md` fixture (agent-written + backstop-written mixed) | Regex-search assertion over a fixture built from SC-003's same allowed writes |
+| SC-003 (100% of `log.md` entries — any agent or the backstop — start with a correctly formatted heading) | Deterministic guarantee | Hermetic integration test with TDD Red/Green probe (tests written and confirmed RED before ADR-017's `SharedFileWriteGuard` check lands) in `Grimoire.IntegrationTests` | `FakeAgentProcess`, temp wiki root | Well-formed append fixture (allow), non-append write (deny), malformed heading (deny), heading-with-no-paragraph (deny) | New `LogEntryFormatEnforcementTests`, mirrors `PolicyLoaderFrontmatterOnlyModeTests`' idiom |
+| SC-004 (100% of `log.md` entries locatable by heading-pattern search) | Deterministic guarantee | Hermetic integration test | Real filesystem | Multi-entry `log.md` fixture (agent-written + backstop-written mixed) | Regex-search assertion over a fixture built from SC-003's same allowed writes — `LogEntryFormatEnforcementTests` (T063) |
 | SC-005 (≥90% of sampled agent-written log paragraphs specifically/accurately describe the change) | Agent-judgment threshold | Evaluation (recorded replay), threshold ≥90% | Recorded/replayed `IModelClient` (ADR-012) | Existing ingest/query scenarios re-recorded against the new format instruction | New scorer in `Grimoire.EvalRunner/Scoring` checking paragraph specificity against the task's actual diff, not a generic restatement |
-| SC-006 (100% of newly added `index.md` catalog entries follow the link-description-status shape) | Deterministic guarantee | Hermetic integration test + structural (ArchTests-style Red/Green probe for ADR-017's catalog check) | Real filesystem | Well-formed new entry (allow), malformed new entry (deny), edit to unrelated existing line (allow, untouched) | New `CatalogEntryFormatEnforcementTests` |
+| SC-006 (100% of newly added `index.md` catalog entries follow the link-description-status shape) | Deterministic guarantee | Hermetic integration test with TDD Red/Green probe (tests written and confirmed RED before ADR-017's catalog check lands) in `Grimoire.IntegrationTests` | Real filesystem | Well-formed new entry (allow), malformed new entry (deny), edit to unrelated existing line (allow, untouched) | New `CatalogEntryFormatEnforcementTests` |
 | SC-007 (≥90% of sampled catalog descriptions specifically/accurately describe the article) | Agent-judgment threshold | Evaluation (recorded replay), threshold ≥90% | Recorded/replayed `IModelClient` | Reuses SC-005's re-recorded scenarios | New scorer checking description specificity against the article's actual content |
 
 Supporting deterministic tests (not SC-numbered but contract-bearing, feeding
@@ -203,7 +204,7 @@ type-parameterized backstop, covering all three agent types.
 
 | Metric name | Type | Description | Labels |
 |-------------|------|-------------|--------|
-| `wiki.log.backstop_appended_total` | Counter | Backstop log entries appended (generalizes the existing Ingest-only signal to all three agent types) | `type=ingest\|query\|lint` |
+| `wiki.log.backstop_appended_total` | Counter | Backstop log entries appended (generalizes the existing Ingest-only signal) | `type=ingest\|query` (`lint` reserved — emitted only if Lint gains log-write scope) |
 | `wiki.write_conflict.rejections_total` | Counter | *Existing* (ADR-015) — label enumeration extended with ADR-017's four new denial reasons; no new metric | `reason=...\|log_entry_not_appended\|log_entry_malformed_heading\|log_entry_missing_paragraph\|catalog_entry_malformed` |
 
 ### Structured Log Events
@@ -229,7 +230,7 @@ PR pipeline.
 
 | Span name | Parent span | Attributes |
 |-----------|-------------|-----------|
-| `wiki_log.backstop_append` | `{ingest,query,lint}_agent.run` (existing per-process root span) | `type`, `task_id_or_run_id`, `outcome` |
+| `wiki_log.backstop_append` | `{ingest,query}_agent.run` (existing per-process root span; `lint` reserved — emitted only if Lint gains log-write scope) | `type`, `task_id_or_run_id`, `outcome` |
 | `guardrails.format_validate` | `{ingest,query,lint}_agent.tool_call` (existing) | `path`, `target=log\|index`, `outcome=allowed\|denied`, `reason` |
 
 **Derivation rule (MANDATORY)**: maps to concrete `tasks.md` work — implementation
@@ -295,14 +296,14 @@ backend/src/Grimoire.QueryAgent/
 
 backend/src/Grimoire.LintAgent/
 ├── LintCliOptions.cs                     # CHANGED: --pages-dir -> --content-root
-└── Program.cs                            # CHANGED: wires WikiLogAppender (new — Lint had no backstop before; Lint never writes log.md today per its policy, so this only applies if/when Lint's write scope grows — verify against current policy.json before wiring)
+└── Program.cs                            # CHANGED: --pages-dir -> --content-root argument parsing only. WikiLogAppender is deliberately NOT wired: Lint's policy.json grants no log.md write rule, so no log entry is ever owed and no backstop can apply. Wire it if/when Lint's write scope grows.
 
 data/agents/{ingest,query,lint}/
 ├── policy.json                           # CHANGED: pages/ -> . (R3), tasks/ removed from ingest (R4)
 └── system-prompt.md                      # CHANGED: log heading format (R5) and, for ingest/query, catalog entry format (R6)
 
 backend/tests/
-├── Grimoire.ArchTests/                   # + format-validation Red/Green probe (ADR-017)
+├── Grimoire.ArchTests/                   # + PagesWrapperRetirementBoundaryRuleTests (ADR-009 retirement probe)
 ├── Grimoire.Domain.UnitTests/            # + PolicyLoader "." normalization, SharedFileWriteGuard format-check unit tests
 └── Grimoire.IntegrationTests/
     ├── PathConfiguration/                # CHANGED: ~6 files updated for the new default layout
