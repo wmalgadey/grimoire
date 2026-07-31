@@ -48,10 +48,17 @@ public sealed class GrimoirePathOptions
 
     /// <summary>
     /// Conversation Record storage (011-query-conversations, ADR-014) — Hub-written
-    /// only, git-ignored, one append-only file per conversation. Default:
-    /// <c>conversations</c> under the data directory.
+    /// only, git-ignored, one append-only file per conversation. A sibling of the
+    /// content root, anchored at the base directory (014-wiki-storage-restructure).
+    /// Default: <c>conversations</c> under the base directory.
     /// </summary>
     public string? ConversationsDir { get; set; }
+
+    /// <summary>
+    /// Task artifact storage, a sibling of the content root (014-wiki-storage-restructure).
+    /// Default: <c>tasks</c> under the base directory.
+    /// </summary>
+    public string? TasksDir { get; set; }
 
     /// <summary>
     /// Cross-process write-coordination lock directory (012-query-synthesis-writes,
@@ -84,6 +91,7 @@ public sealed class GrimoirePathOptions
     public const string DefaultConversationsDirName = "conversations";
     public const string DefaultWriteLocksDirName = "write-locks";
     public const string DefaultFindingsDirName = "findings";
+    public const string DefaultTasksDirName = "tasks";
 
     // Not a `const`: NetArchTest's HaveDependencyOn scan treats string *field constants*
     // as candidate dependency evidence, and this filename's "Grimoire.IngestAgent" prefix

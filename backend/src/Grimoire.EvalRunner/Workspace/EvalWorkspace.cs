@@ -17,8 +17,6 @@ public sealed class EvalWorkspace : IDisposable
 
     public string WikiRoot => Path.Combine(Root, "wiki");
 
-    public string PagesDir => Path.Combine(WikiRoot, "pages");
-
     public string TasksDir => Path.Combine(WikiRoot, "tasks");
 
     public string IndexPath => Path.Combine(WikiRoot, "index.md");
@@ -41,7 +39,7 @@ public sealed class EvalWorkspace : IDisposable
 
     /// <summary>
     /// Creates the workspace: fixture wiki + instruction directory copies, optional
-    /// system-prompt mutation (instruction-change scenario), plus the pages/tasks dirs
+    /// system-prompt mutation (instruction-change scenario), plus the tasks dir
     /// the agent CLI contract expects.
     /// </summary>
     public static EvalWorkspace Create(
@@ -58,7 +56,6 @@ public sealed class EvalWorkspace : IDisposable
         CopyDirectory(wikiFixtureRoot, workspace.WikiRoot);
         CopyDirectory(agentInstructionsDir, workspace.AgentDir);
 
-        Directory.CreateDirectory(workspace.PagesDir);
         Directory.CreateDirectory(workspace.TasksDir);
         Directory.CreateDirectory(workspace.WriteLocksDir);
 
@@ -75,9 +72,12 @@ public sealed class EvalWorkspace : IDisposable
     }
 
     public IReadOnlyList<string> PageFiles()
-        => !Directory.Exists(PagesDir)
+        => !Directory.Exists(WikiRoot)
             ? []
-            : Directory.GetFiles(PagesDir, "*.md", SearchOption.AllDirectories)
+            : Directory.GetFiles(WikiRoot, "*.md", SearchOption.AllDirectories)
+                .Where(path => !path.StartsWith(TasksDir + Path.DirectorySeparatorChar, StringComparison.Ordinal)
+                    && !string.Equals(path, IndexPath, StringComparison.Ordinal)
+                    && !string.Equals(path, LogPath, StringComparison.Ordinal))
                 .OrderBy(static p => p, StringComparer.Ordinal)
                 .ToArray();
 

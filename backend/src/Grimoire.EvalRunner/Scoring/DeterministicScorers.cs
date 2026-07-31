@@ -101,14 +101,14 @@ public static class DeterministicScorers
     }
 
     // Index entries use the extensionless wiki-link convention from system-prompt.md:
-    // "- [[pages/<slug>]] — <summary>", not the literal filename.
+    // "- [[<category>/<slug>]] — <summary>" (014-wiki-storage-restructure: no more
+    // "pages/" wrapper segment; the category folder name is agent-chosen and open-ended,
+    // so this checks for the slug itself rather than reconstructing a specific prefix).
     private static bool IsDiscoverable(string indexContent, string pagePath)
     {
         var slug = Path.GetFileNameWithoutExtension(pagePath);
-        var relativeSuffix = $"pages/{slug}";
 
-        return indexContent.Contains(relativeSuffix, StringComparison.OrdinalIgnoreCase)
-            || indexContent.Contains(slug, StringComparison.OrdinalIgnoreCase);
+        return indexContent.Contains(slug, StringComparison.OrdinalIgnoreCase);
     }
 
     private static SampleScore InstructionChangeAdoption(SampleRunData run)

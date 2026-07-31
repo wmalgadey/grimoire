@@ -145,7 +145,6 @@ public class StartupValidationTests
             // US3 acceptance scenario 2: writable locations are created and the effective
             // (resolved) location is reported.
             Assert.True(Directory.Exists(resolved.ContentRoot));
-            Assert.True(Directory.Exists(resolved.PagesDir));
             Assert.True(Directory.Exists(resolved.TasksDir));
             Assert.True(Directory.Exists(resolved.RawOriginalsDir));
             Assert.True(Directory.Exists(resolved.RawSourcesDir));
@@ -158,7 +157,7 @@ public class StartupValidationTests
                 new HashSet<string>
                 {
                     "base_dir", "data_dir", "content_root", "raw_dir", "state_db", "secrets_file", "instructions_dir", "agent_worker",
-                    "query_instructions_dir", "conversations_dir", "query_agent_worker", "write_locks_dir", "findings_dir",
+                    "query_instructions_dir", "conversations_dir", "tasks_dir", "query_agent_worker", "write_locks_dir", "findings_dir",
                     "lint_instructions_dir", "lint_agent_worker",
                 },
                 reportedNames);

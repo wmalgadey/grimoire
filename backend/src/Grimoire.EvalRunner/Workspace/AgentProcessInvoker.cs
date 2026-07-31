@@ -110,7 +110,7 @@ public sealed class AgentProcessInvoker
         AddOption(startInfo, "--source-ref", sourceRef);
         AddOption(startInfo, "--source-kind", "pasted_text");
         AddOption(startInfo, "--wiki-root", workspace.WikiRoot);
-        AddOption(startInfo, "--pages-dir", workspace.PagesDir);
+        AddOption(startInfo, "--content-root", workspace.WikiRoot);
         AddOption(startInfo, "--tasks-dir", workspace.TasksDir);
         AddOption(startInfo, "--index-path", workspace.IndexPath);
         AddOption(startInfo, "--log-path", workspace.LogPath);

@@ -24,8 +24,8 @@ public class PolicyLoaderModeTests
                 {
                   "version": 2,
                   "defaultDecision": "deny",
-                  "read": [{"pathPrefix": "pages/"}],
-                  "write": [{"pathPrefix": "pages/", "mode": "create-only"}]
+                  "read": [{"pathPrefix": "."}],
+                  "write": [{"pathPrefix": ".", "mode": "create-only"}]
                 }
                 """);
 
@@ -33,7 +33,7 @@ public class PolicyLoaderModeTests
             var result = await loader.LoadAsync(policyPath, CancellationToken.None);
 
             Assert.True(result.IsFirst(out var loaded));
-            var decision = loaded.Policy.Evaluate(Path.Combine(root, "pages", "new.md"), isWrite: true);
+            var decision = loaded.Policy.Evaluate(Path.Combine(root, "concepts", "new.md"), isWrite: true);
 
             Assert.True(decision.IsAllowed);
             Assert.True(decision.IsCreateOnly);
@@ -60,7 +60,7 @@ public class PolicyLoaderModeTests
                 {
                   "version": 1,
                   "defaultDecision": "deny",
-                  "read": [{"pathPrefix": "pages/"}],
+                  "read": [{"pathPrefix": "."}],
                   "write": [{"pathPrefix": "index.md"}]
                 }
                 """);
@@ -133,7 +133,7 @@ public class PolicyLoaderModeTests
                   "version": 2,
                   "defaultDecision": "deny",
                   "read": [],
-                  "write": [{"pathPrefix": "pages/", "mode": "bogus"}]
+                  "write": [{"pathPrefix": ".", "mode": "bogus"}]
                 }
                 """);
 
@@ -142,7 +142,6 @@ public class PolicyLoaderModeTests
 
             Assert.True(result.IsSecond(out var failure));
             Assert.Contains("bogus", failure.Reason, StringComparison.Ordinal);
-            Assert.Contains("pages/", failure.Reason, StringComparison.Ordinal);
         }
         finally
         {
@@ -172,11 +171,11 @@ public class PolicyLoaderModeTests
 
             // Every write rule in the real Ingest policy is mode-absent — every allowed
             // write-scope decision it produces must be plain read-write.
-            var pagesDecision = loaded.Policy.Evaluate(Path.Combine(root, "pages", "anything.md"), isWrite: true);
+            var conceptsDecision = loaded.Policy.Evaluate(Path.Combine(root, "concepts", "anything.md"), isWrite: true);
             var indexDecision = loaded.Policy.Evaluate(Path.Combine(root, "index.md"), isWrite: true);
             var logDecision = loaded.Policy.Evaluate(Path.Combine(root, "log.md"), isWrite: true);
 
-            foreach (var decision in new[] { pagesDecision, indexDecision, logDecision })
+            foreach (var decision in new[] { conceptsDecision, indexDecision, logDecision })
             {
                 if (decision.IsAllowed)
                 {

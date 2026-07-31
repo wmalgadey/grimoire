@@ -37,7 +37,7 @@ public class ReplayAdapterTests : IDisposable
         var capturePath = Path.Combine(_scratch, "sample-01.json");
         var fake = new FakeModelClient(
         [
-            FakeModelClient.WriteFileTurn("t1", "pages/example.md", "content"),
+            FakeModelClient.WriteFileTurn("t1", "concepts/example.md", "content"),
             FakeModelClient.FinalTurn("done"),
         ]);
         var capture = new TurnCaptureModelClient(fake, capturePath);
@@ -138,7 +138,7 @@ public class ReplayAdapterTests : IDisposable
     public async Task Agent_BothReplayAndCaptureEnvSet_ExitsNonZeroNamingTheConflict()
     {
         var wikiRoot = Path.Combine(_scratch, "wiki");
-        Directory.CreateDirectory(Path.Combine(wikiRoot, "pages"));
+        Directory.CreateDirectory(wikiRoot);
         Directory.CreateDirectory(Path.Combine(wikiRoot, "tasks"));
         var agentDir = Path.Combine(_scratch, "agents");
         Directory.CreateDirectory(agentDir);
@@ -162,7 +162,7 @@ public class ReplayAdapterTests : IDisposable
             ("--source-ref", "eval://conflict"),
             ("--source-kind", "pasted_text"),
             ("--wiki-root", wikiRoot),
-            ("--pages-dir", Path.Combine(wikiRoot, "pages")),
+            ("--content-root", wikiRoot),
             ("--tasks-dir", Path.Combine(wikiRoot, "tasks")),
             ("--index-path", Path.Combine(wikiRoot, "index.md")),
             ("--log-path", Path.Combine(wikiRoot, "log.md")),

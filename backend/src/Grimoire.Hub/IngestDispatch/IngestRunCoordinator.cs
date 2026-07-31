@@ -203,7 +203,7 @@ public sealed class IngestRunCoordinator
             SourceRef: run.SourceRef,
             SourceKind: "file",
             WikiRoot: _contentPaths.Root,
-            PagesDir: _contentPaths.PagesDir,
+            ContentRoot: _contentPaths.Root,
             TasksDir: _contentPaths.TasksDir,
             IndexPath: _contentPaths.IndexPath,
             LogPath: _contentPaths.LogPath,

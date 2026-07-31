@@ -181,10 +181,13 @@ public static class LintDeterministicScorers
             return new SampleScore(false, false, new Dictionary<string, bool> { ["wiki_root_available"] = false });
         }
 
-        var pagesDir = Path.Combine(run.WikiRoot, "pages");
-        var pageFiles = Directory.Exists(pagesDir)
-            ? Directory.GetFiles(pagesDir, "*.md", SearchOption.AllDirectories)
-            : [];
+        // 014-wiki-storage-restructure: articles live directly under WikiRoot now (no
+        // "pages/" wrapper) — exclude index.md/log.md here since they're added back
+        // explicitly below via `sources`.
+        var pageFiles = Directory.GetFiles(run.WikiRoot, "*.md", SearchOption.AllDirectories)
+            .Where(path => !string.Equals(Path.GetFileName(path), "index.md", StringComparison.OrdinalIgnoreCase)
+                && !string.Equals(Path.GetFileName(path), "log.md", StringComparison.OrdinalIgnoreCase))
+            .ToArray();
 
         var sources = new List<string>(pageFiles);
         foreach (var sideFile in new[] { "index.md", "log.md" })

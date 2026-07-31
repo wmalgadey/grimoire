@@ -65,7 +65,7 @@ public sealed class IngestSubmissionPipelineFixture : IDisposable
         if (contentPaths is not null)
         {
             ContentPaths = contentPaths;
-            Directory.CreateDirectory(ContentPaths.PagesDir);
+            Directory.CreateDirectory(ContentPaths.Root);
             Directory.CreateDirectory(ContentPaths.TasksDir);
             if (!File.Exists(ContentPaths.IndexPath)) File.WriteAllText(ContentPaths.IndexPath, "# Index\n");
             if (!File.Exists(ContentPaths.LogPath)) File.WriteAllText(ContentPaths.LogPath, string.Empty);
@@ -79,7 +79,6 @@ public sealed class IngestSubmissionPipelineFixture : IDisposable
             var instructionsDir = Path.Combine(Root, "agents", "ingest");
             ContentPaths = new ContentRootPaths(
                 Root: contentRoot,
-                PagesDir: Path.Combine(contentRoot, "pages"),
                 TasksDir: Path.Combine(contentRoot, "tasks"),
                 IndexPath: Path.Combine(contentRoot, "index.md"),
                 LogPath: Path.Combine(contentRoot, "log.md"),
@@ -87,7 +86,7 @@ public sealed class IngestSubmissionPipelineFixture : IDisposable
                 DefaultUserPromptPath: Path.Combine(instructionsDir, "default-user-prompt.md"),
                 PolicyPath: Path.Combine(instructionsDir, "policy.json"),
                 WriteLocksDir: Path.Combine(Root, "write-locks"));
-            Directory.CreateDirectory(ContentPaths.PagesDir);
+            Directory.CreateDirectory(ContentPaths.Root);
             Directory.CreateDirectory(ContentPaths.TasksDir);
             File.WriteAllText(ContentPaths.IndexPath, "# Index\n");
             File.WriteAllText(ContentPaths.LogPath, string.Empty);
@@ -105,7 +104,6 @@ public sealed class IngestSubmissionPipelineFixture : IDisposable
             BaseDir: Root,
             DataDir: Root,
             ContentRoot: ContentPaths.Root,
-            PagesDir: ContentPaths.PagesDir,
             TasksDir: ContentPaths.TasksDir,
             IndexPath: ContentPaths.IndexPath,
             LogPath: ContentPaths.LogPath,

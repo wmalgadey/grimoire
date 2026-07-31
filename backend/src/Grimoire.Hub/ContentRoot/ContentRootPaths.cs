@@ -11,7 +11,6 @@ namespace Grimoire.Hub.ContentRoot;
 /// </summary>
 public sealed record ContentRootPaths(
     string Root,
-    string PagesDir,
     string TasksDir,
     string IndexPath,
     string LogPath,
@@ -23,7 +22,6 @@ public sealed record ContentRootPaths(
     public static ContentRootPaths FromResolved(ResolvedGrimoirePaths resolved) =>
         new(
             Root: resolved.ContentRoot,
-            PagesDir: resolved.PagesDir,
             TasksDir: resolved.TasksDir,
             IndexPath: resolved.IndexPath,
             LogPath: resolved.LogPath,

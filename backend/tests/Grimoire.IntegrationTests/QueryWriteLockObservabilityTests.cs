@@ -35,8 +35,8 @@ public class QueryWriteLockObservabilityTests
         var root = CreateTempRoot();
         try
         {
-            var (executor, logger, pagesDir, _) = BuildExecutor(root, "t-lock-acquired-1");
-            var newPagePath = Path.Combine(pagesDir, "new.md");
+            var (executor, logger, conceptsDir, _) = BuildExecutor(root, "t-lock-acquired-1");
+            var newPagePath = Path.Combine(conceptsDir, "new.md");
 
             // The `*_agent.tool_call` span for this same write is only created afterward,
             // once the allow/deny decision is known (RecordAllowed/RecordDenied) — at
@@ -50,7 +50,7 @@ public class QueryWriteLockObservabilityTests
 
                 var result = await executor.ExecuteAsync(
                     ToolRegistry.WriteFile,
-                    JsonSerializer.Serialize(new { path = "pages/new.md", content = "# New synthesis page" }),
+                    JsonSerializer.Serialize(new { path = "concepts/new.md", content = "# New synthesis page" }),
                     turn: 1,
                     CancellationToken.None);
 
@@ -223,12 +223,12 @@ public class QueryWriteLockObservabilityTests
         return (counterMeasurements, histogramMeasurements);
     }
 
-    private static (GuardedToolExecutor Executor, CaptureLogger<QueryWriteLockObservabilityTests> Logger, string PagesDir, string IndexPath)
+    private static (GuardedToolExecutor Executor, CaptureLogger<QueryWriteLockObservabilityTests> Logger, string ConceptsDir, string IndexPath)
         BuildExecutor(string root, string taskId, TimeSpan? writeLockBackoffCap = null)
     {
         var wikiRoot = Path.Combine(root, "wiki");
-        var pagesDir = Path.Combine(wikiRoot, "pages");
-        Directory.CreateDirectory(pagesDir);
+        var conceptsDir = Path.Combine(wikiRoot, "concepts");
+        Directory.CreateDirectory(conceptsDir);
         var writeLocksDir = Path.Combine(root, "write-locks");
 
         var policy = new SafetyPolicy(
@@ -236,7 +236,7 @@ public class QueryWriteLockObservabilityTests
             readPrefixes: [wikiRoot + Path.DirectorySeparatorChar],
             writeRules:
             [
-                new WriteRule(pagesDir + Path.DirectorySeparatorChar, CreateOnly: true),
+                new WriteRule(conceptsDir + Path.DirectorySeparatorChar, CreateOnly: true),
                 new WriteRule(Path.Combine(wikiRoot, "index.md"), CreateOnly: false),
             ]);
 
@@ -252,7 +252,7 @@ public class QueryWriteLockObservabilityTests
             writeLocksDir: writeLocksDir,
             writeLockBackoffCap: writeLockBackoffCap);
 
-        return (executor, logger, pagesDir, Path.Combine(wikiRoot, "index.md"));
+        return (executor, logger, conceptsDir, Path.Combine(wikiRoot, "index.md"));
     }
 
     private static string CreateTempRoot()

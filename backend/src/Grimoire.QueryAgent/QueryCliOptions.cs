@@ -9,7 +9,7 @@ namespace Grimoire.QueryAgent;
 public sealed record QueryCliOptions(
     string TurnId,
     string WikiRoot,
-    string PagesDir,
+    string ContentRoot,
     string IndexPath,
     string LogPath,
     string SystemPromptPath,

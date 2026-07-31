@@ -34,6 +34,20 @@ public readonly record struct WriteRule
     public WriteMode Mode { get; }
 
     /// <summary>
+    /// Exact-match canonical paths this rule never matches, even though
+    /// <see cref="Prefix"/> otherwise would (014-wiki-storage-restructure, R3 correction).
+    /// A directory-style root prefix (e.g. <c>"."</c>, the whole wiki content root) has no
+    /// way to express "everything except these two files" other than this: the policy
+    /// schema is allow-list-only with first-match-wins and no deny-rule concept, so an
+    /// agent whose write rules contain no separate, earlier entry for a reserved file
+    /// (e.g. Lint, which should never write <c>index.md</c>/<c>log.md</c> at all) would
+    /// otherwise have that file incorrectly fall inside a broad catch-all's mode instead
+    /// of correctly falling through to <c>defaultDecision: deny</c> ("out_of_scope").
+    /// Always resolved as exact-match, independent of the rule's own prefix shape.
+    /// </summary>
+    public IReadOnlyList<string> ExcludePrefixes { get; }
+
+    /// <summary>
     /// Pre-ADR-016 computed convenience: <c>true</c> iff <see cref="Mode"/> is
     /// <see cref="WriteMode.CreateOnly"/>. Retained so every call site and test written
     /// against the boolean shape (before ADR-016 introduced the three-way <see cref="Mode"/>)
@@ -41,10 +55,11 @@ public readonly record struct WriteRule
     /// </summary>
     public bool CreateOnly => Mode == WriteMode.CreateOnly;
 
-    public WriteRule(string Prefix, WriteMode Mode = WriteMode.ReadWrite)
+    public WriteRule(string Prefix, WriteMode Mode = WriteMode.ReadWrite, IReadOnlyList<string>? ExcludePrefixes = null)
     {
         this.Prefix = Prefix;
         this.Mode = Mode;
+        this.ExcludePrefixes = ExcludePrefixes ?? Array.Empty<string>();
     }
 
     /// <summary>
@@ -149,13 +164,25 @@ public sealed class SafetyPolicy
 
         foreach (var rule in _writeRules)
         {
-            if (PrefixMatches(rule.Prefix, canonicalTarget))
+            if (PrefixMatches(rule.Prefix, canonicalTarget) && !IsExcluded(rule.ExcludePrefixes, canonicalTarget))
             {
                 return PolicyDecision.Allow(rule.Mode);
             }
         }
 
         return PolicyDecision.Deny("out_of_scope");
+    }
+
+    private static bool IsExcluded(IReadOnlyList<string> excludePrefixes, string canonicalTarget)
+    {
+        foreach (var excluded in excludePrefixes)
+        {
+            if (canonicalTarget.Equals(excluded, StringComparison.Ordinal))
+            {
+                return true;
+            }
+        }
+        return false;
     }
 
     private bool IsWithinRepositoryRoot(string canonicalTarget)

@@ -6,7 +6,7 @@ public sealed record IngestAgentRequest(
     string SourceRef,
     string SourceKind,
     string WikiRoot,
-    string PagesDir,
+    string ContentRoot,
     string TasksDir,
     string IndexPath,
     string LogPath,

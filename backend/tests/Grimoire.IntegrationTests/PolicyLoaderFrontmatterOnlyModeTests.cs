@@ -25,8 +25,8 @@ public class PolicyLoaderFrontmatterOnlyModeTests
                 {
                   "version": 1,
                   "defaultDecision": "deny",
-                  "read": [{"pathPrefix": "pages/"}],
-                  "write": [{"pathPrefix": "pages/", "mode": "frontmatter-only"}]
+                  "read": [{"pathPrefix": "concepts/"}],
+                  "write": [{"pathPrefix": "concepts/", "mode": "frontmatter-only"}]
                 }
                 """);
 
@@ -34,7 +34,7 @@ public class PolicyLoaderFrontmatterOnlyModeTests
             var result = await loader.LoadAsync(policyPath, CancellationToken.None);
 
             Assert.True(result.IsFirst(out var loaded));
-            var decision = loaded.Policy.Evaluate(Path.Combine(root, "pages", "existing.md"), isWrite: true);
+            var decision = loaded.Policy.Evaluate(Path.Combine(root, "concepts", "existing.md"), isWrite: true);
 
             Assert.True(decision.IsAllowed);
             Assert.Equal(WriteMode.FrontmatterOnly, decision.Mode);
@@ -62,8 +62,8 @@ public class PolicyLoaderFrontmatterOnlyModeTests
                 {
                   "version": 1,
                   "defaultDecision": "deny",
-                  "read": [{"pathPrefix": "pages/"}, {"pathPrefix": "index.md"}],
-                  "write": [{"pathPrefix": "pages/", "mode": "frontmatter-only"}]
+                  "read": [{"pathPrefix": "concepts/"}, {"pathPrefix": "index.md"}],
+                  "write": [{"pathPrefix": "concepts/", "mode": "frontmatter-only"}]
                 }
                 """);
 
