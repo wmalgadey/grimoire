@@ -106,12 +106,19 @@ using (var bootstrapLoggerFactory = TelemetryExtensions.CreateBootstrapLoggerFac
     // run record file).
     builder.Services.AddSingleton<FindingsReportStore>(sp => new FindingsReportStore(
         resolvedPaths, logger: sp.GetRequiredService<ILogger<FindingsReportStore>>()));
+    // 015-lint-board-parity T011: lint's own board lifecycle channel, mirroring the
+    // Ingest/Query publisher wiring above (research.md R1 — /hubs/ingest-lifecycle is
+    // never touched, FR-015).
+    builder.Services.AddSingleton<LintLifecyclePublisher>(sp => new LintLifecyclePublisher(
+        sp.GetRequiredService<IHubContext<LintLifecycleHub>>(),
+        sp.GetRequiredService<ILogger<LintLifecyclePublisher>>()));
     builder.Services.AddSingleton<LintRunCoordinator>(sp => new LintRunCoordinator(
         sp.GetRequiredService<IAgentProcessLauncher>(),
         sp.GetRequiredService<FindingsReportStore>(),
         resolvedPaths,
         reviewWindowOptions: sp.GetRequiredService<LintReviewWindowOptions>(),
-        logger: sp.GetRequiredService<ILogger<LintRunCoordinator>>()));
+        logger: sp.GetRequiredService<ILogger<LintRunCoordinator>>(),
+        lifecyclePublisher: sp.GetRequiredService<LintLifecyclePublisher>()));
 
     // 015-lint-board-parity (ADR-018): remediation-task composition, mirroring the Lint/
     // Query pattern above — the append-only Remediation Task Record store for now; the
@@ -155,7 +162,10 @@ app.MapGroup("/api/ingest-queue").MapIngestQueueEndpoints();
 app.MapHub<QueryLifecycleHub>("/hubs/query-lifecycle");
 app.MapGroup("/api/query-conversations").MapQueryConversationEndpoints();
 app.MapGroup("/api/query-turns").MapQueryTurnEndpoints();
+app.MapHub<LintLifecycleHub>("/hubs/lint-lifecycle");
 app.MapGroup("/api/lint-runs").MapLintRunEndpoints();
+// 015-lint-board-parity T012: composite board initial state (contracts/lint-board-api.md).
+app.MapGroup("/api/board").MapBoardEndpoints();
 app.Run();
 
 static string? ParseOption(string[] args, string option)

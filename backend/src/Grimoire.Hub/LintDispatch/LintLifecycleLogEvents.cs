@@ -15,6 +15,7 @@ public static class LintLifecycleLogEvents
     private static readonly EventId RunRejectedEvent = new(81, "lint.run.rejected");
     private static readonly EventId RunCompletedEvent = new(82, "lint.run.completed");
     private static readonly EventId RunFailedEvent = new(83, "lint.run.failed");
+    private static readonly EventId LifecyclePublishedEvent = new(84, "lint.lifecycle.published");
 
     public static void LogRunTriggered(ILogger logger, string runId)
     {
@@ -48,6 +49,22 @@ public static class LintLifecycleLogEvents
         span?.SetTag("reason", reason);
 
         logger.LogError(RunFailedEvent, "Lint run failed. run_id={run_id} reason={reason}", runId, reason);
+    }
+
+    /// <summary>
+    /// 015-lint-board-parity T011: one broadcast published on
+    /// <c>/hubs/lint-lifecycle</c> — mirrors <c>ingest.lifecycle.published</c>'s
+    /// per-broadcast log event (emitted by <c>LintLifecyclePublisher</c>).
+    /// </summary>
+    public static void LogLifecyclePublished(ILogger logger, string runId, string? fromStatus, string toStatus)
+    {
+        using var span = StartLogEventSpan("lint.lifecycle.published", "Information");
+        span?.SetTag("run_id", runId);
+        span?.SetTag("from_status", fromStatus);
+        span?.SetTag("to_status", toStatus);
+
+        logger.LogInformation(LifecyclePublishedEvent,
+            "Lint lifecycle published: {run_id} {from_status} -> {to_status}", runId, fromStatus, toStatus);
     }
 
     private static Activity? StartLogEventSpan(string eventName, string level)

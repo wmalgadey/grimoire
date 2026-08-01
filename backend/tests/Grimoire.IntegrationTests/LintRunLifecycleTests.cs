@@ -273,7 +273,8 @@ internal sealed class LintCoordinatorHarness : IDisposable
     public static LintCoordinatorHarness Create(
         FakeAgentProcessLauncher? launcher = null,
         TimeSpan? livenessWindow = null,
-        LintReviewWindowOptions? reviewWindowOptions = null)
+        LintReviewWindowOptions? reviewWindowOptions = null,
+        Grimoire.Hub.Realtime.LintLifecyclePublisher? lifecyclePublisher = null)
     {
         var root = Path.Combine(Path.GetTempPath(), $"grimoire-lint-lifecycle-{Guid.NewGuid():N}");
         var findingsDir = Path.Combine(root, "findings");
@@ -313,7 +314,8 @@ internal sealed class LintCoordinatorHarness : IDisposable
         var reportStore = new FindingsReportStore(paths, NullLogger<FindingsReportStore>.Instance);
         var coordinator = new LintRunCoordinator(
             effectiveLauncher, reportStore, paths, livenessWindow: livenessWindow,
-            reviewWindowOptions: reviewWindowOptions, logger: NullLogger<LintRunCoordinator>.Instance);
+            reviewWindowOptions: reviewWindowOptions, logger: NullLogger<LintRunCoordinator>.Instance,
+            lifecyclePublisher: lifecyclePublisher);
 
         return new LintCoordinatorHarness(root, paths, effectiveLauncher, coordinator);
     }

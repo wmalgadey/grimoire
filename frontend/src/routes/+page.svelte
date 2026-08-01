@@ -3,13 +3,16 @@
 	import { resolve } from '$app/paths';
 	import ConnectionStatusIndicator from '$lib/components/ConnectionStatusIndicator.svelte';
 	import KanbanColumn from '$lib/components/KanbanColumn.svelte';
+	import LintRunCard from '$lib/components/LintRunCard.svelte';
 	import SubmissionForm from '$lib/components/SubmissionForm.svelte';
 	import { createBoardLifecycleStream } from '$lib/services/ingestLifecycleClient';
 	import { getBoard, resumeQueue } from '$lib/services/ingestSubmissionsApi';
+	import { createLintRunStream } from '$lib/services/lintLifecycleClient';
 	import type {
 		BoardTask,
 		ConnectionState,
 		LifecycleStage,
+		LintRun,
 		RunActivity,
 		RunActivityEvent
 	} from '$lib/types';
@@ -25,6 +28,11 @@
 
 	let tasks: BoardTask[] = $state([]);
 	let stream: ReturnType<typeof createBoardLifecycleStream> | undefined;
+	// 015-lint-board-parity T014 (FR-001/FR-003): the board's lint run view, bootstrapped
+	// from GET /api/board and kept live via /hubs/lint-lifecycle — its own stream and hub
+	// connection, fully independent of the ingest stream above (FR-015).
+	let lintRun: LintRun | null = $state(null);
+	let lintStream: ReturnType<typeof createLintRunStream> | undefined;
 	// 004 FR-018: live loop-activity, keyed by taskId, layered onto the board without a
 	// separate detail page.
 	let runActivityByTaskId: Record<string, RunActivity> = $state({});
@@ -87,10 +95,18 @@
 		);
 		void stream.start();
 		void refreshQueueState();
+
+		lintStream = createLintRunStream((run) => {
+			lintRun = run;
+		});
+		// Non-critical, like refreshQueueState above: the ingest board still renders if
+		// the lint bootstrap/stream fails; the card shows "no lint activity" until then.
+		void lintStream.start().catch(() => {});
 	});
 
 	onDestroy(() => {
 		void stream?.stop();
+		void lintStream?.stop();
 	});
 </script>
 
@@ -143,6 +159,11 @@
 			</button>
 		</div>
 	{/if}
+
+	<section class="flex flex-col gap-2" data-testid="lint-board-section">
+		<h2 class="text-sm font-semibold text-slate-700">Wiki health check</h2>
+		<LintRunCard run={lintRun} />
+	</section>
 
 	<div class="flex gap-4 overflow-x-auto" data-testid="kanban-board">
 		{#each stages as stage (stage)}

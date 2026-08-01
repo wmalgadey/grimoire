@@ -33,6 +33,7 @@ public sealed class LintRunCoordinator
     private readonly TimeSpan _livenessWindow;
     private readonly LintReviewWindowOptions _reviewWindowOptions;
     private readonly ILogger<LintRunCoordinator> _logger;
+    private readonly Realtime.LintLifecyclePublisher? _lifecyclePublisher;
     private readonly SemaphoreSlim _slot = new(1, 1);
 
     private readonly ConcurrentDictionary<string, LintRunState> _runs = new();
@@ -46,7 +47,8 @@ public sealed class LintRunCoordinator
         TimeProvider? timeProvider = null,
         TimeSpan? livenessWindow = null,
         LintReviewWindowOptions? reviewWindowOptions = null,
-        ILogger<LintRunCoordinator>? logger = null)
+        ILogger<LintRunCoordinator>? logger = null,
+        Realtime.LintLifecyclePublisher? lifecyclePublisher = null)
     {
         _launcher = launcher;
         _reportStore = reportStore;
@@ -55,6 +57,9 @@ public sealed class LintRunCoordinator
         _livenessWindow = livenessWindow ?? TimeSpan.FromSeconds(60);
         _reviewWindowOptions = reviewWindowOptions ?? new LintReviewWindowOptions();
         _logger = logger ?? NullLogger<LintRunCoordinator>.Instance;
+        // 015-lint-board-parity T011: optional so pre-015 wiring/tests keep working;
+        // when absent, runs simply publish no board lifecycle events.
+        _lifecyclePublisher = lifecyclePublisher;
     }
 
     public LintRunState? GetRun(string runId) => _runs.TryGetValue(runId, out var run) ? run : null;
@@ -89,6 +94,14 @@ public sealed class LintRunCoordinator
         triggerSpan?.SetTag("outcome", "accepted");
 
         LintLifecycleLogEvents.LogRunTriggered(_logger, runId);
+
+        // 015-lint-board-parity T011 (SC-001): the board sees the run as running the
+        // moment it is accepted, however it was triggered (board or /lint page).
+        if (_lifecyclePublisher is not null)
+        {
+            await _lifecyclePublisher.PublishRunChangedAsync(
+                runId, fromStatus: null, toStatus: "running", failureReason: null, cancellationToken);
+        }
 
         var request = new LintAgentRequest(
             RunId: runId,
@@ -244,6 +257,16 @@ public sealed class LintRunCoordinator
         else
         {
             LintLifecycleLogEvents.LogRunFailed(_logger, runId, failureReason ?? "unknown");
+        }
+
+        // 015-lint-board-parity T011 (SC-002, FR-005): terminal broadcast after the
+        // first-terminal-transition-wins arbiter committed — the board reflects
+        // completed/failed (incl. the failure reason) without a reload. T022 (US3) will
+        // materialize proposed remediation tasks *before* this publish (FR-007 ordering).
+        if (_lifecyclePublisher is not null)
+        {
+            await _lifecyclePublisher.PublishRunChangedAsync(
+                runId, fromStatus: "running", toStatus: outcome, failureReason, CancellationToken.None);
         }
 
         var report = new FindingsReport(

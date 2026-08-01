@@ -189,3 +189,48 @@ export interface LintFindingsReport {
 	runId: string;
 	content: string;
 }
+
+// 015-lint-board-parity (contracts/lint-board-api.md `GET /api/board`, data-model.md
+// "Board Entry"): the composite board initial-state response carries all entry kinds,
+// explicitly typed via the `kind` discriminator — each kind maps to a distinct card
+// component (FR-006). Ingest rows keep exactly their existing field set (FR-015).
+export interface IngestTaskBoardEntry extends BoardTask {
+	kind: 'ingest_task';
+}
+
+export interface LintRunBoardEntry extends LintRun {
+	kind: 'lint_run';
+}
+
+// data-model.md RemediationActionTask states; cards render from US3 onward, but the
+// entry shape is part of the composite board contract from the start.
+export type RemediationTaskState =
+	'proposed' | 'authorized' | 'executing' | 'completed' | 'failed' | 'not_applicable' | 'dismissed';
+
+export interface RemediationTaskBoardEntry {
+	kind: 'remediation_task';
+	taskId: string;
+	runId: string;
+	title: string;
+	state: RemediationTaskState;
+	proposedAt: string;
+	queuePosition: number | null;
+	outcomeReason: string | null;
+	updatedAt: string;
+}
+
+export type BoardEntry = IngestTaskBoardEntry | LintRunBoardEntry | RemediationTaskBoardEntry;
+
+export interface CompositeBoardResponse {
+	entries: BoardEntry[];
+}
+
+/** SignalR `lintRunLifecycleChanged` payload (contracts/remediation-lifecycle-events.md "Hub 1"). */
+export interface LintRunLifecycleEvent {
+	eventId: string;
+	runId: string;
+	fromStatus: LintRunStatus | null;
+	toStatus: LintRunStatus;
+	timestamp: string;
+	failureReason: string | null;
+}
