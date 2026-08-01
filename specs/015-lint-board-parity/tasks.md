@@ -239,3 +239,16 @@ proof), and T028/T039 (eval scaffolding docs), then appended per `/speckit-conve
 - [X] T055 [P] Update the stale "no trusted recording exists yet" / `TrustStatus.Missing` class doc comments in `backend/tests/Grimoire.AgentEvals/LintRemediationProposalRelevanceEvalTests.cs` (~line 30) and `backend/tests/Grimoire.AgentEvals/RemediationReVerificationEvalTests.cs` (~line 39) per T028/T039 (contradicts): both were left over from the scaffolding-only state, but this PR captured and committed `data/evals/recordings/lint-remediation-proposals/` and `data/evals/recordings/remediation-reverify-{still-applicable,no-longer-applicable}/` (T028/T039 closed at 100%). Rewrite both comments to describe the recordings-present, refresh-on-stale-fingerprint state, with the capture command retained for future re-capture after an instruction change.
 
 **Checkpoint**: All PR #41 review findings addressed; re-run `dotnet build`, the full backend suites, and frontend `test`/`check`/`lint` before pushing.
+
+---
+
+## Phase 10: Convergence
+
+**Source**: `/speckit-converge` run 2026-08-01 (post-T051–T055). Full verification pass:
+ArchTests 49/49, Domain unit 93/93, IntegrationTests 583/583, frontend 123/123 +
+svelte-check/eslint/prettier clean, AgentEvals 70/71 — every 015 requirement, plan
+decision, and observability row verified present. One remaining gap, appended below.
+
+- [ ] T056 Restore the `lint-inbound-links-refreshed` eval scenario to its ≥ 95% threshold per Constitution DoD "CI/CD pipeline passes" / T046 (partial): `LintReplayEvalTests.SC008_InboundLinksRefreshed_ReplaysAtThreshold` currently fails on recorded evidence — the 2026-08-01 `claude-haiku-4-5` recapture (forced stale by T025's `data/agents/lint/system-prompt.md` extension) scores 90.0% against 013-lint-agent's 95% threshold, and `.github/workflows/ci.yml` runs `Grimoire.AgentEvals` with `set -o pipefail`, so the standard PR pipeline is red and blocks this feature's DoD. Investigate whether T025's prompt extension degraded inbound-link refreshing or the shortfall is sampling variance; remediate via lint-run instruction tuning in `data/agents/lint/system-prompt.md` (not backend code — Principle V) and/or re-capture via `dotnet run --project backend/src/Grimoire.EvalRunner -- capture --scenario lint-inbound-links-refreshed`, until the scenario replays at ≥ 95% and the AgentEvals suite is green in CI.
+
+**Checkpoint**: On completion, the full PR pipeline (backend suites incl. AgentEvals, frontend gates) is green and the 015 DoD is met.
