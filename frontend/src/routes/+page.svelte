@@ -7,6 +7,7 @@
 	import SubmissionForm from '$lib/components/SubmissionForm.svelte';
 	import { createBoardLifecycleStream } from '$lib/services/ingestLifecycleClient';
 	import { getBoard, resumeQueue } from '$lib/services/ingestSubmissionsApi';
+	import { triggerLintRun } from '$lib/services/lintApi';
 	import { createLintRunStream } from '$lib/services/lintLifecycleClient';
 	import type {
 		BoardTask,
@@ -33,6 +34,34 @@
 	// connection, fully independent of the ingest stream above (FR-015).
 	let lintRun: LintRun | null = $state(null);
 	let lintStream: ReturnType<typeof createLintRunStream> | undefined;
+	// 015-lint-board-parity T018 (FR-002/SC-003): trigger a lint run in one action from
+	// the board itself; blocked triggers surface their reason — never silent (SC-004).
+	let triggeringLint = $state(false);
+	let lintTriggerError: string | null = $state(null);
+
+	async function handleLintTrigger() {
+		triggeringLint = true;
+		lintTriggerError = null;
+		try {
+			const accepted = await triggerLintRun();
+			// Optimistic view from the 202; the lint lifecycle stream confirms/refines it.
+			lintRun = {
+				runId: accepted.runId,
+				status: accepted.status,
+				triggeredAt: accepted.triggeredAt,
+				completedAt: null,
+				failureReason: null,
+				hasFindingsReport: false
+			};
+		} catch (err) {
+			// LintApiError.message carries the Hub's human-readable reason for both 409
+			// shapes (lint_run_active, unresolved_remediation_tasks) — SC-004.
+			lintTriggerError =
+				err instanceof Error ? err.message : 'The lint run could not be triggered.';
+		} finally {
+			triggeringLint = false;
+		}
+	}
 	// 004 FR-018: live loop-activity, keyed by taskId, layered onto the board without a
 	// separate detail page.
 	let runActivityByTaskId: Record<string, RunActivity> = $state({});
@@ -161,7 +190,26 @@
 	{/if}
 
 	<section class="flex flex-col gap-2" data-testid="lint-board-section">
-		<h2 class="text-sm font-semibold text-slate-700">Wiki health check</h2>
+		<div class="flex items-center justify-between">
+			<h2 class="text-sm font-semibold text-slate-700">Wiki health check</h2>
+			<button
+				type="button"
+				class="rounded bg-violet-600 px-3 py-1 text-xs font-medium text-white hover:bg-violet-700 disabled:opacity-50"
+				onclick={handleLintTrigger}
+				disabled={triggeringLint}
+				data-testid="lint-trigger-button"
+			>
+				{triggeringLint ? 'Triggering…' : 'Run health check'}
+			</button>
+		</div>
+		{#if lintTriggerError}
+			<p
+				class="rounded border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-800"
+				data-testid="lint-trigger-error"
+			>
+				{lintTriggerError}
+			</p>
+		{/if}
 		<LintRunCard run={lintRun} />
 	</section>
 

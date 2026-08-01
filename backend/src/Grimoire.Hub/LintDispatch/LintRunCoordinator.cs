@@ -13,6 +13,14 @@ public abstract record LintSubmissionResult
 
     /// <summary>FR-003/SC-003: a Lint Run is already active — rejected immediately, never queued.</summary>
     public sealed record Busy : LintSubmissionResult;
+
+    /// <summary>
+    /// 015-lint-board-parity T017 (FR-004/SC-004): rejected because remediation action
+    /// tasks from a prior run are still unresolved (`proposed|authorized|executing`).
+    /// Carries the blocking task ids so the board can link straight to the cards that
+    /// need a decision (contracts/lint-board-api.md).
+    /// </summary>
+    public sealed record Blocked(string Reason, IReadOnlyList<string> UnresolvedTaskIds) : LintSubmissionResult;
 }
 
 /// <summary>
@@ -34,7 +42,11 @@ public sealed class LintRunCoordinator
     private readonly LintReviewWindowOptions _reviewWindowOptions;
     private readonly ILogger<LintRunCoordinator> _logger;
     private readonly Realtime.LintLifecyclePublisher? _lifecyclePublisher;
+    private readonly OperationalState.OperationalStateRepository? _stateRepository;
     private readonly SemaphoreSlim _slot = new(1, 1);
+
+    /// <summary>"Unresolved" = not yet at a terminal outcome (data-model.md, FR-004).</summary>
+    private static readonly string[] _unresolvedRemediationStates = ["proposed", "authorized", "executing"];
 
     private readonly ConcurrentDictionary<string, LintRunState> _runs = new();
     private readonly ConcurrentDictionary<string, AgentDispatch.IAgentProcessHandle> _handles = new();
@@ -48,7 +60,8 @@ public sealed class LintRunCoordinator
         TimeSpan? livenessWindow = null,
         LintReviewWindowOptions? reviewWindowOptions = null,
         ILogger<LintRunCoordinator>? logger = null,
-        Realtime.LintLifecyclePublisher? lifecyclePublisher = null)
+        Realtime.LintLifecyclePublisher? lifecyclePublisher = null,
+        OperationalState.OperationalStateRepository? stateRepository = null)
     {
         _launcher = launcher;
         _reportStore = reportStore;
@@ -60,6 +73,9 @@ public sealed class LintRunCoordinator
         // 015-lint-board-parity T011: optional so pre-015 wiring/tests keep working;
         // when absent, runs simply publish no board lifecycle events.
         _lifecyclePublisher = lifecyclePublisher;
+        // 015-lint-board-parity T017: optional for the same reason; when absent, the
+        // FR-004 unresolved-remediation-tasks precondition is not evaluated.
+        _stateRepository = stateRepository;
     }
 
     public LintRunState? GetRun(string runId) => _runs.TryGetValue(runId, out var run) ? run : null;
@@ -81,6 +97,27 @@ public sealed class LintRunCoordinator
             HubMetrics.RecordLintTriggerRejected();
             LintLifecycleLogEvents.LogRunRejected(_logger);
             return new LintSubmissionResult.Busy();
+        }
+
+        // 015-lint-board-parity T017 (FR-004/SC-004): a new run is also rejected while
+        // any remediation action task from a prior run has not reached a terminal
+        // outcome. Evaluated after the slot acquire so `lint_run_active` wins when both
+        // conditions hold (contracts/lint-board-api.md), and the slot semaphore stays
+        // the single first-transition-wins arbiter for the trigger-at-completion race.
+        if (_stateRepository is not null)
+        {
+            var unresolvedTaskIds = (await _stateRepository.GetRemediationTasksAsync(cancellationToken: cancellationToken))
+                .Where(row => _unresolvedRemediationStates.Contains(row.State, StringComparer.Ordinal))
+                .Select(row => row.TaskId)
+                .ToList();
+
+            if (unresolvedTaskIds.Count > 0)
+            {
+                _slot.Release();
+                HubMetrics.RecordLintTriggerRejected();
+                LintLifecycleLogEvents.LogRunBlockedByUnresolvedTasks(_logger, unresolvedTaskIds.Count);
+                return new LintSubmissionResult.Blocked("unresolved_remediation_tasks", unresolvedTaskIds);
+            }
         }
 
         var triggeredAt = _timeProvider.GetUtcNow();

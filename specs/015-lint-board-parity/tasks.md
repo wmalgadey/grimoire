@@ -93,13 +93,13 @@ again while active → clear "already active" explanation (quickstart.md Scenari
 
 ### Tests for User Story 2 (write first, must fail)
 
-- [ ] T016 [P] [US2] Hermetic integration test in `backend/tests/Grimoire.IntegrationTests/LintTriggerPreconditionTests.cs`: `POST /api/lint-runs` returns 409 with `reason: "lint_run_active"` while a run is active, and 409 with `reason: "unresolved_remediation_tasks"` + `unresolvedTaskIds` while any remediation row is `proposed|authorized|executing`; accepted (202) when neither holds, including the run-just-finished race (spec edge case: trigger at the moment a run finishes resolves to either a clean accept or a clean reject, never silence) (FR-004/SC-004).
+- [X] T016 [P] [US2] Hermetic integration test in `backend/tests/Grimoire.IntegrationTests/LintTriggerPreconditionTests.cs`: `POST /api/lint-runs` returns 409 with `reason: "lint_run_active"` while a run is active, and 409 with `reason: "unresolved_remediation_tasks"` + `unresolvedTaskIds` while any remediation row is `proposed|authorized|executing`; accepted (202) when neither holds, including the run-just-finished race (spec edge case: trigger at the moment a run finishes resolves to either a clean accept or a clean reject, never silence) (FR-004/SC-004).
 
 ### Implementation for User Story 2
 
-- [ ] T017 [US2] Extend `LintRunCoordinator.TriggerAsync` in `backend/src/Grimoire.Hub/LintDispatch/LintRunCoordinator.cs` with the FR-004 precondition: reject (new `LintSubmissionResult.Blocked` with reason + unresolved task ids, queried from `OperationalStateRepository`) when any remediation task is unresolved; keep the existing Busy path for an active run. Update `backend/src/Grimoire.Hub/LintDispatch/LintSubmissionEndpoints.cs` to map both reasons per contracts/lint-board-api.md.
-- [ ] T018 [US2] Frontend: add the trigger control to the board in `frontend/src/routes/+page.svelte` (reusing `frontend/src/lib/services/lintApi.ts` `POST /api/lint-runs`), single action from the board (SC-003); surface both 409 reasons as clear user-facing messages (never silent, SC-004).
-- [ ] T019 [P] [US2] Frontend test for trigger + both blocked reasons in `frontend/src/routes/board-lint-trigger.test.ts` (or the project's established frontend test location).
+- [X] T017 [US2] Extend `LintRunCoordinator.TriggerAsync` in `backend/src/Grimoire.Hub/LintDispatch/LintRunCoordinator.cs` with the FR-004 precondition: reject (new `LintSubmissionResult.Blocked` with reason + unresolved task ids, queried from `OperationalStateRepository`) when any remediation task is unresolved; keep the existing Busy path for an active run. Update `backend/src/Grimoire.Hub/LintDispatch/LintSubmissionEndpoints.cs` to map both reasons per contracts/lint-board-api.md.
+- [X] T018 [US2] Frontend: add the trigger control to the board in `frontend/src/routes/+page.svelte` (reusing `frontend/src/lib/services/lintApi.ts` `POST /api/lint-runs`), single action from the board (SC-003); surface both 409 reasons as clear user-facing messages (never silent, SC-004).
+- [X] T019 [P] [US2] Frontend test for trigger + both blocked reasons in `frontend/src/routes/board-lint-trigger.test.ts` (or the project's established frontend test location).
 
 **Checkpoint**: US1+US2 — board is the single place to see and start lint work.
 

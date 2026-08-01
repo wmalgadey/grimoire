@@ -16,6 +16,7 @@ public static class LintLifecycleLogEvents
     private static readonly EventId RunCompletedEvent = new(82, "lint.run.completed");
     private static readonly EventId RunFailedEvent = new(83, "lint.run.failed");
     private static readonly EventId LifecyclePublishedEvent = new(84, "lint.lifecycle.published");
+    private static readonly EventId RunBlockedEvent = new(85, "lint.run.blocked");
 
     public static void LogRunTriggered(ILogger logger, string runId)
     {
@@ -49,6 +50,21 @@ public static class LintLifecycleLogEvents
         span?.SetTag("reason", reason);
 
         logger.LogError(RunFailedEvent, "Lint run failed. run_id={run_id} reason={reason}", runId, reason);
+    }
+
+    /// <summary>
+    /// 015-lint-board-parity T017 (FR-004/SC-004): trigger rejected because remediation
+    /// action tasks from a prior run are still unresolved — sibling of
+    /// <see cref="LogRunRejected"/>'s active-run rejection.
+    /// </summary>
+    public static void LogRunBlockedByUnresolvedTasks(ILogger logger, int unresolvedCount)
+    {
+        using var span = StartLogEventSpan("lint.run.blocked", "Information");
+        span?.SetTag("unresolved_count", unresolvedCount);
+
+        logger.LogInformation(RunBlockedEvent,
+            "Lint run trigger blocked — {unresolved_count} remediation action task(s) from a prior run are unresolved.",
+            unresolvedCount);
     }
 
     /// <summary>

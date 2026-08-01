@@ -118,7 +118,9 @@ using (var bootstrapLoggerFactory = TelemetryExtensions.CreateBootstrapLoggerFac
         resolvedPaths,
         reviewWindowOptions: sp.GetRequiredService<LintReviewWindowOptions>(),
         logger: sp.GetRequiredService<ILogger<LintRunCoordinator>>(),
-        lifecyclePublisher: sp.GetRequiredService<LintLifecyclePublisher>()));
+        lifecyclePublisher: sp.GetRequiredService<LintLifecyclePublisher>(),
+        // 015-lint-board-parity T017 (FR-004): unresolved remediation tasks block triggers.
+        stateRepository: sp.GetRequiredService<OperationalStateRepository>()));
 
     // 015-lint-board-parity (ADR-018): remediation-task composition, mirroring the Lint/
     // Query pattern above — the append-only Remediation Task Record store for now; the
