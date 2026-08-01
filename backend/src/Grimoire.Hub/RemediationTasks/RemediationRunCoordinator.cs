@@ -15,12 +15,17 @@ namespace Grimoire.Hub.RemediationTasks;
 /// reject-immediately shape, since authorized tasks queue instead of being rejected
 /// (FR-017).
 ///
-/// This is the <b>only</b> type in <c>Grimoire.Hub.RemediationTasks</c> permitted to
-/// reference <see cref="AgentDispatch.IAgentProcessLauncher"/>
+/// This is the <b>only</b> type in <c>Grimoire.Hub.RemediationTasks</c> permitted to spawn
+/// the authorization-gated <see cref="RemediationExecutionAgentRequest"/>-shaped run
 /// (<c>Grimoire.ArchTests.RemediationExecutionDispatchRuleTests</c>, T002): the CAS
 /// <c>Authorized → Executing</c> on the persisted row commits <em>inside</em> the slot
 /// lock, <em>before</em> the process is spawned — an unauthorized execution would
 /// require a call site that does not exist (SC-005/FR-008).
+/// <see cref="RemediationMessageTurnCoordinator"/> (T042) is a second, independently
+/// allow-listed type in this namespace that also reaches
+/// <see cref="AgentDispatch.IAgentProcessLauncher"/> — for its own, differently-shaped
+/// overload (message turns carry no wiki-write risk and never touch this state machine),
+/// not a weakening of the rule this type enforces.
 /// </summary>
 public sealed class RemediationRunCoordinator
 {
@@ -175,6 +180,18 @@ public sealed class RemediationRunCoordinator
         await PublishRemainingQueuePositionsAsync(cancellationToken);
         await RecordQueueDepthAsync(cancellationToken);
 
+        // T041 (US5, FR-011): attached context settles before authorization freezes what
+        // execution will see — read whatever the record holds at dispatch time (a task
+        // can only be attached-to while Proposed, so this is exactly the context that was
+        // visible when the human authorized it) and carry it as the ADR-007 user-prompt
+        // override. A missing/unreadable record yields no context rather than failing the
+        // dispatch — the SQLite row remains the state authority.
+        string? attachedContext = null;
+        if (await _recordStore.ReadAsync(row.TaskId, cancellationToken) is RemediationTaskRecordParseResult.Parsed parsed)
+        {
+            attachedContext = RemediationTaskRecordContext.BuildAttachedContext(parsed.Entries);
+        }
+
         var request = new RemediationExecutionAgentRequest(
             TaskId: row.TaskId,
             RunId: row.RunId,
@@ -185,9 +202,7 @@ public sealed class RemediationRunCoordinator
             SystemPromptPath: _paths.LintSystemPromptPath,
             PolicyPath: _paths.LintPolicyPath,
             WriteLocksDir: _paths.WriteLocksDir,
-            // US5/T041 populates this from the task record's attached-context entries;
-            // nothing does yet, so every dispatch carries none (T035).
-            AttachedContext: null);
+            AttachedContext: attachedContext);
 
         AgentDispatch.IAgentProcessHandle handle;
         try

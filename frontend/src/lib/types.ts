@@ -279,3 +279,43 @@ export interface RemediationTaskLifecycleEvent {
 	queuePosition: number | null;
 	outcomeReason: string | null;
 }
+
+// 015-lint-board-parity US5 (contracts/remediation-task-api.md, FR-012/FR-014): one
+// human⇄agent exchange on a task's message thread. Messages are in append order; a
+// failed turn appends no `agent` entry.
+export interface RemediationTaskMessage {
+	sender: 'human' | 'agent';
+	content: string;
+	timestamp: string;
+}
+
+/** GET /api/remediation-tasks/{taskId}/messages response. */
+export interface RemediationTaskMessagesResponse {
+	taskId: string;
+	messageTurnActive: boolean;
+	messages: RemediationTaskMessage[];
+}
+
+/** POST /api/remediation-tasks/{taskId}/context response. */
+export interface RemediationAttachContextResponse {
+	taskId: string;
+	attachedAt: string;
+}
+
+/** POST /api/remediation-tasks/{taskId}/messages response (202 Accepted). */
+export interface RemediationSendMessageResponse {
+	taskId: string;
+	messageTurnId: string;
+	state: 'running';
+	acceptedAt: string;
+}
+
+/** SignalR `remediationMessageTurnChanged` payload (contracts/remediation-lifecycle-events.md "Hub 2"). */
+export interface RemediationMessageTurnChangedEvent {
+	eventId: string;
+	taskId: string;
+	messageTurnId: string;
+	state: 'running' | 'completed' | 'failed';
+	timestamp: string;
+	failureReason: string | null;
+}

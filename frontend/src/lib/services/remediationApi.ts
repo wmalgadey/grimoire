@@ -1,16 +1,19 @@
 import type {
+	RemediationAttachContextResponse,
+	RemediationSendMessageResponse,
 	RemediationTask,
 	RemediationTaskDetail,
 	RemediationTaskListResponse,
+	RemediationTaskMessagesResponse,
 	RemediationTaskState
 } from '$lib/types';
 
 const BASE_PATH = '/api/remediation-tasks';
 
-// 015-lint-board-parity T026 (US3)/T037 (US4): contracts/remediation-task-api.md's full
-// task surface — list/detail (board recovery + record-derived attached context) plus
-// the authorize/dismiss/withdraw-authorization transitions (T037). The context/message
-// calls join in US5 (T043). Mirrors lintApi.ts's error shape.
+// 015-lint-board-parity T026 (US3)/T037 (US4)/T043 (US5): contracts/remediation-task-api.md's
+// full task surface — list/detail (board recovery + record-derived attached context), the
+// authorize/dismiss/withdraw-authorization transitions (T037), and attach-context/
+// send-message/get-history (T043). Mirrors lintApi.ts's error shape.
 
 export class RemediationApiError extends Error {
 	constructor(
@@ -32,7 +35,9 @@ const REASON_MESSAGES: Record<string, string> = {
 	task_not_authorized:
 		'This task is no longer authorized — its authorization may already have been withdrawn.',
 	execution_already_started:
-		'The agent already began executing this task; it will run to a terminal outcome and can no longer be cancelled.'
+		'The agent already began executing this task; it will run to a terminal outcome and can no longer be cancelled.',
+	message_turn_active:
+		'A message turn is already running for this task; wait for it to finish before sending another.'
 };
 
 async function parseErrorMessage(
@@ -156,6 +161,73 @@ export async function withdrawRemediationTaskAuthorization(
 		`${BASE_PATH}/${encodeURIComponent(taskId)}/withdraw-authorization`,
 		{ method: 'POST' }
 	);
+	if (!response.ok) {
+		const { message, reason } = await parseErrorMessage(response);
+		throw new RemediationApiError(message, response.status, reason);
+	}
+
+	return response.json();
+}
+
+/**
+ * POST /api/remediation-tasks/{taskId}/context — attach additional information/
+ * instructions to a task (T043, FR-011). Allowed only while `proposed`; a 409 means the
+ * task moved on before this request landed.
+ */
+export async function attachRemediationTaskContext(
+	taskId: string,
+	content: string,
+	fetchImpl: typeof fetch = fetch
+): Promise<RemediationAttachContextResponse> {
+	const response = await fetchImpl(`${BASE_PATH}/${encodeURIComponent(taskId)}/context`, {
+		method: 'POST',
+		headers: { 'Content-Type': 'application/json' },
+		body: JSON.stringify({ content })
+	});
+	if (!response.ok) {
+		const { message, reason } = await parseErrorMessage(response);
+		throw new RemediationApiError(message, response.status, reason);
+	}
+
+	return response.json();
+}
+
+/**
+ * POST /api/remediation-tasks/{taskId}/messages — send the agent a message about this
+ * task (T043, FR-012). Non-blocking (202): the human message is appended to the record
+ * immediately, then a bounded message turn runs; the reply arrives via
+ * `remediationMessageTurnChanged` + a follow-up `fetchRemediationTaskMessages` call. A
+ * 409 with `reason: "message_turn_active"` means one turn is already running for this
+ * task.
+ */
+export async function sendRemediationTaskMessage(
+	taskId: string,
+	content: string,
+	fetchImpl: typeof fetch = fetch
+): Promise<RemediationSendMessageResponse> {
+	const response = await fetchImpl(`${BASE_PATH}/${encodeURIComponent(taskId)}/messages`, {
+		method: 'POST',
+		headers: { 'Content-Type': 'application/json' },
+		body: JSON.stringify({ content })
+	});
+	if (!response.ok) {
+		const { message, reason } = await parseErrorMessage(response);
+		throw new RemediationApiError(message, response.status, reason);
+	}
+
+	return response.json();
+}
+
+/**
+ * GET /api/remediation-tasks/{taskId}/messages — the full message thread (T043, FR-014).
+ * Available in every state, including terminal ones; never 409. A task with no messages
+ * yet returns an empty array.
+ */
+export async function fetchRemediationTaskMessages(
+	taskId: string,
+	fetchImpl: typeof fetch = fetch
+): Promise<RemediationTaskMessagesResponse> {
+	const response = await fetchImpl(`${BASE_PATH}/${encodeURIComponent(taskId)}/messages`);
 	if (!response.ok) {
 		const { message, reason } = await parseErrorMessage(response);
 		throw new RemediationApiError(message, response.status, reason);

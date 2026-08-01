@@ -33,15 +33,19 @@ using var telemetry = AgentTelemetryBootstrap.Build(profile.ServiceName, profile
 var loggerFactory = telemetry.LoggerFactory;
 var logger = loggerFactory.CreateLogger("Grimoire.LintAgent.Program");
 
-// T035 (015-lint-board-parity, ADR-018, research.md R8): one binary, several invocation
-// modes, selected by `--mode` (default "lint-run" — the pre-existing, only mode before
-// this task). `AgentProcessHost.StartRemediationProcess` (T032 plumbing) already spawns
-// this binary with `--mode remediation-execution`; this is what parses it.
+// T035/T042 (015-lint-board-parity, ADR-018, research.md R8): one binary, several
+// invocation modes, selected by `--mode` (default "lint-run" — the pre-existing, only
+// mode before T035). `AgentProcessHost.StartRemediationProcess`/`StartMessageTurnProcess`
+// spawn this binary with `--mode remediation-execution`/`--mode message-turn`
+// respectively; this is what parses it.
 var mode = new AgentArgumentReader(args).GetOptional("--mode") ?? "lint-run";
 
-return mode == "remediation-execution"
-    ? await RunRemediationExecutionAsync(args, profile, loggerFactory, logger)
-    : await RunLintRunAsync(args, profile, loggerFactory, logger);
+return mode switch
+{
+    "remediation-execution" => await RunRemediationExecutionAsync(args, profile, loggerFactory, logger),
+    "message-turn" => await RunMessageTurnAsync(args, profile, loggerFactory, logger),
+    _ => await RunLintRunAsync(args, profile, loggerFactory, logger),
+};
 
 static async Task<int> RunLintRunAsync(string[] args, AgentProfile profile, ILoggerFactory loggerFactory, ILogger logger)
 {
@@ -127,6 +131,69 @@ static RemediationExecutionCliOptions ReadRemediationExecutionCliOptions(string[
         ProposalTargetPath: reader.GetOptional("--proposal-target-path"),
         AttachedContext: reader.GetOptional("--attached-context"),
         HeartbeatSeconds: reader.GetHeartbeatSeconds());
+}
+
+/// <summary>
+/// T042 (015-lint-board-parity, ADR-018 "Message-turn mode"): the message-turn mode's own
+/// run sequence — same AgentHost template as the other two modes, but the correlation id
+/// is the remediation task id (shared with an execution run over that same task, since
+/// both concern one task) and the intent handler is read-only by construction (see
+/// <see cref="MessageTurnIntentHandler"/>).
+/// </summary>
+static async Task<int> RunMessageTurnAsync(string[] args, AgentProfile profile, ILoggerFactory loggerFactory, ILogger logger)
+{
+    var options = ReadMessageTurnCliOptions(args);
+    var input = await ReadMessageTurnInputAsync();
+
+    // Stdout is the NDJSON event channel (ADR-008); all logging goes to stderr/OTLP.
+    using var runEvents = new RunEventEmitter(Console.Out, options.TaskId);
+
+    using var runSpan = LintAgentTracing.StartRunActivity(options.TaskId);
+
+    var intent = new MessageTurnIntentHandler(profile, options, input, runEvents, loggerFactory, logger);
+
+    return await new AgentHost(profile).RunAsync(
+        new AgentHostRun(
+            WikiRoot: options.WikiRoot,
+            SystemPromptPath: options.SystemPromptPath,
+            PolicyPath: options.PolicyPath,
+            HeartbeatSeconds: options.HeartbeatSeconds),
+        runEvents,
+        intent,
+        CancellationToken.None);
+}
+
+static RemediationMessageTurnCliOptions ReadMessageTurnCliOptions(string[] args)
+{
+    var reader = new AgentArgumentReader(args);
+
+    return new RemediationMessageTurnCliOptions(
+        TaskId: reader.GetRequired("--task-id"),
+        RunId: reader.GetRequired("--run-id"),
+        WikiRoot: reader.GetRequired("--wiki-root"),
+        SystemPromptPath: reader.GetRequired("--system-prompt-path"),
+        PolicyPath: reader.GetRequired("--policy-path"),
+        WriteLocksDir: reader.GetRequired("--write-locks-dir"),
+        ProposalTitle: reader.GetRequired("--proposal-title"),
+        ProposalDescription: reader.GetRequired("--proposal-description"),
+        ProposalTargetPath: reader.GetOptional("--proposal-target-path"),
+        AttachedContext: reader.GetOptional("--attached-context"),
+        HeartbeatSeconds: reader.GetHeartbeatSeconds());
+}
+
+/// <summary>
+/// T042: reads the new human message + prior-message context from stdin (mirrors
+/// Grimoire.QueryAgent's <c>ReadConversationInputAsync</c> — both are the ADR-011
+/// Query-turn shape).
+/// </summary>
+static async Task<RemediationMessageTurnInput> ReadMessageTurnInputAsync()
+{
+    var stdin = await Console.In.ReadToEndAsync();
+    var parsed = System.Text.Json.JsonSerializer.Deserialize<RemediationMessageTurnInput>(
+        stdin, new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+
+    return parsed ?? throw new InvalidOperationException(
+        "Message-turn input on stdin was missing or not valid JSON.");
 }
 
 /// <summary>
@@ -451,5 +518,176 @@ internal sealed class RemediationExecutionIntentHandler : IAgentIntentHandler
 
         _logger.LogError(exception, "Remediation-execution agent failed for task {TaskId}.", _options.TaskId);
         return Task.FromResult(ErrorSanitizer.Sanitize(exception.Message, "Unknown remediation-execution error."));
+    }
+}
+
+/// <summary>
+/// The message-turn mode's intent hooks (T042, 015-lint-board-parity, ADR-018
+/// "Message-turn mode": a bounded, read-only single exchange, ADR-011 Query-turn shape).
+/// Structurally read-only: the loop is given the same tool registry as every other Lint
+/// mode (write_file included — tool availability is never the enforcement boundary in
+/// this codebase, see <c>QueryToolRegistry</c>'s own doc comment), but the guard it runs
+/// under is <see cref="SafetyPolicy.WithNoWriteAccess"/>'s stripped clone of the loaded
+/// policy — every write attempt is denied at the tool boundary (Constitution V), not
+/// merely discouraged by instructions. The kickoff message carries the proposal, attached
+/// context, and every prior message from the record (all Hub-sourced, R6
+/// record-as-context); the reply is the agent's final narrative, verbatim, carried on the
+/// terminal event's <c>text</c> field (no outcome block — a message turn has no
+/// state-machine outcome to report).
+/// </summary>
+internal sealed class MessageTurnIntentHandler : IAgentIntentHandler
+{
+    private const string KickoffMessageTemplate =
+        "You are running in MESSAGE-TURN MODE — see the \"Message-Turn Mode\" section of " +
+        "your instructions below; the whole-wiki lint-run instructions above it do not " +
+        "apply to this run, and you have no write access this turn (every write attempt " +
+        "will be denied). A human is asking you about one specific proposed remediation " +
+        "action — answer their question, grounded in the wiki's current content if you " +
+        "need to look anything up.\n\n" +
+        "Title: {0}\n" +
+        "Description: {1}\n" +
+        "{2}" +
+        "{3}" +
+        "{4}" +
+        "Human's message: {5}\n";
+
+    private readonly AgentProfile _profile;
+    private readonly RemediationMessageTurnCliOptions _options;
+    private readonly RemediationMessageTurnInput _input;
+    private readonly RunEventEmitter _runEvents;
+    private readonly ILoggerFactory _loggerFactory;
+    private readonly ILogger _logger;
+
+    public MessageTurnIntentHandler(
+        AgentProfile profile,
+        RemediationMessageTurnCliOptions options,
+        RemediationMessageTurnInput input,
+        RunEventEmitter runEvents,
+        ILoggerFactory loggerFactory,
+        ILogger logger)
+    {
+        _profile = profile;
+        _options = options;
+        _input = input;
+        _runEvents = runEvents;
+        _loggerFactory = loggerFactory;
+        _logger = logger;
+    }
+
+    public Task PrepareAsync(CancellationToken cancellationToken)
+        => Task.CompletedTask;
+
+    public Task OnInstructionLoadFailureAsync(
+        string documentKind, string documentPath, string reason, CancellationToken cancellationToken)
+    {
+        LintAgentLogEvents.LogInstructionsLoadFailed(_logger, _options.TaskId, reason);
+        return Task.CompletedTask;
+    }
+
+    public Task OnInstructionsLoadedAsync(LoadedInstructions instructions, CancellationToken cancellationToken)
+    {
+        LintAgentLogEvents.LogInstructionsLoaded(
+            _logger,
+            _options.TaskId,
+            instructions.SystemPrompt.Sha256,
+            instructions.Policy.Identity.Version,
+            instructions.Policy.Identity.Sha256);
+
+        using (var loadSpan = LintAgentTracing.ActivitySource.StartActivity("lint_agent.load_instructions"))
+        {
+            loadSpan?.SetTag("run_id", _options.TaskId);
+            loadSpan?.SetTag("system_prompt_sha256", instructions.SystemPrompt.Sha256);
+        }
+
+        return Task.CompletedTask;
+    }
+
+    public async Task<int> ExecuteAsync(LoadedInstructions instructions, CancellationToken cancellationToken)
+    {
+        var modelClient = ModelClientFactory.Create(_loggerFactory, _profile.ModelEnvVarNames);
+
+        var journal = new WriteJournal();
+        // Constitution V: a real guardrail, not an instruction — every write attempt this
+        // turn is denied at the tool boundary regardless of what the model does.
+        var readOnlyPolicy = instructions.Policy.Policy.WithNoWriteAccess();
+        var executor = new GuardedToolExecutor(
+            readOnlyPolicy,
+            journal,
+            _options.WikiRoot,
+            taskId: _options.TaskId,
+            registry: _profile.ToolRegistry,
+            instrumentation: new LintToolCallInstrumentation(_loggerFactory.CreateLogger<GuardedToolExecutor>()),
+            writeLocksDir: _options.WriteLocksDir);
+
+        var loop = new AgentLoop(
+            modelClient,
+            executor,
+            registry: _profile.ToolRegistry,
+            instrumentation: new LintAgentLoopInstrumentation());
+
+        var targetPathLine = string.IsNullOrWhiteSpace(_options.ProposalTargetPath)
+            ? string.Empty
+            : $"Target page: {_options.ProposalTargetPath}\n";
+        var attachedContextBlock = string.IsNullOrWhiteSpace(_options.AttachedContext)
+            ? string.Empty
+            : $"\nHuman-attached context:\n{_options.AttachedContext}\n";
+        var priorMessagesBlock = BuildPriorMessagesBlock(_input.PriorMessages);
+
+        var kickoffMessage = string.Format(
+            System.Globalization.CultureInfo.InvariantCulture,
+            KickoffMessageTemplate,
+            _options.ProposalTitle, _options.ProposalDescription, targetPathLine, attachedContextBlock, priorMessagesBlock,
+            _input.Message);
+        var initialConversation = new List<ConversationMessage>
+        {
+            new("user", kickoffMessage),
+        };
+
+        var result = await loop.RunAsync(
+            instructions.SystemPrompt.Content,
+            initialConversation,
+            _options.TaskId,
+            CancellationToken.None);
+
+        var metadata = new RunCompletionMetadata(
+            SystemPromptSha256: instructions.SystemPrompt.Sha256,
+            PolicyPath: instructions.Policy.Identity.Path,
+            PolicyVersion: instructions.Policy.Identity.Version,
+            PolicySha256: instructions.Policy.Identity.Sha256,
+            Model: modelClient.ModelId,
+            TurnsUsed: result.TurnsUsed,
+            DeniedActions: executor.Denials,
+            CreatedArtifacts: executor.TouchedPaths);
+
+        // No outcome block (contract: "no new field: the agent's reply travels in the
+        // existing text field of the completed event") — the whole narrative IS the reply.
+        _runEvents.EmitCompleted(result.Narrative, metadata, text: result.Narrative);
+        return 0;
+    }
+
+    private static string BuildPriorMessagesBlock(IReadOnlyList<RemediationMessageTurnPriorMessage>? priorMessages)
+    {
+        if (priorMessages is not { Count: > 0 })
+        {
+            return string.Empty;
+        }
+
+        var sb = new System.Text.StringBuilder();
+        sb.Append("\nPrior conversation about this task:\n");
+        foreach (var message in priorMessages)
+        {
+            sb.Append(message.Sender == "agent" ? "You" : "Human").Append(": ").Append(message.Text).Append('\n');
+        }
+
+        return sb.ToString();
+    }
+
+    public Task<string> DescribeUnhandledFailureAsync(Exception exception, CancellationToken cancellationToken)
+    {
+        if (exception is AgentLoopCapException capEx)
+            return Task.FromResult(capEx.Message);
+
+        _logger.LogError(exception, "Message-turn agent failed for task {TaskId}.", _options.TaskId);
+        return Task.FromResult(ErrorSanitizer.Sanitize(exception.Message, "Unknown message-turn error."));
     }
 }

@@ -332,4 +332,12 @@ public static class HubMetrics
             description: "Remediation action tasks currently queued/waiting to execute");
 
     public static void RecordRemediationQueueDepth(long depth) => _remediationQueueDepth.Record(depth);
+
+    /// <summary>T041 (US5, FR-012): one increment per completed message turn, tagged with its outcome.</summary>
+    private static readonly Counter<long> _remediationMessageTurnsTotal =
+        Meter.CreateCounter<long>("hub.remediation.message_turns_total",
+            description: "Task-message agent turns completed");
+
+    public static void RecordRemediationMessageTurn(string outcome)
+        => _remediationMessageTurnsTotal.Add(1, new KeyValuePair<string, object?>("outcome", outcome));
 }

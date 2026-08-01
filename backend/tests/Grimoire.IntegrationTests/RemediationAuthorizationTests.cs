@@ -285,6 +285,15 @@ internal sealed class RemediationEndpointHostHarness : IDisposable
                         recordStore,
                         paths,
                         logger: NullLogger<RemediationRunCoordinator>.Instance));
+                    // 015-lint-board-parity T040/T041: message turns dispatch independently
+                    // of execution (ADR-018) — registered so the messages endpoint has a
+                    // coordinator to submit through.
+                    services.AddSingleton<RemediationMessageTurnCoordinator>(sp => new RemediationMessageTurnCoordinator(
+                        sp.GetRequiredService<Grimoire.Hub.AgentDispatch.IAgentProcessLauncher>(),
+                        sp.GetRequiredService<RemediationLifecyclePublisher>(),
+                        recordStore,
+                        paths,
+                        logger: NullLogger<RemediationMessageTurnCoordinator>.Instance));
                 });
                 webHost.Configure(app =>
                 {

@@ -134,6 +134,119 @@ public sealed class AgentProcessHost : IAgentProcessLauncher
         return Task.FromResult<IAgentProcessHandle>(new ProcessHandle(process));
     }
 
+    /// <summary>
+    /// ADR-018 (015-lint-board-parity T042): spawns the Lint agent binary in its
+    /// message-turn invocation mode. Identity/policy/proposal arguments mirror
+    /// <see cref="StartRemediationProcess"/> exactly (same worker binary, same Lint
+    /// credential/env scoping); the new human message and prior-turn context — arbitrarily
+    /// sized, unlike the fixed CLI identity args — travel on stdin as JSON, mirroring
+    /// <see cref="StartAsync(QueryDispatch.QueryAgentRequest, CancellationToken)"/>'s
+    /// prompt/priorTurns payload (both are the ADR-011 Query-turn shape).
+    /// </summary>
+    public async Task<IAgentProcessHandle> StartAsync(RemediationMessageTurnAgentRequest request, CancellationToken cancellationToken = default)
+    {
+        var process = StartMessageTurnProcess(request);
+
+        var stdinPayload = System.Text.Json.JsonSerializer.Serialize(new
+        {
+            message = request.Message,
+            priorMessages = request.PriorMessages.Select(m => new
+            {
+                sender = m.Sender,
+                text = m.Text,
+            }),
+        });
+        await process.StandardInput.WriteAsync(stdinPayload);
+        process.StandardInput.Close();
+
+        return new ProcessHandle(process);
+    }
+
+    private Process StartMessageTurnProcess(RemediationMessageTurnAgentRequest request)
+    {
+        if (string.IsNullOrWhiteSpace(_lintAgentWorkerPath))
+        {
+            throw new InvalidOperationException(
+                "AgentProcessHost was not configured with a Lint agent worker path (Grimoire:Paths:LintAgentWorker).");
+        }
+
+        var startInfo = new ProcessStartInfo
+        {
+            RedirectStandardInput = true,
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+            UseShellExecute = false,
+        };
+
+        if (_lintAgentWorkerPath.EndsWith(".csproj", StringComparison.OrdinalIgnoreCase))
+        {
+            startInfo.FileName = "dotnet";
+            startInfo.ArgumentList.Add("run");
+            startInfo.ArgumentList.Add("--project");
+            startInfo.ArgumentList.Add(_lintAgentWorkerPath);
+            startInfo.ArgumentList.Add("--");
+        }
+        else if (_lintAgentWorkerPath.EndsWith(".dll", StringComparison.OrdinalIgnoreCase))
+        {
+            startInfo.FileName = "dotnet";
+            startInfo.ArgumentList.Add(_lintAgentWorkerPath);
+        }
+        else
+        {
+            startInfo.FileName = _lintAgentWorkerPath;
+        }
+
+        startInfo.ArgumentList.Add("--mode");
+        startInfo.ArgumentList.Add("message-turn");
+        startInfo.ArgumentList.Add("--task-id");
+        startInfo.ArgumentList.Add(request.TaskId);
+        startInfo.ArgumentList.Add("--run-id");
+        startInfo.ArgumentList.Add(request.RunId);
+        startInfo.ArgumentList.Add("--wiki-root");
+        startInfo.ArgumentList.Add(request.WikiRoot);
+        startInfo.ArgumentList.Add("--system-prompt-path");
+        startInfo.ArgumentList.Add(request.SystemPromptPath);
+        startInfo.ArgumentList.Add("--policy-path");
+        startInfo.ArgumentList.Add(request.PolicyPath);
+        startInfo.ArgumentList.Add("--write-locks-dir");
+        startInfo.ArgumentList.Add(request.WriteLocksDir);
+        startInfo.ArgumentList.Add("--proposal-title");
+        startInfo.ArgumentList.Add(request.Title);
+        startInfo.ArgumentList.Add("--proposal-description");
+        startInfo.ArgumentList.Add(request.Description);
+        if (!string.IsNullOrWhiteSpace(request.TargetPath))
+        {
+            startInfo.ArgumentList.Add("--proposal-target-path");
+            startInfo.ArgumentList.Add(request.TargetPath);
+        }
+
+        if (!string.IsNullOrWhiteSpace(request.AttachedContext))
+        {
+            startInfo.ArgumentList.Add("--attached-context");
+            startInfo.ArgumentList.Add(request.AttachedContext);
+        }
+
+        var authToken = _secretsLoader.GetAnthropicAuthToken();
+        var lintModel = _secretsLoader.GetLintModel();
+        var lintBaseUrl = _secretsLoader.GetLintBase();
+
+        var baseEnv = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var (key, value) in startInfo.Environment)
+        {
+            if (value is not null)
+                baseEnv[key] = value;
+        }
+
+        var childEnv = BuildLintChildEnvironment(baseEnv, authToken, lintBaseUrl, lintModel, Activity.Current);
+        startInfo.Environment.Clear();
+        foreach (var (key, value) in childEnv)
+        {
+            startInfo.Environment[key] = value;
+        }
+
+        return Process.Start(startInfo) ?? throw new InvalidOperationException("Failed to start message-turn agent process.");
+    }
+
     private Process StartRemediationProcess(RemediationExecutionAgentRequest request)
     {
         if (string.IsNullOrWhiteSpace(_lintAgentWorkerPath))

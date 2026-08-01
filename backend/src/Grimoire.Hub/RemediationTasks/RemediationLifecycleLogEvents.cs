@@ -37,6 +37,7 @@ public static class RemediationLifecycleLogEvents
     private static readonly EventId AuthorizationWithdrawnEvent = new(93, "hub.remediation.authorization_withdrawn");
     private static readonly EventId ExecutionStartedEvent = new(94, "hub.remediation.execution_started");
     private static readonly EventId ExecutionCompletedEvent = new(95, "hub.remediation.execution_completed");
+    private static readonly EventId MessageRecordedEvent = new(96, "hub.remediation.message_recorded");
 
     /// <summary>plan.md ## Observability: a human authorizes a proposed task (T033, FR-009).</summary>
     public static void LogTaskAuthorized(ILogger logger, string taskId)
@@ -90,6 +91,16 @@ public static class RemediationLifecycleLogEvents
         // an acceptable trade for a correct structured field.
         logger.LogInformation(ExecutionCompletedEvent,
             "Remediation task {task_id} execution completed: {outcome} ({reason})", taskId, outcome, reason);
+    }
+
+    /// <summary>plan.md ## Observability: a task message (human or agent) is appended to the task's record (T041, FR-012).</summary>
+    public static void LogMessageRecorded(ILogger logger, string taskId, string sender)
+    {
+        using var span = StartLogEventSpan("hub.remediation.message_recorded", "Information");
+        span?.SetTag("task_id", taskId);
+        span?.SetTag("sender", sender);
+
+        logger.LogInformation(MessageRecordedEvent, "Remediation task {task_id} message recorded ({sender})", taskId, sender);
     }
 
     private static Activity? StartLogEventSpan(string eventName, string level)

@@ -2,6 +2,7 @@ using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Diagnostics.Metrics;
 using System.Net;
+using System.Text;
 using Grimoire.Hub;
 using Grimoire.Hub.RemediationTasks;
 using Grimoire.IntegrationTests.Fakes;
@@ -239,6 +240,97 @@ public class RemediationObservabilityTests
         {
             Assert.Contains(3L, values);
         }
+    }
+
+    // ── T044 (US5, FR-012): message_recorded log event ─────────────────────────────
+
+    [Fact]
+    public void MessageRecordedEvent_HumanSender_EmitsExpectedNameLevelAndFields()
+    {
+        var logger = new CaptureLogger<RemediationMessageTurnCoordinator>();
+
+        RemediationLifecycleLogEvents.LogMessageRecorded(logger, taskId: "2026-08-01-remediation-obs7", sender: "human");
+
+        var entry = Assert.Single(logger.Entries.Where(e => e.EventName == "hub.remediation.message_recorded"));
+        Assert.Equal(LogLevel.Information, entry.Level);
+        Assert.True(entry.Fields.ContainsKey("task_id"), "Missing mandatory field 'task_id'.");
+        Assert.True(entry.Fields.ContainsKey("sender"), "Missing mandatory field 'sender'.");
+        Assert.Equal("2026-08-01-remediation-obs7", entry.Fields["task_id"]?.ToString());
+        Assert.Equal("human", entry.Fields["sender"]?.ToString());
+    }
+
+    [Fact]
+    public void MessageRecordedEvent_AgentSender_EmitsExpectedNameLevelAndFields()
+    {
+        var logger = new CaptureLogger<RemediationMessageTurnCoordinator>();
+
+        RemediationLifecycleLogEvents.LogMessageRecorded(logger, taskId: "2026-08-01-remediation-obs8", sender: "agent");
+
+        var entry = Assert.Single(logger.Entries.Where(e => e.EventName == "hub.remediation.message_recorded"));
+        Assert.Equal("2026-08-01-remediation-obs8", entry.Fields["task_id"]?.ToString());
+        Assert.Equal("agent", entry.Fields["sender"]?.ToString());
+    }
+
+    // ── T044 metric: hub.remediation.message_turns_total{outcome} ──────────────────
+
+    [Fact]
+    public void RecordRemediationMessageTurn_Increments_MessageTurnsTotal_WithOutcomeTag()
+    {
+        var measurements = new List<(long Value, string Outcome)>();
+        using var listener = new MeterListener();
+        listener.InstrumentPublished = (instrument, l) =>
+        {
+            if (instrument.Meter.Name == "Grimoire.Hub" && instrument.Name == "hub.remediation.message_turns_total")
+            {
+                l.EnableMeasurementEvents(instrument);
+            }
+        };
+        listener.SetMeasurementEventCallback<long>((_, value, tags, _) =>
+        {
+            var outcome = tags.ToArray().FirstOrDefault(t => t.Key == "outcome").Value?.ToString() ?? "";
+            lock (measurements) { measurements.Add((value, outcome)); }
+        });
+        listener.Start();
+
+        HubMetrics.RecordRemediationMessageTurn("answered");
+        HubMetrics.RecordRemediationMessageTurn("failed");
+
+        lock (measurements)
+        {
+            Assert.Contains(measurements, m => m.Value == 1L && m.Outcome == "answered");
+            Assert.Contains(measurements, m => m.Value == 1L && m.Outcome == "failed");
+        }
+    }
+
+    // ── T044 span: hub.remediation.message_turn (root, task_id) ────────────────────
+
+    [Fact]
+    public async Task MessageTurnSpan_IsRoot_WithTaskId_OverRealHttp()
+    {
+        var activities = new ConcurrentQueue<Activity>();
+        using var listener = new ActivityListener
+        {
+            ShouldListenTo = src => src.Name == "Grimoire.Hub",
+            Sample = (ref ActivityCreationOptions<ActivityContext> _) => ActivitySamplingResult.AllDataAndRecorded,
+            ActivityStopped = activity => activities.Enqueue(activity),
+        };
+        ActivitySource.AddActivityListener(listener);
+
+        // TestServer harness (mirrors AuthorizeSpan_IsRoot_WithTaskId_OverRealHttp above,
+        // not RemediationMessagingHarness's real-Kestrel host): a real Kestrel listener's
+        // own ASP.NET Core hosting diagnostics leave an ambient Activity.Current for the
+        // request, which would otherwise wrongly parent this span.
+        using var harness = await RemediationEndpointHostHarness.CreateAsync();
+        const string taskId = "2026-08-01-remediation-msgspan";
+        await harness.InsertTaskAsync(taskId, RemediationTaskStates.Proposed);
+
+        var content = new StringContent("{\"content\":\"Question?\"}", Encoding.UTF8, "application/json");
+        var response = await harness.Client.PostAsync($"/api/remediation-tasks/{taskId}/messages", content);
+        Assert.Equal(HttpStatusCode.Accepted, response.StatusCode);
+
+        var messageTurn = Assert.Single(activities.Where(
+            a => a.OperationName == "hub.remediation.message_turn" && GetTag(a, "task_id") == taskId));
+        Assert.True(string.IsNullOrEmpty(messageTurn.ParentId), "hub.remediation.message_turn must be a root span.");
     }
 
     // ── spans ───────────────────────────────────────────────────────────────────

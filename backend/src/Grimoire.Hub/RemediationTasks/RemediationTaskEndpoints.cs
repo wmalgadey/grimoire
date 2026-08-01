@@ -3,20 +3,30 @@ using Microsoft.Extensions.Logging;
 
 namespace Grimoire.Hub.RemediationTasks;
 
+/// <summary>Request body for POST /{taskId}/context (contracts/remediation-task-api.md).</summary>
+internal sealed record RemediationAttachContextRequest(string? Content);
+
+/// <summary>Request body for POST /{taskId}/messages (contracts/remediation-task-api.md).</summary>
+internal sealed record RemediationSendMessageRequest(string? Content);
+
 /// <summary>
 /// HTTP endpoints for the Remediation Action Task workflow (015-lint-board-parity T024/
-/// T033, contracts/remediation-task-api.md; mirrors <c>LintSubmissionEndpoints</c>'
+/// T033/T041, contracts/remediation-task-api.md; mirrors <c>LintSubmissionEndpoints</c>'
 /// Minimal-API route-group pattern). US3 shipped the read surface — list (the board's
 /// initial-state recovery source for remediation entries) and detail (including
-/// record-derived attached context, FR-011/FR-014). US4 (T033) adds the CAS-backed
-/// authorize/dismiss/withdraw-authorization transitions; context/message join in US5
-/// (T041). There is deliberately no execution endpoint — dispatch happens only via
+/// record-derived attached context, FR-011/FR-014). US4 (T033) added the CAS-backed
+/// authorize/dismiss/withdraw-authorization transitions. US5 (T041) adds attach-context
+/// (FR-011), send-message (FR-012), and get-history (FR-014). There is deliberately no
+/// execution endpoint — dispatch happens only via
 /// <c>RemediationRunCoordinator.TryStartNextAsync</c> (ADR-018, SC-005): these endpoints
-/// never reference <c>IAgentProcessLauncher</c>, only the coordinator's own
-/// re-dispatch-check method.
+/// never reference <c>IAgentProcessLauncher</c> directly, only the coordinators' own
+/// submission methods (<see cref="RemediationRunCoordinator.TryStartNextAsync"/>,
+/// <see cref="RemediationMessageTurnCoordinator.SubmitMessageTurnAsync"/>).
 /// </summary>
 public static class RemediationTaskEndpoints
 {
+    private const int ContentMaxLength = 8000;
+
     public static RouteGroupBuilder MapRemediationTaskEndpoints(this RouteGroupBuilder group)
     {
         group.MapGet("/", ListAsync);
@@ -24,6 +34,9 @@ public static class RemediationTaskEndpoints
         group.MapPost("/{taskId}/authorize", AuthorizeAsync);
         group.MapPost("/{taskId}/dismiss", DismissAsync);
         group.MapPost("/{taskId}/withdraw-authorization", WithdrawAuthorizationAsync);
+        group.MapPost("/{taskId}/context", AttachContextAsync);
+        group.MapPost("/{taskId}/messages", SendMessageAsync);
+        group.MapGet("/{taskId}/messages", GetMessagesAsync);
         return group;
     }
 
@@ -47,6 +60,7 @@ public static class RemediationTaskEndpoints
         string taskId,
         OperationalStateRepository repository,
         RemediationTaskRecordStore recordStore,
+        RemediationMessageTurnCoordinator messageTurnCoordinator,
         CancellationToken cancellationToken)
     {
         var rows = await repository.GetRemediationTasksAsync(cancellationToken: cancellationToken);
@@ -87,8 +101,7 @@ public static class RemediationTaskEndpoints
             outcomeReason = row.OutcomeReason,
             updatedAt = row.UpdatedAt,
             attachedContext,
-            // US5 (T041) introduces message turns; until then no turn can be active.
-            messageTurnActive = false,
+            messageTurnActive = messageTurnCoordinator.IsTurnActive(taskId),
         });
     }
 
@@ -254,6 +267,157 @@ public static class RemediationTaskEndpoints
             cancellationToken: cancellationToken);
 
         return Results.Ok(new { taskId, state = RemediationTaskStates.Proposed });
+    }
+
+    /// <summary>
+    /// POST /{taskId}/context (T041, FR-011): attach additional information/instructions
+    /// to a task. Allowed only while <c>proposed</c> — once authorized, what was
+    /// authorized is fixed (withdraw first to add more context). Appended verbatim to the
+    /// Remediation Task Record; reaches the execution run as the ADR-007 user-prompt
+    /// override the moment the coordinator next dispatches this task
+    /// (<see cref="RemediationRunCoordinator.StartRunAsync"/>).
+    /// </summary>
+    private static async Task<IResult> AttachContextAsync(
+        string taskId,
+        RemediationAttachContextRequest? body,
+        OperationalStateRepository repository,
+        RemediationTaskRecordStore recordStore,
+        CancellationToken cancellationToken)
+    {
+        var validation = ValidateContent(body?.Content);
+        if (!validation.IsValid)
+        {
+            return Results.BadRequest(new { message = validation.ErrorMessage });
+        }
+
+        var row = await FindTaskAsync(repository, taskId, cancellationToken);
+        if (row is null)
+        {
+            return NotFound(taskId);
+        }
+
+        if (row.State != RemediationTaskStates.Proposed)
+        {
+            return TaskNotProposedConflict(row);
+        }
+
+        var attachedAt = DateTimeOffset.UtcNow;
+        await recordStore.AppendContextAsync(taskId, validation.Trimmed!, attachedAt, cancellationToken);
+
+        return Results.Ok(new { taskId, attachedAt });
+    }
+
+    /// <summary>
+    /// POST /{taskId}/messages (T041, FR-012): sends the agent a message about this task.
+    /// Non-blocking — the human message is appended to the record immediately, then a
+    /// bounded message turn is dispatched via
+    /// <see cref="RemediationMessageTurnCoordinator.SubmitMessageTurnAsync"/>; the reply is
+    /// appended and broadcast when the turn completes. Allowed only while <c>proposed</c>
+    /// (messaging exists to steer the proposal before authorization, US5); at most one
+    /// turn at a time per task.
+    /// </summary>
+    private static async Task<IResult> SendMessageAsync(
+        string taskId,
+        RemediationSendMessageRequest? body,
+        OperationalStateRepository repository,
+        RemediationMessageTurnCoordinator messageTurnCoordinator,
+        CancellationToken cancellationToken)
+    {
+        var validation = ValidateContent(body?.Content);
+        if (!validation.IsValid)
+        {
+            return Results.BadRequest(new { message = validation.ErrorMessage });
+        }
+
+        var row = await FindTaskAsync(repository, taskId, cancellationToken);
+        if (row is null)
+        {
+            return NotFound(taskId);
+        }
+
+        if (row.State != RemediationTaskStates.Proposed)
+        {
+            return TaskNotProposedConflict(row);
+        }
+
+        var result = await messageTurnCoordinator.SubmitMessageTurnAsync(row, validation.Trimmed!, cancellationToken);
+
+        return result switch
+        {
+            RemediationMessageTurnSubmissionResult.Accepted accepted => Results.Accepted(value: new
+            {
+                taskId,
+                messageTurnId = accepted.MessageTurnId,
+                state = "running",
+                acceptedAt = accepted.AcceptedAt,
+            }),
+            RemediationMessageTurnSubmissionResult.TurnActive => Results.Conflict(new
+            {
+                reason = "message_turn_active",
+                state = row.State,
+                message = "A message turn is already running for this task; wait for it to finish before sending another.",
+            }),
+            _ => throw new InvalidOperationException($"Unknown message-turn submission result: {result.GetType().Name}"),
+        };
+    }
+
+    /// <summary>
+    /// GET /{taskId}/messages (T041, FR-014): full message history, available in every
+    /// state including terminal ones — never 409. A task with no messages yet returns an
+    /// empty array, not 404 (only an unknown task id is 404).
+    /// </summary>
+    private static async Task<IResult> GetMessagesAsync(
+        string taskId,
+        OperationalStateRepository repository,
+        RemediationTaskRecordStore recordStore,
+        RemediationMessageTurnCoordinator messageTurnCoordinator,
+        CancellationToken cancellationToken)
+    {
+        var row = await FindTaskAsync(repository, taskId, cancellationToken);
+        if (row is null)
+        {
+            return NotFound(taskId);
+        }
+
+        var messages = new List<object>();
+        if (await recordStore.ReadAsync(taskId, cancellationToken) is RemediationTaskRecordParseResult.Parsed parsed)
+        {
+            foreach (var entry in parsed.Entries)
+            {
+                if (entry is RemediationTaskRecordEntry.Message message)
+                {
+                    messages.Add(new { sender = message.Sender, content = message.Text, timestamp = message.Timestamp });
+                }
+            }
+        }
+
+        return Results.Ok(new
+        {
+            taskId,
+            messageTurnActive = messageTurnCoordinator.IsTurnActive(taskId),
+            messages,
+        });
+    }
+
+    /// <summary>
+    /// Server-side re-validation of attach-context/message content (mirrors
+    /// <c>QuerySubmissionValidator.ValidatePrompt</c>): required, non-empty after trim,
+    /// ≤ <see cref="ContentMaxLength"/> characters (contracts/remediation-task-api.md).
+    /// </summary>
+    private static (bool IsValid, string? ErrorMessage, string? Trimmed) ValidateContent(string? content)
+    {
+        if (string.IsNullOrWhiteSpace(content))
+        {
+            return (false, "content must not be empty or whitespace-only.", null);
+        }
+
+        var trimmed = content.Trim();
+        if (trimmed.Length > ContentMaxLength)
+        {
+            return (false, $"content exceeds the maximum of {ContentMaxLength} characters.", null);
+        }
+
+        return (true, null, trimmed);
     }
 
     private static async Task<RemediationTaskRow?> FindTaskAsync(

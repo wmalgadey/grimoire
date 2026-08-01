@@ -426,6 +426,16 @@ internal sealed class BoardHostHarness : IDisposable
                         sp.GetRequiredService<RemediationTaskRecordStore>(),
                         paths,
                         logger: NullLogger<RemediationRunCoordinator>.Instance));
+                    // T041 (US5): same reasoning as RemediationRunCoordinator above — the
+                    // mapped-but-unexercised-in-this-file context/messages handlers still
+                    // need this bindable for Minimal API's group-wide endpoint-metadata
+                    // inference to succeed at startup (unregistered ⇒ inferred as [FromBody]).
+                    services.AddSingleton<RemediationMessageTurnCoordinator>(sp => new RemediationMessageTurnCoordinator(
+                        sp.GetRequiredService<Grimoire.Hub.AgentDispatch.IAgentProcessLauncher>(),
+                        sp.GetRequiredService<RemediationLifecyclePublisher>(),
+                        sp.GetRequiredService<RemediationTaskRecordStore>(),
+                        paths,
+                        logger: NullLogger<RemediationMessageTurnCoordinator>.Instance));
                 });
                 webHost.Configure(app =>
                 {

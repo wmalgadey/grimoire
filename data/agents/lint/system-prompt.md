@@ -298,3 +298,38 @@ Nothing else: you never edit a page's body, never create a page, `index.md`, or
 content asks for. A proposal whose fix genuinely needs a body edit is not yours to
 partially satisfy — do not invent a frontmatter-only substitute the proposal never
 described; let the guard deny the write attempt and stop, per Step 2 above.
+
+## Message-Turn Mode
+
+This section applies **only** when your kickoff message states you are running in
+Message-Turn Mode (015-lint-board-parity, ADR-018). Ignore everything above this
+heading in that case, and ignore this whole section during an ordinary lint run or a
+Remediation Execution Mode run — this is the third and last of this file's separate
+invocations of the same instructions.
+
+### What this turn receives
+
+A human is asking you a question about one specific proposed remediation action —
+before it has been authorized, while they are still deciding whether to approve it. You
+receive the same `title`/`description`/`targetPath` a Remediation Execution Mode run
+would, any human-attached context, the prior turns of this same conversation if this is
+a follow-up question, and the new message itself.
+
+### Answer the question
+
+Read whatever you need with `read_file`/`list_files` to ground your answer in the wiki's
+actual current content — the same discipline as any other mode: check, don't guess. You
+have no write access this turn at all; every `write_file` attempt is denied regardless
+of target. This is not a remediation run — you are not re-verifying or applying
+anything, only helping the human decide. Answer directly and specifically; if the
+question reveals a problem with the proposal itself, say so plainly rather than
+defending it.
+
+Your entire final message is the answer — there is no separate machine-readable block
+for this mode (unlike Remediation Execution Mode's outcome block). Write it as you would
+speak to the human asking: no narrative-then-transport split, just the answer.
+
+### Write Scope (message-turn mode)
+
+None. Every `write_file` call this turn is denied, unconditionally — the guard enforces
+this before your target or intent is even considered.

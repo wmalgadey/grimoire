@@ -429,6 +429,64 @@ public sealed class FakeAgentProcessLauncher : IAgentProcessLauncher
         return Task.FromResult<IAgentProcessHandle>(handle);
     }
 
+    /// <summary>Every <see cref="RemediationMessageTurnAgentRequest"/> received via the
+    /// message-turn-shaped StartAsync overload (015-lint-board-parity T040).</summary>
+    public List<RemediationMessageTurnAgentRequest> MessageTurnRequests { get; } = [];
+
+    /// <summary>
+    /// The agent's reply text in auto-play mode's completed event `text` field
+    /// (contracts/remediation-lifecycle-events.md "Message-turn mode terminal event").
+    /// </summary>
+    public string ScriptedMessageTurnReply { get; set; } = "Fake message-turn reply.";
+
+    /// <summary>ADR-018 (015-lint-board-parity T042): message-turn-shaped StartAsync —
+    /// stdin carries the message/priorMessages JSON payload, mirroring the real
+    /// AgentProcessHost, but the fake never actually reads it (no real stdin pipe here).</summary>
+    public Task<IAgentProcessHandle> StartAsync(RemediationMessageTurnAgentRequest request, CancellationToken cancellationToken = default)
+    {
+        lock (MessageTurnRequests)
+        {
+            MessageTurnRequests.Add(request);
+        }
+
+        if (_throwOnStart is not null)
+        {
+            throw _throwOnStart;
+        }
+
+        var handle = new ScriptedAgentProcessHandle();
+        lock (Handles)
+        {
+            Handles.Add(handle);
+        }
+
+        if (_autoPlay)
+        {
+            handle.EmitEvent("started", request.TaskId);
+
+            _ = Task.Run(async () =>
+            {
+                if (_simulatedRunDuration > TimeSpan.Zero)
+                {
+                    await Task.Delay(_simulatedRunDuration, CancellationToken.None);
+                }
+
+                if (_terminalStatus == "failed")
+                {
+                    handle.EmitEvent("failed", request.TaskId, new { reason = _failureReason ?? "Fake message-turn run failed." });
+                }
+                else
+                {
+                    handle.EmitEvent("completed", request.TaskId, new { summary = ScriptedMessageTurnReply, text = ScriptedMessageTurnReply });
+                }
+
+                handle.ClosePipe();
+            }, CancellationToken.None);
+        }
+
+        return Task.FromResult<IAgentProcessHandle>(handle);
+    }
+
     /// <summary>
     /// Manual CLI path test double: mirrors the auto-play artifact write without a
     /// scripted handle/event stream (SubmissionService only calls this method, never

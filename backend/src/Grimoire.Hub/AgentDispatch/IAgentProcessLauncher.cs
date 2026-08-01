@@ -61,4 +61,20 @@ public interface IAgentProcessLauncher
     /// structural precondition, never a runtime check.
     /// </summary>
     Task<IAgentProcessHandle> StartAsync(RemediationExecutionAgentRequest request, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// ADR-018 (015-lint-board-parity T042): spawns a Lint agent process in its bounded,
+    /// read-only message-turn mode (FR-012, Query-turn shape per ADR-011). Port ownership
+    /// unchanged — same interface, same <see cref="IAgentProcessHandle"/> contract, only
+    /// the request shape differs. Unlike the <see cref="RemediationExecutionAgentRequest"/>
+    /// overload above, this call site is <b>not</b> gated by task authorization: a message
+    /// turn is advisory Q&amp;A about a <c>Proposed</c> task, never a wiki write, and never
+    /// transitions the task's execution state machine — so it carries none of SC-005's
+    /// risk. The <b>only</b> call site permitted to invoke this overload is
+    /// <c>Grimoire.Hub.RemediationTasks.RemediationMessageTurnCoordinator</c> (enforced by
+    /// <c>Grimoire.ArchTests.RemediationExecutionDispatchRuleTests</c>, extended alongside
+    /// <c>RemediationRunCoordinator</c> in its allow-list) — a distinct, independently
+    /// allow-listed spawn path from execution dispatch, not a weakening of it.
+    /// </summary>
+    Task<IAgentProcessHandle> StartAsync(RemediationMessageTurnAgentRequest request, CancellationToken cancellationToken = default);
 }

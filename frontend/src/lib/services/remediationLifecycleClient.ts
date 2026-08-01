@@ -2,6 +2,7 @@ import * as signalR from '@microsoft/signalr';
 import type {
 	CompositeBoardResponse,
 	ConnectionState,
+	RemediationMessageTurnChangedEvent,
 	RemediationTaskBoardEntry,
 	RemediationTaskLifecycleEvent
 } from '$lib/types';
@@ -14,6 +15,11 @@ export interface RemediationLifecycleClient {
 	stop(): Promise<void>;
 	onRemediationTaskLifecycleChanged(
 		handler: (event: RemediationTaskLifecycleEvent) => void
+	): () => void;
+	// 015-lint-board-parity T043 (US5): the task detail view's own message-turn stream —
+	// clients re-fetch GET .../messages on `completed`/`failed` to render the reply.
+	onRemediationMessageTurnChanged(
+		handler: (event: RemediationMessageTurnChangedEvent) => void
 	): () => void;
 	onReconnected(handler: () => void): () => void;
 	onConnectionStateChanged(handler: (state: ConnectionState) => void): () => void;
@@ -53,6 +59,10 @@ export function createRemediationLifecycleClient(
 		onRemediationTaskLifecycleChanged(handler) {
 			connection.on('remediationTaskLifecycleChanged', handler);
 			return () => connection.off('remediationTaskLifecycleChanged', handler);
+		},
+		onRemediationMessageTurnChanged(handler) {
+			connection.on('remediationMessageTurnChanged', handler);
+			return () => connection.off('remediationMessageTurnChanged', handler);
 		},
 		onReconnected(handler) {
 			// Same gating as ingestLifecycleClient: @microsoft/signalr has no unregister

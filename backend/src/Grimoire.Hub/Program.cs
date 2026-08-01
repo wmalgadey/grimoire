@@ -140,6 +140,15 @@ using (var bootstrapLoggerFactory = TelemetryExtensions.CreateBootstrapLoggerFac
         sp.GetRequiredService<RemediationTaskRecordStore>(),
         resolvedPaths,
         logger: sp.GetRequiredService<ILogger<RemediationRunCoordinator>>()));
+    // 015-lint-board-parity T041/T042 (US5, FR-012): message turns dispatch independently
+    // of execution — not authorization-gated, never touches the task's execution state
+    // machine (ADR-018).
+    builder.Services.AddSingleton<RemediationMessageTurnCoordinator>(sp => new RemediationMessageTurnCoordinator(
+        sp.GetRequiredService<IAgentProcessLauncher>(),
+        sp.GetRequiredService<RemediationLifecyclePublisher>(),
+        sp.GetRequiredService<RemediationTaskRecordStore>(),
+        resolvedPaths,
+        logger: sp.GetRequiredService<ILogger<RemediationMessageTurnCoordinator>>()));
 
     var reconciler = new RestartReconciler(repository);
     await reconciler.ReconcileRunningTasksAsync(contentPaths.TasksDir, contentPaths.LogPath);

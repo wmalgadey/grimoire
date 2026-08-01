@@ -107,13 +107,17 @@ public sealed class RunEventEmitter : IDisposable
     // (contracts/remediation-lifecycle-events.md), unlike every prior agent whose
     // completed events never had one. Defaults to null so every existing call site
     // (Ingest/Query/Lint's lint-run mode) is unaffected.
-    public void EmitCompleted(string summary, RunCompletionMetadata? metadata = null, string? reason = null)
-        => Emit(BuildTerminalPayload("completed", summary, reason, metadata));
+    // T042 (015-lint-board-parity, ADR-018): also accepts an optional `text` — the
+    // message-turn mode's bounded reply, carried on the existing `text` field per
+    // contracts/remediation-lifecycle-events.md "Message-turn mode terminal event" (no
+    // new event field; reused from `answer_chunk`'s `text`). Null for every other mode.
+    public void EmitCompleted(string summary, RunCompletionMetadata? metadata = null, string? reason = null, string? text = null)
+        => Emit(BuildTerminalPayload("completed", summary, reason, metadata, text));
 
     public void EmitFailed(string reason, RunCompletionMetadata? metadata = null)
-        => Emit(BuildTerminalPayload("failed", summary: null, reason, metadata));
+        => Emit(BuildTerminalPayload("failed", summary: null, reason, metadata, text: null));
 
-    private object BuildTerminalPayload(string type, string? summary, string? reason, RunCompletionMetadata? metadata)
+    private object BuildTerminalPayload(string type, string? summary, string? reason, RunCompletionMetadata? metadata, string? text)
         => new
         {
             type,
@@ -121,6 +125,7 @@ public sealed class RunEventEmitter : IDisposable
             timestamp = DateTimeOffset.UtcNow,
             summary,
             reason,
+            text,
             systemPromptSha256 = metadata?.SystemPromptSha256,
             policyPath = metadata?.PolicyPath,
             policyVersion = metadata?.PolicyVersion,
