@@ -201,10 +201,17 @@ public class AgentArtifactNamingRuleTests
 
     // 013-lint-agent (ADR-016): the third agent's owned namespaces — dispatch/
     // coordination and its Findings Report store, mirroring the Ingest/Query shape.
+    // 015-lint-board-parity (ADR-018): RemediationTasks is Lint-owned — proposals
+    // originate from lint runs and execution/message turns are Lint-agent invocation
+    // modes. Deliberately NOT in Part 1's _lintOwnedNamespacePrefixes: remediation
+    // artifacts carry their own "Remediation" vocabulary instead of the Lint token
+    // (tasks.md T004-T007 test naming), so referencing this namespace alone must not
+    // force a Lint prefix on shared-assembly types.
     private static readonly string[] _hubLintOwnedNamespaces =
     [
         "Grimoire.Hub.LintDispatch",
         "Grimoire.Hub.LintFindings",
+        "Grimoire.Hub.RemediationTasks",
     ];
 
     // Cross-agent Hub namespaces. Realtime/Runtime/ContentRoot/OperationalState/

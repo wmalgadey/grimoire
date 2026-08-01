@@ -12,6 +12,7 @@ using Grimoire.Hub.OperationalState;
 using Microsoft.AspNetCore.SignalR;
 using Grimoire.Hub.QueryConversations;
 using Grimoire.Hub.QueryDispatch;
+using Grimoire.Hub.RemediationTasks;
 using Grimoire.Hub.QuerySubmission;
 using Grimoire.Hub.Realtime;
 using Grimoire.Hub.Runtime.Paths;
@@ -111,6 +112,12 @@ using (var bootstrapLoggerFactory = TelemetryExtensions.CreateBootstrapLoggerFac
         resolvedPaths,
         reviewWindowOptions: sp.GetRequiredService<LintReviewWindowOptions>(),
         logger: sp.GetRequiredService<ILogger<LintRunCoordinator>>()));
+
+    // 015-lint-board-parity (ADR-018): remediation-task composition, mirroring the Lint/
+    // Query pattern above — the append-only Remediation Task Record store for now; the
+    // coordinator, lifecycle publisher, and endpoints join here as later phases add them
+    // (T023/T032/T033).
+    builder.Services.AddSingleton<RemediationTaskRecordStore>(_ => new RemediationTaskRecordStore(resolvedPaths));
 
     var reconciler = new RestartReconciler(repository);
     await reconciler.ReconcileRunningTasksAsync(contentPaths.TasksDir, contentPaths.LogPath);
