@@ -197,3 +197,18 @@ Detailed rationale: `specs/015-lint-board-parity/research.md`. Contracts:
 `specs/015-lint-board-parity/contracts/`. Per Constitution Principle III this ADR
 reached **Accepted** before `/speckit-tasks` ran for feature 015 (accepted 2026-08-01
 as part of the feature-015 workflow run; author sign-off).
+
+**Implementation note (T042/US5, added during Phase 8 polish):** the "Authorization
+gate = dispatch precondition" section above, as drafted, anticipated exactly one
+allow-listed caller of `IAgentProcessLauncher` inside `Grimoire.Hub.RemediationTasks`
+— `RemediationRunCoordinator`. Implementing FR-012 (task messaging) added a second,
+independently allow-listed caller, `RemediationMessageTurnCoordinator`, which spawns
+the message-turn invocation mode (a bounded, read-only Q&A exchange via a distinct
+`IAgentProcessLauncher` overload and request type, deny-by-default write policy). This
+does not weaken SC-005: a message turn never transitions `RemediationActionTask`'s
+execution state machine and performs no wiki write, so it carries none of the
+"execution without authorization" risk the gate exists to prevent — it is a second,
+narrowly-scoped door, not a hole in the original one. The `Grimoire.ArchTests` rule
+(`RemediationExecutionDispatchRuleTests`) was extended accordingly to an
+allow-listed-caller *set* of exactly these two types, with the rationale documented
+in the rule's own doc comment.

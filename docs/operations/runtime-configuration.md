@@ -26,6 +26,11 @@ from the original two, below), none nested inside one another under any configur
 - **The conversations directory** (`<base>/conversations` by default) — Hub-written
   Conversation Records, one per Query conversation. A sibling of the content root
   (before 014-wiki-storage-restructure this lived at `<base>/data/conversations`).
+- **The remediation tasks directory** (`<base>/remediation-tasks` by default,
+  015-lint-board-parity) — Hub-written Remediation Task Records (ADR-014-shaped, one
+  per agent-proposed remediation action), plus the CAS-backed queue/authorization
+  rows that live in the operational-state database below. A sibling of `tasks/` and
+  `conversations/`, following the same pattern.
 - **The consolidated data directory** (`<base>/data` by default) — every other piece of
   internal runtime data the application owns: raw intake storage, the operational-state
   database, the secrets file, write-coordination locks, Lint Findings Reports, and the
