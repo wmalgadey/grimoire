@@ -12,10 +12,13 @@ namespace Grimoire.EvalRunner.Scoring;
 /// post-run frontmatter, mirroring <c>QuerySampleRunData.WikiRoot</c>'s reason for
 /// existing (a scorer that must look beyond the narrative at the mutated wiki state).
 /// </summary>
-public sealed record LintSampleRunData(string Narrative, string WikiRoot)
+public sealed record LintSampleRunData(
+    string Narrative,
+    string WikiRoot,
+    IReadOnlyList<Workspace.RemediationProposalEntry>? ProposedActions = null)
 {
     /// <summary>Convenience constructor for scorers that only need the narrative (SC-005/SC-006/SC-007).</summary>
-    public LintSampleRunData(string narrative) : this(narrative, string.Empty)
+    public LintSampleRunData(string narrative) : this(narrative, string.Empty, null)
     {
     }
 }
@@ -37,6 +40,7 @@ public static class LintDeterministicScorers
             "lint-genuine-findings" => GenuineFindings(run),
             "lint-metadata-proposals" => MetadataProposals(run),
             "lint-inbound-links-refreshed" => InboundLinksRefreshed(run),
+            "lint-remediation-proposals-relevant" => RemediationProposalsRelevant(run),
             _ => throw new InvalidOperationException($"Unknown Lint scorer '{scorerId}'."),
         };
 
@@ -165,6 +169,53 @@ public static class LintDeterministicScorers
         ["person/", "company/", "tech/", "pattern/", "concept/", "source-type/"];
 
     private static readonly string[] ConfidenceLevels = ["high", "medium", "low"];
+
+    /// <summary>
+    /// T028 (015-lint-board-parity, SC-006, ≥ 90% of sampled proposed remediation tasks
+    /// judged relevant/actionable): scores the run's `proposedActions`
+    /// (<see cref="LintSampleRunData.ProposedActions"/>) against
+    /// <see cref="RemediationGoldenSet.SeededDefectsActionablePages"/> — a
+    /// human-adjudicated-once judgment, frozen at scenario authoring time, of which of
+    /// the <c>lint-seeded-defects</c> fixture's six known defects a reviewing human would
+    /// consider a relevant, actionable proposal (data-model.md "Proposed Action";
+    /// research.md R6). A run that proposes nothing is vacuously relevant (a clean
+    /// assessment is not a relevance failure); a run is scored Pass only if <b>every</b>
+    /// proposal it made both (a) names/targets one of the actionable pages and (b) is not
+    /// a proposal against <see cref="RemediationGoldenSet.InformationalOnlyPage"/> (the
+    /// fixture's one seeded defect — <c>stale-topic</c>, a Review Window candidate — the
+    /// golden set marks explicitly non-actionable per `agents/lint/system-prompt.md`'s
+    /// "Informational findings produce no proposal" instruction). One proposal per
+    /// unrecognized/irrelevant target fails the whole sample, mirroring every other
+    /// scorer's run-level Pass/Fail shape in this file — see
+    /// <see cref="RemediationGoldenSet"/> for the full rationale and its "this is a
+    /// placeholder, not a substitute for human review" caveat.
+    /// </summary>
+    private static SampleScore RemediationProposalsRelevant(LintSampleRunData run)
+    {
+        var proposals = run.ProposedActions ?? [];
+        var checks = new Dictionary<string, bool>();
+
+        if (proposals.Count == 0)
+        {
+            checks["proposed_at_least_one_action"] = false;
+            return new SampleScore(false, false, checks);
+        }
+
+        for (var i = 0; i < proposals.Count; i++)
+        {
+            var proposal = proposals[i];
+            var haystack = $"{proposal.TargetPath} {proposal.Title} {proposal.Description}";
+
+            var targetsInformationalOnlyPage = haystack.Contains(
+                RemediationGoldenSet.InformationalOnlyPage, StringComparison.OrdinalIgnoreCase);
+            var targetsKnownActionablePage = RemediationGoldenSet.SeededDefectsActionablePages.Any(
+                page => haystack.Contains(page, StringComparison.OrdinalIgnoreCase));
+
+            checks[$"proposal_{i}_relevant"] = targetsKnownActionablePage && !targetsInformationalOnlyPage;
+        }
+
+        return new SampleScore(checks.Values.All(v => v), false, checks);
+    }
 
     /// <summary>
     /// T033 (SC-008, ≥ 95% accurate inbound-link counts): a fully mechanical recomputation

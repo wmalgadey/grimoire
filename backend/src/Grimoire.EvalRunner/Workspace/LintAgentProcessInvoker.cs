@@ -5,6 +5,16 @@ using Grimoire.EvalRunner.Providers;
 namespace Grimoire.EvalRunner.Workspace;
 
 /// <summary>
+/// One agent-proposed remediation action as reported on the terminal event's
+/// `proposedActions` field (015-lint-board-parity T028, contracts/
+/// remediation-lifecycle-events.md). Eval-runner-local mirror of
+/// `Grimoire.Hub.AgentDispatch.AgentRunEventProposedAction` — this assembly does not
+/// reference `Grimoire.Hub` (it spawns agent processes and reads their stdout directly),
+/// so the shape is duplicated here rather than shared.
+/// </summary>
+public sealed record RemediationProposalEntry(string Title, string Description, string? TargetPath);
+
+/// <summary>
 /// One spawned Lint agent run's outcome. Like Query (<see cref="QueryAgentRunResult"/>),
 /// Lint writes no Task-Artifact-equivalent of its own — the outcome is read entirely from
 /// the NDJSON `completed`/`failed` terminal event on stdout (`RunEventEmitter` contract).
@@ -12,6 +22,9 @@ namespace Grimoire.EvalRunner.Workspace;
 /// (its one write rule is the frontmatter-only Inbound-Link Refresh, mechanically
 /// re-derivable from the post-run wiki state alone — <see cref="LintSampleRunData"/>'s
 /// reason for carrying <c>WikiRoot</c> instead of a created-paths list).
+/// <see cref="ProposedActions"/> (015-lint-board-parity T028) is the terminal event's
+/// `proposedActions` field, parsed entry-tolerantly like the Hub's own
+/// `TolerantProposedActionListConverter` — null/empty when the run proposed nothing.
 /// </summary>
 public sealed record LintAgentRunResult(
     int ExitCode,
@@ -19,7 +32,8 @@ public sealed record LintAgentRunResult(
     string StdErr,
     bool Completed,
     string? Narrative,
-    string? FailureReason);
+    string? FailureReason,
+    IReadOnlyList<RemediationProposalEntry>? ProposedActions = null);
 
 /// <summary>
 /// Spawns the real <c>Grimoire.LintAgent</c> executable per sample through its production
@@ -170,22 +184,25 @@ public sealed class LintAgentProcessInvoker
 
         var stdout = SafeResult(stdOutTask);
         var stderr = SafeResult(stdErrTask);
-        var (completed, narrative, failureReason) = ParseTerminalEvent(stdout);
+        var (completed, narrative, failureReason, proposedActions) = ParseTerminalEvent(stdout);
 
-        return new LintAgentRunResult(process.ExitCode, TimedOut: false, StdErr: stderr, completed, narrative, failureReason);
+        return new LintAgentRunResult(
+            process.ExitCode, TimedOut: false, StdErr: stderr, completed, narrative, failureReason, proposedActions);
     }
 
     /// <summary>
     /// Scans the NDJSON stdout stream for the run's one terminal event (`completed` or
     /// `failed`, `RunEventEmitter.EmitCompleted`/`EmitFailed`) and extracts the narrative
-    /// (`summary` — the Findings Report body) and the failure reason (`reason`). Mirrors
+    /// (`summary` — the Findings Report body), the failure reason (`reason`), and
+    /// (015-lint-board-parity T028) the `proposedActions` list. Mirrors
     /// <see cref="QueryAgentProcessInvoker"/>'s parser; Lint has no denied actions or
     /// created-pages field worth surfacing here — the write-scope guarantee is covered by
     /// its own dedicated integration tests (T039-T041), and the Inbound-Link Refresh's
     /// post-run truth is recomputed from <c>wikiRoot</c> directly by the scorer, never
     /// from this event.
     /// </summary>
-    private static (bool Completed, string? Narrative, string? FailureReason) ParseTerminalEvent(string stdout)
+    private static (bool Completed, string? Narrative, string? FailureReason, IReadOnlyList<RemediationProposalEntry>? ProposedActions)
+        ParseTerminalEvent(string stdout)
     {
         foreach (var line in stdout.Split('\n', StringSplitOptions.RemoveEmptyEntries))
         {
@@ -218,11 +235,56 @@ public sealed class LintAgentProcessInvoker
                 ? reasonProperty.GetString()
                 : null;
 
-            return (type == "completed", summary, reason);
+            var proposedActions = ParseProposedActions(root);
+
+            return (type == "completed", summary, reason, proposedActions);
         }
 
-        return (false, null, null);
+        return (false, null, null, null);
     }
+
+    /// <summary>
+    /// Entry-tolerant `proposedActions` reader (mirrors the Hub's
+    /// `TolerantProposedActionListConverter`): a malformed entry — not an object, missing
+    /// or non-string `title`/`description` — is skipped rather than failing the whole
+    /// parse; a value that is not an array (including absent) yields null.
+    /// </summary>
+    private static IReadOnlyList<RemediationProposalEntry>? ParseProposedActions(JsonElement root)
+    {
+        if (!root.TryGetProperty("proposedActions", out var proposedActionsProperty)
+            || proposedActionsProperty.ValueKind != JsonValueKind.Array)
+        {
+            return null;
+        }
+
+        var actions = new List<RemediationProposalEntry>();
+        foreach (var element in proposedActionsProperty.EnumerateArray())
+        {
+            if (element.ValueKind != JsonValueKind.Object)
+            {
+                continue;
+            }
+
+            var title = TryGetNonEmptyString(element, "title");
+            var description = TryGetNonEmptyString(element, "description");
+            if (title is null || description is null)
+            {
+                continue;
+            }
+
+            actions.Add(new RemediationProposalEntry(title, description, TryGetNonEmptyString(element, "targetPath")));
+        }
+
+        return actions;
+    }
+
+    private static string? TryGetNonEmptyString(JsonElement element, string propertyName)
+        => element.TryGetProperty(propertyName, out var property)
+            && property.ValueKind == JsonValueKind.String
+            && property.GetString() is { } value
+            && !string.IsNullOrWhiteSpace(value)
+            ? value
+            : null;
 
     private static void AddOption(ProcessStartInfo startInfo, string name, string value)
     {

@@ -109,7 +109,7 @@ public sealed class LintCapturePipeline
                 model ??= rawCapture.Model;
 
                 var score = LintDeterministicScorers.Score(
-                    scenario.ScorerId, new LintSampleRunData(run.Narrative ?? string.Empty, wikiRoot));
+                    scenario.ScorerId, new LintSampleRunData(run.Narrative ?? string.Empty, wikiRoot, run.ProposedActions));
 
                 recordings.Add(rawCapture with
                 {

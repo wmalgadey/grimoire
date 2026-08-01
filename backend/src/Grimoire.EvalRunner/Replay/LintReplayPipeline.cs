@@ -169,7 +169,7 @@ public sealed class LintReplayPipeline
         }
 
         var score = LintDeterministicScorers.Score(
-            scenario.ScorerId, new LintSampleRunData(run.Narrative ?? string.Empty, wikiRoot));
+            scenario.ScorerId, new LintSampleRunData(run.Narrative ?? string.Empty, wikiRoot, run.ProposedActions));
 
         return Finish(new LintReplaySampleResult(
             scenario.Id, sampleNumber, entry.TaskId, TrustStatus.Trusted, manifest.Model, manifest.CapturedAt, recordingPath,
