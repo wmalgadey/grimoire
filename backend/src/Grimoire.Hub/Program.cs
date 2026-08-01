@@ -183,4 +183,5 @@ static Dictionary<string, string> PathConfigurationSwitchMappingsFactory() => ne
     ["--findings-dir"] = "Grimoire:Paths:FindingsDir",
     ["--lint-instructions-dir"] = "Grimoire:Paths:LintInstructionsDir",
     ["--lint-agent-worker"] = "Grimoire:Paths:LintAgentWorker",
+    ["--remediation-tasks-dir"] = "Grimoire:Paths:RemediationTasksDir",
 };

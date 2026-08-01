@@ -51,6 +51,7 @@ public sealed record ResolvedGrimoirePaths(
     string LintSystemPromptPath,
     string LintPolicyPath,
     string LintAgentWorkerPath,
+    string RemediationTasksDir,
     IReadOnlyList<PathLocation> Locations)
 {
     /// <summary>Per-task artifact path within <see cref="TasksDir"/> (mirrors IngestCliOptions.TaskArtifactPath).</summary>
@@ -62,4 +63,8 @@ public sealed record ResolvedGrimoirePaths(
 
     /// <summary>Per-run Findings Report path within <see cref="FindingsDir"/> (013-lint-agent data-model.md/contracts/findings-report-format.md).</summary>
     public string FindingsReportPathFor(string runId) => Path.Combine(FindingsDir, $"{runId}.md");
+
+    /// <summary>Per-task Remediation Task Record path within <see cref="RemediationTasksDir"/> (015-lint-board-parity data-model.md, ADR-018/ADR-014).</summary>
+    public string RemediationTaskRecordPathFor(string taskId)
+        => Path.Combine(RemediationTasksDir, $"{taskId}.md");
 }

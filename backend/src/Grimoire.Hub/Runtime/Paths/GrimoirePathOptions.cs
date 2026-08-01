@@ -61,6 +61,14 @@ public sealed class GrimoirePathOptions
     public string? TasksDir { get; set; }
 
     /// <summary>
+    /// Remediation Task Record storage (015-lint-board-parity, ADR-018/ADR-014) —
+    /// Hub-written only, git-ignored, one append-only file per remediation action task.
+    /// A sibling of <c>tasks/</c>/<c>conversations/</c>, anchored at the base directory
+    /// (ADR-009). Default: <c>remediation-tasks</c> under the base directory.
+    /// </summary>
+    public string? RemediationTasksDir { get; set; }
+
+    /// <summary>
     /// Cross-process write-coordination lock directory (012-query-synthesis-writes,
     /// ADR-015) — one empty lock file per contested wiki target, named by SHA-256 of its
     /// canonical path. Outside <c>wiki/</c> and git, git-ignored. Default:
@@ -92,6 +100,7 @@ public sealed class GrimoirePathOptions
     public const string DefaultWriteLocksDirName = "write-locks";
     public const string DefaultFindingsDirName = "findings";
     public const string DefaultTasksDirName = "tasks";
+    public const string DefaultRemediationTasksDirName = "remediation-tasks";
 
     // Not a `const`: NetArchTest's HaveDependencyOn scan treats string *field constants*
     // as candidate dependency evidence, and this filename's "Grimoire.IngestAgent" prefix
