@@ -1,0 +1,439 @@
+{
+  "schema_version": 1,
+  "sample": 1,
+  "task_id": "capture-remediation-reverify-still-applicable-01-65af42ace3a244a98a07ddf8f93580a0",
+  "model": "claude-haiku-4-5",
+  "turns": [
+    {
+      "turn": 1,
+      "system_prompt_sha256": "sha256:8541e2db58c2b94a6982aff85ffdbc59bf07ad3f6bbbfd266013f07d7f69f12f",
+      "conversation": [
+        {
+          "role": "user",
+          "content_sha256": "sha256:739d1da1fdb98170d1007e9378ae4708c9b1fb2531b3e426918f778b61f564a4"
+        }
+      ],
+      "tool_names": [
+        "list_files",
+        "read_file",
+        "write_file"
+      ],
+      "stop_reason": "tool_use",
+      "tool_uses": [
+        {
+          "tool_use_id": "toolu_01FcBrjzGX4pU6fmb3d1ha4X",
+          "tool_name": "read_file",
+          "input_json": "{\u0022path\u0022:\u0022pages/example-topic.md\u0022}"
+        }
+      ],
+      "assistant_text": "I\u0027ll re-verify this action by reading the current state of the target page.",
+      "input_tokens": 5184,
+      "output_tokens": 77
+    },
+    {
+      "turn": 2,
+      "system_prompt_sha256": "sha256:8541e2db58c2b94a6982aff85ffdbc59bf07ad3f6bbbfd266013f07d7f69f12f",
+      "conversation": [
+        {
+          "role": "user",
+          "content_sha256": "sha256:739d1da1fdb98170d1007e9378ae4708c9b1fb2531b3e426918f778b61f564a4"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:eb9d3a52fbf45129d186d6befe5cf7095b23f41120ff80108b416b6762c26cc4"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:35912ce09dcf13350655197d6c983ab49386f8b31941dc99bf862d70ce9c3874"
+        }
+      ],
+      "tool_names": [
+        "list_files",
+        "read_file",
+        "write_file"
+      ],
+      "stop_reason": "tool_use",
+      "tool_uses": [
+        {
+          "tool_use_id": "toolu_0197dpS775vzrXee7XJJjCHX",
+          "tool_name": "list_files",
+          "input_json": "{\u0022path\u0022:\u0022pages\u0022}"
+        }
+      ],
+      "assistant_text": "The target page does not exist at \u0060pages/example-topic.md\u0060. Let me check if it exists elsewhere or under a subdirectory.",
+      "input_tokens": 5292,
+      "output_tokens": 84
+    },
+    {
+      "turn": 3,
+      "system_prompt_sha256": "sha256:8541e2db58c2b94a6982aff85ffdbc59bf07ad3f6bbbfd266013f07d7f69f12f",
+      "conversation": [
+        {
+          "role": "user",
+          "content_sha256": "sha256:739d1da1fdb98170d1007e9378ae4708c9b1fb2531b3e426918f778b61f564a4"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:eb9d3a52fbf45129d186d6befe5cf7095b23f41120ff80108b416b6762c26cc4"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:35912ce09dcf13350655197d6c983ab49386f8b31941dc99bf862d70ce9c3874"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:da9b62a9df0dbc2d3e0736f92c0630a2313915ac3744c20bd1227dd3e4f15bc6"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:8e1bf2b9dd0cc1b6a72cb1a536aa4312fb5ecf24b8c300e478eda285e667a5b3"
+        }
+      ],
+      "tool_names": [
+        "list_files",
+        "read_file",
+        "write_file"
+      ],
+      "stop_reason": "tool_use",
+      "tool_uses": [
+        {
+          "tool_use_id": "toolu_01H6caRwNGMq7YCAKhXZYjP9",
+          "tool_name": "list_files",
+          "input_json": "{\u0022path\u0022:\u0022\u0022}"
+        }
+      ],
+      "assistant_text": "The \u0060pages\u0060 directory does not exist in this wiki. Let me check the root structure to understand the actual layout.",
+      "input_tokens": 5401,
+      "output_tokens": 76
+    },
+    {
+      "turn": 4,
+      "system_prompt_sha256": "sha256:8541e2db58c2b94a6982aff85ffdbc59bf07ad3f6bbbfd266013f07d7f69f12f",
+      "conversation": [
+        {
+          "role": "user",
+          "content_sha256": "sha256:739d1da1fdb98170d1007e9378ae4708c9b1fb2531b3e426918f778b61f564a4"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:eb9d3a52fbf45129d186d6befe5cf7095b23f41120ff80108b416b6762c26cc4"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:35912ce09dcf13350655197d6c983ab49386f8b31941dc99bf862d70ce9c3874"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:da9b62a9df0dbc2d3e0736f92c0630a2313915ac3744c20bd1227dd3e4f15bc6"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:8e1bf2b9dd0cc1b6a72cb1a536aa4312fb5ecf24b8c300e478eda285e667a5b3"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:b80c7fbbcd217852e6e11bfec0370b7bc83d38a0fad009bfdde1638a972f1517"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:4d3956cc1c4b18e600614a6a3b714653d9c8562ca52dfb2562c5301e0c27ac18"
+        }
+      ],
+      "tool_names": [
+        "list_files",
+        "read_file",
+        "write_file"
+      ],
+      "stop_reason": "tool_use",
+      "tool_uses": [
+        {
+          "tool_use_id": "toolu_01SXCB6tkzPLSxTnfhVd2T8i",
+          "tool_name": "list_files",
+          "input_json": "{\u0022path\u0022:\u0022.\u0022}"
+        }
+      ],
+      "input_tokens": 5502,
+      "output_tokens": 52
+    },
+    {
+      "turn": 5,
+      "system_prompt_sha256": "sha256:8541e2db58c2b94a6982aff85ffdbc59bf07ad3f6bbbfd266013f07d7f69f12f",
+      "conversation": [
+        {
+          "role": "user",
+          "content_sha256": "sha256:739d1da1fdb98170d1007e9378ae4708c9b1fb2531b3e426918f778b61f564a4"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:eb9d3a52fbf45129d186d6befe5cf7095b23f41120ff80108b416b6762c26cc4"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:35912ce09dcf13350655197d6c983ab49386f8b31941dc99bf862d70ce9c3874"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:da9b62a9df0dbc2d3e0736f92c0630a2313915ac3744c20bd1227dd3e4f15bc6"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:8e1bf2b9dd0cc1b6a72cb1a536aa4312fb5ecf24b8c300e478eda285e667a5b3"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:b80c7fbbcd217852e6e11bfec0370b7bc83d38a0fad009bfdde1638a972f1517"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:4d3956cc1c4b18e600614a6a3b714653d9c8562ca52dfb2562c5301e0c27ac18"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:c7296841830d7fa65d4550a4909951c00bc0c2c23c4d782ae6c9926d33f30772"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:f6b685c2c4cf617540717c03c0ae7d690060d0d7a4822b606093d736a3cb3179"
+        }
+      ],
+      "tool_names": [
+        "list_files",
+        "read_file",
+        "write_file"
+      ],
+      "stop_reason": "tool_use",
+      "tool_uses": [
+        {
+          "tool_use_id": "toolu_01Tz64bMD6UE8GrcGSfom1Cq",
+          "tool_name": "read_file",
+          "input_json": "{\u0022path\u0022:\u0022example-topic.md\u0022}"
+        }
+      ],
+      "assistant_text": "Now I\u0027ll read the current state of the example-topic.md file at the root level:",
+      "input_tokens": 5575,
+      "output_tokens": 78
+    },
+    {
+      "turn": 6,
+      "system_prompt_sha256": "sha256:8541e2db58c2b94a6982aff85ffdbc59bf07ad3f6bbbfd266013f07d7f69f12f",
+      "conversation": [
+        {
+          "role": "user",
+          "content_sha256": "sha256:739d1da1fdb98170d1007e9378ae4708c9b1fb2531b3e426918f778b61f564a4"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:eb9d3a52fbf45129d186d6befe5cf7095b23f41120ff80108b416b6762c26cc4"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:35912ce09dcf13350655197d6c983ab49386f8b31941dc99bf862d70ce9c3874"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:da9b62a9df0dbc2d3e0736f92c0630a2313915ac3744c20bd1227dd3e4f15bc6"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:8e1bf2b9dd0cc1b6a72cb1a536aa4312fb5ecf24b8c300e478eda285e667a5b3"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:b80c7fbbcd217852e6e11bfec0370b7bc83d38a0fad009bfdde1638a972f1517"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:4d3956cc1c4b18e600614a6a3b714653d9c8562ca52dfb2562c5301e0c27ac18"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:c7296841830d7fa65d4550a4909951c00bc0c2c23c4d782ae6c9926d33f30772"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:f6b685c2c4cf617540717c03c0ae7d690060d0d7a4822b606093d736a3cb3179"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:d3c21a029acdc71cc7013052c2ad71d94602d859ec2c241da9ce3fb292496d76"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:c768e3d499abb6990bca28c33986ae07ba6e92b4f5d86daa4f5a9034e555f140"
+        }
+      ],
+      "tool_names": [
+        "list_files",
+        "read_file",
+        "write_file"
+      ],
+      "stop_reason": "tool_use",
+      "tool_uses": [
+        {
+          "tool_use_id": "toolu_01JDsfQiaCLLU9JedV8eYQbm",
+          "tool_name": "read_file",
+          "input_json": "{\u0022path\u0022:\u0022example-topic.md\u0022}"
+        }
+      ],
+      "assistant_text": "**Re-verification:**\n\nThe page \u0060example-topic.md\u0060 exists and currently has no \u0060tags\u0060 field in its frontmatter. The proposal\u0027s premise is still accurate \u2014 this is exactly the condition it describes. The page has all other standard frontmatter fields (\u0060type\u0060, \u0060title\u0060, \u0060description\u0060, \u0060timestamp\u0060, \u0060confidence\u0060, \u0060confidence_reason\u0060, \u0060inbound_links\u0060) but is missing the \u0060tags\u0060 field. This is still applicable.\n\n**Applying the fix:**\n\nI\u0027ll now read the file again immediately before writing to ensure a current base, then add the tags field with the values specified in the proposal.",
+      "input_tokens": 5786,
+      "output_tokens": 191
+    },
+    {
+      "turn": 7,
+      "system_prompt_sha256": "sha256:8541e2db58c2b94a6982aff85ffdbc59bf07ad3f6bbbfd266013f07d7f69f12f",
+      "conversation": [
+        {
+          "role": "user",
+          "content_sha256": "sha256:739d1da1fdb98170d1007e9378ae4708c9b1fb2531b3e426918f778b61f564a4"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:eb9d3a52fbf45129d186d6befe5cf7095b23f41120ff80108b416b6762c26cc4"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:35912ce09dcf13350655197d6c983ab49386f8b31941dc99bf862d70ce9c3874"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:da9b62a9df0dbc2d3e0736f92c0630a2313915ac3744c20bd1227dd3e4f15bc6"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:8e1bf2b9dd0cc1b6a72cb1a536aa4312fb5ecf24b8c300e478eda285e667a5b3"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:b80c7fbbcd217852e6e11bfec0370b7bc83d38a0fad009bfdde1638a972f1517"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:4d3956cc1c4b18e600614a6a3b714653d9c8562ca52dfb2562c5301e0c27ac18"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:c7296841830d7fa65d4550a4909951c00bc0c2c23c4d782ae6c9926d33f30772"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:f6b685c2c4cf617540717c03c0ae7d690060d0d7a4822b606093d736a3cb3179"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:d3c21a029acdc71cc7013052c2ad71d94602d859ec2c241da9ce3fb292496d76"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:c768e3d499abb6990bca28c33986ae07ba6e92b4f5d86daa4f5a9034e555f140"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:599d2906cc7fdbbcc97b16e96a441cd7f63ec51862bc5999d6c05b596e566e04"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:e6012f5d41c9594b5b2b5b7c6b17d62ca0fee823c89f025f9e8638bd0aeafbc3"
+        }
+      ],
+      "tool_names": [
+        "list_files",
+        "read_file",
+        "write_file"
+      ],
+      "stop_reason": "tool_use",
+      "tool_uses": [
+        {
+          "tool_use_id": "toolu_01CG6TwTLjBZKs58tD4JfLyz",
+          "tool_name": "write_file",
+          "input_json": "{\u0022path\u0022:\u0022example-topic.md\u0022,\u0022content\u0022:\u0022---\\ntype: Concept\\ntitle: Example Topic\\ndescription: A fixture page with no tags frontmatter field at all.\\ntimestamp: 2026-05-01T00:00:00Z\\nconfidence: medium\\nconfidence_reason: \\u0022Fixture data, not a real source.\\u0022\\ntags: [concept/caching, tech/dotnet]\\ninbound_links: 1\\n---\\n\\n# Example Topic\\n\\nThis page deliberately has no \\u0060tags\\u0060 frontmatter field \\u2014 the proposal \\u0022Add missing tags\\nto example-topic\\u0022 (T039 fixture) is still true when re-verified against this content.\\n\u0022}"
+        }
+      ],
+      "input_tokens": 6110,
+      "output_tokens": 208
+    },
+    {
+      "turn": 8,
+      "system_prompt_sha256": "sha256:8541e2db58c2b94a6982aff85ffdbc59bf07ad3f6bbbfd266013f07d7f69f12f",
+      "conversation": [
+        {
+          "role": "user",
+          "content_sha256": "sha256:739d1da1fdb98170d1007e9378ae4708c9b1fb2531b3e426918f778b61f564a4"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:eb9d3a52fbf45129d186d6befe5cf7095b23f41120ff80108b416b6762c26cc4"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:35912ce09dcf13350655197d6c983ab49386f8b31941dc99bf862d70ce9c3874"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:da9b62a9df0dbc2d3e0736f92c0630a2313915ac3744c20bd1227dd3e4f15bc6"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:8e1bf2b9dd0cc1b6a72cb1a536aa4312fb5ecf24b8c300e478eda285e667a5b3"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:b80c7fbbcd217852e6e11bfec0370b7bc83d38a0fad009bfdde1638a972f1517"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:4d3956cc1c4b18e600614a6a3b714653d9c8562ca52dfb2562c5301e0c27ac18"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:c7296841830d7fa65d4550a4909951c00bc0c2c23c4d782ae6c9926d33f30772"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:f6b685c2c4cf617540717c03c0ae7d690060d0d7a4822b606093d736a3cb3179"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:d3c21a029acdc71cc7013052c2ad71d94602d859ec2c241da9ce3fb292496d76"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:c768e3d499abb6990bca28c33986ae07ba6e92b4f5d86daa4f5a9034e555f140"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:599d2906cc7fdbbcc97b16e96a441cd7f63ec51862bc5999d6c05b596e566e04"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:e6012f5d41c9594b5b2b5b7c6b17d62ca0fee823c89f025f9e8638bd0aeafbc3"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:c665d7b691a7aa1579229871733227fc8724a22cb7b2828f340db0a2d08fa8c0"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:dd0aafe60b849df0c5c1b9f0476ec6770a467b5b05e793628a04a9c1042078c3"
+        }
+      ],
+      "tool_names": [
+        "list_files",
+        "read_file",
+        "write_file"
+      ],
+      "stop_reason": "end_turn",
+      "tool_uses": [],
+      "assistant_text": "The fix has been successfully applied. The \u0060tags\u0060 field with values \u0060[concept/caching, tech/dotnet]\u0060 has been added to the frontmatter of \u0060example-topic.md\u0060, immediately after the \u0060confidence_reason\u0060 field and before \u0060inbound_links\u0060. The page body remains unchanged.\n\n\u0060\u0060\u0060remediation-outcome\n{\u0022outcome\u0022: \u0022applied\u0022, \u0022reason\u0022: null}\n\u0060\u0060\u0060",
+      "input_tokens": 6337,
+      "output_tokens": 89
+    }
+  ],
+  "outcome": {
+    "status": "completed",
+    "checks": {
+      "outcome_matches_fixture": true,
+      "reason_present_when_required": true
+    }
+  }
+}

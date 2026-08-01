@@ -1,0 +1,219 @@
+{
+  "schema_version": 1,
+  "sample": 10,
+  "task_id": "capture-remediation-reverify-no-longer-applicable-10-873fbedf084842899659446ec9bee986",
+  "model": "claude-haiku-4-5",
+  "turns": [
+    {
+      "turn": 1,
+      "system_prompt_sha256": "sha256:8541e2db58c2b94a6982aff85ffdbc59bf07ad3f6bbbfd266013f07d7f69f12f",
+      "conversation": [
+        {
+          "role": "user",
+          "content_sha256": "sha256:739d1da1fdb98170d1007e9378ae4708c9b1fb2531b3e426918f778b61f564a4"
+        }
+      ],
+      "tool_names": [
+        "list_files",
+        "read_file",
+        "write_file"
+      ],
+      "stop_reason": "tool_use",
+      "tool_uses": [
+        {
+          "tool_use_id": "toolu_01GihYYQMU9nSPLtQMN2PD7W",
+          "tool_name": "read_file",
+          "input_json": "{\u0022path\u0022:\u0022pages/example-topic.md\u0022}"
+        }
+      ],
+      "assistant_text": "I\u0027ll re-verify this remediation action by reading the current content of the target page.",
+      "input_tokens": 5184,
+      "output_tokens": 79
+    },
+    {
+      "turn": 2,
+      "system_prompt_sha256": "sha256:8541e2db58c2b94a6982aff85ffdbc59bf07ad3f6bbbfd266013f07d7f69f12f",
+      "conversation": [
+        {
+          "role": "user",
+          "content_sha256": "sha256:739d1da1fdb98170d1007e9378ae4708c9b1fb2531b3e426918f778b61f564a4"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:f29cd84791fa712d26f6f3787a8efd8cd2446bf0658c3b3dcea2d66348c4a971"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:9f313ae25f8f690a936bee7296c600c898d1a425ce3b3796bb51c929a7910053"
+        }
+      ],
+      "tool_names": [
+        "list_files",
+        "read_file",
+        "write_file"
+      ],
+      "stop_reason": "tool_use",
+      "tool_uses": [
+        {
+          "tool_use_id": "toolu_016bN5gM6bVaBqN4RSopynnV",
+          "tool_name": "list_files",
+          "input_json": "{\u0022path\u0022:\u0022pages\u0022}"
+        }
+      ],
+      "assistant_text": "The target page \u0060pages/example-topic.md\u0060 does not exist in the wiki. Let me check the pages directory structure to see if the file might be located elsewhere or under a different name.",
+      "input_tokens": 5294,
+      "output_tokens": 95
+    },
+    {
+      "turn": 3,
+      "system_prompt_sha256": "sha256:8541e2db58c2b94a6982aff85ffdbc59bf07ad3f6bbbfd266013f07d7f69f12f",
+      "conversation": [
+        {
+          "role": "user",
+          "content_sha256": "sha256:739d1da1fdb98170d1007e9378ae4708c9b1fb2531b3e426918f778b61f564a4"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:f29cd84791fa712d26f6f3787a8efd8cd2446bf0658c3b3dcea2d66348c4a971"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:9f313ae25f8f690a936bee7296c600c898d1a425ce3b3796bb51c929a7910053"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:cf7f1631719fa649bd4c78aa2b77bf1bca62bdd934e4bc2560cd7bc335b33bdc"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:c902f0a1cc4b8e319c0a62d63807f1d6fa4935d8b92fffe4f9bad2943e968c5e"
+        }
+      ],
+      "tool_names": [
+        "list_files",
+        "read_file",
+        "write_file"
+      ],
+      "stop_reason": "tool_use",
+      "tool_uses": [
+        {
+          "tool_use_id": "toolu_01JJjAcYCM6PbYfHud28pikd",
+          "tool_name": "list_files",
+          "input_json": "{\u0022path\u0022:\u0022.\u0022}"
+        }
+      ],
+      "assistant_text": "Let me check what the root directory structure looks like:",
+      "input_tokens": 5414,
+      "output_tokens": 64
+    },
+    {
+      "turn": 4,
+      "system_prompt_sha256": "sha256:8541e2db58c2b94a6982aff85ffdbc59bf07ad3f6bbbfd266013f07d7f69f12f",
+      "conversation": [
+        {
+          "role": "user",
+          "content_sha256": "sha256:739d1da1fdb98170d1007e9378ae4708c9b1fb2531b3e426918f778b61f564a4"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:f29cd84791fa712d26f6f3787a8efd8cd2446bf0658c3b3dcea2d66348c4a971"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:9f313ae25f8f690a936bee7296c600c898d1a425ce3b3796bb51c929a7910053"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:cf7f1631719fa649bd4c78aa2b77bf1bca62bdd934e4bc2560cd7bc335b33bdc"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:c902f0a1cc4b8e319c0a62d63807f1d6fa4935d8b92fffe4f9bad2943e968c5e"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:ae73b86aaa4135cb5c294b428541d251fd090652dc85947539e3c07d8de88aef"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:ba1ad77c3f56c187d2e5442e4f3df1a5d7801bf04ceec8be19bb30b3f6563e1c"
+        }
+      ],
+      "tool_names": [
+        "list_files",
+        "read_file",
+        "write_file"
+      ],
+      "stop_reason": "tool_use",
+      "tool_uses": [
+        {
+          "tool_use_id": "toolu_01Q1YTkuhQibA5YxsRseUm22",
+          "tool_name": "read_file",
+          "input_json": "{\u0022path\u0022:\u0022example-topic.md\u0022}"
+        }
+      ],
+      "assistant_text": "I see \u2014 the page is at the root level. Let me read it now:",
+      "input_tokens": 5499,
+      "output_tokens": 75
+    },
+    {
+      "turn": 5,
+      "system_prompt_sha256": "sha256:8541e2db58c2b94a6982aff85ffdbc59bf07ad3f6bbbfd266013f07d7f69f12f",
+      "conversation": [
+        {
+          "role": "user",
+          "content_sha256": "sha256:739d1da1fdb98170d1007e9378ae4708c9b1fb2531b3e426918f778b61f564a4"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:f29cd84791fa712d26f6f3787a8efd8cd2446bf0658c3b3dcea2d66348c4a971"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:9f313ae25f8f690a936bee7296c600c898d1a425ce3b3796bb51c929a7910053"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:cf7f1631719fa649bd4c78aa2b77bf1bca62bdd934e4bc2560cd7bc335b33bdc"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:c902f0a1cc4b8e319c0a62d63807f1d6fa4935d8b92fffe4f9bad2943e968c5e"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:ae73b86aaa4135cb5c294b428541d251fd090652dc85947539e3c07d8de88aef"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:ba1ad77c3f56c187d2e5442e4f3df1a5d7801bf04ceec8be19bb30b3f6563e1c"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:92919bc0156015355577becb2f8ec05250bfb92cc3e6ae248aa936b50d2836e3"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:26fb0c946a339ed0fedf06de968224e946589332a3a0de6dae5a03aed487deb5"
+        }
+      ],
+      "tool_names": [
+        "list_files",
+        "read_file",
+        "write_file"
+      ],
+      "stop_reason": "end_turn",
+      "tool_uses": [],
+      "assistant_text": "## Step 1: Re-verify against current content\n\nThe page \u0060example-topic.md\u0060 currently contains:\n- A \u0060tags\u0060 field with the values \u0060[concept/caching, tech/dotnet]\u0060 already present\n- Frontmatter fully populated with type, title, description, timestamp, tags, confidence, and inbound_links\n\nThe proposed action was to \u0022Add tags: [concept/caching, tech/dotnet]\u0022 to a page that had \u0022no tags frontmatter.\u0022 However, the page now **already has these exact tags** \u2014 the problem described in the proposal no longer exists. Someone has already applied the fix after this action was proposed.\n\nThe proposal is **no longer applicable**.\n\n\u0060\u0060\u0060remediation-outcome\n{\u0022outcome\u0022: \u0022not_applicable\u0022, \u0022reason\u0022: \u0022The tags field is already present with the correct values [concept/caching, tech/dotnet]; the page was fixed after this action was proposed.\u0022}\n\u0060\u0060\u0060",
+      "input_tokens": 5736,
+      "output_tokens": 209
+    }
+  ],
+  "outcome": {
+    "status": "completed",
+    "checks": {
+      "outcome_matches_fixture": true,
+      "reason_present_when_required": true
+    }
+  }
+}

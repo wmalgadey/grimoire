@@ -1,0 +1,69 @@
+{
+  "schema_version": 1,
+  "sample": 6,
+  "task_id": "capture-remediation-reverify-no-longer-applicable-06-59a08b331a3f4752a90a1d7208fce9d9",
+  "model": "claude-haiku-4-5",
+  "turns": [
+    {
+      "turn": 1,
+      "system_prompt_sha256": "sha256:8541e2db58c2b94a6982aff85ffdbc59bf07ad3f6bbbfd266013f07d7f69f12f",
+      "conversation": [
+        {
+          "role": "user",
+          "content_sha256": "sha256:739d1da1fdb98170d1007e9378ae4708c9b1fb2531b3e426918f778b61f564a4"
+        }
+      ],
+      "tool_names": [
+        "list_files",
+        "read_file",
+        "write_file"
+      ],
+      "stop_reason": "tool_use",
+      "tool_uses": [
+        {
+          "tool_use_id": "toolu_01AsqZVVak6scLsXHBk8vDov",
+          "tool_name": "read_file",
+          "input_json": "{\u0022path\u0022:\u0022example-topic.md\u0022}"
+        }
+      ],
+      "assistant_text": "I\u0027ll start by reading the current content of the target page to verify whether the problem still exists.",
+      "input_tokens": 5184,
+      "output_tokens": 78
+    },
+    {
+      "turn": 2,
+      "system_prompt_sha256": "sha256:8541e2db58c2b94a6982aff85ffdbc59bf07ad3f6bbbfd266013f07d7f69f12f",
+      "conversation": [
+        {
+          "role": "user",
+          "content_sha256": "sha256:739d1da1fdb98170d1007e9378ae4708c9b1fb2531b3e426918f778b61f564a4"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:178a2f691e1ff8ed5a053eb2af6b3dd9f178d5cf22b9182cdb91644b1ef63c05"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:eb0cdf5f144e9a96411ff6508b580a54baf59209b19fcf1062534eb3db47dd9c"
+        }
+      ],
+      "tool_names": [
+        "list_files",
+        "read_file",
+        "write_file"
+      ],
+      "stop_reason": "end_turn",
+      "tool_uses": [],
+      "assistant_text": "The page has been fixed since this proposal was written. The \u0060tags\u0060 frontmatter field is already present with exactly the tags specified in the proposal: \u0060[concept/caching, tech/dotnet]\u0060. The problem the proposal addressed no longer exists.\n\n\u0060\u0060\u0060remediation-outcome\n{\u0022outcome\u0022: \u0022not_applicable\u0022, \u0022reason\u0022: \u0022Tags are already present with the correct values [concept/caching, tech/dotnet]; the page was fixed after this action was proposed.\u0022}\n\u0060\u0060\u0060",
+      "input_tokens": 5424,
+      "output_tokens": 107
+    }
+  ],
+  "outcome": {
+    "status": "completed",
+    "checks": {
+      "outcome_matches_fixture": true,
+      "reason_present_when_required": true
+    }
+  }
+}

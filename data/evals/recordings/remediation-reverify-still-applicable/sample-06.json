@@ -1,0 +1,161 @@
+{
+  "schema_version": 1,
+  "sample": 6,
+  "task_id": "capture-remediation-reverify-still-applicable-06-72ba0e6468204e11abc4891032d0f008",
+  "model": "claude-haiku-4-5",
+  "turns": [
+    {
+      "turn": 1,
+      "system_prompt_sha256": "sha256:8541e2db58c2b94a6982aff85ffdbc59bf07ad3f6bbbfd266013f07d7f69f12f",
+      "conversation": [
+        {
+          "role": "user",
+          "content_sha256": "sha256:739d1da1fdb98170d1007e9378ae4708c9b1fb2531b3e426918f778b61f564a4"
+        }
+      ],
+      "tool_names": [
+        "list_files",
+        "read_file",
+        "write_file"
+      ],
+      "stop_reason": "tool_use",
+      "tool_uses": [
+        {
+          "tool_use_id": "toolu_01GJuvDBm78MtLHySPAxkPNE",
+          "tool_name": "read_file",
+          "input_json": "{\u0022path\u0022:\u0022example-topic.md\u0022}"
+        }
+      ],
+      "assistant_text": "I\u0027ll re-verify this remediation action by checking the current state of the target page.",
+      "input_tokens": 5184,
+      "output_tokens": 77
+    },
+    {
+      "turn": 2,
+      "system_prompt_sha256": "sha256:8541e2db58c2b94a6982aff85ffdbc59bf07ad3f6bbbfd266013f07d7f69f12f",
+      "conversation": [
+        {
+          "role": "user",
+          "content_sha256": "sha256:739d1da1fdb98170d1007e9378ae4708c9b1fb2531b3e426918f778b61f564a4"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:81827baa6d3be1a146367027b6ea88647a988d76e0c98274acbb6ffeda65de3c"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:acf6de0fbed52bf7047f870b3d100fb5ba86da75721312b97fc11a71b605a4aa"
+        }
+      ],
+      "tool_names": [
+        "list_files",
+        "read_file",
+        "write_file"
+      ],
+      "stop_reason": "tool_use",
+      "tool_uses": [
+        {
+          "tool_use_id": "toolu_01G7yc13BE4sCdPv9h3ij6Jc",
+          "tool_name": "read_file",
+          "input_json": "{\u0022path\u0022:\u0022example-topic.md\u0022}"
+        }
+      ],
+      "assistant_text": "**Re-verification**: The page \u0060example-topic.md\u0060 currently has no \u0060tags\u0060 field in its frontmatter. The problem described in the proposal \u2014 missing tags frontmatter \u2014 is still applicable. The page has \u0060confidence\u0060 and \u0060confidence_reason\u0060 fields, but no \u0060tags\u0060, exactly as the proposal assumes.\n\nNow I\u0027ll apply the fix by adding the tags field to the frontmatter:",
+      "input_tokens": 5394,
+      "output_tokens": 145
+    },
+    {
+      "turn": 3,
+      "system_prompt_sha256": "sha256:8541e2db58c2b94a6982aff85ffdbc59bf07ad3f6bbbfd266013f07d7f69f12f",
+      "conversation": [
+        {
+          "role": "user",
+          "content_sha256": "sha256:739d1da1fdb98170d1007e9378ae4708c9b1fb2531b3e426918f778b61f564a4"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:81827baa6d3be1a146367027b6ea88647a988d76e0c98274acbb6ffeda65de3c"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:acf6de0fbed52bf7047f870b3d100fb5ba86da75721312b97fc11a71b605a4aa"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:dc75ea1f1a2c8e5a14a0165f7346bf4fa73864324ad21b8a32dccedf5de3074b"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:4e13e0c55f3e85816829181744752c7097d33b7cb106b99671830462ecf34308"
+        }
+      ],
+      "tool_names": [
+        "list_files",
+        "read_file",
+        "write_file"
+      ],
+      "stop_reason": "tool_use",
+      "tool_uses": [
+        {
+          "tool_use_id": "toolu_012icBAVEf2go9pmEa9sToYz",
+          "tool_name": "write_file",
+          "input_json": "{\u0022path\u0022:\u0022example-topic.md\u0022,\u0022content\u0022:\u0022---\\ntype: Concept\\ntitle: Example Topic\\ndescription: A fixture page with no tags frontmatter field at all.\\ntimestamp: 2026-05-01T00:00:00Z\\nconfidence: medium\\nconfidence_reason: \\u0022Fixture data, not a real source.\\u0022\\ntags: [concept/caching, tech/dotnet]\\ninbound_links: 1\\n---\\n\\n# Example Topic\\n\\nThis page deliberately has no \\u0060tags\\u0060 frontmatter field \\u2014 the proposal \\u0022Add missing tags\\nto example-topic\\u0022 (T039 fixture) is still true when re-verified against this content.\\n\u0022}"
+        }
+      ],
+      "assistant_text": "Now writing the page with the tags field added:",
+      "input_tokens": 5672,
+      "output_tokens": 219
+    },
+    {
+      "turn": 4,
+      "system_prompt_sha256": "sha256:8541e2db58c2b94a6982aff85ffdbc59bf07ad3f6bbbfd266013f07d7f69f12f",
+      "conversation": [
+        {
+          "role": "user",
+          "content_sha256": "sha256:739d1da1fdb98170d1007e9378ae4708c9b1fb2531b3e426918f778b61f564a4"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:81827baa6d3be1a146367027b6ea88647a988d76e0c98274acbb6ffeda65de3c"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:acf6de0fbed52bf7047f870b3d100fb5ba86da75721312b97fc11a71b605a4aa"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:dc75ea1f1a2c8e5a14a0165f7346bf4fa73864324ad21b8a32dccedf5de3074b"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:4e13e0c55f3e85816829181744752c7097d33b7cb106b99671830462ecf34308"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:ffe65771878ff2f908d849312bb57657c65a22b5de151677fb1a1489bf674c7c"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:23e4549e531b772b630e547af16c3a9090fd73ec0b37c381267311df3e2f792e"
+        }
+      ],
+      "tool_names": [
+        "list_files",
+        "read_file",
+        "write_file"
+      ],
+      "stop_reason": "end_turn",
+      "tool_uses": [],
+      "assistant_text": "The fix has been applied successfully. The \u0060tags\u0060 field with values \u0060[concept/caching, tech/dotnet]\u0060 has been added to the frontmatter of \u0060example-topic.md\u0060, and the body remains unchanged.\n\n\u0060\u0060\u0060remediation-outcome\n{\u0022outcome\u0022: \u0022applied\u0022, \u0022reason\u0022: null}\n\u0060\u0060\u0060",
+      "input_tokens": 5910,
+      "output_tokens": 72
+    }
+  ],
+  "outcome": {
+    "status": "completed",
+    "checks": {
+      "outcome_matches_fixture": true,
+      "reason_present_when_required": true
+    }
+  }
+}
