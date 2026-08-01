@@ -9,6 +9,7 @@ using Grimoire.Hub.LintDispatch;
 using Grimoire.Hub.LintFindings;
 using Grimoire.Hub.OperationalState;
 using Grimoire.Hub.Realtime;
+using Grimoire.Hub.RemediationTasks;
 using Grimoire.Hub.Runtime.Paths;
 using Grimoire.IntegrationTests.Fakes;
 using Microsoft.AspNetCore.Builder;
@@ -134,6 +135,167 @@ public class BoardCompositeResponseTests
         Assert.Equal(reason, lintEntry.GetProperty("failureReason").GetString());
     }
 
+    // ── T021 (015-lint-board-parity, US3) — remediation_task entries on the board and
+    // the independent list/detail endpoints (contracts/remediation-task-api.md) ─────────
+
+    [Fact]
+    public async Task RemediationRows_AppearOnTheBoard_AsTypedEntries_WithContractFieldSet()
+    {
+        using var harness = await BoardHostHarness.CreateAsync();
+        var proposedAt = DateTimeOffset.UtcNow;
+        await harness.Repository.InsertRemediationTaskAsync(MakeRemediationRow(
+            "2026-08-01-remediation-boardentry000000000a", proposedAt: proposedAt));
+        await harness.Repository.InsertRemediationTaskAsync(MakeRemediationRow(
+            "2026-08-01-remediation-boardentry000000000b", state: "failed",
+            outcomeReason: "The guarded write was denied.", proposedAt: proposedAt.AddSeconds(1)));
+
+        var client = harness.Host.GetTestClient();
+        using var board = JsonDocument.Parse(await client.GetStringAsync("/api/board"));
+        var entries = board.RootElement.GetProperty("entries").EnumerateArray()
+            .Where(e => e.GetProperty("kind").GetString() == "remediation_task")
+            .ToList();
+
+        // Non-terminal AND terminal tasks stay visible on the board
+        // (contracts/lint-board-api.md `remediation_task` bullet).
+        Assert.Equal(2, entries.Count);
+
+        var proposed = Assert.Single(entries,
+            e => e.GetProperty("taskId").GetString() == "2026-08-01-remediation-boardentry000000000a");
+        Assert.Equal("2026-08-01-lint-boardparity", proposed.GetProperty("runId").GetString());
+        Assert.Equal("Add missing tags to runtime-paths page", proposed.GetProperty("title").GetString());
+        Assert.Equal("proposed", proposed.GetProperty("state").GetString());
+        Assert.Equal(JsonValueKind.Null, proposed.GetProperty("queuePosition").ValueKind);
+        Assert.Equal(JsonValueKind.Null, proposed.GetProperty("outcomeReason").ValueKind);
+        Assert.NotEqual(JsonValueKind.Null, proposed.GetProperty("proposedAt").ValueKind);
+        Assert.NotEqual(JsonValueKind.Null, proposed.GetProperty("updatedAt").ValueKind);
+
+        // Board entries carry the list-entry field set minus description/targetPath bulk
+        // detail (the card links to the detail endpoint) — contracts/lint-board-api.md.
+        var fields = proposed.EnumerateObject().Select(p => p.Name).ToHashSet();
+        Assert.DoesNotContain("description", fields);
+        Assert.DoesNotContain("targetPath", fields);
+
+        // FR-005: the failure reason is surfaced on the board entry itself.
+        var failed = Assert.Single(entries,
+            e => e.GetProperty("taskId").GetString() == "2026-08-01-remediation-boardentry000000000b");
+        Assert.Equal("failed", failed.GetProperty("state").GetString());
+        Assert.Equal("The guarded write was denied.", failed.GetProperty("outcomeReason").GetString());
+    }
+
+    [Fact]
+    public async Task RemediationTasks_AreIndependentlyListable_PerContract()
+    {
+        using var harness = await BoardHostHarness.CreateAsync();
+        var proposedAt = DateTimeOffset.UtcNow;
+        await harness.Repository.InsertRemediationTaskAsync(MakeRemediationRow(
+            "2026-08-01-remediation-list0000000000000000a", proposedAt: proposedAt));
+        // Two authorized rows: FIFO queue positions are 1-based, ordered by authorized_at
+        // (FR-017, contracts/remediation-task-api.md `queuePosition`).
+        await harness.Repository.InsertRemediationTaskAsync(MakeRemediationRow(
+            "2026-08-01-remediation-list0000000000000000b", state: "authorized",
+            authorizedAt: proposedAt.AddMinutes(2), proposedAt: proposedAt.AddSeconds(1)));
+        await harness.Repository.InsertRemediationTaskAsync(MakeRemediationRow(
+            "2026-08-01-remediation-list0000000000000000c", state: "authorized",
+            authorizedAt: proposedAt.AddMinutes(1), proposedAt: proposedAt.AddSeconds(2),
+            runId: "2026-08-01-lint-otherrun"));
+
+        var client = harness.Host.GetTestClient();
+        using var list = JsonDocument.Parse(await client.GetStringAsync("/api/remediation-tasks"));
+        var tasks = list.RootElement.GetProperty("tasks").EnumerateArray().ToList();
+        Assert.Equal(3, tasks.Count);
+
+        var proposed = Assert.Single(tasks,
+            t => t.GetProperty("taskId").GetString() == "2026-08-01-remediation-list0000000000000000a");
+        Assert.Equal("2026-08-01-lint-boardparity", proposed.GetProperty("runId").GetString());
+        Assert.Equal("Add missing tags to runtime-paths page", proposed.GetProperty("title").GetString());
+        Assert.Equal("The page pages/runtime-paths.md has no tags frontmatter.",
+            proposed.GetProperty("description").GetString());
+        Assert.Equal("pages/runtime-paths.md", proposed.GetProperty("targetPath").GetString());
+        Assert.Equal("proposed", proposed.GetProperty("state").GetString());
+        Assert.Equal(JsonValueKind.Null, proposed.GetProperty("authorizedAt").ValueKind);
+        Assert.Equal(JsonValueKind.Null, proposed.GetProperty("queuePosition").ValueKind);
+        Assert.Equal(JsonValueKind.Null, proposed.GetProperty("outcomeReason").ValueKind);
+
+        // authorized_at defines FIFO order: the earlier authorization is position 1.
+        var laterAuthorized = Assert.Single(tasks,
+            t => t.GetProperty("taskId").GetString() == "2026-08-01-remediation-list0000000000000000b");
+        Assert.Equal(2, laterAuthorized.GetProperty("queuePosition").GetInt32());
+        var earlierAuthorized = Assert.Single(tasks,
+            t => t.GetProperty("taskId").GetString() == "2026-08-01-remediation-list0000000000000000c");
+        Assert.Equal(1, earlierAuthorized.GetProperty("queuePosition").GetInt32());
+
+        // runId query parameter restricts to one originating run.
+        using var filtered = JsonDocument.Parse(
+            await client.GetStringAsync("/api/remediation-tasks?runId=2026-08-01-lint-otherrun"));
+        var filteredTask = Assert.Single(filtered.RootElement.GetProperty("tasks").EnumerateArray().ToList());
+        Assert.Equal("2026-08-01-remediation-list0000000000000000c", filteredTask.GetProperty("taskId").GetString());
+    }
+
+    [Fact]
+    public async Task RemediationTaskDetail_IncludesRecordDerivedHistory_AndAllListFields()
+    {
+        using var harness = await BoardHostHarness.CreateAsync();
+        const string taskId = "2026-08-01-remediation-detail000000000000000";
+        var proposedAt = DateTimeOffset.UtcNow;
+        await harness.Repository.InsertRemediationTaskAsync(MakeRemediationRow(taskId, proposedAt: proposedAt));
+        await harness.RecordStore.CreateAsync(
+            taskId, "2026-08-01-lint-boardparity", proposedAt,
+            "Add missing tags to runtime-paths page",
+            "The page pages/runtime-paths.md has no tags frontmatter.",
+            "pages/runtime-paths.md");
+        var attachedAt = proposedAt.AddMinutes(1);
+        await harness.RecordStore.AppendContextAsync(
+            taskId, "Use the tag taxonomy from wiki/index.md, not free-form tags.", attachedAt);
+
+        var client = harness.Host.GetTestClient();
+        var response = await client.GetAsync($"/api/remediation-tasks/{taskId}");
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+        using var detail = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        var root = detail.RootElement;
+        Assert.Equal(taskId, root.GetProperty("taskId").GetString());
+        Assert.Equal("proposed", root.GetProperty("state").GetString());
+        Assert.Equal("The page pages/runtime-paths.md has no tags frontmatter.",
+            root.GetProperty("description").GetString());
+
+        // attachedContext is sourced from the task's record (FR-011/FR-014).
+        var context = Assert.Single(root.GetProperty("attachedContext").EnumerateArray().ToList());
+        Assert.Equal("Use the tag taxonomy from wiki/index.md, not free-form tags.",
+            context.GetProperty("content").GetString());
+        Assert.NotEqual(JsonValueKind.Null, context.GetProperty("attachedAt").ValueKind);
+
+        Assert.False(root.GetProperty("messageTurnActive").GetBoolean());
+
+        // Unknown task ⇒ 404 with the contract's message shape.
+        var notFound = await client.GetAsync("/api/remediation-tasks/no-such-task");
+        Assert.Equal(HttpStatusCode.NotFound, notFound.StatusCode);
+        using var notFoundBody = JsonDocument.Parse(await notFound.Content.ReadAsStringAsync());
+        Assert.Equal("Remediation task 'no-such-task' was not found.",
+            notFoundBody.RootElement.GetProperty("message").GetString());
+    }
+
+    private static RemediationTaskRow MakeRemediationRow(
+        string taskId,
+        string state = "proposed",
+        string runId = "2026-08-01-lint-boardparity",
+        string? outcomeReason = null,
+        DateTimeOffset? authorizedAt = null,
+        DateTimeOffset? proposedAt = null)
+    {
+        var at = proposedAt ?? DateTimeOffset.UtcNow;
+        return new RemediationTaskRow(
+            TaskId: taskId,
+            RunId: runId,
+            Title: "Add missing tags to runtime-paths page",
+            Description: "The page pages/runtime-paths.md has no tags frontmatter.",
+            TargetPath: "pages/runtime-paths.md",
+            State: state,
+            ProposedAt: at,
+            AuthorizedAt: authorizedAt,
+            OutcomeReason: outcomeReason,
+            UpdatedAt: authorizedAt ?? at);
+    }
+
     private static void WriteTaskArtifact(string tasksDir, string taskId, string status)
     {
         Directory.CreateDirectory(tasksDir);
@@ -184,6 +346,12 @@ internal sealed class BoardHostHarness : IDisposable
     public LintRunCoordinator LintCoordinator { get; }
     public ResolvedGrimoirePaths Paths { get; }
     public string TasksDir => Paths.TasksDir;
+
+    /// <summary>T021: seeds `remediation_tasks` rows the board/list/detail endpoints fold in.</summary>
+    public OperationalStateRepository Repository => Host.Services.GetRequiredService<OperationalStateRepository>();
+
+    /// <summary>T021: seeds the record-derived detail history (attached context, FR-011/FR-014).</summary>
+    public RemediationTaskRecordStore RecordStore => Host.Services.GetRequiredService<RemediationTaskRecordStore>();
 
     public static async Task<BoardHostHarness> CreateAsync(FakeAgentProcessLauncher? launcher = null)
     {
@@ -242,6 +410,9 @@ internal sealed class BoardHostHarness : IDisposable
                         sp.GetRequiredService<FindingsReportStore>(),
                         paths,
                         logger: NullLogger<LintRunCoordinator>.Instance));
+                    // T021/T024 (US3): the remediation task record store backing the
+                    // detail endpoint's record-derived history.
+                    services.AddSingleton<RemediationTaskRecordStore>(_ => new RemediationTaskRecordStore(paths));
                 });
                 webHost.Configure(app =>
                 {
@@ -250,6 +421,7 @@ internal sealed class BoardHostHarness : IDisposable
                     {
                         endpoints.MapGroup("/api/board").MapBoardEndpoints();
                         endpoints.MapGroup("/api/ingest-submissions").MapIngestSubmissionEndpoints();
+                        endpoints.MapGroup("/api/remediation-tasks").MapRemediationTaskEndpoints();
                     });
                 });
             });

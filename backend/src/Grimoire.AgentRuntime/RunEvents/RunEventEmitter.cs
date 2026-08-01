@@ -22,7 +22,21 @@ public sealed record RunCompletionMetadata(
     // GuardedToolExecutor.CreatedPaths (create-only writes that succeeded) — mechanical
     // reporting of what the run's own journal already recorded, no content judgment
     // (Constitution Principle V). Null/empty for a turn that created nothing.
-    IReadOnlyList<string>? CreatedArtifacts = null);
+    IReadOnlyList<string>? CreatedArtifacts = null,
+    // ADR-018 (015-lint-board-parity T025): remediation actions the Lint agent judged
+    // actionable, carried verbatim onto the lint-run terminal event
+    // (contracts/remediation-lifecycle-events.md `proposedActions`). Pure transport —
+    // the judgment lives in the agent's instructions, never here (Principle V).
+    // Null/empty for a run that proposed nothing; only Lint's lint-run mode sets it.
+    IReadOnlyList<ProposedActionRecord>? ProposedActions = null);
+
+/// <summary>
+/// One agent-proposed remediation action as reported on the lint-run terminal event
+/// (015-lint-board-parity, ADR-008/ADR-018 event-vocabulary extension). All three
+/// fields are agent-authored free text, harness-opaque; <see cref="TargetPath"/> is an
+/// optional hint the Hub never validates or enforces.
+/// </summary>
+public sealed record ProposedActionRecord(string Title, string Description, string? TargetPath = null);
 
 /// <summary>
 /// Emits Agent Run Events as NDJSON on stdout (contracts/agent-run-events.md, ADR-008):
@@ -110,6 +124,14 @@ public sealed class RunEventEmitter : IDisposable
                 turn = d.Turn,
             }).ToList(),
             createdPages = metadata?.CreatedArtifacts,
+            // ADR-018 (015-lint-board-parity): rides the terminal event like
+            // deniedActions/createdPages above; null when the run proposed nothing.
+            proposedActions = metadata?.ProposedActions?.Select(p => new
+            {
+                title = p.Title,
+                description = p.Description,
+                targetPath = p.TargetPath,
+            }).ToList(),
         };
 
     private void Emit(object payload)

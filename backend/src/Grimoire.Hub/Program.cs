@@ -120,13 +120,19 @@ using (var bootstrapLoggerFactory = TelemetryExtensions.CreateBootstrapLoggerFac
         logger: sp.GetRequiredService<ILogger<LintRunCoordinator>>(),
         lifecyclePublisher: sp.GetRequiredService<LintLifecyclePublisher>(),
         // 015-lint-board-parity T017 (FR-004): unresolved remediation tasks block triggers.
-        stateRepository: sp.GetRequiredService<OperationalStateRepository>()));
+        stateRepository: sp.GetRequiredService<OperationalStateRepository>(),
+        // 015-lint-board-parity T022 (FR-007): proposal materialization gates completion.
+        remediationRecordStore: sp.GetRequiredService<RemediationTaskRecordStore>(),
+        remediationLifecyclePublisher: sp.GetRequiredService<RemediationLifecyclePublisher>()));
 
     // 015-lint-board-parity (ADR-018): remediation-task composition, mirroring the Lint/
-    // Query pattern above — the append-only Remediation Task Record store for now; the
-    // coordinator, lifecycle publisher, and endpoints join here as later phases add them
-    // (T023/T032/T033).
+    // Query pattern above — record store, lifecycle publisher (T023), and read endpoints
+    // (T024); the execution coordinator and transition endpoints join here in US4
+    // (T032/T033).
     builder.Services.AddSingleton<RemediationTaskRecordStore>(_ => new RemediationTaskRecordStore(resolvedPaths));
+    builder.Services.AddSingleton<RemediationLifecyclePublisher>(sp => new RemediationLifecyclePublisher(
+        sp.GetRequiredService<IHubContext<RemediationLifecycleHub>>(),
+        sp.GetRequiredService<ILogger<RemediationLifecyclePublisher>>()));
 
     var reconciler = new RestartReconciler(repository);
     await reconciler.ReconcileRunningTasksAsync(contentPaths.TasksDir, contentPaths.LogPath);
@@ -168,6 +174,10 @@ app.MapHub<LintLifecycleHub>("/hubs/lint-lifecycle");
 app.MapGroup("/api/lint-runs").MapLintRunEndpoints();
 // 015-lint-board-parity T012: composite board initial state (contracts/lint-board-api.md).
 app.MapGroup("/api/board").MapBoardEndpoints();
+// 015-lint-board-parity T023/T024: remediation task lifecycle channel + read endpoints
+// (contracts/remediation-lifecycle-events.md "Hub 2", contracts/remediation-task-api.md).
+app.MapHub<RemediationLifecycleHub>("/hubs/remediation-lifecycle");
+app.MapGroup("/api/remediation-tasks").MapRemediationTaskEndpoints();
 app.Run();
 
 static string? ParseOption(string[] args, string option)

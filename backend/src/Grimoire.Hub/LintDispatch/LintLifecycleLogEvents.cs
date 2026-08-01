@@ -17,6 +17,7 @@ public static class LintLifecycleLogEvents
     private static readonly EventId RunFailedEvent = new(83, "lint.run.failed");
     private static readonly EventId LifecyclePublishedEvent = new(84, "lint.lifecycle.published");
     private static readonly EventId RunBlockedEvent = new(85, "lint.run.blocked");
+    private static readonly EventId RemediationTaskProposedEvent = new(86, "hub.lint.remediation_task_proposed");
 
     public static void LogRunTriggered(ILogger logger, string runId)
     {
@@ -65,6 +66,22 @@ public static class LintLifecycleLogEvents
         logger.LogInformation(RunBlockedEvent,
             "Lint run trigger blocked — {unresolved_count} remediation action task(s) from a prior run are unresolved.",
             unresolvedCount);
+    }
+
+    /// <summary>
+    /// 015-lint-board-parity T022 (US3, FR-007; plan.md ## Observability > Structured Log
+    /// Events): one remediation action task was created from a lint run's findings
+    /// assessment — emitted per materialized proposal by
+    /// <c>LintRunCoordinator.MaterializeProposedActionsAsync</c>.
+    /// </summary>
+    public static void LogRemediationTaskProposed(ILogger logger, string runId, string taskId)
+    {
+        using var span = StartLogEventSpan("hub.lint.remediation_task_proposed", "Information");
+        span?.SetTag("run_id", runId);
+        span?.SetTag("task_id", taskId);
+
+        logger.LogInformation(RemediationTaskProposedEvent,
+            "Remediation action task proposed. run_id={run_id} task_id={task_id}", runId, taskId);
     }
 
     /// <summary>

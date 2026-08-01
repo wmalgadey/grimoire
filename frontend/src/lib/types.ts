@@ -234,3 +234,48 @@ export interface LintRunLifecycleEvent {
 	timestamp: string;
 	failureReason: string | null;
 }
+
+// 015-lint-board-parity US3 (contracts/remediation-task-api.md): one remediation action
+// task as listed by GET /api/remediation-tasks. title/description/targetPath are the
+// verbatim agent-authored proposal (Principle V — never edited by harness or client).
+export interface RemediationTask {
+	taskId: string;
+	runId: string;
+	title: string;
+	description: string;
+	targetPath: string | null;
+	state: RemediationTaskState;
+	proposedAt: string;
+	authorizedAt: string | null;
+	queuePosition: number | null;
+	outcomeReason: string | null;
+	updatedAt: string;
+}
+
+export interface RemediationTaskListResponse {
+	tasks: RemediationTask[];
+}
+
+/** One attached-context entry of the detail response (FR-011/FR-014). */
+export interface RemediationTaskAttachedContext {
+	content: string;
+	attachedAt: string;
+}
+
+/** GET /api/remediation-tasks/{taskId} response. */
+export interface RemediationTaskDetail extends RemediationTask {
+	attachedContext: RemediationTaskAttachedContext[];
+	messageTurnActive: boolean;
+}
+
+/** SignalR `remediationTaskLifecycleChanged` payload (contracts/remediation-lifecycle-events.md "Hub 2"). */
+export interface RemediationTaskLifecycleEvent {
+	eventId: string;
+	taskId: string;
+	runId: string;
+	fromState: RemediationTaskState | null;
+	toState: RemediationTaskState;
+	timestamp: string;
+	queuePosition: number | null;
+	outcomeReason: string | null;
+}

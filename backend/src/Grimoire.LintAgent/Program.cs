@@ -164,6 +164,12 @@ internal sealed class LintIntentHandler : IAgentIntentHandler
             _options.RunId,
             CancellationToken.None);
 
+        // T025 (015-lint-board-parity, ADR-018): split the agent's structured
+        // proposed-actions block off its final message and carry the entries verbatim on
+        // the terminal event — loop mechanics only; the actionability judgment and every
+        // word of the proposals are agent-authored (Constitution Principle V).
+        var (narrative, proposedActions) = ProposedActionsBlock.Extract(result.Narrative);
+
         // Mechanical reporting only (Constitution Principle V): the harness's own journal
         // (GuardedToolExecutor.TouchedPaths) already recorded every frontmatter-only write
         // this run performed — Lint's policy has exactly one write rule, so every touched
@@ -171,7 +177,7 @@ internal sealed class LintIntentHandler : IAgentIntentHandler
         // RunCompletionMetadata.CreatedArtifacts/createdPages wire field Query uses for its
         // created-pages report (ADR-015) — no new event-channel field needed for this
         // narrower, agent-agnostic "paths this run wrote" fact.
-        _runEvents.EmitCompleted(result.Narrative, new RunCompletionMetadata(
+        _runEvents.EmitCompleted(narrative, new RunCompletionMetadata(
             SystemPromptSha256: instructions.SystemPrompt.Sha256,
             PolicyPath: instructions.Policy.Identity.Path,
             PolicyVersion: instructions.Policy.Identity.Version,
@@ -179,7 +185,8 @@ internal sealed class LintIntentHandler : IAgentIntentHandler
             Model: modelClient.ModelId,
             TurnsUsed: result.TurnsUsed,
             DeniedActions: executor.Denials,
-            CreatedArtifacts: executor.TouchedPaths));
+            CreatedArtifacts: executor.TouchedPaths,
+            ProposedActions: proposedActions.Count > 0 ? proposedActions : null));
         return 0;
     }
 

@@ -274,4 +274,26 @@ public static class HubMetrics
 
     public static void RecordLintInboundLinksRefreshed(int count)
         => _lintInboundLinksRefreshedTotal.Add(count);
+
+    // --- 015-lint-board-parity (plan.md ## Observability > Business Metrics) ---
+
+    /// <summary>T022 (US3, FR-007): one increment per remediation action task the Hub
+    /// materialized from a lint run's <c>proposedActions</c> — counting only; the
+    /// proposal content is agent-authored and harness-opaque (Principle V).</summary>
+    private static readonly Counter<long> _remediationTasksProposedTotal =
+        Meter.CreateCounter<long>("wiki.lint.remediation_tasks_proposed_total",
+            description: "Remediation action tasks proposed by a lint run's findings assessment");
+
+    public static void RecordRemediationTaskProposed(string runId)
+        => _remediationTasksProposedTotal.Add(1, new KeyValuePair<string, object?>("run_id", runId));
+
+    /// <summary>T023 (US3): one increment per <c>remediationTaskLifecycleChanged</c>
+    /// broadcast, tagged with the destination stage — sibling of
+    /// <c>hub.lint_lifecycle_updates_total</c>/<c>hub.ingest_lifecycle_updates_total</c>.</summary>
+    private static readonly Counter<long> _remediationLifecycleUpdatesTotal =
+        Meter.CreateCounter<long>("hub.remediation_lifecycle_updates_total",
+            description: "Realtime remediation task lifecycle events published");
+
+    public static void RecordRemediationLifecycleUpdate(string stage)
+        => _remediationLifecycleUpdatesTotal.Add(1, new KeyValuePair<string, object?>("stage", stage));
 }

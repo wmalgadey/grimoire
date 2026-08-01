@@ -1,6 +1,8 @@
 using Grimoire.Hub.ContentRoot;
 using Grimoire.Hub.IngestDispatch;
 using Grimoire.Hub.LintDispatch;
+using Grimoire.Hub.OperationalState;
+using Grimoire.Hub.RemediationTasks;
 
 namespace Grimoire.Hub.IngestSubmission;
 
@@ -29,6 +31,7 @@ public static class BoardEndpoints
         ContentRootPaths contentPaths,
         IngestRunCoordinator ingestCoordinator,
         LintRunCoordinator lintCoordinator,
+        OperationalStateRepository stateRepository,
         CancellationToken cancellationToken)
     {
         var tasks = await store.GetAllAsync(contentPaths.TasksDir, cancellationToken);
@@ -67,6 +70,29 @@ public static class BoardEndpoints
                 completedAt = run.CompletedAt,
                 failureReason = run.FailureReason,
                 hasFindingsReport = run.FindingsReportPath is not null,
+            });
+        }
+
+        // T024 (US3): remediation_task entries — the list-entry field set of
+        // GET /api/remediation-tasks minus description/targetPath bulk detail (the card
+        // links to the detail endpoint), including terminal tasks so outcomes stay
+        // visible on the board (contracts/lint-board-api.md). Title stays the verbatim
+        // agent-authored proposal title (Principle V).
+        var remediationRows = await stateRepository.GetRemediationTasksAsync(cancellationToken: cancellationToken);
+        var remediationQueuePositions = RemediationTaskEndpoints.ComputeQueuePositions(remediationRows);
+        foreach (var row in remediationRows)
+        {
+            entries.Add(new
+            {
+                kind = "remediation_task",
+                taskId = row.TaskId,
+                runId = row.RunId,
+                title = row.Title,
+                state = row.State,
+                proposedAt = row.ProposedAt,
+                queuePosition = remediationQueuePositions.TryGetValue(row.TaskId, out var position) ? (int?)position : null,
+                outcomeReason = row.OutcomeReason,
+                updatedAt = row.UpdatedAt,
             });
         }
 

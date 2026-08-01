@@ -4,16 +4,19 @@
 	import ConnectionStatusIndicator from '$lib/components/ConnectionStatusIndicator.svelte';
 	import KanbanColumn from '$lib/components/KanbanColumn.svelte';
 	import LintRunCard from '$lib/components/LintRunCard.svelte';
+	import RemediationTaskCard from '$lib/components/RemediationTaskCard.svelte';
 	import SubmissionForm from '$lib/components/SubmissionForm.svelte';
 	import { createBoardLifecycleStream } from '$lib/services/ingestLifecycleClient';
 	import { getBoard, resumeQueue } from '$lib/services/ingestSubmissionsApi';
 	import { triggerLintRun } from '$lib/services/lintApi';
 	import { createLintRunStream } from '$lib/services/lintLifecycleClient';
+	import { createRemediationTaskStream } from '$lib/services/remediationLifecycleClient';
 	import type {
 		BoardTask,
 		ConnectionState,
 		LifecycleStage,
 		LintRun,
+		RemediationTaskBoardEntry,
 		RunActivity,
 		RunActivityEvent
 	} from '$lib/types';
@@ -34,6 +37,11 @@
 	// connection, fully independent of the ingest stream above (FR-015).
 	let lintRun: LintRun | null = $state(null);
 	let lintStream: ReturnType<typeof createLintRunStream> | undefined;
+	// 015-lint-board-parity T026 (US3, FR-007): agent-proposed remediation task cards,
+	// bootstrapped from GET /api/board and kept live via /hubs/remediation-lifecycle —
+	// its own stream and hub connection, independent of ingest and lint (FR-015).
+	let remediationTasks: RemediationTaskBoardEntry[] = $state([]);
+	let remediationStream: ReturnType<typeof createRemediationTaskStream> | undefined;
 	// 015-lint-board-parity T018 (FR-002/SC-003): trigger a lint run in one action from
 	// the board itself; blocked triggers surface their reason — never silent (SC-004).
 	let triggeringLint = $state(false);
@@ -131,11 +139,18 @@
 		// Non-critical, like refreshQueueState above: the ingest board still renders if
 		// the lint bootstrap/stream fails; the card shows "no lint activity" until then.
 		void lintStream.start().catch(() => {});
+
+		remediationStream = createRemediationTaskStream((tasks) => {
+			remediationTasks = tasks;
+		});
+		// Non-critical for the same reason: the section simply stays empty until it loads.
+		void remediationStream.start().catch(() => {});
 	});
 
 	onDestroy(() => {
 		void stream?.stop();
 		void lintStream?.stop();
+		void remediationStream?.stop();
 	});
 </script>
 
@@ -211,6 +226,16 @@
 			</p>
 		{/if}
 		<LintRunCard run={lintRun} />
+
+		{#if remediationTasks.length > 0}
+			<!-- US3 (FR-007): one independently reviewable card per agent-proposed action;
+			     a run with no proposals renders no cards (scenario 2). -->
+			<div class="flex flex-col gap-2" data-testid="remediation-task-list">
+				{#each remediationTasks as task (task.taskId)}
+					<RemediationTaskCard {task} />
+				{/each}
+			</div>
+		{/if}
 	</section>
 
 	<div class="flex gap-4 overflow-x-auto" data-testid="kanban-board">

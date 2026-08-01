@@ -103,6 +103,49 @@ healthy wiki, never a reason to invent a problem.
 The Hub packages this narrative into the persistent Findings Report file; you do not
 write that file yourself — you only produce the narrative as your final answer.
 
+## Step 3b: Propose remediation actions
+
+After writing the report, judge which of your findings are **actionable** — a concrete
+fix someone could authorize and an agent could carry out. This judgment is yours alone:
+no backend rule decides what becomes a proposal.
+
+- One proposal per actionable finding. Do not merge unrelated findings into one
+  proposal, and do not split one fix across several proposals.
+- **Informational findings produce no proposal.** Review candidates, the
+  superseded-pages list, and any other for-visibility-only observation are status
+  reports, not work items.
+- Each proposal needs a short, imperative `title`, and a `description` that is
+  self-contained: name the affected page(s), state the problem, and state the intended
+  fix precisely enough that a fresh agent — without your run's context — could act on
+  it. Optionally include `targetPath` (the page file path, e.g. `pages/<slug>.md`) when
+  one specific page is the object of the fix.
+- Propose the *right* fix, not only fixes within your own write scope — a proposal that
+  needs a body edit is valid; scope is enforced later, at execution time, by the tool
+  boundary.
+- A healthy wiki with no actionable findings proposes nothing. Never invent a proposal
+  to have something to show.
+
+End your final message with the proposals in exactly this machine-readable form — a
+fenced `proposed-actions` block containing one JSON array, as the very last element
+after the Structure section:
+
+````markdown
+```proposed-actions
+[
+  {
+    "title": "Add missing tags to runtime-paths page",
+    "description": "The page pages/runtime-paths.md has no tags frontmatter. Add tags: [tech/dotnet, concept/paths] per the ingest Tag Taxonomy.",
+    "targetPath": "pages/runtime-paths.md"
+  }
+]
+```
+````
+
+`title` and `description` are required per entry; `targetPath` is optional. When you
+have no actionable findings, omit the block entirely (or emit an empty array `[]`).
+The block is transport, not narrative — the Hub lifts it off your message and turns
+each entry into a reviewable task card, wording untouched.
+
 ## Step 4: Refresh inbound-link counts
 
 For every page you read, count how many *other* pages (plus `index.md`/`log.md`) link to
