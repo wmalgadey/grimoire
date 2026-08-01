@@ -184,7 +184,10 @@ public sealed class RemediationRunCoordinator
             WikiRoot: _paths.ContentRoot,
             SystemPromptPath: _paths.LintSystemPromptPath,
             PolicyPath: _paths.LintPolicyPath,
-            WriteLocksDir: _paths.WriteLocksDir);
+            WriteLocksDir: _paths.WriteLocksDir,
+            // US5/T041 populates this from the task record's attached-context entries;
+            // nothing does yet, so every dispatch carries none (T035).
+            AttachedContext: null);
 
         AgentDispatch.IAgentProcessHandle handle;
         try
@@ -270,7 +273,21 @@ public sealed class RemediationRunCoordinator
             string? reason;
             if (terminalEvent.Type == AgentDispatch.AgentRunEvent.TypeCompleted)
             {
-                if (terminalEvent.RemediationOutcome == AgentDispatch.AgentRunEvent.RemediationOutcomeNotApplicable)
+                // T035 (ADR-018, plan.md ## Observability): hub.remediation.re_verify is
+                // emitted here, Hub-side, purely from the terminal event's own metadata —
+                // the re-verification judgment itself happened agent-side (FR-018,
+                // Principle V); this span only records that a completed terminal event
+                // carried a verdict and what it was, for correlation with the run.
+                var stillApplicable = terminalEvent.RemediationOutcome != AgentDispatch.AgentRunEvent.RemediationOutcomeNotApplicable;
+                using (var reverifySpan = supervisionSpan is { Context: var supervisionContext }
+                    ? HubTracing.ActivitySource.StartActivity("hub.remediation.re_verify", ActivityKind.Internal, supervisionContext)
+                    : HubTracing.ActivitySource.StartActivity("hub.remediation.re_verify"))
+                {
+                    reverifySpan?.SetTag("task_id", taskId);
+                    reverifySpan?.SetTag("still_applicable", stillApplicable);
+                }
+
+                if (!stillApplicable)
                 {
                     status = RemediationTaskStates.NotApplicable;
                     reason = terminalEvent.Reason ?? "Agent judged the proposal no longer applicable.";

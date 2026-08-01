@@ -119,12 +119,13 @@ public sealed class AgentProcessHost : IAgentProcessLauncher
     }
 
     /// <summary>
-    /// ADR-018 (015-lint-board-parity T032): spawns the Lint agent binary in its
-    /// remediation-execution invocation mode. This is the Hub-side process-spawn wiring
-    /// only, reusing the Lint worker path and credential/env scoping unchanged (T035
-    /// extends the agent-side argument handling and instruction surface for re-
-    /// verification, FR-018 — out of this phase's scope). No stdin payload, matching
-    /// Lint's own convention.
+    /// ADR-018 (015-lint-board-parity T032/T035): spawns the Lint agent binary in its
+    /// remediation-execution invocation mode, reusing the Lint worker path and
+    /// credential/env scoping unchanged. `Grimoire.LintAgent`'s own CLI (T035) parses
+    /// `--mode remediation-execution` and everything below into a
+    /// <c>RemediationExecutionCliOptions</c>, re-verifies the proposal (FR-018,
+    /// judgment in agents/lint/system-prompt.md, T036), and either applies the fix or
+    /// reports it moot. No stdin payload, matching Lint's own convention.
     /// </summary>
     public Task<IAgentProcessHandle> StartAsync(RemediationExecutionAgentRequest request, CancellationToken cancellationToken = default)
     {
@@ -189,6 +190,14 @@ public sealed class AgentProcessHost : IAgentProcessLauncher
         {
             startInfo.ArgumentList.Add("--proposal-target-path");
             startInfo.ArgumentList.Add(request.TargetPath);
+        }
+
+        // T035: US5's not-yet-built attach-context endpoint is the only future writer of
+        // this field — always null today, so the argument is simply omitted.
+        if (!string.IsNullOrWhiteSpace(request.AttachedContext))
+        {
+            startInfo.ArgumentList.Add("--attached-context");
+            startInfo.ArgumentList.Add(request.AttachedContext);
         }
 
         var authToken = _secretsLoader.GetAnthropicAuthToken();

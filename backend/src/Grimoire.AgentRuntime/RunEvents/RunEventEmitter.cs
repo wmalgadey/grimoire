@@ -28,7 +28,14 @@ public sealed record RunCompletionMetadata(
     // (contracts/remediation-lifecycle-events.md `proposedActions`). Pure transport —
     // the judgment lives in the agent's instructions, never here (Principle V).
     // Null/empty for a run that proposed nothing; only Lint's lint-run mode sets it.
-    IReadOnlyList<ProposedActionRecord>? ProposedActions = null);
+    IReadOnlyList<ProposedActionRecord>? ProposedActions = null,
+    // T035 (015-lint-board-parity, ADR-018, FR-018): the remediation-execution mode's
+    // re-verification judgment on its terminal `completed` event — "applied" |
+    // "not_applicable" (contracts/remediation-lifecycle-events.md). Transported only,
+    // never computed by the harness (Principle V); only the remediation-execution mode
+    // sets it. The accompanying reason travels via <see cref="RunEventEmitter.EmitCompleted"/>'s
+    // own <c>reason</c> parameter, mirroring <c>EmitFailed</c>'s shape.
+    string? RemediationOutcome = null);
 
 /// <summary>
 /// One agent-proposed remediation action as reported on the lint-run terminal event
@@ -95,8 +102,13 @@ public sealed class RunEventEmitter : IDisposable
     public void EmitAnswerChunk(string text)
         => Emit(new { type = "answer_chunk", taskId = _taskId, timestamp = DateTimeOffset.UtcNow, text });
 
-    public void EmitCompleted(string summary, RunCompletionMetadata? metadata = null)
-        => Emit(BuildTerminalPayload("completed", summary, reason: null, metadata));
+    // T035 (015-lint-board-parity): completed events can now carry a `reason` too — the
+    // remediation-execution mode's not-applicable outcome needs one alongside `summary`
+    // (contracts/remediation-lifecycle-events.md), unlike every prior agent whose
+    // completed events never had one. Defaults to null so every existing call site
+    // (Ingest/Query/Lint's lint-run mode) is unaffected.
+    public void EmitCompleted(string summary, RunCompletionMetadata? metadata = null, string? reason = null)
+        => Emit(BuildTerminalPayload("completed", summary, reason, metadata));
 
     public void EmitFailed(string reason, RunCompletionMetadata? metadata = null)
         => Emit(BuildTerminalPayload("failed", summary: null, reason, metadata));
@@ -132,6 +144,9 @@ public sealed class RunEventEmitter : IDisposable
                 description = p.Description,
                 targetPath = p.TargetPath,
             }).ToList(),
+            // T035 (015-lint-board-parity, ADR-018): remediation-execution mode's
+            // re-verification outcome, null for every other agent/mode.
+            remediationOutcome = metadata?.RemediationOutcome,
         };
 
     private void Emit(object payload)

@@ -82,8 +82,14 @@ public static class RemediationLifecycleLogEvents
         span?.SetTag("outcome", outcome);
         span?.SetTag("reason", reason);
 
+        // T038: `reason` is passed through raw (not the display-friendly "n/a" fallback)
+        // so the structured log field genuinely stays null for a plain `completed`
+        // outcome, matching plan.md ## Observability's "reason nullable except on
+        // failed/not_applicable" contract — ILogger's default formatter renders a null
+        // template argument as an empty string in the human-readable message, which is
+        // an acceptable trade for a correct structured field.
         logger.LogInformation(ExecutionCompletedEvent,
-            "Remediation task {task_id} execution completed: {outcome} ({reason})", taskId, outcome, reason ?? "n/a");
+            "Remediation task {task_id} execution completed: {outcome} ({reason})", taskId, outcome, reason);
     }
 
     private static Activity? StartLogEventSpan(string eventName, string level)

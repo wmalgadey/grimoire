@@ -1,18 +1,32 @@
 <script lang="ts">
 	import type { RemediationTaskBoardEntry, RemediationTaskState } from '$lib/types';
+	import {
+		authorizeRemediationTask,
+		dismissRemediationTask,
+		withdrawRemediationTaskAuthorization,
+		RemediationApiError
+	} from '$lib/services/remediationApi';
 
-	// 015-lint-board-parity T026 (US3, FR-006): one board card per agent-proposed
-	// remediation action — deliberately styled unlike ingest's TaskCard and the violet
-	// lint card (amber accent + its own kind label) so the activity kind is readable at a
-	// glance. Title is the verbatim agent-authored proposal title (Principle V), the
-	// subtitle names the originating lint run, and each card is independently reviewable
-	// (US3 scenario 3). The authorize/dismiss review actions are placeholders here —
-	// they become live in US4 (T037).
+	// 015-lint-board-parity T026 (US3, FR-006) / T037 (US4): one board card per
+	// agent-proposed remediation action — deliberately styled unlike ingest's TaskCard
+	// and the violet lint card (amber accent + its own kind label) so the activity kind
+	// is readable at a glance. Title is the verbatim agent-authored proposal title
+	// (Principle V), the subtitle names the originating lint run, and each card is
+	// independently reviewable (US3 scenario 3). T037 wires the authorize/dismiss/
+	// withdraw actions to the real endpoints (contracts/remediation-task-api.md); this
+	// component never mutates `task` on success — the parent board's
+	// `remediationTaskLifecycleChanged` live stream (or its unknown-task board refresh)
+	// is the single source of truth for the resulting state (data-model.md CAS
+	// discipline), so a successful call here only clears any prior error and lets the
+	// live update land through the normal prop flow.
 	interface Props {
 		task: RemediationTaskBoardEntry;
 	}
 
 	let { task }: Props = $props();
+
+	let busy = $state(false);
+	let errorMessage: string | null = $state(null);
 
 	const stateLabels: Record<RemediationTaskState, string> = {
 		proposed: 'Proposed',
@@ -33,6 +47,30 @@
 		not_applicable: 'bg-slate-100 text-slate-600',
 		dismissed: 'bg-slate-100 text-slate-600'
 	};
+
+	// T037: every review action follows the same shape — clear any prior error, run the
+	// call, and on failure surface `RemediationApiError`'s human-readable message
+	// (contract discipline: 409s from a lost CAS race are never silent, FR-016/SC-004
+	// precedent). Success intentionally does nothing locally beyond clearing the error —
+	// see the class doc comment above.
+	async function runAction(action: () => Promise<unknown>) {
+		busy = true;
+		errorMessage = null;
+		try {
+			await action();
+		} catch (err) {
+			errorMessage =
+				err instanceof RemediationApiError
+					? err.message
+					: 'The request failed unexpectedly. Please try again.';
+		} finally {
+			busy = false;
+		}
+	}
+
+	const handleAuthorize = () => runAction(() => authorizeRemediationTask(task.taskId));
+	const handleDismiss = () => runAction(() => dismissRemediationTask(task.taskId));
+	const handleWithdraw = () => runAction(() => withdrawRemediationTaskAuthorization(task.taskId));
 </script>
 
 <article
@@ -79,27 +117,48 @@
 	{/if}
 
 	{#if task.state === 'proposed'}
-		<!-- T026: review-action placeholders — authorize/dismiss become live in US4 (T037). -->
+		<!-- T037: live authorize/dismiss actions (FR-009/FR-010). -->
 		<div class="flex items-center gap-2" data-testid="remediation-task-card-actions">
 			<button
 				type="button"
-				class="rounded bg-amber-600 px-3 py-1 text-xs font-medium text-white opacity-50"
-				disabled
-				title="Authorizing proposals arrives in a later increment."
+				class="rounded bg-amber-600 px-3 py-1 text-xs font-medium text-white disabled:opacity-50"
+				disabled={busy}
+				onclick={handleAuthorize}
 				data-testid="remediation-task-card-authorize"
 			>
 				Authorize
 			</button>
 			<button
 				type="button"
-				class="rounded border border-slate-300 px-3 py-1 text-xs font-medium text-slate-600 opacity-50"
-				disabled
-				title="Dismissing proposals arrives in a later increment."
+				class="rounded border border-slate-300 px-3 py-1 text-xs font-medium text-slate-600 disabled:opacity-50"
+				disabled={busy}
+				onclick={handleDismiss}
 				data-testid="remediation-task-card-dismiss"
 			>
 				Dismiss
 			</button>
 		</div>
+	{:else if task.state === 'authorized'}
+		<!-- T037: withdraw authorization while still waiting (FR-016) — unavailable once
+		     execution starts, since the card's own state will have moved to `executing`. -->
+		<div class="flex items-center gap-2" data-testid="remediation-task-card-actions">
+			<button
+				type="button"
+				class="rounded border border-slate-300 px-3 py-1 text-xs font-medium text-slate-600 disabled:opacity-50"
+				disabled={busy}
+				onclick={handleWithdraw}
+				data-testid="remediation-task-card-withdraw"
+			>
+				Withdraw authorization
+			</button>
+		</div>
+	{/if}
+
+	{#if errorMessage}
+		<!-- FR-016/SC-004 discipline: a lost CAS race or any other rejection is shown, never silent. -->
+		<p class="text-sm text-red-700" data-testid="remediation-task-card-error">
+			{errorMessage}
+		</p>
 	{/if}
 
 	<div class="flex items-center justify-between text-xs text-slate-500">
