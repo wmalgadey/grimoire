@@ -231,7 +231,17 @@ public class QueryConversationRecordLifecycleTests
         return json.GetProperty("state").GetString() == expectedState;
     });
 
-    internal static async Task WaitUntilAsync(Func<Task<bool>> condition, int timeoutMs = 5000)
+    // 5000ms was tight enough to flake under full-suite parallel load (CPU/thread-pool
+    // contention from other tests' background work) even though the condition itself
+    // resolves in milliseconds under normal load — e.g.
+    // QueryConversationRecordBookkeepingTests.CompletedTurn_BookkeepingCarriesEveryFieldOfTheTerminalMetadata
+    // and other WaitForAnswerAsync/WaitForStateAsync callers across this file's
+    // Query-conversation test siblings. This polls for eventual consistency against an
+    // in-memory TestServer (no real network), so a longer ceiling only makes the test
+    // more tolerant of transient scheduling delays — it does not change what is being
+    // asserted or mask a genuine hang (a truly stuck turn still fails, just after 15s
+    // instead of 5s).
+    internal static async Task WaitUntilAsync(Func<Task<bool>> condition, int timeoutMs = 15000)
     {
         var deadline = DateTime.UtcNow.AddMilliseconds(timeoutMs);
         while (DateTime.UtcNow < deadline)
