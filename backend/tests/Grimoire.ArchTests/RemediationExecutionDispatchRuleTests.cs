@@ -45,7 +45,7 @@ public class RemediationExecutionDispatchRuleTests
     ];
 
     [Fact]
-    public void RemediationTasks_OnlyTheRunCoordinator_MayReferenceTheProcessLauncherPort()
+    public void RemediationTasks_OnlyAllowListedCoordinators_MayReferenceTheProcessLauncherPort()
     {
         var assemblyPath = typeof(Grimoire.Hub.HubMetrics).Assembly.Location;
         var assembly = AssemblyDefinition.ReadAssembly(assemblyPath);

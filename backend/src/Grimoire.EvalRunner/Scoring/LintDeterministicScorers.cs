@@ -178,8 +178,10 @@ public static class LintDeterministicScorers
     /// human-adjudicated-once judgment, frozen at scenario authoring time, of which of
     /// the <c>lint-seeded-defects</c> fixture's six known defects a reviewing human would
     /// consider a relevant, actionable proposal (data-model.md "Proposed Action";
-    /// research.md R6). A run that proposes nothing is vacuously relevant (a clean
-    /// assessment is not a relevance failure); a run is scored Pass only if <b>every</b>
+    /// research.md R6). The fixture guarantees actionable defects exist, so a run that
+    /// proposes nothing has under-proposed relative to what the scenario seeded, not
+    /// stayed vacuously relevant — it scores Fail (<c>proposed_at_least_one_action</c>
+    /// false). Otherwise, a run is scored Pass only if <b>every</b>
     /// proposal it made both (a) names/targets one of the actionable pages and (b) is not
     /// a proposal against <see cref="RemediationGoldenSet.InformationalOnlyPage"/> (the
     /// fixture's one seeded defect — <c>stale-topic</c>, a Review Window candidate — the

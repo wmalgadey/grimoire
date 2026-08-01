@@ -25,18 +25,20 @@ namespace Grimoire.AgentEvals;
 /// <c>RemediationReVerificationScorerTests</c> for the scorer's hermetic (no-LLM)
 /// coverage, which is fully exercised regardless of live credentials.
 ///
-/// <b>No trusted recording exists yet for either scenario.</b> Neither has ever been
-/// captured against live model output — there is no
-/// `data/evals/recordings/remediation-reverify-still-applicable/` or
-/// `.../remediation-reverify-no-longer-applicable/` directory, so
+/// <b>T039 closed 2026-08-01</b>: both scenarios live-captured with `claude-haiku-4-5`
+/// (100% success rate on each, against the ≥ 90% threshold) —
+/// `data/evals/recordings/remediation-reverify-still-applicable/` and
+/// `.../remediation-reverify-no-longer-applicable/` are committed, and
 /// <see cref="RemediationReVerificationStalenessCheck.Evaluate"/> returns
-/// <see cref="TrustStatus.Missing"/> and both tests below fail with a message naming the
-/// exact capture command, exactly like every other Lint/Query/remediation scenario would
-/// before its first capture (same shape as T028's identical situation, 015-lint-board-
-/// parity). This is the expected, honest state of an eval whose fixtures require a live
-/// LLM call this environment cannot make (Constitution II: recorded evidence must come
-/// from a real captured run, never fabricated) — T039 is left unchecked in tasks.md until
-/// a maintainer with provider credentials runs:
+/// <see cref="TrustStatus.Trusted"/> against the current instruction-file fingerprint, so
+/// both tests below assert the ≥ 90% threshold on that recorded evidence.
+///
+/// If a future instruction-file change shifts the recorded fingerprint,
+/// <see cref="RemediationReVerificationStalenessCheck.Evaluate"/> reports
+/// <see cref="TrustStatus.Stale"/> instead and the affected test fails naming the same
+/// recapture command a first-time capture would use, exactly like every other
+/// Lint/Query/remediation scenario (Constitution II: recorded evidence must come from a
+/// real captured run, never fabricated — a stale recording is never silently reused):
 ///
 /// <code>
 /// dotnet run --project backend/src/Grimoire.EvalRunner -- capture --scenario remediation-reverify-still-applicable --scenario remediation-reverify-no-longer-applicable
@@ -44,8 +46,7 @@ namespace Grimoire.AgentEvals;
 ///
 /// (needs `GRIMOIRE_EVAL_PROVIDER_API_KEY`/`ANTHROPIC_AUTH_TOKEN` set per the existing
 /// eval-capture workflow used for 013's `lint-*` scenarios and 008/012's `query-*`
-/// scenarios.) Once captured, these tests start asserting the ≥ 90% threshold like their
-/// siblings — no code change needed here.
+/// scenarios.)
 /// </summary>
 [Collection("EvalRunnerProcessTests")]
 public class RemediationReVerificationEvalTests

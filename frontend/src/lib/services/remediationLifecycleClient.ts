@@ -193,8 +193,16 @@ export function createRemediationTaskStream(
 
 	return {
 		async start() {
-			await refresh();
-			await client.start();
+			// PR #41 review (T052, mirrors T051's lintLifecycleClient fix): the bootstrap
+			// refresh and the hub connection are independent failure domains — a
+			// transient `/api/board` failure must never prevent the hub from connecting,
+			// or live remediation-task updates silently stop until a full page reload
+			// (FR-003/SC-002). Run both concurrently; only the hub connection's outcome
+			// is fatal to start().
+			const [, clientResult] = await Promise.allSettled([refresh(), client.start()]);
+			if (clientResult.status === 'rejected') {
+				throw clientResult.reason;
+			}
 		},
 		stop: () => client.stop()
 	};

@@ -185,8 +185,17 @@ export function createLintRunStream(
 
 	return {
 		async start() {
-			await refresh();
-			await client.start();
+			// PR #41 review (T051): the bootstrap refresh and the hub connection are
+			// independent failure domains — a transient `/api/board` failure must never
+			// prevent the hub from connecting, or live updates silently stop until a full
+			// page reload (FR-003/SC-001/SC-002). Run both concurrently; only the hub
+			// connection's outcome is fatal to start() (the board page's own `.catch`
+			// treats refresh as best-effort, matching `fetchLintRunFromBoard`'s callers
+			// elsewhere already tolerating a failed initial fetch).
+			const [, clientResult] = await Promise.allSettled([refresh(), client.start()]);
+			if (clientResult.status === 'rejected') {
+				throw clientResult.reason;
+			}
 		},
 		stop: () => client.stop()
 	};
