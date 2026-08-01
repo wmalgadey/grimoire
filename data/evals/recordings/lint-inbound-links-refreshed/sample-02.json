@@ -1,12 +1,12 @@
 {
   "schema_version": 1,
   "sample": 2,
-  "task_id": "capture-lint-inbound-links-refreshed-02-633a3f4bca064e19892f50edbcb8b0d6",
+  "task_id": "capture-lint-inbound-links-refreshed-02-ffb4cbb5120644469d82e7a3aa81784f",
   "model": "claude-haiku-4-5",
   "turns": [
     {
       "turn": 1,
-      "system_prompt_sha256": "sha256:8541e2db58c2b94a6982aff85ffdbc59bf07ad3f6bbbfd266013f07d7f69f12f",
+      "system_prompt_sha256": "sha256:0ffffa31bf5dfccef579d435af42e23f3f84fb5e464ba5465838ed9324dca1b5",
       "conversation": [
         {
           "role": "user",
@@ -21,23 +21,28 @@
       "stop_reason": "tool_use",
       "tool_uses": [
         {
-          "tool_use_id": "toolu_01Cb7YGp5c4AJ9rrQCbEjnNY",
+          "tool_use_id": "toolu_01NiaqKcHDghJPDAuuzifLsv",
           "tool_name": "read_file",
           "input_json": "{\u0022path\u0022:\u0022index.md\u0022}"
         },
         {
-          "tool_use_id": "toolu_01CQBP8yjfHWM4QhWvwR8bdr",
+          "tool_use_id": "toolu_01BEUVXPrjWRk4rtRtPkyG7B",
           "tool_name": "read_file",
           "input_json": "{\u0022path\u0022:\u0022log.md\u0022}"
+        },
+        {
+          "tool_use_id": "toolu_01QE6nnqCpbneJA7R8QaY9i5",
+          "tool_name": "list_files",
+          "input_json": "{\u0022path\u0022:\u0022pages\u0022}"
         }
       ],
-      "assistant_text": "I\u0027ll perform a comprehensive wiki health check. Let me start by reading the index and log, then enumerate all pages, read each one, check metadata, and finally produce the Findings Report.",
-      "input_tokens": 5127,
-      "output_tokens": 133
+      "assistant_text": "I\u0027ll perform a complete wiki health check. Let me start by reading the entire wiki structure and content.",
+      "input_tokens": 5531,
+      "output_tokens": 151
     },
     {
       "turn": 2,
-      "system_prompt_sha256": "sha256:8541e2db58c2b94a6982aff85ffdbc59bf07ad3f6bbbfd266013f07d7f69f12f",
+      "system_prompt_sha256": "sha256:0ffffa31bf5dfccef579d435af42e23f3f84fb5e464ba5465838ed9324dca1b5",
       "conversation": [
         {
           "role": "user",
@@ -45,11 +50,11 @@
         },
         {
           "role": "assistant",
-          "content_sha256": "sha256:2efd85e3334f0efd0fad3dc2b9b13abba0d4614dabfc0ef741bbd34ca5387a30"
+          "content_sha256": "sha256:9ffd77c6c15d8e58542e834e9a220be63b1a8750db1e873f93555e0d30527c1d"
         },
         {
           "role": "user",
-          "content_sha256": "sha256:11cdab005e9c0d47e7e682e500f4cd0f99df0e963ef8e210c8e4c67aa8498d76"
+          "content_sha256": "sha256:e4c49b4cc441b35b07daccfd24780727a985f47b322d9a65e02186cd36e0f239"
         }
       ],
       "tool_names": [
@@ -60,18 +65,28 @@
       "stop_reason": "tool_use",
       "tool_uses": [
         {
-          "tool_use_id": "toolu_012zdzNXyv4sHKFQEwhRUVLx",
-          "tool_name": "list_files",
-          "input_json": "{\u0022path\u0022:\u0022pages/\u0022}"
+          "tool_use_id": "toolu_01K4n1nH65wWozPyNQ7WYTJX",
+          "tool_name": "read_file",
+          "input_json": "{\u0022path\u0022:\u0022pages/hub-page.md\u0022}"
+        },
+        {
+          "tool_use_id": "toolu_01Ay3yxwgYpL3yNThzy7VKR3",
+          "tool_name": "read_file",
+          "input_json": "{\u0022path\u0022:\u0022pages/spoke-a.md\u0022}"
+        },
+        {
+          "tool_use_id": "toolu_01MoJTTbFGn2yJKCFFqVyAZA",
+          "tool_name": "read_file",
+          "input_json": "{\u0022path\u0022:\u0022pages/spoke-b.md\u0022}"
         }
       ],
-      "assistant_text": "Let me continue listing the pages structure:",
-      "input_tokens": 5447,
-      "output_tokens": 63
+      "assistant_text": "Good, there\u0027s no log.md. Now let me read all the pages in the wiki:",
+      "input_tokens": 5917,
+      "output_tokens": 164
     },
     {
       "turn": 3,
-      "system_prompt_sha256": "sha256:8541e2db58c2b94a6982aff85ffdbc59bf07ad3f6bbbfd266013f07d7f69f12f",
+      "system_prompt_sha256": "sha256:0ffffa31bf5dfccef579d435af42e23f3f84fb5e464ba5465838ed9324dca1b5",
       "conversation": [
         {
           "role": "user",
@@ -79,19 +94,19 @@
         },
         {
           "role": "assistant",
-          "content_sha256": "sha256:2efd85e3334f0efd0fad3dc2b9b13abba0d4614dabfc0ef741bbd34ca5387a30"
+          "content_sha256": "sha256:9ffd77c6c15d8e58542e834e9a220be63b1a8750db1e873f93555e0d30527c1d"
         },
         {
           "role": "user",
-          "content_sha256": "sha256:11cdab005e9c0d47e7e682e500f4cd0f99df0e963ef8e210c8e4c67aa8498d76"
+          "content_sha256": "sha256:e4c49b4cc441b35b07daccfd24780727a985f47b322d9a65e02186cd36e0f239"
         },
         {
           "role": "assistant",
-          "content_sha256": "sha256:91a5f5dda713a48e3293234cabcf093d82fff8ef31c5dd275f182f70d3854733"
+          "content_sha256": "sha256:c8c68266eb5cea323b513f6b4125cf4c5fbace460bc172864898f2d9433c4760"
         },
         {
           "role": "user",
-          "content_sha256": "sha256:7240db5ae781ae776143ab0d04c03037695bc3557473fb7d2320de1117ddd035"
+          "content_sha256": "sha256:1f673b0aa0a1b40158cf273e6b733e6c39794a9fe1ebdc8b87203cc4a415b779"
         }
       ],
       "tool_names": [
@@ -102,28 +117,28 @@
       "stop_reason": "tool_use",
       "tool_uses": [
         {
-          "tool_use_id": "toolu_01FMcuAHkMwRJUzPBr5MZZan",
+          "tool_use_id": "toolu_01BmKgCFGcjEdMf8WG1Zrqww",
           "tool_name": "read_file",
           "input_json": "{\u0022path\u0022:\u0022pages/hub-page.md\u0022}"
         },
         {
-          "tool_use_id": "toolu_016dc9tZhYfc6FgwYwaQ57eY",
+          "tool_use_id": "toolu_01XQ9hSkGUdWpWYHDCQqhVc3",
           "tool_name": "read_file",
           "input_json": "{\u0022path\u0022:\u0022pages/spoke-a.md\u0022}"
         },
         {
-          "tool_use_id": "toolu_014jcfb59kR6uyG4t6F8FUJH",
+          "tool_use_id": "toolu_015zyjHb5oQXXTJ89Kb5XYsp",
           "tool_name": "read_file",
           "input_json": "{\u0022path\u0022:\u0022pages/spoke-b.md\u0022}"
         }
       ],
-      "assistant_text": "Now let me read all three pages:",
-      "input_tokens": 5545,
-      "output_tokens": 152
+      "assistant_text": "Perfect. Now I have all the wiki content. Let me analyze this step by step.\n\n## Step 1: Extract all wikilinks (Pass 1)\n\n**index.md body:**\n- \u0060[[hub-page]]\u0060\n- \u0060[[spoke-a]]\u0060\n\n**hub-page.md body:**\n- \u0060[[spoke-a]]\u0060\n- \u0060[[spoke-b]]\u0060\n\n**spoke-a.md body:**\n- \u0060[[hub-page]]\u0060\n\n**spoke-b.md body:**\n- \u0060[[hub-page]]\u0060\n\n**log.md:** Does not exist (only index.md and log.md as potential link sources).\n\n## Step 2: Compute correct inbound_links counts (Pass 2)\n\nNow I\u0027ll tally which pages are linked to from each file:\n\n**From index.md:** hub-page (1), spoke-a (1)\n**From hub-page.md:** spoke-a (1), spoke-b (1)\n**From spoke-a.md:** hub-page (1)\n**From spoke-b.md:** hub-page (1)\n\n**Correct inbound_links by page:**\n- **hub-page**: linked from index.md \u002B spoke-a.md \u002B spoke-b.md = **3 links** (currently recorded as 1)\n- **spoke-a**: linked from index.md \u002B hub-page.md = **2 links** (currently recorded as 0)\n- **spoke-b**: linked from hub-page.md = **1 link** (currently recorded as 5)\n\nNow let me check for findings before refreshing the inbound_links.\n\n## Analysis for Findings\n\n### Content Quality\n- No contradictions between pages\n- No outdated claims\n- All related pages (hub and spokes) are linked to each other\n- No scattered concepts or gaps detected\n- No issues here.\n\n### Metadata Hygiene\n- All pages have tags (concept/Testing)\n- All pages have confidence (high) with reasons\n- Timestamps are from 2026, which is in the future relative to a 90-day review window assumption. However, these are fixture data with explicit timestamps. No pages fall within a review requirement.\n- No superseded pages.\n\n### Structure\n- All three pages (hub-page, spoke-a, spoke-b) have inbound links:\n  - hub-page has 3 inbound links\n  - spoke-a has 2 inbound links  \n  - spoke-b has 1 inbound link\n- No orphan pages.\n\nThe only issues are the stale \u0060inbound_links\u0060 counts, which I need to refresh. Let me do that now.\n\n## Step 4: Refresh inbound_links counts\n\nI\u0027ll refresh each page with the correct inbound_links count:",
+      "input_tokens": 6608,
+      "output_tokens": 777
     },
     {
       "turn": 4,
-      "system_prompt_sha256": "sha256:8541e2db58c2b94a6982aff85ffdbc59bf07ad3f6bbbfd266013f07d7f69f12f",
+      "system_prompt_sha256": "sha256:0ffffa31bf5dfccef579d435af42e23f3f84fb5e464ba5465838ed9324dca1b5",
       "conversation": [
         {
           "role": "user",
@@ -131,27 +146,27 @@
         },
         {
           "role": "assistant",
-          "content_sha256": "sha256:2efd85e3334f0efd0fad3dc2b9b13abba0d4614dabfc0ef741bbd34ca5387a30"
+          "content_sha256": "sha256:9ffd77c6c15d8e58542e834e9a220be63b1a8750db1e873f93555e0d30527c1d"
         },
         {
           "role": "user",
-          "content_sha256": "sha256:11cdab005e9c0d47e7e682e500f4cd0f99df0e963ef8e210c8e4c67aa8498d76"
+          "content_sha256": "sha256:e4c49b4cc441b35b07daccfd24780727a985f47b322d9a65e02186cd36e0f239"
         },
         {
           "role": "assistant",
-          "content_sha256": "sha256:91a5f5dda713a48e3293234cabcf093d82fff8ef31c5dd275f182f70d3854733"
+          "content_sha256": "sha256:c8c68266eb5cea323b513f6b4125cf4c5fbace460bc172864898f2d9433c4760"
         },
         {
           "role": "user",
-          "content_sha256": "sha256:7240db5ae781ae776143ab0d04c03037695bc3557473fb7d2320de1117ddd035"
+          "content_sha256": "sha256:1f673b0aa0a1b40158cf273e6b733e6c39794a9fe1ebdc8b87203cc4a415b779"
         },
         {
           "role": "assistant",
-          "content_sha256": "sha256:3e9e419cc0acb92a427b45817fc07e171d884b103b4e4cecc1bba5ed7b4c2468"
+          "content_sha256": "sha256:fd361c70ec96dc98b5f9efe624195fec30c02ba7d71c3020454bd01b3df1b53f"
         },
         {
           "role": "user",
-          "content_sha256": "sha256:885d36f8759c5e49a5a4443e62d52d49746cf60020b4fe2496824df6dc6b9595"
+          "content_sha256": "sha256:06d0cf97881bcfc97bf4bf1d958b5de10de37dc8878e57b8363c9487c9d5d622"
         }
       ],
       "tool_names": [
@@ -162,96 +177,28 @@
       "stop_reason": "tool_use",
       "tool_uses": [
         {
-          "tool_use_id": "toolu_01UKgBPAfFW1ZZodJnmQ8aMw",
-          "tool_name": "read_file",
-          "input_json": "{\u0022path\u0022:\u0022pages/hub-page.md\u0022}"
-        },
-        {
-          "tool_use_id": "toolu_012zemJAQddWWBwHMXyAPTNx",
-          "tool_name": "read_file",
-          "input_json": "{\u0022path\u0022:\u0022pages/spoke-a.md\u0022}"
-        },
-        {
-          "tool_use_id": "toolu_01SXZKakUQA9V8wz2D5XZcxD",
-          "tool_name": "read_file",
-          "input_json": "{\u0022path\u0022:\u0022pages/spoke-b.md\u0022}"
-        }
-      ],
-      "assistant_text": "Perfect. Now I have all the content. Let me analyze the findings and compute correct inbound-link counts:\n\n## Analysis\n\n**Actual inbound links count:**\n- **hub-page.md**: linked from index.md, spoke-a.md, spoke-b.md = **3 actual** (recorded: 1)\n- **spoke-a.md**: linked from index.md, hub-page.md (implicitly within the text mentioning it in the context) = **2 actual** (recorded: 0)\n- **spoke-b.md**: linked from hub-page.md = **1 actual** (recorded: 5)\n\n**Metadata checks:**\n- All pages have \u0060tags\u0060 (one tag each: \u0060concept/Testing\u0060)\n- All pages have \u0060confidence\u0060 and \u0060confidence_reason\u0060\n- All pages have timestamps\n- No page exceeds 90-day review window (timestamps are in 2026)\n- No pages marked \u0060superseded_by\u0060\n\n**Content quality:**\n- No contradictions\n- No outdated claims\n- Cross-references are present where expected\n- No scattered concepts\n- No obvious gaps\n\n**Structure:**\n- All three pages are referenced in index.md\n- No orphan pages\n\nNow let me refresh the inbound-link counts for all three pages:",
-      "input_tokens": 6224,
-      "output_tokens": 437
-    },
-    {
-      "turn": 5,
-      "system_prompt_sha256": "sha256:8541e2db58c2b94a6982aff85ffdbc59bf07ad3f6bbbfd266013f07d7f69f12f",
-      "conversation": [
-        {
-          "role": "user",
-          "content_sha256": "sha256:0e6b028b605c801b435654e93e663930448ac5bae664ac732b5954946d500201"
-        },
-        {
-          "role": "assistant",
-          "content_sha256": "sha256:2efd85e3334f0efd0fad3dc2b9b13abba0d4614dabfc0ef741bbd34ca5387a30"
-        },
-        {
-          "role": "user",
-          "content_sha256": "sha256:11cdab005e9c0d47e7e682e500f4cd0f99df0e963ef8e210c8e4c67aa8498d76"
-        },
-        {
-          "role": "assistant",
-          "content_sha256": "sha256:91a5f5dda713a48e3293234cabcf093d82fff8ef31c5dd275f182f70d3854733"
-        },
-        {
-          "role": "user",
-          "content_sha256": "sha256:7240db5ae781ae776143ab0d04c03037695bc3557473fb7d2320de1117ddd035"
-        },
-        {
-          "role": "assistant",
-          "content_sha256": "sha256:3e9e419cc0acb92a427b45817fc07e171d884b103b4e4cecc1bba5ed7b4c2468"
-        },
-        {
-          "role": "user",
-          "content_sha256": "sha256:885d36f8759c5e49a5a4443e62d52d49746cf60020b4fe2496824df6dc6b9595"
-        },
-        {
-          "role": "assistant",
-          "content_sha256": "sha256:72736aae0dd7b9228d4d15ea01f6b19b34bc7b59ed35ec92e688e8563b41ec1d"
-        },
-        {
-          "role": "user",
-          "content_sha256": "sha256:57367345f8467309ba1dd22e3f3c422213399aa84eeddeb5327aad1263bfaffb"
-        }
-      ],
-      "tool_names": [
-        "list_files",
-        "read_file",
-        "write_file"
-      ],
-      "stop_reason": "tool_use",
-      "tool_uses": [
-        {
-          "tool_use_id": "toolu_01A4UTpeYv2nmdYQcco915o8",
+          "tool_use_id": "toolu_013SMExBLPZH9ZTs93hKDpjJ",
           "tool_name": "write_file",
           "input_json": "{\u0022path\u0022:\u0022pages/hub-page.md\u0022,\u0022content\u0022:\u0022---\\ntype: Concept\\ntitle: Hub Page\\ndescription: The most cross-referenced page in this fixture wiki.\\ntimestamp: 2026-05-01T00:00:00Z\\ntags:\\n  - concept/Testing\\nconfidence: high\\nconfidence_reason: \\u0022Fixture data, not a real source.\\u0022\\ninbound_links: 3\\n---\\n\\n# Hub Page\\n\\nThis page is linked from the index, from [[spoke-a]], and from [[spoke-b]] \\u2014 its true\\ninbound-link count is 3 (index.md \\u002B spoke-a.md \\u002B spoke-b.md), but the recorded\\n\\u0060inbound_links\\u0060 value above is deliberately stale at 1.\\n\u0022}"
         },
         {
-          "tool_use_id": "toolu_01Lg6EDxkbn4m3mJ4EeVdhj6",
+          "tool_use_id": "toolu_01PW8JHG7me3i4KLKgNgAZRf",
           "tool_name": "write_file",
           "input_json": "{\u0022path\u0022:\u0022pages/spoke-a.md\u0022,\u0022content\u0022:\u0022---\\ntype: Concept\\ntitle: Spoke A\\ndescription: Links back to the hub page; also linked from the index.\\ntimestamp: 2026-05-02T00:00:00Z\\ntags:\\n  - concept/Testing\\nconfidence: high\\nconfidence_reason: \\u0022Fixture data, not a real source.\\u0022\\ninbound_links: 2\\n---\\n\\n# Spoke A\\n\\nRefers back to [[hub-page]]. This page\\u0027s own true inbound-link count is 2 (index.md \\u002B\\nhub-page.md), but the recorded \\u0060inbound_links\\u0060 value above is deliberately stale at 0.\\n\u0022}"
         },
         {
-          "tool_use_id": "toolu_016SqDejGVDZ5PQbYY7MSA3k",
+          "tool_use_id": "toolu_01SAq1wFUmckVfb3Wjd1Xjuq",
           "tool_name": "write_file",
           "input_json": "{\u0022path\u0022:\u0022pages/spoke-b.md\u0022,\u0022content\u0022:\u0022---\\ntype: Concept\\ntitle: Spoke B\\ndescription: Linked once from the hub page; links nowhere itself.\\ntimestamp: 2026-05-03T00:00:00Z\\ntags:\\n  - concept/Testing\\nconfidence: high\\nconfidence_reason: \\u0022Fixture data, not a real source.\\u0022\\ninbound_links: 1\\n---\\n\\n# Spoke B\\n\\nNot linked from anywhere except [[hub-page]]. This page\\u0027s true inbound-link count is 1,\\nbut the recorded \\u0060inbound_links\\u0060 value above is deliberately stale (too high) at 5.\\n\u0022}"
         }
       ],
-      "assistant_text": "Now I\u0027ll write the corrected versions with updated inbound-link counts:",
-      "input_tokens": 7188,
-      "output_tokens": 647
+      "assistant_text": "Now I\u0027ll write the corrected versions with updated inbound_links:",
+      "input_tokens": 7912,
+      "output_tokens": 646
     },
     {
-      "turn": 6,
-      "system_prompt_sha256": "sha256:8541e2db58c2b94a6982aff85ffdbc59bf07ad3f6bbbfd266013f07d7f69f12f",
+      "turn": 5,
+      "system_prompt_sha256": "sha256:0ffffa31bf5dfccef579d435af42e23f3f84fb5e464ba5465838ed9324dca1b5",
       "conversation": [
         {
           "role": "user",
@@ -259,43 +206,35 @@
         },
         {
           "role": "assistant",
-          "content_sha256": "sha256:2efd85e3334f0efd0fad3dc2b9b13abba0d4614dabfc0ef741bbd34ca5387a30"
+          "content_sha256": "sha256:9ffd77c6c15d8e58542e834e9a220be63b1a8750db1e873f93555e0d30527c1d"
         },
         {
           "role": "user",
-          "content_sha256": "sha256:11cdab005e9c0d47e7e682e500f4cd0f99df0e963ef8e210c8e4c67aa8498d76"
+          "content_sha256": "sha256:e4c49b4cc441b35b07daccfd24780727a985f47b322d9a65e02186cd36e0f239"
         },
         {
           "role": "assistant",
-          "content_sha256": "sha256:91a5f5dda713a48e3293234cabcf093d82fff8ef31c5dd275f182f70d3854733"
+          "content_sha256": "sha256:c8c68266eb5cea323b513f6b4125cf4c5fbace460bc172864898f2d9433c4760"
         },
         {
           "role": "user",
-          "content_sha256": "sha256:7240db5ae781ae776143ab0d04c03037695bc3557473fb7d2320de1117ddd035"
+          "content_sha256": "sha256:1f673b0aa0a1b40158cf273e6b733e6c39794a9fe1ebdc8b87203cc4a415b779"
         },
         {
           "role": "assistant",
-          "content_sha256": "sha256:3e9e419cc0acb92a427b45817fc07e171d884b103b4e4cecc1bba5ed7b4c2468"
+          "content_sha256": "sha256:fd361c70ec96dc98b5f9efe624195fec30c02ba7d71c3020454bd01b3df1b53f"
         },
         {
           "role": "user",
-          "content_sha256": "sha256:885d36f8759c5e49a5a4443e62d52d49746cf60020b4fe2496824df6dc6b9595"
+          "content_sha256": "sha256:06d0cf97881bcfc97bf4bf1d958b5de10de37dc8878e57b8363c9487c9d5d622"
         },
         {
           "role": "assistant",
-          "content_sha256": "sha256:72736aae0dd7b9228d4d15ea01f6b19b34bc7b59ed35ec92e688e8563b41ec1d"
+          "content_sha256": "sha256:80461c72eb984b1add14cc851762fd839bdf74021dfce95f54b3e181fc52a53f"
         },
         {
           "role": "user",
-          "content_sha256": "sha256:57367345f8467309ba1dd22e3f3c422213399aa84eeddeb5327aad1263bfaffb"
-        },
-        {
-          "role": "assistant",
-          "content_sha256": "sha256:b5f4f9c1b6ba8587277b0b60c53efe88c45b5cab2d7f565c89039e88ec1e53e8"
-        },
-        {
-          "role": "user",
-          "content_sha256": "sha256:21b254bb109a92a3e5543d6fe62b176c464f2e3e6c11f6bddab6ece82ffd5910"
+          "content_sha256": "sha256:7f91122e30edf87299c9662cd8a4e86694c3b6a447ebe7f53db1d27cfe9a6f1f"
         }
       ],
       "tool_names": [
@@ -305,9 +244,9 @@
       ],
       "stop_reason": "end_turn",
       "tool_uses": [],
-      "assistant_text": "## Findings Report\n\n### Content Quality\n\nNo content-quality findings.\n\n### Metadata Hygiene\n\nNo metadata-hygiene findings.\n\n### Structure\n\nNo structural findings.\n\n---\n\n**Summary**: This is a fixture wiki in excellent health. All three pages have proper metadata (tags, confidence scores with reasons), and their timestamps place them outside the 90-day review window. All pages are referenced from \u0060index.md\u0060, so there are no orphans. The sole maintenance action performed was refreshing stale \u0060inbound_links\u0060 frontmatter fields to match their actual counts:\n- [[hub-page]] corrected from 1 \u2192 3\n- [[spoke-a]] corrected from 0 \u2192 2  \n- [[spoke-b]] corrected from 5 \u2192 1\n\n\u0060\u0060\u0060proposed-actions\n[]\n\u0060\u0060\u0060",
-      "input_tokens": 7950,
-      "output_tokens": 185
+      "assistant_text": "Perfect. All inbound_links counts have been refreshed to match the actual link graph. Now let me produce the Findings Report.\n\n---\n\n## Content Quality\n\nNo content-quality findings.\n\n## Metadata Hygiene\n\nNo metadata-hygiene findings.\n\n## Structure\n\nNo structure findings.\n\n\u0060\u0060\u0060proposed-actions\n[]\n\u0060\u0060\u0060",
+      "input_tokens": 8673,
+      "output_tokens": 76
     }
   ],
   "outcome": {

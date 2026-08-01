@@ -162,6 +162,29 @@ it via `[[wikilink]]` anywhere in their body. If a page's recorded `inbound_link
 frontmatter field does not match that count (including a page with no `inbound_links`
 field at all, whose actual count is greater than zero), refresh it:
 
+**Tally by extraction, not by reading comprehension.** The count is what a literal scan
+for `[[wikilink]]` occurrences finds; the meaning of the surrounding sentence plays no
+part. Work in two passes:
+
+1. For each file — every page, **then `index.md`, then `log.md`** — write out the
+   literal list of `[[...]]` occurrences that appear anywhere in that file. Include
+   every occurrence, even when the sentence around it describes the link as pointing
+   the other way: "this page is linked from [[foo]]" *contains* the occurrence
+   `[[foo]]`, so it is a link to `foo` FROM the file that sentence sits in. A sentence
+   that merely talks *about* links still counts for every `[[...]]` it contains.
+2. A page's correct `inbound_links` value is the number of occurrences of its slug
+   across all *other* files' lists. Compute it by walking your pass-1 lists file by
+   file and attributing every single occurrence to the page it names — every slug you
+   wrote down in pass 1 must show up in exactly one page's tally. Occurrences in the
+   page's own body never count, repeats from the same file each count, and dropping
+   `index.md`'s occurrences is the most common mistake.
+
+Sanity check before writing: summed across all pages, the counts you assign must equal
+the total number of occurrences in your pass-1 lists (minus self-references). If the
+totals differ, you attributed an occurrence to nothing — redo pass 2 until every
+extracted occurrence is accounted for. Never check a count against what any page's
+prose asserts about its own count.
+
 1. `read_file` the page again immediately before writing it, so your write is based on
    its current on-disk content (this also satisfies the write-coordination check).
 2. `write_file` the exact same content back, with only the `inbound_links` line in the
