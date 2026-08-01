@@ -413,6 +413,19 @@ internal sealed class BoardHostHarness : IDisposable
                     // T021/T024 (US3): the remediation task record store backing the
                     // detail endpoint's record-derived history.
                     services.AddSingleton<RemediationTaskRecordStore>(_ => new RemediationTaskRecordStore(paths));
+                    // T033 (US4): the mapped-but-unexercised-in-this-file authorize/
+                    // dismiss/withdraw handlers still need their DI parameters bindable
+                    // for Minimal API's group-wide endpoint-metadata inference to succeed
+                    // at startup, same reasoning as the ingest group's services above.
+                    services.AddSingleton<RemediationLifecyclePublisher>(sp => new RemediationLifecyclePublisher(
+                        sp.GetRequiredService<IHubContext<RemediationLifecycleHub>>()));
+                    services.AddSingleton<RemediationRunCoordinator>(sp => new RemediationRunCoordinator(
+                        repository,
+                        sp.GetRequiredService<Grimoire.Hub.AgentDispatch.IAgentProcessLauncher>(),
+                        sp.GetRequiredService<RemediationLifecyclePublisher>(),
+                        sp.GetRequiredService<RemediationTaskRecordStore>(),
+                        paths,
+                        logger: NullLogger<RemediationRunCoordinator>.Instance));
                 });
                 webHost.Configure(app =>
                 {

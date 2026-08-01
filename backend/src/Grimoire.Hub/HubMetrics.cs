@@ -296,4 +296,40 @@ public static class HubMetrics
 
     public static void RecordRemediationLifecycleUpdate(string stage)
         => _remediationLifecycleUpdatesTotal.Add(1, new KeyValuePair<string, object?>("stage", stage));
+
+    /// <summary>T033 (US4, FR-009): one increment per task the authorize endpoint moves proposed → authorized.</summary>
+    private static readonly Counter<long> _remediationTasksAuthorizedTotal =
+        Meter.CreateCounter<long>("wiki.remediation.tasks_authorized_total",
+            description: "Remediation action tasks authorized by a human");
+
+    public static void RecordRemediationTaskAuthorized() => _remediationTasksAuthorizedTotal.Add(1);
+
+    /// <summary>T033 (US4, FR-010): one increment per task the dismiss endpoint resolves without execution.</summary>
+    private static readonly Counter<long> _remediationTasksDismissedTotal =
+        Meter.CreateCounter<long>("wiki.remediation.tasks_dismissed_total",
+            description: "Remediation action tasks dismissed without execution");
+
+    public static void RecordRemediationTaskDismissed() => _remediationTasksDismissedTotal.Add(1);
+
+    /// <summary>T033 (US4, FR-016): one increment per authorization withdrawn before execution started.</summary>
+    private static readonly Counter<long> _remediationTasksWithdrawnTotal =
+        Meter.CreateCounter<long>("wiki.remediation.tasks_withdrawn_total",
+            description: "Authorizations withdrawn before execution started");
+
+    public static void RecordRemediationTaskWithdrawn() => _remediationTasksWithdrawnTotal.Add(1);
+
+    /// <summary>T032 (US4): one increment per remediation execution reaching a terminal outcome.</summary>
+    private static readonly Counter<long> _remediationTasksExecutedTotal =
+        Meter.CreateCounter<long>("wiki.remediation.tasks_executed_total",
+            description: "Remediation action tasks reaching a terminal execution outcome");
+
+    public static void RecordRemediationTaskExecuted(string outcome)
+        => _remediationTasksExecutedTotal.Add(1, new KeyValuePair<string, object?>("outcome", outcome));
+
+    /// <summary>T032 (US4, FR-017): remediation action tasks currently queued/waiting to execute.</summary>
+    private static readonly Gauge<long> _remediationQueueDepth =
+        Meter.CreateGauge<long>("wiki.remediation.queue_depth",
+            description: "Remediation action tasks currently queued/waiting to execute");
+
+    public static void RecordRemediationQueueDepth(long depth) => _remediationQueueDepth.Record(depth);
 }

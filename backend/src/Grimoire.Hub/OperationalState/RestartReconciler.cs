@@ -1,3 +1,4 @@
+using Grimoire.Hub.RemediationTasks;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 
@@ -12,6 +13,57 @@ public sealed class RestartReconciler
     {
         _repository = repository;
         _logger = logger ?? NullLogger<RestartReconciler>.Instance;
+    }
+
+    /// <summary>
+    /// 015-lint-board-parity T034 (ADR-003/ADR-018, data-model.md "Restart
+    /// reconciliation"): a Remediation Action Task found <c>Executing</c> with no live
+    /// process is failed exactly as a stale running ingest task is — same reasoning
+    /// (nothing survives a process restart), own reason text. <c>Proposed</c> and
+    /// terminal rows need no reconciliation; <c>Authorized</c> rows are left untouched
+    /// here — they survive the restart still authorized, and
+    /// <c>RemediationRunCoordinator.InitializeAsync</c> (called after this, mirroring
+    /// <c>IngestRunCoordinator.InitializeAsync</c>) is what pauses the queue for them.
+    /// Runs before the SignalR hubs are mapped (Program.cs), so — like
+    /// <see cref="ReconcileRunningTasksAsync"/> — this performs no live broadcast; the
+    /// board's initial-state REST fetch (<c>GET /api/remediation-tasks</c>) is the
+    /// recovery path for any client that connects afterward.
+    /// </summary>
+    public async Task<int> ReconcileRemediationTasksAsync(
+        RemediationTaskRecordStore? recordStore = null, CancellationToken cancellationToken = default)
+    {
+        var executing = await _repository.GetRemediationTasksAsync(RemediationTaskStates.Executing, cancellationToken);
+        var reason = "Hub restarted while task was executing.";
+        var reconciledAt = DateTimeOffset.UtcNow;
+
+        foreach (var row in executing)
+        {
+            var committed = await _repository.TryTransitionRemediationTaskAsync(
+                row.TaskId, RemediationTaskStates.Executing, RemediationTaskStates.Failed,
+                outcomeReason: reason, authorizedAt: null, updatedAt: reconciledAt, cancellationToken);
+
+            if (!committed)
+            {
+                continue;
+            }
+
+            if (recordStore is not null)
+            {
+                try
+                {
+                    await recordStore.AppendOutcomeAsync(row.TaskId, RemediationTaskStates.Failed, reason, reconciledAt, cancellationToken: cancellationToken);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Failed to append the reconciliation outcome entry to remediation task record {TaskId}.", row.TaskId);
+                }
+            }
+
+            HubMetrics.RecordRemediationTaskExecuted(RemediationTaskStates.Failed);
+            RemediationLifecycleLogEvents.LogExecutionCompleted(_logger, row.TaskId, RemediationTaskStates.Failed, reason);
+        }
+
+        return executing.Count;
     }
 
     public async Task<int> ReconcileRunningTasksAsync(string tasksDir, string logPath, CancellationToken cancellationToken = default)

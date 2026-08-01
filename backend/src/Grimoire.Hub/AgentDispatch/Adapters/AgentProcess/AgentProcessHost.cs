@@ -2,6 +2,7 @@ using System.Diagnostics;
 using Grimoire.Hub.IngestDispatch;
 using Grimoire.Hub.LintDispatch;
 using Grimoire.Hub.QueryDispatch;
+using Grimoire.Hub.RemediationTasks;
 
 namespace Grimoire.Hub.AgentDispatch.Adapters.AgentProcess;
 
@@ -115,6 +116,100 @@ public sealed class AgentProcessHost : IAgentProcessLauncher
         var process = StartLintProcess(request);
         process.StandardInput.Close();
         return Task.FromResult<IAgentProcessHandle>(new ProcessHandle(process));
+    }
+
+    /// <summary>
+    /// ADR-018 (015-lint-board-parity T032): spawns the Lint agent binary in its
+    /// remediation-execution invocation mode. This is the Hub-side process-spawn wiring
+    /// only, reusing the Lint worker path and credential/env scoping unchanged (T035
+    /// extends the agent-side argument handling and instruction surface for re-
+    /// verification, FR-018 — out of this phase's scope). No stdin payload, matching
+    /// Lint's own convention.
+    /// </summary>
+    public Task<IAgentProcessHandle> StartAsync(RemediationExecutionAgentRequest request, CancellationToken cancellationToken = default)
+    {
+        var process = StartRemediationProcess(request);
+        process.StandardInput.Close();
+        return Task.FromResult<IAgentProcessHandle>(new ProcessHandle(process));
+    }
+
+    private Process StartRemediationProcess(RemediationExecutionAgentRequest request)
+    {
+        if (string.IsNullOrWhiteSpace(_lintAgentWorkerPath))
+        {
+            throw new InvalidOperationException(
+                "AgentProcessHost was not configured with a Lint agent worker path (Grimoire:Paths:LintAgentWorker).");
+        }
+
+        var startInfo = new ProcessStartInfo
+        {
+            RedirectStandardInput = true,
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+            UseShellExecute = false,
+        };
+
+        if (_lintAgentWorkerPath.EndsWith(".csproj", StringComparison.OrdinalIgnoreCase))
+        {
+            startInfo.FileName = "dotnet";
+            startInfo.ArgumentList.Add("run");
+            startInfo.ArgumentList.Add("--project");
+            startInfo.ArgumentList.Add(_lintAgentWorkerPath);
+            startInfo.ArgumentList.Add("--");
+        }
+        else if (_lintAgentWorkerPath.EndsWith(".dll", StringComparison.OrdinalIgnoreCase))
+        {
+            startInfo.FileName = "dotnet";
+            startInfo.ArgumentList.Add(_lintAgentWorkerPath);
+        }
+        else
+        {
+            startInfo.FileName = _lintAgentWorkerPath;
+        }
+
+        startInfo.ArgumentList.Add("--mode");
+        startInfo.ArgumentList.Add("remediation-execution");
+        startInfo.ArgumentList.Add("--task-id");
+        startInfo.ArgumentList.Add(request.TaskId);
+        startInfo.ArgumentList.Add("--run-id");
+        startInfo.ArgumentList.Add(request.RunId);
+        startInfo.ArgumentList.Add("--wiki-root");
+        startInfo.ArgumentList.Add(request.WikiRoot);
+        startInfo.ArgumentList.Add("--system-prompt-path");
+        startInfo.ArgumentList.Add(request.SystemPromptPath);
+        startInfo.ArgumentList.Add("--policy-path");
+        startInfo.ArgumentList.Add(request.PolicyPath);
+        startInfo.ArgumentList.Add("--write-locks-dir");
+        startInfo.ArgumentList.Add(request.WriteLocksDir);
+        startInfo.ArgumentList.Add("--proposal-title");
+        startInfo.ArgumentList.Add(request.Title);
+        startInfo.ArgumentList.Add("--proposal-description");
+        startInfo.ArgumentList.Add(request.Description);
+        if (!string.IsNullOrWhiteSpace(request.TargetPath))
+        {
+            startInfo.ArgumentList.Add("--proposal-target-path");
+            startInfo.ArgumentList.Add(request.TargetPath);
+        }
+
+        var authToken = _secretsLoader.GetAnthropicAuthToken();
+        var lintModel = _secretsLoader.GetLintModel();
+        var lintBaseUrl = _secretsLoader.GetLintBase();
+
+        var baseEnv = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var (key, value) in startInfo.Environment)
+        {
+            if (value is not null)
+                baseEnv[key] = value;
+        }
+
+        var childEnv = BuildLintChildEnvironment(baseEnv, authToken, lintBaseUrl, lintModel, Activity.Current);
+        startInfo.Environment.Clear();
+        foreach (var (key, value) in childEnv)
+        {
+            startInfo.Environment[key] = value;
+        }
+
+        return Process.Start(startInfo) ?? throw new InvalidOperationException("Failed to start remediation-execution agent process.");
     }
 
     private Process StartLintProcess(LintAgentRequest request)

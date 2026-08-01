@@ -32,6 +32,60 @@ public static class RemediationLifecycleLogEvents
             "Remediation task lifecycle published: {task_id} {from_state} -> {to_state}", taskId, fromState, toState);
     }
 
+    private static readonly EventId TaskAuthorizedEvent = new(91, "hub.remediation.task_authorized");
+    private static readonly EventId TaskDismissedEvent = new(92, "hub.remediation.task_dismissed");
+    private static readonly EventId AuthorizationWithdrawnEvent = new(93, "hub.remediation.authorization_withdrawn");
+    private static readonly EventId ExecutionStartedEvent = new(94, "hub.remediation.execution_started");
+    private static readonly EventId ExecutionCompletedEvent = new(95, "hub.remediation.execution_completed");
+
+    /// <summary>plan.md ## Observability: a human authorizes a proposed task (T033, FR-009).</summary>
+    public static void LogTaskAuthorized(ILogger logger, string taskId)
+    {
+        using var span = StartLogEventSpan("hub.remediation.task_authorized", "Information");
+        span?.SetTag("task_id", taskId);
+
+        logger.LogInformation(TaskAuthorizedEvent, "Remediation task {task_id} authorized", taskId);
+    }
+
+    /// <summary>plan.md ## Observability: a human dismisses a proposed task (T033, FR-010).</summary>
+    public static void LogTaskDismissed(ILogger logger, string taskId)
+    {
+        using var span = StartLogEventSpan("hub.remediation.task_dismissed", "Information");
+        span?.SetTag("task_id", taskId);
+
+        logger.LogInformation(TaskDismissedEvent, "Remediation task {task_id} dismissed", taskId);
+    }
+
+    /// <summary>plan.md ## Observability: a human withdraws authorization before execution starts (T033, FR-016).</summary>
+    public static void LogAuthorizationWithdrawn(ILogger logger, string taskId)
+    {
+        using var span = StartLogEventSpan("hub.remediation.authorization_withdrawn", "Information");
+        span?.SetTag("task_id", taskId);
+
+        logger.LogInformation(AuthorizationWithdrawnEvent, "Remediation task {task_id} authorization withdrawn", taskId);
+    }
+
+    /// <summary>plan.md ## Observability: the coordinator dispatches an authorized task for execution (T032).</summary>
+    public static void LogExecutionStarted(ILogger logger, string taskId)
+    {
+        using var span = StartLogEventSpan("hub.remediation.execution_started", "Information");
+        span?.SetTag("task_id", taskId);
+
+        logger.LogInformation(ExecutionStartedEvent, "Remediation task {task_id} execution started", taskId);
+    }
+
+    /// <summary>plan.md ## Observability: execution reaches a terminal outcome (T032). <paramref name="reason"/> is nullable except on failed/not_applicable.</summary>
+    public static void LogExecutionCompleted(ILogger logger, string taskId, string outcome, string? reason)
+    {
+        using var span = StartLogEventSpan("hub.remediation.execution_completed", "Information");
+        span?.SetTag("task_id", taskId);
+        span?.SetTag("outcome", outcome);
+        span?.SetTag("reason", reason);
+
+        logger.LogInformation(ExecutionCompletedEvent,
+            "Remediation task {task_id} execution completed: {outcome} ({reason})", taskId, outcome, reason ?? "n/a");
+    }
+
     private static Activity? StartLogEventSpan(string eventName, string level)
     {
         var span = HubTracing.ActivitySource.StartActivity(eventName);

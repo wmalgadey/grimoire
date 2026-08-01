@@ -4,6 +4,7 @@ using Grimoire.Hub.AgentDispatch;
 using Grimoire.Hub.IngestDispatch;
 using Grimoire.Hub.LintDispatch;
 using Grimoire.Hub.QueryDispatch;
+using Grimoire.Hub.RemediationTasks;
 
 namespace Grimoire.IntegrationTests.Fakes;
 
@@ -343,6 +344,82 @@ public sealed class FakeAgentProcessLauncher : IAgentProcessLauncher
                 else
                 {
                     handle.EmitEvent("completed", request.RunId, new { summary = "Fake lint run completed." });
+                }
+
+                handle.ClosePipe();
+            }, CancellationToken.None);
+        }
+
+        return Task.FromResult<IAgentProcessHandle>(handle);
+    }
+
+    /// <summary>Every <see cref="RemediationExecutionAgentRequest"/> received via the
+    /// remediation-shaped StartAsync overload (015-lint-board-parity T030, SC-005: tests
+    /// assert this stays empty for every non-Authorized-dispatch attempt).</summary>
+    public List<RemediationExecutionAgentRequest> RemediationRequests { get; } = [];
+
+    /// <summary>
+    /// 015-lint-board-parity T030: optional terminal-event metadata merged into the
+    /// auto-play remediation-execution terminal event (camelCase keys exactly as
+    /// <c>AgentRunEvent</c> deserializes them, e.g. <c>["remediationOutcome"] =
+    /// "not_applicable"</c>, <c>["reason"] = "..."</c>). When unset, the emitted events are
+    /// byte-for-byte what they were before this hook (plain completed/failed).
+    /// </summary>
+    public IReadOnlyDictionary<string, object?>? ScriptedRemediationTerminalMetadata { get; set; }
+
+    /// <summary>ADR-018 (015-lint-board-parity): remediation-execution-shaped StartAsync — no
+    /// stdin payload, mirroring Lint's own convention (the request already carries the
+    /// proposal verbatim).</summary>
+    public Task<IAgentProcessHandle> StartAsync(RemediationExecutionAgentRequest request, CancellationToken cancellationToken = default)
+    {
+        lock (RemediationRequests)
+        {
+            RemediationRequests.Add(request);
+        }
+
+        if (_throwOnStart is not null)
+        {
+            throw _throwOnStart;
+        }
+
+        var handle = new ScriptedAgentProcessHandle();
+        lock (Handles)
+        {
+            Handles.Add(handle);
+        }
+
+        if (_autoPlay)
+        {
+            handle.EmitEvent("started", request.TaskId);
+
+            _ = Task.Run(async () =>
+            {
+                if (_simulatedRunDuration > TimeSpan.Zero)
+                {
+                    await Task.Delay(_simulatedRunDuration, CancellationToken.None);
+                }
+
+                if (ScriptedRemediationTerminalMetadata is { } metadata)
+                {
+                    var fields = new Dictionary<string, object?>(metadata.ToDictionary(kv => kv.Key, kv => kv.Value));
+                    if (_terminalStatus == "failed")
+                    {
+                        fields.TryAdd("reason", _failureReason ?? "Fake remediation run failed.");
+                        handle.EmitEventWithFields("failed", request.TaskId, fields);
+                    }
+                    else
+                    {
+                        fields.TryAdd("summary", "Fake remediation run completed.");
+                        handle.EmitEventWithFields("completed", request.TaskId, fields);
+                    }
+                }
+                else if (_terminalStatus == "failed")
+                {
+                    handle.EmitEvent("failed", request.TaskId, new { reason = _failureReason ?? "Fake remediation run failed." });
+                }
+                else
+                {
+                    handle.EmitEvent("completed", request.TaskId, new { summary = "Fake remediation run completed." });
                 }
 
                 handle.ClosePipe();

@@ -126,16 +126,28 @@ using (var bootstrapLoggerFactory = TelemetryExtensions.CreateBootstrapLoggerFac
         remediationLifecyclePublisher: sp.GetRequiredService<RemediationLifecyclePublisher>()));
 
     // 015-lint-board-parity (ADR-018): remediation-task composition, mirroring the Lint/
-    // Query pattern above — record store, lifecycle publisher (T023), and read endpoints
-    // (T024); the execution coordinator and transition endpoints join here in US4
-    // (T032/T033).
+    // Query pattern above — record store, lifecycle publisher (T023), read endpoints
+    // (T024), and now (T032/T033) the FIFO execution coordinator and its
+    // authorize/dismiss/withdraw transition endpoints.
     builder.Services.AddSingleton<RemediationTaskRecordStore>(_ => new RemediationTaskRecordStore(resolvedPaths));
     builder.Services.AddSingleton<RemediationLifecyclePublisher>(sp => new RemediationLifecyclePublisher(
         sp.GetRequiredService<IHubContext<RemediationLifecycleHub>>(),
         sp.GetRequiredService<ILogger<RemediationLifecyclePublisher>>()));
+    builder.Services.AddSingleton<RemediationRunCoordinator>(sp => new RemediationRunCoordinator(
+        sp.GetRequiredService<OperationalStateRepository>(),
+        sp.GetRequiredService<IAgentProcessLauncher>(),
+        sp.GetRequiredService<RemediationLifecyclePublisher>(),
+        sp.GetRequiredService<RemediationTaskRecordStore>(),
+        resolvedPaths,
+        logger: sp.GetRequiredService<ILogger<RemediationRunCoordinator>>()));
 
     var reconciler = new RestartReconciler(repository);
     await reconciler.ReconcileRunningTasksAsync(contentPaths.TasksDir, contentPaths.LogPath);
+    // T034: Executing remediation rows with no live process are failed the same way,
+    // before RemediationRunCoordinator.InitializeAsync (below, after app.Build()) pauses
+    // the queue for any surviving Authorized rows.
+    await reconciler.ReconcileRemediationTasksAsync(
+        new RemediationTaskRecordStore(resolvedPaths));
 
     if (args.Length > 0 && string.Equals(args[0], "submit-source", StringComparison.OrdinalIgnoreCase))
     {
@@ -162,6 +174,11 @@ var app = builder.Build();
 // FR-021: queued rows surviving a restart pause the queue until explicit user resume.
 var coordinator = app.Services.GetRequiredService<IngestRunCoordinator>();
 await coordinator.InitializeAsync();
+
+// 015-lint-board-parity T034: mirrors the ingest rule above — Authorized rows surviving
+// a restart pause the remediation execution queue (own flag) until explicitly resumed.
+var remediationCoordinator = app.Services.GetRequiredService<RemediationRunCoordinator>();
+await remediationCoordinator.InitializeAsync();
 
 app.MapGet("/", () => "Grimoire Hub");
 app.MapHub<IngestLifecycleHub>("/hubs/ingest-lifecycle");

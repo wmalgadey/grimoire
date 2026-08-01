@@ -1,6 +1,7 @@
 using Grimoire.Hub.IngestDispatch;
 using Grimoire.Hub.LintDispatch;
 using Grimoire.Hub.QueryDispatch;
+using Grimoire.Hub.RemediationTasks;
 namespace Grimoire.Hub.AgentDispatch;
 
 /// <summary>
@@ -47,4 +48,17 @@ public interface IAgentProcessLauncher
     /// conversation input).
     /// </summary>
     Task<IAgentProcessHandle> StartAsync(LintAgentRequest request, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// ADR-018 (015-lint-board-parity): spawns a remediation-execution agent process.
+    /// Port ownership unchanged — same interface, same <see cref="IAgentProcessHandle"/>
+    /// contract, only the request shape differs. The <b>only</b> call site permitted to
+    /// invoke this overload is
+    /// <c>Grimoire.Hub.RemediationTasks.RemediationRunCoordinator.TryStartNextAsync</c>
+    /// (enforced by <c>Grimoire.ArchTests.RemediationExecutionDispatchRuleTests</c>,
+    /// SC-005/FR-008): the coordinator CAS's the task row <c>Authorized → Executing</c>
+    /// under its slot lock <em>before</em> calling this method — execution dispatch is a
+    /// structural precondition, never a runtime check.
+    /// </summary>
+    Task<IAgentProcessHandle> StartAsync(RemediationExecutionAgentRequest request, CancellationToken cancellationToken = default);
 }
