@@ -33,12 +33,14 @@ var lintInvoker = LintAgentProcessInvoker.ForRepo(paths);
 var scenarios = ResolveScenarios(options.Scenarios);
 var queryScenarios = ResolveQueryScenarios(options.Scenarios);
 var lintScenarios = ResolveLintScenarios(options.Scenarios);
-if (scenarios.Count == 0 && queryScenarios.Count == 0 && lintScenarios.Count == 0)
+var remediationScenarios = ResolveRemediationReVerificationScenarios(options.Scenarios);
+if (scenarios.Count == 0 && queryScenarios.Count == 0 && lintScenarios.Count == 0 && remediationScenarios.Count == 0)
 {
     Console.Error.WriteLine(
         $"No matching scenarios. Known: {string.Join(", ", IngestScenarioDefinitions.All.Select(s => s.Id)
             .Concat(QueryScenarioDefinitions.All.Select(s => s.Id))
-            .Concat(LintScenarioDefinitions.All.Select(s => s.Id)))}");
+            .Concat(LintScenarioDefinitions.All.Select(s => s.Id))
+            .Concat(RemediationReVerificationScenarioDefinitions.All.Select(s => s.Id)))}");
     return 2;
 }
 
@@ -67,14 +69,26 @@ switch (subcommand)
                 lintResults.Add(await lintPipeline.RunScenarioAsync(scenario, CancellationToken.None));
             }
 
+            // T039 (015-lint-board-parity, FR-018): remediation-execution re-verification —
+            // reuses the same Lint-binary invoker (research.md R8, one binary, several
+            // invocation modes), its own scenario/replay pipeline pair.
+            var remediationPipeline = new Grimoire.EvalRunner.Replay.RemediationReVerificationReplayPipeline(store, paths, lintInvoker, logger);
+            var remediationResults = new List<Grimoire.EvalRunner.Replay.RemediationReVerificationScenarioReplayResult>();
+            foreach (var scenario in remediationScenarios)
+            {
+                remediationResults.Add(await remediationPipeline.RunScenarioAsync(scenario, CancellationToken.None));
+            }
+
             WriteSummary(
                 options.SummaryPath,
-                Summary.ForReplay(results) + Summary.ForQueryReplay(queryResults) + Summary.ForLintReplay(lintResults));
+                Summary.ForReplay(results) + Summary.ForQueryReplay(queryResults) + Summary.ForLintReplay(lintResults)
+                    + Summary.ForRemediationReVerificationReplay(remediationResults));
 
             var untrusted = results.Where(r => r.TrustStatus != Grimoire.EvalRunner.Recording.TrustStatus.Trusted).ToList();
             var queryUntrusted = queryResults.Where(r => r.TrustStatus != Grimoire.EvalRunner.Recording.TrustStatus.Trusted).ToList();
             var lintUntrusted = lintResults.Where(r => r.TrustStatus != Grimoire.EvalRunner.Recording.TrustStatus.Trusted).ToList();
-            if (untrusted.Count > 0 || queryUntrusted.Count > 0 || lintUntrusted.Count > 0)
+            var remediationUntrusted = remediationResults.Where(r => r.TrustStatus != Grimoire.EvalRunner.Recording.TrustStatus.Trusted).ToList();
+            if (untrusted.Count > 0 || queryUntrusted.Count > 0 || lintUntrusted.Count > 0 || remediationUntrusted.Count > 0)
             {
                 foreach (var result in untrusted)
                 {
@@ -103,10 +117,20 @@ switch (subcommand)
                     }
                 }
 
+                foreach (var result in remediationUntrusted)
+                {
+                    Console.Error.WriteLine($"{result.ScenarioId}: {result.TrustStatus} — {result.Detail}");
+                    foreach (var sample in result.Samples.Where(s => s.TrustStatus != Grimoire.EvalRunner.Recording.TrustStatus.Trusted))
+                    {
+                        Console.Error.WriteLine($"  sample {sample.Sample}: {sample.TrustStatus} — {sample.Detail}");
+                    }
+                }
+
                 return 3;
             }
 
             return results.All(r => r.IsTrustedPass) && queryResults.All(r => r.IsTrustedPass) && lintResults.All(r => r.IsTrustedPass)
+                    && remediationResults.All(r => r.IsTrustedPass)
                 ? 0
                 : 1;
         }
@@ -116,6 +140,7 @@ switch (subcommand)
             var reports = scenarios.Select(s => StalenessCheck.Evaluate(s, store, paths))
                 .Concat(queryScenarios.Select(s => Grimoire.EvalRunner.Recording.QueryStalenessCheck.Evaluate(s, store, paths)))
                 .Concat(lintScenarios.Select(s => Grimoire.EvalRunner.Recording.LintStalenessCheck.Evaluate(s, store, paths)))
+                .Concat(remediationScenarios.Select(s => Grimoire.EvalRunner.Recording.RemediationReVerificationStalenessCheck.Evaluate(s, store, paths)))
                 .ToList();
             foreach (var report in reports.Where(r => r.Status == Grimoire.EvalRunner.Recording.TrustStatus.Stale))
             {
@@ -144,6 +169,8 @@ switch (subcommand)
             var queryResults = new List<QueryCaptureScenarioResult>();
             var lintPipeline = new LintCapturePipeline(store, paths, lintInvoker, logger);
             var lintResults = new List<Grimoire.EvalRunner.Capture.LintCaptureScenarioResult>();
+            var remediationPipeline = new Grimoire.EvalRunner.Capture.RemediationReVerificationCapturePipeline(store, paths, lintInvoker, logger);
+            var remediationResults = new List<Grimoire.EvalRunner.Capture.RemediationReVerificationCaptureScenarioResult>();
             try
             {
                 foreach (var scenario in scenarios)
@@ -160,6 +187,11 @@ switch (subcommand)
                 {
                     lintResults.Add(await lintPipeline.RunScenarioAsync(scenario, gate.Configuration, sampleCount, CancellationToken.None));
                 }
+
+                foreach (var scenario in remediationScenarios)
+                {
+                    remediationResults.Add(await remediationPipeline.RunScenarioAsync(scenario, gate.Configuration, sampleCount, CancellationToken.None));
+                }
             }
             catch (Exception ex)
             {
@@ -169,12 +201,14 @@ switch (subcommand)
 
             WriteSummary(
                 options.SummaryPath,
-                Summary.ForCapture(results) + Summary.ForQueryCapture(queryResults) + Summary.ForLintCapture(lintResults));
+                Summary.ForCapture(results) + Summary.ForQueryCapture(queryResults) + Summary.ForLintCapture(lintResults)
+                    + Summary.ForRemediationReVerificationCapture(remediationResults));
 
             var notStored = results.Where(r => !r.Stored).ToList();
             var queryNotStored = queryResults.Where(r => !r.Stored).ToList();
             var lintNotStored = lintResults.Where(r => !r.Stored).ToList();
-            if (notStored.Count > 0 || queryNotStored.Count > 0 || lintNotStored.Count > 0)
+            var remediationNotStored = remediationResults.Where(r => !r.Stored).ToList();
+            if (notStored.Count > 0 || queryNotStored.Count > 0 || lintNotStored.Count > 0 || remediationNotStored.Count > 0)
             {
                 foreach (var result in notStored)
                 {
@@ -191,12 +225,18 @@ switch (subcommand)
                     Console.Error.WriteLine($"{result.ScenarioId}: {result.Detail}");
                 }
 
+                foreach (var result in remediationNotStored)
+                {
+                    Console.Error.WriteLine($"{result.ScenarioId}: {result.Detail}");
+                }
+
                 return 2;
             }
 
             return results.All(r => r.ThresholdMet && r.NoOutOfScopeGuaranteeHeld)
                 && queryResults.All(r => r.ThresholdMet)
                 && lintResults.All(r => r.ThresholdMet)
+                && remediationResults.All(r => r.ThresholdMet)
                 ? 0
                 : 1;
         }
@@ -220,6 +260,12 @@ static IReadOnlyList<LintScenarioDefinition> ResolveLintScenarios(IReadOnlyList<
     => requested.Count == 0
         ? LintScenarioDefinitions.All
         : requested.Select(LintScenarioDefinitions.Find).Where(s => s is not null).Cast<LintScenarioDefinition>().ToList();
+
+static IReadOnlyList<RemediationReVerificationScenarioDefinition> ResolveRemediationReVerificationScenarios(IReadOnlyList<string> requested)
+    => requested.Count == 0
+        ? RemediationReVerificationScenarioDefinitions.All
+        : requested.Select(RemediationReVerificationScenarioDefinitions.Find)
+            .Where(s => s is not null).Cast<RemediationReVerificationScenarioDefinition>().ToList();
 
 static void WriteSummary(string? path, string summary)
 {
