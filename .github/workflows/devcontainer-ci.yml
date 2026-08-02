@@ -5,6 +5,7 @@ on:
     branches: [main]
     paths:
       - ".devcontainer/**"
+      - ".env-example"
       - "backend/Directory.Build.props"
       - "backend/Directory.Packages.props"
       - "frontend/package.json"
@@ -14,12 +15,16 @@ on:
   pull_request:
     paths:
       - ".devcontainer/**"
+      - ".env-example"
       - "backend/Directory.Build.props"
       - "backend/Directory.Packages.props"
       - "frontend/package.json"
       - "frontend/bun.lock"
       - "frontend/.nvmrc"
       - ".github/workflows/devcontainer-ci.yml"
+
+permissions:
+  contents: read
 
 jobs:
   no-secrets-in-config:
@@ -28,19 +33,16 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Load known secret variable names from .env-example
-        id: secret-names
-        run: |
-          # Match both active and commented-out lines (e.g. "# GRIMOIRE_EVAL_PROVIDER_API_KEY=")
-          # so gated-behind-a-flag vars aren't missed just because they're inactive by default.
-          names=$(grep -oE '^#?[[:space:]]*[A-Z0-9_]+=' .env-example | tr -d '#= ' | tr '\n' '|' | sed 's/|$//')
-          echo "names=$names" >> "$GITHUB_OUTPUT"
-
       # SC-004: devcontainer.json/Dockerfile must declare secret *names* only
-      # (e.g. via the "secrets" metadata property), never literal values.
+      # (e.g. via the "secrets" metadata property), never literal values. This
+      # denylist is deliberately narrow — only the actual credential-shaped
+      # .env-example variables (ADR-019 / research.md R2), not every variable name
+      # in the file. A broader denylist would false-positive on legitimate
+      # non-secret config values (e.g. GRIMOIRE_INGEST_MODEL) and even on this
+      # workflow's own "gated behind GRIMOIRE_EVAL=1"-style description text.
       - name: Fail if any known secret variable is assigned a literal value
         run: |
-          pattern='(${{ steps.secret-names.outputs.names }})[[:space:]]*[=:][[:space:]]*"?[A-Za-z0-9]'
+          pattern='(ANTHROPIC_AUTH_TOKEN|NVIDIA_API_KEY|GRIMOIRE_EVAL_PROVIDER_API_KEY)[[:space:]]*[=:][[:space:]]*"?[A-Za-z0-9]'
           if grep -rEn "$pattern" .devcontainer/devcontainer.json .devcontainer/Dockerfile; then
             echo "::error::Literal credential-shaped value found in devcontainer config (SC-004 violation)"
             exit 1

@@ -7,6 +7,11 @@
 **Status**: Draft
 
 **Input**: User description: "erstelle einen devcontainer (https://containers.dev/) für das aktuelle projekt um die entwicklung zu beschleunigen und die abhängigkeiten im system zu reduzieren"
+(English: "create a devcontainer (https://containers.dev/) for the current project to
+speed up development and reduce system dependencies" — the quote above is preserved
+verbatim, consistent with this repo's other specs that quote the original request
+as-typed; this line is an added translation for readers of the English-only
+documentation, not a replacement of the record.)
 
 ## Clarifications
 

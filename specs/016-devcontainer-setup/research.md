@@ -163,6 +163,18 @@
   installing everything manually — rejected: reinvents what the official
   `devcontainers/dotnet` image + Features already provide, increasing maintenance
   surface for no benefit.
+- **Bun install mechanism, revised after PR review**: The first version of
+  `post-create.sh` installed Bun via `curl -fsSL https://bun.sh/install | bash` — a PR
+  review comment correctly flagged piping a remote script directly into `bash` as a
+  supply-chain risk even with a pinned version argument (the script itself is not
+  pinned/verified, only the version it installs). Replaced with: download the pinned
+  release archive (`bun-${ARCH}.zip`) and Bun's own published `SHASUMS256.txt` for
+  that exact release tag from GitHub, verify the archive's SHA-256 against it with
+  `sha256sum -c` *before* extracting or executing anything, then place the verified
+  binary at `~/.bun/bin/bun` with a `bunx` symlink (the official installer creates
+  this symlink too; a raw binary copy alone does not provide `bunx`). No shell script
+  of unknown provenance is ever executed — only Bun's own binary, whose hash was
+  checked first.
 
 ## R5: CI verification of the devcontainer itself
 
@@ -269,3 +281,67 @@ was incomplete — "the toolchain" for this repo includes two external CLI tools
 present in CI but not originally carried over into the devcontainer design. Both are
 now part of the Dockerfile/`post-create.sh` (see `.devcontainer/`), not a gap in the
 shipped feature.
+
+## R9: PR #46 review findings — Copilot, CodeQL, and real CI failures
+
+Opening the PR surfaced two categories of issues neither local validation (R8) nor the
+design research caught: automated review findings, and two real CI job failures.
+
+**CodeQL** (2 findings, same fix): `.github/workflows/devcontainer-ci.yml` had no
+explicit `permissions:` block, so both jobs ran with the default (broad) `GITHUB_TOKEN`
+permissions. Fixed with a workflow-level `permissions: contents: read` — neither job
+writes anything, so read-only is correct and covers both.
+
+**Copilot review** (8 comments, all addressed):
+- `post-create.sh`'s `curl | bash` Bun install was a supply-chain risk — superseded by
+  the checksum-verified release-artifact install described in R4's update above.
+- `post-create.sh` appended the `PATH` export to `~/.bashrc` unconditionally on every
+  container rebuild, which would duplicate the line over time — guarded with
+  `grep -qxF ... || echo ...`.
+- `post-create.sh`'s `bun install` (frontend) didn't use `--frozen-lockfile`, unlike
+  CI's equivalent step — could silently update `bun.lock` during provisioning instead
+  of failing loudly on drift. Added the flag to match CI exactly (same principle as R3).
+- `devcontainer-ci.yml`'s secret-scan denylist derived from *every* variable name in
+  `.env-example`, not just actual secrets — this was not just a theoretical false
+  positive, it's what broke the job in CI (see below). Fixed by hardcoding the 3 actual
+  secret names instead of deriving broadly.
+- `devcontainer-ci.yml`'s `paths:` filters (both `push` and `pull_request`) didn't
+  include `.env-example`, so a future change to the credential variable list wouldn't
+  re-trigger the scan that depends on it. Added.
+- `spec.md`'s `**Input**: User description:` quote is in German, inconsistent with the
+  repo's English-only documentation policy on its face — but checking precedent
+  (`specs/*/spec.md` across this repo) shows several prior specs already preserve
+  non-English input verbatim as a literal historical record of the request. Rather than
+  override that established pattern, added an English translation immediately after
+  the verbatim quote, satisfying both the readability concern and the precedent.
+- `quickstart.md` implied VS Code Dev Containers might prompt for secrets via the
+  `secrets` property, contradicting R2's own finding that only GitHub Codespaces
+  currently acts on it. Reworded to say so explicitly.
+
+**Real CI failures** (2 jobs red on the initial push):
+- **`no-secrets-in-config` job failed for real**, not just hypothetically: the
+  overly-broad denylist above included `GRIMOIRE_EVAL`, and `devcontainer.json`'s own
+  `secrets` description text for `GRIMOIRE_EVAL_PROVIDER_API_KEY` reads "...gated
+  behind `GRIMOIRE_EVAL=1`..." — the scan matched its own documentation string. Fixed
+  by the same denylist-narrowing change Copilot's comment called for; re-verified
+  locally against the actual file (`grep` reports clean) before pushing.
+- **`build-and-test` job failed on one IntegrationTests case**,
+  `QuerySynthesisWriteTests.CompletedTurn_ThatCreatesNothing_RecordsCreatedPagesAsExplicitEmptyList`
+  ("Assert.IsType() Failure: Value is not the exact type"). Investigated: this branch
+  makes zero changes anywhere under `backend/` (`git diff <branch-point>..HEAD --stat --
+  backend/` is empty), the test file was last touched by an unrelated, older feature
+  (012-query-synthesis-writes), and two full local runs of the same 583 tests inside
+  the same devcontainer image both passed 583/583. Combined with this repo's documented
+  history of exactly this class of flakiness (`fix(test): raise WaitUntilAsync's
+  default timeout to stop cross-test flakes`), this reads as a pre-existing flaky test
+  exposed by CI-runner resource constraints, not something this PR introduced or should
+  fix — fixing it would be out of scope for a devcontainer feature and would need
+  changes to unrelated production/test code this PR doesn't otherwise touch.
+
+**Also observed, separately, and explicitly out of scope**: the `Deterministic Backend
+Gates` CI job (the repo's main `CI` workflow, unrelated to `devcontainer-ci.yml`) fails
+on unrelated `Grimoire.AgentEvals` recorded-replay scenarios reporting stale recordings
+("changed: scenario_definition"). Same investigation applies — zero `backend/` changes
+on this branch, pre-existing at the branch point. Recapturing eval recordings requires
+live LLM provider calls (`dotnet run ... -- capture --scenario ...`) and is unrelated to
+devcontainer tooling; left for the repo maintainer to address separately.

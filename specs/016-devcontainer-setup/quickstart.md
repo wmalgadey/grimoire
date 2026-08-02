@@ -83,9 +83,10 @@ cp .env-example data/.env
 Because the devcontainer mounts the full repository checkout, `data/.env` is reachable
 inside the container at the same path the Hub process already reads it from (ADR-009)
 — no separate in-container secrets file exists. `devcontainer.json` also declares the
-known variable names via the Dev Container Specification's `secrets` property; on
-tools that support it (e.g. VS Code Dev Containers, GitHub Codespaces) you may be
-prompted for values directly instead of hand-editing `data/.env`.
+known variable names via the Dev Container Specification's `secrets` property; today
+only GitHub Codespaces acts on this (prompting you to attach a secret by name) — the
+VS Code Dev Containers extension and the bare `devcontainer` CLI currently ignore it,
+so `data/.env` remains the mechanism that works everywhere.
 
 **Expected outcome**: Inspecting `.devcontainer/devcontainer.json` and
 `.devcontainer/Dockerfile` shows no credential values anywhere in either file — only
