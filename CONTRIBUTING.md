@@ -8,6 +8,32 @@
   (`ANTHROPIC_AUTH_TOKEN` for agent runs; NVIDIA/LiteLLM vars only if you run evals
   against the affordable provider — see `specs/007-eval-tests-nim-endpoint/quickstart.md`)
 
+## Using the devcontainer (recommended)
+
+This is an additional, opt-in onboarding path — the native setup above remains fully
+supported and unaffected.
+
+Prerequisites: a container runtime running on the host (Docker Desktop or Podman — see
+`.vscode/tasks.json` for the `podman machine start` step) and a devcontainer-capable
+editor (e.g. VS Code with the [Dev Containers extension](https://marketplace.visualstudio.com/items?itemName=ms-vscode-remote.remote-containers)).
+
+1. Open the repository in your editor.
+2. Run "Reopen in Container" (or your tool's equivalent).
+3. Wait for the container to build — you land in a shell with `dotnet`, `node`, and
+   `bun` already installed and on the `PATH`.
+
+See `specs/016-devcontainer-setup/quickstart.md` for a full step-by-step validation
+walkthrough (build, test suites, credentials).
+
+Local credentials still go through the same `data/.env` file (copied from
+`.env-example`) as the native setup — the devcontainer doesn't change that; it just
+makes `data/.env` reachable from inside the container.
+
+**Known limitation**: the `prod` launch configuration in `.vscode/launch.json`
+hardcodes a personal, host-absolute `--content-root` path and is not reachable from
+inside the devcontainer. This is an intentional, permanent host-only limitation, not a
+bug — use `dev`/`proxy` inside the devcontainer, or run `prod` natively on the host.
+
 ## Building and testing
 
 ```bash

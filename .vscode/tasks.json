@@ -57,7 +57,7 @@
         {
             "label": "start: podman machine",
             "type": "shell",
-            "command": "podman machine list --format '{{.Running}}' | grep -q true || podman machine start",
+            "command": "[ -n \"$REMOTE_CONTAINERS$CODESPACES\" ] || (podman machine list --format '{{.Running}}' | grep -q true || podman machine start)",
             "presentation": {
                 "panel": "dedicated",
                 "reveal": "silent",

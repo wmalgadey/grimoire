@@ -224,3 +224,48 @@ real incompatibility and one pre-existing limitation, neither hypothetical:
   out of scope for a *contributor onboarding* devcontainer regardless). No task
   generated for this; documented here and in the completion report for a human
   decision.
+
+## R8: Findings from actually building and running the devcontainer
+
+R3/R4's toolchain plan was validated (and corrected) by building the real image and
+running every quickstart/CI command inside it, not just by inspecting config files.
+Three real, reproducible issues surfaced this way that pure research could not have
+caught:
+
+- **Base image ships a stale, unrelated apt source.**
+  `mcr.microsoft.com/devcontainers/dotnet:1-10.0` pre-bakes an `/etc/apt/sources.list.d/yarn.list`
+  entry (Yarn Classic, which this project doesn't use — it uses Bun) whose keyring no
+  longer validates against `dl.yarnpkg.com`'s current signing key. This breaks *every*
+  subsequent `apt-get update`, including ones devcontainer Features run internally —
+  concretely, it made the `docker-outside-of-docker` feature's own install script
+  fail. Fixed with one `Dockerfile` line: `RUN rm -f /etc/apt/sources.list.d/yarn.list`.
+- **`markitdown` CLI is a real, undeclared dependency of `Grimoire.IntegrationTests`.**
+  `IngestConvertStepTests` exercises the actual `markitdown` conversion path (its own
+  comment: "FR-015: default path converts (real markitdown)"). `.github/workflows/ci.yml`
+  installs it (`pip install --break-system-packages markitdown`) but neither R3 nor R4
+  had it in scope — 3 of 583 IntegrationTests failed without it. Fixed by adding the
+  identical install step to the Dockerfile, matching CI exactly (same rationale as R3:
+  devcontainer and CI must stay the same claim).
+- **`bun run test`'s browser-mode suite needs Playwright's Chromium binary.**
+  `.github/workflows/ci.yml` runs `bunx playwright install --with-deps chromium` as a
+  separate step; `bun install` alone does not fetch the browser binary
+  `@vitest/browser-playwright` launches at test time. Fixed by adding the same command
+  to `.devcontainer/post-create.sh`, immediately after `bun install`.
+
+**Verified outcome after both fixes** (run inside the actual built devcontainer, not
+inferred): backend `dotnet build` succeeds; `Grimoire.ArchTests` 49/49 pass;
+`Grimoire.Domain.UnitTests` 93/93 pass; `Grimoire.IntegrationTests` 583/583 pass;
+frontend `bun run check`/`lint` report zero errors; `bun run test` 123/123 tests across
+22 files pass; `bun run build` succeeds. `docker ps` run from inside the devcontainer
+correctly lists containers on the *host* runtime (confirming R1's
+`docker-outside-of-docker` sibling-forwarding actually works, not just in theory).
+`data/.env` (copied from `.env-example`) was confirmed reachable at the same relative
+path inside the container, matching ADR-009. `.devcontainer/devcontainer.json` and
+`Dockerfile` were scanned and contain zero literal credential values.
+
+**Implication for R3/R4**: their toolchain-version decisions were correct; their scope
+was incomplete — "the toolchain" for this repo includes two external CLI tools
+(`markitdown`, Playwright's Chromium) beyond the SDK/runtime triplet, both already
+present in CI but not originally carried over into the devcontainer design. Both are
+now part of the Dockerfile/`post-create.sh` (see `.devcontainer/`), not a gap in the
+shipped feature.

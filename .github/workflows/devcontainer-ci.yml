@@ -1,0 +1,76 @@
+name: Devcontainer CI
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".devcontainer/**"
+      - "backend/Directory.Build.props"
+      - "backend/Directory.Packages.props"
+      - "frontend/package.json"
+      - "frontend/bun.lock"
+      - "frontend/.nvmrc"
+      - ".github/workflows/devcontainer-ci.yml"
+  pull_request:
+    paths:
+      - ".devcontainer/**"
+      - "backend/Directory.Build.props"
+      - "backend/Directory.Packages.props"
+      - "frontend/package.json"
+      - "frontend/bun.lock"
+      - "frontend/.nvmrc"
+      - ".github/workflows/devcontainer-ci.yml"
+
+jobs:
+  no-secrets-in-config:
+    name: Scan devcontainer config for literal credential values
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Load known secret variable names from .env-example
+        id: secret-names
+        run: |
+          # Match both active and commented-out lines (e.g. "# GRIMOIRE_EVAL_PROVIDER_API_KEY=")
+          # so gated-behind-a-flag vars aren't missed just because they're inactive by default.
+          names=$(grep -oE '^#?[[:space:]]*[A-Z0-9_]+=' .env-example | tr -d '#= ' | tr '\n' '|' | sed 's/|$//')
+          echo "names=$names" >> "$GITHUB_OUTPUT"
+
+      # SC-004: devcontainer.json/Dockerfile must declare secret *names* only
+      # (e.g. via the "secrets" metadata property), never literal values.
+      - name: Fail if any known secret variable is assigned a literal value
+        run: |
+          pattern='(${{ steps.secret-names.outputs.names }})[[:space:]]*[=:][[:space:]]*"?[A-Za-z0-9]'
+          if grep -rEn "$pattern" .devcontainer/devcontainer.json .devcontainer/Dockerfile; then
+            echo "::error::Literal credential-shaped value found in devcontainer config (SC-004 violation)"
+            exit 1
+          fi
+          echo "No literal credential values found in .devcontainer/."
+
+  build-and-test:
+    name: Build devcontainer and run hermetic suites inside it
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build and run backend suites inside the devcontainer
+        uses: devcontainers/ci@v0.3
+        with:
+          push: never
+          runCmd: |
+            dotnet build backend/Grimoire.slnx --configuration Release
+            dotnet test backend/tests/Grimoire.ArchTests --configuration Release
+            dotnet test backend/tests/Grimoire.Domain.UnitTests --configuration Release
+            dotnet test backend/tests/Grimoire.IntegrationTests --configuration Release
+
+      - name: Build and run frontend suites inside the devcontainer
+        uses: devcontainers/ci@v0.3
+        with:
+          push: never
+          runCmd: |
+            cd frontend
+            bun install --frozen-lockfile
+            bun run check
+            bun run lint
+            bun run test
+            bun run build
