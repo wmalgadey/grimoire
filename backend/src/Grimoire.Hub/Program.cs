@@ -19,7 +19,29 @@ using Grimoire.Hub.Runtime.Paths;
 using Grimoire.Hub.IngestTaskArtifact;
 using Grimoire.Hub;
 
-var builder = WebApplication.CreateBuilder(args);
+// 017-hub-help-usage (FR-001–FR-005): --help/-h must win over every other argument and
+// exit before ANY startup side effect — including WebApplication.CreateBuilder(args),
+// which itself doesn't fail on a bare invocation, but nothing after it (path resolution,
+// secrets loading, SQLite init) may run for a help request. Checked first, ahead of
+// everything else in this file, so --help works even with no data/ directory present.
+if (args.Any(a => string.Equals(a, "--help", StringComparison.OrdinalIgnoreCase)
+    || string.Equals(a, "-h", StringComparison.OrdinalIgnoreCase)))
+{
+    Console.WriteLine(BuildUsageText());
+    return;
+}
+
+// WebApplicationBuilder defaults ContentRootPath to the process working directory,
+// which the "prod"/"dev"/"proxy" launch profiles deliberately set to the repo root (so
+// GrimoirePathResolver's cwd-based BaseDir default, a separate lookup below, resolves
+// correctly). That leaves appsettings.{Environment}.json looked up at the repo root
+// instead of next to Grimoire.Hub.dll, where it actually lives — pin it explicitly so
+// environment-specific settings load regardless of the launching cwd.
+var builder = WebApplication.CreateBuilder(new WebApplicationOptions
+{
+    Args = args,
+    ContentRootPath = GrimoirePathResolver.ProcessBaseDirectory,
+});
 builder.Services.AddHubTelemetry();
 builder.Services.AddSignalR();
 builder.Services.AddHttpClient<IUrlContentFetcher, UrlContentFetcher>();
@@ -221,22 +243,43 @@ static string? ParseOption(string[] args, string option)
 
 // ADR-009 command-line switches (contracts/path-configuration.md): mapped last so they
 // win over environment/appsettings/defaults regardless of default-provider ordering.
-static Dictionary<string, string> PathConfigurationSwitchMappingsFactory() => new(StringComparer.OrdinalIgnoreCase)
+// Derived from PathSwitchCatalog.All (single source of truth, Runtime/Paths/PathSwitchCatalog.cs).
+static Dictionary<string, string> PathConfigurationSwitchMappingsFactory() =>
+    PathSwitchCatalog.All.ToDictionary(s => s.Name, s => s.ConfigKey, StringComparer.OrdinalIgnoreCase);
+
+// 017-hub-help-usage (FR-001–FR-005): plain-text usage message printed for --help/-h.
+// Switch names/descriptions are sourced from PathSwitchCatalog.All (the single source of
+// truth for ADR-009's switch vocabulary, also used to wire AddCommandLine above) so this
+// text can never drift from what the Hub actually accepts.
+static string BuildUsageText()
 {
-    ["--base-dir"] = "Grimoire:Paths:BaseDir",
-    ["--data-dir"] = "Grimoire:Paths:DataDir",
-    ["--content-root"] = "Grimoire:Paths:ContentRoot",
-    ["--raw-dir"] = "Grimoire:Paths:RawDir",
-    ["--state-db"] = "Grimoire:Paths:StateDb",
-    ["--secrets-file"] = "Grimoire:Paths:SecretsFile",
-    ["--instructions-dir"] = "Grimoire:Paths:InstructionsDir",
-    ["--agent-worker"] = "Grimoire:Paths:AgentWorker",
-    ["--query-instructions-dir"] = "Grimoire:Paths:QueryInstructionsDir",
-    ["--conversations-dir"] = "Grimoire:Paths:ConversationsDir",
-    ["--query-agent-worker"] = "Grimoire:Paths:QueryAgentWorker",
-    ["--write-locks-dir"] = "Grimoire:Paths:WriteLocksDir",
-    ["--findings-dir"] = "Grimoire:Paths:FindingsDir",
-    ["--lint-instructions-dir"] = "Grimoire:Paths:LintInstructionsDir",
-    ["--lint-agent-worker"] = "Grimoire:Paths:LintAgentWorker",
-    ["--remediation-tasks-dir"] = "Grimoire:Paths:RemediationTasksDir",
-};
+    // --help itself joins the same computed-column alignment as the path switches below,
+    // so a longer switch name added later can never collide with its own description
+    // column — the bug a fixed width would silently reproduce.
+    var optionEntries = new List<(string Name, string Description)>
+    {
+        ("--help, -h", "Show this usage message and exit."),
+    };
+    optionEntries.AddRange(PathSwitchCatalog.All.Select(s => (s.Name, s.Description)));
+    var column = optionEntries.Max(e => e.Name.Length) + 2;
+
+    string[] lines =
+    [
+        "Grimoire Hub — LLM-Wiki maintenance harness",
+        string.Empty,
+        "Usage:",
+        "  Grimoire.Hub [--help|-h]",
+        "  Grimoire.Hub [path options...]",
+        "  Grimoire.Hub submit-source --path <path> --source-kind <kind> [path options...]",
+        string.Empty,
+        "Command:",
+        "  submit-source          Submit a source document for ingest into the wiki.",
+        "    --path                Path to the source file to submit (required).",
+        "    --source-kind         Kind of source: 'file' (default) or 'pasted_text' (read from stdin).",
+        string.Empty,
+        "Options:",
+        .. optionEntries.Select(e => $"  {e.Name.PadRight(column)}{e.Description}"),
+    ];
+
+    return string.Join(Environment.NewLine, lines);
+}

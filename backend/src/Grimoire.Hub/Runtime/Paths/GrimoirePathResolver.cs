@@ -39,6 +39,14 @@ public static class GrimoirePathResolver
     /// </summary>
     public static string CurrentWorkingDirectory => Directory.GetCurrentDirectory();
 
+    /// <summary>
+    /// The only sanctioned read of the process's install/build-output directory (017-
+    /// hub-help-usage) — used both to pin WebApplicationBuilder's ContentRootPath in
+    /// Program.cs and as the default anchor for the agent worker paths below, instead of
+    /// calling <see cref="AppContext.BaseDirectory"/> directly.
+    /// </summary>
+    public static string ProcessBaseDirectory => AppContext.BaseDirectory;
+
     public static ResolvedGrimoirePaths Resolve(GrimoirePathOptions options, IConfiguration configuration, ILogger logger)
     {
         var configRoot = configuration as IConfigurationRoot
@@ -62,9 +70,9 @@ public static class GrimoirePathResolver
         var tasksDir = ResolveAgainst(options.TasksDir, baseDir, GrimoirePathOptions.DefaultTasksDirName);
         var remediationTasksDir = ResolveAgainst(options.RemediationTasksDir, baseDir, GrimoirePathOptions.DefaultRemediationTasksDirName);
 
-        var agentWorkerPath = ResolveAgainst(options.AgentWorker, AppContext.BaseDirectory, GrimoirePathOptions.DefaultAgentWorkerFileName);
-        var queryAgentWorkerPath = ResolveAgainst(options.QueryAgentWorker, AppContext.BaseDirectory, GrimoirePathOptions.DefaultQueryAgentWorkerFileName);
-        var lintAgentWorkerPath = ResolveAgainst(options.LintAgentWorker, AppContext.BaseDirectory, GrimoirePathOptions.DefaultLintAgentWorkerFileName);
+        var agentWorkerPath = ResolveAgainst(options.AgentWorker, ProcessBaseDirectory, GrimoirePathOptions.DefaultAgentWorkerFileName);
+        var queryAgentWorkerPath = ResolveAgainst(options.QueryAgentWorker, ProcessBaseDirectory, GrimoirePathOptions.DefaultQueryAgentWorkerFileName);
+        var lintAgentWorkerPath = ResolveAgainst(options.LintAgentWorker, ProcessBaseDirectory, GrimoirePathOptions.DefaultLintAgentWorkerFileName);
 
         var indexPath = Path.Combine(contentRoot, "index.md");
         var logPath = Path.Combine(contentRoot, "log.md");
