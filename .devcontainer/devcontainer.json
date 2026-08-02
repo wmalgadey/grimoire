@@ -1,0 +1,47 @@
+{
+  "name": "grimoire",
+  "build": {
+    "dockerfile": "Dockerfile"
+  },
+  "features": {
+    "ghcr.io/devcontainers/features/node:1": {
+      "version": "22"
+    },
+    "ghcr.io/devcontainers/features/docker-outside-of-docker:1": {
+      "moby": false
+    }
+  },
+  "remoteEnv": {
+    "DOCKER_HOST": "${localEnv:DOCKER_HOST}"
+  },
+  "secrets": {
+    "ANTHROPIC_AUTH_TOKEN": {
+      "description": "Anthropic API token for the Ingest agent (copy .env-example to data/.env)"
+    },
+    "NVIDIA_API_KEY": {
+      "description": "NVIDIA NIM key for eval runs against the LiteLLM proxy (data/.env)"
+    },
+    "GRIMOIRE_EVAL_PROVIDER_API_KEY": {
+      "description": "Eval-provider API key, gated behind GRIMOIRE_EVAL=1 (data/.env)"
+    }
+  },
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "ms-dotnettools.csdevkit",
+        "svelte.svelte-vscode",
+        "dbaeumer.vscode-eslint",
+        "esbenp.prettier-vscode"
+      ]
+    }
+  },
+  "forwardPorts": [5255, 5173, 18888, 4317],
+  "portsAttributes": {
+    "5255": { "label": "Grimoire Hub" },
+    "5173": { "label": "Frontend dev server" },
+    "18888": { "label": "Aspire Dashboard UI" },
+    "4317": { "label": "Aspire Dashboard OTLP" }
+  },
+  "postCreateCommand": "bash .devcontainer/post-create.sh",
+  "remoteUser": "vscode"
+}

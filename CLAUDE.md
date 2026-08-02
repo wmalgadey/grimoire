@@ -47,5 +47,5 @@ ad hoc outside this workflow. The individual commands are available as auto-disc
 <!-- SPECKIT START -->
 For additional context about technologies to be used, project structure,
 shell commands, and other important information, read the current plan
-at specs/015-lint-board-parity/plan.md
+at specs/016-devcontainer-setup/plan.md
 <!-- SPECKIT END -->

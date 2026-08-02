@@ -1,0 +1,78 @@
+name: Devcontainer CI
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".devcontainer/**"
+      - ".env-example"
+      - "backend/Directory.Build.props"
+      - "backend/Directory.Packages.props"
+      - "frontend/package.json"
+      - "frontend/bun.lock"
+      - "frontend/.nvmrc"
+      - ".github/workflows/devcontainer-ci.yml"
+  pull_request:
+    paths:
+      - ".devcontainer/**"
+      - ".env-example"
+      - "backend/Directory.Build.props"
+      - "backend/Directory.Packages.props"
+      - "frontend/package.json"
+      - "frontend/bun.lock"
+      - "frontend/.nvmrc"
+      - ".github/workflows/devcontainer-ci.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  no-secrets-in-config:
+    name: Scan devcontainer config for literal credential values
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # SC-004: devcontainer.json/Dockerfile must declare secret *names* only
+      # (e.g. via the "secrets" metadata property), never literal values. This
+      # denylist is deliberately narrow — only the actual credential-shaped
+      # .env-example variables (ADR-019 / research.md R2), not every variable name
+      # in the file. A broader denylist would false-positive on legitimate
+      # non-secret config values (e.g. GRIMOIRE_INGEST_MODEL) and even on this
+      # workflow's own "gated behind GRIMOIRE_EVAL=1"-style description text.
+      - name: Fail if any known secret variable is assigned a literal value
+        run: |
+          pattern='(ANTHROPIC_AUTH_TOKEN|NVIDIA_API_KEY|GRIMOIRE_EVAL_PROVIDER_API_KEY)[[:space:]]*[=:][[:space:]]*"?[A-Za-z0-9]'
+          if grep -rEn "$pattern" .devcontainer/devcontainer.json .devcontainer/Dockerfile; then
+            echo "::error::Literal credential-shaped value found in devcontainer config (SC-004 violation)"
+            exit 1
+          fi
+          echo "No literal credential values found in .devcontainer/."
+
+  build-and-test:
+    name: Build devcontainer and run hermetic suites inside it
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build and run backend suites inside the devcontainer
+        uses: devcontainers/ci@v0.3
+        with:
+          push: never
+          runCmd: |
+            dotnet build backend/Grimoire.slnx --configuration Release
+            dotnet test backend/tests/Grimoire.ArchTests --configuration Release
+            dotnet test backend/tests/Grimoire.Domain.UnitTests --configuration Release
+            dotnet test backend/tests/Grimoire.IntegrationTests --configuration Release
+
+      - name: Build and run frontend suites inside the devcontainer
+        uses: devcontainers/ci@v0.3
+        with:
+          push: never
+          runCmd: |
+            cd frontend
+            bun install --frozen-lockfile
+            bun run check
+            bun run lint
+            bun run test
+            bun run build
