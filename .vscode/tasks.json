@@ -55,9 +55,22 @@
             }
         },
         {
+            "label": "start: podman machine",
+            "type": "shell",
+            "command": "podman machine list --format '{{.Running}}' | grep -q true || podman machine start",
+            "presentation": {
+                "panel": "dedicated",
+                "reveal": "silent",
+                "clear": false
+            },
+            "problemMatcher": []
+        },
+        {
             "label": "start: aspire-dashboard",
             "type": "shell",
             "command": "if [ -n \"$(docker ps --filter 'publish=18888' -q)\" ]; then echo 'Login to the dashboard at http://localhost:18888/ (already running)'; else docker run --rm -p 18888:18888 -p 4317:18889 mcr.microsoft.com/dotnet/aspire-dashboard; fi",
+            "dependsOn": ["start: podman machine"],
+            "dependsOrder": "sequence",
             "isBackground": true,
             "problemMatcher": {
                 "owner": "aspire-dashboard",
