@@ -241,47 +241,30 @@ static string? ParseOption(string[] args, string option)
     return null;
 }
 
-// 017-hub-help-usage (T009, ADR-009): single source of truth for the ADR-009 switch
-// vocabulary. Both PathConfigurationSwitchMappingsFactory() (feeding AddCommandLine
-// below) and BuildUsageText() (the --help listing) derive from this one list, so a
-// switch's name, its configuration key, and its description can never independently
-// drift — there is no second lookup that could go missing, unlike the two
-// independently-maintained dictionaries this replaced.
-static List<PathSwitch> PathSwitchesFactory() =>
-[
-    new("--base-dir", "Grimoire:Paths:BaseDir", "Base directory all other relative Grimoire paths resolve against."),
-    new("--data-dir", "Grimoire:Paths:DataDir", "Directory holding runtime data (state DB, secrets, agent instructions)."),
-    new("--content-root", "Grimoire:Paths:ContentRoot", "Root of the wiki content tree (pages, index, log)."),
-    new("--raw-dir", "Grimoire:Paths:RawDir", "Directory for raw/original source artifacts captured on ingest."),
-    new("--state-db", "Grimoire:Paths:StateDb", "Path to the SQLite operational-state database file."),
-    new("--secrets-file", "Grimoire:Paths:SecretsFile", "Path to the local secrets/.env file (e.g. provider API keys)."),
-    new("--instructions-dir", "Grimoire:Paths:InstructionsDir", "Directory containing the Ingest agent's instruction files."),
-    new("--agent-worker", "Grimoire:Paths:AgentWorker", "Path to the Ingest agent worker executable/DLL."),
-    new("--query-instructions-dir", "Grimoire:Paths:QueryInstructionsDir", "Directory containing the Query agent's instruction files."),
-    new("--conversations-dir", "Grimoire:Paths:ConversationsDir", "Directory where Query conversation records are stored."),
-    new("--query-agent-worker", "Grimoire:Paths:QueryAgentWorker", "Path to the Query agent worker executable/DLL."),
-    new("--write-locks-dir", "Grimoire:Paths:WriteLocksDir", "Directory used for cross-process write-coordination locks."),
-    new("--findings-dir", "Grimoire:Paths:FindingsDir", "Directory where Lint findings reports are stored."),
-    new("--lint-instructions-dir", "Grimoire:Paths:LintInstructionsDir", "Directory containing the Lint agent's instruction files."),
-    new("--lint-agent-worker", "Grimoire:Paths:LintAgentWorker", "Path to the Lint agent worker executable/DLL."),
-    new("--remediation-tasks-dir", "Grimoire:Paths:RemediationTasksDir", "Directory where remediation task records are stored."),
-];
-
 // ADR-009 command-line switches (contracts/path-configuration.md): mapped last so they
 // win over environment/appsettings/defaults regardless of default-provider ordering.
-// Derived from PathSwitchesFactory() above (single source of truth).
+// Derived from PathSwitchCatalog.All (single source of truth, Runtime/Paths/PathSwitchCatalog.cs).
 static Dictionary<string, string> PathConfigurationSwitchMappingsFactory() =>
-    PathSwitchesFactory().ToDictionary(s => s.Name, s => s.ConfigKey, StringComparer.OrdinalIgnoreCase);
+    PathSwitchCatalog.All.ToDictionary(s => s.Name, s => s.ConfigKey, StringComparer.OrdinalIgnoreCase);
 
 // 017-hub-help-usage (FR-001–FR-005): plain-text usage message printed for --help/-h.
-// Switch names/descriptions are sourced from PathSwitchesFactory() (the single source of
+// Switch names/descriptions are sourced from PathSwitchCatalog.All (the single source of
 // truth for ADR-009's switch vocabulary, also used to wire AddCommandLine above) so this
 // text can never drift from what the Hub actually accepts.
 static string BuildUsageText()
 {
-    var pathSwitches = PathSwitchesFactory();
-    var lines = new List<string>
+    // --help itself joins the same computed-column alignment as the path switches below,
+    // so a longer switch name added later can never collide with its own description
+    // column — the bug a fixed width would silently reproduce.
+    var optionEntries = new List<(string Name, string Description)>
     {
+        ("--help, -h", "Show this usage message and exit."),
+    };
+    optionEntries.AddRange(PathSwitchCatalog.All.Select(s => (s.Name, s.Description)));
+    var column = optionEntries.Max(e => e.Name.Length) + 2;
+
+    string[] lines =
+    [
         "Grimoire Hub — LLM-Wiki maintenance harness",
         string.Empty,
         "Usage:",
@@ -295,22 +278,8 @@ static string BuildUsageText()
         "    --source-kind         Kind of source: 'file' (default) or 'pasted_text' (read from stdin).",
         string.Empty,
         "Options:",
-        "  --help, -h              Show this usage message and exit.",
-    };
-
-    // Computed (not hardcoded) so a longer switch name added later can never collide
-    // with its own description column — the bug a fixed width would silently reproduce.
-    var column = pathSwitches.Max(s => s.Name.Length) + 2;
-
-    foreach (var pathSwitch in pathSwitches)
-    {
-        lines.Add($"  {pathSwitch.Name.PadRight(column)}{pathSwitch.Description}");
-    }
+        .. optionEntries.Select(e => $"  {e.Name.PadRight(column)}{e.Description}"),
+    ];
 
     return string.Join(Environment.NewLine, lines);
 }
-
-// 017-hub-help-usage (T009): a single ADR-009 command-line switch — pairs the CLI switch
-// name with its configuration key (for AddCommandLine) and its human-readable
-// description (for --help output), so all three can never independently drift.
-record PathSwitch(string Name, string ConfigKey, string Description);

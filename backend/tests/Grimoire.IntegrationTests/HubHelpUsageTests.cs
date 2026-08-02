@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using Grimoire.EvalRunner.Workspace;
+using Grimoire.Hub.Runtime.Paths;
 
 namespace Grimoire.IntegrationTests;
 
@@ -14,54 +15,27 @@ namespace Grimoire.IntegrationTests;
 public class HubHelpUsageTests
 {
     // Single source of truth per plan.md/spec.md FR-002 for THIS TEST: the 16 ADR-009
-    // path switches (PathConfigurationSwitchMappingsFactory() in Program.cs) plus
-    // submit-source's own options. T003 must keep Program.cs's usage text in lockstep
-    // with this list — if a switch is added to the factory without a matching entry
-    // here (or vice versa), this parity test starts failing (SC-002).
+    // path switches, sourced directly from PathSwitchCatalog.All (internal, exposed to
+    // this project via AssemblyInfo.cs's InternalsVisibleTo) so this list can never
+    // independently drift from what Program.cs actually accepts — plus submit-source's
+    // own options, which have no equivalent catalog to source from.
     private static readonly string[] ExpectedSwitches =
     [
-        "--base-dir",
-        "--data-dir",
-        "--content-root",
-        "--raw-dir",
-        "--state-db",
-        "--secrets-file",
-        "--instructions-dir",
-        "--agent-worker",
-        "--query-instructions-dir",
-        "--conversations-dir",
-        "--query-agent-worker",
-        "--write-locks-dir",
-        "--findings-dir",
-        "--lint-instructions-dir",
-        "--lint-agent-worker",
-        "--remediation-tasks-dir",
+        .. PathSwitchCatalog.All.Select(s => s.Name),
         "submit-source",
         "--path",
         "--source-kind",
     ];
 
     [Fact]
-    public async Task Help_PrintsUsage_ContainingEverySwitchAndCommand()
+    public async Task Help_PrintsUsage_ExitsZeroPromptly_AndNeverStartsTheWebServer()
     {
         var result = await RunHubAsync(["--help"]);
 
         Assert.False(result.TimedOut, "The --help invocation must exit promptly instead of starting the web host.");
         Assert.Equal(0, result.ExitCode);
-        foreach (var expected in ExpectedSwitches)
-        {
-            Assert.Contains(expected, result.StdOut, StringComparison.Ordinal);
-        }
-    }
-
-    [Fact]
-    public async Task Help_ExitsZero_QuicklyAndNeverStartsTheWebServer()
-    {
-        var result = await RunHubAsync(["--help"]);
-
-        Assert.False(result.TimedOut, "The --help invocation must not hang waiting on app.Run().");
-        Assert.Equal(0, result.ExitCode);
         Assert.DoesNotContain("Now listening on:", result.StdOut, StringComparison.Ordinal);
+        AssertUsageListsAllSwitches(result.StdOut);
     }
 
     [Fact]
@@ -72,10 +46,7 @@ public class HubHelpUsageTests
         Assert.False(result.TimedOut, "The -h invocation must not hang waiting on app.Run().");
         Assert.Equal(0, result.ExitCode);
         Assert.DoesNotContain("Now listening on:", result.StdOut, StringComparison.Ordinal);
-        foreach (var expected in ExpectedSwitches)
-        {
-            Assert.Contains(expected, result.StdOut, StringComparison.Ordinal);
-        }
+        AssertUsageListsAllSwitches(result.StdOut);
     }
 
     [Fact]
@@ -104,9 +75,14 @@ public class HubHelpUsageTests
         Assert.False(result.TimedOut, "submit-source --help must not hang waiting on a submission.");
         Assert.Equal(0, result.ExitCode);
         Assert.DoesNotContain("Submitted ingest task:", result.StdOut, StringComparison.Ordinal);
+        AssertUsageListsAllSwitches(result.StdOut);
+    }
+
+    private static void AssertUsageListsAllSwitches(string stdOut)
+    {
         foreach (var expected in ExpectedSwitches)
         {
-            Assert.Contains(expected, result.StdOut, StringComparison.Ordinal);
+            Assert.Contains(expected, stdOut, StringComparison.Ordinal);
         }
     }
 
