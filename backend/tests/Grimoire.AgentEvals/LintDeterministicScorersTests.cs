@@ -128,6 +128,100 @@ public class LintDeterministicScorersTests
         File.WriteAllText(pagePath, updated);
     }
 
+    // ── T028 (015-lint-board-parity, SC-006) — the remediation-proposal-relevance
+    // scorer, hermetic regression coverage independent of any live capture (same spirit
+    // as the rest of this file: the scorer mechanism itself is verifiable without an
+    // agent) ──────────────────────────────────────────────────────────────────────────
+
+    [Fact]
+    public void RemediationProposalsRelevant_AllProposalsTargetActionablePages_Passes()
+    {
+        var run = new LintSampleRunData(string.Empty, string.Empty,
+        [
+            new Grimoire.EvalRunner.Workspace.RemediationProposalEntry(
+                "Reconcile cache invalidation guidance",
+                "Cache-invalidation-ttl and cache-invalidation-events make incompatible claims.",
+                "pages/cache-invalidation-ttl.md"),
+            new Grimoire.EvalRunner.Workspace.RemediationProposalEntry(
+                "Add missing tags to undertagged-topic",
+                "Propose concept/Caching and pattern/ReadThrough.",
+                "pages/undertagged-topic.md"),
+        ]);
+
+        var score = LintDeterministicScorers.Score("lint-remediation-proposals-relevant", run);
+
+        Assert.True(score.Pass);
+        Assert.True(score.Checks["proposal_0_relevant"]);
+        Assert.True(score.Checks["proposal_1_relevant"]);
+    }
+
+    [Fact]
+    public void RemediationProposalsRelevant_NoProposals_Fails()
+    {
+        var run = new LintSampleRunData(string.Empty, string.Empty, []);
+
+        var score = LintDeterministicScorers.Score("lint-remediation-proposals-relevant", run);
+
+        Assert.False(score.Pass);
+        Assert.False(score.Checks["proposed_at_least_one_action"]);
+    }
+
+    [Fact]
+    public void RemediationProposalsRelevant_ProposalTargetsInformationalOnlyPage_Fails()
+    {
+        var run = new LintSampleRunData(string.Empty, string.Empty,
+        [
+            new Grimoire.EvalRunner.Workspace.RemediationProposalEntry(
+                "Refresh stale-topic",
+                "stale-topic is due for a fresh look under the Review Window.",
+                "pages/stale-topic.md"),
+        ]);
+
+        var score = LintDeterministicScorers.Score("lint-remediation-proposals-relevant", run);
+
+        Assert.False(score.Pass);
+        Assert.False(score.Checks["proposal_0_relevant"]);
+    }
+
+    [Fact]
+    public void RemediationProposalsRelevant_ProposalTargetsUnknownPage_Fails()
+    {
+        var run = new LintSampleRunData(string.Empty, string.Empty,
+        [
+            new Grimoire.EvalRunner.Workspace.RemediationProposalEntry(
+                "Fix an unrelated page",
+                "This page is not part of the seeded-defects fixture at all.",
+                "pages/some-other-page.md"),
+        ]);
+
+        var score = LintDeterministicScorers.Score("lint-remediation-proposals-relevant", run);
+
+        Assert.False(score.Pass);
+        Assert.False(score.Checks["proposal_0_relevant"]);
+    }
+
+    [Fact]
+    public void RemediationProposalsRelevant_OneRelevantOneIrrelevant_FailsOnTheWholeSample()
+    {
+        var run = new LintSampleRunData(string.Empty, string.Empty,
+        [
+            new Grimoire.EvalRunner.Workspace.RemediationProposalEntry(
+                "Link orphan-topic from somewhere",
+                "orphan-topic has zero inbound links.",
+                "pages/orphan-topic.md"),
+            new Grimoire.EvalRunner.Workspace.RemediationProposalEntry(
+                "Refresh stale-topic",
+                "stale-topic is due for a fresh look.",
+                "pages/stale-topic.md"),
+        ]);
+
+        var score = LintDeterministicScorers.Score("lint-remediation-proposals-relevant", run);
+
+        Assert.False(score.Pass);
+        Assert.True(score.Checks["proposal_0_relevant"]);
+        Assert.False(score.Checks["proposal_1_relevant"]);
+    }
+
     private static string CopyFixtureToTempDir()
     {
         var source = FindFixtureWikiRoot();

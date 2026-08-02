@@ -6,6 +6,10 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\Grimoire.Domain\Grimoire.Domain.csproj" />
+    <!-- 015-lint-board-parity T005: the RemediationActionTask state machine lives in
+         Grimoire.Hub.RemediationTasks (data-model.md); its invariants are complex domain
+         logic and unit-tested here per Constitution Principle II. -->
+    <ProjectReference Include="..\..\src\Grimoire.Hub\Grimoire.Hub.csproj" />
   </ItemGroup>
 
 </Project>

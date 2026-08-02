@@ -13,6 +13,14 @@ public abstract record LintSubmissionResult
 
     /// <summary>FR-003/SC-003: a Lint Run is already active — rejected immediately, never queued.</summary>
     public sealed record Busy : LintSubmissionResult;
+
+    /// <summary>
+    /// 015-lint-board-parity T017 (FR-004/SC-004): rejected because remediation action
+    /// tasks from a prior run are still unresolved (`proposed|authorized|executing`).
+    /// Carries the blocking task ids so the board can link straight to the cards that
+    /// need a decision (contracts/lint-board-api.md).
+    /// </summary>
+    public sealed record Blocked(string Reason, IReadOnlyList<string> UnresolvedTaskIds) : LintSubmissionResult;
 }
 
 /// <summary>
@@ -33,7 +41,14 @@ public sealed class LintRunCoordinator
     private readonly TimeSpan _livenessWindow;
     private readonly LintReviewWindowOptions _reviewWindowOptions;
     private readonly ILogger<LintRunCoordinator> _logger;
+    private readonly Realtime.LintLifecyclePublisher? _lifecyclePublisher;
+    private readonly OperationalState.OperationalStateRepository? _stateRepository;
+    private readonly RemediationTasks.RemediationTaskRecordStore? _remediationRecordStore;
+    private readonly RemediationTasks.RemediationLifecyclePublisher? _remediationLifecyclePublisher;
     private readonly SemaphoreSlim _slot = new(1, 1);
+
+    /// <summary>"Unresolved" = not yet at a terminal outcome (data-model.md, FR-004).</summary>
+    private static readonly string[] _unresolvedRemediationStates = ["proposed", "authorized", "executing"];
 
     private readonly ConcurrentDictionary<string, LintRunState> _runs = new();
     private readonly ConcurrentDictionary<string, AgentDispatch.IAgentProcessHandle> _handles = new();
@@ -46,7 +61,11 @@ public sealed class LintRunCoordinator
         TimeProvider? timeProvider = null,
         TimeSpan? livenessWindow = null,
         LintReviewWindowOptions? reviewWindowOptions = null,
-        ILogger<LintRunCoordinator>? logger = null)
+        ILogger<LintRunCoordinator>? logger = null,
+        Realtime.LintLifecyclePublisher? lifecyclePublisher = null,
+        OperationalState.OperationalStateRepository? stateRepository = null,
+        RemediationTasks.RemediationTaskRecordStore? remediationRecordStore = null,
+        RemediationTasks.RemediationLifecyclePublisher? remediationLifecyclePublisher = null)
     {
         _launcher = launcher;
         _reportStore = reportStore;
@@ -55,6 +74,18 @@ public sealed class LintRunCoordinator
         _livenessWindow = livenessWindow ?? TimeSpan.FromSeconds(60);
         _reviewWindowOptions = reviewWindowOptions ?? new LintReviewWindowOptions();
         _logger = logger ?? NullLogger<LintRunCoordinator>.Instance;
+        // 015-lint-board-parity T011: optional so pre-015 wiring/tests keep working;
+        // when absent, runs simply publish no board lifecycle events.
+        _lifecyclePublisher = lifecyclePublisher;
+        // 015-lint-board-parity T017: optional for the same reason; when absent, the
+        // FR-004 unresolved-remediation-tasks precondition is not evaluated.
+        _stateRepository = stateRepository;
+        // 015-lint-board-parity T022 (FR-007): optional so pre-015 wiring/tests keep
+        // working; materialization requires both the state repository (rows) and the
+        // record store (task records) — when either is absent, completed runs simply
+        // materialize no proposals.
+        _remediationRecordStore = remediationRecordStore;
+        _remediationLifecyclePublisher = remediationLifecyclePublisher;
     }
 
     public LintRunState? GetRun(string runId) => _runs.TryGetValue(runId, out var run) ? run : null;
@@ -78,6 +109,27 @@ public sealed class LintRunCoordinator
             return new LintSubmissionResult.Busy();
         }
 
+        // 015-lint-board-parity T017 (FR-004/SC-004): a new run is also rejected while
+        // any remediation action task from a prior run has not reached a terminal
+        // outcome. Evaluated after the slot acquire so `lint_run_active` wins when both
+        // conditions hold (contracts/lint-board-api.md), and the slot semaphore stays
+        // the single first-transition-wins arbiter for the trigger-at-completion race.
+        if (_stateRepository is not null)
+        {
+            var unresolvedTaskIds = (await _stateRepository.GetRemediationTasksAsync(cancellationToken: cancellationToken))
+                .Where(row => _unresolvedRemediationStates.Contains(row.State, StringComparer.Ordinal))
+                .Select(row => row.TaskId)
+                .ToList();
+
+            if (unresolvedTaskIds.Count > 0)
+            {
+                _slot.Release();
+                HubMetrics.RecordLintTriggerRejected();
+                LintLifecycleLogEvents.LogRunBlockedByUnresolvedTasks(_logger, unresolvedTaskIds.Count);
+                return new LintSubmissionResult.Blocked("unresolved_remediation_tasks", unresolvedTaskIds);
+            }
+        }
+
         var triggeredAt = _timeProvider.GetUtcNow();
         var runId = $"{triggeredAt:yyyy-MM-dd}-lint-{Guid.NewGuid():N}"[..40];
         var run = new LintRunState(runId, triggeredAt);
@@ -89,6 +141,14 @@ public sealed class LintRunCoordinator
         triggerSpan?.SetTag("outcome", "accepted");
 
         LintLifecycleLogEvents.LogRunTriggered(_logger, runId);
+
+        // 015-lint-board-parity T011 (SC-001): the board sees the run as running the
+        // moment it is accepted, however it was triggered (board or /lint page).
+        if (_lifecyclePublisher is not null)
+        {
+            await _lifecyclePublisher.PublishRunChangedAsync(
+                runId, fromStatus: null, toStatus: "running", failureReason: null, cancellationToken);
+        }
 
         var request = new LintAgentRequest(
             RunId: runId,
@@ -182,7 +242,9 @@ public sealed class LintRunCoordinator
 
             await FinishRunAsync(
                 runId, status, terminalEvent.Reason, terminalEvent.Summary, terminalEvent.SystemPromptSha256, deniedActions,
-                terminalEvent.CreatedPages ?? [], CancellationToken.None);
+                terminalEvent.CreatedPages ?? [], CancellationToken.None,
+                // T022 (FR-007): proposals ride the terminal event verbatim (research.md R3).
+                terminalEvent.ProposedActions);
         }
 
         await handle.DisposeAsync();
@@ -197,11 +259,34 @@ public sealed class LintRunCoordinator
         string? systemPromptSha256,
         IReadOnlyList<FindingsDeniedAction> deniedActions,
         IReadOnlyList<string> touchedPaths,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        IReadOnlyList<AgentDispatch.AgentRunEventProposedAction>? proposedActions = null)
     {
         if (!_runs.TryGetValue(runId, out var run))
         {
             return;
+        }
+
+        // T022 (FR-007, data-model.md "Proposal materialization gates completion"): one
+        // Proposed row + one task record per proposedActions entry, all committed BEFORE
+        // the run's terminal transition and lifecycle broadcast below — "completed" on
+        // the board already implies every proposed card exists. The two call sites
+        // (supervision terminal, spawn failure — the latter always with no proposals)
+        // are mutually exclusive per run, so materializing ahead of the
+        // first-terminal-transition-wins arbiter cannot double-materialize.
+        if (status == LintRunStatus.Completed && _stateRepository is not null && _remediationRecordStore is not null)
+        {
+            try
+            {
+                await MaterializeProposedActionsAsync(runId, proposedActions ?? [], cancellationToken);
+            }
+            catch (Exception ex)
+            {
+                // FR-007: a run must never show completed without its cards — a failed
+                // materialization fails the run, with the reason surfaced (FR-005).
+                status = LintRunStatus.Failed;
+                failureReason = $"Proposed remediation tasks could not be materialized: {ex.Message}";
+            }
         }
 
         var completedAt = _timeProvider.GetUtcNow();
@@ -246,6 +331,16 @@ public sealed class LintRunCoordinator
             LintLifecycleLogEvents.LogRunFailed(_logger, runId, failureReason ?? "unknown");
         }
 
+        // 015-lint-board-parity T011 (SC-002, FR-005): terminal broadcast after the
+        // first-terminal-transition-wins arbiter committed — the board reflects
+        // completed/failed (incl. the failure reason) without a reload. T022 (US3) will
+        // materialize proposed remediation tasks *before* this publish (FR-007 ordering).
+        if (_lifecyclePublisher is not null)
+        {
+            await _lifecyclePublisher.PublishRunChangedAsync(
+                runId, fromStatus: "running", toStatus: outcome, failureReason, CancellationToken.None);
+        }
+
         var report = new FindingsReport(
             RunId: runId,
             TriggeredAt: run.TriggeredAt,
@@ -271,6 +366,60 @@ public sealed class LintRunCoordinator
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to write Findings Report for lint run {RunId}.", runId);
+        }
+    }
+
+    /// <summary>
+    /// T022 (US3, FR-007): materializes one <c>proposed</c> remediation task per
+    /// agent-proposed action — row (ADR-003 operational state), task record (ADR-014
+    /// shape), lifecycle broadcast (contracts/remediation-lifecycle-events.md
+    /// <c>fromState: null → "proposed"</c>) — in the order the agent reported them.
+    /// Title/description/targetPath are stored verbatim: the harness never filters,
+    /// merges, rewrites, or scope-checks proposals (Principle V, research.md R3 — an
+    /// over-scope proposal simply fails later at the write guard). Runs inside the
+    /// <c>hub.lint.run_supervision</c> span's async context, so the
+    /// <c>hub.lint.propose_remediation_tasks</c> span parents there (plan.md
+    /// ## Observability).
+    /// </summary>
+    private async Task MaterializeProposedActionsAsync(
+        string runId,
+        IReadOnlyList<AgentDispatch.AgentRunEventProposedAction> proposedActions,
+        CancellationToken cancellationToken)
+    {
+        using var span = HubTracing.ActivitySource.StartActivity("hub.lint.propose_remediation_tasks");
+        span?.SetTag("run_id", runId);
+        span?.SetTag("proposed_count", proposedActions.Count);
+
+        foreach (var action in proposedActions)
+        {
+            var proposedAt = _timeProvider.GetUtcNow();
+            // Task-id shape per data-model.md, mirroring the lint run-id truncation above.
+            var taskId = $"{proposedAt:yyyy-MM-dd}-remediation-{Guid.NewGuid():N}"[..44];
+
+            await _stateRepository!.InsertRemediationTaskAsync(new OperationalState.RemediationTaskRow(
+                TaskId: taskId,
+                RunId: runId,
+                Title: action.Title,
+                Description: action.Description,
+                TargetPath: action.TargetPath,
+                State: RemediationTasks.RemediationTaskStates.Proposed,
+                ProposedAt: proposedAt,
+                AuthorizedAt: null,
+                OutcomeReason: null,
+                UpdatedAt: proposedAt), cancellationToken);
+
+            await _remediationRecordStore!.CreateAsync(
+                taskId, runId, proposedAt, action.Title, action.Description, action.TargetPath, cancellationToken);
+
+            HubMetrics.RecordRemediationTaskProposed(runId);
+            LintLifecycleLogEvents.LogRemediationTaskProposed(_logger, runId, taskId);
+
+            if (_remediationLifecyclePublisher is not null)
+            {
+                await _remediationLifecyclePublisher.PublishTaskChangedAsync(
+                    taskId, runId, fromState: null, toState: RemediationTasks.RemediationTaskStates.Proposed,
+                    queuePosition: null, outcomeReason: null, cancellationToken);
+            }
         }
     }
 }

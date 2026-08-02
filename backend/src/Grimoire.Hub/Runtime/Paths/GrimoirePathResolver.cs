@@ -60,6 +60,7 @@ public static class GrimoirePathResolver
         var writeLocksDir = ResolveAgainst(options.WriteLocksDir, dataDir, GrimoirePathOptions.DefaultWriteLocksDirName);
         var findingsDir = ResolveAgainst(options.FindingsDir, dataDir, GrimoirePathOptions.DefaultFindingsDirName);
         var tasksDir = ResolveAgainst(options.TasksDir, baseDir, GrimoirePathOptions.DefaultTasksDirName);
+        var remediationTasksDir = ResolveAgainst(options.RemediationTasksDir, baseDir, GrimoirePathOptions.DefaultRemediationTasksDirName);
 
         var agentWorkerPath = ResolveAgainst(options.AgentWorker, AppContext.BaseDirectory, GrimoirePathOptions.DefaultAgentWorkerFileName);
         var queryAgentWorkerPath = ResolveAgainst(options.QueryAgentWorker, AppContext.BaseDirectory, GrimoirePathOptions.DefaultQueryAgentWorkerFileName);
@@ -90,6 +91,7 @@ public static class GrimoirePathResolver
             BuildLocation("query_instructions_dir", "QueryInstructionsDir", options.QueryInstructionsDir, queryInstructionsDir, PathLocationKind.RequiredInput, configRoot),
             BuildLocation("conversations_dir", "ConversationsDir", options.ConversationsDir, conversationsDir, PathLocationKind.WritableData, configRoot),
             BuildLocation("tasks_dir", "TasksDir", options.TasksDir, tasksDir, PathLocationKind.WritableData, configRoot),
+            BuildLocation("remediation_tasks_dir", "RemediationTasksDir", options.RemediationTasksDir, remediationTasksDir, PathLocationKind.WritableData, configRoot),
             BuildLocation("query_agent_worker", "QueryAgentWorker", options.QueryAgentWorker, queryAgentWorkerPath, PathLocationKind.RequiredInput, configRoot),
             BuildLocation("write_locks_dir", "WriteLocksDir", options.WriteLocksDir, writeLocksDir, PathLocationKind.WritableData, configRoot),
             BuildLocation("findings_dir", "FindingsDir", options.FindingsDir, findingsDir, PathLocationKind.WritableData, configRoot),
@@ -124,6 +126,7 @@ public static class GrimoirePathResolver
         CreateDirectoryIfMissing(logger, "write_locks_dir", options.WriteLocksDir, writeLocksDir);
         CreateDirectoryIfMissing(logger, "findings_dir", options.FindingsDir, findingsDir);
         CreateDirectoryIfMissing(logger, "tasks_dir", options.TasksDir, tasksDir);
+        CreateDirectoryIfMissing(logger, "remediation_tasks_dir", options.RemediationTasksDir, remediationTasksDir);
         var stateDbDir = Path.GetDirectoryName(stateDbPath);
         if (!string.IsNullOrEmpty(stateDbDir))
         {
@@ -157,6 +160,7 @@ public static class GrimoirePathResolver
             LintSystemPromptPath: lintSystemPromptPath,
             LintPolicyPath: lintPolicyPath,
             LintAgentWorkerPath: lintAgentWorkerPath,
+            RemediationTasksDir: remediationTasksDir,
             Locations: locations);
 
         GrimoirePathLogEvents.LogPathsResolved(logger, resolved);

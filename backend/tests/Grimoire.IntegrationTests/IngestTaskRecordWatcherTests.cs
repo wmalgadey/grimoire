@@ -138,6 +138,7 @@ public class IngestTaskRecordWatcherTests
                 LintSystemPromptPath: Path.Combine(root, "agents", "lint", "system-prompt.md"),
                 LintPolicyPath: Path.Combine(root, "agents", "lint", "policy.json"),
                 LintAgentWorkerPath: "unused",
+                RemediationTasksDir: Path.Combine(root, "remediation-tasks"),
                 Locations: []);
 
             var builder = WebApplication.CreateBuilder();

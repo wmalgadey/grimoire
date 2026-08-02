@@ -3,6 +3,18 @@ using System.Text.Json.Serialization;
 
 namespace Grimoire.Hub.AgentDispatch;
 
+/// <summary>
+/// One agent-proposed remediation action, as reported on the Lint run's terminal
+/// <c>completed</c> event (015-lint-board-parity contracts/remediation-lifecycle-events.md,
+/// ADR-008/ADR-018 event-vocabulary extension). All fields are agent-authored free text,
+/// harness-opaque (Principle V); <see cref="TargetPath"/> is an optional hint, never
+/// validated or enforced by the Hub.
+/// </summary>
+public sealed record AgentRunEventProposedAction(
+    [property: JsonPropertyName("title")] string Title,
+    [property: JsonPropertyName("description")] string Description,
+    [property: JsonPropertyName("targetPath")] string? TargetPath = null);
+
 /// <summary>One denied tool action, as reported on a Query terminal event (data-model.md DeniedActionRecord).</summary>
 public sealed record AgentRunEventDeniedAction(
     [property: JsonPropertyName("action")] string Action,
@@ -39,7 +51,18 @@ public sealed record AgentRunEvent(
     // ADR-015 (012-query-synthesis-writes): canonical paths of pages this turn created
     // (RunCompletionMetadata.CreatedArtifacts, contracts/query-write-scope-and-coordination.md
     // §5) — null/empty when the turn created nothing.
-    [property: JsonPropertyName("createdPages")] IReadOnlyList<string>? CreatedPages = null)
+    [property: JsonPropertyName("createdPages")] IReadOnlyList<string>? CreatedPages = null,
+    // ADR-018 (015-lint-board-parity): remediation actions the Lint agent judged
+    // actionable, riding the lint-run terminal event like deniedActions/createdPages.
+    // Null/empty ⇒ no tasks created. Entry-level tolerance: a malformed entry is
+    // skipped, never failing the whole event (see the converter below).
+    [property: JsonPropertyName("proposedActions")]
+    [property: JsonConverter(typeof(TolerantProposedActionListConverter))]
+    IReadOnlyList<AgentRunEventProposedAction>? ProposedActions = null,
+    // ADR-018: the remediation-execution mode's re-verification judgment on its terminal
+    // completed event — "applied" | "not_applicable" (reason reuses the existing Reason
+    // field). Transported only, never computed by the harness (Principle V).
+    [property: JsonPropertyName("remediationOutcome")] string? RemediationOutcome = null)
 {
     public const string TypeStarted = "started";
     public const string TypeHeartbeat = "heartbeat";
@@ -50,7 +73,86 @@ public sealed record AgentRunEvent(
     /// <summary>ADR-011: streamed answer delta (contracts/query-run-events.md). Never emitted by Ingest.</summary>
     public const string TypeAnswerChunk = "answer_chunk";
 
+    /// <summary>ADR-018: remediation-execution re-verification outcomes (contracts/remediation-lifecycle-events.md).</summary>
+    public const string RemediationOutcomeApplied = "applied";
+    public const string RemediationOutcomeNotApplicable = "not_applicable";
+
     public bool IsTerminal => Type is TypeCompleted or TypeFailed;
+}
+
+/// <summary>
+/// Entry-tolerant reader for the <c>proposedActions</c> list (ADR-008's tolerance
+/// philosophy applied one level down): a malformed entry — not an object, missing or
+/// non-string <c>title</c>/<c>description</c> — is skipped rather than failing the whole
+/// terminal event, so one bad proposal can never cost the run its completion. A value
+/// that is not an array at all deserializes to <c>null</c> (treated as absent).
+/// </summary>
+public sealed class TolerantProposedActionListConverter : JsonConverter<IReadOnlyList<AgentRunEventProposedAction>?>
+{
+    public override IReadOnlyList<AgentRunEventProposedAction>? Read(
+        ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
+    {
+        using var document = JsonDocument.ParseValue(ref reader);
+        if (document.RootElement.ValueKind != JsonValueKind.Array)
+        {
+            return null;
+        }
+
+        var actions = new List<AgentRunEventProposedAction>();
+        foreach (var element in document.RootElement.EnumerateArray())
+        {
+            if (element.ValueKind != JsonValueKind.Object)
+            {
+                continue;
+            }
+
+            var title = TryGetNonEmptyString(element, "title");
+            var description = TryGetNonEmptyString(element, "description");
+            if (title is null || description is null)
+            {
+                continue;
+            }
+
+            var targetPath = TryGetNonEmptyString(element, "targetPath");
+            actions.Add(new AgentRunEventProposedAction(title, description, targetPath));
+        }
+
+        return actions;
+    }
+
+    public override void Write(
+        Utf8JsonWriter writer, IReadOnlyList<AgentRunEventProposedAction>? value, JsonSerializerOptions options)
+    {
+        if (value is null)
+        {
+            writer.WriteNullValue();
+            return;
+        }
+
+        writer.WriteStartArray();
+        foreach (var action in value)
+        {
+            writer.WriteStartObject();
+            writer.WriteString("title", action.Title);
+            writer.WriteString("description", action.Description);
+            if (action.TargetPath is not null)
+            {
+                writer.WriteString("targetPath", action.TargetPath);
+            }
+
+            writer.WriteEndObject();
+        }
+
+        writer.WriteEndArray();
+    }
+
+    private static string? TryGetNonEmptyString(JsonElement element, string propertyName)
+        => element.TryGetProperty(propertyName, out var property) &&
+           property.ValueKind == JsonValueKind.String &&
+           property.GetString() is { } value &&
+           !string.IsNullOrWhiteSpace(value)
+            ? value
+            : null;
 }
 
 /// <summary>

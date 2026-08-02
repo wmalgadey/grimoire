@@ -85,8 +85,24 @@ public static class LintScenarioDefinitions
         Threshold: 0.95,
         ScorerId: "lint-inbound-links-refreshed");
 
+    /// <summary>
+    /// T028 (015-lint-board-parity, SC-006): ≥ 90% of sampled proposed remediation
+    /// tasks are relevant/actionable, scored against
+    /// <see cref="Scoring.RemediationGoldenSet"/>'s human-adjudicated-once judgment of
+    /// the <see cref="SeededDefectsFixtureName"/> fixture's six seeded defects. Reuses
+    /// the same fixture as <see cref="DefectsFound"/>/<see cref="GenuineFindings"/>/
+    /// <see cref="MetadataProposals"/> — the run's `proposedActions` are a new field on
+    /// the same terminal event those scenarios already score, not a new agent behavior
+    /// to fixture separately.
+    /// </summary>
+    public static readonly LintScenarioDefinition RemediationProposalsRelevant = new(
+        Id: "lint-remediation-proposals",
+        FixtureName: SeededDefectsFixtureName,
+        Threshold: 0.90,
+        ScorerId: "lint-remediation-proposals-relevant");
+
     public static readonly IReadOnlyList<LintScenarioDefinition> All =
-        [DefectsFound, GenuineFindings, MetadataProposals, InboundLinksRefreshed];
+        [DefectsFound, GenuineFindings, MetadataProposals, InboundLinksRefreshed, RemediationProposalsRelevant];
 
     public static LintScenarioDefinition? Find(string scenarioId)
         => All.FirstOrDefault(s => string.Equals(s.Id, scenarioId, StringComparison.OrdinalIgnoreCase));

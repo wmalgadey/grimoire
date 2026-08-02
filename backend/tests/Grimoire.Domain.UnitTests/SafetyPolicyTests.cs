@@ -38,6 +38,50 @@ public class SafetyPolicyTests
         Assert.Equal("out_of_scope", decision.DenialReason);
     }
 
+    // ── WithNoWriteAccess (015-lint-board-parity T042, ADR-018 message-turn mode) ──
+
+    [Fact]
+    public void WithNoWriteAccess_DeniesEveryWrite_EvenWhereTheOriginalPolicyAllowedIt()
+    {
+        var policy = BuildPolicy(
+            readPrefixes: ["/repo/wiki/"],
+            writePrefixes: ["/repo/wiki/pages/"]);
+
+        // Sanity: the original policy permits this write.
+        Assert.True(policy.Evaluate("/repo/wiki/pages/foo.md", isWrite: true).IsAllowed);
+
+        var readOnly = policy.WithNoWriteAccess();
+        var decision = readOnly.Evaluate("/repo/wiki/pages/foo.md", isWrite: true);
+
+        Assert.False(decision.IsAllowed);
+        Assert.Equal("out_of_scope", decision.DenialReason);
+    }
+
+    [Fact]
+    public void WithNoWriteAccess_PreservesReadAccess_Unchanged()
+    {
+        var policy = BuildPolicy(
+            readPrefixes: ["/repo/wiki/"],
+            writePrefixes: ["/repo/wiki/pages/"]);
+
+        var readOnly = policy.WithNoWriteAccess();
+        var decision = readOnly.Evaluate("/repo/wiki/pages/foo.md", isWrite: false);
+
+        Assert.True(decision.IsAllowed);
+    }
+
+    [Fact]
+    public void WithNoWriteAccess_StillDenies_PathTraversal()
+    {
+        var policy = BuildPolicy(readPrefixes: ["/repo/wiki/"], writePrefixes: ["/repo/wiki/"]);
+
+        var readOnly = policy.WithNoWriteAccess();
+        var decision = readOnly.Evaluate("/etc/passwd", isWrite: false);
+
+        Assert.False(decision.IsAllowed);
+        Assert.Equal("traversal", decision.DenialReason);
+    }
+
     // ── Prefix matching ───────────────────────────────────────────────────────────
 
     [Fact]

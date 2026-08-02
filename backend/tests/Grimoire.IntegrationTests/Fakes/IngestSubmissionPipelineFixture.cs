@@ -127,6 +127,7 @@ public sealed class IngestSubmissionPipelineFixture : IDisposable
             LintSystemPromptPath: Path.Combine(Root, "agents", "lint", "system-prompt.md"),
             LintPolicyPath: Path.Combine(Root, "agents", "lint", "policy.json"),
             LintAgentWorkerPath: "unused",
+            RemediationTasksDir: Path.Combine(Root, "remediation-tasks"),
             Locations: []);
 
         var dbPath = Path.Combine(Root, "operational-state.db");

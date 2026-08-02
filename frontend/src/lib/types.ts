@@ -189,3 +189,133 @@ export interface LintFindingsReport {
 	runId: string;
 	content: string;
 }
+
+// 015-lint-board-parity (contracts/lint-board-api.md `GET /api/board`, data-model.md
+// "Board Entry"): the composite board initial-state response carries all entry kinds,
+// explicitly typed via the `kind` discriminator — each kind maps to a distinct card
+// component (FR-006). Ingest rows keep exactly their existing field set (FR-015).
+export interface IngestTaskBoardEntry extends BoardTask {
+	kind: 'ingest_task';
+}
+
+export interface LintRunBoardEntry extends LintRun {
+	kind: 'lint_run';
+}
+
+// data-model.md RemediationActionTask states; cards render from US3 onward, but the
+// entry shape is part of the composite board contract from the start.
+export type RemediationTaskState =
+	'proposed' | 'authorized' | 'executing' | 'completed' | 'failed' | 'not_applicable' | 'dismissed';
+
+export interface RemediationTaskBoardEntry {
+	kind: 'remediation_task';
+	taskId: string;
+	runId: string;
+	title: string;
+	state: RemediationTaskState;
+	proposedAt: string;
+	queuePosition: number | null;
+	outcomeReason: string | null;
+	updatedAt: string;
+}
+
+export type BoardEntry = IngestTaskBoardEntry | LintRunBoardEntry | RemediationTaskBoardEntry;
+
+export interface CompositeBoardResponse {
+	entries: BoardEntry[];
+}
+
+/** SignalR `lintRunLifecycleChanged` payload (contracts/remediation-lifecycle-events.md "Hub 1"). */
+export interface LintRunLifecycleEvent {
+	eventId: string;
+	runId: string;
+	fromStatus: LintRunStatus | null;
+	toStatus: LintRunStatus;
+	timestamp: string;
+	failureReason: string | null;
+}
+
+// 015-lint-board-parity US3 (contracts/remediation-task-api.md): one remediation action
+// task as listed by GET /api/remediation-tasks. title/description/targetPath are the
+// verbatim agent-authored proposal (Principle V — never edited by harness or client).
+export interface RemediationTask {
+	taskId: string;
+	runId: string;
+	title: string;
+	description: string;
+	targetPath: string | null;
+	state: RemediationTaskState;
+	proposedAt: string;
+	authorizedAt: string | null;
+	queuePosition: number | null;
+	outcomeReason: string | null;
+	updatedAt: string;
+}
+
+export interface RemediationTaskListResponse {
+	tasks: RemediationTask[];
+}
+
+/** One attached-context entry of the detail response (FR-011/FR-014). */
+export interface RemediationTaskAttachedContext {
+	content: string;
+	attachedAt: string;
+}
+
+/** GET /api/remediation-tasks/{taskId} response. */
+export interface RemediationTaskDetail extends RemediationTask {
+	attachedContext: RemediationTaskAttachedContext[];
+	messageTurnActive: boolean;
+}
+
+/** SignalR `remediationTaskLifecycleChanged` payload (contracts/remediation-lifecycle-events.md "Hub 2"). */
+export interface RemediationTaskLifecycleEvent {
+	eventId: string;
+	taskId: string;
+	runId: string;
+	fromState: RemediationTaskState | null;
+	toState: RemediationTaskState;
+	timestamp: string;
+	queuePosition: number | null;
+	outcomeReason: string | null;
+}
+
+// 015-lint-board-parity US5 (contracts/remediation-task-api.md, FR-012/FR-014): one
+// human⇄agent exchange on a task's message thread. Messages are in append order; a
+// failed turn appends no `agent` entry.
+export interface RemediationTaskMessage {
+	sender: 'human' | 'agent';
+	content: string;
+	timestamp: string;
+}
+
+/** GET /api/remediation-tasks/{taskId}/messages response. */
+export interface RemediationTaskMessagesResponse {
+	taskId: string;
+	messageTurnActive: boolean;
+	messages: RemediationTaskMessage[];
+}
+
+/** POST /api/remediation-tasks/{taskId}/context response. */
+export interface RemediationAttachContextResponse {
+	taskId: string;
+	attachedAt: string;
+}
+
+/** POST /api/remediation-tasks/{taskId}/messages response (202 Accepted). */
+export interface RemediationSendMessageResponse {
+	taskId: string;
+	messageTurnId: string;
+	state: 'running';
+	acceptedAt: string;
+}
+
+/** SignalR `remediationMessageTurnChanged` payload (contracts/remediation-lifecycle-events.md "Hub 2"). */
+export interface RemediationMessageTurnChangedEvent {
+	eventId: string;
+	taskId: string;
+	messageTurnId: string;
+	state: 'running' | 'completed' | 'failed';
+	timestamp: string;
+	failureReason: string | null;
+}

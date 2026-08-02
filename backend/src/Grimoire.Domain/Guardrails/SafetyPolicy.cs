@@ -193,6 +193,21 @@ public sealed class SafetyPolicy
                !relative.StartsWith($"..{Path.DirectorySeparatorChar}", StringComparison.Ordinal);
     }
 
+    /// <summary>
+    /// 015-lint-board-parity T042 (ADR-011 Query-turn shape, ADR-018 message-turn mode):
+    /// a genuine deny-by-default clone of this policy with every write rule stripped —
+    /// <see cref="Evaluate"/> then denies any write-scope call with <c>out_of_scope</c>,
+    /// regardless of target. Read rules (and the repository-root traversal check) are
+    /// preserved unchanged, so the agent can still browse the wiki to answer questions
+    /// about a proposal. Used to make a message turn structurally read-only (Constitution
+    /// V: guardrails enforced at the tool boundary, not left to instruction-following
+    /// alone) without introducing a second on-disk policy file or CLI path — the same
+    /// loaded policy identity (version/sha256) still describes what was read from disk;
+    /// this method only changes what the in-memory <see cref="SafetyPolicy"/> instance
+    /// enforces for that one run.
+    /// </summary>
+    public SafetyPolicy WithNoWriteAccess() => new(_repositoryRoot, _readPrefixes, Array.Empty<WriteRule>());
+
     private static bool PrefixMatches(string prefix, string canonicalTarget)
     {
         if (prefix.EndsWith(Path.DirectorySeparatorChar))

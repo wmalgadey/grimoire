@@ -22,7 +22,28 @@ public sealed record RunCompletionMetadata(
     // GuardedToolExecutor.CreatedPaths (create-only writes that succeeded) — mechanical
     // reporting of what the run's own journal already recorded, no content judgment
     // (Constitution Principle V). Null/empty for a turn that created nothing.
-    IReadOnlyList<string>? CreatedArtifacts = null);
+    IReadOnlyList<string>? CreatedArtifacts = null,
+    // ADR-018 (015-lint-board-parity T025): remediation actions the Lint agent judged
+    // actionable, carried verbatim onto the lint-run terminal event
+    // (contracts/remediation-lifecycle-events.md `proposedActions`). Pure transport —
+    // the judgment lives in the agent's instructions, never here (Principle V).
+    // Null/empty for a run that proposed nothing; only Lint's lint-run mode sets it.
+    IReadOnlyList<ProposedActionRecord>? ProposedActions = null,
+    // T035 (015-lint-board-parity, ADR-018, FR-018): the remediation-execution mode's
+    // re-verification judgment on its terminal `completed` event — "applied" |
+    // "not_applicable" (contracts/remediation-lifecycle-events.md). Transported only,
+    // never computed by the harness (Principle V); only the remediation-execution mode
+    // sets it. The accompanying reason travels via <see cref="RunEventEmitter.EmitCompleted"/>'s
+    // own <c>reason</c> parameter, mirroring <c>EmitFailed</c>'s shape.
+    string? RemediationOutcome = null);
+
+/// <summary>
+/// One agent-proposed remediation action as reported on the lint-run terminal event
+/// (015-lint-board-parity, ADR-008/ADR-018 event-vocabulary extension). All three
+/// fields are agent-authored free text, harness-opaque; <see cref="TargetPath"/> is an
+/// optional hint the Hub never validates or enforces.
+/// </summary>
+public sealed record ProposedActionRecord(string Title, string Description, string? TargetPath = null);
 
 /// <summary>
 /// Emits Agent Run Events as NDJSON on stdout (contracts/agent-run-events.md, ADR-008):
@@ -81,13 +102,22 @@ public sealed class RunEventEmitter : IDisposable
     public void EmitAnswerChunk(string text)
         => Emit(new { type = "answer_chunk", taskId = _taskId, timestamp = DateTimeOffset.UtcNow, text });
 
-    public void EmitCompleted(string summary, RunCompletionMetadata? metadata = null)
-        => Emit(BuildTerminalPayload("completed", summary, reason: null, metadata));
+    // T035 (015-lint-board-parity): completed events can now carry a `reason` too — the
+    // remediation-execution mode's not-applicable outcome needs one alongside `summary`
+    // (contracts/remediation-lifecycle-events.md), unlike every prior agent whose
+    // completed events never had one. Defaults to null so every existing call site
+    // (Ingest/Query/Lint's lint-run mode) is unaffected.
+    // T042 (015-lint-board-parity, ADR-018): also accepts an optional `text` — the
+    // message-turn mode's bounded reply, carried on the existing `text` field per
+    // contracts/remediation-lifecycle-events.md "Message-turn mode terminal event" (no
+    // new event field; reused from `answer_chunk`'s `text`). Null for every other mode.
+    public void EmitCompleted(string summary, RunCompletionMetadata? metadata = null, string? reason = null, string? text = null)
+        => Emit(BuildTerminalPayload("completed", summary, reason, metadata, text));
 
     public void EmitFailed(string reason, RunCompletionMetadata? metadata = null)
-        => Emit(BuildTerminalPayload("failed", summary: null, reason, metadata));
+        => Emit(BuildTerminalPayload("failed", summary: null, reason, metadata, text: null));
 
-    private object BuildTerminalPayload(string type, string? summary, string? reason, RunCompletionMetadata? metadata)
+    private object BuildTerminalPayload(string type, string? summary, string? reason, RunCompletionMetadata? metadata, string? text)
         => new
         {
             type,
@@ -95,6 +125,7 @@ public sealed class RunEventEmitter : IDisposable
             timestamp = DateTimeOffset.UtcNow,
             summary,
             reason,
+            text,
             systemPromptSha256 = metadata?.SystemPromptSha256,
             policyPath = metadata?.PolicyPath,
             policyVersion = metadata?.PolicyVersion,
@@ -110,6 +141,17 @@ public sealed class RunEventEmitter : IDisposable
                 turn = d.Turn,
             }).ToList(),
             createdPages = metadata?.CreatedArtifacts,
+            // ADR-018 (015-lint-board-parity): rides the terminal event like
+            // deniedActions/createdPages above; null when the run proposed nothing.
+            proposedActions = metadata?.ProposedActions?.Select(p => new
+            {
+                title = p.Title,
+                description = p.Description,
+                targetPath = p.TargetPath,
+            }).ToList(),
+            // T035 (015-lint-board-parity, ADR-018): remediation-execution mode's
+            // re-verification outcome, null for every other agent/mode.
+            remediationOutcome = metadata?.RemediationOutcome,
         };
 
     private void Emit(object payload)

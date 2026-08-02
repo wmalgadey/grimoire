@@ -12,6 +12,7 @@ using Grimoire.Hub.OperationalState;
 using Microsoft.AspNetCore.SignalR;
 using Grimoire.Hub.QueryConversations;
 using Grimoire.Hub.QueryDispatch;
+using Grimoire.Hub.RemediationTasks;
 using Grimoire.Hub.QuerySubmission;
 using Grimoire.Hub.Realtime;
 using Grimoire.Hub.Runtime.Paths;
@@ -105,15 +106,57 @@ using (var bootstrapLoggerFactory = TelemetryExtensions.CreateBootstrapLoggerFac
     // run record file).
     builder.Services.AddSingleton<FindingsReportStore>(sp => new FindingsReportStore(
         resolvedPaths, logger: sp.GetRequiredService<ILogger<FindingsReportStore>>()));
+    // 015-lint-board-parity T011: lint's own board lifecycle channel, mirroring the
+    // Ingest/Query publisher wiring above (research.md R1 — /hubs/ingest-lifecycle is
+    // never touched, FR-015).
+    builder.Services.AddSingleton<LintLifecyclePublisher>(sp => new LintLifecyclePublisher(
+        sp.GetRequiredService<IHubContext<LintLifecycleHub>>(),
+        sp.GetRequiredService<ILogger<LintLifecyclePublisher>>()));
     builder.Services.AddSingleton<LintRunCoordinator>(sp => new LintRunCoordinator(
         sp.GetRequiredService<IAgentProcessLauncher>(),
         sp.GetRequiredService<FindingsReportStore>(),
         resolvedPaths,
         reviewWindowOptions: sp.GetRequiredService<LintReviewWindowOptions>(),
-        logger: sp.GetRequiredService<ILogger<LintRunCoordinator>>()));
+        logger: sp.GetRequiredService<ILogger<LintRunCoordinator>>(),
+        lifecyclePublisher: sp.GetRequiredService<LintLifecyclePublisher>(),
+        // 015-lint-board-parity T017 (FR-004): unresolved remediation tasks block triggers.
+        stateRepository: sp.GetRequiredService<OperationalStateRepository>(),
+        // 015-lint-board-parity T022 (FR-007): proposal materialization gates completion.
+        remediationRecordStore: sp.GetRequiredService<RemediationTaskRecordStore>(),
+        remediationLifecyclePublisher: sp.GetRequiredService<RemediationLifecyclePublisher>()));
+
+    // 015-lint-board-parity (ADR-018): remediation-task composition, mirroring the Lint/
+    // Query pattern above — record store, lifecycle publisher (T023), read endpoints
+    // (T024), and now (T032/T033) the FIFO execution coordinator and its
+    // authorize/dismiss/withdraw transition endpoints.
+    builder.Services.AddSingleton<RemediationTaskRecordStore>(_ => new RemediationTaskRecordStore(resolvedPaths));
+    builder.Services.AddSingleton<RemediationLifecyclePublisher>(sp => new RemediationLifecyclePublisher(
+        sp.GetRequiredService<IHubContext<RemediationLifecycleHub>>(),
+        sp.GetRequiredService<ILogger<RemediationLifecyclePublisher>>()));
+    builder.Services.AddSingleton<RemediationRunCoordinator>(sp => new RemediationRunCoordinator(
+        sp.GetRequiredService<OperationalStateRepository>(),
+        sp.GetRequiredService<IAgentProcessLauncher>(),
+        sp.GetRequiredService<RemediationLifecyclePublisher>(),
+        sp.GetRequiredService<RemediationTaskRecordStore>(),
+        resolvedPaths,
+        logger: sp.GetRequiredService<ILogger<RemediationRunCoordinator>>()));
+    // 015-lint-board-parity T041/T042 (US5, FR-012): message turns dispatch independently
+    // of execution — not authorization-gated, never touches the task's execution state
+    // machine (ADR-018).
+    builder.Services.AddSingleton<RemediationMessageTurnCoordinator>(sp => new RemediationMessageTurnCoordinator(
+        sp.GetRequiredService<IAgentProcessLauncher>(),
+        sp.GetRequiredService<RemediationLifecyclePublisher>(),
+        sp.GetRequiredService<RemediationTaskRecordStore>(),
+        resolvedPaths,
+        logger: sp.GetRequiredService<ILogger<RemediationMessageTurnCoordinator>>()));
 
     var reconciler = new RestartReconciler(repository);
     await reconciler.ReconcileRunningTasksAsync(contentPaths.TasksDir, contentPaths.LogPath);
+    // T034: Executing remediation rows with no live process are failed the same way,
+    // before RemediationRunCoordinator.InitializeAsync (below, after app.Build()) pauses
+    // the queue for any surviving Authorized rows.
+    await reconciler.ReconcileRemediationTasksAsync(
+        new RemediationTaskRecordStore(resolvedPaths));
 
     if (args.Length > 0 && string.Equals(args[0], "submit-source", StringComparison.OrdinalIgnoreCase))
     {
@@ -141,6 +184,11 @@ var app = builder.Build();
 var coordinator = app.Services.GetRequiredService<IngestRunCoordinator>();
 await coordinator.InitializeAsync();
 
+// 015-lint-board-parity T034: mirrors the ingest rule above — Authorized rows surviving
+// a restart pause the remediation execution queue (own flag) until explicitly resumed.
+var remediationCoordinator = app.Services.GetRequiredService<RemediationRunCoordinator>();
+await remediationCoordinator.InitializeAsync();
+
 app.MapGet("/", () => "Grimoire Hub");
 app.MapHub<IngestLifecycleHub>("/hubs/ingest-lifecycle");
 app.MapGroup("/api/ingest-submissions").MapIngestSubmissionEndpoints();
@@ -148,7 +196,14 @@ app.MapGroup("/api/ingest-queue").MapIngestQueueEndpoints();
 app.MapHub<QueryLifecycleHub>("/hubs/query-lifecycle");
 app.MapGroup("/api/query-conversations").MapQueryConversationEndpoints();
 app.MapGroup("/api/query-turns").MapQueryTurnEndpoints();
+app.MapHub<LintLifecycleHub>("/hubs/lint-lifecycle");
 app.MapGroup("/api/lint-runs").MapLintRunEndpoints();
+// 015-lint-board-parity T012: composite board initial state (contracts/lint-board-api.md).
+app.MapGroup("/api/board").MapBoardEndpoints();
+// 015-lint-board-parity T023/T024: remediation task lifecycle channel + read endpoints
+// (contracts/remediation-lifecycle-events.md "Hub 2", contracts/remediation-task-api.md).
+app.MapHub<RemediationLifecycleHub>("/hubs/remediation-lifecycle");
+app.MapGroup("/api/remediation-tasks").MapRemediationTaskEndpoints();
 app.Run();
 
 static string? ParseOption(string[] args, string option)
@@ -183,4 +238,5 @@ static Dictionary<string, string> PathConfigurationSwitchMappingsFactory() => ne
     ["--findings-dir"] = "Grimoire:Paths:FindingsDir",
     ["--lint-instructions-dir"] = "Grimoire:Paths:LintInstructionsDir",
     ["--lint-agent-worker"] = "Grimoire:Paths:LintAgentWorker",
+    ["--remediation-tasks-dir"] = "Grimoire:Paths:RemediationTasksDir",
 };

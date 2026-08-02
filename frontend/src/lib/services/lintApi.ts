@@ -18,7 +18,11 @@ export class LintApiError extends Error {
 // querySubmissionApi.ts's REASON_MESSAGES pattern).
 const REASON_MESSAGES: Record<string, string> = {
 	lint_run_active:
-		'A lint run is already in progress — wait for it to finish before triggering another.'
+		'A lint run is already in progress — wait for it to finish before triggering another.',
+	// 015-lint-board-parity T018 (FR-004/SC-004, contracts/lint-board-api.md): the second
+	// distinguishable blocked-trigger reason.
+	unresolved_remediation_tasks:
+		'Remediation tasks from the previous lint run are still unresolved — authorize, dismiss, or wait for them to finish before starting a new run.'
 };
 
 async function parseErrorMessage(
