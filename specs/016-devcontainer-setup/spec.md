@@ -8,6 +8,12 @@
 
 **Input**: User description: "erstelle einen devcontainer (https://containers.dev/) für das aktuelle projekt um die entwicklung zu beschleunigen und die abhängigkeiten im system zu reduzieren"
 
+## Clarifications
+
+### Session 2026-08-02
+
+- Q: The spec's Assumptions section says the devcontainer needs "a container runtime (e.g. Docker)," but `.vscode/tasks.json` shows this repo already runs container workloads via Podman (`podman machine start` before any `docker run` task). Which runtime should the devcontainer target? → A: Runtime-agnostic — the devcontainer only requires an OCI-compliant, Docker-API-compatible runtime; Podman is called out as the project's current primary/tested default, matching `.vscode/tasks.json`.
+
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - Onboard without installing toolchains on the host (Priority: P1)
@@ -127,7 +133,10 @@ the container, without that value being present in the image definition or versi
   contributors can install dependencies, check, lint, build, and test the frontend without
   installing them on the host.
 - **FR-004**: The devcontainer environment MUST allow the backend integration test suite
-  (which depends on a container runtime) to run from inside the container itself.
+  (which depends on a container runtime) to run from inside the container itself, using any
+  OCI-compliant, Docker-API-compatible runtime on the host — Podman is the project's
+  current primary/tested runtime (per `.vscode/tasks.json`), and the mechanism MUST NOT
+  assume Docker Desktop is the only supported host runtime.
 - **FR-005**: The devcontainer setup MUST provide a documented mechanism for contributors to
   supply local secrets/credentials (e.g. the values currently placed in `data/.env`) to
   processes running inside the container, without those values being committed to the
@@ -164,9 +173,13 @@ the container, without that value being present in the image definition or versi
 - The devcontainer targets local, editor-driven development (e.g. VS Code Dev Containers,
   or any other containers.dev-compatible tool); updating CI pipelines to reuse the same
   container image is out of scope for this feature.
-- A container runtime (e.g. Docker) is available on the contributor's host machine; the
-  devcontainer automates toolchain provisioning, not the underlying container runtime
-  itself.
+- An OCI-compliant, Docker-API-compatible container runtime is available on the
+  contributor's host machine; the devcontainer automates toolchain provisioning, not the
+  underlying container runtime itself. Podman is the project's current primary/tested
+  runtime (the existing `.vscode/tasks.json` already starts a Podman machine before any
+  `docker`-CLI task), so the devcontainer setup and its documentation MUST be verified
+  against Podman and MUST NOT hardcode Docker Desktop-only assumptions, while remaining
+  compatible with Docker Desktop and other Docker-API-compatible runtimes.
 - The devcontainer is an additional, opt-in onboarding path. It does not replace or
   deprecate the native setup instructions in `CONTRIBUTING.md` — contributors who prefer a
   host-installed toolchain can continue to use it.
