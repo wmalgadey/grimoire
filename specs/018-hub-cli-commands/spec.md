@@ -8,6 +8,43 @@
 
 **Input**: User description: "setze die anforderungen in https://github.com/wmalgadey/grimoire/issues/45 und seine kommentare um" (implement the requirements in GitHub issue #45 and its comments)
 
+## Clarifications
+
+### Session 2026-08-02
+
+- Q: FR-013 currently excludes the interactive query-turn actions from this feature
+  because turn submission is asynchronous (HTTP POST returns "Accepted" with
+  state=running; the answer arrives later via the realtime hub or a follow-up GET).
+  Adding a `query` CLI command means deciding its completion semantics — fire-and-forget
+  submit (matching the other six commands) or block until the turn reaches a terminal
+  state? → A: Block until terminal state — the CLI submits the turn and waits, printing
+  the final answer or failure reason.
+- Q: Blocking until the turn completes conflicts with FR-012's requirement that commands
+  run unattended in scripts/cron with no hangs. What should happen if the turn never
+  reaches a terminal state? → A: Configurable `--timeout` argument — the operator can
+  override a bounded default wait duration; if it elapses first, the CLI reports a
+  timeout and exits non-zero.
+- Q: How should the `query` CLI command handle the conversation id, given the
+  Conversation Record is created lazily on a conversation's first turn (no separate
+  "create conversation" action exists)? → A: Optional; if `--conversation-id` is
+  omitted, the CLI generates a new conversation id itself and prints it as part of the
+  result.
+- Q: While `query` is blocking on a turn, the operator may press Ctrl-C (or a script may
+  kill the process) before the turn reaches a terminal state. Should the CLI call the
+  existing interrupt action server-side before exiting? → A: Yes — on cancellation, the
+  CLI calls the existing interrupt action for that turn before exiting non-zero, rather
+  than leaving the turn orphaned server-side.
+- Q: FR-015 requires the `query` command to default to a "fixed duration" wait timeout
+  when `--timeout` is omitted, but no value is specified. What should the default be? →
+  A: 5 minutes — realistic for a full agent turn while still bounding unattended
+  scripts; operators needing longer pass `--timeout` explicitly.
+- Q: FR-006 mandates a single human-readable result line per command, but FR-017
+  requires `query` to print the turn's answer text, which is typically multi-line. How
+  should `query`'s successful output be shaped? → A: Header line + answer body — the
+  first line carries conversation id, turn id, and terminal state (satisfying the
+  FR-006 scriptable-result-line pattern); the full answer text follows verbatim on
+  subsequent lines.
+
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - Trigger a lint run from a script or terminal (Priority: P1)
@@ -119,6 +156,54 @@ commands in this feature.
 
 ---
 
+### User Story 4 - Ask the wiki a question from the command line (Priority: P2)
+
+An operator needs a one-shot answer to a question about the wiki's content — for example
+while triaging an incident over SSH, or scripting a scheduled report — without opening the
+web UI and without needing a second command to fetch the answer once it's ready.
+
+**Why this priority**: Query is the wiki's primary read-facing interaction, but its
+underlying turn submission is asynchronous by design, so it carries more implementation
+weight (waiting, timeout, cancellation) than the other six commands; it is valuable
+alongside them but not the simplest entry point into this feature.
+
+**Independent Test**: Can be fully tested by running the query command with a prompt
+against a running Hub data directory — with and without an existing conversation id —
+and observing that a turn is submitted, the CLI waits for it to reach a terminal state,
+and the final answer (or failure/timeout reason) is printed with the correct exit status,
+independent of the other commands in this feature.
+
+**Acceptance Scenarios**:
+
+1. **Given** no `--conversation-id` is supplied, **When** the operator runs the query
+   command with a prompt, **Then** the CLI generates a new conversation id, submits the
+   prompt as the first turn of that conversation, waits for the turn to complete, and
+   prints the conversation id, turn id, and answer, exiting successfully.
+2. **Given** an existing conversation id with no active turn, **When** the operator runs
+   the query command with that conversation id and a prompt, **Then** the CLI submits the
+   prompt as the next turn of that conversation, waits for it to complete, and prints the
+   turn id and answer, exiting successfully.
+3. **Given** the turn reaches a terminal state before the wait times out, **When** that
+   state is "failed", **Then** the CLI prints the recorded failure reason and exits with a
+   non-zero status.
+4. **Given** the turn has not reached a terminal state within the effective timeout
+   (the default, or the value passed via `--timeout`), **When** the wait elapses, **Then**
+   the CLI prints a message distinct from the failure and conflict messages identifying
+   that the wait timed out, exits with a non-zero status, and leaves the turn running
+   server-side.
+5. **Given** the CLI process receives an interrupt signal (e.g. Ctrl-C) while waiting,
+   **When** the signal is received, **Then** the CLI calls the existing interrupt action
+   for that turn before exiting, and exits with a non-zero status.
+6. **Given** a conversation already has an active turn, **When** the operator runs the
+   query command against that conversation id, **Then** the CLI prints a message
+   identifying that the conversation is already active, submits no new turn, and exits
+   with a non-zero status.
+7. **Given** the operator omits the required prompt argument or supplies an empty prompt,
+   **When** the operator runs the query command, **Then** the CLI prints a usage error and
+   exits with a non-zero status without submitting a turn.
+
+---
+
 ### Edge Cases
 
 - What happens when a required `--task-id` argument is missing, empty, or malformed? The
@@ -137,6 +222,15 @@ commands in this feature.
 - What happens when `ingest-resume` is run while the queue is not paused (already running
   normally)? The action is idempotent and reports the current queued count rather than
   failing.
+- What happens when the query command's wait exceeds its timeout? The CLI reports a
+  timeout distinct from a failure or conflict message, exits non-zero, and leaves the turn
+  running server-side rather than cancelling it (User Story 4, Scenario 4).
+- What happens when the query command's CLI process is interrupted while waiting? The CLI
+  calls the existing interrupt action for that turn before exiting, rather than leaving it
+  orphaned server-side (User Story 4, Scenario 5).
+- What happens when a conversation the query command targets already has an active turn?
+  The command reports the conflict and starts no new turn (User Story 4, Scenario 6),
+  consistent with the state-conflict pattern used elsewhere in this feature.
 
 ## Requirements *(mandatory)*
 
@@ -161,7 +255,8 @@ commands in this feature.
 - **FR-006**: Each command MUST print a single human-readable result line to standard
   output summarizing the outcome (at minimum: task or run identifier and resulting state,
   where applicable) and MUST exit with a status code that distinguishes success from
-  failure, so the command is usable unattended in scripts.
+  failure, so the command is usable unattended in scripts. For `query`, this result line
+  is the first line of output; the answer body follows it per FR-017.
 - **FR-007**: When a command fails due to a state conflict (lint run already active,
   unresolved remediation tasks blocking a new run, remediation task not in the state the
   action requires, ingest task not currently queued), the CLI MUST print a message that
@@ -184,9 +279,36 @@ commands in this feature.
 - **FR-012**: All commands introduced by this feature MUST run non-interactively (no
   prompts for confirmation or missing input), so they are usable from scripts, cron jobs,
   and other unattended automation.
-- **FR-013**: The interactive/streaming query actions (submitting a conversation turn,
-  interrupting a turn) are explicitly out of scope for this feature; no CLI command is
-  introduced for them.
+- **FR-013**: The Hub CLI MUST provide a `query` command taking a required prompt argument
+  and an optional conversation-id argument, equivalent in effect to the existing turn-
+  submission HTTP action; if the conversation-id is omitted, the CLI MUST generate a new
+  conversation id itself (no separate "create conversation" action exists to delegate to)
+  and include it in the printed result.
+- **FR-014**: The `query` command MUST submit the turn via the same coordinator already
+  used by the HTTP turn-submission endpoint, then wait for the turn to reach a terminal
+  state (completed, failed, or interrupted) before printing a result line and exiting,
+  subject to the timeout in FR-015. No wiki-query or answer-generation logic may be
+  duplicated or re-implemented along the CLI path (per FR-005).
+- **FR-015**: The `query` command MUST accept an optional timeout argument bounding how
+  long it waits for the turn to reach a terminal state, defaulting to 5 minutes when
+  omitted. If the timeout elapses before a terminal state is reached, the CLI MUST
+  print a message distinct from the failure and conflict messages identifying that the
+  wait timed out, exit with a non-zero status, and MUST NOT cancel the turn server-side.
+- **FR-016**: If the CLI process receives an interrupt signal (e.g. Ctrl-C) while the
+  `query` command is waiting for a terminal state, the CLI MUST call the same interrupt
+  action already used by the HTTP interrupt endpoint for that turn before exiting, and
+  exit with a non-zero status.
+- **FR-017**: On success, the `query` command MUST print a header result line containing
+  the conversation id, turn id, and terminal state to standard output, followed by the
+  turn's answer text verbatim (preserving its line breaks) on the subsequent lines, and
+  exit successfully. On failure
+  (concurrency limit reached, conversation already active, conversation record
+  unreadable, or the turn itself reaching a "failed" state), the CLI MUST print a message
+  identifying the specific reason, consistent with the FR-007/FR-008 conflict/not-found
+  conventions used by the feature's other commands, and exit with a non-zero status.
+- **FR-018**: When the required prompt argument is missing or empty, the `query` command
+  MUST reject the invocation with a usage error before submitting any turn, taking no
+  side effect and exiting with a non-zero status (per FR-009).
 
 ### Key Entities
 
@@ -201,32 +323,49 @@ commands in this feature.
 - **Ingest Task**: An existing task tracking a wiki-source ingest; this feature adds a way
   to re-arm a single queued task or resume the queue as a whole from the CLI, without
   changing the task's existing lifecycle states.
+- **Query Turn**: An existing unit of a query conversation (one prompt, one answer),
+  carrying a lifecycle state (running / completed / failed / interrupted per the existing
+  query-dispatch workflow). This feature adds a CLI-driven way to submit one and wait for
+  its terminal state; it introduces no new turn states.
+- **Conversation**: An existing sequence of query turns identified by a conversation id
+  and persisted as a Conversation Record (ADR-014). This feature adds a CLI-driven way to
+  either target an existing conversation id or have the CLI generate a new one; it
+  introduces no new conversation data beyond what turn submission already produces.
 
 ## Success Criteria *(mandatory)*
 
 ### Measurable Outcomes
 
-- **SC-001**: 100% of the six commands introduced by this feature can be run to
+- **SC-001**: 100% of the seven commands introduced by this feature can be run to
   completion from a terminal or script against a Hub data directory, without a running
   web UI or any hand-rolled HTTP call.
 - **SC-002**: 100% of invocations that fail due to a missing/malformed argument, an
   unknown task or run id, or a state conflict produce a message identifying the specific
   reason (not a generic failure) and a non-zero exit status.
 - **SC-003**: 100% of invocations that succeed produce a printed result line containing
-  the affected task/run identifier and resulting state, and a zero exit status.
-- **SC-004**: 100% of the six commands are listed in `--help` output with their purpose
+  the affected task/run/conversation identifier and resulting state (or answer, for
+  `query`), and a zero exit status.
+- **SC-004**: 100% of the seven commands are listed in `--help` output with their purpose
   and required arguments, discoverable without consulting source code or the HTTP API.
-- **SC-005**: For every one of the six actions, the state change produced via its CLI
+- **SC-005**: For every one of the seven actions, the state change produced via its CLI
   command is indistinguishable from the state change produced via its existing HTTP
-  endpoint — 100% parity, no divergent behavior between the two entry points.
+  endpoint(s) — 100% parity, no divergent behavior between the two entry points.
+- **SC-006**: 100% of `query` invocations that exceed their wait timeout or are cancelled
+  by an interrupt signal produce a message distinguishing "timed out" from "cancelled"
+  from every other failure/conflict message, with the correct corresponding server-side
+  effect (no cancellation on timeout; interrupt requested on cancellation).
 
 ## Assumptions
 
-- The six commands in scope are exactly those the motivating issue identifies as
-  "script/ops-friendly one-shot actions": `lint-run`, `ingest-retrigger`,
+- The seven commands in scope are the six the motivating issue identifies as
+  "script/ops-friendly one-shot actions" — `lint-run`, `ingest-retrigger`,
   `ingest-resume`, `remediation-authorize`, `remediation-dismiss`,
-  `remediation-withdraw`. The streaming/interactive query-turn and query-interrupt
-  actions are out of scope, as the issue itself suggests.
+  `remediation-withdraw` — plus `query`, added during clarification to cover the
+  turn-submission action as a blocking, wait-for-completion command (see
+  Clarifications). Turn status lookup and turn interrupt remain out of scope as
+  standalone CLI commands: interrupt is invoked only internally by `query` on
+  cancellation (FR-016), and no separate `query-status`/`query-interrupt` command is
+  introduced by this feature.
 - Command and argument names follow the literal names suggested in the issue's table
   (e.g. `ingest-retrigger --task-id <id>`) unless refined during planning; this is a
   naming default, not a scope decision.
@@ -234,11 +373,12 @@ commands in this feature.
   `submit-source` command's convention (`Submitted ingest task: {taskId}`) and with
   feature `017-hub-help-usage`'s established CLI conventions — no JSON or other
   structured output format is introduced by this feature.
-- None of the six underlying HTTP endpoints currently enforce authentication or
-  credential checks; this feature does not add any. CLI commands run with the same trust
-  level as the operator already has when running `submit-source` or any `--*-dir`/
-  `--*-file` switch today — whoever can run the Hub binary can run these commands.
-  Access control, if ever needed, is a separate concern from this feature.
+- None of the underlying HTTP endpoints this feature drives (including turn submission
+  and turn interrupt) currently enforce authentication or credential checks; this feature
+  does not add any. CLI commands run with the same trust level as the operator already
+  has when running `submit-source` or any `--*-dir`/`--*-file` switch today — whoever can
+  run the Hub binary can run these commands. Access control, if ever needed, is a
+  separate concern from this feature.
 - How the growing command surface is parsed and dispatched internally (continuing the
   existing hand-rolled per-flag scanning vs. adopting a CLI framework, as raised in the
   issue's addendum comment) is a technical/architectural decision left to the planning
