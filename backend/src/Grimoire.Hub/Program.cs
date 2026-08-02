@@ -19,6 +19,18 @@ using Grimoire.Hub.Runtime.Paths;
 using Grimoire.Hub.IngestTaskArtifact;
 using Grimoire.Hub;
 
+// 017-hub-help-usage (FR-001–FR-005): --help/-h must win over every other argument and
+// exit before ANY startup side effect — including WebApplication.CreateBuilder(args),
+// which itself doesn't fail on a bare invocation, but nothing after it (path resolution,
+// secrets loading, SQLite init) may run for a help request. Checked first, ahead of
+// everything else in this file, so --help works even with no data/ directory present.
+if (args.Any(a => string.Equals(a, "--help", StringComparison.OrdinalIgnoreCase)
+    || string.Equals(a, "-h", StringComparison.OrdinalIgnoreCase)))
+{
+    Console.WriteLine(BuildUsageText());
+    return;
+}
+
 var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddHubTelemetry();
 builder.Services.AddSignalR();
@@ -240,3 +252,72 @@ static Dictionary<string, string> PathConfigurationSwitchMappingsFactory() => ne
     ["--lint-agent-worker"] = "Grimoire:Paths:LintAgentWorker",
     ["--remediation-tasks-dir"] = "Grimoire:Paths:RemediationTasksDir",
 };
+
+// 017-hub-help-usage (FR-002, ADR-009): a short human-readable description per switch,
+// keyed by the exact same switch strings as PathConfigurationSwitchMappingsFactory()
+// above — kept next to it so the two are updated together. Switch NAMES themselves are
+// never hand-duplicated: BuildUsageText() below iterates the factory's own keys, so a
+// switch added there without a matching description here fails fast with a clear
+// message instead of silently omitting it from --help output.
+static Dictionary<string, string> PathConfigurationSwitchDescriptions() => new(StringComparer.OrdinalIgnoreCase)
+{
+    ["--base-dir"] = "Base directory all other relative Grimoire paths resolve against.",
+    ["--data-dir"] = "Directory holding runtime data (state DB, secrets, agent instructions).",
+    ["--content-root"] = "Root of the wiki content tree (pages, index, log).",
+    ["--raw-dir"] = "Directory for raw/original source artifacts captured on ingest.",
+    ["--state-db"] = "Path to the SQLite operational-state database file.",
+    ["--secrets-file"] = "Path to the local secrets/.env file (e.g. provider API keys).",
+    ["--instructions-dir"] = "Directory containing the Ingest agent's instruction files.",
+    ["--agent-worker"] = "Path to the Ingest agent worker executable/DLL.",
+    ["--query-instructions-dir"] = "Directory containing the Query agent's instruction files.",
+    ["--conversations-dir"] = "Directory where Query conversation records are stored.",
+    ["--query-agent-worker"] = "Path to the Query agent worker executable/DLL.",
+    ["--write-locks-dir"] = "Directory used for cross-process write-coordination locks.",
+    ["--findings-dir"] = "Directory where Lint findings reports are stored.",
+    ["--lint-instructions-dir"] = "Directory containing the Lint agent's instruction files.",
+    ["--lint-agent-worker"] = "Path to the Lint agent worker executable/DLL.",
+    ["--remediation-tasks-dir"] = "Directory where remediation task records are stored.",
+};
+
+// 017-hub-help-usage (FR-001–FR-005): plain-text usage message printed for --help/-h.
+// Command/switch NAMES are sourced from PathConfigurationSwitchMappingsFactory() (the
+// single source of truth for ADR-009's switch vocabulary, also used to wire
+// AddCommandLine above) so this text can never drift from what the Hub actually accepts.
+static string BuildUsageText()
+{
+    var descriptions = PathConfigurationSwitchDescriptions();
+    var lines = new List<string>
+    {
+        "Grimoire Hub — LLM-Wiki maintenance harness",
+        string.Empty,
+        "Usage:",
+        "  Grimoire.Hub [--help|-h]",
+        "  Grimoire.Hub [path options...]",
+        "  Grimoire.Hub submit-source --path <path> --source-kind <kind> [path options...]",
+        string.Empty,
+        "Commands:",
+        "  submit-source          Submit a source document for ingest into the wiki.",
+        "    --path                Path to the source file to submit (required).",
+        "    --source-kind         Kind of source: 'file' (default) or 'pasted_text' (read from stdin).",
+        string.Empty,
+        "Options:",
+        "  --help, -h              Show this usage message and exit.",
+    };
+
+    var switchMappings = PathConfigurationSwitchMappingsFactory();
+    // Computed (not hardcoded) so a longer switch name added later can never collide
+    // with its own description column — the bug a fixed width would silently reproduce.
+    var column = switchMappings.Keys.Max(name => name.Length) + 2;
+
+    foreach (var (switchName, configKey) in switchMappings)
+    {
+        var description = descriptions.TryGetValue(switchName, out var value)
+            ? value
+            : throw new InvalidOperationException(
+                $"Missing --help description for switch '{switchName}' (configuration key '{configKey}'). " +
+                "Add an entry to PathConfigurationSwitchDescriptions() in Program.cs.");
+        lines.Add($"  {switchName.PadRight(column)}{description}");
+    }
+
+    return string.Join(Environment.NewLine, lines);
+}
