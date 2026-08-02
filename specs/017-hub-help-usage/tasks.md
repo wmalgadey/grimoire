@@ -195,3 +195,26 @@ short-circuited below rather than omitted silently.
   ordering: structural test verified RED → feature code → GREEN).
 - Avoid: adding options beyond what `Program.cs` already wires up today (spec.md
   Assumptions — this feature only adds discoverability, not new switches).
+
+---
+
+## Phase 4: Convergence
+
+- [x] T008 Remove the pluralized `Commands:` heading in `BuildUsageText()`
+      (`backend/src/Grimoire.Hub/Program.cs`) for the single `submit-source` entry —
+      fold it into the `Usage:` block or relabel singular — since the Hub exposes
+      exactly one CLI command today and the current framing implies more exist per
+      FR-005 (partial)
+
+---
+
+## Phase 5: Convergence
+
+- [x] T009 Merge `PathConfigurationSwitchMappingsFactory()` and
+      `PathConfigurationSwitchDescriptions()` (`backend/src/Grimoire.Hub/Program.cs:236-280`)
+      into a single collection (e.g. a list of `(Switch, ConfigKey, Description)` records)
+      that is the sole source of truth for the ADR-009 switch vocabulary — derive both
+      `AddCommandLine`'s switch-mapping dictionary and `BuildUsageText()`'s output from
+      it, and remove the now-unnecessary runtime fail-fast throw in `BuildUsageText()`
+      since drift becomes structurally impossible rather than merely caught at runtime
+      per research.md "single source of truth" decision (partial)
