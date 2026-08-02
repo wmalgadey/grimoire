@@ -31,7 +31,17 @@ if (args.Any(a => string.Equals(a, "--help", StringComparison.OrdinalIgnoreCase)
     return;
 }
 
-var builder = WebApplication.CreateBuilder(args);
+// WebApplicationBuilder defaults ContentRootPath to the process working directory,
+// which the "prod"/"dev"/"proxy" launch profiles deliberately set to the repo root (so
+// GrimoirePathResolver's cwd-based BaseDir default, a separate lookup below, resolves
+// correctly). That leaves appsettings.{Environment}.json looked up at the repo root
+// instead of next to Grimoire.Hub.dll, where it actually lives — pin it explicitly so
+// environment-specific settings load regardless of the launching cwd.
+var builder = WebApplication.CreateBuilder(new WebApplicationOptions
+{
+    Args = args,
+    ContentRootPath = GrimoirePathResolver.ProcessBaseDirectory,
+});
 builder.Services.AddHubTelemetry();
 builder.Services.AddSignalR();
 builder.Services.AddHttpClient<IUrlContentFetcher, UrlContentFetcher>();

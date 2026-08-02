@@ -39,6 +39,16 @@ public static class GrimoirePathResolver
     /// </summary>
     public static string CurrentWorkingDirectory => Directory.GetCurrentDirectory();
 
+    /// <summary>
+    /// The only sanctioned read of the process's install/build-output directory (017-
+    /// hub-help-usage). Program.cs uses this to pin WebApplicationBuilder's
+    /// ContentRootPath, decoupling appsettings.{Environment}.json lookup from the
+    /// launch cwd that <see cref="CurrentWorkingDirectory"/>-based BaseDir resolution
+    /// depends on — everything else that needs it goes through this property instead of
+    /// calling <see cref="AppContext.BaseDirectory"/> directly.
+    /// </summary>
+    public static string ProcessBaseDirectory => AppContext.BaseDirectory;
+
     public static ResolvedGrimoirePaths Resolve(GrimoirePathOptions options, IConfiguration configuration, ILogger logger)
     {
         var configRoot = configuration as IConfigurationRoot
