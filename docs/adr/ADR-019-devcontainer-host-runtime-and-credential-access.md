@@ -81,11 +81,17 @@ Chosen option: **Option 1.**
   no change to which process (Hub, spawning Ingest per ADR-004) is allowed to read
   it. `data/.env` stays git-ignored exactly as it is today and remains the guaranteed
   source of truth on every devcontainer-capable tool. `devcontainer.json`
-  additionally declares the known `.env-example` variable names via the Dev Container
-  Specification's metadata-only `secrets` property, so tools that support it (e.g.
-  VS Code Dev Containers, GitHub Codespaces) can prompt the contributor or wire a
-  secret store — this is additive convenience, not a replacement for `data/.env`.
-  The devcontainer configuration files (`devcontainer.json`, `Dockerfile`) MUST NOT
+  additionally declares only the credential-shaped `.env-example` variable names
+  (`ANTHROPIC_AUTH_TOKEN`, `NVIDIA_API_KEY`, `GRIMOIRE_EVAL_PROVIDER_API_KEY` — not
+  config values like `GRIMOIRE_INGEST_MODEL`) via the Dev Container Specification's
+  metadata-only `secrets` property, so tools that support it (currently GitHub
+  Codespaces; VS Code Dev Containers and the bare CLI silently ignore it) can prompt
+  the contributor or wire a secret store — this is additive convenience, not a
+  replacement for `data/.env`. Third-party secret-manager Features (Infisical,
+  1Password) were considered and rejected: both require a real external
+  account/server, which is the "unapproved infrastructure" FR-008 and the
+  constitution rule out here. The devcontainer configuration files
+  (`devcontainer.json`, `Dockerfile`) MUST NOT
   contain literal credential values, and MUST NOT declare `containerEnv` entries
   that hardcode secret values (only non-secret defaults, e.g. tool version pins, are
   permitted there).
@@ -112,6 +118,13 @@ Chosen option: **Option 1.**
   virtualization overhead — Testcontainers has no requirement to be isolated from
   the host runtime, and DinD would make the already-configured Podman machine
   irrelevant to the devcontainer.
+- Consequential change to an existing file: `.vscode/tasks.json`'s
+  `start: podman machine` task manages a *host-level* VM and cannot meaningfully run
+  from inside the devcontainer (the `podman` binary manages the machine the
+  devcontainer itself already depends on being up before it can build). Its
+  `dependsOn` chain (`start: aspire-dashboard` → `start: podman machine`) is guarded
+  to no-op when `$REMOTE_CONTAINERS`/`$CODESPACES` is set, so the task remains
+  correct both on the host and inside the devcontainer (see `research.md` R7).
 
 ## Structural Enforcement (Constitution III)
 

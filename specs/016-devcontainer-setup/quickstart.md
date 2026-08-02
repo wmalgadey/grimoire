@@ -8,6 +8,13 @@ a devcontainer-capable editor (e.g. VS Code with the Dev Containers extension) i
 installed. Installing those two things is the only host-level prerequisite this
 feature does not remove — see spec.md Assumptions.
 
+If your host runtime is a Podman machine, the devcontainer reaches it through the
+same Docker-API-compatible socket your shell's `docker`/`podman` CLI already uses
+(the default `/var/run/docker.sock` path, or whatever `DOCKER_HOST` you have set —
+both are forwarded into the container automatically). If neither resolves to a
+running socket, start the machine first (`podman machine start`, same as the
+existing `.vscode/tasks.json` step) before opening the devcontainer.
+
 ## 1. Open the repository in the devcontainer (validates SC-001)
 
 1. Start timing.

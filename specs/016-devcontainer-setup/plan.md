@@ -60,6 +60,12 @@ image pull/build time; no runtime latency targets apply, this is dev tooling).
 cloud infrastructure (FR-008); native host-installed-toolchain setup in
 `CONTRIBUTING.md` must remain valid (FR-007).
 
+**Known out-of-scope limitation**: `.vscode/launch.json`'s `prod` configuration
+hardcodes a personal, host-absolute `--content-root` path outside the repo checkout;
+it cannot be made to work inside the devcontainer without either baking one
+contributor's machine layout into shared config (rejected) or leaving `prod`
+scoped as host-only (research.md R7). This plan does not change `prod`'s behavior.
+
 **Scale/Scope**: A single devcontainer definition for the whole repository (backend +
 frontend in one container), targeting individual contributor machines. CI reuse of the
 same image is explicitly out of scope (see spec Assumptions).
@@ -176,8 +182,10 @@ for.
 ### Source Code (repository root)
 
 **Structure Decision**: New files live under a single new `.devcontainer/` directory
-at the repo root, alongside a documentation update and a new CI workflow file — no
-changes to existing `backend/` or `frontend/` source layout.
+at the repo root, alongside a documentation update, a new CI workflow file, and one
+targeted fix to an existing VS Code task that cannot run correctly from inside the
+devcontainer (research.md R7) — no changes to existing `backend/` or `frontend/`
+source layout.
 
 ```text
 .devcontainer/
@@ -197,6 +205,11 @@ CONTRIBUTING.md             # Updated: devcontainer path documented alongside th
 
 docs/adr/
 └── ADR-019-devcontainer-host-runtime-and-credential-access.md   # New, accepted
+
+.vscode/tasks.json          # Updated: guard `start: podman machine` to no-op when
+                             # $REMOTE_CONTAINERS/$CODESPACES is set (research.md R7) —
+                             # `.vscode/launch.json` needs no change (coreclr debug
+                             # works unmodified inside a devcontainer)
 ```
 
 ## Complexity Tracking

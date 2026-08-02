@@ -21,6 +21,32 @@
   - *Hardcoded `/var/run/docker.sock` bind mount only* — rejected: silently assumes
     Docker Desktop, contradicting the spec's clarified runtime-agnostic /
     Podman-primary requirement.
+  - *Docker Compose-based devcontainer* (`dockerComposeFile` + a sidecar service) —
+    considered specifically for reaching the host runtime, not just for the Aspire
+    Dashboard (see R6). Rejected for this concern too: Compose only helps with
+    *statically declared* sidecar services; Testcontainers dials the runtime
+    directly per test to spin up ad-hoc containers, which a Compose sidecar cannot
+    provide — a Compose-based devcontainer would still need `docker-outside-of-docker`
+    (or an equivalent socket mount) bolted on for that, so Compose adds a second
+    moving part without removing the first.
+- **Confirmed against independent research**: Microsoft's own (now-archived, moved to
+  aspire.dev) guidance for devcontainer + Aspire/dashboard scenarios recommends
+  Docker-outside-of-Docker over Docker-in-Docker for exactly this reason ("DinD
+  incurs performance overhead compared to native Docker; consider DooD"), and treats
+  Compose as relevant only for external backend dependencies (e.g. Redis/Postgres in
+  Dapr scenarios), not for host-runtime reachability itself. This independently
+  validates the DooD choice.
+- **macOS Podman-socket nuance**: `docker-outside-of-docker` bind-mounts the host's
+  `/var/run/docker.sock` by default. On this project's actual host setup (Podman on
+  macOS via `podman machine`), that path resolves correctly only if the machine's
+  Docker-API-compatible socket is already symlinked/exposed there (e.g. Podman
+  Desktop's "Docker Compatibility" setting, or a rootful default machine) — the same
+  precondition the existing `.vscode/tasks.json` `docker` CLI calls already rely on
+  today. `devcontainer.json` additionally forwards `DOCKER_HOST` from the host via
+  `remoteEnv: { "DOCKER_HOST": "${localEnv:DOCKER_HOST}" }` as a fallback/override
+  for contributors whose Podman socket lives elsewhere, so the default-path
+  assumption is not a hard requirement. Documented as a devcontainer prerequisite in
+  `quickstart.md` rather than silently assumed.
 - **Recorded in**: `docs/adr/ADR-019-devcontainer-host-runtime-and-credential-access.md`
 
 ## R2: Credential delivery (`ANTHROPIC_AUTH_TOKEN` and related `.env-example` vars)
@@ -35,16 +61,29 @@
   `.devcontainer`-local env file, or baking values into `containerEnv`) would
   duplicate and potentially diverge from that existing contract.
 - **Complementary mechanism — `devcontainer.json` `secrets` property**: The Dev
-  Container Specification defines a `secrets` property that is metadata-only — it
-  declares which secret *names* a container expects (e.g. `ANTHROPIC_AUTH_TOKEN`)
-  without storing values in `devcontainer.json`. Supporting tools (VS Code Dev
-  Containers extension, GitHub Codespaces) can use this declaration to prompt the
-  contributor for a value or wire it from a secret store, applying it similarly to
-  `remoteEnv`. `devcontainer.json` declares the known `.env-example` variable names
-  via `secrets` so tools that support it get a guided experience; `data/.env`
-  (mounted with the workspace, per ADR-009) remains the actual source of truth every
-  tool falls back to, so contributors on tooling without `secrets` support are
-  unaffected. This is additive, not a replacement for the `data/.env` mount.
+  Container Specification's declarative `secrets` property is metadata-only —
+  `{"NAME": {"description": "..."}}`, no values — and is distinct from the
+  `devcontainer` CLI's separate `--secrets-file` flag (also value-free by design;
+  `secrets-support.md` states outright secrets don't belong in `devcontainer.json`).
+  Today, only GitHub Codespaces actively consumes the declarative property (prompting
+  for a "recommended secret" by name at codespace-creation time); the VS Code Dev
+  Containers extension and the bare `devcontainer` CLI ignore unknown keys silently —
+  additive with zero risk on tools that don't support it. Only the credential-shaped
+  `.env-example` variables are declared (config values like `GRIMOIRE_INGEST_MODEL`
+  are not secrets and are omitted):
+
+  ```jsonc
+  "secrets": {
+    "ANTHROPIC_AUTH_TOKEN": { "description": "Anthropic API token for the Ingest agent (data/.env)" },
+    "NVIDIA_API_KEY": { "description": "NVIDIA NIM key for eval runs against the LiteLLM proxy (data/.env)" },
+    "GRIMOIRE_EVAL_PROVIDER_API_KEY": { "description": "Eval-provider API key, gated behind GRIMOIRE_EVAL=1 (data/.env)" }
+  }
+  ```
+
+  `data/.env` (mounted with the workspace, per ADR-009) remains the actual source of
+  truth every tool falls back to, so contributors on tooling without `secrets`
+  support are unaffected. This is additive, not a replacement for the `data/.env`
+  mount.
 - **Alternatives considered**:
   - *Bake a `.devcontainer/.env` the contributor edits post-build* — rejected:
     creates a second, easy-to-forget secrets location instead of reusing
@@ -55,6 +94,17 @@
     `secrets` is optional metadata support varies by tool (not all devcontainer CLIs
     implement it), so it cannot be the only mechanism; `data/.env` must remain the
     guaranteed fallback.
+  - *`remoteEnv`/`${localEnv:...}` passthrough of the credential values themselves*
+    — rejected: would inject secrets into the whole container/VS Code Server process
+    environment, duplicating and bypassing the file-scoped loader
+    (`LocalSecretsLoader`, `backend/src/Grimoire.Hub/AgentDispatch/Adapters/AgentProcess/`)
+    that ADR-004 deliberately scopes to the Ingest child process only, for no
+    functional gain.
+  - *Third-party secret-manager Features* (e.g. an Infisical or 1Password
+    devcontainer Feature) — rejected: both require a real external account/server
+    (an Infisical project, a 1Password Connect server), which is exactly the
+    "unapproved infrastructure" the constitution and FR-008 rule out for a project
+    that already has a working single-file local-secrets contract with one consumer.
 - **Recorded in**: `docs/adr/ADR-019-devcontainer-host-runtime-and-credential-access.md`
 
 ## R6: Aspire Dashboard container — dedicated devcontainer Feature?
@@ -130,3 +180,47 @@
 - **Alternatives considered**: Relying on manual periodic testing — rejected: not
   deterministic, not CI-enforced, violates Constitution IV ("conventions not
   enforced by CI/CD do not exist").
+
+## R7: `.vscode/tasks.json` / `launch.json` compatibility with the devcontainer
+
+VS Code executes `.vscode/tasks.json` tasks *inside* the active workspace context —
+when a contributor is attached to the devcontainer, tasks run inside the container,
+not on the host. Auditing the existing tasks/launch configs against that surfaced one
+real incompatibility and one pre-existing limitation, neither hypothetical:
+
+- **`start: podman machine` is host-only and must not run inside the container.**
+  Today, `start: aspire-dashboard` `dependsOn` `start: podman machine`, whose command
+  (`podman machine list ... || podman machine start`) manages a *host-level* VM — an
+  operation that is meaningless (and whose `podman` binary is not installed) from
+  inside the devcontainer. By the time the devcontainer itself can build, the host
+  runtime the devcontainer depends on must already be running, so the task's job is
+  already done in that context; running it again inside the container would simply
+  fail. **Decision**: guard the task's command to no-op when running inside a
+  devcontainer/Codespace, detected via the standard `REMOTE_CONTAINERS` (Dev
+  Containers) / `CODESPACES` environment variables VS Code Server sets:
+  `command: "[ -n \"$REMOTE_CONTAINERS$CODESPACES\" ] || (podman machine list --format '{{.Running}}' | grep -q true || podman machine start)"`.
+  This keeps the task's current host behavior identical for contributors not using
+  the devcontainer, while making it a safe no-op inside one. This is a proposed
+  change to an existing repo file (`.vscode/tasks.json`), in scope for this feature
+  per FR-007's "onboarding path" mandate and the user's explicit request to review
+  these files.
+- **`start: aspire-dashboard`'s own `docker run` needs no change.** It already
+  becomes correct inside the devcontainer once `docker-outside-of-docker` forwards
+  the socket (R1) — no edit needed to this task itself.
+- **`launch.json`'s `coreclr` debug type works unmodified inside a devcontainer** —
+  this is a standard, well-supported VS Code Dev Containers pattern (the C# Dev Kit
+  debug adapter runs inside the container alongside VS Code Server); no changes
+  needed to the `dev`/`proxy`/`prod` configurations' `type`, `program`, or `args`.
+- **Pre-existing limitation, not something this feature should silently fix**: the
+  `prod` launch configuration's `--content-root` argument hardcodes a personal,
+  host-absolute path (`/Volumes/Daten/parainoid/llm-wiki`) outside the repository
+  checkout. This path cannot be reachable inside the devcontainer's filesystem
+  (nothing bind-mounts it), and hardcoding a bind mount for one contributor's
+  personal directory into the shared, version-controlled `devcontainer.json` would
+  leak personal machine layout into the repo for everyone else. **Decision**: flag
+  this to the feature's author rather than silently patch it — the `prod` launch
+  profile is scoped as host-only / not usable from inside the devcontainer, which is
+  a reasonable boundary (testing against a real external content root is arguably
+  out of scope for a *contributor onboarding* devcontainer regardless). No task
+  generated for this; documented here and in the completion report for a human
+  decision.
