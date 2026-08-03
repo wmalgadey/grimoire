@@ -14,7 +14,7 @@ namespace Grimoire.AgentEvals;
 /// endpoint yields an actionable connectivity outcome with nothing stored (successor of
 /// 007's live-connectivity test; the CLI maps this to exit 2) — never a judgment score.
 /// </summary>
-[Collection("EvalRunnerProcessTests")]
+[Trait("Tier", "Fast")]
 public class CaptureHygieneTests : IDisposable
 {
     private static readonly string[] ProviderEnvKeys =

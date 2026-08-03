@@ -10,6 +10,7 @@ namespace Grimoire.AgentEvals;
 /// scorer registration) is otherwise unexercised until the Phase 6 capture/replay task
 /// (T046/T047), per T017/T018's established deferral.
 /// </summary>
+[Trait("Tier", "Fast")]
 public class LintDeterministicScorersTests
 {
     [Fact]

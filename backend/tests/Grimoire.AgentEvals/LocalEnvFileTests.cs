@@ -8,6 +8,7 @@ namespace Grimoire.AgentEvals;
 /// the prior environment state, since <see cref="LocalEnvFile.ApplyIfPresent"/> mutates the
 /// real process environment.
 /// </summary>
+[Trait("Tier", "Fast")]
 public class LocalEnvFileTests
 {
     [Fact]

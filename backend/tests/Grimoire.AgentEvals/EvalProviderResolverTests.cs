@@ -8,6 +8,7 @@ namespace Grimoire.AgentEvals;
 /// gating required — env vars are injected via the internal overload rather than read from
 /// the real process environment.
 /// </summary>
+[Trait("Tier", "Fast")]
 public class EvalProviderResolverTests
 {
     [Fact]
@@ -132,6 +133,7 @@ public class EvalProviderResolverTests
 /// process environment (the sanitizer reads it directly, mirroring Program.cs), so this
 /// runs in the sequential <c>EvalProviderEnvironment</c> collection.
 /// </summary>
+[Trait("Tier", "Fast")]
 [Collection("EvalRunnerProcessTests")]
 public class EvalCredentialRedactionTests
 {

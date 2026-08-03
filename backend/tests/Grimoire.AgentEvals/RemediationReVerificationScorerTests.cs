@@ -12,6 +12,7 @@ namespace Grimoire.AgentEvals;
 /// <c>RemediationReVerificationEvalTests</c>'s class doc comment for the exact command
 /// and the honest "no trusted recording exists yet" status this environment reports.
 /// </summary>
+[Trait("Tier", "Fast")]
 public class RemediationReVerificationScorerTests
 {
     [Fact]

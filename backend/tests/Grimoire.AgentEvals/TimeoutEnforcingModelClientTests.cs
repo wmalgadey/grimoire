@@ -9,6 +9,7 @@ namespace Grimoire.AgentEvals;
 /// hanging the run. Uses an injected short timeout (not the real 120s) against a fake
 /// <see cref="IModelClient"/> whose call never completes, so this is fast and hermetic.
 /// </summary>
+[Trait("Tier", "Fast")]
 public class TimeoutEnforcingModelClientTests
 {
     [Fact]
