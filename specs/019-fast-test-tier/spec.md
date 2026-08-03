@@ -10,6 +10,16 @@
 
 **Source**: [GitHub issue #44 — Backend test suite exceeds 300s locally — needs a fast developer feedback tier](https://github.com/wmalgadey/grimoire/issues/44)
 
+## Clarifications
+
+### Session 2026-08-03
+
+- Q: How should User Story 2 / SC-003 be corrected, given a suite audit found only ~4 true fixed unconditional waits (~0.5 s combined) in the integration suite — not the 146 assumed by issue #44 (that count matched already-condition-based wait constructs)? → A: Keep the −30% runtime target (SC-003) but broaden the permitted levers to any deterministic runtime reduction — test parallelization, poll-interval tuning, shared host/fixture reuse — with fixed-wait replacement as one tactic among several.
+- Q: AgentEvals' ~190 s runtime is mechanical (≈235 sequential agent child-process spawns with parallelization disabled, fresh fixture copy per sample), not LLM-bound — is reducing it in scope? → A: In scope: add a user story and requirements to parallelize replay-scenario execution and reduce per-sample setup cost, keeping replay semantics, sample counts, scorers, and thresholds unchanged.
+- Q: ~45 of AgentEvals' ~71 facts are hermetic harness-mechanics tests (scorers, replay contracts, staleness, env-file parsing), not evals — re-tier them out of the slow opt-in tier? → A: Yes: the slow opt-in tier contains only the actual replay-eval scenarios; hermetic harness-mechanics tests run with the deterministic tiers (joining the fast tier if fast enough). Tier membership reflects what a test verifies, not which project it lives in.
+- Q: Should the spec allow pruning tests ("only useful tests"), given the audit found no untraceable edge-case bloat? → A: No — FR-008 stays strict: no test deletion or weakening in this feature. Usefulness is preserved by re-tiering and the FR-009 traceability rule; slowness stems from mechanics, not bloat.
+- Q: Existing docs are already wrong (CONTRIBUTING.md describes an unused `GRIMOIRE_EVAL=1` gate; an unused Testcontainers package reference lingers) — fix as part of this feature? → A: Yes, both: the FR-007 tier documentation replaces the stale contributor-doc claims, and the dead Testcontainers package reference is removed.
+
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - Fast inner-loop feedback while developing (Priority: P1)
@@ -48,15 +58,18 @@ developers immediately gain a sub-minute verification path.
 
 A developer runs the integration test suite locally. Tests that previously slept for
 a fixed real-time duration merely to out-wait an asynchronous operation now wait
-deterministically on the actual condition, so each test completes as soon as the
-awaited state is reached — and the suite as a whole runs measurably faster with no
-loss of coverage.
+deterministically on the actual condition, and the suite as a whole runs measurably
+faster with no loss of coverage — using any deterministic speed lever available
+(parallel test execution, tighter poll intervals, shared fixture/host reuse), not
+only wait replacement.
 
-**Why this priority**: Fixed unconditional delays are the identified architectural
-driver of integration-suite runtime (146 wait occurrences). Removing them shrinks the
-largest deterministic suite and makes it a candidate for inclusion in the fast inner
-loop. It is P2 because the fast tier (P1) already delivers value from the two
-already-fast suites even before the integration suite is sped up.
+**Why this priority**: A suite audit (clarification session 2026-08-03) found only
+~4 true fixed unconditional waits (~0.5 s combined); most wait-shaped code consists
+of poll intervals inside already-bounded condition loops. The dominant runtime
+driver is sequential execution of tests that each start real infrastructure.
+Shrinking the largest deterministic suite makes it a candidate for inclusion in the
+fast inner loop. It is P2 because the fast tier (P1) already delivers value from the
+two already-fast suites even before the integration suite is sped up.
 
 **Independent Test**: Can be tested independently by auditing the integration test
 suite for fixed unconditional real-time waits used only to out-wait asynchronous
@@ -112,7 +125,41 @@ separate documented command executes exactly the evaluation suite.
 
 ---
 
-### User Story 4 - Future tests follow the tiering and traceability rules (Priority: P4)
+### User Story 4 - Agent-evaluation suite runs faster without changing what it verifies (Priority: P3)
+
+A developer who opts into the agent-evaluation tier gets its verdict in a fraction of
+today's ~190 s, because replay scenarios execute concurrently and per-sample setup is
+cheaper — while every sample still replays the same recordings through the real agent
+executable, scored by the same scorers against the same thresholds.
+
+**Why this priority**: Investigation (clarification session 2026-08-03) showed the
+eval suite's cost is mechanical — sequential child-process spawns (≈235 per run) with
+test parallelization explicitly disabled and a fresh fixture-workspace copy per
+sample — not an inherent cost of agent evaluation. Cutting it lowers the price of the
+opt-in tier (User Story 3) and of every merge-gate run, without touching what the
+evals verify. It shares P3 with the opt-in story because both shape the slow tier;
+it depends on neither P1 nor P2.
+
+**Independent Test**: Can be tested by running the agent-evaluation tier on the
+reference environment and comparing wall-clock runtime against the recorded ~190 s
+baseline, while verifying the executed sample count, scorer results, and thresholds
+are identical to a sequential run.
+
+**Acceptance Scenarios**:
+
+1. **Given** the agent-evaluation suite, **When** it runs after the change, **Then**
+   replay scenarios execute concurrently where sample isolation permits, and total
+   wall-clock runtime is reduced (see SC-008) versus the recorded baseline.
+2. **Given** any replay sample, **When** it executes under concurrency, **Then** it
+   uses its own isolated workspace and recordings, and its score is identical to the
+   score produced by a sequential run.
+3. **Given** the full evaluation suite, **When** it completes, **Then** the number of
+   executed samples, the scorers applied, and the pass thresholds are unchanged from
+   the baseline, and no test is skipped.
+
+---
+
+### User Story 5 - Future tests follow the tiering and traceability rules (Priority: P4)
 
 A contributor adding new backend tests finds written guidance that tells them:
 write tests TDD-style against expected system behavior; place them in the correct
@@ -161,6 +208,10 @@ tiers.
   under test? The race is surfaced as a genuine finding, not papered over by
   restoring the sleep; the affected test may keep a documented, justified wait only
   if the behavior itself is timing-dependent.
+- What happens if concurrent replay execution changes an evaluation score? Replay is
+  deterministic replay of committed recordings, so any score divergence under
+  concurrency indicates cross-sample interference — a defect to fix before the
+  concurrent mode ships, never an accepted variance.
 
 ## Requirements *(mandatory)*
 
@@ -186,7 +237,9 @@ tiers.
   execute it.
 - **FR-007**: Project documentation MUST describe the test tiers: what each tier
   contains, its purpose, its expected duration class (fast / moderate / slow), and
-  the command to run it.
+  the command to run it. This documentation MUST replace the stale claims in
+  existing contributor documentation (notably the obsolete `GRIMOIRE_EVAL=1` gating
+  description); no contradictory description of how to run tests may remain.
 - **FR-008**: The restructuring MUST NOT reduce existing verification coverage: no
   test may be deleted or weakened to achieve runtime targets, and every suite that
   gates merges today MUST continue to gate merges.
@@ -198,12 +251,35 @@ tiers.
   in deterministic-tier tests MUST be enforced by an automated check in the standard
   verification pipeline, so reintroduction is rejected rather than relying on
   reviewer vigilance.
+- **FR-011**: The integration-suite runtime reduction (SC-003) MAY be achieved
+  through any deterministic mechanism — parallel test execution, reduced poll
+  intervals in condition-based waits, shared fixture or host reuse, and fixed-wait
+  replacement — provided test determinism, isolation, and coverage (FR-008) are
+  preserved.
+- **FR-012**: Replay scenarios in the agent-evaluation suite MUST be able to execute
+  concurrently, with every sample retaining full isolation (its own workspace,
+  fixture copy, and recordings). Concurrency MUST NOT change replay semantics: the
+  executed sample count, the scorers applied, the resulting scores, and the pass
+  thresholds MUST be identical to a sequential run.
+- **FR-013**: Per-sample setup overhead in the agent-evaluation suite (workspace and
+  fixture preparation) MUST be reduced where this does not weaken sample isolation;
+  each sample still replays its recordings through the real agent executable.
+- **FR-014**: Tier membership MUST reflect what a test verifies, not which project
+  file it lives in: hermetic harness-mechanics tests currently housed in the
+  agent-evaluation project (scorer logic, replay contracts, staleness checks,
+  configuration parsing) MUST run with the deterministic tiers, and the slow opt-in
+  tier MUST contain only the replay-eval scenarios that exercise agent judgment.
+- **FR-015**: Dependencies declared by test projects but referenced by no test code
+  (currently the unused Testcontainers package reference in the integration test
+  project) MUST be removed as part of the restructuring.
 
 ### Key Entities
 
-- **Test tier**: A named grouping of test suites with a defined purpose, duration
-  class, run command, and inclusion rule (fast deterministic tier; integration tier;
-  opt-in agent-evaluation tier).
+- **Test tier**: A named grouping of tests with a defined purpose, duration class,
+  run command, and inclusion rule (fast deterministic tier; integration tier; opt-in
+  agent-evaluation tier). Membership follows what a test verifies, not project
+  boundaries (per FR-014): hermetic harness-mechanics tests belong to a
+  deterministic tier even when housed in the evaluation project.
 - **Timing-dependent test**: A test explicitly marked as verifying real elapsed-time
   behavior, exempt from the fixed-delay ban.
 - **Baseline measurement**: The recorded issue #44 runtimes (per suite, on the
@@ -213,7 +289,9 @@ tiers.
 
 All outcomes of this feature are deterministic harness/tooling guarantees; the
 feature changes no agent behavior and therefore defines no agent-judgment evaluation
-thresholds. The agent-evaluation suite itself is only re-tiered, never altered.
+thresholds. The agent-evaluation suite is re-tiered and made mechanically faster
+(concurrent replay, cheaper per-sample setup), but its replay semantics — sample
+counts, scorers, scores, and thresholds — are never altered.
 
 ### Measurable Outcomes
 
@@ -224,7 +302,8 @@ thresholds. The agent-evaluation suite itself is only re-tiered, never altered.
   available.
 - **SC-003**: Integration test suite wall-clock runtime on the reference environment
   is reduced by at least 30% versus the recorded baseline (61 s), with the number of
-  executed tests not lower than the baseline count (583).
+  executed tests not lower than the baseline count (583). Any deterministic lever
+  (per FR-011) counts toward this target.
 - **SC-004**: An audit of the integration test suite finds zero fixed unconditional
   real-time waits that exist only to out-wait an asynchronous operation; 100% of
   retained real-time waits are explicitly identified as timing-dependent.
@@ -236,9 +315,17 @@ thresholds. The agent-evaluation suite itself is only re-tiered, never altered.
   that gated merges before the change still gates merges after it.
 - **SC-007**: 100% of attempts to reintroduce a forbidden fixed unconditional wait
   into a deterministic-tier test are rejected by the standard verification pipeline.
+- **SC-008**: Agent-evaluation suite wall-clock runtime on the reference environment
+  is reduced by at least 50% versus the recorded baseline (~190 s), while the
+  executed sample count, scorer results, and pass thresholds are identical to the
+  sequential baseline and zero tests are skipped.
 
 ## Assumptions
 
+- A suite audit (clarification session 2026-08-03) found all existing tests
+  purposeful and traceable; suite runtime problems stem from execution mechanics
+  (sequential real-host and child-process execution), not from edge-case bloat.
+  Test pruning is therefore explicitly not a lever of this feature (FR-008).
 - The merge gate continues to run all tiers, including the agent-evaluation suite;
   this feature adds a fast local inner loop and explicit tiering, it does not remove
   any suite from the merge gate (per FR-008). Re-sequencing or parallelizing the
