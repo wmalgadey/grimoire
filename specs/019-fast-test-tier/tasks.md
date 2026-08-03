@@ -53,7 +53,7 @@ written. Enforces FR-003/FR-004/FR-005/FR-010 and SC-004/SC-007 —
 **⚠️ NON-NEGOTIABLE**: No feature implementation (T002+) may begin until this phase
 is complete and confirmed RED/GREEN per the probe below.
 
-- [ ] T001 Write `DeterministicTierNoFixedWaitRuleTests` in
+- [X] T001 Write `DeterministicTierNoFixedWaitRuleTests` in
       `backend/tests/Grimoire.ArchTests/DeterministicTierNoFixedWaitRuleTests.cs`.
       Using the same Mono.Cecil IL-scan idiom as
       `RuntimePathsBoundaryRuleTests.cs`, scan the compiled assemblies of
@@ -90,10 +90,11 @@ CI on this feature branch is expected to stay red on the `Grimoire.ArchTests` st
 until T011 completes.
 
 **Definition of Done**:
-- [ ] Rule written and committed
-- [ ] Red/Green probe completed (commit message documents the probe result)
-- [ ] Rule's current (interim) violation count against `Grimoire.IntegrationTests`
-      recorded, to be driven to zero by T011
+- [X] Rule written and committed
+- [X] Red/Green probe completed (commit message documents the probe result)
+- [X] Rule's current (interim) violation count against `Grimoire.IntegrationTests`
+      recorded, to be driven to zero by T011 (53 pre-existing violations, matching
+      research.md's 53 Task.Delay/Thread.Sleep count — see commit e2f4546)
 
 **Checkpoint**: Structural rule is guarded and provably able to detect violations.
 Feature code may now begin.
@@ -178,7 +179,7 @@ zero test coverage is lost (FR-003, FR-004, FR-005, FR-011; SC-003, SC-004).
 only to out-wait an async operation (target: zero remaining) and compare wall-clock
 runtime against the recorded 61s baseline on the same environment.
 
-- [ ] T007 [US2] Create
+- [X] T007 [US2] Create
       `backend/tests/Grimoire.IntegrationTests/TestSupport/PollAsync.cs`: a shared
       helper, e.g. `PollAsync(Func<Task<bool>> condition, TimeSpan timeout, string
       onTimeoutMessage, TimeSpan? pollInterval = null)`, that polls `condition` on a
@@ -212,7 +213,7 @@ runtime against the recorded 61s baseline on the same environment.
       `IngestAgentObservabilityCollection.cs`'s
       `[CollectionDefinition(..., DisableParallelization = true)]` is left unchanged
       and remains the sole serialization boundary (FR-011).
-- [ ] T010 [P] [US2] Remove the unused
+- [X] T010 [P] [US2] Remove the unused
       `<PackageReference Include="Testcontainers" />` line from
       `backend/tests/Grimoire.IntegrationTests/Grimoire.IntegrationTests.csproj` and
       the corresponding `<PackageVersion Include="Testcontainers" Version="4.13.0" />`
