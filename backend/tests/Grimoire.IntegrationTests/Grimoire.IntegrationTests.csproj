@@ -10,7 +10,6 @@
     <PackageReference Include="Microsoft.Data.Sqlite" />
     <PackageReference Include="OpenTelemetry.Exporter.InMemory" />
     <PackageReference Include="SQLitePCLRaw.bundle_e_sqlite3" />
-    <PackageReference Include="Testcontainers" />
   </ItemGroup>
 
   <ItemGroup>
@@ -19,6 +18,12 @@
          (Constitution II). xunit.runner.visualstudio only honors this via config, not the
          assembly-level [CollectionBehavior] attribute, when run through `dotnet test`. -->
     <None Update="xunit.runner.json" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- 019-fast-test-tier (ADR-021, research.md R4): every file in this project can call
+         PollAsync's static methods without a per-file `using`. -->
+    <Using Include="Grimoire.IntegrationTests.TestSupport" />
   </ItemGroup>
 
   <ItemGroup>
