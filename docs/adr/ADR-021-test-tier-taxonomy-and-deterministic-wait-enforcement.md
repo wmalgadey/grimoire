@@ -1,5 +1,5 @@
 ---
-status: proposed
+status: accepted
 ---
 
 # ADR-021: Backend Test Tier Taxonomy, Deterministic-Wait Convention, and Suite Concurrency Levers
@@ -182,7 +182,6 @@ internally. Every sample retains its own workspace, write-locks directory, and r
 
 ## More Information
 
-Detailed rationale: `specs/019-fast-test-tier/research.md` (R1–R10). Per Constitution
-Principle III this ADR MUST reach **Accepted** (project-owner sign-off) before
-`/speckit-tasks` runs for feature 019; it is deliberately left `proposed` by this
-planning run.
+Detailed rationale: `specs/019-fast-test-tier/research.md` (R1–R10). Accepted by
+project-owner sign-off on 2026-08-03, per Constitution Principle III, clearing the
+gate for `/speckit-tasks` on feature 019.

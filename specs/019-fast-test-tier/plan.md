@@ -99,10 +99,9 @@ replay-eval scenarios across 5 classes.
   below). This feature introduces a cross-cutting testing convention (tier-membership
   trait, deterministic-wait convention, its structural enforcement rule) no existing ADR
   covers, so **ADR-021 is drafted** (`docs/adr/ADR-021-test-tier-taxonomy-and-deterministic-wait-enforcement.md`,
-  status `proposed`) as required. Its structural rule
+  status `accepted`, sign-off 2026-08-03) as required. Its structural rule
   (`DeterministicTierNoFixedWaitRuleTests`) ships with a Red/Green probe as the first
-  `tasks.md` task, per the constitution's mandatory ordering. **Pass, pending ADR-021
-  reaching Accepted status before `/speckit-tasks` runs** (Spec-Kit Workflow step 4).
+  `tasks.md` task, per the constitution's mandatory ordering. **Pass.**
 - **Principle IV (Behavioral & Observable Engineering)**: See Observability section below
   — N/A with justification: this feature adds no production business logic, no request
   path, and no new runtime signal; it is test-infrastructure and CI/documentation work.
@@ -131,11 +130,9 @@ apply: none govern test-project organization, test-suite tiering, or CI test-sel
 tooling, and this feature adds no external-system dependency, no persistence, no agent
 instruction-surface change, and no production namespace.
 
-**New ADR required?**: Yes — ADR-021 was drafted as part of this planning run (status
-`proposed`; it must reach **Accepted** via project-owner sign-off before `/speckit-tasks`
-runs for this feature, per Constitution Principle III and the Spec-Kit Workflow's
-mandatory step 4). It is intentionally left `proposed` here — the planning agent does not
-self-approve it.
+**New ADR required?**: Yes — ADR-021 was drafted as part of this planning run and
+reached **Accepted** status via project-owner sign-off on 2026-08-03, per Constitution
+Principle III and the Spec-Kit Workflow's mandatory step 4. `/speckit-tasks` may proceed.
 
 ## Agentic Boundary (Constitution Principle V)
 
