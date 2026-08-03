@@ -390,7 +390,7 @@ Distributed Trace Spans rows and no agent-judgment success criteria, so those
 completeness-audit sub-items are short-circuited below rather than omitted
 silently.
 
-- [ ] T025 Full four-suite merge-gate parity run: execute
+- [X] T025 Full four-suite merge-gate parity run: execute
       `dotnet test backend/tests/Grimoire.ArchTests`,
       `dotnet test backend/tests/Grimoire.Domain.UnitTests`,
       `dotnet test backend/tests/Grimoire.IntegrationTests`, and
@@ -399,7 +399,7 @@ silently.
       (SC-006); diff `.github/workflows/ci.yml` and confirm all four steps still
       gate the PR job unchanged in shape (FR-008 — no suite removed from the merge
       gate).
-- [ ] T026 Observability completeness audit (MANDATORY — Constitution Principle
+- [X] T026 Observability completeness audit (MANDATORY — Constitution Principle
       III/IV): confirm `plan.md ## Observability` has zero rows (Business Metrics,
       Structured Log Events, Distributed Trace Spans all "None — N/A per
       justification") and that no task above introduced an unaudited signal —
@@ -407,7 +407,7 @@ silently.
       changes, `ReplayPipeline.cs`, and `EvalWorkspace.cs` confirms no `ILogger`,
       metric, or trace-span call was added. File a new task only if a gap is found;
       none expected.
-- [ ] T027 Agent-behavior evaluation completeness audit (MANDATORY only for
+- [X] T027 Agent-behavior evaluation completeness audit (MANDATORY only for
       features with agentic behavior — Constitution Principles II & V): confirm
       `spec.md`'s Success Criteria preamble and `plan.md`'s Agentic Boundary section
       both state this feature has no agentic surface and defines no agent-judgment
@@ -415,7 +415,7 @@ silently.
       (replay scores) is verified by T021's exact-match diff against the unchanged
       sequential baseline, not a new sampled threshold. No evaluation tests
       required; audited, no gap found.
-- [ ] T028 Final FR/SC completeness audit (MANDATORY — Constitution Principle III):
+- [X] T028 Final FR/SC completeness audit (MANDATORY — Constitution Principle III):
       cross-reference every functional requirement and success criterion against
       its implementing task, filing any gap as a new task before declaring the DoD
       met:
@@ -428,7 +428,7 @@ silently.
       - SC-005 → T015, T029 · SC-006 → T025 · SC-007 → T011, T024 · SC-008 → T021, T022
       Confirm every row above has a passing (or, for T029, upcoming) task and file
       any gap as a new task before the DoD is declared met.
-- [ ] T029 Run `quickstart.md` validation end-to-end (all five user-story sections
+- [X] T029 Run `quickstart.md` validation end-to-end (all five user-story sections
       plus the "Full-suite / merge-gate parity check" section) and record the
       outcome of each.
 
