@@ -360,13 +360,13 @@ states the tier-placement/deterministic-waiting/edge-case-traceability rules, an
 verify a fresh attempt to reintroduce a fixed wait is rejected by
 `dotnet test backend/tests/Grimoire.ArchTests`.
 
-- [ ] T023 [US5] Extend CONTRIBUTING.md's `## Test Tiers` section (added in T015)
+- [X] T023 [US5] Extend CONTRIBUTING.md's `## Test Tiers` section (added in T015)
       with guidance stating: new tests are written TDD-style against expected system
       behavior; which tier a new test belongs in (by what it verifies, not which
       project it lives in — FR-014); and that edge-case coverage is added only when
       traceable to a concrete user-facing scenario (a spec, functional requirement,
       or user story) (FR-009, Acceptance Scenario 1).
-- [ ] T024 [US5] Re-demonstrate the Phase 0 rule against the now-fully-triaged
+- [X] T024 [US5] Re-demonstrate the Phase 0 rule against the now-fully-triaged
       codebase: add a scratch test with a deliberate un-exempted `Task.Delay` call to
       a deterministic-tier test project, run
       `dotnet test backend/tests/Grimoire.ArchTests`, confirm
