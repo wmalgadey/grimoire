@@ -1,215 +1,21 @@
-using Grimoire.Hub.AgentDispatch;
-using Grimoire.Hub.AgentDispatch.Adapters.AgentProcess;
-using Grimoire.Hub.ContentRoot;
-using Grimoire.Hub.Conversion;
-using Grimoire.Hub.IngestDispatch;
+using Grimoire.Hub.Cli;
 using Grimoire.Hub.IngestSubmission;
-using Grimoire.Hub.IngestSubmission.Adapters.HttpFetch;
-using Grimoire.Hub.IngestSubmission.Adapters.MarkItDown;
 using Grimoire.Hub.LintDispatch;
-using Grimoire.Hub.LintFindings;
-using Grimoire.Hub.OperationalState;
-using Microsoft.AspNetCore.SignalR;
-using Grimoire.Hub.QueryConversations;
-using Grimoire.Hub.QueryDispatch;
-using Grimoire.Hub.RemediationTasks;
 using Grimoire.Hub.QuerySubmission;
 using Grimoire.Hub.Realtime;
-using Grimoire.Hub.Runtime.Paths;
-using Grimoire.Hub.IngestTaskArtifact;
-using Grimoire.Hub;
+using Grimoire.Hub.RemediationTasks;
 
-// 017-hub-help-usage (FR-001–FR-005): --help/-h must win over every other argument and
-// exit before ANY startup side effect — including WebApplication.CreateBuilder(args),
-// which itself doesn't fail on a bare invocation, but nothing after it (path resolution,
-// secrets loading, SQLite init) may run for a help request. Checked first, ahead of
-// everything else in this file, so --help works even with no data/ directory present.
-if (args.Any(a => string.Equals(a, "--help", StringComparison.OrdinalIgnoreCase)
-    || string.Equals(a, "-h", StringComparison.OrdinalIgnoreCase)))
+// 018-hub-cli-commands (FR-011, ADR-020 D3): the single dispatch gate. --help/-h anywhere
+// in args, or args[0] matching a Grimoire.Hub.Cli.HubCliCommands catalog name, hands off
+// to the Spectre CommandApp — before ANY startup side effect (path resolution, secrets
+// loading, SQLite init). Otherwise the web-host path below runs completely unchanged
+// (ADR-009 precedence, PathSwitchCatalog untouched, app.Run() still binds the port).
+if (ShouldDispatchToCli(args))
 {
-    Console.WriteLine(BuildUsageText());
-    return;
+    return await HubCliApp.RunAsync(args);
 }
 
-// WebApplicationBuilder defaults ContentRootPath to the process working directory,
-// which the "prod"/"dev"/"proxy" launch profiles deliberately set to the repo root (so
-// GrimoirePathResolver's cwd-based BaseDir default, a separate lookup below, resolves
-// correctly). That leaves appsettings.{Environment}.json looked up at the repo root
-// instead of next to Grimoire.Hub.dll, where it actually lives — pin it explicitly so
-// environment-specific settings load regardless of the launching cwd.
-var builder = WebApplication.CreateBuilder(new WebApplicationOptions
-{
-    Args = args,
-    ContentRootPath = GrimoirePathResolver.ProcessBaseDirectory,
-});
-builder.Services.AddHubTelemetry();
-builder.Services.AddSignalR();
-builder.Services.AddHttpClient<IUrlContentFetcher, UrlContentFetcher>();
-builder.Services.AddSingleton(sp => MarkItDownOptions.FromConfiguration(sp.GetRequiredService<IConfiguration>()));
-builder.Services.AddSingleton<IMarkdownConverter, MarkItDownConverter>();
-builder.Services.AddSingleton<HubTaskArtifactWriter>();
-builder.Services.AddSingleton<KanbanBoardProjectionStore>();
-
-// ADR-009: every runtime location is composed in exactly one place, resolved before the
-// host is built (no repository/project-structure discovery, FR-002/FR-003).
-builder.Configuration.AddCommandLine(args, PathConfigurationSwitchMappingsFactory());
-
-var pathOptions = new GrimoirePathOptions();
-builder.Configuration.GetSection(GrimoirePathOptions.SectionName).Bind(pathOptions);
-
-// FR-017: Query's own concurrency limit — read here alongside the other Grimoire:*
-// settings; QueryRunCoordinator (008-query-agent) consumes it once it exists.
-var queryConcurrencyOptions = new QueryConcurrencyOptions();
-builder.Configuration.GetSection(QueryConcurrencyOptions.SectionName).Bind(queryConcurrencyOptions);
-builder.Services.AddSingleton(queryConcurrencyOptions);
-
-// T036 (013-lint-agent, US2): Lint's Review Window, read alongside the other Grimoire:*
-// settings (same binding convention as QueryConcurrencyOptions above); LintRunCoordinator
-// threads the effective value into each spawned run's kickoff context.
-var lintReviewWindowOptions = new LintReviewWindowOptions();
-builder.Configuration.GetSection(LintReviewWindowOptions.SectionName).Bind(lintReviewWindowOptions);
-builder.Services.AddSingleton(lintReviewWindowOptions);
-
-using (var bootstrapLoggerFactory = TelemetryExtensions.CreateBootstrapLoggerFactory())
-{
-    var pathLogger = bootstrapLoggerFactory.CreateLogger("Grimoire.Hub.Runtime.Paths");
-    var resolvedPaths = GrimoirePathResolver.Resolve(pathOptions, builder.Configuration, pathLogger);
-
-    var contentPaths = ContentRootPaths.FromResolved(resolvedPaths);
-    var rawStoragePaths = RawStoragePaths.FromResolved(resolvedPaths);
-
-    builder.Services.AddSingleton(resolvedPaths);
-    builder.Services.AddSingleton(rawStoragePaths);
-    builder.Services.AddSingleton<SourceArtifactStore>();
-    builder.Services.AddSingleton<TaskRecordReadModel>();
-    builder.Services.AddSingleton<IngestLifecyclePublisher>();
-    builder.Services.AddHostedService<TaskRecordWatcher>();
-
-    var repository = new OperationalStateRepository(resolvedPaths.StateDbPath);
-    await repository.InitializeAsync();
-    builder.Services.AddSingleton(repository);
-    builder.Services.AddSingleton(contentPaths);
-    builder.Services.AddSingleton(new LocalSecretsLoader(resolvedPaths.SecretsFilePath));
-    builder.Services.AddSingleton<AgentProcessHost>(sp => new AgentProcessHost(
-        sp.GetRequiredService<LocalSecretsLoader>(), resolvedPaths.AgentWorkerPath, resolvedPaths.QueryAgentWorkerPath,
-        resolvedPaths.LintAgentWorkerPath));
-    builder.Services.AddSingleton<IAgentProcessLauncher>(sp => sp.GetRequiredService<AgentProcessHost>());
-    builder.Services.AddSingleton<IngestRunCoordinator>(sp => new IngestRunCoordinator(
-        sp.GetRequiredService<OperationalStateRepository>(),
-        sp.GetRequiredService<IAgentProcessLauncher>(),
-        sp.GetRequiredService<IngestLifecyclePublisher>(),
-        sp.GetRequiredService<HubTaskArtifactWriter>(),
-        sp.GetRequiredService<ContentRootPaths>(),
-        logger: sp.GetRequiredService<ILogger<IngestRunCoordinator>>()));
-    builder.Services.AddSingleton<IngestSubmissionValidator>();
-    builder.Services.AddSingleton<IngestSubmissionPipeline>();
-
-    // 008-query-agent: fully decoupled from Ingest's coordinator (no shared lock/slot,
-    // ADR-011/SC-006) — its own SignalR channel, bounded-concurrency dispatch, and (011,
-    // ADR-014) the Conversation Record store as both audit trail and context source.
-    builder.Services.AddSingleton<QueryLifecyclePublisher>(sp => new QueryLifecyclePublisher(
-        sp.GetRequiredService<IHubContext<QueryLifecycleHub>>(),
-        sp.GetRequiredService<ILogger<QueryLifecyclePublisher>>()));
-    builder.Services.AddSingleton<ConversationRecordStore>(sp => new ConversationRecordStore(
-        resolvedPaths,
-        logger: sp.GetRequiredService<ILogger<ConversationRecordStore>>()));
-    builder.Services.AddSingleton<QuerySubmissionValidator>();
-    builder.Services.AddSingleton<QueryRunCoordinator>(sp => new QueryRunCoordinator(
-        sp.GetRequiredService<IAgentProcessLauncher>(),
-        sp.GetRequiredService<QueryLifecyclePublisher>(),
-        sp.GetRequiredService<ConversationRecordStore>(),
-        resolvedPaths,
-        sp.GetRequiredService<QueryConcurrencyOptions>(),
-        logger: sp.GetRequiredService<ILogger<QueryRunCoordinator>>()));
-
-    // 013-lint-agent: immediate-rejection single-active-run dispatch (ADR-016), fully
-    // decoupled from Ingest's and Query's coordinators — its own Findings Report store
-    // as the run's sole persistent artifact (data-model.md "Lint Run" note: no separate
-    // run record file).
-    builder.Services.AddSingleton<FindingsReportStore>(sp => new FindingsReportStore(
-        resolvedPaths, logger: sp.GetRequiredService<ILogger<FindingsReportStore>>()));
-    // 015-lint-board-parity T011: lint's own board lifecycle channel, mirroring the
-    // Ingest/Query publisher wiring above (research.md R1 — /hubs/ingest-lifecycle is
-    // never touched, FR-015).
-    builder.Services.AddSingleton<LintLifecyclePublisher>(sp => new LintLifecyclePublisher(
-        sp.GetRequiredService<IHubContext<LintLifecycleHub>>(),
-        sp.GetRequiredService<ILogger<LintLifecyclePublisher>>()));
-    builder.Services.AddSingleton<LintRunCoordinator>(sp => new LintRunCoordinator(
-        sp.GetRequiredService<IAgentProcessLauncher>(),
-        sp.GetRequiredService<FindingsReportStore>(),
-        resolvedPaths,
-        reviewWindowOptions: sp.GetRequiredService<LintReviewWindowOptions>(),
-        logger: sp.GetRequiredService<ILogger<LintRunCoordinator>>(),
-        lifecyclePublisher: sp.GetRequiredService<LintLifecyclePublisher>(),
-        // 015-lint-board-parity T017 (FR-004): unresolved remediation tasks block triggers.
-        stateRepository: sp.GetRequiredService<OperationalStateRepository>(),
-        // 015-lint-board-parity T022 (FR-007): proposal materialization gates completion.
-        remediationRecordStore: sp.GetRequiredService<RemediationTaskRecordStore>(),
-        remediationLifecyclePublisher: sp.GetRequiredService<RemediationLifecyclePublisher>()));
-
-    // 015-lint-board-parity (ADR-018): remediation-task composition, mirroring the Lint/
-    // Query pattern above — record store, lifecycle publisher (T023), read endpoints
-    // (T024), and now (T032/T033) the FIFO execution coordinator and its
-    // authorize/dismiss/withdraw transition endpoints.
-    builder.Services.AddSingleton<RemediationTaskRecordStore>(_ => new RemediationTaskRecordStore(resolvedPaths));
-    builder.Services.AddSingleton<RemediationLifecyclePublisher>(sp => new RemediationLifecyclePublisher(
-        sp.GetRequiredService<IHubContext<RemediationLifecycleHub>>(),
-        sp.GetRequiredService<ILogger<RemediationLifecyclePublisher>>()));
-    builder.Services.AddSingleton<RemediationRunCoordinator>(sp => new RemediationRunCoordinator(
-        sp.GetRequiredService<OperationalStateRepository>(),
-        sp.GetRequiredService<IAgentProcessLauncher>(),
-        sp.GetRequiredService<RemediationLifecyclePublisher>(),
-        sp.GetRequiredService<RemediationTaskRecordStore>(),
-        resolvedPaths,
-        logger: sp.GetRequiredService<ILogger<RemediationRunCoordinator>>()));
-    // 015-lint-board-parity T041/T042 (US5, FR-012): message turns dispatch independently
-    // of execution — not authorization-gated, never touches the task's execution state
-    // machine (ADR-018).
-    builder.Services.AddSingleton<RemediationMessageTurnCoordinator>(sp => new RemediationMessageTurnCoordinator(
-        sp.GetRequiredService<IAgentProcessLauncher>(),
-        sp.GetRequiredService<RemediationLifecyclePublisher>(),
-        sp.GetRequiredService<RemediationTaskRecordStore>(),
-        resolvedPaths,
-        logger: sp.GetRequiredService<ILogger<RemediationMessageTurnCoordinator>>()));
-
-    var reconciler = new RestartReconciler(repository);
-    await reconciler.ReconcileRunningTasksAsync(contentPaths.TasksDir, contentPaths.LogPath);
-    // T034: Executing remediation rows with no live process are failed the same way,
-    // before RemediationRunCoordinator.InitializeAsync (below, after app.Build()) pauses
-    // the queue for any surviving Authorized rows.
-    await reconciler.ReconcileRemediationTasksAsync(
-        new RemediationTaskRecordStore(resolvedPaths));
-
-    if (args.Length > 0 && string.Equals(args[0], "submit-source", StringComparison.OrdinalIgnoreCase))
-    {
-        var sourcePath = ParseOption(args, "--path") ?? throw new ArgumentException("Missing --path option.");
-        var sourceKind = ParseOption(args, "--source-kind") ?? "file";
-        string? pastedText = null;
-        if (sourceKind == "pasted_text")
-        {
-            pastedText = await Console.In.ReadToEndAsync();
-        }
-
-        var secretsLoader = new LocalSecretsLoader(resolvedPaths.SecretsFilePath);
-        var processHost = new AgentProcessHost(secretsLoader, resolvedPaths.AgentWorkerPath);
-        var service = new SubmissionService(repository, processHost);
-
-        var taskId = await service.SubmitAsync(new SubmitSourceOptions(sourcePath, sourceKind, pastedText), contentPaths);
-        Console.WriteLine($"Submitted ingest task: {taskId}");
-        return;
-    }
-}
-
-var app = builder.Build();
-
-// FR-021: queued rows surviving a restart pause the queue until explicit user resume.
-var coordinator = app.Services.GetRequiredService<IngestRunCoordinator>();
-await coordinator.InitializeAsync();
-
-// 015-lint-board-parity T034: mirrors the ingest rule above — Authorized rows surviving
-// a restart pause the remediation execution queue (own flag) until explicitly resumed.
-var remediationCoordinator = app.Services.GetRequiredService<RemediationRunCoordinator>();
-await remediationCoordinator.InitializeAsync();
+var app = await HubHostComposition.BuildAsync(args);
 
 app.MapGet("/", () => "Grimoire Hub");
 app.MapHub<IngestLifecycleHub>("/hubs/ingest-lifecycle");
@@ -227,59 +33,23 @@ app.MapGroup("/api/board").MapBoardEndpoints();
 app.MapHub<RemediationLifecycleHub>("/hubs/remediation-lifecycle");
 app.MapGroup("/api/remediation-tasks").MapRemediationTaskEndpoints();
 app.Run();
+return 0;
 
-static string? ParseOption(string[] args, string option)
+// 018-hub-cli-commands (FR-011): --help/-h wins over everything, including a command name
+// (017's precedence rule, generalized). Otherwise, args[0] decides: a bareword (no leading
+// "-") is always an attempted command invocation, dispatched to the CommandApp even when
+// it names no catalog entry — Spectre's own unknown-command error then satisfies the
+// contract's "unknown command name -> usage error, exit 2" edge case (research.md D3,
+// contracts/cli-commands.md "Global rules"). A leading "-" (e.g. --base-dir) is always a
+// server path switch, so the web-host path runs unchanged — matching pre-018 behavior for
+// every invocation shape that isn't a command name.
+static bool ShouldDispatchToCli(string[] args)
 {
-    for (var i = 0; i < args.Length - 1; i++)
+    if (args.Any(a => string.Equals(a, "--help", StringComparison.OrdinalIgnoreCase)
+        || string.Equals(a, "-h", StringComparison.OrdinalIgnoreCase)))
     {
-        if (string.Equals(args[i], option, StringComparison.OrdinalIgnoreCase))
-        {
-            return args[i + 1];
-        }
+        return true;
     }
 
-    return null;
-}
-
-// ADR-009 command-line switches (contracts/path-configuration.md): mapped last so they
-// win over environment/appsettings/defaults regardless of default-provider ordering.
-// Derived from PathSwitchCatalog.All (single source of truth, Runtime/Paths/PathSwitchCatalog.cs).
-static Dictionary<string, string> PathConfigurationSwitchMappingsFactory() =>
-    PathSwitchCatalog.All.ToDictionary(s => s.Name, s => s.ConfigKey, StringComparer.OrdinalIgnoreCase);
-
-// 017-hub-help-usage (FR-001–FR-005): plain-text usage message printed for --help/-h.
-// Switch names/descriptions are sourced from PathSwitchCatalog.All (the single source of
-// truth for ADR-009's switch vocabulary, also used to wire AddCommandLine above) so this
-// text can never drift from what the Hub actually accepts.
-static string BuildUsageText()
-{
-    // --help itself joins the same computed-column alignment as the path switches below,
-    // so a longer switch name added later can never collide with its own description
-    // column — the bug a fixed width would silently reproduce.
-    var optionEntries = new List<(string Name, string Description)>
-    {
-        ("--help, -h", "Show this usage message and exit."),
-    };
-    optionEntries.AddRange(PathSwitchCatalog.All.Select(s => (s.Name, s.Description)));
-    var column = optionEntries.Max(e => e.Name.Length) + 2;
-
-    string[] lines =
-    [
-        "Grimoire Hub — LLM-Wiki maintenance harness",
-        string.Empty,
-        "Usage:",
-        "  Grimoire.Hub [--help|-h]",
-        "  Grimoire.Hub [path options...]",
-        "  Grimoire.Hub submit-source --path <path> --source-kind <kind> [path options...]",
-        string.Empty,
-        "Command:",
-        "  submit-source          Submit a source document for ingest into the wiki.",
-        "    --path                Path to the source file to submit (required).",
-        "    --source-kind         Kind of source: 'file' (default) or 'pasted_text' (read from stdin).",
-        string.Empty,
-        "Options:",
-        .. optionEntries.Select(e => $"  {e.Name.PadRight(column)}{e.Description}"),
-    ];
-
-    return string.Join(Environment.NewLine, lines);
+    return args.Length > 0 && !args[0].StartsWith('-');
 }

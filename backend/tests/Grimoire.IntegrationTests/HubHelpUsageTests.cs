@@ -1,6 +1,9 @@
 using System.Diagnostics;
+using System.Reflection;
 using Grimoire.EvalRunner.Workspace;
+using Grimoire.Hub.Cli;
 using Grimoire.Hub.Runtime.Paths;
+using Spectre.Console.Cli;
 
 namespace Grimoire.IntegrationTests;
 
@@ -76,6 +79,42 @@ public class HubHelpUsageTests
         Assert.Equal(0, result.ExitCode);
         Assert.DoesNotContain("Submitted ingest task:", result.StdOut, StringComparison.Ordinal);
         AssertUsageListsAllSwitches(result.StdOut);
+    }
+
+    /// <summary>
+    /// T013 (018-hub-cli-commands, research.md D4): an in-process parity check between
+    /// <see cref="HubPathSettings"/>'s declared <c>[CommandOption]</c> properties and
+    /// <see cref="PathSwitchCatalog.All"/> — the two sources D4 requires to stay a strict
+    /// 1:1 mapping (every path switch gets exactly one Spectre option, and Spectre never
+    /// grows an option the catalog — and therefore the web host's own switch handling —
+    /// doesn't know about). Unlike the other tests in this file, this does not spawn the
+    /// Hub process: it reflects directly over the settings type.
+    /// </summary>
+    [Fact]
+    public void HubPathSettings_DeclaresExactlyOneCommandOptionPerPathSwitchCatalogEntry()
+    {
+        var expectedSwitchNames = PathSwitchCatalog.All
+            .Select(s => s.Name)
+            .OrderBy(name => name, StringComparer.Ordinal)
+            .ToArray();
+
+        var declaredProperties = typeof(HubPathSettings)
+            .GetProperties(BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly)
+            .ToArray();
+
+        var actualSwitchNames = new List<string>();
+        foreach (var property in declaredProperties)
+        {
+            var attribute = property.GetCustomAttribute<CommandOptionAttribute>();
+            Assert.True(attribute is not null, $"{nameof(HubPathSettings)}.{property.Name} has no [CommandOption] attribute.");
+            actualSwitchNames.Add("--" + Assert.Single(attribute!.LongNames));
+        }
+
+        // Every declared property must carry exactly one [CommandOption]; the loop above
+        // already asserts that, so this only needs to confirm the count lines up with the
+        // catalog (catches a stray non-path property slipping in).
+        Assert.Equal(declaredProperties.Length, actualSwitchNames.Count);
+        Assert.Equal(expectedSwitchNames, actualSwitchNames.OrderBy(name => name, StringComparer.Ordinal).ToArray());
     }
 
     private static void AssertUsageListsAllSwitches(string stdOut)

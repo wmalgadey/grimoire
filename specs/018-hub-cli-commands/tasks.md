@@ -19,8 +19,8 @@
 
 **⚠️ NON-NEGOTIABLE**: No feature implementation may begin until Phase 0 is complete.
 
-- [ ] T001 Write structural rule C9 (Spectre.Console containment) in `backend/tests/Grimoire.ArchTests/HubCliContainmentRuleTests.cs`: types referencing `Spectre.Console`/`Spectre.Console.Cli` MUST reside in namespace `Grimoire.Hub.Cli*` or the composition root (`Program.cs` dispatch gate). Red/Green probe: add a deliberately violating class in a non-Cli Hub namespace referencing Spectre, verify the test fails, delete it, verify the test passes. Commit message documents the probe result.
-- [ ] T002 Amend rule N1 (Hub namespace-ownership map) in `backend/tests/Grimoire.ArchTests/AgentArtifactNamingRuleTests.cs`: add `Grimoire.Hub.Cli` as a cross-agent namespace, and mirror the entry in `docs/conventions/agent-artifact-naming.md` (doc↔fixture mirror). Red/Green probe: temporarily remove the new map entry (or add a probe type violating the amended rule), verify failure, restore, verify pass.
+- [x] T001 Write structural rule C9 (Spectre.Console containment) in `backend/tests/Grimoire.ArchTests/HubCliContainmentRuleTests.cs`: types referencing `Spectre.Console`/`Spectre.Console.Cli` MUST reside in namespace `Grimoire.Hub.Cli*` or the composition root (`Program.cs` dispatch gate). Red/Green probe: add a deliberately violating class in a non-Cli Hub namespace referencing Spectre, verify the test fails, delete it, verify the test passes. Commit message documents the probe result.
+- [x] T002 Amend rule N1 (Hub namespace-ownership map) in `backend/tests/Grimoire.ArchTests/AgentArtifactNamingRuleTests.cs`: add `Grimoire.Hub.Cli` as a cross-agent namespace, and mirror the entry in `docs/conventions/agent-artifact-naming.md` (doc↔fixture mirror). Red/Green probe: temporarily remove the new map entry (or add a probe type violating the amended rule), verify failure, restore, verify pass.
 
 **Checkpoint**: Both boundaries guarded and probed. Feature code may now begin.
 
@@ -30,7 +30,7 @@
 
 **Purpose**: Bring in the single new dependency.
 
-- [ ] T003 Add `Spectre.Console.Cli` 0.55.0: `PackageVersion` entry in `backend/Directory.Packages.props` and `PackageReference` in `backend/src/Grimoire.Hub/Grimoire.Hub.csproj`. Solution builds; C9 (T001) passes.
+- [x] T003 Add `Spectre.Console.Cli` 0.55.0: `PackageVersion` entry in `backend/Directory.Packages.props` and `PackageReference` in `backend/src/Grimoire.Hub/Grimoire.Hub.csproj`. Solution builds; C9 (T001) passes.
 
 ---
 
@@ -40,17 +40,17 @@
 
 **⚠️ CRITICAL**: No user story work can begin until this phase is complete.
 
-- [ ] T004 [P] Create `CliExitCode` in `backend/src/Grimoire.Hub/Cli/CliExitCode.cs` per data-model.md: `Success=0`, `OperationFailed=1`, `UsageError=2`, `NotFound=3`, `StateConflict=4`, `WaitTimeout=5`, `Cancelled=130`.
-- [ ] T005 [P] Create `HubPathSettings` (base `CommandSettings`) in `backend/src/Grimoire.Hub/Cli/HubPathSettings.cs`: one `[CommandOption]` per `PathSwitchCatalog.All` entry; Spectre performs syntax only — actual binding flows through the existing configuration composition (`AddCommandLine` + ADR-009 switch mappings), preserving CLI > env > appsettings > defaults precedence.
-- [ ] T006 [P] Create `CliStatusRenderer` in `backend/src/Grimoire.Hub/Cli/CliStatusRenderer.cs`: live status/event stream rendering to **stderr** only (stdout carries only the result contract, FR-006).
-- [ ] T007 Create `HubCliCommands` catalog in `backend/src/Grimoire.Hub/Cli/HubCliCommands.cs`: single source of truth (name, description, command type) for all 8 commands (`lint-run`, `remediation-authorize`, `remediation-dismiss`, `remediation-withdraw`, `ingest-retrigger`, `ingest-resume`, `query`, `submit-source`); unique-name validation; drives CommandApp registration and the Program.cs dispatch check (FR-010).
-- [ ] T008 Create `HubCliApp` in `backend/src/Grimoire.Hub/Cli/HubCliApp.cs`: builds the Hub's existing web-host composition (`builder.Build()`, never `app.Run()` — no port bound), exposes its services to Spectre via a type registrar, runs `RestartReconciler` bootstrap identically to the web host, maps Spectre validation/unknown-command errors to exit 2, and **disposes the built host before exit so OTLP telemetry flushes** (research D8, obligation 1).
-- [ ] T009 Create `HubCliHelpProvider` in `backend/src/Grimoire.Hub/Cli/HubCliHelpProvider.cs`: root help renders `FigletText("Grimoire")` logo + usage line + `Commands:` section from the CommandApp registrations + `Server options:` section generated from `PathSwitchCatalog.All`; per-command `--help` stays logo-free (research D3/D7).
-- [ ] T010 Migrate `submit-source` to `SubmitSourceCommand` in `backend/src/Grimoire.Hub/Cli/SubmitSourceCommand.cs` (`--path` required, `--source-kind` optional default `file`): identical in-process run-to-exit execution and exact output `Submitted ingest task: {taskId}`; existing submit-source integration tests pass unchanged.
-- [ ] T011 Rewire the dispatch gate in `backend/src/Grimoire.Hub/Program.cs`: if `args[0]` matches a catalog name or `--help`/`-h` appears anywhere (FR-011), run `CommandApp.RunAsync(args)` and exit with its code; otherwise the web-host path runs unchanged (ADR-009 precedence, `PathSwitchCatalog` untouched). Retire `BuildUsageText()`.
-- [ ] T012 [P] Harden `backend/src/Grimoire.Hub/OperationalState/OperationalStateRepository.cs`: enable `busy_timeout` + WAL journal mode on connections (research D1b); no schema change.
-- [ ] T013 [P] Add `HubPathSettings` ⇔ `PathSwitchCatalog` 1:1 parity test (in-process) in `backend/tests/Grimoire.IntegrationTests/HubHelpUsageTests.cs` so the two sources can never drift (research D4).
-- [ ] T014 [P] Add SQLite dual-writer tolerance test in `backend/tests/Grimoire.IntegrationTests/HubCliConcurrencyTests.cs`: two concurrent writers against one temp-dir operational-state database back off via `busy_timeout` instead of failing with `SQLITE_BUSY` (research D1b).
+- [x] T004 [P] Create `CliExitCode` in `backend/src/Grimoire.Hub/Cli/CliExitCode.cs` per data-model.md: `Success=0`, `OperationFailed=1`, `UsageError=2`, `NotFound=3`, `StateConflict=4`, `WaitTimeout=5`, `Cancelled=130`.
+- [x] T005 [P] Create `HubPathSettings` (base `CommandSettings`) in `backend/src/Grimoire.Hub/Cli/HubPathSettings.cs`: one `[CommandOption]` per `PathSwitchCatalog.All` entry; Spectre performs syntax only — actual binding flows through the existing configuration composition (`AddCommandLine` + ADR-009 switch mappings), preserving CLI > env > appsettings > defaults precedence.
+- [x] T006 [P] Create `CliStatusRenderer` in `backend/src/Grimoire.Hub/Cli/CliStatusRenderer.cs`: live status/event stream rendering to **stderr** only (stdout carries only the result contract, FR-006).
+- [x] T007 Create `HubCliCommands` catalog in `backend/src/Grimoire.Hub/Cli/HubCliCommands.cs`: single source of truth (name, description, command type) for all 8 commands (`lint-run`, `remediation-authorize`, `remediation-dismiss`, `remediation-withdraw`, `ingest-retrigger`, `ingest-resume`, `query`, `submit-source`); unique-name validation; drives CommandApp registration and the Program.cs dispatch check (FR-010).
+- [x] T008 Create `HubCliApp` in `backend/src/Grimoire.Hub/Cli/HubCliApp.cs`: builds the Hub's existing web-host composition (`builder.Build()`, never `app.Run()` — no port bound), exposes its services to Spectre via a type registrar, runs `RestartReconciler` bootstrap identically to the web host, maps Spectre validation/unknown-command errors to exit 2, and **disposes the built host before exit so OTLP telemetry flushes** (research D8, obligation 1).
+- [x] T009 Create `HubCliHelpProvider` in `backend/src/Grimoire.Hub/Cli/HubCliHelpProvider.cs`: root help renders `FigletText("Grimoire")` logo + usage line + `Commands:` section from the CommandApp registrations + `Server options:` section generated from `PathSwitchCatalog.All`; per-command `--help` stays logo-free (research D3/D7).
+- [x] T010 Migrate `submit-source` to `SubmitSourceCommand` in `backend/src/Grimoire.Hub/Cli/SubmitSourceCommand.cs` (`--path` required, `--source-kind` optional default `file`): identical in-process run-to-exit execution and exact output `Submitted ingest task: {taskId}`; existing submit-source integration tests pass unchanged.
+- [x] T011 Rewire the dispatch gate in `backend/src/Grimoire.Hub/Program.cs`: if `args[0]` matches a catalog name or `--help`/`-h` appears anywhere (FR-011), run `CommandApp.RunAsync(args)` and exit with its code; otherwise the web-host path runs unchanged (ADR-009 precedence, `PathSwitchCatalog` untouched). Retire `BuildUsageText()`.
+- [x] T012 [P] Harden `backend/src/Grimoire.Hub/OperationalState/OperationalStateRepository.cs`: enable `busy_timeout` + WAL journal mode on connections (research D1b); no schema change.
+- [x] T013 [P] Add `HubPathSettings` ⇔ `PathSwitchCatalog` 1:1 parity test (in-process) in `backend/tests/Grimoire.IntegrationTests/HubHelpUsageTests.cs` so the two sources can never drift (research D4).
+- [x] T014 [P] Add SQLite dual-writer tolerance test in `backend/tests/Grimoire.IntegrationTests/HubCliConcurrencyTests.cs`: two concurrent writers against one temp-dir operational-state database back off via `busy_timeout` instead of failing with `SQLITE_BUSY` (research D1b).
 
 **Checkpoint**: `Grimoire.Hub <command>` dispatches through Spectre against the real composition; help/dispatch/exit-code plumbing works; foundation ready — user stories can start (in parallel if staffed).
 

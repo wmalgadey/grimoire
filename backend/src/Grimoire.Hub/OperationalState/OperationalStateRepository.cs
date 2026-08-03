@@ -13,6 +13,16 @@ public sealed class OperationalStateRepository
     /// </summary>
     public const string RemediationQueuePausedFlag = "remediation_queue_paused";
 
+    /// <summary>
+    /// Busy-retry window (018-hub-cli-commands T012, research.md D1b): a CLI invocation and
+    /// the running Hub process now write to the same operational-state database from two
+    /// independent OS processes with no shared in-process lock. Rather than fail a writer
+    /// immediately with <c>SQLITE_BUSY</c> when the other side holds the write lock, every
+    /// connection sets SQLite's own retry-with-backoff handler (<c>PRAGMA busy_timeout</c>)
+    /// so the loser waits up to this long before giving up.
+    /// </summary>
+    private static readonly TimeSpan BusyTimeout = TimeSpan.FromSeconds(5);
+
     private readonly string _connectionString;
 
     public OperationalStateRepository(string databasePath)
@@ -21,10 +31,34 @@ public sealed class OperationalStateRepository
         _connectionString = new SqliteConnectionStringBuilder { DataSource = databasePath }.ToString();
     }
 
+    /// <summary>
+    /// Opens a connection hardened for concurrent Hub+CLI writers (018-hub-cli-commands
+    /// T012, research.md D1b): WAL journal mode lets readers proceed without blocking on a
+    /// writer, and <c>busy_timeout</c> makes a writer that loses the race retry with
+    /// backoff instead of throwing <c>SQLITE_BUSY</c> immediately. Both are per-connection
+    /// PRAGMAs (WAL's mode is persisted in the database file after the first connection
+    /// enables it, but is re-asserted here defensively; busy_timeout is always
+    /// per-connection) — no schema change.
+    /// </summary>
+    private async Task<SqliteConnection> OpenConnectionAsync(CancellationToken cancellationToken)
+    {
+        var connection = new SqliteConnection(_connectionString);
+        await connection.OpenAsync(cancellationToken);
+
+        var pragmaCommand = connection.CreateCommand();
+        pragmaCommand.CommandText =
+            $"""
+            PRAGMA journal_mode = 'WAL';
+            PRAGMA busy_timeout = {(int)BusyTimeout.TotalMilliseconds};
+            """;
+        await pragmaCommand.ExecuteNonQueryAsync(cancellationToken);
+
+        return connection;
+    }
+
     public async Task InitializeAsync(CancellationToken cancellationToken = default)
     {
-        await using var connection = new SqliteConnection(_connectionString);
-        await connection.OpenAsync(cancellationToken);
+        await using var connection = await OpenConnectionAsync(cancellationToken);
 
         var command = connection.CreateCommand();
         command.CommandText =
@@ -66,8 +100,7 @@ public sealed class OperationalStateRepository
 
     public async Task EnqueueAsync(QueuedIngestRun run, CancellationToken cancellationToken = default)
     {
-        await using var connection = new SqliteConnection(_connectionString);
-        await connection.OpenAsync(cancellationToken);
+        await using var connection = await OpenConnectionAsync(cancellationToken);
 
         var command = connection.CreateCommand();
         command.CommandText =
@@ -86,8 +119,7 @@ public sealed class OperationalStateRepository
 
     public async Task<IReadOnlyList<QueuedIngestRun>> GetQueuedAsync(CancellationToken cancellationToken = default)
     {
-        await using var connection = new SqliteConnection(_connectionString);
-        await connection.OpenAsync(cancellationToken);
+        await using var connection = await OpenConnectionAsync(cancellationToken);
 
         var command = connection.CreateCommand();
         command.CommandText =
@@ -113,8 +145,7 @@ public sealed class OperationalStateRepository
 
     public async Task RemoveQueuedAsync(string taskId, CancellationToken cancellationToken = default)
     {
-        await using var connection = new SqliteConnection(_connectionString);
-        await connection.OpenAsync(cancellationToken);
+        await using var connection = await OpenConnectionAsync(cancellationToken);
 
         var command = connection.CreateCommand();
         command.CommandText = "DELETE FROM ingest_queue WHERE task_id = $task_id;";
@@ -126,8 +157,7 @@ public sealed class OperationalStateRepository
 
     public async Task SetFlagAsync(string name, bool value, CancellationToken cancellationToken = default)
     {
-        await using var connection = new SqliteConnection(_connectionString);
-        await connection.OpenAsync(cancellationToken);
+        await using var connection = await OpenConnectionAsync(cancellationToken);
 
         var command = connection.CreateCommand();
         command.CommandText =
@@ -142,8 +172,7 @@ public sealed class OperationalStateRepository
 
     public async Task<bool> GetFlagAsync(string name, CancellationToken cancellationToken = default)
     {
-        await using var connection = new SqliteConnection(_connectionString);
-        await connection.OpenAsync(cancellationToken);
+        await using var connection = await OpenConnectionAsync(cancellationToken);
 
         var command = connection.CreateCommand();
         command.CommandText = "SELECT value FROM hub_flags WHERE name = $name;";
@@ -156,8 +185,7 @@ public sealed class OperationalStateRepository
 
     public async Task InsertRemediationTaskAsync(RemediationTaskRow row, CancellationToken cancellationToken = default)
     {
-        await using var connection = new SqliteConnection(_connectionString);
-        await connection.OpenAsync(cancellationToken);
+        await using var connection = await OpenConnectionAsync(cancellationToken);
 
         var command = connection.CreateCommand();
         command.CommandText =
@@ -192,8 +220,7 @@ public sealed class OperationalStateRepository
     public async Task<IReadOnlyList<RemediationTaskRow>> GetRemediationTasksAsync(
         string? state = null, CancellationToken cancellationToken = default)
     {
-        await using var connection = new SqliteConnection(_connectionString);
-        await connection.OpenAsync(cancellationToken);
+        await using var connection = await OpenConnectionAsync(cancellationToken);
 
         var command = connection.CreateCommand();
         command.CommandText =
@@ -250,8 +277,7 @@ public sealed class OperationalStateRepository
         DateTimeOffset updatedAt,
         CancellationToken cancellationToken = default)
     {
-        await using var connection = new SqliteConnection(_connectionString);
-        await connection.OpenAsync(cancellationToken);
+        await using var connection = await OpenConnectionAsync(cancellationToken);
 
         var stampsAuthorizedAt = toState == "authorized";
         var clearsAuthorizedAt = fromState == "authorized" && toState == "proposed";
@@ -283,8 +309,7 @@ public sealed class OperationalStateRepository
 
     public async Task UpsertAsync(OperationalTaskState state, CancellationToken cancellationToken = default)
     {
-        await using var connection = new SqliteConnection(_connectionString);
-        await connection.OpenAsync(cancellationToken);
+        await using var connection = await OpenConnectionAsync(cancellationToken);
 
         var command = connection.CreateCommand();
         command.CommandText =
@@ -306,8 +331,7 @@ public sealed class OperationalStateRepository
 
     public async Task<IReadOnlyList<OperationalTaskState>> GetByStatusAsync(string status, CancellationToken cancellationToken = default)
     {
-        await using var connection = new SqliteConnection(_connectionString);
-        await connection.OpenAsync(cancellationToken);
+        await using var connection = await OpenConnectionAsync(cancellationToken);
 
         var command = connection.CreateCommand();
         command.CommandText =
@@ -334,8 +358,7 @@ public sealed class OperationalStateRepository
 
     public async Task DeleteAsync(string taskId, CancellationToken cancellationToken = default)
     {
-        await using var connection = new SqliteConnection(_connectionString);
-        await connection.OpenAsync(cancellationToken);
+        await using var connection = await OpenConnectionAsync(cancellationToken);
 
         var command = connection.CreateCommand();
         command.CommandText = "DELETE FROM operational_task_state WHERE task_id = $task_id;";
