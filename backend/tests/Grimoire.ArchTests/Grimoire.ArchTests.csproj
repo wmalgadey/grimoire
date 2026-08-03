@@ -21,6 +21,9 @@
          project reference makes Grimoire.IntegrationTests loadable from this test's
          output directory (same idiom as the Grimoire.AgentEvals reference above). -->
     <ProjectReference Include="..\Grimoire.IntegrationTests\Grimoire.IntegrationTests.csproj" />
+    <!-- ADR-021 (019-fast-test-tier): DeterministicTierNoFixedWaitRuleTests also scans
+         Grimoire.Domain.UnitTests, which nothing here previously referenced. -->
+    <ProjectReference Include="..\Grimoire.Domain.UnitTests\Grimoire.Domain.UnitTests.csproj" />
   </ItemGroup>
 
 </Project>
