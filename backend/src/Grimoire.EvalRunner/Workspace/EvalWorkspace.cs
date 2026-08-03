@@ -42,29 +42,32 @@ public sealed class EvalWorkspace : IDisposable
     /// system-prompt mutation (instruction-change scenario), plus the tasks dir
     /// the agent CLI contract expects.
     /// </summary>
-    public static EvalWorkspace Create(
+    public static async Task<EvalWorkspace> CreateAsync(
         string wikiFixtureRoot,
         string agentInstructionsDir,
         string taskId,
-        string? systemPromptAppendix = null)
+        string? systemPromptAppendix = null,
+        CancellationToken cancellationToken = default)
     {
         // The task id may repeat across capture/replay of the same sample (it is part of
         // the recorded conversation), so the directory gets its own unique suffix.
         var root = Path.Combine(Path.GetTempPath(), "grimoire-eval-runner", $"{taskId}-{Guid.NewGuid():N}");
         var workspace = new EvalWorkspace(root);
 
-        CopyDirectory(wikiFixtureRoot, workspace.WikiRoot);
-        CopyDirectory(agentInstructionsDir, workspace.AgentDir);
+        await Task.WhenAll(
+            CopyDirectoryAsync(wikiFixtureRoot, workspace.WikiRoot, cancellationToken),
+            CopyDirectoryAsync(agentInstructionsDir, workspace.AgentDir, cancellationToken));
 
         Directory.CreateDirectory(workspace.TasksDir);
         Directory.CreateDirectory(workspace.WriteLocksDir);
 
         if (!string.IsNullOrEmpty(systemPromptAppendix))
         {
-            var baseline = File.ReadAllText(workspace.SystemPromptPath);
+            var baseline = await File.ReadAllTextAsync(workspace.SystemPromptPath, cancellationToken);
             if (!baseline.Contains(systemPromptAppendix, StringComparison.Ordinal))
             {
-                File.WriteAllText(workspace.SystemPromptPath, baseline.TrimEnd() + "\n\n" + systemPromptAppendix + "\n");
+                await File.WriteAllTextAsync(
+                    workspace.SystemPromptPath, baseline.TrimEnd() + "\n\n" + systemPromptAppendix + "\n", cancellationToken);
             }
         }
 
@@ -100,18 +103,28 @@ public sealed class EvalWorkspace : IDisposable
         }
     }
 
-    private static void CopyDirectory(string sourceDir, string destinationDir)
+    // 019-fast-test-tier (US4, FR-013, research.md R7): parallelizes per-sample workspace
+    // setup — the source directory (a small, fixed fixture) is shared and read-only across
+    // samples, so concurrent copies from it introduce no new isolation risk; each sample's
+    // destination is already unique per call. File copies within one directory run
+    // concurrently via Parallel.ForEachAsync; subdirectories recurse the same way via
+    // Task.WhenAll, so the whole tree copies in parallel, not just one level.
+    private static async Task CopyDirectoryAsync(string sourceDir, string destinationDir, CancellationToken cancellationToken)
     {
         Directory.CreateDirectory(destinationDir);
 
-        foreach (var file in Directory.GetFiles(sourceDir))
-        {
-            File.Copy(file, Path.Combine(destinationDir, Path.GetFileName(file)), overwrite: true);
-        }
+        var copyFiles = Parallel.ForEachAsync(
+            Directory.GetFiles(sourceDir),
+            new ParallelOptions { MaxDegreeOfParallelism = Environment.ProcessorCount, CancellationToken = cancellationToken },
+            (file, _) =>
+            {
+                File.Copy(file, Path.Combine(destinationDir, Path.GetFileName(file)), overwrite: true);
+                return ValueTask.CompletedTask;
+            });
 
-        foreach (var directory in Directory.GetDirectories(sourceDir))
-        {
-            CopyDirectory(directory, Path.Combine(destinationDir, Path.GetFileName(directory)));
-        }
+        var copySubdirectories = Task.WhenAll(Directory.GetDirectories(sourceDir)
+            .Select(directory => CopyDirectoryAsync(directory, Path.Combine(destinationDir, Path.GetFileName(directory)), cancellationToken)));
+
+        await Task.WhenAll(copyFiles, copySubdirectories);
     }
 }

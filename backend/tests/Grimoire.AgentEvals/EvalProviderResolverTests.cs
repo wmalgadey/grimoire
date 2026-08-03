@@ -134,7 +134,7 @@ public class EvalProviderResolverTests
 /// runs in the sequential <c>EvalProviderEnvironment</c> collection.
 /// </summary>
 [Trait("Tier", "Fast")]
-[Collection("EvalRunnerProcessTests")]
+[Collection("EvalRunnerEnvMutatingTests")]
 public class EvalCredentialRedactionTests
 {
     [Fact]

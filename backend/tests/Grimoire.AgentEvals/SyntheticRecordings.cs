@@ -121,7 +121,21 @@ public static class SyntheticRecordings
 }
 
 /// <summary>
-/// Serializes all tests that spawn agent processes or mutate provider env vars.
+/// 019-fast-test-tier (ADR-021, T018): serializes only the two classes that mutate real
+/// process environment variables (<see cref="Environment.SetEnvironmentVariable"/>) —
+/// <c>StalenessTests</c> and <c>EvalCredentialRedactionTests</c>. Neither spawns an agent
+/// process, so this is a small, fast-running serialized group, not a bottleneck.
 /// </summary>
-[CollectionDefinition("EvalRunnerProcessTests", DisableParallelization = true)]
-public sealed class EvalRunnerProcessTestsCollection;
+[CollectionDefinition("EvalRunnerEnvMutatingTests", DisableParallelization = true)]
+public sealed class EvalRunnerEnvMutatingTestsCollection;
+
+/// <summary>
+/// 019-fast-test-tier (ADR-021, T018): the five genuine replay-eval scenario classes
+/// (<c>Tier=SlowEval</c>) — each already isolates its own samples via a dedicated
+/// <see cref="Grimoire.EvalRunner.Workspace.EvalWorkspace"/> (ADR-012/ADR-011), so unlike
+/// the old <c>EvalRunnerProcessTests</c> collection they replaced, parallelization is left
+/// at its default (not disabled): xUnit's own bounded thread pool runs them concurrently
+/// where sample isolation permits (FR-012).
+/// </summary>
+[CollectionDefinition("EvalRunnerReplayScenarios")]
+public sealed class EvalRunnerReplayScenariosCollection;

@@ -88,11 +88,12 @@ public sealed class CapturePipeline
                 var capturePath = Path.Combine(captureScratch, $"sample-{sampleNumber:00}.json");
 
                 using var span = EvalRunnerTelemetry.StartCaptureRun(taskId, scenario.Id, providerLabel, provider.Model);
-                using var workspace = EvalWorkspace.Create(
+                using var workspace = await EvalWorkspace.CreateAsync(
                     _paths.FixtureWikiRoot(scenario.FixtureName),
                     _paths.AgentInstructionsDir,
                     taskId,
-                    scenario.SystemPromptAppendix);
+                    scenario.SystemPromptAppendix,
+                    cancellationToken);
 
                 // The task id and source ref are embedded in the agent's first user
                 // message, so replay must reproduce them exactly: the source ref is a

@@ -56,15 +56,29 @@ public sealed class ReplayPipeline
 
         var manifest = trust.Manifest!;
         var sampleSpecs = scenario.ResolveSamples(manifest.Samples.Count);
-        var results = new List<ReplaySampleResult>();
 
-        for (var i = 0; i < manifest.Samples.Count; i++)
-        {
-            cancellationToken.ThrowIfCancellationRequested();
-            var entry = manifest.Samples[i];
-            var spec = i < sampleSpecs.Count ? sampleSpecs[i] : null;
-            results.Add(await ReplaySampleAsync(scenario, manifest, entry, i + 1, spec, cancellationToken));
-        }
+        // 019-fast-test-tier (US4, FR-012/FR-013, ADR-021/ADR-011): the ~235 per-run agent-
+        // process spawns were the dominant cost of the ~190s baseline (research.md R6) —
+        // this is where the bulk of them live, one scenario's sample loop at a time. Each
+        // sample already gets its own isolated EvalWorkspace/recording/AgentProcessInvoker
+        // call (ReplaySampleAsync), so spawning them concurrently (bounded by
+        // Environment.ProcessorCount, mirroring ADR-011's Query/Ingest concurrency model)
+        // introduces no new isolation risk. Results are written into a fixed-size array by
+        // index so the returned list's per-sample ordering is preserved byte-for-byte
+        // versus the prior sequential loop (FR-012: concurrency must not change replay
+        // semantics — sample count, scorers, scores, thresholds all stay identical).
+        var resultsBySlot = new ReplaySampleResult[manifest.Samples.Count];
+        await Parallel.ForEachAsync(
+            Enumerable.Range(0, manifest.Samples.Count),
+            new ParallelOptions { MaxDegreeOfParallelism = Environment.ProcessorCount, CancellationToken = cancellationToken },
+            async (i, ct) =>
+            {
+                var entry = manifest.Samples[i];
+                var spec = i < sampleSpecs.Count ? sampleSpecs[i] : null;
+                resultsBySlot[i] = await ReplaySampleAsync(scenario, manifest, entry, i + 1, spec, ct);
+            });
+
+        var results = resultsBySlot.ToList();
 
         var successes = results.Count(r => r.Pass == true);
         var rate = results.Count == 0 ? 0 : (double)successes / results.Count;
@@ -140,11 +154,12 @@ public sealed class ReplayPipeline
                     $"Re-capture with: {StalenessCheck.RefreshCommand(scenario.Id)}"));
         }
 
-        using var workspace = EvalWorkspace.Create(
+        using var workspace = await EvalWorkspace.CreateAsync(
             _paths.FixtureWikiRoot(scenario.FixtureName),
             _paths.AgentInstructionsDir,
             taskId,
-            scenario.SystemPromptAppendix);
+            scenario.SystemPromptAppendix,
+            cancellationToken);
 
         var run = await _invoker.RunAsync(
             taskId,

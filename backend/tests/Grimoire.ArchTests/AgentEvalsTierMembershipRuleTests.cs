@@ -61,6 +61,33 @@ public class AgentEvalsTierMembershipRuleTests
             "tests. Wrongly tagged: " + string.Join(", ", wronglyTagged.Select(t => t.FullName)));
     }
 
+    // T017 (US3): the opt-in slow tier's documented command
+    // (`dotnet test ... --filter "Tier=SlowEval"`) only selects something if these five
+    // classes are actually tagged — this asserts exactly that set, permanently.
+    [Fact]
+    public void ReplayEvalClasses_MustCarryTierSlowEvalTrait()
+    {
+        var missing = _replayEvalTypes.Where(t => !HasTrait(t, "Tier", "SlowEval")).ToList();
+
+        Assert.True(
+            missing.Count == 0,
+            "FR-014: every replay-eval scenario class must carry [Trait(\"Tier\", \"SlowEval\")] " +
+            "so `dotnet test ... --filter \"Tier=SlowEval\"` selects it. " +
+            "Missing: " + string.Join(", ", missing.Select(t => t.FullName)));
+    }
+
+    [Fact]
+    public void HermeticHarnessMechanicsClasses_MustNotCarryTierSlowEvalTrait()
+    {
+        var wronglyTagged = _hermeticFastTierTypes.Where(t => HasTrait(t, "Tier", "SlowEval")).ToList();
+
+        Assert.True(
+            wronglyTagged.Count == 0,
+            "FR-014/SC-002: hermetic harness-mechanics classes must never carry " +
+            "[Trait(\"Tier\", \"SlowEval\")] — the SlowEval filter must select only genuine " +
+            "replay-eval scenarios. Wrongly tagged: " + string.Join(", ", wronglyTagged.Select(t => t.FullName)));
+    }
+
     private static bool HasTrait(Type type, string name, string value) =>
         type.GetCustomAttributesData().Any(attribute =>
             attribute.AttributeType.FullName == "Xunit.TraitAttribute" &&

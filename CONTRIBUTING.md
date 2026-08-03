@@ -42,6 +42,7 @@ dotnet build backend/Grimoire.slnx --configuration Release
 dotnet test backend/tests/Grimoire.ArchTests --configuration Release
 dotnet test backend/tests/Grimoire.Domain.UnitTests --configuration Release
 dotnet test backend/tests/Grimoire.IntegrationTests --configuration Release
+dotnet test backend/tests/Grimoire.AgentEvals --configuration Release
 
 # Frontend
 cd frontend
@@ -51,9 +52,53 @@ bun run lint
 bun run test    # vitest
 ```
 
-Agent-behavior (evaluation) tests that call a real LLM provider are gated behind
-`GRIMOIRE_EVAL=1` and are not part of the default hermetic test run — see
-`backend/tests/Grimoire.AgentEvals/`.
+The commands above are the full merge-gating suite (`ci.yml`'s shape, unchanged) — every
+one of them still gates every PR. Day to day, use the tiered commands below instead of
+running everything on every edit.
+
+## Test Tiers
+
+The backend test suite is organized into three tiers by what a test verifies, not by
+which project it lives in (a handful of hermetic harness-mechanics tests inside
+`Grimoire.AgentEvals` join the Fast tier via an xUnit `Tier` trait rather than living in
+a different project — see ADR-021).
+
+| Tier | Command | Contains | Duration |
+|---|---|---|---|
+| **Fast** | `./scripts/test-fast.sh` | `Grimoire.Domain.UnitTests` (all), `Grimoire.ArchTests` (all), and the hermetic harness-mechanics classes inside `Grimoire.AgentEvals` (`Tier=Fast`) | fast — low single-digit seconds of test execution, excluding build |
+| **Integration** | `dotnet test backend/tests/Grimoire.IntegrationTests --configuration Release` | the entire `Grimoire.IntegrationTests` project (real Kestrel hosts, SignalR, fake/real agent processes) | moderate |
+| **SlowEval (opt-in)** | `dotnet test backend/tests/Grimoire.AgentEvals --configuration Release --filter "Tier=SlowEval"` | the five genuine replay-eval scenario classes that exercise agent judgment against committed recordings (ADR-012) | slow, opt-in — not part of the default local workflow |
+
+Run `./scripts/test-fast.sh` while you work — it needs a built solution and nothing
+else (no recordings, no provider credential, no network) and reports which tier failed
+first. Run the Integration tier before opening a PR that touches `Grimoire.Hub` or agent
+dispatch. Run the SlowEval tier only when you changed agent instructions, prompts, or
+evaluation scenarios — it replays committed recordings through the real agent
+executable and is the slow, deliberately opt-in tier; the merge gate (`ci.yml`) still
+runs it, and the unfiltered `Grimoire.AgentEvals` project run above covers both the Fast
+and SlowEval classes in one invocation, exactly as it always has.
+
+### Writing new backend tests
+
+- Write tests TDD-style against expected system behavior, not after the fact against
+  whatever the implementation happens to do.
+- Place a new test in the tier that matches what it verifies: hermetic domain/harness
+  logic with no external process or real infrastructure belongs in the Fast tier
+  (`Grimoire.Domain.UnitTests`, `Grimoire.ArchTests`, or a `Tier=Fast`-tagged
+  `Grimoire.AgentEvals` class); anything that starts a real host, SignalR connection, or
+  fake/real agent process belongs in `Grimoire.IntegrationTests`; anything that
+  exercises agent judgment against a recording belongs in the SlowEval tier.
+- Add edge-case coverage only when it is traceable to a concrete user-facing scenario —
+  a spec, a functional requirement, or a user story — not speculatively.
+- Every deterministic-tier test (Fast/Integration) must wait on the actual condition it
+  depends on, not a fixed real-time delay — use
+  `Grimoire.IntegrationTests.TestSupport.PollAsync` (bounded, condition-based, fails with
+  a clear diagnostic on timeout) rather than `Task.Delay`/`Thread.Sleep`. A test whose own
+  subject is genuinely time-based (e.g. verifying a debounce window elapses) may keep a
+  real-time wait, but must carry `[Trait("TimingDependent", "true")]` with a one-line
+  rationale. `Grimoire.ArchTests`' `DeterministicTierNoFixedWaitRuleTests` enforces this
+  in the standard PR pipeline — a fixed unconditional wait outside `PollAsync` or a
+  `TimingDependent`-marked test fails CI (ADR-021).
 
 ## The development process: Spec-Driven Development
 

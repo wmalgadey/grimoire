@@ -14,7 +14,8 @@ namespace Grimoire.AgentEvals;
 /// refresh command — in the PR pipeline that failure IS the FR-016 merge gate for
 /// instruction-file changes.
 /// </summary>
-[Collection("EvalRunnerProcessTests")]
+[Trait("Tier", "SlowEval")]
+[Collection("EvalRunnerReplayScenarios")]
 public class IngestReplayEvalTests
 {
     [Fact]

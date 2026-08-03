@@ -13,7 +13,7 @@ namespace Grimoire.AgentEvals;
 /// the real instruction files are never mutated.
 /// </summary>
 [Trait("Tier", "Fast")]
-[Collection("EvalRunnerProcessTests")]
+[Collection("EvalRunnerEnvMutatingTests")]
 public class StalenessTests : IDisposable
 {
     private readonly string _fakeRepoRoot;
