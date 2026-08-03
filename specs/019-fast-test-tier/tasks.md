@@ -113,7 +113,7 @@ confirm exit 0, no replay-eval class name in the output, and a low single-digit-
 test-execution wall clock. Repeat with `data/evals/recordings/` absent and no
 `ANTHROPIC_AUTH_TOKEN` set — confirm it still completes successfully.
 
-- [ ] T002 [US1] In `backend/tests/Grimoire.AgentEvals/`, add
+- [X] T002 [US1] In `backend/tests/Grimoire.AgentEvals/`, add
       `[Trait("Tier", "Fast")]` to all nine hermetic harness-mechanics test classes
       per `research.md` R1: `ReplayContractTests`, `CaptureHygieneTests`,
       `StalenessTests`, `EvalProviderResolverTests`, `EvalCredentialRedactionTests`
@@ -130,7 +130,7 @@ test-execution wall clock. Repeat with `data/evals/recordings/` absent and no
       `RemediationReVerificationScorerTests`, `LocalEnvFileTests`, and
       `TimeoutEnforcingModelClientTests` carry no `[Collection]` attribute today and
       need none added — they only gain the trait.
-- [ ] T003 [P] [US1] Create `scripts/test-fast.sh`: a `set -eo pipefail` shell script
+- [X] T003 [P] [US1] Create `scripts/test-fast.sh`: a `set -eo pipefail` shell script
       that runs, in order,
       `dotnet test backend/tests/Grimoire.Domain.UnitTests --configuration Release`,
       `dotnet test backend/tests/Grimoire.ArchTests --configuration Release`, and
@@ -138,7 +138,7 @@ test-execution wall clock. Repeat with `data/evals/recordings/` absent and no
       stopping at the first failing invocation so the developer sees which tier
       failed (per `contracts/test-tier-commands.md`). Make it executable
       (`chmod +x`).
-- [ ] T004 [US1] Add a new `Grimoire.ArchTests` rule,
+- [X] T004 [US1] Add a new `Grimoire.ArchTests` rule,
       `AgentEvalsTierMembershipRuleTests.cs`, that reflects/Mono.Cecil-inspects the
       compiled `Grimoire.AgentEvals` assembly and asserts: the nine classes named in
       T002 carry `[Trait("Tier", "Fast")]`, and none of the five replay-eval classes
@@ -187,7 +187,7 @@ runtime against the recorded 61s baseline on the same environment.
       pattern) until it returns `true` or `timeout` elapses, and calls
       `Assert.Fail(onTimeoutMessage)` with a clear diagnostic on expiry (FR-004).
       This method is the rule's one allow-listed call site (`contracts/deterministic-wait-rule.md`).
-- [ ] T008 [US2] Audit and triage every `Task.Delay`/`Thread.Sleep` call site in
+- [X] T008 [US2] Audit and triage every `Task.Delay`/`Thread.Sleep` call site in
       `backend/tests/Grimoire.IntegrationTests` (53 occurrences found by
       `research.md` R4/R5 audit; re-grep to confirm current count before starting).
       For each: (a) if it is a fixed unconditional wait used only to out-wait an
@@ -208,7 +208,7 @@ runtime against the recorded 61s baseline on the same environment.
       timing behavior of the fake itself rather than a test out-waiting an operation
       — evaluate each against the same (a)/(b) split and tag `TimingDependent`
       accordingly if kept.
-- [ ] T009 [P] [US2] Flip `parallelizeTestCollections` from `false` to `true` in
+- [X] T009 [P] [US2] Flip `parallelizeTestCollections` from `false` to `true` in
       `backend/tests/Grimoire.IntegrationTests/xunit.runner.json`. Confirm
       `IngestAgentObservabilityCollection.cs`'s
       `[CollectionDefinition(..., DisableParallelization = true)]` is left unchanged
@@ -219,14 +219,14 @@ runtime against the recorded 61s baseline on the same environment.
       the corresponding `<PackageVersion Include="Testcontainers" Version="4.13.0" />`
       entry from `backend/Directory.Packages.props` (confirm no other test project
       references `Testcontainers` before removing the version entry) (FR-015).
-- [ ] T011 [US2] Run `DeterministicTierNoFixedWaitRuleTests` (T001) against the
+- [X] T011 [US2] Run `DeterministicTierNoFixedWaitRuleTests` (T001) against the
       post-triage `Grimoire.IntegrationTests` assembly; confirm zero violations
       remain (SC-004, SC-007) — this is the point where T001's rule goes fully green
       against the real codebase for the first time.
-- [ ] T012 [US2] Run `time dotnet test backend/tests/Grimoire.IntegrationTests --configuration Release`;
+- [X] T012 [US2] Run `time dotnet test backend/tests/Grimoire.IntegrationTests --configuration Release`;
       confirm all tests pass, executed test count ≥ 583, and wall clock is ≥ 30%
       below the recorded 61s baseline on the same/comparable environment (SC-003).
-- [ ] T013 [P] [US2] Add or confirm a test that exercises Acceptance Scenario 4:
+- [X] T013 [P] [US2] Add or confirm a test that exercises Acceptance Scenario 4:
       temporarily point a `PollAsync`-awaited condition at one that never becomes
       true and confirm the test fails with the bounded-timeout diagnostic message
       rather than hanging.
