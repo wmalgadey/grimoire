@@ -168,26 +168,21 @@ public sealed class IngestSubmissionPipelineFixture : IDisposable
 
     public string TaskArtifactPathFor(string taskId) => Path.Combine(ContentPaths.TasksDir, $"{taskId}.md");
 
-    public async Task WaitForStatusAsync(string taskId, Func<string, bool> predicate, TimeSpan? timeout = null)
-    {
-        var deadline = DateTime.UtcNow + (timeout ?? TimeSpan.FromSeconds(10));
-        while (DateTime.UtcNow < deadline)
-        {
-            var path = TaskArtifactPathFor(taskId);
-            if (File.Exists(path))
+    public async Task WaitForStatusAsync(string taskId, Func<string, bool> predicate, TimeSpan? timeout = null) =>
+        await PollAsync.WaitAsync(
+            async () =>
             {
-                var frontmatter = TaskArtifactFrontmatter.TryParse(await File.ReadAllTextAsync(path));
-                if (frontmatter is not null && predicate(frontmatter.Status))
+                var path = TaskArtifactPathFor(taskId);
+                if (!File.Exists(path))
                 {
-                    return;
+                    return false;
                 }
-            }
 
-            await Task.Delay(25);
-        }
-
-        throw new TimeoutException($"Task '{taskId}' did not reach the expected status in time.");
-    }
+                var frontmatter = TaskArtifactFrontmatter.TryParse(await File.ReadAllTextAsync(path));
+                return frontmatter is not null && predicate(frontmatter.Status);
+            },
+            timeout ?? TimeSpan.FromSeconds(10),
+            $"Task '{taskId}' did not reach the expected status in time.");
 
     /// <summary>
     /// Polls <see cref="PublishedEvents"/> (not the file) until a matching lifecycle event has
@@ -196,24 +191,17 @@ public sealed class IngestSubmissionPipelineFixture : IDisposable
     /// re-read in between), so tests asserting on published events must wait on the events, not
     /// the file, to avoid racing that gap.
     /// </summary>
-    public async Task WaitForPublishedEventAsync(string taskId, Func<RealtimeLifecycleEvent, bool> predicate, TimeSpan? timeout = null)
-    {
-        var deadline = DateTime.UtcNow + (timeout ?? TimeSpan.FromSeconds(10));
-        while (DateTime.UtcNow < deadline)
-        {
-            lock (PublishedEvents)
+    public async Task WaitForPublishedEventAsync(string taskId, Func<RealtimeLifecycleEvent, bool> predicate, TimeSpan? timeout = null) =>
+        await PollAsync.WaitAsync(
+            () =>
             {
-                if (PublishedEvents.Any(e => e.TaskId == taskId && predicate(e)))
+                lock (PublishedEvents)
                 {
-                    return;
+                    return PublishedEvents.Any(e => e.TaskId == taskId && predicate(e));
                 }
-            }
-
-            await Task.Delay(25);
-        }
-
-        throw new TimeoutException($"Task '{taskId}' did not publish the expected event in time.");
-    }
+            },
+            timeout ?? TimeSpan.FromSeconds(10),
+            $"Task '{taskId}' did not publish the expected event in time.");
 
     public void Dispose()
     {

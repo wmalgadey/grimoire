@@ -30,17 +30,9 @@ public static class PollAsync
         string onTimeoutMessage,
         TimeSpan? pollInterval = null)
     {
-        var interval = pollInterval ?? DefaultPollInterval;
-        var deadline = DateTime.UtcNow + timeout;
-
-        while (DateTime.UtcNow < deadline)
+        if (await TryWaitAsync(condition, timeout, pollInterval).ConfigureAwait(false))
         {
-            if (await condition().ConfigureAwait(false))
-            {
-                return;
-            }
-
-            await Task.Delay(interval).ConfigureAwait(false);
+            return;
         }
 
         Xunit.Assert.Fail(onTimeoutMessage);
@@ -53,4 +45,64 @@ public static class PollAsync
         string onTimeoutMessage,
         TimeSpan? pollInterval = null)
         => WaitAsync(() => Task.FromResult(condition()), timeout, onTimeoutMessage, pollInterval);
+
+    /// <summary>
+    /// Lazy-message overload (async condition): <paramref name="onTimeoutMessage"/> is only
+    /// evaluated on timeout, so it can report state observed by the last poll (e.g.
+    /// "last seen: X") instead of a value captured before polling started.
+    /// </summary>
+    public static async Task WaitAsync(
+        Func<Task<bool>> condition,
+        TimeSpan timeout,
+        Func<string> onTimeoutMessage,
+        TimeSpan? pollInterval = null)
+    {
+        if (await TryWaitAsync(condition, timeout, pollInterval).ConfigureAwait(false))
+        {
+            return;
+        }
+
+        Xunit.Assert.Fail(onTimeoutMessage());
+    }
+
+    /// <summary>Lazy-message overload (synchronous condition) — see the async overload above.</summary>
+    public static Task WaitAsync(
+        Func<bool> condition,
+        TimeSpan timeout,
+        Func<string> onTimeoutMessage,
+        TimeSpan? pollInterval = null)
+        => WaitAsync(() => Task.FromResult(condition()), timeout, onTimeoutMessage, pollInterval);
+
+    /// <summary>
+    /// Non-throwing variant for call sites that compose their own retry/give-up policy across
+    /// several bounded probes (e.g. re-arming a watcher) rather than failing the test on the
+    /// first probe's timeout.
+    /// </summary>
+    public static async Task<bool> TryWaitAsync(
+        Func<Task<bool>> condition,
+        TimeSpan timeout,
+        TimeSpan? pollInterval = null)
+    {
+        var interval = pollInterval ?? DefaultPollInterval;
+        var deadline = DateTime.UtcNow + timeout;
+
+        while (DateTime.UtcNow < deadline)
+        {
+            if (await condition().ConfigureAwait(false))
+            {
+                return true;
+            }
+
+            await Task.Delay(interval).ConfigureAwait(false);
+        }
+
+        return false;
+    }
+
+    /// <summary>Synchronous-condition overload of <see cref="TryWaitAsync(Func{Task{bool}}, TimeSpan, TimeSpan?)"/>.</summary>
+    public static Task<bool> TryWaitAsync(
+        Func<bool> condition,
+        TimeSpan timeout,
+        TimeSpan? pollInterval = null)
+        => TryWaitAsync(() => Task.FromResult(condition()), timeout, pollInterval);
 }

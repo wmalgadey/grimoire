@@ -458,17 +458,15 @@ internal sealed class BoardHostHarness : IDisposable
 
     public async Task<LintRunState> WaitForTerminalAsync(string runId)
     {
-        var deadline = DateTime.UtcNow.AddSeconds(10);
         LintRunState? run = null;
-        while (DateTime.UtcNow < deadline)
-        {
-            run = LintCoordinator.GetRun(runId);
-            if (run is { IsTerminal: true } && run.FindingsReportPath is not null)
+        await PollAsync.WaitAsync(
+            () =>
             {
-                return run;
-            }
-            await Task.Delay(25);
-        }
+                run = LintCoordinator.GetRun(runId);
+                return run is { IsTerminal: true } && run.FindingsReportPath is not null;
+            },
+            TimeSpan.FromSeconds(10),
+            () => $"Lint run '{runId}' did not reach a terminal state with a Findings Report in time (last seen: {run?.IsTerminal.ToString() ?? "not found"}).");
 
         Assert.NotNull(run);
         Assert.True(run!.IsTerminal, $"Lint run '{runId}' did not reach a terminal state in time.");

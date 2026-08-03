@@ -7,6 +7,10 @@ namespace Grimoire.IntegrationTests.Fakes;
 /// sequence of <see cref="ModelTurn"/>s and records every conversation payload
 /// it receives for assertions (Principle II, R2).
 /// </summary>
+// 019-fast-test-tier (ADR-021 R4): the scripted per-delta delay simulates the production
+// streaming timing tests assert against — it is the behavior under test's own timing, not
+// a wait for an unrelated async op.
+[Trait("TimingDependent", "true")]
 public sealed class FakeModelClient : IModelClient
 {
     private readonly Queue<ModelTurn> _script;

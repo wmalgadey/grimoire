@@ -220,6 +220,10 @@ public class RemediationRunCoordinatorTests
 
     // ── SC-005: the launcher is never invoked for any non-Authorized row ───────────
 
+    // 019-fast-test-tier (ADR-021 R4): asserts the absence of any dispatch — there is no
+    // positive completion signal to poll for, so a fixed wait is the only way to gain
+    // confidence no errant background dispatch fires. Exempt from the fixed-wait ban (FR-005).
+    [Trait("TimingDependent", "true")]
     [Fact]
     public async Task Launcher_IsNeverInvoked_ForAnyNonAuthorizedRow_SC005()
     {
@@ -378,37 +382,25 @@ internal sealed class RemediationCoordinatorHarness : IAsyncDisposable
 
     public async Task<RemediationTaskRow> WaitForStateAsync(string taskId, string state, int timeoutMs = 10000)
     {
-        var deadline = DateTime.UtcNow.AddMilliseconds(timeoutMs);
         RemediationTaskRow? row = null;
-        while (DateTime.UtcNow < deadline)
-        {
-            row = (await Repository.GetRemediationTasksAsync()).SingleOrDefault(r => r.TaskId == taskId);
-            if (row is not null && row.State == state)
+        await PollAsync.WaitAsync(
+            async () =>
             {
-                return row;
-            }
+                row = (await Repository.GetRemediationTasksAsync()).SingleOrDefault(r => r.TaskId == taskId);
+                return row is not null && row.State == state;
+            },
+            TimeSpan.FromMilliseconds(timeoutMs),
+            () => $"Task '{taskId}' did not reach state '{state}' in time (last seen: {row?.State ?? "not found"}).");
 
-            await Task.Delay(25);
-        }
-
-        Assert.Fail($"Task '{taskId}' did not reach state '{state}' in time (last seen: {row?.State ?? "not found"}).");
-        return null!;
+        return row!;
     }
 
     public async Task WaitForRequestCountAsync(int count, int timeoutMs = 10000)
     {
-        var deadline = DateTime.UtcNow.AddMilliseconds(timeoutMs);
-        while (DateTime.UtcNow < deadline)
-        {
-            if (Launcher.RemediationRequests.Count >= count)
-            {
-                return;
-            }
-
-            await Task.Delay(25);
-        }
-
-        Assert.Fail($"Expected at least {count} remediation execution requests, saw {Launcher.RemediationRequests.Count}.");
+        await PollAsync.WaitAsync(
+            () => Launcher.RemediationRequests.Count >= count,
+            TimeSpan.FromMilliseconds(timeoutMs),
+            $"Expected at least {count} remediation execution requests, saw {Launcher.RemediationRequests.Count}.");
     }
 
     public ValueTask DisposeAsync()

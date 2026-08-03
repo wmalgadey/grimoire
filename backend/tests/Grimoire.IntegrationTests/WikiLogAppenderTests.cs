@@ -13,6 +13,7 @@ namespace Grimoire.IntegrationTests;
 /// which references only <c>Grimoire.Domain</c>) since <see cref="WikiLogAppender"/> is a
 /// <c>Grimoire.AgentRuntime</c> type this test project already references.
 /// </summary>
+[Collection("HubActivityListenerObservability")]
 public class WikiLogAppenderTests
 {
     private static readonly ActivitySource TestActivitySource = new("WikiLogAppenderTests");

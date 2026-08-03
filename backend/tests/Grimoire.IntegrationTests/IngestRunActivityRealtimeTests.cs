@@ -34,21 +34,24 @@ public class IngestRunActivityRealtimeTests
                 currentAction = "tool_call:write_file",
             });
 
-            var deadline = DateTime.UtcNow + TimeSpan.FromSeconds(5);
             (string Method, object? Payload, DateTimeOffset ReceivedAt)? received = null;
-            while (DateTime.UtcNow < deadline)
-            {
-                lock (fixture.PublishedActivity)
+            await PollAsync.WaitAsync(
+                () =>
                 {
-                    if (fixture.PublishedActivity.Count(a => a.Method == "runActivityChanged") >= turn)
+                    lock (fixture.PublishedActivity)
                     {
-                        received = fixture.PublishedActivity.Where(a => a.Method == "runActivityChanged").Skip(turn - 1).First();
-                        break;
+                        if (fixture.PublishedActivity.Count(a => a.Method == "runActivityChanged") >= turn)
+                        {
+                            received = fixture.PublishedActivity.Where(a => a.Method == "runActivityChanged").Skip(turn - 1).First();
+                            return true;
+                        }
                     }
-                }
 
-                await Task.Delay(5);
-            }
+                    return false;
+                },
+                TimeSpan.FromSeconds(5),
+                $"Expected the {turn}. runActivityChanged publish within 5s.",
+                pollInterval: TimeSpan.FromMilliseconds(5));
 
             Assert.NotNull(received);
             latencies.Add(received.Value.ReceivedAt - emittedAt);

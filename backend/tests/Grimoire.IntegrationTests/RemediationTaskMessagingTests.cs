@@ -164,18 +164,21 @@ public class RemediationTaskMessagingTests
             ["text"] = "It documents GrimoirePathOptions, which is configuration surface.",
         });
 
-        var deadline = DateTime.UtcNow.AddSeconds(10);
         RemediationTaskRecordParseResult.Parsed? parsed = null;
-        while (DateTime.UtcNow < deadline)
-        {
-            if (await harness.RecordStore.ReadAsync(taskId) is RemediationTaskRecordParseResult.Parsed p &&
-                p.Entries.OfType<RemediationTaskRecordEntry.Message>().Any(m => m.Sender == RemediationTaskRecordFormat.SenderAgent))
+        await PollAsync.WaitAsync(
+            async () =>
             {
-                parsed = p;
-                break;
-            }
-            await Task.Delay(25);
-        }
+                if (await harness.RecordStore.ReadAsync(taskId) is RemediationTaskRecordParseResult.Parsed p &&
+                    p.Entries.OfType<RemediationTaskRecordEntry.Message>().Any(m => m.Sender == RemediationTaskRecordFormat.SenderAgent))
+                {
+                    parsed = p;
+                    return true;
+                }
+
+                return false;
+            },
+            TimeSpan.FromSeconds(10),
+            "Expected an agent message to appear on the Remediation Task Record within 10s.");
 
         Assert.NotNull(parsed);
         var messages = parsed!.Entries.OfType<RemediationTaskRecordEntry.Message>().ToList();
@@ -184,18 +187,16 @@ public class RemediationTaskMessagingTests
         Assert.Equal(RemediationTaskRecordFormat.SenderAgent, messages[1].Sender);
         Assert.Equal("It documents GrimoirePathOptions, which is configuration surface.", messages[1].Text);
 
-        var deadline2 = DateTime.UtcNow.AddSeconds(10);
-        while (DateTime.UtcNow < deadline2)
-        {
-            lock (lockObj)
+        await PollAsync.WaitAsync(
+            () =>
             {
-                if (received.Any(e => e.GetProperty("state").GetString() == "completed"))
+                lock (lockObj)
                 {
-                    break;
+                    return received.Any(e => e.GetProperty("state").GetString() == "completed");
                 }
-            }
-            await Task.Delay(25);
-        }
+            },
+            TimeSpan.FromSeconds(10),
+            "Expected a 'completed' broadcast within 10s.");
 
         List<JsonElement> snapshot;
         lock (lockObj) { snapshot = [.. received]; }
@@ -278,16 +279,11 @@ public class RemediationTaskMessagingTests
             ["text"] = "Here is the answer.",
         });
 
-        var deadline = DateTime.UtcNow.AddSeconds(10);
-        while (DateTime.UtcNow < deadline)
-        {
-            if (await harness.RecordStore.ReadAsync(taskId) is RemediationTaskRecordParseResult.Parsed p &&
-                p.Entries.OfType<RemediationTaskRecordEntry.Message>().Count() == 2)
-            {
-                break;
-            }
-            await Task.Delay(25);
-        }
+        await PollAsync.WaitAsync(
+            async () => await harness.RecordStore.ReadAsync(taskId) is RemediationTaskRecordParseResult.Parsed p &&
+                p.Entries.OfType<RemediationTaskRecordEntry.Message>().Count() == 2,
+            TimeSpan.FromSeconds(10),
+            "Expected 2 messages on the Remediation Task Record within 10s.");
 
         // Drive the task to a terminal outcome (Dismissed, FR-010 — no agent involvement).
         var dismissResponse = await harness.Client.PostAsync($"/api/remediation-tasks/{taskId}/dismiss", content: null);
@@ -317,16 +313,11 @@ public class RemediationTaskMessagingTests
         var firstHandle = Assert.Single(harness.Launcher.Handles);
         firstHandle.EmitEventWithFields("completed", taskId, new Dictionary<string, object?> { ["text"] = "First answer." });
 
-        var deadline = DateTime.UtcNow.AddSeconds(10);
-        while (DateTime.UtcNow < deadline)
-        {
-            if (await harness.RecordStore.ReadAsync(taskId) is RemediationTaskRecordParseResult.Parsed p &&
-                p.Entries.OfType<RemediationTaskRecordEntry.Message>().Count() == 2)
-            {
-                break;
-            }
-            await Task.Delay(25);
-        }
+        await PollAsync.WaitAsync(
+            async () => await harness.RecordStore.ReadAsync(taskId) is RemediationTaskRecordParseResult.Parsed p &&
+                p.Entries.OfType<RemediationTaskRecordEntry.Message>().Count() == 2,
+            TimeSpan.FromSeconds(10),
+            "Expected 2 messages on the Remediation Task Record within 10s.");
 
         await harness.PostJsonAsync($"/api/remediation-tasks/{taskId}/messages", new { content = "Second question?" });
         await harness.WaitForMessageTurnRequestAsync(count: 2);
@@ -457,33 +448,17 @@ internal sealed class RemediationMessagingHarness : IAsyncDisposable
             UpdatedAt: now));
     }
 
-    public async Task WaitForRemediationRequestAsync(int count = 1, int timeoutMs = 10000)
-    {
-        var deadline = DateTime.UtcNow.AddMilliseconds(timeoutMs);
-        while (DateTime.UtcNow < deadline)
-        {
-            if (Launcher.RemediationRequests.Count >= count)
-            {
-                return;
-            }
-            await Task.Delay(25);
-        }
-        Assert.Fail($"Expected at least {count} remediation execution requests, saw {Launcher.RemediationRequests.Count}.");
-    }
+    public Task WaitForRemediationRequestAsync(int count = 1, int timeoutMs = 10000) =>
+        PollAsync.WaitAsync(
+            () => Launcher.RemediationRequests.Count >= count,
+            TimeSpan.FromMilliseconds(timeoutMs),
+            () => $"Expected at least {count} remediation execution requests, saw {Launcher.RemediationRequests.Count}.");
 
-    public async Task WaitForMessageTurnRequestAsync(int count = 1, int timeoutMs = 10000)
-    {
-        var deadline = DateTime.UtcNow.AddMilliseconds(timeoutMs);
-        while (DateTime.UtcNow < deadline)
-        {
-            if (Launcher.MessageTurnRequests.Count >= count)
-            {
-                return;
-            }
-            await Task.Delay(25);
-        }
-        Assert.Fail($"Expected at least {count} message-turn requests, saw {Launcher.MessageTurnRequests.Count}.");
-    }
+    public Task WaitForMessageTurnRequestAsync(int count = 1, int timeoutMs = 10000) =>
+        PollAsync.WaitAsync(
+            () => Launcher.MessageTurnRequests.Count >= count,
+            TimeSpan.FromMilliseconds(timeoutMs),
+            () => $"Expected at least {count} message-turn requests, saw {Launcher.MessageTurnRequests.Count}.");
 
     public async ValueTask DisposeAsync()
     {

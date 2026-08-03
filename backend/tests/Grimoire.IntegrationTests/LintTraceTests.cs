@@ -17,6 +17,7 @@ namespace Grimoire.IntegrationTests;
 /// (<c>lint_agent.run</c> → <c>lint_agent.load_instructions</c>/<c>lint_agent.tool_call</c>),
 /// since the two are separate processes/ActivitySources in production.
 /// </summary>
+[Collection("HubActivityListenerObservability")]
 public class LintTraceTests
 {
     [Fact]

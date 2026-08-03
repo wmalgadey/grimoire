@@ -188,11 +188,27 @@ public class QuerySynthesisWriteTests
     {
         var paths = QueryTurnSubmissionApiTests.BuildResolvedPaths(root);
         var recordPath = paths.ConversationRecordPathFor(conversationId);
-        await QueryConversationRecordLifecycleTests.WaitUntilAsync(() => Task.FromResult(File.Exists(recordPath)));
 
-        var parsed = Assert.IsType<ConversationRecordParseResult.Parsed>(
-            ConversationRecordFormat.Parse(await File.ReadAllTextAsync(recordPath)));
-        return Assert.Single(parsed.Turns);
+        // 019-fast-test-tier (ADR-021 edge case: genuine race surfaced by suite
+        // parallelization, fixed at the root): File.Exists becoming true does not mean the
+        // write has finished — poll for a successful structured parse too, not just
+        // existence, to avoid reading mid-write content under heavy concurrent-suite load.
+        ConversationRecordParseResult.Parsed? parsed = null;
+        await PollAsync.WaitAsync(
+            async () =>
+            {
+                if (!File.Exists(recordPath))
+                {
+                    return false;
+                }
+
+                return ConversationRecordFormat.Parse(await File.ReadAllTextAsync(recordPath)) is ConversationRecordParseResult.Parsed { Turns.Count: >= 1 } p
+                    && (parsed = p) is not null;
+            },
+            TimeSpan.FromSeconds(10),
+            $"Expected the Conversation Record at '{recordPath}' to exist and parse with at least one turn within 10s.");
+
+        return Assert.Single(parsed!.Turns);
     }
 
     private static string FindRepositoryRoot()

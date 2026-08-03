@@ -11,6 +11,7 @@ namespace Grimoire.IntegrationTests.PathConfiguration;
 /// mirroring <see cref="QueryRuntimePathsTests"/>'s cases for <c>conversations_dir</c>
 /// (single composition point, no ambient discovery).
 /// </summary>
+[Collection("CurrentDirectoryMutation")]
 public class WriteLocksPathTests
 {
     [Fact]

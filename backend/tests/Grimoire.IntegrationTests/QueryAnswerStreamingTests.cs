@@ -67,8 +67,13 @@ public class QueryAnswerStreamingTests
             "/api/query-conversations/c-stream/turns", new { prompt = "What decisions does the wiki cover?" });
         response.EnsureSuccessStatusCode();
 
-        var completed = await Task.WhenAny(allReceived.Task, Task.Delay(TimeSpan.FromSeconds(5)));
-        Assert.Same(allReceived.Task, completed);
+        // 019-fast-test-tier (ADR-021 R4): allReceived is signaled thread-safely from the
+        // SignalR callback (TrySetResult); poll its completion instead of a raw
+        // Task.WhenAny(..., Task.Delay(...)) bound so the wait routes through PollAsync.
+        await PollAsync.WaitAsync(
+            () => allReceived.Task.IsCompleted,
+            TimeSpan.FromSeconds(5),
+            "Expected 3 answer chunks to arrive via SignalR within 5s.");
 
         Assert.Equal(3, received.Count);
         Assert.Equal([1, 2, 3], received.Select(c => c.Sequence));

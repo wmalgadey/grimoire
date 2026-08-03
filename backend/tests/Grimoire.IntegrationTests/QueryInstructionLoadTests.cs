@@ -77,17 +77,11 @@ public class QueryInstructionLoadTests
         var turnId = accepted.Turn.TurnId;
 
         // Wait for the fake's auto-play terminal event to propagate.
-        var deadline = DateTime.UtcNow.AddSeconds(5);
-        Grimoire.Hub.QueryDispatch.QueryTurnState? turn;
-        do
-        {
-            turn = coordinator.GetTurn(turnId);
-            if (turn is { Status: Grimoire.Hub.QueryDispatch.QueryTurnStatus.Failed })
-            {
-                break;
-            }
-            await Task.Delay(25);
-        } while (DateTime.UtcNow < deadline);
+        await PollAsync.WaitAsync(
+            () => coordinator.GetTurn(turnId) is { Status: Grimoire.Hub.QueryDispatch.QueryTurnStatus.Failed },
+            TimeSpan.FromSeconds(5),
+            $"Expected turn '{turnId}' to reach Failed status within 5s.");
+        var turn = coordinator.GetTurn(turnId);
 
         Assert.NotNull(turn);
         Assert.Equal(Grimoire.Hub.QueryDispatch.QueryTurnStatus.Failed, turn!.Status);
@@ -102,11 +96,10 @@ public class QueryInstructionLoadTests
         // Record's turn bookkeeping instead of the retired per-turn artifact.
         var resolvedPaths = QueryTurnSubmissionApiTests.BuildResolvedPaths(root);
         var recordPath = resolvedPaths.ConversationRecordPathFor("c-fail");
-        var recordDeadline = DateTime.UtcNow.AddSeconds(5);
-        while (!File.Exists(recordPath) && DateTime.UtcNow < recordDeadline)
-        {
-            await Task.Delay(25);
-        }
+        await PollAsync.WaitAsync(
+            () => File.Exists(recordPath),
+            TimeSpan.FromSeconds(5),
+            $"Expected the Conversation Record at '{recordPath}' to exist within 5s.");
 
         Assert.True(File.Exists(recordPath));
         var record = await File.ReadAllTextAsync(recordPath);

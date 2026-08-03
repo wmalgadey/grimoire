@@ -44,16 +44,15 @@ public class HubRequestTracingTests
 
     private static async Task<Activity> WaitForSpanAsync(List<Activity> exportedItems, string operationName)
     {
-        var deadline = DateTime.UtcNow + TimeSpan.FromSeconds(10);
-        while (DateTime.UtcNow < deadline)
-        {
-            var match = exportedItems.FirstOrDefault(a => a.OperationName == operationName);
-            if (match is not null)
-            {
-                return match;
-            }
+        await PollAsync.WaitAsync(
+            () => exportedItems.Any(a => a.OperationName == operationName),
+            TimeSpan.FromSeconds(10),
+            $"Span '{operationName}' was never exported.");
 
-            await Task.Delay(25);
+        var match = exportedItems.FirstOrDefault(a => a.OperationName == operationName);
+        if (match is not null)
+        {
+            return match;
         }
 
         throw new TimeoutException($"Span '{operationName}' was never exported.");

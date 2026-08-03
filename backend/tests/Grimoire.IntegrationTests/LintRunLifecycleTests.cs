@@ -322,28 +322,21 @@ internal sealed class LintCoordinatorHarness : IDisposable
 
     public async Task<LintRunState> WaitForTerminalAsync(string runId)
     {
-        var deadline = DateTime.UtcNow.AddSeconds(5);
-        LintRunState? run;
-        do
-        {
-            run = Coordinator.GetRun(runId);
-            if (run is { Status: not LintRunStatus.Running })
-            {
-                break;
-            }
-            await Task.Delay(25);
-        } while (DateTime.UtcNow < deadline);
+        await PollAsync.WaitAsync(
+            () => Coordinator.GetRun(runId) is { Status: not LintRunStatus.Running },
+            TimeSpan.FromSeconds(5),
+            $"Expected lint run '{runId}' to reach a terminal status within 5s.");
+        var run = Coordinator.GetRun(runId);
 
         Assert.NotNull(run);
 
         // The report write is a separate, slightly-later async step after the status
         // flips (LintRunCoordinator.FinishRunAsync) — poll for the file too.
-        var reportDeadline = DateTime.UtcNow.AddSeconds(5);
         var reportPath = Paths.FindingsReportPathFor(runId);
-        while (!File.Exists(reportPath) && DateTime.UtcNow < reportDeadline)
-        {
-            await Task.Delay(25);
-        }
+        await PollAsync.WaitAsync(
+            () => File.Exists(reportPath),
+            TimeSpan.FromSeconds(5),
+            $"Expected a Findings Report at '{reportPath}'.");
 
         Assert.True(File.Exists(reportPath), $"Expected a Findings Report at '{reportPath}'.");
         return run!;

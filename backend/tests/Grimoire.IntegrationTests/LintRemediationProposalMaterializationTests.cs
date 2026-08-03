@@ -198,18 +198,16 @@ public class LintRemediationProposalMaterializationTests
         var runId = accepted.Run.RunId;
         await harness.WaitForTerminalAsync(runId);
 
-        var deadline = DateTime.UtcNow.AddSeconds(10);
-        while (DateTime.UtcNow < deadline)
-        {
-            lock (lockObj)
+        await PollAsync.WaitAsync(
+            () =>
             {
-                if (received.Count >= 2)
+                lock (lockObj)
                 {
-                    break;
+                    return received.Count >= 2;
                 }
-            }
-            await Task.Delay(25);
-        }
+            },
+            TimeSpan.FromSeconds(10),
+            "Expected at least 2 remediationTaskLifecycleChanged broadcasts within 10s.");
 
         List<RemediationTaskLifecycleEvent> snapshot;
         lock (lockObj) { snapshot = [.. received]; }
@@ -309,17 +307,15 @@ internal sealed class LintRemediationMaterializationHarness : IAsyncDisposable
 
     public async Task<LintRunState> WaitForTerminalAsync(string runId)
     {
-        var deadline = DateTime.UtcNow.AddSeconds(10);
         LintRunState? run = null;
-        while (DateTime.UtcNow < deadline)
-        {
-            run = Coordinator.GetRun(runId);
-            if (run is { IsTerminal: true } && run.FindingsReportPath is not null)
+        await PollAsync.WaitAsync(
+            () =>
             {
-                return run;
-            }
-            await Task.Delay(25);
-        }
+                run = Coordinator.GetRun(runId);
+                return run is { IsTerminal: true } && run.FindingsReportPath is not null;
+            },
+            TimeSpan.FromSeconds(10),
+            () => $"Lint run '{runId}' did not reach a terminal state with a Findings Report in time (last seen: {run?.IsTerminal.ToString() ?? "not found"}).");
 
         Assert.NotNull(run);
         Assert.True(run!.IsTerminal, $"Lint run '{runId}' did not reach a terminal state in time.");

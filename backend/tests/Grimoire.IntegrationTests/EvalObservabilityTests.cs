@@ -14,6 +14,7 @@ namespace Grimoire.IntegrationTests;
 /// <see cref="EvalObservability"/>'s emission functions are pure — they take an already
 /// resolved <see cref="EvalGateOutcome"/> rather than reading the environment themselves.
 /// </summary>
+[Collection("HubActivityListenerObservability")]
 public class EvalObservabilityTests
 {
     [Fact]

@@ -22,8 +22,16 @@ public class QueryInterruptionTests
     public async Task Interrupt_ActiveTurn_TerminatesProcess_PreservesPartialAnswer_MarksInterrupted()
     {
         var launcher = new FakeAgentProcessLauncher(autoPlay: false);
+        // 019-fast-test-tier (ADR-021 edge case: genuine race surfaced by suite
+        // parallelization): this test's liveness window is a background safety-net, not
+        // itself under test (unlike Interrupt_AppendsExactlyOneInterruptedBlock_..._
+        // EvenRacingSupervision below, which deliberately races a short window). 100ms left
+        // no real headroom for the interrupt HTTP round-trip under heavy concurrent-suite
+        // CPU contention, so the watchdog could fire first and mark the turn "failed"
+        // instead of "interrupted" — observed in practice. Widened, matching this file's
+        // own SC-004 budget (interrupt must complete within 2s).
         using var host = await QueryTurnSubmissionApiTests.BuildHostAsync(
-            launcher, root: QueryTurnSubmissionApiTests.CreateTempRoot(), livenessWindow: TimeSpan.FromMilliseconds(100));
+            launcher, root: QueryTurnSubmissionApiTests.CreateTempRoot(), livenessWindow: TimeSpan.FromSeconds(5));
         var client = host.GetTestClient();
 
         var submitResponse = await client.PostAsJsonAsync(
@@ -36,12 +44,15 @@ public class QueryInterruptionTests
         handle.EmitEvent("started", turnId);
         handle.EmitEvent("answer_chunk", turnId, new { text = "ADR-004 scopes the credential " });
 
-        await WaitUntilAsync(async () =>
-        {
-            var response = await client.GetAsync($"/api/query-turns/{turnId}");
-            var json = await response.Content.ReadFromJsonAsync<JsonElement>();
-            return !string.IsNullOrEmpty(json.GetProperty("answer").GetString());
-        });
+        await PollAsync.WaitAsync(
+            async () =>
+            {
+                var response = await client.GetAsync($"/api/query-turns/{turnId}");
+                var json = await response.Content.ReadFromJsonAsync<JsonElement>();
+                return !string.IsNullOrEmpty(json.GetProperty("answer").GetString());
+            },
+            TimeSpan.FromSeconds(5),
+            "Condition was not met within the timeout.");
 
         // SC-004: interruption must halt answer delivery within 2 seconds.
         var interruptStopwatch = Stopwatch.StartNew();
@@ -79,12 +90,15 @@ public class QueryInterruptionTests
         var submitJson = await submitResponse.Content.ReadFromJsonAsync<JsonElement>();
         var turnId = submitJson.GetProperty("turnId").GetString()!;
 
-        await WaitUntilAsync(async () =>
-        {
-            var response = await client.GetAsync($"/api/query-turns/{turnId}");
-            var json = await response.Content.ReadFromJsonAsync<JsonElement>();
-            return json.GetProperty("state").GetString() == "completed";
-        });
+        await PollAsync.WaitAsync(
+            async () =>
+            {
+                var response = await client.GetAsync($"/api/query-turns/{turnId}");
+                var json = await response.Content.ReadFromJsonAsync<JsonElement>();
+                return json.GetProperty("state").GetString() == "completed";
+            },
+            TimeSpan.FromSeconds(5),
+            "Condition was not met within the timeout.");
 
         var interruptResponse = await client.PostAsync($"/api/query-turns/{turnId}/interrupt", content: null);
         Assert.Equal(HttpStatusCode.OK, interruptResponse.StatusCode);
@@ -98,6 +112,7 @@ public class QueryInterruptionTests
     // one block with state: interrupted, failure_reason: null, and the accumulated
     // partial answer — and interrupt racing supervision (short liveness window) still
     // yields a single block (first-transition-wins).
+    [Trait("TimingDependent", "true")]
     [Fact]
     public async Task Interrupt_AppendsExactlyOneInterruptedBlock_WithPartialAnswer_EvenRacingSupervision()
     {
@@ -116,21 +131,29 @@ public class QueryInterruptionTests
         var handle = Assert.Single(launcher.Handles);
         handle.EmitEvent("started", turnId);
         handle.EmitEvent("answer_chunk", turnId, new { text = "The partial answer so " });
-        await WaitUntilAsync(async () =>
-        {
-            var response = await client.GetAsync($"/api/query-turns/{turnId}");
-            var json = await response.Content.ReadFromJsonAsync<JsonElement>();
-            return !string.IsNullOrEmpty(json.GetProperty("answer").GetString());
-        });
+        await PollAsync.WaitAsync(
+            async () =>
+            {
+                var response = await client.GetAsync($"/api/query-turns/{turnId}");
+                var json = await response.Content.ReadFromJsonAsync<JsonElement>();
+                return !string.IsNullOrEmpty(json.GetProperty("answer").GetString());
+            },
+            TimeSpan.FromSeconds(5),
+            "Condition was not met within the timeout.");
 
         (await client.PostAsync($"/api/query-turns/{turnId}/interrupt", content: null)).EnsureSuccessStatusCode();
 
         var paths = QueryTurnSubmissionApiTests.BuildResolvedPaths(root);
         var recordPath = paths.ConversationRecordPathFor("c-interrupt-record");
-        await WaitUntilAsync(() => Task.FromResult(File.Exists(recordPath)));
+        await PollAsync.WaitAsync(
+            () => File.Exists(recordPath),
+            TimeSpan.FromSeconds(5),
+            $"Expected the Conversation Record at '{recordPath}' to exist within 5s.");
 
-        // Let the liveness watchdog fire well past its window: supervision must not
-        // append a second (failed) block for the already-interrupted turn.
+        // 019-fast-test-tier (ADR-021 R4): letting the liveness watchdog fire well past its
+        // window IS the behavior under test (supervision must not append a second block for
+        // an already-interrupted turn) — there is no earlier observable signal for "the
+        // watchdog chose not to act". Exempt from the fixed-wait ban (FR-005).
         await Task.Delay(500);
 
         var parsed = Assert.IsType<Grimoire.Hub.QueryConversations.ConversationRecordParseResult.Parsed>(
@@ -153,21 +176,5 @@ public class QueryInterruptionTests
         var response = await client.PostAsync("/api/query-turns/never-submitted/interrupt", content: null);
 
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
-    }
-
-    private static async Task WaitUntilAsync(Func<Task<bool>> condition, int timeoutMs = 5000)
-    {
-        var deadline = DateTime.UtcNow.AddMilliseconds(timeoutMs);
-        while (DateTime.UtcNow < deadline)
-        {
-            if (await condition())
-            {
-                return;
-            }
-
-            await Task.Delay(20);
-        }
-
-        Assert.Fail("Condition was not met within the timeout.");
     }
 }

@@ -307,6 +307,11 @@ public class ConcurrentWikiWriteIntegrityTests
         }
     }
 
+    // 019-fast-test-tier (ADR-021 R4): the jittered pause between retries is an inherent
+    // livelock-avoidance mechanism of the concurrent-retry behavior under test, not a proxy
+    // for an async operation's completion — there is no condition to poll for between
+    // attempts. Exempt from the fixed-wait ban (FR-005).
+    [Trait("TimingDependent", "true")]
     private static async Task AppendWithRetryAsync(
         GuardedToolExecutor executor, string relativePath, string entryMarker, int maxAttempts = 100)
     {

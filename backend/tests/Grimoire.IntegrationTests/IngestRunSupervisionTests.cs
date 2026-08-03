@@ -98,12 +98,10 @@ public class IngestRunSupervisionTests
         // no realtime publish, no state change.
         handle.EmitEvent("activity", "task-late", new { modelTurns = 9, toolCalls = 9, currentAction = "model_turn" });
 
-        var deadline = DateTime.UtcNow + TimeSpan.FromSeconds(5);
-        while (DateTime.UtcNow < deadline &&
-               !fixture.CoordinatorLogger.Entries.Any(e => e.EventName == "ingest.run.late_event"))
-        {
-            await Task.Delay(25);
-        }
+        await PollAsync.WaitAsync(
+            () => fixture.CoordinatorLogger.Entries.Any(e => e.EventName == "ingest.run.late_event"),
+            TimeSpan.FromSeconds(5),
+            "Expected an 'ingest.run.late_event' log entry within 5s.");
 
         var lateEntry = Assert.Single(fixture.CoordinatorLogger.Entries, e => e.EventName == "ingest.run.late_event");
         Assert.Equal(LogLevel.Warning, lateEntry.Level);

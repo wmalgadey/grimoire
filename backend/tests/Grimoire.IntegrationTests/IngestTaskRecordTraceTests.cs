@@ -19,6 +19,7 @@ namespace Grimoire.IntegrationTests;
 /// Trace Spans): hub.task_record.serve (child of the ASP.NET Core request span) and
 /// hub.task_record.publish_change (watcher-initiated root span).
 /// </summary>
+[Collection("HubActivityListenerObservability")]
 public class IngestTaskRecordTraceTests
 {
     [Fact]
@@ -99,19 +100,12 @@ public class IngestTaskRecordTraceTests
     private static async Task<Activity> WaitForSpanAsync(
         SynchronizedActivityCollection exportedItems, Func<Activity, bool> predicate, string description)
     {
-        var deadline = DateTime.UtcNow + TimeSpan.FromSeconds(10);
-        while (DateTime.UtcNow < deadline)
-        {
-            var match = exportedItems.Snapshot().FirstOrDefault(predicate);
-            if (match is not null)
-            {
-                return match;
-            }
+        await PollAsync.WaitAsync(
+            () => exportedItems.Snapshot().Any(predicate),
+            TimeSpan.FromSeconds(10),
+            $"Span '{description}' was never exported.");
 
-            await Task.Delay(25);
-        }
-
-        throw new TimeoutException($"Span '{description}' was never exported.");
+        return exportedItems.Snapshot().First(predicate);
     }
 
     /// <summary>

@@ -86,11 +86,23 @@ public class QueryTurnSubmissionApiTests
         {
             ScriptedAnswerChunks = [("First answer.", TimeSpan.Zero)],
         };
-        using var host = await BuildHostAsync(launcher, root: CreateTempRoot());
+        var root = CreateTempRoot();
+        using var host = await BuildHostAsync(launcher, root);
         var client = host.GetTestClient();
 
         var firstTurnId = await QueryConversationRecordLifecycleTests.SubmitAsync(client, "c-position", "First question?");
         await QueryConversationRecordLifecycleTests.WaitForStateAsync(client, firstTurnId, "completed");
+        // 019-fast-test-tier (ADR-021 edge case, genuine race surfaced by suite
+        // parallelization): the turn's in-memory status flips before
+        // ConversationRecordStore.AppendTurnAsync's cache update completes — the very next
+        // submission's Hub-assigned position reads that cache, so wait for the append to
+        // actually land before submitting the follow-up (mirrors RunScriptedTurnAsync's fix).
+        var recordPath = BuildResolvedPaths(root).ConversationRecordPathFor("c-position");
+        await PollAsync.WaitAsync(
+            () => File.Exists(recordPath) && Grimoire.Hub.QueryConversations.ConversationRecordFormat.Parse(File.ReadAllText(recordPath))
+                is Grimoire.Hub.QueryConversations.ConversationRecordParseResult.Parsed { Turns.Count: >= 1 },
+            TimeSpan.FromSeconds(10),
+            $"Expected the Conversation Record at '{recordPath}' to contain the first turn within 10s.");
 
         var response = await client.PostAsJsonAsync(
             "/api/query-conversations/c-position/turns", new { prompt = "Second question?" });

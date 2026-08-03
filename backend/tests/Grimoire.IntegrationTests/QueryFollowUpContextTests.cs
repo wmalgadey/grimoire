@@ -31,7 +31,8 @@ public class QueryFollowUpContextTests
             client, launcher, handleIndex: 0, "c-followup",
             prompt: "What does ADR-004 decide?",
             answerChunks: ["ADR-004 decides..."],
-            terminalExtra: new { summary = "done" });
+            terminalExtra: new { summary = "done" },
+            root: root);
 
         // Turn 2: interrupted with a partial answer.
         var turn2 = await QueryConversationRecordLifecycleTests.SubmitAsync(client, "c-followup", "What about the runtime paths?");

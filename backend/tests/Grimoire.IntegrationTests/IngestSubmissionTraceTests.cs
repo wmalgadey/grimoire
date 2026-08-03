@@ -10,6 +10,7 @@ namespace Grimoire.IntegrationTests;
 /// T038 (US1) - deterministic validation of span name, parent/child relationship, and correlation
 /// attributes for the six US1 spans (plan.md ## Observability > Distributed Trace Spans).
 /// </summary>
+[Collection("HubActivityListenerObservability")]
 public class IngestSubmissionTraceTests
 {
     [Fact]
@@ -37,8 +38,23 @@ public class IngestSubmissionTraceTests
         // subprocess/CPU contention intermittently pushed conversion past that 10s window. Give
         // this wait real headroom instead of racing the converter's own timeout.
         await fixture.WaitForStatusAsync(taskId, s => s is "completed" or "failed", TimeSpan.FromSeconds(30));
-        // Allow the fire-and-forget trigger continuation's spans to finish stopping.
-        await Task.Delay(200);
+        // 019-fast-test-tier (ADR-021 R4): the fire-and-forget trigger continuation's spans
+        // stop asynchronously after the artifact status flips — poll for every span this
+        // test asserts on to have actually stopped and been captured, instead of a fixed
+        // settle delay. Waiting on only the innermost "completed" handle_run_event span
+        // proved insufficient under heavy concurrent-suite load: its parent
+        // (ingest_hub.run_supervision) and the publish_update span(s) can still be a beat
+        // behind, so wait for the full expected set.
+        await PollAsync.WaitAsync(
+            () =>
+            {
+                var byTask = spans.Where(a => a.GetTagItem("task_id") as string == taskId).ToList();
+                return byTask.Any(a => a.OperationName == "ingest_hub.run_supervision")
+                    && byTask.Count(a => a.OperationName == "ingest_hub.handle_run_event") >= 2
+                    && byTask.Any(a => a.OperationName == "hub.ingest_lifecycle.publish_update");
+            },
+            TimeSpan.FromSeconds(10),
+            $"Expected run_supervision, both handle_run_event, and a publish_update span for task '{taskId}' within 10s.");
 
         var byName = spans.Where(a => a.GetTagItem("task_id") as string == taskId).ToLookup(a => a.OperationName);
 

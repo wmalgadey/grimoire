@@ -36,22 +36,28 @@ public class QueryConversationRecordLifecycleTests
         var turn1 = await RunScriptedTurnAsync(client, launcher, handleIndex: 0, "c-lifecycle",
             prompt: "What does ADR-004 decide?",
             answerChunks: ["ADR-004 scopes the credential ", "to the child process."],
-            terminalExtra: new { summary = "done", metadata.systemPromptSha256, metadata.policyPath, metadata.policyVersion, metadata.policySha256, metadata.model, metadata.turnsUsed });
+            terminalExtra: new { summary = "done", metadata.systemPromptSha256, metadata.policyPath, metadata.policyVersion, metadata.policySha256, metadata.model, metadata.turnsUsed },
+            root: root);
 
         var turn2 = await RunScriptedTurnAsync(client, launcher, handleIndex: 1, "c-lifecycle",
             prompt: "And the runtime paths?",
             answerChunks: ["ADR-009 composes every runtime location in one place."],
-            terminalExtra: new { summary = "done", metadata.systemPromptSha256, metadata.policyPath, metadata.policyVersion, metadata.policySha256, metadata.model, metadata.turnsUsed });
+            terminalExtra: new { summary = "done", metadata.systemPromptSha256, metadata.policyPath, metadata.policyVersion, metadata.policySha256, metadata.model, metadata.turnsUsed },
+            root: root);
 
         // Follow-up referencing the earlier answer.
         var turn3 = await RunScriptedTurnAsync(client, launcher, handleIndex: 2, "c-lifecycle",
             prompt: "How does that one place relate to the credential scoping you described?",
             answerChunks: ["They meet at the spawn boundary."],
-            terminalExtra: new { summary = "done", metadata.systemPromptSha256, metadata.policyPath, metadata.policyVersion, metadata.policySha256, metadata.model, metadata.turnsUsed });
+            terminalExtra: new { summary = "done", metadata.systemPromptSha256, metadata.policyPath, metadata.policyVersion, metadata.policySha256, metadata.model, metadata.turnsUsed },
+            root: root);
 
         var paths = QueryTurnSubmissionApiTests.BuildResolvedPaths(root);
         var recordPath = paths.ConversationRecordPathFor("c-lifecycle");
-        await WaitUntilAsync(() => Task.FromResult(File.Exists(recordPath)));
+        await PollAsync.WaitAsync(
+            () => File.Exists(recordPath) && ConversationRecordFormat.Parse(File.ReadAllText(recordPath)) is ConversationRecordParseResult.Parsed { Turns.Count: >= 3 },
+            TimeSpan.FromSeconds(10),
+            $"Expected the Conversation Record at '{recordPath}' to exist and parse with all 3 turns within 10s.");
 
         // Exactly one file for the conversation.
         Assert.Equal(
@@ -121,7 +127,11 @@ public class QueryConversationRecordLifecycleTests
         var paths = QueryTurnSubmissionApiTests.BuildResolvedPaths(root);
         var recordPathA = paths.ConversationRecordPathFor("c-cross-a");
         var recordPathB = paths.ConversationRecordPathFor("c-cross-b");
-        await WaitUntilAsync(() => Task.FromResult(File.Exists(recordPathA) && File.Exists(recordPathB)));
+        await PollAsync.WaitAsync(
+            () => File.Exists(recordPathA) && ConversationRecordFormat.Parse(File.ReadAllText(recordPathA)) is ConversationRecordParseResult.Parsed { Turns.Count: >= 1 }
+                && File.Exists(recordPathB) && ConversationRecordFormat.Parse(File.ReadAllText(recordPathB)) is ConversationRecordParseResult.Parsed { Turns.Count: >= 1 },
+            TimeSpan.FromSeconds(10),
+            "Expected both Conversation Records to exist and parse with at least one turn within 10s.");
 
         var parsedA = Assert.IsType<ConversationRecordParseResult.Parsed>(
             ConversationRecordFormat.Parse(await File.ReadAllTextAsync(recordPathA)));
@@ -150,7 +160,7 @@ public class QueryConversationRecordLifecycleTests
 
         // Completed turn.
         var completedTurnId = await RunScriptedTurnAsync(client, launcher, handleIndex: 0, "c-retired",
-            prompt: "Completes normally?", answerChunks: ["Yes."], terminalExtra: new { summary = "done" });
+            prompt: "Completes normally?", answerChunks: ["Yes."], terminalExtra: new { summary = "done" }, root: root);
 
         // Interrupted turn.
         var interruptedTurnId = await SubmitAsync(client, "c-retired", "Interrupted midway?");
@@ -197,7 +207,8 @@ public class QueryConversationRecordLifecycleTests
         string conversationId,
         string prompt,
         IReadOnlyList<string> answerChunks,
-        object terminalExtra)
+        object terminalExtra,
+        string? root = null)
     {
         var turnId = await SubmitAsync(client, conversationId, prompt);
         var handle = launcher.Handles[handleIndex];
@@ -214,6 +225,27 @@ public class QueryConversationRecordLifecycleTests
 
         handle.EmitEvent("completed", turnId, terminalExtra);
         await WaitForStateAsync(client, turnId, "completed");
+
+        // 019-fast-test-tier (ADR-021 edge case: genuine race surfaced by suite
+        // parallelization, fixed at the root, not papered over): the turn's in-memory
+        // status flips before ConversationRecordStore.AppendTurnAsync's file-write-plus-
+        // cache-update completes (documented gap, see QueryInstructionLoadTests et al.).
+        // Callers that immediately submit the NEXT turn on the same conversation read
+        // `priorTurns` from that same cache (QueryRunCoordinator.SubmitTurnAsync) — under
+        // heavy concurrent-suite CPU contention the next submission can outrace the
+        // append, observed as wrong turn positions/counts. When the caller supplies
+        // `root`, wait for the append to actually land before returning, closing that gap
+        // for every multi-turn scripted-conversation test that shares this helper.
+        if (root is not null)
+        {
+            var recordPath = QueryTurnSubmissionApiTests.BuildResolvedPaths(root).ConversationRecordPathFor(conversationId);
+            await PollAsync.WaitAsync(
+                () => File.Exists(recordPath) && ConversationRecordFormat.Parse(File.ReadAllText(recordPath))
+                    is ConversationRecordParseResult.Parsed parsed && parsed.Turns.Any(t => t.TurnId == turnId),
+                TimeSpan.FromSeconds(10),
+                $"Expected the Conversation Record at '{recordPath}' to contain turn '{turnId}' within 10s.");
+        }
+
         return turnId;
     }
 
@@ -241,19 +273,10 @@ public class QueryConversationRecordLifecycleTests
     // more tolerant of transient scheduling delays — it does not change what is being
     // asserted or mask a genuine hang (a truly stuck turn still fails, just after 15s
     // instead of 5s).
-    internal static async Task WaitUntilAsync(Func<Task<bool>> condition, int timeoutMs = 15000)
-    {
-        var deadline = DateTime.UtcNow.AddMilliseconds(timeoutMs);
-        while (DateTime.UtcNow < deadline)
-        {
-            if (await condition())
-            {
-                return;
-            }
-
-            await Task.Delay(20);
-        }
-
-        Assert.Fail("Condition was not met within the timeout.");
-    }
+    // 019-fast-test-tier (ADR-021 R4): thin wrapper over the shared PollAsync helper — kept
+    // as a same-signature method since ~10 other test files call this one directly
+    // (WaitForAnswerAsync/WaitForStateAsync/WaitUntilAsync are this suite's de facto shared
+    // wait surface for the Query Conversation Record).
+    internal static Task WaitUntilAsync(Func<Task<bool>> condition, int timeoutMs = 15000) =>
+        PollAsync.WaitAsync(condition, TimeSpan.FromMilliseconds(timeoutMs), "Condition was not met within the timeout.", TimeSpan.FromMilliseconds(20));
 }

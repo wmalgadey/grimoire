@@ -46,18 +46,16 @@ public class IngestLifecycleRealtimeTests
         await publisher.PublishAsync("task-realtime-1", "received", "converting");
         await publisher.PublishAsync("task-realtime-1", "converting", "queued");
 
-        var deadline = DateTime.UtcNow + TimeSpan.FromSeconds(10);
-        while (DateTime.UtcNow < deadline)
-        {
-            lock (lockObj)
+        await PollAsync.WaitAsync(
+            () =>
             {
-                if (received.Count >= 3)
+                lock (lockObj)
                 {
-                    break;
+                    return received.Count >= 3;
                 }
-            }
-            await Task.Delay(25);
-        }
+            },
+            TimeSpan.FromSeconds(10),
+            "Expected 3 ingest lifecycle events within 10s.");
 
         List<RealtimeLifecycleEvent> snapshot;
         lock (lockObj) { snapshot = [.. received]; }

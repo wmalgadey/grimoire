@@ -215,19 +215,8 @@ public class LintConcurrencyAndLivenessTests
             Locations: []);
     }
 
-    private static async Task WaitUntilAsync(Func<Task<bool>> condition, int timeoutMs = 5000)
-    {
-        var deadline = DateTime.UtcNow.AddMilliseconds(timeoutMs);
-        while (DateTime.UtcNow < deadline)
-        {
-            if (await condition())
-            {
-                return;
-            }
-
-            await Task.Delay(20);
-        }
-
-        Assert.Fail("Condition was not met within the timeout.");
-    }
+    // 019-fast-test-tier (ADR-021 R4): thin wrapper over the shared PollAsync helper —
+    // kept as a same-signature local method so every call site above is unchanged.
+    private static Task WaitUntilAsync(Func<Task<bool>> condition, int timeoutMs = 5000) =>
+        PollAsync.WaitAsync(condition, TimeSpan.FromMilliseconds(timeoutMs), "Condition was not met within the timeout.", TimeSpan.FromMilliseconds(20));
 }
