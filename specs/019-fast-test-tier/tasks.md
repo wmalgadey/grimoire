@@ -149,7 +149,7 @@ test-execution wall clock. Repeat with `data/evals/recordings/` absent and no
       check. (Scope note: this task does not yet assert the five replay classes
       carry `Tier=SlowEval` — that trait is added in T014/US3; asserting it here
       would fail until US3 lands.)
-- [ ] T005 [US1] Run the `quickstart.md` US1 walkthrough: `time ./scripts/test-fast.sh`
+- [X] T005 [US1] Run the `quickstart.md` US1 walkthrough: `time ./scripts/test-fast.sh`
       — confirm exit 0, console output shows `Grimoire.Domain.UnitTests`,
       `Grimoire.ArchTests`, and a `Tier=Fast`-filtered `Grimoire.AgentEvals` run with
       no replay-eval class name present (SC-002), and record the reported
@@ -157,7 +157,7 @@ test-execution wall clock. Repeat with `data/evals/recordings/` absent and no
       `dotnet build`). Repeat in an environment/container with `data/evals/recordings/`
       absent and no `ANTHROPIC_AUTH_TOKEN` set — confirm the script still completes
       successfully (SC-002, FR-002).
-- [ ] T006 [US1] Deliberately violate a domain invariant in
+- [X] T006 [US1] Deliberately violate a domain invariant in
       `backend/src/Grimoire.Domain` (temporarily), rerun `./scripts/test-fast.sh`,
       and confirm the failure is reported without the developer needing to run
       `Grimoire.IntegrationTests` or the `Tier=SlowEval` suite first (Acceptance
