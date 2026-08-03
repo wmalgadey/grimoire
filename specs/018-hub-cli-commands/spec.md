@@ -45,6 +45,28 @@
   FR-006 scriptable-result-line pattern); the full answer text follows verbatim on
   subsequent lines.
 
+### Session 2026-08-03
+
+- Q: Should the CLI commands call the running Hub's HTTP endpoints, or use the agent
+  functionality directly in-process? → A: Directly in-process — every command is
+  blocking and executes exactly the same flow its HTTP endpoint triggers, through the
+  same coordinators; the CLI is just another activation path. The only difference is
+  interaction style: HTTP is asynchronous with subscribe (realtime events), the CLI
+  blocks and may render a status display / stream the run's events. A running Hub is
+  not required. The commands must not raise the Hub's complexity disproportionately; a
+  future dedicated hub-CLI may absorb them.
+- Q: How should the CLI behave when a Hub server is running at the same time (second
+  operational-state writer, duplicate agent runs)? → A: No global guard — the CLI runs
+  analogous to the Hub. Operations needing mutual exclusion use per-operation locks:
+  the lint-run flow (whether triggered in the Hub or the CLI) acquires an exclusive
+  lock on a `lint.pid` file, so "a lint run is already active" is detected across
+  processes.
+- Q: With in-process execution there is no server to leave a timed-out turn running
+  on. What should `query` do when `--timeout` elapses? → A: Interrupt — the CLI
+  invokes the existing interrupt action, the turn reaches the terminal state
+  "interrupted" with its partial answer persisted, and the CLI exits non-zero with a
+  timeout message distinct from the Ctrl-C cancellation message.
+
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - Trigger a lint run from a script or terminal (Priority: P1)
@@ -188,9 +210,9 @@ independent of the other commands in this feature.
    non-zero status.
 4. **Given** the turn has not reached a terminal state within the effective timeout
    (the default, or the value passed via `--timeout`), **When** the wait elapses, **Then**
-   the CLI prints a message distinct from the failure and conflict messages identifying
-   that the wait timed out, exits with a non-zero status, and leaves the turn running
-   server-side.
+   the CLI prints a message distinct from the failure, conflict, and cancellation
+   messages identifying that the wait timed out, interrupts the turn via the existing
+   interrupt action (persisting any partial answer), and exits with a non-zero status.
 5. **Given** the CLI process receives an interrupt signal (e.g. Ctrl-C) while waiting,
    **When** the signal is received, **Then** the CLI calls the existing interrupt action
    for that turn before exiting, and exits with a non-zero status.
@@ -223,8 +245,9 @@ independent of the other commands in this feature.
   normally)? The action is idempotent and reports the current queued count rather than
   failing.
 - What happens when the query command's wait exceeds its timeout? The CLI reports a
-  timeout distinct from a failure or conflict message, exits non-zero, and leaves the turn
-  running server-side rather than cancelling it (User Story 4, Scenario 4).
+  timeout distinct from the failure, conflict, and cancellation messages, interrupts
+  the turn via the existing interrupt action so no agent work continues unsupervised,
+  and exits non-zero (User Story 4, Scenario 4).
 - What happens when the query command's CLI process is interrupted while waiting? The CLI
   calls the existing interrupt action for that turn before exiting, rather than leaving it
   orphaned server-side (User Story 4, Scenario 5).
@@ -292,8 +315,10 @@ independent of the other commands in this feature.
 - **FR-015**: The `query` command MUST accept an optional timeout argument bounding how
   long it waits for the turn to reach a terminal state, defaulting to 5 minutes when
   omitted. If the timeout elapses before a terminal state is reached, the CLI MUST
-  print a message distinct from the failure and conflict messages identifying that the
-  wait timed out, exit with a non-zero status, and MUST NOT cancel the turn server-side.
+  print a message distinct from the failure, conflict, and cancellation messages
+  identifying that the wait timed out, interrupt the turn via the same interrupt
+  action used for cancellation (persisting any partial answer; no agent work may
+  continue unsupervised after the CLI exits), and exit with a non-zero status.
 - **FR-016**: If the CLI process receives an interrupt signal (e.g. Ctrl-C) while the
   `query` command is waiting for a terminal state, the CLI MUST call the same interrupt
   action already used by the HTTP interrupt endpoint for that turn before exiting, and
@@ -352,8 +377,9 @@ independent of the other commands in this feature.
   endpoint(s) — 100% parity, no divergent behavior between the two entry points.
 - **SC-006**: 100% of `query` invocations that exceed their wait timeout or are cancelled
   by an interrupt signal produce a message distinguishing "timed out" from "cancelled"
-  from every other failure/conflict message, with the correct corresponding server-side
-  effect (no cancellation on timeout; interrupt requested on cancellation).
+  from every other failure/conflict message; in both cases the turn is interrupted via
+  the existing interrupt action (never left running unsupervised), and the two outcomes
+  remain distinguishable by message and exit status.
 
 ## Assumptions
 
@@ -373,7 +399,12 @@ independent of the other commands in this feature.
   `submit-source` command's convention (`Submitted ingest task: {taskId}`) and with
   feature `017-hub-help-usage`'s established CLI conventions — no JSON or other
   structured output format is introduced by this feature.
-- None of the underlying HTTP endpoints this feature drives (including turn submission
+- The commands execute in the invoking process against the Hub data directory,
+  blocking until any agent work they trigger reaches a terminal state (Clarification
+  2026-08-03); a running Hub instance is not required. No global cross-process guard
+  exists between a CLI invocation and a concurrently running Hub — only per-operation
+  mutual exclusion where an invariant demands it (the lint-run `lint.pid` lock).
+- None of the underlying actions this feature drives (including turn submission
   and turn interrupt) currently enforce authentication or credential checks; this feature
   does not add any. CLI commands run with the same trust level as the operator already
   has when running `submit-source` or any `--*-dir`/`--*-file` switch today — whoever can
