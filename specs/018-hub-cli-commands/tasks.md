@@ -103,10 +103,10 @@
 
 ### Implementation for User Story 3
 
-- [ ] T028 [P] [US3] Create `IngestRetriggerSettings` (`--task-id` required, non-empty) + `IngestRetriggerCommand` in `backend/src/Grimoire.Hub/Cli/IngestRetriggerCommand.cs`: `IngestRunCoordinator.RetriggerAsync(taskId)`, supervise the triggered processing to terminal state; outputs/exit codes per contract (processed 0, failed 1, usage 2, not found 3, not-in-queue 4 with column).
-- [ ] T029 [P] [US3] Create `IngestResumeSettings` + `IngestResumeCommand` in `backend/src/Grimoire.Hub/Cli/IngestResumeCommand.cs`: `IngestRunCoordinator.ResumeAsync()`, print queued count up front, supervise until the queue drains, print processed/failed counts; idempotent, exit 0 even when individual tasks failed (per-task outcomes listed on stderr).
-- [ ] T030 [US3] Add ingest command integration tests in `backend/tests/Grimoire.IntegrationTests/HubCliCommandTests.cs`: retrigger matrix (re-armed + processed 0, failed 1, missing arg 2, unknown id 3, not-queued 4) and resume (idempotent 0 in any queue state, drained counts, blocking until drain).
-- [ ] T031 [US3] Add ingest parity tests in `backend/tests/Grimoire.IntegrationTests/HubCliParityTests.cs`: retrigger and resume once via endpoint handler, once via command — identical rows/records/responses (SC-005).
+- [X] T028 [P] [US3] Create `IngestRetriggerSettings` (`--task-id` required, non-empty) + `IngestRetriggerCommand` in `backend/src/Grimoire.Hub/Cli/IngestRetriggerCommand.cs`: `IngestRunCoordinator.RetriggerAsync(taskId)`, supervise the triggered processing to terminal state; outputs/exit codes per contract (processed 0, failed 1, usage 2, not found 3, not-in-queue 4 with column).
+- [X] T029 [P] [US3] Create `IngestResumeSettings` + `IngestResumeCommand` in `backend/src/Grimoire.Hub/Cli/IngestResumeCommand.cs`: `IngestRunCoordinator.ResumeAsync()`, print queued count up front, supervise until the queue drains, print processed/failed counts; idempotent, exit 0 even when individual tasks failed (per-task outcomes listed on stderr).
+- [X] T030 [US3] Add ingest command integration tests in `backend/tests/Grimoire.IntegrationTests/HubCliCommandTests.cs`: retrigger matrix (re-armed + processed 0, failed 1, missing arg 2, unknown id 3, not-queued 4) and resume (idempotent 0 in any queue state, drained counts, blocking until drain).
+- [X] T031 [US3] Add ingest parity tests in `backend/tests/Grimoire.IntegrationTests/HubCliParityTests.cs`: retrigger and resume once via endpoint handler, once via command — identical rows/records/responses (SC-005).
 
 **Checkpoint**: US1–US3 independently functional.
 

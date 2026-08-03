@@ -40,9 +40,11 @@ public static class HubCliCommands
             "Withdraw a remediation task's authorization.",
             typeof(RemediationWithdrawCommand)),
         new("ingest-retrigger",
-            "Re-arm a queued ingest task and supervise its processing to a terminal state."),
+            "Re-arm a queued ingest task and supervise its processing to a terminal state.",
+            typeof(IngestRetriggerCommand)),
         new("ingest-resume",
-            "Resume the ingest queue and supervise it until it drains."),
+            "Resume the ingest queue and supervise it until it drains.",
+            typeof(IngestResumeCommand)),
         new("query",
             "Submit a query turn and block until its answer, streaming progress while waiting."),
         // 017-hub-help-usage parity (HubHelpUsageTests.ExpectedSwitches): the description

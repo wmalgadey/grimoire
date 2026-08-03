@@ -1,5 +1,9 @@
 using System.Diagnostics;
 using Grimoire.Hub.Cli;
+using Grimoire.Hub.ContentRoot;
+using Grimoire.Hub.IngestDispatch;
+using Grimoire.Hub.IngestSubmission;
+using Grimoire.Hub.IngestTaskArtifact;
 using Grimoire.Hub.LintDispatch;
 using Grimoire.Hub.LintFindings;
 using Grimoire.Hub.OperationalState;
@@ -388,6 +392,206 @@ public class HubCliCommandTests
             $"Remediation task {taskId} can no longer be withdrawn: execution already started (state: {state}).",
             stdout.Trim());
     }
+
+    // ── ingest-retrigger / ingest-resume ────────────────────────────────────────
+    // T030 (018-hub-cli-commands, US3): full contract matrix for the two ingest queue
+    // commands (specs/018-hub-cli-commands/contracts/cli-commands.md "ingest-retrigger"/
+    // "ingest-resume"), each exercised through the production command class exactly like
+    // Lint/Remediation above, against a real IngestRunCoordinator/
+    // OperationalStateRepository/KanbanBoardProjectionStore (backed by real Task Artifact
+    // files on disk) and a scriptable FakeAgentProcessLauncher.
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("   ")]
+    public void IngestRetriggerSettings_Validate_MissingOrEmptyTaskId_IsUsageError(string? taskId)
+    {
+        var settings = new IngestRetriggerSettings { TaskId = taskId };
+        Assert.False(settings.Validate().Successful);
+    }
+
+    [Fact]
+    public void IngestRetriggerSettings_Validate_MissingTaskId_NeverContactsTheStore()
+    {
+        // Mirrors RemediationTaskSettings_Validate_MissingTaskId_NeverContactsTheStore
+        // (FR-009): a real Spectre invocation never reaches ExecuteAsync when Validate()
+        // fails, so no assertion beyond "validation itself fails" is needed to prove no
+        // store/coordinator access happens for this settings object.
+        var settings = new IngestRetriggerSettings { TaskId = null };
+        Assert.False(settings.Validate().Successful);
+    }
+
+    [Fact]
+    public async Task IngestRetrigger_QueuedTask_ProcessesToCompletion_StatusOnStderr_ResultOnStdout_ExitZero()
+    {
+        using var harness = HubCliIngestTestHarness.Create();
+        const string taskId = "2026-08-01-ingest-cliretrig1";
+        await harness.Repository.SetFlagAsync(IngestRunCoordinator.QueuePausedFlag, true);
+        await harness.EnqueueAsync(taskId);
+        Assert.Empty(harness.Launcher.Requests);
+
+        var (exitCode, stdout, stderr) = await harness.RunRetriggerCommandAsync(taskId);
+
+        Assert.Equal((int)CliExitCode.Success, exitCode);
+        Assert.Contains($"Ingest task {taskId} retriggered.", stderr, StringComparison.Ordinal);
+        Assert.Equal($"Ingest task {taskId} completed.", stdout.Trim());
+        Assert.Single(harness.Launcher.Requests);
+    }
+
+    [Fact]
+    public async Task IngestRetrigger_QueuedTask_Fails_PrintsFailureLine_ExitOne()
+    {
+        using var harness = HubCliIngestTestHarness.Create(
+            new FakeAgentProcessLauncher(terminalStatus: "failed", failureReason: "Guardrail denied a write."));
+        const string taskId = "2026-08-01-ingest-cliretrig2";
+        await harness.Repository.SetFlagAsync(IngestRunCoordinator.QueuePausedFlag, true);
+        await harness.EnqueueAsync(taskId);
+
+        var (exitCode, stdout, _) = await harness.RunRetriggerCommandAsync(taskId);
+
+        Assert.Equal((int)CliExitCode.OperationFailed, exitCode);
+        Assert.Equal($"Ingest task {taskId} failed.", stdout.Trim());
+    }
+
+    [Fact]
+    public async Task IngestRetrigger_UnknownTaskId_PrintsNotFoundMessage_ExitThree()
+    {
+        using var harness = HubCliIngestTestHarness.Create();
+
+        var (exitCode, stdout, _) = await harness.RunRetriggerCommandAsync("does-not-exist");
+
+        Assert.Equal((int)CliExitCode.NotFound, exitCode);
+        Assert.Equal("Task 'does-not-exist' was not found.", stdout.Trim());
+        Assert.Empty(harness.Launcher.Requests);
+    }
+
+    [Fact]
+    public async Task IngestRetrigger_TaskNotInQueue_PrintsConflictWithColumn_ExitFour()
+    {
+        using var harness = HubCliIngestTestHarness.Create();
+        const string taskId = "2026-08-01-ingest-cliretrig3";
+        // Queue is not paused, so this task auto-starts and completes immediately
+        // (default FakeAgentProcessLauncher: terminalStatus "completed", zero simulated
+        // duration) — by the time the command runs, the task's column is "completed",
+        // not "queued", so RetriggerAsync refuses it.
+        await harness.EnqueueAsync(taskId);
+        await harness.Fixture.WaitForStatusAsync(taskId, status => status is "completed" or "failed");
+
+        var (exitCode, stdout, _) = await harness.RunRetriggerCommandAsync(taskId);
+
+        Assert.Equal((int)CliExitCode.StateConflict, exitCode);
+        Assert.Equal($"Ingest task {taskId} is not in the queue (completed).", stdout.Trim());
+    }
+
+    [Fact]
+    public async Task IngestRetrigger_ReturnsOnlyAfterTheScriptedRunReachesItsTerminalState()
+    {
+        var simulatedDuration = TimeSpan.FromMilliseconds(300);
+        using var harness = HubCliIngestTestHarness.Create(new FakeAgentProcessLauncher(simulatedRunDuration: simulatedDuration));
+        const string taskId = "2026-08-01-ingest-cliretrig4";
+        await harness.Repository.SetFlagAsync(IngestRunCoordinator.QueuePausedFlag, true);
+        await harness.EnqueueAsync(taskId);
+
+        var stopwatch = Stopwatch.StartNew();
+        var (exitCode, _, _) = await harness.RunRetriggerCommandAsync(taskId);
+        stopwatch.Stop();
+
+        Assert.Equal((int)CliExitCode.Success, exitCode);
+        Assert.True(
+            stopwatch.Elapsed >= simulatedDuration - TimeSpan.FromMilliseconds(100),
+            $"The command returned after {stopwatch.Elapsed}, well before the scripted run's " +
+            $"{simulatedDuration} terminal delay — it did not block on the run's terminal state.");
+    }
+
+    [Fact]
+    public async Task IngestResume_EmptyQueue_PrintsZeroCounts_ExitZero()
+    {
+        using var harness = HubCliIngestTestHarness.Create();
+
+        var (exitCode, stdout, stderr) = await harness.RunResumeCommandAsync();
+
+        Assert.Equal((int)CliExitCode.Success, exitCode);
+        Assert.Contains("Ingest queue resumed: 0 task(s) queued.", stderr, StringComparison.Ordinal);
+        Assert.Equal("Ingest queue drained: 0 task(s) processed, 0 failed.", stdout.Trim());
+    }
+
+    [Fact]
+    public async Task IngestResume_QueueWithItems_ProcessesAllToCompletion_PrintsCounts_ExitZero()
+    {
+        using var harness = HubCliIngestTestHarness.Create(
+            new FakeAgentProcessLauncher(simulatedRunDuration: TimeSpan.FromMilliseconds(50)));
+        await harness.Repository.SetFlagAsync(IngestRunCoordinator.QueuePausedFlag, true);
+        await harness.EnqueueAsync("2026-08-01-ingest-cliresume-r1");
+        await harness.EnqueueAsync("2026-08-01-ingest-cliresume-r2");
+        Assert.Empty(harness.Launcher.Requests);
+
+        var (exitCode, stdout, stderr) = await harness.RunResumeCommandAsync();
+
+        // After ResumeAsync unpauses and starts the first task, one task remains queued —
+        // the exact value IngestSubmissionEndpoints.PostResumeAsync's HTTP response
+        // carries as `queuedTasks` for the same starting state (SC-005 parity).
+        Assert.Contains("Ingest queue resumed: 1 task(s) queued.", stderr, StringComparison.Ordinal);
+        Assert.Equal((int)CliExitCode.Success, exitCode);
+        Assert.Equal("Ingest queue drained: 2 task(s) processed, 0 failed.", stdout.Trim());
+        Assert.Equal(2, harness.Launcher.Requests.Count);
+    }
+
+    [Fact]
+    public async Task IngestResume_WithFailingTasks_ReportsFailedCount_StillExitsZero()
+    {
+        using var harness = HubCliIngestTestHarness.Create(
+            new FakeAgentProcessLauncher(
+                terminalStatus: "failed", failureReason: "boom", simulatedRunDuration: TimeSpan.FromMilliseconds(30)));
+        await harness.Repository.SetFlagAsync(IngestRunCoordinator.QueuePausedFlag, true);
+        await harness.EnqueueAsync("2026-08-01-ingest-cliresume-f1");
+        await harness.EnqueueAsync("2026-08-01-ingest-cliresume-f2");
+
+        var (exitCode, stdout, _) = await harness.RunResumeCommandAsync();
+
+        // Per-task failures are queue state, not a command failure (contract's explicit
+        // note: "also when individual tasks failed — per-task outcomes are queue state").
+        Assert.Equal((int)CliExitCode.Success, exitCode);
+        Assert.Equal("Ingest queue drained: 0 task(s) processed, 2 failed.", stdout.Trim());
+    }
+
+    [Fact]
+    public async Task IngestResume_WhileATaskIsAlreadyRunning_WaitsForItAndReportsIt_ExitZero()
+    {
+        // Idempotent-resume-while-running scenario (FR-021): the queue was never paused,
+        // so enqueuing starts the task immediately; resuming while it's mid-flight must
+        // still supervise it to completion rather than returning early.
+        using var harness = HubCliIngestTestHarness.Create(
+            new FakeAgentProcessLauncher(simulatedRunDuration: TimeSpan.FromMilliseconds(150)));
+        const string taskId = "2026-08-01-ingest-cliresume-running";
+        await harness.EnqueueAsync(taskId);
+        await WaitUntilAsync(() => harness.Coordinator.RunningTaskId == taskId, TimeSpan.FromSeconds(5));
+
+        var (exitCode, stdout, stderr) = await harness.RunResumeCommandAsync();
+
+        Assert.Equal((int)CliExitCode.Success, exitCode);
+        Assert.Contains("Ingest queue resumed: 0 task(s) queued.", stderr, StringComparison.Ordinal);
+        Assert.Equal("Ingest queue drained: 1 task(s) processed, 0 failed.", stdout.Trim());
+    }
+
+    [Fact]
+    public async Task IngestResume_ReturnsOnlyAfterTheWholeQueueDrains()
+    {
+        var simulatedDuration = TimeSpan.FromMilliseconds(300);
+        using var harness = HubCliIngestTestHarness.Create(new FakeAgentProcessLauncher(simulatedRunDuration: simulatedDuration));
+        await harness.Repository.SetFlagAsync(IngestRunCoordinator.QueuePausedFlag, true);
+        await harness.EnqueueAsync("2026-08-01-ingest-cliresume-block");
+
+        var stopwatch = Stopwatch.StartNew();
+        var (exitCode, _, _) = await harness.RunResumeCommandAsync();
+        stopwatch.Stop();
+
+        Assert.Equal((int)CliExitCode.Success, exitCode);
+        Assert.True(
+            stopwatch.Elapsed >= simulatedDuration - TimeSpan.FromMilliseconds(100),
+            $"The command returned after {stopwatch.Elapsed}, well before the scripted run's " +
+            $"{simulatedDuration} terminal delay — it did not block until the queue drained.");
+    }
 }
 
 /// <summary>
@@ -628,6 +832,114 @@ internal sealed class HubCliRemediationTestHarness : IDisposable
             try { Directory.Delete(_root, recursive: true); } catch { /* best-effort */ }
         }
     }
+
+    private sealed class EmptyRemainingArguments : IRemainingArguments
+    {
+        public static readonly EmptyRemainingArguments Instance = new();
+
+        public ILookup<string, string?> Parsed { get; } = Array.Empty<string>().ToLookup(s => s, s => (string?)null);
+
+        public IReadOnlyList<string> Raw { get; } = [];
+    }
+}
+
+/// <summary>
+/// Hermetic <see cref="IngestRunCoordinator"/> + CLI command harness (018-hub-cli-commands
+/// T030), mirroring <see cref="HubCliLintTestHarness"/>/<see cref="HubCliRemediationTestHarness"/>'s
+/// idiom for <see cref="IngestRetriggerCommand"/>/<see cref="IngestResumeCommand"/>. Wraps
+/// the existing <see cref="IngestSubmissionPipelineFixture"/> (the same "real composed
+/// service graph" the HTTP-side ingest tests already use) rather than re-deriving its own
+/// coordinator/repository/publisher wiring — the fixture is this feature's established
+/// hermetic-harness idiom for Ingest specifically, predating 018.
+/// </summary>
+internal sealed class HubCliIngestTestHarness : IDisposable
+{
+    private readonly IngestSubmissionPipelineFixture _fixture;
+
+    private HubCliIngestTestHarness(IngestSubmissionPipelineFixture fixture)
+    {
+        _fixture = fixture;
+    }
+
+    public IngestSubmissionPipelineFixture Fixture => _fixture;
+    public FakeAgentProcessLauncher Launcher => _fixture.Launcher;
+    public OperationalStateRepository Repository => _fixture.Repository;
+    public IngestRunCoordinator Coordinator => _fixture.Coordinator;
+    public KanbanBoardProjectionStore Store => _fixture.BoardStore;
+    public ContentRootPaths ContentPaths => _fixture.ContentPaths;
+
+    public static HubCliIngestTestHarness Create(FakeAgentProcessLauncher? launcher = null) =>
+        new(new IngestSubmissionPipelineFixture(launcher: launcher));
+
+    /// <summary>
+    /// Enqueues a task straight through the coordinator (the same entry point
+    /// <see cref="IngestRunQueueTests"/> uses), bypassing the submission pipeline's
+    /// fetch/convert stages — these commands only care about queue/terminal-state
+    /// transitions, not submission parsing/validation. Unlike <c>IngestRunQueueTests</c>
+    /// (which never looks a task up by id through <see cref="KanbanBoardProjectionStore"/>),
+    /// <see cref="IngestRetriggerCommand"/>/<see cref="IngestResumeCommand"/> need a real
+    /// Task Artifact file to read a "not found"/current-column answer from — so this helper
+    /// writes the "queued" stage artifact <see cref="IngestSubmissionPipeline.ProcessAsync"/>
+    /// would have written right before its own <c>EnqueueAsync</c> call, keeping the
+    /// coordinator's queue state and the Task Artifact file in the same sync a real
+    /// submission would produce.
+    /// </summary>
+    public async Task EnqueueAsync(string taskId, string? sourceRef = null, string? userPrompt = null)
+    {
+        var effectiveSourceRef = sourceRef ?? Path.Combine(_fixture.Root, $"{taskId}.md");
+        var artifactPath = Path.Combine(ContentPaths.TasksDir, $"{taskId}.md");
+        await new HubTaskArtifactWriter().WriteAsync(
+            artifactPath,
+            new HubTaskArtifactDocument(
+                TaskId: taskId,
+                Status: "queued",
+                StartedAt: DateTimeOffset.UtcNow,
+                CompletedAt: null,
+                SourceRef: effectiveSourceRef,
+                OriginalRef: null,
+                FailureReason: null,
+                Narrative: "Queued for ingest.",
+                UserPromptSource: userPrompt is null ? "default" : "custom",
+                UserPrompt: userPrompt));
+
+        await Coordinator.EnqueueAsync(taskId, effectiveSourceRef, userPrompt);
+    }
+
+    public async Task<(int ExitCode, string Stdout, string Stderr)> RunRetriggerCommandAsync(
+        string? taskId, CancellationToken cancellationToken = default)
+    {
+        var (status, stdoutWriter, stderrWriter) = CreateCapture();
+        var command = new IngestRetriggerCommand(Coordinator, Store, ContentPaths, status, stdoutWriter);
+        var context = new CommandContext(Array.Empty<string>(), EmptyRemainingArguments.Instance, "ingest-retrigger", null);
+        var settings = new IngestRetriggerSettings { TaskId = taskId };
+
+        var exitCode = await ((ICommand<IngestRetriggerSettings>)command).ExecuteAsync(context, settings, cancellationToken);
+
+        return (exitCode, stdoutWriter.ToString(), stderrWriter.ToString());
+    }
+
+    public async Task<(int ExitCode, string Stdout, string Stderr)> RunResumeCommandAsync(CancellationToken cancellationToken = default)
+    {
+        var (status, stdoutWriter, stderrWriter) = CreateCapture();
+        var command = new IngestResumeCommand(Coordinator, Store, ContentPaths, status, stdoutWriter);
+        var context = new CommandContext(Array.Empty<string>(), EmptyRemainingArguments.Instance, "ingest-resume", null);
+        var settings = new IngestResumeSettings();
+
+        var exitCode = await ((ICommand<IngestResumeSettings>)command).ExecuteAsync(context, settings, cancellationToken);
+
+        return (exitCode, stdoutWriter.ToString(), stderrWriter.ToString());
+    }
+
+    private static (CliStatusRenderer Status, StringWriter Stdout, StringWriter Stderr) CreateCapture()
+    {
+        var stderrWriter = new StringWriter();
+        var stderrConsole = AnsiConsole.Create(new AnsiConsoleSettings { Out = new AnsiConsoleOutput(stderrWriter) });
+        var status = new CliStatusRenderer(stderrConsole);
+        var stdoutWriter = new StringWriter();
+        return (status, stdoutWriter, stderrWriter);
+    }
+
+    public void Dispose() => _fixture.Dispose();
 
     private sealed class EmptyRemainingArguments : IRemainingArguments
     {

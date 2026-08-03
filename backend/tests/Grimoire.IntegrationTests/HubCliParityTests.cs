@@ -1,11 +1,18 @@
 using System.Net;
 using System.Text.Json;
 using Grimoire.Hub.Cli;
+using Grimoire.Hub.IngestDispatch;
+using Grimoire.Hub.IngestSubmission;
+using Grimoire.Hub.IngestTaskArtifact;
 using Grimoire.Hub.LintDispatch;
 using Grimoire.Hub.OperationalState;
 using Grimoire.Hub.RemediationTasks;
 using Grimoire.IntegrationTests.Fakes;
+using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.TestHost;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 
 namespace Grimoire.IntegrationTests;
 
@@ -221,5 +228,223 @@ public class HubCliParityTests
 
         Assert.Equal((int)CliExitCode.Success, cliExitCode);
         Assert.Equal($"Remediation task {cliTaskId} authorization withdrawn (state: proposed).", cliStdout.Trim());
+    }
+
+    // ── ingest-retrigger / ingest-resume (T031, US3, SC-005) ────────────────────
+    // Each performed once via the HTTP endpoint handler (IngestSubmissionEndpoints'
+    // /retrigger and /resume routes) and once via its CLI command, against identically
+    // seeded harnesses. Both paths call the exact same IngestRunCoordinator methods
+    // (verified by reading IngestSubmissionEndpoints.PostRetriggerAsync/PostResumeAsync
+    // and IngestRetriggerCommand/IngestResumeCommand side by side) — this is the
+    // regression guard SC-005 asks for, not a discovery mechanism.
+
+    [Fact]
+    public async Task IngestRetrigger_TriggeredViaHttpEndpoint_AndViaCliCommand_ProduceIndistinguishableOutcomes()
+    {
+        var simulatedDuration = TimeSpan.FromMilliseconds(50);
+
+        using var httpHarness = await IngestEndpointHostHarness.CreateAsync(
+            new FakeAgentProcessLauncher(simulatedRunDuration: simulatedDuration));
+        const string httpTaskId = "2026-08-01-ingest-parityretrig-http";
+        await httpHarness.EnqueueQueuedTaskAsync(httpTaskId);
+
+        using var cliHarness = HubCliIngestTestHarness.Create(
+            new FakeAgentProcessLauncher(simulatedRunDuration: simulatedDuration));
+        const string cliTaskId = "2026-08-01-ingest-parityretrig-cli";
+        await cliHarness.Repository.SetFlagAsync(IngestRunCoordinator.QueuePausedFlag, true);
+        await cliHarness.EnqueueAsync(cliTaskId);
+
+        // --- HTTP path ---
+        var httpResponse = await httpHarness.Client.PostAsync($"/api/ingest-submissions/{httpTaskId}/retrigger", content: null);
+        Assert.Equal(HttpStatusCode.OK, httpResponse.StatusCode);
+        using var httpBody = JsonDocument.Parse(await httpResponse.Content.ReadAsStringAsync());
+        Assert.True(httpBody.RootElement.GetProperty("retriggered").GetBoolean());
+        await httpHarness.Fixture.WaitForStatusAsync(httpTaskId, status => status is "completed" or "failed");
+
+        // --- CLI path ---
+        var (cliExitCode, cliStdout, _) = await cliHarness.RunRetriggerCommandAsync(cliTaskId);
+
+        // --- Parity assertions ---
+        var httpProjection = await httpHarness.Fixture.BoardStore.GetByTaskIdAsync(httpHarness.Fixture.ContentPaths.TasksDir, httpTaskId);
+        var cliProjection = await cliHarness.Store.GetByTaskIdAsync(cliHarness.ContentPaths.TasksDir, cliTaskId);
+        Assert.Equal("completed", httpProjection!.Column);
+        Assert.Equal("completed", cliProjection!.Column);
+
+        Assert.Equal((int)CliExitCode.Success, cliExitCode);
+        Assert.Equal($"Ingest task {cliTaskId} completed.", cliStdout.Trim());
+    }
+
+    [Fact]
+    public async Task IngestRetrigger_NotInQueue_TriggeredViaHttpEndpoint_AndViaCliCommand_ProduceIndistinguishableOutcomes()
+    {
+        using var httpHarness = await IngestEndpointHostHarness.CreateAsync();
+        const string httpTaskId = "2026-08-01-ingest-paritynq-http";
+        // Queue not paused: the task auto-starts and completes immediately, so by the
+        // time /retrigger is called it is no longer queued.
+        await httpHarness.EnqueueQueuedTaskAsync(httpTaskId, pauseFirst: false);
+        await httpHarness.Fixture.WaitForStatusAsync(httpTaskId, status => status is "completed" or "failed");
+
+        using var cliHarness = HubCliIngestTestHarness.Create();
+        const string cliTaskId = "2026-08-01-ingest-paritynq-cli";
+        await cliHarness.EnqueueAsync(cliTaskId);
+        await cliHarness.Fixture.WaitForStatusAsync(cliTaskId, status => status is "completed" or "failed");
+
+        // --- HTTP path ---
+        var httpResponse = await httpHarness.Client.PostAsync($"/api/ingest-submissions/{httpTaskId}/retrigger", content: null);
+        Assert.Equal(HttpStatusCode.Conflict, httpResponse.StatusCode);
+        using var httpBody = JsonDocument.Parse(await httpResponse.Content.ReadAsStringAsync());
+        Assert.Equal($"Task '{httpTaskId}' is not in the queue (completed).", httpBody.RootElement.GetProperty("message").GetString());
+
+        // --- CLI path ---
+        var (cliExitCode, cliStdout, _) = await cliHarness.RunRetriggerCommandAsync(cliTaskId);
+
+        // --- Parity assertions ---
+        Assert.Equal((int)CliExitCode.StateConflict, cliExitCode);
+        Assert.Equal($"Ingest task {cliTaskId} is not in the queue (completed).", cliStdout.Trim());
+    }
+
+    [Fact]
+    public async Task IngestResume_TriggeredViaHttpEndpoint_AndViaCliCommand_ProduceIndistinguishableOutcomes()
+    {
+        var simulatedDuration = TimeSpan.FromMilliseconds(50);
+
+        using var httpHarness = await IngestEndpointHostHarness.CreateAsync(
+            new FakeAgentProcessLauncher(simulatedRunDuration: simulatedDuration));
+        const string httpTaskId1 = "2026-08-01-ingest-parityresume-http1";
+        const string httpTaskId2 = "2026-08-01-ingest-parityresume-http2";
+        await httpHarness.EnqueueQueuedTaskAsync(httpTaskId1);
+        await httpHarness.EnqueueQueuedTaskAsync(httpTaskId2, pauseFirst: false);
+
+        using var cliHarness = HubCliIngestTestHarness.Create(
+            new FakeAgentProcessLauncher(simulatedRunDuration: simulatedDuration));
+        const string cliTaskId1 = "2026-08-01-ingest-parityresume-cli1";
+        const string cliTaskId2 = "2026-08-01-ingest-parityresume-cli2";
+        await cliHarness.Repository.SetFlagAsync(IngestRunCoordinator.QueuePausedFlag, true);
+        await cliHarness.EnqueueAsync(cliTaskId1);
+        await cliHarness.EnqueueAsync(cliTaskId2);
+
+        // --- HTTP path ---
+        var httpResponse = await httpHarness.Client.PostAsync("/api/ingest-queue/resume", content: null);
+        Assert.Equal(HttpStatusCode.OK, httpResponse.StatusCode);
+        using var httpBody = JsonDocument.Parse(await httpResponse.Content.ReadAsStringAsync());
+        var httpQueuedTasks = httpBody.RootElement.GetProperty("queuedTasks").GetInt32();
+        Assert.False(httpBody.RootElement.GetProperty("queuePaused").GetBoolean());
+        await httpHarness.Fixture.WaitForStatusAsync(httpTaskId1, status => status is "completed" or "failed");
+        await httpHarness.Fixture.WaitForStatusAsync(httpTaskId2, status => status is "completed" or "failed");
+
+        // --- CLI path ---
+        var (cliExitCode, cliStdout, cliStderr) = await cliHarness.RunResumeCommandAsync();
+
+        // --- Parity assertions ---
+        // Both harnesses start from the identical shape (queue paused, one task already
+        // enqueued before the pause, resume called with nothing else running): the HTTP
+        // response's queuedTasks count and the CLI's own status line must agree.
+        Assert.Equal(1, httpQueuedTasks);
+        Assert.Contains("Ingest queue resumed: 1 task(s) queued.", cliStderr, StringComparison.Ordinal);
+
+        Assert.Equal((int)CliExitCode.Success, cliExitCode);
+        Assert.Equal("Ingest queue drained: 2 task(s) processed, 0 failed.", cliStdout.Trim());
+    }
+}
+
+/// <summary>
+/// HTTP test host wiring the Ingest submission/queue endpoint group
+/// (<see cref="IngestSubmissionEndpoints.MapIngestSubmissionEndpoints"/> +
+/// <see cref="IngestSubmissionEndpoints.MapIngestQueueEndpoints"/>), mirroring
+/// <c>IngestTaskRecordApiTests.BuildHostAsync</c>'s DI wiring but as a reusable named
+/// harness (018-hub-cli-commands T031), the shape <c>LintTriggerHostHarness</c>/
+/// <c>RemediationEndpointHostHarness</c> already use for this file's other parity tests.
+/// Wraps an <see cref="IngestSubmissionPipelineFixture"/> — the same "real composed
+/// service graph" <see cref="HubCliIngestTestHarness"/> (CLI side) and the pre-existing
+/// Ingest HTTP tests already use — registering the exact same
+/// Coordinator/BoardStore/ContentPaths instances the fixture built, so both the endpoint
+/// handlers and the fixture's own polling helpers observe one shared state.
+/// </summary>
+internal sealed class IngestEndpointHostHarness : IDisposable
+{
+    private readonly IHost _host;
+
+    private IngestEndpointHostHarness(IngestSubmissionPipelineFixture fixture, IHost host)
+    {
+        Fixture = fixture;
+        _host = host;
+        Client = host.GetTestClient();
+    }
+
+    public IngestSubmissionPipelineFixture Fixture { get; }
+    public HttpClient Client { get; }
+
+    public static async Task<IngestEndpointHostHarness> CreateAsync(FakeAgentProcessLauncher? launcher = null)
+    {
+        var fixture = new IngestSubmissionPipelineFixture(launcher: launcher);
+
+        var hostBuilder = new HostBuilder()
+            .ConfigureWebHost(webHost =>
+            {
+                webHost.UseTestServer();
+                webHost.ConfigureServices(services =>
+                {
+                    services.AddRouting();
+                    services.AddLogging();
+                    services.AddSingleton(fixture.Validator);
+                    services.AddSingleton(fixture.Pipeline);
+                    services.AddSingleton(fixture.BoardStore);
+                    services.AddSingleton(fixture.ContentPaths);
+                    services.AddSingleton(fixture.SourceArtifactStore);
+                    services.AddSingleton(fixture.Coordinator);
+                    services.AddSingleton(new TaskRecordReadModel(fixture.ResolvedPaths));
+                });
+                webHost.Configure(app =>
+                {
+                    app.UseRouting();
+                    app.UseEndpoints(endpoints =>
+                    {
+                        endpoints.MapGroup("/api/ingest-submissions").MapIngestSubmissionEndpoints();
+                        endpoints.MapGroup("/api/ingest-queue").MapIngestQueueEndpoints();
+                    });
+                });
+            });
+
+        var host = await hostBuilder.StartAsync();
+        return new IngestEndpointHostHarness(fixture, host);
+    }
+
+    /// <summary>
+    /// Seeds a task straight into the "queued" state exactly like
+    /// <see cref="HubCliIngestTestHarness.EnqueueAsync"/> does on the CLI side: writes the
+    /// "queued"-stage Task Artifact <see cref="IngestSubmissionPipeline"/> would have
+    /// written, then hands the task to the coordinator's queue — so both parity paths seed
+    /// identically without going through the full fetch/convert submission flow.
+    /// </summary>
+    public async Task EnqueueQueuedTaskAsync(string taskId, bool pauseFirst = true)
+    {
+        if (pauseFirst)
+        {
+            await Fixture.Repository.SetFlagAsync(IngestRunCoordinator.QueuePausedFlag, true);
+        }
+
+        var sourceRef = Path.Combine(Fixture.Root, $"{taskId}.md");
+        var artifactPath = Path.Combine(Fixture.ContentPaths.TasksDir, $"{taskId}.md");
+        await new HubTaskArtifactWriter().WriteAsync(
+            artifactPath,
+            new HubTaskArtifactDocument(
+                TaskId: taskId,
+                Status: "queued",
+                StartedAt: DateTimeOffset.UtcNow,
+                CompletedAt: null,
+                SourceRef: sourceRef,
+                OriginalRef: null,
+                FailureReason: null,
+                Narrative: "Queued for ingest.",
+                UserPromptSource: "default",
+                UserPrompt: null));
+
+        await Fixture.Coordinator.EnqueueAsync(taskId, sourceRef, null);
+    }
+
+    public void Dispose()
+    {
+        _host.Dispose();
+        Fixture.Dispose();
     }
 }
