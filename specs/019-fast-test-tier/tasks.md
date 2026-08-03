@@ -249,7 +249,7 @@ developer workflow (`./scripts/test-fast.sh`) completes without executing any
 evaluation test, and the documented eval-tier command executes exactly the
 replay-eval suite.
 
-- [ ] T014 [US3] Add `[Trait("Tier", "SlowEval")]` to the five genuine replay-eval
+- [X] T014 [US3] Add `[Trait("Tier", "SlowEval")]` to the five genuine replay-eval
       classes in `backend/tests/Grimoire.AgentEvals/`: `IngestReplayEvalTests`,
       `LintReplayEvalTests`, `QueryReplayEvalTests`,
       `LintRemediationProposalRelevanceEvalTests`, `RemediationReVerificationEvalTests`.
@@ -263,7 +263,7 @@ replay-eval suite.
       `contracts/test-tier-commands.md` and `quickstart.md` actually selects them;
       the "untagged" language is read as applying only to the whole-project
       unfiltered run's default behavior, not the filtered command's mechanics.
-- [ ] T015 [US3] Rewrite CONTRIBUTING.md's "Building and testing" section: remove the
+- [X] T015 [US3] Rewrite CONTRIBUTING.md's "Building and testing" section: remove the
       paragraph "Agent-behavior (evaluation) tests that call a real LLM provider are
       gated behind `GRIMOIRE_EVAL=1` and are not part of the default hermetic test
       run"; add a new `## Test Tiers` subsection documenting all three tiers — Fast
@@ -273,11 +273,11 @@ replay-eval suite.
       "slow, opt-in") — each with its purpose, contents, duration class, and exact
       command, per `contracts/test-tier-commands.md` (FR-007, SC-005, Acceptance
       Scenario 1).
-- [ ] T016 [P] [US3] Delete `backend/tests/Grimoire.AgentEvals/EvalFactAttribute.cs`
+- [X] T016 [P] [US3] Delete `backend/tests/Grimoire.AgentEvals/EvalFactAttribute.cs`
       (defines the dead `[EvalFact]`/`EvalGate` code — confirmed zero `[EvalFact]`
       usages and zero `EvalGate.*` call sites anywhere in the suite; superseded by
       ADR-012's recorded-replay tier) (FR-007/research.md R8 cleanup).
-- [ ] T017 [US3] Verify: `dotnet test backend/tests/Grimoire.AgentEvals --filter "Tier=SlowEval"`
+- [X] T017 [US3] Verify: `dotnet test backend/tests/Grimoire.AgentEvals --filter "Tier=SlowEval"`
       executes exactly the five classes named in T014 and no others; re-run
       `./scripts/test-fast.sh` (US1) and confirm it still executes zero
       evaluation tests after T014's tagging (re-confirms SC-002/FR-006 hold after
@@ -301,7 +301,7 @@ versus a sequential run (FR-012, FR-013; SC-008).
 compare wall-clock runtime against the ~190s baseline while verifying executed
 sample count, scorer results, and thresholds are identical to a sequential run.
 
-- [ ] T018 [US4] In `backend/tests/Grimoire.AgentEvals/SyntheticRecordings.cs`,
+- [X] T018 [US4] In `backend/tests/Grimoire.AgentEvals/SyntheticRecordings.cs`,
       remove the single
       `[CollectionDefinition("EvalRunnerProcessTests", DisableParallelization = true)]`
       / `EvalRunnerProcessTestsCollection` marker class and replace it with two:
@@ -316,7 +316,7 @@ sample count, scorer results, and thresholds are identical to a sequential run.
       `[Collection("EvalRunnerReplayScenarios")]` to the five replay classes tagged
       in T014, replacing their old `[Collection("EvalRunnerProcessTests")]`
       reference.
-- [ ] T019 [US4] In `backend/src/Grimoire.EvalRunner/Replay/ReplayPipeline.cs`'s
+- [X] T019 [US4] In `backend/src/Grimoire.EvalRunner/Replay/ReplayPipeline.cs`'s
       `RunScenarioAsync` (the sequential `for` loop over `manifest.Samples`, lines
       ~61–67, calling `ReplaySampleAsync` one sample at a time), change it to bounded-
       concurrent execution (e.g. `Parallel.ForEachAsync` capped at
@@ -324,21 +324,21 @@ sample count, scorer results, and thresholds are identical to a sequential run.
       preserving each sample's position in the returned `results` list and full
       per-sample isolation (own `EvalWorkspace`, own recording, own
       `AgentProcessInvoker` call) (FR-012).
-- [ ] T020 [P] [US4] In `backend/src/Grimoire.EvalRunner/Workspace/EvalWorkspace.cs`'s
+- [X] T020 [P] [US4] In `backend/src/Grimoire.EvalRunner/Workspace/EvalWorkspace.cs`'s
       `CopyDirectory` (invoked twice from `Create` — wiki fixture, agent
       instructions), parallelize the per-file copy (e.g. `Parallel.ForEachAsync` over
       `Directory.GetFiles(sourceDir)`) instead of the sequential `foreach`; recurse
       into subdirectories the same way. The source directory is shared and read-only
       across samples, so this introduces no new isolation risk (research.md R7)
       (FR-013).
-- [ ] T021 [US4] Run `time dotnet test backend/tests/Grimoire.AgentEvals --configuration Release`;
+- [X] T021 [US4] Run `time dotnet test backend/tests/Grimoire.AgentEvals --configuration Release`;
       confirm wall clock is ≥ 50% below the recorded ~190s baseline and zero tests
       are skipped (`ci.yml`'s `Skipped:\s+0,` check). Then re-run forced-sequential
       (`-- xunit.parallelizeAssembly=false xunit.parallelizeTestCollections=false`,
       or a pre-change comparison) and diff executed sample count, scorer results,
       and pass/fail thresholds against the concurrent run — confirm they are
       identical (SC-008; FR-012 Acceptance Scenario 2/3).
-- [ ] T022 [US4] Confirm each replay sample still uses its own isolated
+- [X] T022 [US4] Confirm each replay sample still uses its own isolated
       `EvalWorkspace` under concurrency: inspect
       `Path.GetTempPath()/grimoire-eval-runner/` during a concurrent run and confirm
       one directory per sample, never shared (quickstart.md US4 step 4).
