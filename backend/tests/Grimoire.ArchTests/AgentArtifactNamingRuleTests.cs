@@ -217,7 +217,10 @@ public class AgentArtifactNamingRuleTests
     // Cross-agent Hub namespaces. Realtime/Runtime/ContentRoot/OperationalState/
     // Conversion may contain per-agent endpoint types of the shared infrastructure
     // (IngestLifecycleHub, QueuedIngestRun, ...); AgentDispatch is held to the stricter
-    // standard below (only the shared port surface).
+    // standard below (only the shared port surface). 018-hub-cli-commands (ADR-020, N1):
+    // Grimoire.Hub.Cli is the CLI command surface — a cross-agent entry point that may
+    // host agent-token command types (LintRunCommand, QueryCommand, ...) as per-agent
+    // entries of shared infrastructure, like Realtime.
     private static readonly string[] _hubCrossAgentNamespaces =
     [
         "Grimoire.Hub.AgentDispatch",
@@ -226,6 +229,7 @@ public class AgentArtifactNamingRuleTests
         "Grimoire.Hub.ContentRoot",
         "Grimoire.Hub.OperationalState",
         "Grimoire.Hub.Conversion",
+        "Grimoire.Hub.Cli",
     ];
 
     [Fact]

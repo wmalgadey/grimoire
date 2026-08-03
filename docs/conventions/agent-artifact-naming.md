@@ -54,7 +54,7 @@ only the shared port surface (`IAgentProcessLauncher`, `AgentRunEvent`,
 | Ingest | `Grimoire.Hub.IngestSubmission`, `Grimoire.Hub.IngestDispatch`, `Grimoire.Hub.IngestTaskArtifact` |
 | Query | `Grimoire.Hub.QueryDispatch`, `Grimoire.Hub.QuerySubmission`, `Grimoire.Hub.QueryRunArtifact` |
 | Lint | `Grimoire.Hub.LintDispatch`, `Grimoire.Hub.LintFindings`, `Grimoire.Hub.RemediationTasks` (015-lint-board-parity, ADR-018 — remediation artifacts carry their own `Remediation` vocabulary, so this namespace is not a Part-1 reference-detection prefix) |
-| Cross-agent | `Grimoire.Hub` (root), `Grimoire.Hub.AgentDispatch`, `Grimoire.Hub.Realtime`, `Grimoire.Hub.Runtime`, `Grimoire.Hub.ContentRoot`, `Grimoire.Hub.OperationalState`, `Grimoire.Hub.Conversion` |
+| Cross-agent | `Grimoire.Hub` (root), `Grimoire.Hub.AgentDispatch`, `Grimoire.Hub.Realtime`, `Grimoire.Hub.Runtime`, `Grimoire.Hub.ContentRoot`, `Grimoire.Hub.OperationalState`, `Grimoire.Hub.Conversion`, `Grimoire.Hub.Cli` (018-hub-cli-commands, ADR-020 — the CLI command surface; like `Realtime`, may host agent-token command types as per-agent entries of shared infrastructure) |
 
 ## Exemption list
 
