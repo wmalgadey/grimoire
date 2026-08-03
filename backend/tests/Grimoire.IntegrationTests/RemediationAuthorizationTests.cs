@@ -294,6 +294,14 @@ internal sealed class RemediationEndpointHostHarness : IDisposable
                         recordStore,
                         paths,
                         logger: NullLogger<RemediationMessageTurnCoordinator>.Instance));
+                    // 018-hub-cli-commands T022: the extracted authorize/dismiss/withdraw
+                    // transition service the endpoint handlers now delegate to.
+                    services.AddSingleton<RemediationTaskTransitionService>(sp => new RemediationTaskTransitionService(
+                        repository,
+                        sp.GetRequiredService<RemediationLifecyclePublisher>(),
+                        sp.GetRequiredService<RemediationRunCoordinator>(),
+                        recordStore,
+                        NullLogger<RemediationLifecyclePublisher>.Instance));
                 });
                 webHost.Configure(app =>
                 {

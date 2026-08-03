@@ -436,6 +436,17 @@ internal sealed class BoardHostHarness : IDisposable
                         sp.GetRequiredService<RemediationTaskRecordStore>(),
                         paths,
                         logger: NullLogger<RemediationMessageTurnCoordinator>.Instance));
+                    // 018-hub-cli-commands T022: same reasoning as RemediationRunCoordinator
+                    // above — the mapped-but-unexercised-in-this-file authorize/dismiss/
+                    // withdraw handlers now delegate to this service and need it bindable
+                    // for Minimal API's group-wide endpoint-metadata inference to succeed
+                    // at startup.
+                    services.AddSingleton<RemediationTaskTransitionService>(sp => new RemediationTaskTransitionService(
+                        repository,
+                        sp.GetRequiredService<RemediationLifecyclePublisher>(),
+                        sp.GetRequiredService<RemediationRunCoordinator>(),
+                        sp.GetRequiredService<RemediationTaskRecordStore>(),
+                        NullLogger<RemediationLifecyclePublisher>.Instance));
                 });
                 webHost.Configure(app =>
                 {

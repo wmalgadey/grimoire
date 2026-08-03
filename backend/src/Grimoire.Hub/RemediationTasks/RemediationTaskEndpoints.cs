@@ -1,5 +1,4 @@
 using Grimoire.Hub.OperationalState;
-using Microsoft.Extensions.Logging;
 
 namespace Grimoire.Hub.RemediationTasks;
 
@@ -106,167 +105,72 @@ public static class RemediationTaskEndpoints
     }
 
     /// <summary>
-    /// POST /{taskId}/authorize (T033, FR-009): CAS <c>proposed → authorized</c>, stamping
-    /// <c>authorized_at</c> (FIFO order authority, FR-017). Kicks the coordinator's own
-    /// dispatch check afterward so an idle slot picks the task up immediately — the
-    /// coordinator's CAS to <c>Executing</c> is the actual authorization gate (ADR-018);
-    /// this endpoint only ever grants eligibility.
+    /// POST /{taskId}/authorize (T033, FR-009; 018-hub-cli-commands T022): thin wrapper
+    /// over <see cref="RemediationTaskTransitionService.AuthorizeAsync"/> — the CAS,
+    /// publish, metrics, log events, and eager dispatch kick all now live there (shared
+    /// with <c>RemediationAuthorizeCommand</c>, FR-005/SC-005); this handler only
+    /// translates the result union to the same <see cref="IResult"/> shapes it always
+    /// returned.
     /// </summary>
     private static async Task<IResult> AuthorizeAsync(
         string taskId,
-        OperationalStateRepository repository,
-        RemediationLifecyclePublisher publisher,
-        RemediationRunCoordinator coordinator,
-        ILogger<RemediationLifecyclePublisher> logger,
+        RemediationTaskTransitionService transitionService,
         CancellationToken cancellationToken)
     {
-        var row = await FindTaskAsync(repository, taskId, cancellationToken);
-        if (row is null)
+        var result = await transitionService.AuthorizeAsync(taskId, cancellationToken);
+        return result switch
         {
-            return NotFound(taskId);
-        }
-
-        if (row.State != RemediationTaskStates.Proposed)
-        {
-            return TaskNotProposedConflict(row);
-        }
-
-        using var span = HubTracing.ActivitySource.StartActivity("hub.remediation.authorize");
-        span?.SetTag("task_id", taskId);
-
-        var authorizedAt = DateTimeOffset.UtcNow;
-        var committed = await repository.TryTransitionRemediationTaskAsync(
-            taskId, RemediationTaskStates.Proposed, RemediationTaskStates.Authorized,
-            outcomeReason: null, authorizedAt: authorizedAt, updatedAt: authorizedAt, cancellationToken);
-
-        if (!committed)
-        {
-            // Lost the race — another transition (e.g. a concurrent dismiss) committed
-            // first. Surface the actual current state, never silence (contract discipline).
-            var current = await FindTaskAsync(repository, taskId, cancellationToken);
-            return current is null ? NotFound(taskId) : TaskNotProposedConflict(current);
-        }
-
-        HubMetrics.RecordRemediationTaskAuthorized();
-        RemediationLifecycleLogEvents.LogTaskAuthorized(logger, taskId);
-
-        var rows = await repository.GetRemediationTasksAsync(cancellationToken: cancellationToken);
-        var queuePositions = ComputeQueuePositions(rows);
-        await publisher.PublishTaskChangedAsync(
-            taskId, row.RunId, fromState: RemediationTaskStates.Proposed, toState: RemediationTaskStates.Authorized,
-            queuePosition: queuePositions.TryGetValue(taskId, out var position) ? position : null,
-            cancellationToken: cancellationToken);
-
-        // Grants eligibility only — the coordinator's own CAS decides if/when it dispatches.
-        await coordinator.TryStartNextAsync(cancellationToken);
-
-        return Results.Ok(new
-        {
-            taskId,
-            state = RemediationTaskStates.Authorized,
-            authorizedAt,
-            queuePosition = queuePositions.TryGetValue(taskId, out var finalPosition) ? (int?)finalPosition : null,
-        });
+            RemediationTransitionResult.NotFound => NotFound(taskId),
+            RemediationTransitionResult.Conflict conflict => ToConflictResult(conflict),
+            RemediationTransitionResult.Ok ok => Results.Ok(new
+            {
+                taskId = ok.TaskId,
+                state = ok.NewState,
+                authorizedAt = ok.AuthorizedAt,
+                queuePosition = ok.QueuePosition,
+            }),
+            _ => throw new InvalidOperationException($"Unknown {nameof(RemediationTransitionResult)}: {result.GetType()}."),
+        };
     }
 
     /// <summary>
-    /// POST /{taskId}/dismiss (T033, FR-010): CAS <c>proposed → dismissed</c>, terminal, no
-    /// agent involvement, no wiki change. Appends the outcome entry to the task record
-    /// (terminal transition, data-model.md).
+    /// POST /{taskId}/dismiss (T033, FR-010; 018-hub-cli-commands T022): thin wrapper over
+    /// <see cref="RemediationTaskTransitionService.DismissAsync"/> (see
+    /// <see cref="AuthorizeAsync"/>'s doc comment for the extraction rationale).
     /// </summary>
     private static async Task<IResult> DismissAsync(
         string taskId,
-        OperationalStateRepository repository,
-        RemediationLifecyclePublisher publisher,
-        RemediationTaskRecordStore recordStore,
-        ILogger<RemediationLifecyclePublisher> logger,
+        RemediationTaskTransitionService transitionService,
         CancellationToken cancellationToken)
     {
-        var row = await FindTaskAsync(repository, taskId, cancellationToken);
-        if (row is null)
+        var result = await transitionService.DismissAsync(taskId, cancellationToken);
+        return result switch
         {
-            return NotFound(taskId);
-        }
-
-        if (row.State != RemediationTaskStates.Proposed)
-        {
-            return TaskNotProposedConflict(row);
-        }
-
-        var dismissedAt = DateTimeOffset.UtcNow;
-        var committed = await repository.TryTransitionRemediationTaskAsync(
-            taskId, RemediationTaskStates.Proposed, RemediationTaskStates.Dismissed,
-            outcomeReason: null, authorizedAt: null, updatedAt: dismissedAt, cancellationToken);
-
-        if (!committed)
-        {
-            var current = await FindTaskAsync(repository, taskId, cancellationToken);
-            return current is null ? NotFound(taskId) : TaskNotProposedConflict(current);
-        }
-
-        try
-        {
-            await recordStore.AppendOutcomeAsync(taskId, RemediationTaskStates.Dismissed, reason: null, dismissedAt, cancellationToken: cancellationToken);
-        }
-        catch (Exception ex)
-        {
-            logger.LogError(ex, "Failed to append the dismissed outcome entry to remediation task record {TaskId}.", taskId);
-        }
-
-        HubMetrics.RecordRemediationTaskDismissed();
-        RemediationLifecycleLogEvents.LogTaskDismissed(logger, taskId);
-        await publisher.PublishTaskChangedAsync(
-            taskId, row.RunId, fromState: RemediationTaskStates.Proposed, toState: RemediationTaskStates.Dismissed,
-            cancellationToken: cancellationToken);
-
-        return Results.Ok(new { taskId, state = RemediationTaskStates.Dismissed, dismissedAt });
+            RemediationTransitionResult.NotFound => NotFound(taskId),
+            RemediationTransitionResult.Conflict conflict => ToConflictResult(conflict),
+            RemediationTransitionResult.Ok ok => Results.Ok(new { taskId = ok.TaskId, state = ok.NewState, dismissedAt = ok.AuthorizedAt }),
+            _ => throw new InvalidOperationException($"Unknown {nameof(RemediationTransitionResult)}: {result.GetType()}."),
+        };
     }
 
     /// <summary>
-    /// POST /{taskId}/withdraw-authorization (T033, FR-016): the human-initiated side of
-    /// the withdrawal race (spec Edge Cases, data-model.md "Withdrawal race") — CAS
-    /// <c>authorized → proposed</c>, clearing <c>authorized_at</c>. Competes directly
-    /// against <c>RemediationRunCoordinator.TryStartNextAsync</c>'s <c>authorized →
-    /// executing</c> CAS on the same persisted row; first commit wins, the loser sees the
-    /// actual resulting state (research.md R5).
+    /// POST /{taskId}/withdraw-authorization (T033, FR-016; 018-hub-cli-commands T022):
+    /// thin wrapper over <see cref="RemediationTaskTransitionService.WithdrawAuthorizationAsync"/>
+    /// (see <see cref="AuthorizeAsync"/>'s doc comment for the extraction rationale).
     /// </summary>
     private static async Task<IResult> WithdrawAuthorizationAsync(
         string taskId,
-        OperationalStateRepository repository,
-        RemediationLifecyclePublisher publisher,
-        ILogger<RemediationLifecyclePublisher> logger,
+        RemediationTaskTransitionService transitionService,
         CancellationToken cancellationToken)
     {
-        var row = await FindTaskAsync(repository, taskId, cancellationToken);
-        if (row is null)
+        var result = await transitionService.WithdrawAuthorizationAsync(taskId, cancellationToken);
+        return result switch
         {
-            return NotFound(taskId);
-        }
-
-        if (row.State != RemediationTaskStates.Authorized)
-        {
-            return WithdrawConflict(row);
-        }
-
-        var committed = await repository.TryTransitionRemediationTaskAsync(
-            taskId, RemediationTaskStates.Authorized, RemediationTaskStates.Proposed,
-            outcomeReason: null, authorizedAt: null, updatedAt: DateTimeOffset.UtcNow, cancellationToken);
-
-        if (!committed)
-        {
-            // The race was lost — most likely the coordinator's CAS to Executing won.
-            // Show the caller exactly what happened (contract: never silence).
-            var current = await FindTaskAsync(repository, taskId, cancellationToken);
-            return current is null ? NotFound(taskId) : WithdrawConflict(current);
-        }
-
-        HubMetrics.RecordRemediationTaskWithdrawn();
-        RemediationLifecycleLogEvents.LogAuthorizationWithdrawn(logger, taskId);
-        await publisher.PublishTaskChangedAsync(
-            taskId, row.RunId, fromState: RemediationTaskStates.Authorized, toState: RemediationTaskStates.Proposed,
-            cancellationToken: cancellationToken);
-
-        return Results.Ok(new { taskId, state = RemediationTaskStates.Proposed });
+            RemediationTransitionResult.NotFound => NotFound(taskId),
+            RemediationTransitionResult.Conflict conflict => ToConflictResult(conflict),
+            RemediationTransitionResult.Ok ok => Results.Ok(new { taskId = ok.TaskId, state = ok.NewState }),
+            _ => throw new InvalidOperationException($"Unknown {nameof(RemediationTransitionResult)}: {result.GetType()}."),
+        };
     }
 
     /// <summary>
@@ -439,33 +343,37 @@ public static class RemediationTaskEndpoints
         });
 
     /// <summary>
-    /// contracts/remediation-task-api.md withdraw-authorization error shapes: a task no
-    /// longer <c>authorized</c> is either the CAS race loser against dispatch
-    /// (<c>execution_already_started</c>, when the current state is <c>executing</c> or a
-    /// terminal execution outcome) or a stale double-withdraw
-    /// (<c>task_not_authorized</c>, when the current state is <c>proposed</c> or
-    /// <c>dismissed</c>).
+    /// 018-hub-cli-commands T022: translates a
+    /// <see cref="RemediationTaskTransitionService"/> conflict (reason + current state
+    /// only) back into the exact 409 body shape (incl. the human-readable <c>message</c>)
+    /// the pre-extraction inline handlers returned, for all three reasons the service can
+    /// produce across authorize/dismiss/withdraw:
+    /// <c>task_not_proposed</c> (authorize/dismiss), <c>task_not_authorized</c> and
+    /// <c>execution_already_started</c> (withdraw — contracts/remediation-task-api.md
+    /// "withdraw-authorization error shapes").
     /// </summary>
-    private static IResult WithdrawConflict(RemediationTaskRow row)
+    private static IResult ToConflictResult(RemediationTransitionResult.Conflict conflict) => conflict.Reason switch
     {
-        if (row.State is RemediationTaskStates.Executing or RemediationTaskStates.Completed
-            or RemediationTaskStates.Failed or RemediationTaskStates.NotApplicable)
+        "task_not_proposed" => Results.Conflict(new
         {
-            return Results.Conflict(new
-            {
-                reason = "execution_already_started",
-                state = row.State,
-                message = "The agent already began executing this task; it will run to a terminal outcome and can no longer be cancelled.",
-            });
-        }
-
-        return Results.Conflict(new
+            reason = conflict.Reason,
+            state = conflict.CurrentState,
+            message = $"Only a proposed task can be authorized or dismissed. This task is {conflict.CurrentState}.",
+        }),
+        "task_not_authorized" => Results.Conflict(new
         {
-            reason = "task_not_authorized",
-            state = row.State,
-            message = $"Only an authorized task can have its authorization withdrawn. This task is {row.State}.",
-        });
-    }
+            reason = conflict.Reason,
+            state = conflict.CurrentState,
+            message = $"Only an authorized task can have its authorization withdrawn. This task is {conflict.CurrentState}.",
+        }),
+        "execution_already_started" => Results.Conflict(new
+        {
+            reason = conflict.Reason,
+            state = conflict.CurrentState,
+            message = "The agent already began executing this task; it will run to a terminal outcome and can no longer be cancelled.",
+        }),
+        _ => throw new InvalidOperationException($"Unknown remediation transition conflict reason: {conflict.Reason}"),
+    };
 
     private static object ToListEntry(RemediationTaskRow row, IReadOnlyDictionary<string, int> queuePositions) => new
     {

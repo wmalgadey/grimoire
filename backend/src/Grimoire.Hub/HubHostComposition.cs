@@ -191,6 +191,15 @@ internal static class HubHostComposition
                 sp.GetRequiredService<RemediationTaskRecordStore>(),
                 resolvedPaths,
                 logger: sp.GetRequiredService<ILogger<RemediationRunCoordinator>>()));
+            // 018-hub-cli-commands T021 (ADR-020): the authorize/dismiss/withdraw
+            // transition service shared by RemediationTaskEndpoints and the CLI's
+            // remediation-authorize/-dismiss/-withdraw commands (FR-005/SC-005).
+            builder.Services.AddSingleton<RemediationTaskTransitionService>(sp => new RemediationTaskTransitionService(
+                sp.GetRequiredService<OperationalStateRepository>(),
+                sp.GetRequiredService<RemediationLifecyclePublisher>(),
+                sp.GetRequiredService<RemediationRunCoordinator>(),
+                sp.GetRequiredService<RemediationTaskRecordStore>(),
+                sp.GetRequiredService<ILogger<RemediationLifecyclePublisher>>()));
             // 015-lint-board-parity T041/T042 (US5, FR-012): message turns dispatch
             // independently of execution — not authorization-gated, never touches the
             // task's execution state machine (ADR-018).
