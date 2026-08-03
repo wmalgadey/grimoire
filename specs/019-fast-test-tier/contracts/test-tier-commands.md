@@ -91,4 +91,4 @@ default.
 
 | Value | Meaning |
 |---|---|
-| `TimingDependent=true` | Exempted from the fixed-wait ban (ADR-020); the test's own subject is elapsed real time, not merely out-waiting an async operation (FR-005) |
+| `TimingDependent=true` | Exempted from the fixed-wait ban (ADR-021); the test's own subject is elapsed real time, not merely out-waiting an async operation (FR-005) |

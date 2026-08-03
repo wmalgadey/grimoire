@@ -5,7 +5,7 @@
 This feature has no domain entities and touches no persisted or runtime state — it is
 test-project/tooling organization. The spec's Key Entities section describes test-metadata
 concepts, not domain objects; they are captured here as the configuration/attribute shapes
-that realize them (see ADR-020 and `research.md` for full rationale).
+that realize them (see ADR-021 and `research.md` for full rationale).
 
 ## Test Tier
 
@@ -35,7 +35,7 @@ fixed-delay ban (FR-005).
 | Rationale | code comment | One-line justification adjacent to the marker (e.g. "asserts the 300ms debounce window itself elapses") |
 
 **Representation**: an xUnit trait, the same mechanism as Test Tier, so both the fast-wait
-audit (SC-004) and the structural rule (ADR-020, `DeterministicTierNoFixedWaitRuleTests`)
+audit (SC-004) and the structural rule (ADR-021, `DeterministicTierNoFixedWaitRuleTests`)
 can query it via Mono.Cecil custom-attribute inspection without a second metadata scheme.
 
 ## Baseline Measurement

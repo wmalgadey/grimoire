@@ -98,10 +98,10 @@ replay-eval scenarios across 5 classes.
 - **Principle III (ADR-Driven & Test-Enforced)**: All 19 existing ADRs read (Phase 0,
   below). This feature introduces a cross-cutting testing convention (tier-membership
   trait, deterministic-wait convention, its structural enforcement rule) no existing ADR
-  covers, so **ADR-020 is drafted** (`docs/adr/ADR-020-test-tier-taxonomy-and-deterministic-wait-enforcement.md`,
+  covers, so **ADR-021 is drafted** (`docs/adr/ADR-021-test-tier-taxonomy-and-deterministic-wait-enforcement.md`,
   status `proposed`) as required. Its structural rule
   (`DeterministicTierNoFixedWaitRuleTests`) ships with a Red/Green probe as the first
-  `tasks.md` task, per the constitution's mandatory ordering. **Pass, pending ADR-020
+  `tasks.md` task, per the constitution's mandatory ordering. **Pass, pending ADR-021
   reaching Accepted status before `/speckit-tasks` runs** (Spec-Kit Workflow step 4).
 - **Principle IV (Behavioral & Observable Engineering)**: See Observability section below
   — N/A with justification: this feature adds no production business logic, no request
@@ -123,15 +123,15 @@ No violations requiring Complexity Tracking justification.
 | ADR-009 | Runtime Path Configuration | Supplies the exact IL-scan idiom (`RuntimePathsBoundaryRuleTests` — Mono.Cecil, allow-listed call sites, Red/Green probe) this feature's new `DeterministicTierNoFixedWaitRuleTests` rule reuses verbatim. |
 | ADR-011 | Shared Agent Runtime, Streaming, and Query Concurrency Model | Establishes that Query/Ingest agent processes are independently spawnable and safe to run concurrently under bounded limits — the same reasoning this feature applies to concurrent replay-eval sample spawning (FR-012), which reuses `EvalWorkspace`'s existing per-sample isolation rather than inventing a new one. |
 | ADR-012 | Standalone Eval Runner and Recorded-Replay at the Model Port | Fixes the replay-eval tier's semantics (sample counts, scorers, fingerprint-gated staleness) that this feature's concurrency change (FR-012/FR-013) MUST leave byte-identical; also fixes `EvalWorkspace`'s per-sample isolation contract, which this feature's copy-parallelization (R7) and concurrent spawning (R6) both build on without altering. |
-| ADR-013 | Unified Agent Platform Packaging and Agent-Artifact Naming Convention | Its N1 naming/namespace-ownership rule is the reason this feature chose a trait-based tier-membership mechanism (ADR-020) instead of physically relocating the ~45 hermetic `Grimoire.AgentEvals` tests — a physical move would need new namespace-ownership entries this feature has no reason to introduce. |
-| ADR-020 (new, this feature) | Backend Test Tier Taxonomy, Deterministic-Wait Convention, and Suite Concurrency Levers | Defines the `Tier`/`TimingDependent` trait vocabulary, the fast-tier command composition, the `Grimoire.IntegrationTests` collection-parallelization decision, and the `Grimoire.AgentEvals` collection split — the structural backbone this entire feature implements. |
+| ADR-013 | Unified Agent Platform Packaging and Agent-Artifact Naming Convention | Its N1 naming/namespace-ownership rule is the reason this feature chose a trait-based tier-membership mechanism (ADR-021) instead of physically relocating the ~45 hermetic `Grimoire.AgentEvals` tests — a physical move would need new namespace-ownership entries this feature has no reason to introduce. |
+| ADR-021 (new, this feature) | Backend Test Tier Taxonomy, Deterministic-Wait Convention, and Suite Concurrency Levers | Defines the `Tier`/`TimingDependent` trait vocabulary, the fast-tier command composition, the `Grimoire.IntegrationTests` collection-parallelization decision, and the `Grimoire.AgentEvals` collection split — the structural backbone this entire feature implements. |
 
 All other ADRs (001, 003, 004, 005, 007, 008, 010, 014–019) read and confirmed not to
 apply: none govern test-project organization, test-suite tiering, or CI test-selection
 tooling, and this feature adds no external-system dependency, no persistence, no agent
 instruction-surface change, and no production namespace.
 
-**New ADR required?**: Yes — ADR-020 was drafted as part of this planning run (status
+**New ADR required?**: Yes — ADR-021 was drafted as part of this planning run (status
 `proposed`; it must reach **Accepted** via project-owner sign-off before `/speckit-tasks`
 runs for this feature, per Constitution Principle III and the Spec-Kit Workflow's
 mandatory step 4). It is intentionally left `proposed` here — the planning agent does not
@@ -158,7 +158,7 @@ judgment content.
 | SC-001: fast-tier execution ≤ 5s (excl. build) | Deterministic guarantee | Timed run of `scripts/test-fast.sh` on the reference environment | None — the point is zero external prerequisites | N/A | Manual/quickstart-validated timing comparison, not an ongoing CI performance gate (spec Assumptions) |
 | SC-002: 100% of fast-tier runs execute zero eval tests; runs with no eval prerequisites available | Deterministic guarantee | Hermetic test: assert `Tier=Fast`-filtered `Grimoire.AgentEvals` run contains no replay-eval class name; run the fast tier in an environment with `data/evals/recordings/` absent and no provider credential set | None | Environment with recordings/credentials deliberately removed | Directly exercises FR-002 |
 | SC-003: `Grimoire.IntegrationTests` wall clock ≥ 30% below 61s baseline, test count ≥ 583 | Deterministic guarantee | Timed full-project run compared against the recorded baseline; `dotnet test`'s own summary line for executed count | Real infrastructure per existing tests (Kestrel, SignalR, fake/real agent processes) — unchanged | Existing fixtures, unchanged | Verifies FR-011's levers (parallelization + wait triage) collectively hit the target |
-| SC-004: zero fixed unconditional waits outside `TimingDependent`-marked tests | Deterministic guarantee | New `Grimoire.ArchTests` rule `DeterministicTierNoFixedWaitRuleTests` (Mono.Cecil IL scan), Red/Green probed | None | A scratch violating test method for the probe (removed after) | This IS the Phase 0 structural boundary test for ADR-020 |
+| SC-004: zero fixed unconditional waits outside `TimingDependent`-marked tests | Deterministic guarantee | New `Grimoire.ArchTests` rule `DeterministicTierNoFixedWaitRuleTests` (Mono.Cecil IL scan), Red/Green probed | None | A scratch violating test method for the probe (removed after) | This IS the Phase 0 structural boundary test for ADR-021 |
 | SC-005: single command per tier; default workflow excludes eval suite | Deterministic guarantee | Quickstart walkthrough (`quickstart.md`) executing each documented command | None | N/A | Human-verifiable per Acceptance Scenario, same treatment as prior features' UX-shaped criteria |
 | SC-006: full suite executes ≥ 796 tests total; every previously-gating suite still gates | Deterministic guarantee | Sum of `dotnet test` executed-count summaries across all four projects; `ci.yml` diff review | None | N/A | Confirms FR-008 (no coverage loss) |
 | SC-007: 100% of attempts to reintroduce a forbidden fixed wait are rejected | Deterministic guarantee | `DeterministicTierNoFixedWaitRuleTests`, exercised in the standard `Grimoire.ArchTests` CI step | None | Same scratch violation as SC-004's probe | CI enforcement, not just a local check — `ci.yml`'s existing "Run architecture tests" step needs no new pipeline step |
@@ -258,7 +258,7 @@ backend/src/Grimoire.EvalRunner/
 └── Workspace/EvalWorkspace.cs            # CopyDirectory: sequential → parallelized file copy
 
 backend/tests/Grimoire.ArchTests/
-└── DeterministicTierNoFixedWaitRuleTests.cs   # new: Phase 0 structural boundary test (ADR-020)
+└── DeterministicTierNoFixedWaitRuleTests.cs   # new: Phase 0 structural boundary test (ADR-021)
 
 backend/tests/Grimoire.IntegrationTests/Grimoire.IntegrationTests.csproj  # remove unused Testcontainers ref
 backend/Directory.Packages.props                                          # remove Testcontainers PackageVersion if now unreferenced
@@ -268,7 +268,7 @@ scripts/test-fast.sh                      # new: single fast-tier command (FR-00
 CONTRIBUTING.md                           # new "Test Tiers" section; removes stale GRIMOIRE_EVAL=1 claim (FR-007);
                                            # new TDD/tier-placement/edge-case-traceability guidance (FR-009)
 
-docs/adr/ADR-020-test-tier-taxonomy-and-deterministic-wait-enforcement.md  # new (this plan)
+docs/adr/ADR-021-test-tier-taxonomy-and-deterministic-wait-enforcement.md  # new (this plan)
 ```
 
 ## Complexity Tracking
