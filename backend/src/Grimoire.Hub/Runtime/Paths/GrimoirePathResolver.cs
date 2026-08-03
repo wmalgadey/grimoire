@@ -76,6 +76,11 @@ public static class GrimoirePathResolver
 
         var indexPath = Path.Combine(contentRoot, "index.md");
         var logPath = Path.Combine(contentRoot, "log.md");
+        // 018-hub-cli-commands (ADR-020): fixed filename under the already-resolved data
+        // directory, same treatment as indexPath/logPath above — no GrimoirePathOptions
+        // field, no ADR-009 switch, no PathLocation/validation entry (not independently
+        // configurable, not a required input).
+        var lintPidPath = Path.Combine(dataDir, GrimoirePathOptions.DefaultLintPidFileName);
         var rawOriginalsDir = Path.Combine(rawDir, "originals");
         var rawSourcesDir = Path.Combine(rawDir, "sources");
         var systemPromptPath = Path.Combine(instructionsDir, "system-prompt.md");
@@ -169,6 +174,7 @@ public static class GrimoirePathResolver
             LintPolicyPath: lintPolicyPath,
             LintAgentWorkerPath: lintAgentWorkerPath,
             RemediationTasksDir: remediationTasksDir,
+            LintPidPath: lintPidPath,
             Locations: locations);
 
         GrimoirePathLogEvents.LogPathsResolved(logger, resolved);

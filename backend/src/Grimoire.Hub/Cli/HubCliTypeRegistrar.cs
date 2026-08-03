@@ -1,3 +1,4 @@
+using Microsoft.Extensions.DependencyInjection;
 using Spectre.Console.Cli;
 
 namespace Grimoire.Hub.Cli;
@@ -30,47 +31,93 @@ namespace Grimoire.Hub.Cli;
 /// container <b>first</b> and only reaches into the (deferred, build-triggering) host
 /// provider as a fallback — the reverse of a typical composite resolver — so framework
 /// queries like the one above never force the full composition just to render help.
+///
+/// <b>Command/settings types are constructed via <see cref="ActivatorUtilities"/>, not
+/// the supplementary container's own activation</b> (018-hub-cli-commands T017 fix):
+/// Spectre's <c>TypeRegistrarExtensions.RegisterDependencies</c> calls
+/// <see cref="Register"/> with <c>service == implementation</c> for every command and
+/// settings type in the model (<c>LintRunCommand</c>, <c>SubmitSourceCommand</c>, …).
+/// Handing those straight to <c>IServiceCollection.AddSingleton(Type, Type)</c> would
+/// make the supplementary container responsible for resolving that command's OWN
+/// constructor dependencies (e.g. <c>LintRunCoordinator</c>) — dependencies that live
+/// only in the built host's real container — and
+/// <c>Microsoft.Extensions.DependencyInjection</c>'s default provider throws
+/// <c>InvalidOperationException</c> immediately upon activation when a constructor
+/// parameter isn't registered in the SAME container, rather than returning
+/// <see langword="null"/> so a fallback lookup could run. (Verified directly: every
+/// non-help command invocation failed with Spectre's own
+/// <c>"Could not resolve type '…'."</c> before this fix.) Command/settings types are
+/// therefore tracked separately (<see cref="_activatedTypes"/>) and constructed via
+/// <c>ActivatorUtilities.CreateInstance(this, type)</c> against the resolver itself
+/// (which implements <see cref="IServiceProvider"/>) — so each constructor parameter is
+/// resolved through the SAME fallback-then-host chain <see cref="Resolve"/> already
+/// uses, letting a multi-constructor command (like <c>LintRunCommand</c>'s production
+/// vs. test-seam constructors) fall back to whichever constructor's parameters are
+/// actually satisfiable, exactly like <c>ActivatorUtilities</c> does for ASP.NET Core
+/// controllers.
 /// </summary>
 internal sealed class HubCliTypeRegistrar : ITypeRegistrar
 {
     private readonly Lazy<Task<IServiceProvider>> _hostServices;
     private readonly IServiceCollection _fallbackServices = new ServiceCollection();
+    private readonly List<Type> _activatedTypes = [];
 
     public HubCliTypeRegistrar(Func<Task<IServiceProvider>> hostFactory)
     {
         _hostServices = new Lazy<Task<IServiceProvider>>(hostFactory);
     }
 
-    public ITypeResolver Build() => new HubCliTypeResolver(_hostServices, _fallbackServices.BuildServiceProvider());
+    public ITypeResolver Build() =>
+        new HubCliTypeResolver(_hostServices, _fallbackServices.BuildServiceProvider(), _activatedTypes);
 
-    public void Register(Type service, Type implementation) => _fallbackServices.AddSingleton(service, implementation);
+    public void Register(Type service, Type implementation)
+    {
+        if (service == implementation)
+        {
+            _activatedTypes.Add(implementation);
+            return;
+        }
+
+        _fallbackServices.AddSingleton(service, implementation);
+    }
 
     public void RegisterInstance(Type service, object implementation) => _fallbackServices.AddSingleton(service, implementation);
 
     public void RegisterLazy(Type service, Func<object> factory) => _fallbackServices.AddSingleton(service, _ => factory());
 
-    private sealed class HubCliTypeResolver : ITypeResolver, IDisposable
+    private sealed class HubCliTypeResolver : ITypeResolver, IServiceProvider, IDisposable
     {
         private readonly Lazy<Task<IServiceProvider>> _hostServices;
         private readonly ServiceProvider _fallbackServices;
+        private readonly IReadOnlyCollection<Type> _activatedTypes;
 
-        public HubCliTypeResolver(Lazy<Task<IServiceProvider>> hostServices, ServiceProvider fallbackServices)
+        public HubCliTypeResolver(
+            Lazy<Task<IServiceProvider>> hostServices, ServiceProvider fallbackServices, IReadOnlyCollection<Type> activatedTypes)
         {
             _hostServices = hostServices;
             _fallbackServices = fallbackServices;
+            _activatedTypes = activatedTypes;
         }
 
-        public object? Resolve(Type? type)
-        {
-            if (type is null)
-            {
-                return null;
-            }
+        public object? Resolve(Type? type) => type is null ? null : GetService(type);
 
-            var fromFallback = _fallbackServices.GetService(type);
+        /// <summary>
+        /// Also this resolver's own <see cref="IServiceProvider"/> implementation, so
+        /// <c>ActivatorUtilities.CreateInstance(this, …)</c> below can recurse through
+        /// the identical fallback-then-host chain for a command/settings type's own
+        /// constructor parameters.
+        /// </summary>
+        public object? GetService(Type serviceType)
+        {
+            var fromFallback = _fallbackServices.GetService(serviceType);
             if (fromFallback is not null)
             {
                 return fromFallback;
+            }
+
+            if (_activatedTypes.Contains(serviceType))
+            {
+                return ActivatorUtilities.CreateInstance(this, serviceType);
             }
 
             // Only reached for a type Spectre's own registrations don't satisfy — i.e. a
@@ -78,7 +125,7 @@ internal sealed class HubCliTypeRegistrar : ITypeRegistrar
             // SynchronizationContext, and this runs once per process (Lazy caches the
             // completed Task on every later call).
             var hostServices = _hostServices.Value.GetAwaiter().GetResult();
-            return hostServices.GetService(type);
+            return hostServices.GetService(serviceType);
         }
 
         // The host's IServiceProvider is owned and disposed by HubCliApp (via

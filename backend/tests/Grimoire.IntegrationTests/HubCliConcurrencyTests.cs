@@ -1,6 +1,10 @@
 using System.Diagnostics;
+using Grimoire.Hub.LintDispatch;
+using Grimoire.Hub.LintFindings;
 using Grimoire.Hub.OperationalState;
+using Grimoire.IntegrationTests.Fakes;
 using Microsoft.Data.Sqlite;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace Grimoire.IntegrationTests;
 
@@ -132,6 +136,67 @@ public class HubCliConcurrencyTests
             {
                 Assert.Contains(expectedTaskId, storedTaskIds);
             }
+        }
+        finally
+        {
+            Directory.Delete(root, recursive: true);
+        }
+    }
+
+    /// <summary>
+    /// T019 (018-hub-cli-commands, US1, research.md D1a): two entirely separate
+    /// <see cref="LintRunCoordinator"/> instances — standing in for "a running Hub" and
+    /// "a CLI invocation" (or two Hub-adjacent processes) — pointed at the SAME resolved
+    /// paths (same <c>lint.pid</c> file), proving the T016 cross-process lock, not just
+    /// the in-process <c>_slot</c> semaphore each coordinator instance owns privately.
+    /// Coordinator A triggers and holds the lock for a scripted, non-instant run (not yet
+    /// terminal); coordinator B's own <c>TriggerAsync</c> — which would otherwise see an
+    /// entirely free in-process slot, since it is a different instance — must still
+    /// observe the conflict via the shared <c>lint.pid</c> file and return
+    /// <see cref="LintSubmissionResult.Busy"/>, never spawning an agent.
+    /// </summary>
+    [Fact]
+    public async Task LintPid_TwoSeparateCoordinatorInstances_SecondObservesBusy_WhileFirstHoldsTheCrossProcessLock()
+    {
+        var root = CreateTempDir("hub-cli-lint-pid-conflict");
+
+        try
+        {
+            var paths = QueryTurnSubmissionApiTests.BuildResolvedPaths(root);
+            Directory.CreateDirectory(paths.FindingsDir);
+
+            // Coordinator A: the "first process" — a scripted run that stays active long
+            // enough for coordinator B's trigger attempt to land while it still holds the
+            // lock, but short enough to keep the test fast.
+            var launcherA = new FakeAgentProcessLauncher(simulatedRunDuration: TimeSpan.FromSeconds(1));
+            var coordinatorA = new LintRunCoordinator(
+                launcherA,
+                new FindingsReportStore(paths, NullLogger<FindingsReportStore>.Instance),
+                paths,
+                logger: NullLogger<LintRunCoordinator>.Instance);
+
+            // Coordinator B: an entirely separate instance (own in-process `_slot`,
+            // never contended by A) — the same shape a second Hub/CLI process would have.
+            var launcherB = new FakeAgentProcessLauncher();
+            var coordinatorB = new LintRunCoordinator(
+                launcherB,
+                new FindingsReportStore(paths, NullLogger<FindingsReportStore>.Instance),
+                paths,
+                logger: NullLogger<LintRunCoordinator>.Instance);
+
+            var resultA = await coordinatorA.TriggerAsync();
+            Assert.IsType<LintSubmissionResult.Accepted>(resultA);
+
+            var resultB = await coordinatorB.TriggerAsync();
+            Assert.IsType<LintSubmissionResult.Busy>(resultB);
+
+            // The conflict was detected before any dispatch — B's launcher never saw a request.
+            Assert.Empty(launcherB.LintRequests);
+
+            // Let A's scripted run wind down and release the lock before the temp
+            // directory is torn down, so its background completion (FinishRunAsync's
+            // Findings Report write) doesn't race the cleanup below.
+            await Task.Delay(TimeSpan.FromSeconds(2));
         }
         finally
         {

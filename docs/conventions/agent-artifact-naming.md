@@ -81,6 +81,9 @@ the fixture fails the build.
 | `RuntimePathsBoundaryRuleTests` | Solution-wide ADR-009 structural rule; anchors incidental, boundary is solution-wide |
 | `CredentialScopingTests` | Exercises only the shared spawn/credential machinery (`AgentProcessHost.BuildChildEnvironment`, `LocalSecretsLoader`) applied to every agent spawn (ADR-004) |
 | `SiblingDirectoryLayoutTests` | 014-wiki-storage-restructure: triggers a real task-artifact write (ingest-owned) and a real Conversation Record append (query-owned) against one resolved path set to prove SC-002; `Grimoire.Hub.QueryConversations` is not in Part 1's reference-detection prefixes, so without this exemption the scan would see only the ingest reference |
+| `HubCliCommandTests` | 018-hub-cli-commands: the CLI command surface's per-command success/failure contract matrix, growing across every user story (US1 lint-run, US2 remediation, US3 ingest, US4 query) — cross-agent by construction like `Grimoire.Hub.Cli` itself; currently references only lint-owned namespaces because US1 is the only story landed so far |
+| `HubCliConcurrencyTests` | 018-hub-cli-commands: the CLI/Hub dual-writer and cross-process lock concurrency matrix, growing across every user story alongside `HubCliCommandTests` above |
+| `HubCliParityTests` | 018-hub-cli-commands: the CLI-vs-HTTP outcome parity matrix (SC-005), growing across every user story alongside `HubCliCommandTests` above |
 
 Also cross-agent by construction (not name-listed): everything in `*.Fakes`
 namespaces, `Grimoire.AgentRuntime.*`, `Grimoire.EvalRunner` machinery outside the

@@ -102,6 +102,16 @@ public class AgentArtifactNamingRuleTests
         // reference-detection prefixes (only Part 2's Hub ownership map), so the scan
         // would otherwise see Ingest as the sole owner.
         "SiblingDirectoryLayoutTests",
+        // 018-hub-cli-commands: these test files are the CLI command surface's
+        // contract/concurrency/parity matrix, growing across every user story this
+        // feature adds (US1 lint-run, US2 remediation, US3 ingest, US4 query) — cross-
+        // agent by construction, like Grimoire.Hub.Cli itself (Part 2's cross-agent map
+        // entry). US1 (this phase) happens to be the only story landed so far, so each
+        // currently references only lint-owned namespaces; later phases' additions to
+        // these same files will reference ingest/query namespaces too.
+        "HubCliCommandTests",
+        "HubCliConcurrencyTests",
+        "HubCliParityTests",
     ];
 
     // Shared fixture namespaces: everything under *.Fakes is cross-agent by definition

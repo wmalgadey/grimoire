@@ -47,6 +47,16 @@ public sealed class LintRunCoordinator
     private readonly RemediationTasks.RemediationLifecyclePublisher? _remediationLifecyclePublisher;
     private readonly SemaphoreSlim _slot = new(1, 1);
 
+    /// <summary>
+    /// 018-hub-cli-commands (ADR-020, research.md D1a): the exclusive cross-process
+    /// <c>lint.pid</c> lock, acquired in <see cref="TriggerAsync"/> alongside
+    /// <see cref="_slot"/> and released wherever <see cref="_slot"/> is released below —
+    /// same lifecycle, so a Lint Run's full duration is covered on both entry paths. Only
+    /// ever written while <see cref="_slot"/> is held (by this coordinator instance), so
+    /// no additional synchronization is needed for the field itself.
+    /// </summary>
+    private LintPidLock? _pidLock;
+
     /// <summary>"Unresolved" = not yet at a terminal outcome (data-model.md, FR-004).</summary>
     private static readonly string[] _unresolvedRemediationStates = ["proposed", "authorized", "executing"];
 
@@ -109,6 +119,24 @@ public sealed class LintRunCoordinator
             return new LintSubmissionResult.Busy();
         }
 
+        // 018-hub-cli-commands (ADR-020, research.md D1a): cross-process "already
+        // active" detection — the in-process `_slot` above only ever sees this
+        // coordinator instance's own runs, so a second Hub/CLI process against the same
+        // data directory would otherwise never observe the conflict. Acquired
+        // immediately after `_slot` (no cross-process caller can hold `_slot`, so this
+        // is purely an additional gate, never a substitute) and evaluated before the
+        // unresolved-remediation-tasks check below so `lint_run_active` wins when both
+        // conditions hold, matching the existing in-process precedence comment.
+        var pidLock = LintPidLock.TryAcquire(_paths.LintPidPath);
+        if (pidLock is null)
+        {
+            _slot.Release();
+            HubMetrics.RecordLintTriggerRejected();
+            LintLifecycleLogEvents.LogRunRejected(_logger);
+            return new LintSubmissionResult.Busy();
+        }
+        _pidLock = pidLock;
+
         // 015-lint-board-parity T017 (FR-004/SC-004): a new run is also rejected while
         // any remediation action task from a prior run has not reached a terminal
         // outcome. Evaluated after the slot acquire so `lint_run_active` wins when both
@@ -123,6 +151,8 @@ public sealed class LintRunCoordinator
 
             if (unresolvedTaskIds.Count > 0)
             {
+                _pidLock?.Dispose();
+                _pidLock = null;
                 _slot.Release();
                 HubMetrics.RecordLintTriggerRejected();
                 LintLifecycleLogEvents.LogRunBlockedByUnresolvedTasks(_logger, unresolvedTaskIds.Count);
@@ -297,6 +327,11 @@ public sealed class LintRunCoordinator
         }
 
         _handles.TryRemove(runId, out _);
+        // 018-hub-cli-commands (ADR-020, research.md D1a): release the cross-process
+        // lock at the same point the in-process slot releases — the lock's lifetime is
+        // the run's full duration on both entry paths.
+        _pidLock?.Dispose();
+        _pidLock = null;
         _slot.Release();
 
         var outcome = status.ToString().ToLowerInvariant();

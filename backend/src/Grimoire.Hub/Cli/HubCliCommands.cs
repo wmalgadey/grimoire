@@ -28,7 +28,8 @@ public static class HubCliCommands
     public static readonly IReadOnlyList<HubCliCommand> All =
     [
         new("lint-run",
-            "Trigger a lint run and supervise it to completion."),
+            "Trigger a lint run and supervise it to completion.",
+            typeof(LintRunCommand)),
         new("remediation-authorize",
             "Authorize a proposed remediation task (supervises execution if eagerly dispatched)."),
         new("remediation-dismiss",
