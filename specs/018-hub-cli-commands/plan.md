@@ -28,7 +28,7 @@ no-global-guard concurrency model. `query` streams the answer while waiting and
 interrupts the turn on timeout or Ctrl-C via the existing interrupt action. 017's
 `BuildUsageText()` retires in favor of a custom help provider rendering commands plus
 the `PathSwitchCatalog` server options. All decisions are fixed in the revised
-**ADR-019** (must be Accepted before `/speckit-tasks`).
+**ADR-020** (must be Accepted before `/speckit-tasks`).
 
 ## Technical Context
 
@@ -74,7 +74,7 @@ layer, one extraction, migratable to a future dedicated hub-CLI.
 **Scale/Scope**: 7 new commands + `submit-source` parsing migration; one new namespace
 (`Grimoire.Hub.Cli`); one new NuGet dependency; one endpoint-logic extraction
 (remediation transitions); `lint.pid` lock + SQLite hardening; 2 new/amended
-architecture rules; one new ADR (ADR-019).
+architecture rules; one new ADR (ADR-020).
 
 ## Constitution Check
 
@@ -86,17 +86,17 @@ architecture rules; one new ADR (ADR-019).
   in-process parsing library, contained by new rule C9 to `Grimoire.Hub.Cli*` + the
   composition root; the `lint.pid` path is a persistence/local-filesystem concern
   (port-exempt per the constitution's persistence exemption) registered per ADR-009.
-  No Domain Core code touched. **Pass** (gated on ADR-019 acceptance).
+  No Domain Core code touched. **Pass** (gated on ADR-020 acceptance).
 - **Principle II (Pragmatic Testing)**: Harness-only feature, tested deterministically
   and hermetically against real infrastructure: the real composed service graph, real
   temp-dir SQLite, real file locks, `FakeAgentProcessLauncher` at the existing port
   for spawned processes. No live LLM calls, no API keys, no mocked doubles of the code
   under test. **Pass** — see Test Strategy.
 - **Principle III (ADR-Driven & Test-Enforced)**: All 18 existing ADRs read (see
-  Architectural Constraints). New structural boundary → **ADR-019 drafted/revised as
+  Architectural Constraints). New structural boundary → **ADR-020 drafted/revised as
   part of this plan** and MUST reach Accepted before `/speckit-tasks`. Phase 0 of
   `tasks.md` will write the new/amended structural rules (C9, N1 map entry) each with
-  a deliberate-violation Red/Green probe. **Pass** (conditional on ADR-019
+  a deliberate-violation Red/Green probe. **Pass** (conditional on ADR-020
   acceptance — workflow step 4).
 - **Principle IV (Behavioral & Observable Engineering)**: Observability section below
   declares no new signals with justification — the CLI adds activation paths, not
@@ -112,7 +112,7 @@ architecture rules; one new ADR (ADR-019).
 No violations requiring Complexity Tracking justification.
 
 **Post-Phase-1 re-check**: design artifacts (data-model.md, contracts/, revised
-ADR-019) introduce no additional boundaries beyond those declared above — still
+ADR-020) introduce no additional boundaries beyond those declared above — still
 passing.
 
 ## Architectural Constraints & ADRs
@@ -135,13 +135,13 @@ All 18 ADRs read. Constraining this feature:
 | ADR-014 | Query Conversation Records | CLI submits `{prompt}` only; conversation ids (given or generated) must match `^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$`; the durable record append coincides with the terminal state the CLI waits for. |
 | ADR-015 | Query Write Scope & Cross-Process Write Coordination | Precedent for the `lint.pid` exclusive-file-lock mechanism; wiki writes stay behind the guarded tool layer — the CLI never writes wiki content. |
 | ADR-018 | Remediation Authorization & Execution | The three remediation commands map 1:1 to the human-permitted transitions; extraction into `RemediationTaskTransitionService` must preserve CAS semantics, publishes, metrics, and record appends; `Authorized→Executing` stays coordinator-only (`RemediationExecutionDispatchRuleTests` unchanged). |
-| **ADR-019** | **Hub CLI Command Surface (drafted by this plan, revised 2026-08-03)** | Fixes framework (Spectre.Console.Cli 0.55.0), namespace & ownership, containment (C9), dispatch rule & ADR-009 coexistence, in-process blocking execution model incl. the remediation extraction, `lint.pid` lock, SQLite hardening, timeout/cancel→interrupt contract, telemetry flush, exit codes, logo placement. |
+| **ADR-020** | **Hub CLI Command Surface (drafted by this plan, revised 2026-08-03)** | Fixes framework (Spectre.Console.Cli 0.55.0), namespace & ownership, containment (C9), dispatch rule & ADR-009 coexistence, in-process blocking execution model incl. the remediation extraction, `lint.pid` lock, SQLite hardening, timeout/cancel→interrupt contract, telemetry flush, exit codes, logo placement. |
 
 ADR-001/-006/-007/-012/-016/-017 read and confirmed not to constrain beyond the above:
 no new language/runtime, no guarded-tool or instruction-surface change, no eval-runner
 change; lint/log format guards apply to agent writes the CLI merely triggers.
 
-**New ADR required?**: **Yes — drafted**: [docs/adr/ADR-019-hub-cli-command-surface.md](../../docs/adr/ADR-019-hub-cli-command-surface.md)
+**New ADR required?**: **Yes — drafted**: [docs/adr/ADR-020-hub-cli-command-surface.md](../../docs/adr/ADR-020-hub-cli-command-surface.md)
 (status: proposed). Per the constitution's workflow step 4, it MUST reach **Accepted**
 (review or explicit author sign-off) before `/speckit-tasks` is invoked.
 
@@ -294,7 +294,7 @@ backend/tests/Grimoire.IntegrationTests/
 backend/Directory.Packages.props        # + Spectre.Console.Cli 0.55.0
 backend/src/Grimoire.Hub/Grimoire.Hub.csproj  # + PackageReference
 
-docs/adr/ADR-019-hub-cli-command-surface.md   # Drafted by this plan (proposed → Accepted gate)
+docs/adr/ADR-020-hub-cli-command-surface.md   # Drafted by this plan (proposed → Accepted gate)
 docs/conventions/agent-artifact-naming.md     # AMEND: Cli namespace entry (doc↔fixture mirror)
 ```
 

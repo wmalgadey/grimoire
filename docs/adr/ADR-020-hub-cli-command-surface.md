@@ -2,7 +2,7 @@
 status: accepted
 ---
 
-# ADR-019: Hub CLI Command Surface — Framework, Dispatch, and In-Process Blocking Execution
+# ADR-020: Hub CLI Command Surface — Framework, Dispatch, and In-Process Blocking Execution
 
 ## Context and Problem Statement
 

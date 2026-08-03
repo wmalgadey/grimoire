@@ -101,7 +101,7 @@ serves D7.
 **Packaging**: new `PackageVersion` entry in `backend/Directory.Packages.props` +
 `PackageReference` in `Grimoire.Hub.csproj`. Spectre.Console.Cli is a pure in-process
 parsing library — not an "external system" in the ADR-010 sense — but its containment
-is a new structural rule fixed by ADR-019 (see D10).
+is a new structural rule fixed by ADR-020 (see D10).
 
 ## D3: Dispatch rule and ADR-009 coexistence
 
@@ -239,15 +239,15 @@ Two obligations follow (implementation tasks, not new signal rows):
 Ctrl-C OS-signal glue is thin and code-reviewed; the cancellation *path* (interrupt +
 exit code) is tested via the command's cancellation token.
 
-## D10: New structural boundary → ADR-019
+## D10: New structural boundary → ADR-020
 
 **Decision**: This feature introduces a new structural boundary — a multi-command CLI
 dispatch surface with a new parser dependency, a blocking in-process execution mode,
 and a cross-process lint lock — that no accepted ADR covers (verified: only ADR-009
 touches argument handling, and it governs configuration binding only; 017's plan
-formally recorded that no ADR governs CLI parsing). **ADR-019 — Hub CLI Command
+formally recorded that no ADR governs CLI parsing). **ADR-020 — Hub CLI Command
 Surface** is drafted as part of this plan
-(`docs/adr/ADR-019-hub-cli-command-surface.md`) and MUST reach Accepted before
+(`docs/adr/ADR-020-hub-cli-command-surface.md`) and MUST reach Accepted before
 `/speckit-tasks`. It fixes: the `Grimoire.Hub.Cli` namespace and its cross-agent
 ownership; Spectre.Console containment (C9); the dispatch rule and ADR-009 coexistence
 (D3/D4); the in-process blocking execution model incl. the remediation-transition

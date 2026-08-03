@@ -4,7 +4,7 @@
 
 Validation guide proving the feature works end-to-end. Command grammar, output
 formats, and exit codes are defined in [contracts/cli-commands.md](./contracts/cli-commands.md);
-design rationale in [research.md](./research.md) and ADR-019.
+design rationale in [research.md](./research.md) and ADR-020.
 
 **Key property to validate throughout**: no running Hub is required — every command
 executes in-process against the data directory and blocks until its work is done.

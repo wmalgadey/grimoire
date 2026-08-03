@@ -48,7 +48,7 @@ FR-018): missing/empty required values → usage error, exit 2, no side effect.
 
 ### CliExitCode
 
-The exit-code convention (research D5), fixed by ADR-019:
+The exit-code convention (research D5), fixed by ADR-020:
 
 `Success=0`, `OperationFailed=1`, `UsageError=2`, `NotFound=3`, `StateConflict=4`,
 `WaitTimeout=5` (turn interrupted), `Cancelled=130` (turn interrupted).

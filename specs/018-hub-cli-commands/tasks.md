@@ -2,7 +2,7 @@
 
 **Input**: Design documents from `/specs/018-hub-cli-commands/`
 
-**Prerequisites**: plan.md, spec.md, research.md, data-model.md, contracts/cli-commands.md — all present. ADR-019 is Accepted.
+**Prerequisites**: plan.md, spec.md, research.md, data-model.md, contracts/cli-commands.md — all present. ADR-020 is Accepted.
 
 **Tests**: All success criteria are deterministic harness guarantees (100% tier); the spec defines no agent-judgment thresholds, so no evaluation tests are required. `plan.md ## Observability` declares **no new metrics, log events, or trace spans** (justified N/A) — the logging/trace contract derivation rules therefore produce no per-row tasks; the two derived obligations (telemetry flush implementation + flush test, D8) and the final completeness audit are tasked explicitly below.
 
@@ -15,7 +15,7 @@
 
 ## Phase 0: Structural Boundary Enforcement (MANDATORY — Constitution Principle III)
 
-**Purpose**: Guard the ADR-019 boundaries before any feature code exists.
+**Purpose**: Guard the ADR-020 boundaries before any feature code exists.
 
 **⚠️ NON-NEGOTIABLE**: No feature implementation may begin until Phase 0 is complete.
 
