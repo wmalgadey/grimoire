@@ -46,7 +46,8 @@ public static class HubCliCommands
             "Resume the ingest queue and supervise it until it drains.",
             typeof(IngestResumeCommand)),
         new("query",
-            "Submit a query turn and block until its answer, streaming progress while waiting."),
+            "Submit a query turn and block until its answer, streaming progress while waiting.",
+            typeof(QueryCommand)),
         // 017-hub-help-usage parity (HubHelpUsageTests.ExpectedSwitches): the description
         // deliberately names --path/--source-kind so root help keeps surfacing them, like
         // the retired BuildUsageText's flat usage blob did — submit-source's own --help

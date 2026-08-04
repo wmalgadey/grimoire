@@ -1,4 +1,5 @@
 using System.Net;
+using System.Net.Http.Json;
 using System.Text.Json;
 using Grimoire.Hub.Cli;
 using Grimoire.Hub.IngestDispatch;
@@ -6,6 +7,7 @@ using Grimoire.Hub.IngestSubmission;
 using Grimoire.Hub.IngestTaskArtifact;
 using Grimoire.Hub.LintDispatch;
 using Grimoire.Hub.OperationalState;
+using Grimoire.Hub.QueryConversations;
 using Grimoire.Hub.RemediationTasks;
 using Grimoire.IntegrationTests.Fakes;
 using Microsoft.AspNetCore.Builder;
@@ -344,6 +346,126 @@ public class HubCliParityTests
 
         Assert.Equal((int)CliExitCode.Success, cliExitCode);
         Assert.Equal("Ingest queue drained: 2 task(s) processed, 0 failed.", cliStdout.Trim());
+    }
+
+    // ── query (T035, US4, SC-005/ADR-014) ───────────────────────────────────────
+    // Turn submission performed once via the HTTP endpoint handler
+    // (QuerySubmissionEndpoints.PostTurnAsync) and once via QueryCommand, against
+    // identically seeded harnesses (same scripted answer + terminal metadata). Both
+    // paths call the exact same QueryRunCoordinator.SubmitTurnAsync method (verified by
+    // reading QuerySubmissionEndpoints.PostTurnAsync and QueryCommand side by side,
+    // T033) — this is the regression guard SC-005 asks for, not a discovery mechanism.
+    // Parity is asserted at the terminal transition's own durable artifact — the
+    // Conversation Record (ADR-014) — since that, not any HTTP/CLI response shape, is
+    // the state both entry points actually produce.
+
+    [Fact]
+    public async Task QuerySubmission_TriggeredViaHttpEndpoint_AndViaCliCommand_ProduceIndistinguishableOutcomes()
+    {
+        // Identical seed for both harnesses: same scripted answer and terminal metadata.
+        var scriptedMetadata = new Dictionary<string, object?>
+        {
+            ["systemPromptSha256"] = "query-parity-sha256",
+            ["policyPath"] = "agents/query/policy.json",
+            ["policyVersion"] = 1,
+            ["policySha256"] = "query-parity-policy-sha256",
+            ["model"] = "claude-parity-test",
+            ["turnsUsed"] = 2,
+        };
+        (string Text, TimeSpan Delay)[] answerChunks = [("The parity answer.", TimeSpan.Zero)];
+        const string prompt = "What is the parity answer?";
+        const string httpConversationId = "2026-08-01-query-parityhttp";
+        const string cliConversationId = "2026-08-01-query-paritycli";
+
+        var httpRoot = QueryTurnSubmissionApiTests.CreateTempRoot();
+        using var httpHost = await QueryTurnSubmissionApiTests.BuildHostAsync(
+            new FakeAgentProcessLauncher(autoPlay: true)
+            {
+                ScriptedAnswerChunks = answerChunks,
+                ScriptedQueryTerminalMetadata = scriptedMetadata,
+            },
+            root: httpRoot);
+
+        using var cliHarness = await HubCliQueryTestHarness.CreateAsync(new FakeAgentProcessLauncher(autoPlay: true)
+        {
+            ScriptedAnswerChunks = answerChunks,
+            ScriptedQueryTerminalMetadata = scriptedMetadata,
+        });
+
+        // --- HTTP path: POST to submit, GET to poll for the terminal state. ---
+        var httpClient = httpHost.GetTestClient();
+        var submitResponse = await httpClient.PostAsJsonAsync(
+            $"/api/query-conversations/{httpConversationId}/turns", new { prompt });
+        Assert.Equal(HttpStatusCode.Accepted, submitResponse.StatusCode);
+        using var submitBody = JsonDocument.Parse(await submitResponse.Content.ReadAsStringAsync());
+        var httpTurnId = submitBody.RootElement.GetProperty("turnId").GetString()!;
+
+        var httpState = "running";
+        var deadline = DateTime.UtcNow + TimeSpan.FromSeconds(5);
+        while (httpState == "running" && DateTime.UtcNow < deadline)
+        {
+            var turnResponse = await httpClient.GetAsync($"/api/query-turns/{httpTurnId}");
+            using var turnBody = JsonDocument.Parse(await turnResponse.Content.ReadAsStringAsync());
+            httpState = turnBody.RootElement.GetProperty("state").GetString()!;
+            if (httpState == "running")
+            {
+                await Task.Delay(25);
+            }
+        }
+
+        // --- CLI path: the production command, invoked exactly as HubCliApp would. ---
+        var (cliExitCode, cliStdout, _) = await cliHarness.RunQueryCommandAsync(prompt, cliConversationId);
+        var cliTurnId = Assert.Single(cliHarness.Launcher.QueryRequests).TurnId;
+
+        // --- Parity assertions: both entry paths reach the identical outcome. ---
+        Assert.Equal("completed", httpState);
+        Assert.Equal((int)CliExitCode.Success, cliExitCode);
+        Assert.Equal(
+            $"Query turn {cliTurnId} in conversation {cliConversationId}: completed{Environment.NewLine}The parity answer.",
+            cliStdout.TrimEnd('\r', '\n'));
+
+        // The Conversation Record (ADR-014) is the durable state both entry points
+        // produce — parity is checked there, not on the differing HTTP/CLI response
+        // shapes themselves.
+        var httpRecordPath = QueryTurnSubmissionApiTests.BuildResolvedPaths(httpRoot).ConversationRecordPathFor(httpConversationId);
+        var cliRecordPath = cliHarness.Paths.ConversationRecordPathFor(cliConversationId);
+        await WaitForFileAsync(httpRecordPath);
+        await WaitForFileAsync(cliRecordPath);
+
+        var httpParsed = Assert.IsType<ConversationRecordParseResult.Parsed>(
+            ConversationRecordFormat.Parse(await File.ReadAllTextAsync(httpRecordPath)));
+        var cliParsed = Assert.IsType<ConversationRecordParseResult.Parsed>(
+            ConversationRecordFormat.Parse(await File.ReadAllTextAsync(cliRecordPath)));
+        var httpTurn = Assert.Single(httpParsed.Turns);
+        var cliTurn = Assert.Single(cliParsed.Turns);
+
+        Assert.Equal("completed", httpTurn.State);
+        Assert.Equal("completed", cliTurn.State);
+        Assert.Equal(prompt, httpTurn.Prompt);
+        Assert.Equal(prompt, cliTurn.Prompt);
+        Assert.Equal("The parity answer.", httpTurn.Answer);
+        Assert.Equal("The parity answer.", cliTurn.Answer);
+        Assert.Equal(httpTurn.Model, cliTurn.Model);
+        Assert.Equal(httpTurn.PolicyPath, cliTurn.PolicyPath);
+        Assert.Equal(httpTurn.PolicySha256, cliTurn.PolicySha256);
+        Assert.Equal(httpTurn.InstructionFileSha256, cliTurn.InstructionFileSha256);
+        Assert.Equal(httpTurn.TurnsUsed, cliTurn.TurnsUsed);
+    }
+
+    private static async Task WaitForFileAsync(string path, int timeoutMs = 5000)
+    {
+        var deadline = DateTime.UtcNow.AddMilliseconds(timeoutMs);
+        while (DateTime.UtcNow < deadline)
+        {
+            if (File.Exists(path))
+            {
+                return;
+            }
+
+            await Task.Delay(20);
+        }
+
+        Assert.Fail($"File '{path}' did not appear within the timeout.");
     }
 }
 
