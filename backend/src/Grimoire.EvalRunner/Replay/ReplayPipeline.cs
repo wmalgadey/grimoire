@@ -67,10 +67,16 @@ public sealed class ReplayPipeline
         // index so the returned list's per-sample ordering is preserved byte-for-byte
         // versus the prior sequential loop (FR-012: concurrency must not change replay
         // semantics — sample count, scorers, scores, thresholds all stay identical).
+        //
+        // T030: GRIMOIRE_EVAL_MAX_CONCURRENCY overrides the degree of parallelism when
+        // set to a positive integer (e.g. "1" forces true sequential sample execution),
+        // giving FR-012's "identical to a sequential run" guarantee a reproducible,
+        // non-invasive way to be re-verified without editing source. Unset (the default)
+        // preserves today's behavior exactly — Environment.ProcessorCount.
         var resultsBySlot = new ReplaySampleResult[manifest.Samples.Count];
         await Parallel.ForEachAsync(
             Enumerable.Range(0, manifest.Samples.Count),
-            new ParallelOptions { MaxDegreeOfParallelism = Environment.ProcessorCount, CancellationToken = cancellationToken },
+            new ParallelOptions { MaxDegreeOfParallelism = ResolveMaxDegreeOfParallelism(), CancellationToken = cancellationToken },
             async (i, ct) =>
             {
                 var entry = manifest.Samples[i];
@@ -219,4 +225,17 @@ public sealed class ReplayPipeline
 
     private static string Truncate(string text)
         => text.Length <= 300 ? text : text[..300];
+
+    // T030 (FR-012): reads GRIMOIRE_EVAL_MAX_CONCURRENCY once per call so a sequential
+    // (value "1") vs. concurrent (unset) comparison can be re-run reproducibly, e.g.:
+    //   GRIMOIRE_EVAL_MAX_CONCURRENCY=1 dotnet test backend/tests/Grimoire.AgentEvals --filter "Tier=SlowEval"
+    // Any unset, empty, non-integer, or non-positive value falls back to the unchanged
+    // default (Environment.ProcessorCount) — this must never alter default behavior.
+    private static int ResolveMaxDegreeOfParallelism()
+    {
+        var raw = Environment.GetEnvironmentVariable("GRIMOIRE_EVAL_MAX_CONCURRENCY");
+        return int.TryParse(raw, out var value) && value > 0
+            ? value
+            : Environment.ProcessorCount;
+    }
 }

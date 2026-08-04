@@ -74,9 +74,19 @@ time dotnet test backend/tests/Grimoire.AgentEvals --configuration Release
 - Wall clock is ≥ 50% lower than the recorded ~190s baseline (SC-008).
 - Zero skipped tests (`ci.yml`'s existing `Skipped:\s+0,` check still passes).
 - Diff the executed sample count, scorer results, and pass/fail thresholds against a
-  sequential baseline run (e.g. `dotnet test ... -- xunit.parallelizeAssembly=false
-  xunit.parallelizeTestCollections=false`, or a pre-change git stash) — confirm they are
-  identical (Acceptance Scenario 2/3; FR-012).
+  true sequential baseline run using the `GRIMOIRE_EVAL_MAX_CONCURRENCY` seam (T030),
+  which caps `ReplayPipeline`'s internal `Parallel.ForEachAsync` at a degree of 1 —
+  unlike the xUnit-level `parallelizeAssembly`/`parallelizeTestCollections` flags, which
+  do not reach this internal per-sample concurrency and so cannot demonstrate a genuine
+  sequential run:
+  ```bash
+  dotnet test backend/tests/Grimoire.AgentEvals --filter "Tier=SlowEval" --logger "trx;LogFileName=concurrent.trx"
+  GRIMOIRE_EVAL_MAX_CONCURRENCY=1 dotnet test backend/tests/Grimoire.AgentEvals --filter "Tier=SlowEval" --logger "trx;LogFileName=sequential.trx"
+  ```
+  Confirm the failing-test set (test names) in `concurrent.trx` and `sequential.trx` is
+  byte-identical, and that the `GRIMOIRE_EVAL_MAX_CONCURRENCY=1` run is observably
+  slower / serialized (one sample's agent process at a time) rather than merely
+  cosmetically different (Acceptance Scenario 2/3; FR-012).
 - Confirm each replay sample still used its own isolated `EvalWorkspace` (inspect
   `Path.GetTempPath()/grimoire-eval-runner/` during a run — one directory per sample,
   never shared).

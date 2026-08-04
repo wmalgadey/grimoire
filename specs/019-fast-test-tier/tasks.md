@@ -532,7 +532,7 @@ credential set; `dotnet format --verify-no-changes` clean). One genuine
 verification-rigor gap was found on FR-012/SC-008's sequential-comparison method —
 appended below.
 
-- [ ] T030 Fix the FR-012 sequential-vs-concurrent comparison method used to verify
+- [X] T030 Fix the FR-012 sequential-vs-concurrent comparison method used to verify
       SC-008's "identical to a sequential run" guarantee. Independent re-verification
       during `/speckit-converge` found that the documented method — running
       `dotnet test backend/tests/Grimoire.AgentEvals -- xunit.parallelizeAssembly=false
