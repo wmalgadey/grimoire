@@ -517,3 +517,40 @@ Task: "Create scripts/test-fast.sh"
   explicitly out of scope).
 - Avoid: introducing a new environment-variable gate (e.g. `GRIMOIRE_FAST_TESTS=1`)
   — `research.md` R1 explicitly rejected this in favor of the `Tier` trait.
+
+---
+
+## Phase 8: Convergence
+
+**Purpose**: `/speckit-converge` re-verification (post-T029) found the codebase
+otherwise satisfies spec.md/plan.md/tasks.md in full (all 29 tasks independently
+re-confirmed: ArchTests 54/54, Domain.UnitTests 93/93, IntegrationTests 589/589
+stable across repeated runs, AgentEvals 71/64/7-pre-existing-stale/0-skipped;
+Red/Green re-probed on `DeterministicTierNoFixedWaitRuleTests`; FR-002/SC-002
+re-verified with `data/evals/recordings/` physically absent and no provider
+credential set; `dotnet format --verify-no-changes` clean). One genuine
+verification-rigor gap was found on FR-012/SC-008's sequential-comparison method —
+appended below.
+
+- [ ] T030 Fix the FR-012 sequential-vs-concurrent comparison method used to verify
+      SC-008's "identical to a sequential run" guarantee. Independent re-verification
+      during `/speckit-converge` found that the documented method — running
+      `dotnet test backend/tests/Grimoire.AgentEvals -- xunit.parallelizeAssembly=false
+      xunit.parallelizeTestCollections=false` (T021; `quickstart.md` US4 step;
+      `plan.md`'s SC-008 Test Strategy row) — does not actually force sequential
+      sample execution: `ReplayPipeline.RunScenarioAsync`'s internal
+      `Parallel.ForEachAsync` (bounded at `Environment.ProcessorCount`, `ReplayPipeline.cs`
+      line ~73) runs unconditionally regardless of these xUnit flags, and the five
+      replay classes already share one xUnit collection (`EvalRunnerReplayScenarios`)
+      that xUnit never parallelizes internally in the first place, so the "forced-
+      sequential" run re-exercises the same concurrent code path twice rather than a
+      true sequential baseline. (A manual, temporary edit setting
+      `MaxDegreeOfParallelism = 1` in `ReplayPipeline.cs`, rebuild, and
+      `--filter "Tier=SlowEval"` run during this convergence check did confirm the
+      underlying property holds — byte-identical 7/22 failing-test set versus every
+      concurrent run — but the codebase has no reproducible, non-invasive way to
+      demonstrate this.) Add a reproducible seam (e.g. an internal test-visible knob
+      or environment variable read by `ReplayPipeline` to cap
+      `MaxDegreeOfParallelism` at 1) so a genuine sequential-vs-concurrent diff can be
+      re-run without editing source, and update `quickstart.md`'s US4 step to use it
+      instead of the ineffective xUnit flags (FR-012, partial).
