@@ -1,6 +1,7 @@
 using System.Text.RegularExpressions;
 using Grimoire.Hub.QueryDispatch;
 using Grimoire.Hub.QuerySubmission;
+using Microsoft.Extensions.DependencyInjection;
 using Spectre.Console;
 using Spectre.Console.Cli;
 
@@ -91,6 +92,10 @@ public sealed class QueryCommand : AsyncCommand<QuerySettings>
     private readonly TextWriter _stdout;
     private readonly TimeProvider _timeProvider;
 
+    // See LintRunCommand's identical attribute for why this is required (018-hub-cli-commands
+    // T036 quickstart validation finding): disambiguates ActivatorUtilities.CreateInstance
+    // between this constructor and the test seam below.
+    [ActivatorUtilitiesConstructor]
     public QueryCommand(QueryRunCoordinator coordinator)
         : this(coordinator, new CliStatusRenderer(), Console.Out, TimeProvider.System)
     {

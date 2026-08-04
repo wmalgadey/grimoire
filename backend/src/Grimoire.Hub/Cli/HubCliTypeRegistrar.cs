@@ -85,7 +85,7 @@ internal sealed class HubCliTypeRegistrar : ITypeRegistrar
 
     public void RegisterLazy(Type service, Func<object> factory) => _fallbackServices.AddSingleton(service, _ => factory());
 
-    private sealed class HubCliTypeResolver : ITypeResolver, IServiceProvider, IDisposable
+    private sealed class HubCliTypeResolver : ITypeResolver, IServiceProvider, IServiceProviderIsService, IDisposable
     {
         private readonly Lazy<Task<IServiceProvider>> _hostServices;
         private readonly ServiceProvider _fallbackServices;
@@ -102,6 +102,35 @@ internal sealed class HubCliTypeRegistrar : ITypeRegistrar
         public object? Resolve(Type? type) => type is null ? null : GetService(type);
 
         /// <summary>
+        /// 018-hub-cli-commands T036 (quickstart validation finding): every
+        /// <see cref="ServiceProvider"/> — including <see cref="_fallbackServices"/>, the
+        /// small supplementary container — automatically answers
+        /// <c>GetService(typeof(IServiceProviderIsService))</c> with ITS OWN
+        /// implementation, which only reflects Spectre's minimal registrations there
+        /// (never the real host's services). Left unhandled, that shadows the correct
+        /// answer this class itself provides below (<c>true</c> for everything this
+        /// resolver's real fallback-then-host chain can attempt) — the fallback
+        /// container's own answer would win via the <c>_fallbackServices.GetService</c>
+        /// check further down, BEFORE the host is ever consulted.
+        /// <see cref="Microsoft.Extensions.DependencyInjection.ActivatorUtilities.CreateInstance(IServiceProvider,Type,object[])"/>
+        /// calls <c>provider.GetService&lt;IServiceProviderIsService&gt;()</c> once per
+        /// command construction to decide, per constructor parameter, whether it counts as
+        /// a resolvable service or must have a default value — the shadowed (narrow)
+        /// answer wrongly says "no" for every real command dependency (only registered in
+        /// the host, built lazily), throwing
+        /// "Constructor marked with ActivatorUtilitiesConstructorAttribute does not accept
+        /// all given argument types" (or, pre-<see cref="ActivatorUtilitiesConstructorAttribute"/>,
+        /// "Multiple constructors accepting all given argument types have been found") for
+        /// every command with more than one constructor — invisible to every integration
+        /// test because they all construct commands directly, bypassing
+        /// <see cref="ActivatorUtilities"/> entirely; only a real out-of-process invocation
+        /// (quickstart.md, T040) exercises this path. Special-casing the request here (an
+        /// explicit reference-equality check ahead of the fallback-container check) routes
+        /// it to this class's own <see cref="IsService"/> instead.
+        /// </summary>
+        public bool IsService(Type serviceType) => true;
+
+        /// <summary>
         /// Also this resolver's own <see cref="IServiceProvider"/> implementation, so
         /// <c>ActivatorUtilities.CreateInstance(this, …)</c> below can recurse through
         /// the identical fallback-then-host chain for a command/settings type's own
@@ -109,6 +138,11 @@ internal sealed class HubCliTypeRegistrar : ITypeRegistrar
         /// </summary>
         public object? GetService(Type serviceType)
         {
+            if (serviceType == typeof(IServiceProviderIsService))
+            {
+                return this;
+            }
+
             var fromFallback = _fallbackServices.GetService(serviceType);
             if (fromFallback is not null)
             {

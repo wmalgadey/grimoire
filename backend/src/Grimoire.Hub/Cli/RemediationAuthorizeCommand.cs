@@ -1,5 +1,6 @@
 using Grimoire.Hub.OperationalState;
 using Grimoire.Hub.RemediationTasks;
+using Microsoft.Extensions.DependencyInjection;
 using Spectre.Console.Cli;
 
 namespace Grimoire.Hub.Cli;
@@ -32,6 +33,10 @@ public sealed class RemediationAuthorizeCommand : AsyncCommand<RemediationTaskSe
     private readonly CliStatusRenderer _status;
     private readonly TextWriter _stdout;
 
+    // See LintRunCommand's identical attribute for why this is required (018-hub-cli-commands
+    // T036 quickstart validation finding): disambiguates ActivatorUtilities.CreateInstance
+    // between this constructor and the test seam below.
+    [ActivatorUtilitiesConstructor]
     public RemediationAuthorizeCommand(
         RemediationTaskTransitionService service, RemediationRunCoordinator coordinator, OperationalStateRepository repository)
         : this(service, coordinator, repository, new CliStatusRenderer(), Console.Out)

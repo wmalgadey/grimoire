@@ -50,9 +50,11 @@ public class HubCliParityTests
         var simulatedDuration = TimeSpan.FromMilliseconds(50);
 
         using var httpHarness = await LintTriggerHostHarness.CreateAsync(new FakeAgentProcessLauncher(
-            simulatedRunDuration: simulatedDuration) { ScriptedLintTerminalMetadata = scriptedMetadata });
+            simulatedRunDuration: simulatedDuration)
+        { ScriptedLintTerminalMetadata = scriptedMetadata });
         using var cliHarness = HubCliLintTestHarness.Create(new FakeAgentProcessLauncher(
-            simulatedRunDuration: simulatedDuration) { ScriptedLintTerminalMetadata = scriptedMetadata });
+            simulatedRunDuration: simulatedDuration)
+        { ScriptedLintTerminalMetadata = scriptedMetadata });
 
         // --- HTTP path: POST to trigger, GET to poll for the terminal state, GET findings. ---
         var httpClient = httpHarness.Host.GetTestClient();

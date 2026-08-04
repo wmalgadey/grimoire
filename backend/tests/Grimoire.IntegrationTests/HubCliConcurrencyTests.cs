@@ -1,10 +1,19 @@
 using System.Diagnostics;
+using Grimoire.Hub;
 using Grimoire.Hub.LintDispatch;
 using Grimoire.Hub.LintFindings;
 using Grimoire.Hub.OperationalState;
+using Grimoire.Hub.RemediationTasks;
 using Grimoire.IntegrationTests.Fakes;
+using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.SignalR;
 using Microsoft.Data.Sqlite;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
+using OpenTelemetry;
+using OpenTelemetry.Exporter;
+using OpenTelemetry.Trace;
 
 namespace Grimoire.IntegrationTests;
 
@@ -202,6 +211,156 @@ public class HubCliConcurrencyTests
         {
             Directory.Delete(root, recursive: true);
         }
+    }
+
+    /// <summary>
+    /// T037 (018-hub-cli-commands, Phase 7, research.md D8 obligation 2): proves that
+    /// disposing the Hub's composition — exactly what <see cref="Grimoire.Hub.Cli.HubCliApp"/>'s
+    /// <c>finally</c> block does before every command process exits — flushes telemetry
+    /// recorded during the command's own work, instead of dropping it when the process
+    /// dies. No new signal identity is under test here (plan.md ## Observability declares
+    /// none): <c>remediation-dismiss</c> is chosen because it is the fastest command with
+    /// no agent work (FR-010) and its existing signal
+    /// (<see cref="RemediationLifecycleLogEvents.LogTaskDismissed"/>'s log-correlation span,
+    /// <c>hub.remediation.task_dismissed</c>) already fires unconditionally on every
+    /// dismissal — this test asserts that span actually reaches the exporter <b>after</b>
+    /// the host is disposed, not merely that it was created.
+    ///
+    /// Mirrors <see cref="HubRequestTracingTests"/>'s
+    /// <c>AddHubTelemetry(tracing => tracing.AddInMemoryExporter(exportedItems))</c>
+    /// pattern (ADR-005) — the real production telemetry registration extension point,
+    /// which already accepts a <c>configureTracing</c> delegate
+    /// (<see cref="Grimoire.Hub.TelemetryExtensions.AddHubTelemetry"/>) — with one
+    /// deliberate deviation: <see cref="InMemoryExporterHelperExtensions.AddInMemoryExporter"/>
+    /// pairs the in-memory exporter with a <c>SimpleActivityExportProcessor</c>, which
+    /// exports synchronously on every <c>Activity.Stop()</c> — so a test built on it alone
+    /// would pass whether or not disposal actually flushes anything, proving nothing about
+    /// D8. This test instead pairs the same <see cref="InMemoryExporter{T}"/> with an
+    /// explicit long-delay <see cref="BatchActivityExportProcessor"/> (a 60s scheduled
+    /// delay no test run reaches), so the span is deliberately still queued — not yet
+    /// exported — when <see cref="RemediationTaskTransitionService.DismissAsync"/> returns;
+    /// only disposing the built <see cref="WebApplication"/> (via <c>TracerProvider.Dispose</c>'s
+    /// documented flush-then-shutdown of every registered processor) can make it appear in
+    /// <c>exportedItems</c> within this test's lifetime. That is what distinguishes this
+    /// test from one that would pass regardless of whether disposal flushes anything.
+    ///
+    /// This test builds a minimal-but-real host the same way <c>HubRequestTracingTests.BuildHostAsync</c> and
+    /// this file's own <c>HubCliRemediationTestHarness</c> (in <c>HubCliCommandTests.cs</c>)
+    /// both do — real <see cref="OperationalStateRepository"/>/
+    /// <see cref="RemediationTaskRecordStore"/>/<see cref="RemediationRunCoordinator"/>/
+    /// <see cref="RemediationTaskTransitionService"/>, real (unconnected) SignalR hub
+    /// context — rather than going through <c>HubHostComposition.BuildAsync</c>'s full
+    /// ADR-009 path resolution: that resolver hard-validates the presence of real
+    /// instruction/secrets/agent-worker files on disk (<c>GrimoirePathResolver.Resolve</c>),
+    /// which every other hermetic test in this feature also avoids by constructing
+    /// <see cref="ResolvedGrimoirePaths"/> directly
+    /// (<see cref="QueryTurnSubmissionApiTests.BuildResolvedPaths"/>) instead of parsing
+    /// CLI args through it. The telemetry behavior under test — does disposing a host that
+    /// called <c>AddHubTelemetry</c> flush its recorded spans — is exercised identically
+    /// either way, since it lives entirely inside the OpenTelemetry SDK's
+    /// <c>TracerProvider</c>, not in <c>HubHostComposition</c> itself.
+    /// </summary>
+    [Fact]
+    public async Task HostDisposal_FlushesTelemetry_ForACliInvokedFlow_BeforeProcessExit()
+    {
+        var root = CreateTempDir("hub-cli-telemetry-flush");
+        var exportedItems = new List<Activity>();
+
+        try
+        {
+            var paths = QueryTurnSubmissionApiTests.BuildResolvedPaths(root);
+            Directory.CreateDirectory(paths.RemediationTasksDir);
+
+            var hostBuilder = WebApplication.CreateBuilder();
+            hostBuilder.WebHost.UseUrls("http://127.0.0.1:0");
+            hostBuilder.Services.AddSignalR();
+            // The exact production registration call (ADR-005) — configureTracing is the
+            // seam that already exists at this level. A deliberately long scheduled delay
+            // (see the class doc above) keeps the span queued, not yet exported, until
+            // disposal forces the flush this test exists to prove.
+            hostBuilder.Services.AddHubTelemetry(tracing => tracing.AddProcessor(
+                new BatchActivityExportProcessor(
+                    new InMemoryExporter<Activity>(exportedItems),
+                    maxQueueSize: 2048,
+                    scheduledDelayMilliseconds: 60_000,
+                    exporterTimeoutMilliseconds: 30_000,
+                    maxExportBatchSize: 512)));
+
+            RemediationTaskTransitionService transitionService;
+            string taskId;
+            await using (var host = hostBuilder.Build())
+            {
+                host.MapHub<RemediationLifecycleHub>("/hubs/remediation-lifecycle");
+                await host.StartAsync();
+
+                var repository = new OperationalStateRepository(paths.StateDbPath);
+                await repository.InitializeAsync();
+                var recordStore = new RemediationTaskRecordStore(paths);
+                var publisher = new RemediationLifecyclePublisher(
+                    host.Services.GetRequiredService<IHubContext<RemediationLifecycleHub>>(),
+                    NullLogger<RemediationLifecyclePublisher>.Instance);
+                var coordinator = new RemediationRunCoordinator(
+                    repository, new FakeAgentProcessLauncher(), publisher, recordStore, paths,
+                    logger: NullLogger<RemediationRunCoordinator>.Instance);
+                transitionService = new RemediationTaskTransitionService(
+                    repository, publisher, coordinator, recordStore, NullLogger<RemediationLifecyclePublisher>.Instance);
+
+                taskId = "2026-08-04-telemetry-flush1";
+                var now = DateTimeOffset.UtcNow;
+                await recordStore.CreateAsync(taskId, "2026-08-04-lint-run01", now, "Proposal", "Agent-authored proposal (verbatim).", null);
+                await repository.InsertRemediationTaskAsync(new RemediationTaskRow(
+                    TaskId: taskId, RunId: "2026-08-04-lint-run01", Title: "Proposal", Description: "Agent-authored proposal (verbatim).",
+                    TargetPath: null, State: RemediationTaskStates.Proposed, ProposedAt: now, AuthorizedAt: null,
+                    OutcomeReason: null, UpdatedAt: now));
+
+                // The CLI-invoked flow itself: RemediationDismissCommand's own ExecuteAsync
+                // calls exactly this.
+                var result = await transitionService.DismissAsync(taskId);
+                Assert.IsType<RemediationTransitionResult.Ok>(result);
+
+                // The batch processor's 60s scheduled delay guarantees the span is still
+                // queued, not yet exported, at this point — proving the assertion after
+                // disposal below is genuinely exercising the flush, not a no-op check.
+                lock (exportedItems)
+                {
+                    Assert.Empty(exportedItems);
+                }
+            }
+            // `await using` above has now disposed the host — the same call
+            // Grimoire.Hub.Cli.HubCliApp.RunAsync's `finally` block makes before every
+            // command process exits (research.md D8 obligation 1).
+
+            var flushed = await WaitForSpanAsync(exportedItems, "hub.remediation.task_dismissed", TimeSpan.FromSeconds(5));
+            Assert.True(flushed.Recorded);
+            var taskIdTag = flushed.TagObjects.FirstOrDefault(t => t.Key == "task_id").Value?.ToString();
+            Assert.Equal(taskId, taskIdTag);
+        }
+        finally
+        {
+            Directory.Delete(root, recursive: true);
+        }
+    }
+
+    private static async Task<Activity> WaitForSpanAsync(List<Activity> exportedItems, string operationName, TimeSpan timeout)
+    {
+        var deadline = DateTime.UtcNow + timeout;
+        while (DateTime.UtcNow < deadline)
+        {
+            Activity? match;
+            lock (exportedItems)
+            {
+                match = exportedItems.FirstOrDefault(a => a.OperationName == operationName);
+            }
+
+            if (match is not null)
+            {
+                return match;
+            }
+
+            await Task.Delay(25);
+        }
+
+        throw new TimeoutException($"Span '{operationName}' was never exported, even after host disposal.");
     }
 
     private static string CreateTempDir(string prefix)

@@ -1,4 +1,5 @@
 using Grimoire.Hub.RemediationTasks;
+using Microsoft.Extensions.DependencyInjection;
 using Spectre.Console.Cli;
 
 namespace Grimoire.Hub.Cli;
@@ -16,6 +17,10 @@ public sealed class RemediationDismissCommand : AsyncCommand<RemediationTaskSett
     private readonly RemediationTaskTransitionService _service;
     private readonly TextWriter _stdout;
 
+    // See LintRunCommand's identical attribute for why this is required (018-hub-cli-commands
+    // T036 quickstart validation finding): disambiguates ActivatorUtilities.CreateInstance
+    // between this constructor and the test seam below.
+    [ActivatorUtilitiesConstructor]
     public RemediationDismissCommand(RemediationTaskTransitionService service)
         : this(service, Console.Out)
     {

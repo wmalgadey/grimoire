@@ -1,4 +1,5 @@
 using Grimoire.Hub.LintDispatch;
+using Microsoft.Extensions.DependencyInjection;
 using Spectre.Console.Cli;
 
 namespace Grimoire.Hub.Cli;
@@ -48,6 +49,16 @@ public sealed class LintRunCommand : AsyncCommand<LintRunSettings>
     private readonly CliStatusRenderer _status;
     private readonly TextWriter _stdout;
 
+    // 018-hub-cli-commands T036 (quickstart validation finding): without this attribute,
+    // Microsoft.Extensions.DependencyInjection.ActivatorUtilities.CreateInstance (used by
+    // HubCliTypeRegistrar to construct every command via real Spectre dispatch) throws
+    // "Multiple constructors accepting all given argument types have been found" whenever
+    // a command class exposes both this production constructor and the test-seam one
+    // below — it cannot otherwise disambiguate which one to use. This was invisible to
+    // every existing integration test because they all construct commands directly (`new
+    // LintRunCommand(...)`), bypassing ActivatorUtilities entirely; only a real
+    // out-of-process invocation (quickstart.md, T040) exercises this path.
+    [ActivatorUtilitiesConstructor]
     public LintRunCommand(LintRunCoordinator coordinator)
         : this(coordinator, new CliStatusRenderer(), Console.Out)
     {

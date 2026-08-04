@@ -46,13 +46,28 @@ dotnet "$HUB_DLL" remediation-dismiss  $DATA --task-id does-not-exist
 # → "Remediation task 'does-not-exist' was not found." ; exit 3
 
 dotnet "$HUB_DLL" remediation-authorize $DATA --task-id <id>
-# queue paused (fresh process): → "Remediation task <id> authorized at …" ; exit 0
-# queue not paused: blocks, streams execution status, exits with the task's outcome
+# The remediation execution queue is only "paused" right after a restart/fresh-process
+# bootstrap that found an already-`authorized` row surviving from a prior run (ADR-018) —
+# a brand-new/never-touched data directory has no such row, so its queue is NOT paused,
+# and `remediation-authorize` blocks: it drives straight through the transition, supervises
+# execution, and exits with the task's own outcome (never printing the "authorized at …"
+# line as its own last word) — completed/not-applicable → exit 0, failed → exit 1.
+# Only when the queue genuinely IS paused (this task's own row was `authorized` before the
+# Hub/CLI process that resumed it started) does the command exit 0 immediately after
+# printing "Remediation task <id> authorized at …", without touching an agent.
 
-dotnet "$HUB_DLL" remediation-withdraw  $DATA --task-id <id>   # → back to proposed, exit 0 (if not executing)
-dotnet "$HUB_DLL" remediation-dismiss   $DATA --task-id <id>   # → dismissed, exit 0
-dotnet "$HUB_DLL" remediation-dismiss   $DATA --task-id <id>
-# → again: "not proposed (current state: dismissed)" ; exit 4
+dotnet "$HUB_DLL" remediation-dismiss   $DATA --task-id <another-proposed-id>
+# → "Remediation task <id> dismissed." ; exit 0
+dotnet "$HUB_DLL" remediation-dismiss   $DATA --task-id <another-proposed-id>
+# → again: "Remediation task <id> is not proposed (current state: dismissed)." ; exit 4
+
+# remediation-withdraw undoes an authorization that has NOT started executing yet — on an
+# unpaused queue that means a task still waiting its FIFO turn behind whatever currently
+# holds the single execution slot (authorize a second task while the first is still
+# running, from a separate terminal, then withdraw the second one before its turn comes
+# up), or a task whose paused-queue authorization (above) has not been resumed yet:
+dotnet "$HUB_DLL" remediation-withdraw  $DATA --task-id <authorized-not-yet-executing-id>
+# → "Remediation task <id> authorization withdrawn (state: proposed)." ; exit 0
 ```
 
 ## 3. Blocking agent runs

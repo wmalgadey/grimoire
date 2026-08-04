@@ -1,6 +1,7 @@
 using Grimoire.Hub.ContentRoot;
 using Grimoire.Hub.IngestDispatch;
 using Grimoire.Hub.IngestSubmission;
+using Microsoft.Extensions.DependencyInjection;
 using Spectre.Console;
 using Spectre.Console.Cli;
 
@@ -57,6 +58,10 @@ public sealed class IngestRetriggerCommand : AsyncCommand<IngestRetriggerSetting
     private readonly CliStatusRenderer _status;
     private readonly TextWriter _stdout;
 
+    // See LintRunCommand's identical attribute for why this is required (018-hub-cli-commands
+    // T036 quickstart validation finding): disambiguates ActivatorUtilities.CreateInstance
+    // between this constructor and the test seam below.
+    [ActivatorUtilitiesConstructor]
     public IngestRetriggerCommand(
         IngestRunCoordinator coordinator, KanbanBoardProjectionStore store, ContentRootPaths contentPaths)
         : this(coordinator, store, contentPaths, new CliStatusRenderer(), Console.Out)
