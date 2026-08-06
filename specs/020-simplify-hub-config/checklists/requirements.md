@@ -91,3 +91,14 @@ local secrets/env file, which is assumed to follow the runtime data folder's new
 is called out as such in the Assumptions section and is worth confirming during planning.
 
 All 16 checklist items still pass after round 4.
+
+**2026-08-06 clarification session (round 5)**: the secrets-file inference left open in round 4
+was corrected by the feature owner. The `.env` file lives at the project root next to the
+example file already there — outside all three configurable folders, read from that one place
+by both the hub and the eval runner (FR-019, SC-011, new Secrets File entity). Secrets were
+removed from the runtime data folder throughout (FR-006, SC-003, US3 test and acceptance
+scenario, Runtime Data Folder entity), which resolves the existing papercut where
+`.env-example` sits at the repo root while the live `.env` sits in `data/`. No inferred paths
+remain in the spec.
+
+All 16 checklist items still pass after round 5.

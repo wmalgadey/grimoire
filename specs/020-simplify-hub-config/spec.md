@@ -27,6 +27,7 @@ we should only need to configure, what the user currently wants to configure, no
 - Q: What should the default directory names be? → A: `.grimoire/` for the runtime data folder and `llm-wiki/` for the wiki folder, both as siblings under the process's current working directory; the agent folder defaults to a subfolder of `.grimoire/`.
 - Q: Where do the eval recordings currently under `data/evals/recordings/` belong, given they are git-tracked test fixtures rather than runtime state or agent results? → A: Into a fixture folder inside the test project, alongside the existing eval fixtures. The eval runner resolves them from a hardcoded location matching the test project's expectations, so the recordings path is no longer a command-line switch.
 - Q: The eval runner also hardcodes the agent instruction paths this feature relocates — where should it read instructions from? → A: From the agent project sources, repo-anchored and independent of build output, so eval runs do not depend on the runtime agent directory or on a prior agent build.
+- Q: Where does the secrets/`.env` file belong — inside the runtime data folder, or somewhere else? → A: At the project root, next to the example file that is already there. That is where the operator copies or creates it, so the secrets file sits outside all three configurable folders and is read from the project root by both the hub and the eval runner.
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -66,11 +67,11 @@ An operator running multiple isolated hub environments (for example, per project
 
 **Why this priority**: Full relocation of runtime state is needed for isolation between environments, but it is a less frequent need than either running with defaults or pointing the wiki somewhere specific.
 
-**Independent Test**: Can be fully tested by setting only the runtime-data-folder option, running hub commands that create runtime state (raw intake, state database, secrets, write-locks), and confirming every one of those items is created under the configured path with no separate options needed.
+**Independent Test**: Can be fully tested by setting only the runtime-data-folder option, running hub commands that create runtime state (raw intake, state database, write-locks), and confirming every one of those items is created under the configured path with no separate options needed.
 
 **Acceptance Scenarios**:
 
-1. **Given** only the runtime-data-folder option is set to a custom path, **When** hub commands run and produce runtime state, **Then** raw intake, the operational state database, secrets, and write-locks are all located under the configured path.
+1. **Given** only the runtime-data-folder option is set to a custom path, **When** hub commands run and produce runtime state, **Then** raw intake, the operational state database, and write-locks are all located under the configured path, while the secrets file continues to be read from the project root.
 2. **Given** only the runtime-data-folder option is set to a custom path and the wiki-folder option is left at its default, **When** an operation that produces agent results runs, **Then** the wiki output is created at its own configured default location — a sibling of the default runtime data directory — not nested inside the configured custom path.
 
 ---
@@ -126,7 +127,7 @@ An operator with unusual infrastructure needs (for example, putting the state da
 - **FR-003**: The hub MUST allow each of the three directory options to be set independently; setting one MUST NOT require setting another.
 - **FR-004**: The hub MUST resolve each of the three directory options by the precedence command-line flag > environment variable > configuration file, evaluated per option rather than as an all-or-nothing group.
 - **FR-005**: The hub MUST treat the configuration file as the sole source of default paths, with no code-level fallback, and MUST fail with an error when it is missing, empty, or does not supply the three root directories. A valid configuration file MUST be versioned in the repository.
-- **FR-006**: The hub MUST locate all harness runtime state under the runtime data folder: raw intake, the operational state database, secrets, and write-locks.
+- **FR-006**: The hub MUST locate all harness runtime state under the runtime data folder: raw intake, the operational state database, and write-locks.
 - **FR-007**: The hub MUST locate all agent-produced results under the wiki folder: wiki content, `index.md`, `log.md`, tasks, conversations, findings, and remediation tasks.
 - **FR-008**: The hub MUST treat the agent folder as a single directory holding both instruction files and runtime data for every agent type (ingest, query, lint), organized as per-agent-type subfolders rather than as separately configurable directories.
 - **FR-009**: The shipped configuration file MUST default the runtime data folder to `.grimoire/` and the wiki folder to `llm-wiki/`, both as siblings under the process's current working directory, and MUST default the agent folder to a subfolder of the runtime data folder.
@@ -139,10 +140,12 @@ An operator with unusual infrastructure needs (for example, putting the state da
 - **FR-016**: Eval recordings MUST live in a fixture folder inside the test project rather than under the runtime data folder, and the eval runner MUST resolve them from a hardcoded location matching the test project's expectations — removing the recordings-root command-line switch.
 - **FR-017**: The eval runner MUST resolve agent instruction files from the agent project sources, repo-anchored, so eval runs depend on neither the configured runtime agent directory nor a prior agent build.
 - **FR-018**: Eval fixture and instruction resolution MUST be independent of all three configured directory options, so eval runs produce the same result regardless of how an operator has configured the hub.
+- **FR-019**: The hub and the eval runner MUST read the secrets file from the project root, alongside the example file the operator copies it from, rather than from inside any of the three configurable folders. The secrets file location MUST NOT be affected by any of the three directory options.
 
 ### Key Entities
 
-- **Runtime Data Folder**: The configurable root holding all harness runtime state — raw intake, the operational state database, secrets, and write-locks — plus the Agent Folder at its default location. Defaults to `.grimoire/` under the current working directory.
+- **Runtime Data Folder**: The configurable root holding all harness runtime state — raw intake, the operational state database, and write-locks — plus the Agent Folder at its default location. Defaults to `.grimoire/` under the current working directory.
+- **Secrets File**: The operator-supplied `.env` file at the project root, created by copying the example file that already sits there. Read from the project root by both the hub and the eval runner, outside all three configurable folders and unaffected by any directory option.
 - **Wiki Folder**: The independently configurable root holding all agent-produced results — wiki content pages, `index.md`, `log.md`, tasks, conversations, findings, and remediation tasks. Defaults to `llm-wiki/` under the current working directory, as a sibling of the Runtime Data Folder, and may be pointed anywhere (e.g. a separately git-tracked location).
 - **Agent Folder**: The independently configurable directory holding both instruction files and runtime data for every agent type (ingest, query, lint) in per-type subfolders. Defaults to a subfolder of the Runtime Data Folder. Its contents are produced and refreshed by the agent build, not by the hub; the hub refuses to run when it is empty.
 - **Configuration File**: The versioned `appsettings.json` that supplies the default values for all three root folders and any internal sub-path customization. Mandatory — the hub fails without it — and never mirrored as extra command-line switches.
@@ -160,7 +163,7 @@ An operator with unusual infrastructure needs (for example, putting the state da
 
 - **SC-001**: 100% of hub commands complete successfully when invoked with no command-line flags and no environment variables set, against the versioned configuration file and a built agent directory.
 - **SC-002**: The command-line directory surface consists of exactly 3 options (runtime data folder, agent folder, wiki folder), down from the current 16 independent path switches.
-- **SC-003**: 100% of harness runtime artifacts (raw intake, state database, secrets, write-locks) resolve under the configured runtime data folder.
+- **SC-003**: 100% of harness runtime artifacts (raw intake, state database, write-locks) resolve under the configured runtime data folder.
 - **SC-004**: 100% of agent-result artifacts (wiki content, `index.md`, `log.md`, tasks, conversations, findings, remediation tasks) resolve under the configured wiki folder, regardless of where the runtime data folder points.
 - **SC-005**: For each of the three options, 100% of resolutions honor the precedence command-line flag > environment variable > configuration file.
 - **SC-006**: 100% of hub starts with a missing, empty, or incomplete configuration file fail with an error naming the configuration file, with no silent fallback to code-level defaults.
@@ -168,6 +171,7 @@ An operator with unusual infrastructure needs (for example, putting the state da
 - **SC-008**: 100% of agent builds leave the target agent directory holding that agent's current instruction files.
 - **SC-009**: 100% of eval runs resolve their recordings from the hardcoded test-fixture location, with no recordings path accepted on the command line.
 - **SC-010**: 100% of eval runs produce identical results regardless of how the three directory options are configured, resolving instructions from the agent project sources without requiring an agent build.
+- **SC-011**: 100% of secrets lookups by the hub and the eval runner resolve to the project-root secrets file, regardless of how the three directory options are configured.
 
 ## Assumptions
 
@@ -179,5 +183,5 @@ An operator with unusual infrastructure needs (for example, putting the state da
 - This is a breaking change to the existing 16-switch configuration surface. Since the hub is pre-1.0 with no external consumers, removed options simply stop being recognized by the CLI parser — no deprecation aliases, detection logic, or migration shims are built, and no on-disk data is migrated.
 - The three existing per-agent instruction directories (ingest, query, lint) become subfolders of the single agent folder rather than being merged into one undifferentiated set of files.
 - The eval runner is in scope for this feature because it currently hardcodes paths this change relocates. Its recordings become test fixtures and its instruction resolution becomes repo-anchored; it is deliberately *not* wired to the three configurable directories, keeping eval runs reproducible and independent of operator configuration.
-- The eval runner's local secrets/env file follows the runtime data folder's new default location, consistent with where the hub reads secrets. This is the least surprising placement given the runtime data folder now owns secrets, and it is the one eval-runner path not settled by explicit direction.
-- Nothing else moves out of the runtime data folder as part of this change: with eval recordings relocated to the test project, the runtime data folder holds only genuine runtime state (raw intake, state database, secrets, write-locks) plus the default agent folder.
+- The secrets file sits at the project root because that is where its example file already lives and where an operator naturally copies or creates it. Keeping it out of the three configurable folders means relocating runtime data, agents, or the wiki never separates an operator from their credentials, and the hub and eval runner always agree on where secrets are.
+- With eval recordings relocated to the test project and secrets at the project root, the runtime data folder holds only genuine runtime state — raw intake, the state database, and write-locks — plus the default agent folder.
