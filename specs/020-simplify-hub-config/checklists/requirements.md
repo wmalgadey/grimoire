@@ -36,3 +36,12 @@ one genuinely open question (backward compatibility with the existing 16-switch 
 a reasonable default given the hub's internal, single-maintainer usage context — a clean
 breaking change with no deprecated aliases — and is documented in the Assumptions section
 rather than left as a blocking question.
+
+**2026-08-06 clarification session**: four points from the feature owner were integrated —
+findings/remediation-tasks moved from the working/data directory to the wiki directory
+(FR-003, FR-005); legacy-option rejection was dropped in favor of the CLI parser's standard
+"unrecognized option" error (removed old FR-008/SC-005, reflecting the pre-1.0/no-legacy-users
+context); a new configuration-file-only escape hatch for internal sub-path layout was added
+(FR-010, User Story 4, SC-005); and the wiki directory's nested-under-working-dir default was
+confirmed as unchanged for this feature, with a note that an independent default may follow
+later. All checklist items still pass after these changes.
