@@ -51,3 +51,28 @@ locations, with only the Agent Directory nesting inside the working/data directo
 (FR-008, FR-009, Key Entities, Assumptions, US3 AC2, the wiki/data-nesting edge case). The
 round-1 "kept nested" answer was superseded and removed rather than left as contradictory
 text. All checklist items still pass after this change.
+
+**2026-08-06 clarification session (round 3)**: four answers triggered a substantial rewrite.
+The CLI surface grew from 2 options to 3 (runtime data folder, agent folder, wiki folder) with
+precedence CLI > env > config file; the configuration file became the mandatory, git-versioned
+sole source of default paths, with no code-level fallback and a hard failure when it is missing
+or empty. Agent instruction files are now produced and refreshed by the agent build rather than
+seeded by the hub, with a required build-output redirect mechanism and a hard failure on an
+empty agent directory. Defaults were fixed at `.grimoire/` and `llm-wiki/`, and no on-disk
+migration of the old layout is performed. Requirements were renumbered (FR-001..FR-015) and
+success criteria expanded (SC-001..SC-008); the round-1 "exactly 2 options / config file as
+override-only escape hatch" answer was rewritten in place rather than left contradictory.
+
+**Deliberate exception to "no implementation details"**: the specification names
+`appsettings.json` and refers to build scripts / build properties. These are user-facing
+operator surface — the file the operator edits and the mechanism they invoke — not internal
+implementation, and the feature owner specified them directly. All functional requirements are
+otherwise phrased against "the configuration file" rather than a concrete format.
+
+**Success-criteria split (Constitution Principle II)**: every criterion here is a deterministic
+harness guarantee stated at 100%. This is correct rather than a defect — the feature changes
+configuration resolution and directory layout only and introduces no agent-judgment behavior,
+so no evaluation-threshold criteria apply. A note to that effect is embedded in the spec's
+Success Criteria section.
+
+All 16 checklist items still pass after round 3.

@@ -18,118 +18,154 @@ we should only need to configure, what the user currently wants to configure, no
 
 ### Session 2026-08-06
 
-- Q: Do findings and remediation-tasks belong under the working/data directory or the wiki directory? → A: Wiki directory — they are agent output, alongside wiki content, `index.md`, `log.md`, tasks, and conversations.
+- Q: Do findings and remediation-tasks belong under the runtime data directory or the wiki directory? → A: Wiki directory — they are agent output, alongside wiki content, `index.md`, `log.md`, tasks, and conversations.
 - Q: Given the system is pre-1.0 with no legacy consumers, does removing a legacy CLI option need dedicated error handling (naming the removed option and its replacement)? → A: No — standard "unrecognized option" rejection from the CLI parser is sufficient; no dedicated legacy-option handling is required.
-- Q: Should advanced/internal directory-layout overrides (e.g. relocating a specific sub-path within the working/data, wiki, or agent directory) remain possible, and if so, how? → A: Yes, but only via a configuration file (e.g. an `appsettings.json`-style settings file) — never via additional CLI switches. The CLI surface stays fixed at exactly 2 options.
-- Q: Should the wiki directory's default location be nested under the working/data directory, or should the two default to separate, sibling locations? → A: Separate by default — the working/data directory and the wiki directory MUST be independent, sibling locations out of the box; only the agent directory is nested inside the working/data directory by default. (This supersedes the earlier answer in this session that kept the wiki directory nested by default.)
+- Q: Should the wiki directory's default location be nested under the runtime data directory, or should the two default to separate, sibling locations? → A: Separate by default — the runtime data directory and the wiki directory are independent, sibling locations out of the box. Only the agent directory sits inside the runtime data directory by default.
+- Q: How many directory options should the CLI expose, and how are values resolved? → A: Exactly three — runtime data folder, agent folder, and llm-wiki folder. Each resolves by the precedence CLI > environment variable > configuration file. The configuration file (`appsettings.json`) is where the defaults live; no code-level fallback exists. A valid `appsettings.json` MUST be versioned in git, and the hub MUST fail if it is missing or empty. Any further internal sub-path customization also belongs in that file only — never as additional CLI switches.
+- Q: On a fresh run, where do the agent instruction files come from? → A: Instruction files are bound to the agent and versioned alongside the agent harness itself. Building the agent creates and refreshes the default agent directory; every agent build updates it. When the hub is pointed at a different agent folder, a supported build-time mechanism (build script, MSBuild task or property) MUST let the operator direct the agent build output into that folder. The hub MUST fail if the agent directory is empty.
+- Q: What happens to data already on disk in the old layout (`data/agents`, `data/state`, `data/conversations`, `data/findings`, `wiki/`, `tasks/`, `remediation-tasks/`)? → A: No migration — the hub uses the new defaults and neither detects nor moves old folders; the operator relocates them manually or points the three options at them.
+- Q: What should the default directory names be? → A: `.grimoire/` for the runtime data folder and `llm-wiki/` for the wiki folder, both as siblings under the process's current working directory; the agent folder defaults to a subfolder of `.grimoire/`.
 
 ## User Scenarios & Testing *(mandatory)*
 
-### User Story 1 - Run the hub with zero configuration (Priority: P1)
+### User Story 1 - Run the hub with no command-line configuration (Priority: P1)
 
-An operator sets up the hub for the first time and runs a hub command without providing any configuration at all. The system uses built-in defaults for every path it needs and works immediately, without the operator needing to understand or set any of today's sixteen separate path options.
+An operator runs a hub command without passing any command-line flags or setting any environment variables. The values shipped in the versioned `appsettings.json` supply every directory the hub needs, and the command works immediately — without the operator having to understand or set any of today's sixteen separate path options.
 
-**Why this priority**: This is the core complaint driving the feature — configuration is currently mandatory-feeling and confusing even though most of it never needs to change. A working zero-configuration path is the minimum viable fix and unblocks every other scenario.
+**Why this priority**: This is the core complaint driving the feature — configuration is currently mandatory-feeling and confusing even though most of it never needs to change. A working no-flags path is the minimum viable fix and unblocks every other scenario.
 
-**Independent Test**: Can be fully tested by invoking any hub command in a fresh, empty directory with no configuration flags or environment variables set, and confirming the command completes successfully using only default locations.
+**Independent Test**: Can be fully tested by invoking any hub command with no flags and no environment variables set, against a checkout containing the versioned `appsettings.json` and an agent directory produced by an agent build, and confirming the command completes successfully using only the configured default locations.
 
 **Acceptance Scenarios**:
 
-1. **Given** a fresh environment with no configuration provided, **When** an operator runs any hub command, **Then** the command completes successfully using built-in default locations for all runtime state and agent results.
-2. **Given** a fresh environment with no configuration provided, **When** an operator runs a hub command, **Then** the working/data directory and the wiki directory are created automatically if they do not already exist.
+1. **Given** the versioned `appsettings.json` is present and the agent directory has been populated by an agent build, **When** an operator runs any hub command with no flags and no environment variables, **Then** the command completes successfully using the default locations from the configuration file.
+2. **Given** no flags and no environment variables are provided, **When** an operator runs a hub command, **Then** the runtime data directory and the wiki directory are created automatically if they do not already exist.
 
 ---
 
-### User Story 2 - Relocate agent results to a chosen wiki folder (Priority: P2)
+### User Story 2 - Point the wiki at a chosen folder (Priority: P2)
 
-An operator wants the agent-maintained results — wiki content, `index.md`, `log.md`, tasks, conversations, findings, and remediation tasks — to live in a specific folder of their choosing (for example, a separately git-tracked repository), independent of where the rest of the hub's runtime state lives. They set exactly one option to point to that folder; everything else keeps using defaults.
+An operator wants the agent-maintained results — wiki content, `index.md`, `log.md`, tasks, conversations, findings, and remediation tasks — to live in a specific folder of their choosing (for example, a separately git-tracked repository), independent of where the hub's runtime state and agents live. They set exactly one option to point to that folder; everything else keeps using defaults.
 
-**Why this priority**: Separating agent output from internal runtime state is the second most common real need (e.g. to version-control or share the wiki independently) and must remain possible after simplification, but it should not force the operator to configure anything beyond this one path.
+**Why this priority**: Separating agent output from internal runtime state is the most common real need after simply running the tool (e.g. to version-control or share the wiki independently), and it must not force the operator to configure anything beyond this one path.
 
-**Independent Test**: Can be fully tested by setting only the wiki-directory option to a custom path, running a hub command that produces agent results, and confirming wiki content, `index.md`, `log.md`, tasks, conversations, findings, and remediation tasks all land under that custom path while all other runtime state still uses defaults.
+**Independent Test**: Can be fully tested by setting only the wiki-folder option, running a hub command that produces agent results, and confirming wiki content, `index.md`, `log.md`, tasks, conversations, findings, and remediation tasks all land under that path while runtime state and the agent directory keep their defaults.
 
 **Acceptance Scenarios**:
 
-1. **Given** only the wiki-directory option is set to a custom path, **When** an operation that produces agent results runs, **Then** wiki content, `index.md`, `log.md`, tasks, conversations, findings, and remediation tasks are all written under the configured custom path.
-2. **Given** only the wiki-directory option is set to a custom path, **When** an operation that produces agent results runs, **Then** all other runtime state (working/data directory contents) continues to use its default location, unaffected by the wiki-directory override.
+1. **Given** only the wiki-folder option is set to a custom path, **When** an operation that produces agent results runs, **Then** wiki content, `index.md`, `log.md`, tasks, conversations, findings, and remediation tasks are all written under the configured path.
+2. **Given** only the wiki-folder option is set to a custom path, **When** an operation that produces agent results runs, **Then** the runtime data directory and the agent directory continue to use their configured defaults, unaffected by the wiki-folder override.
 
 ---
 
-### User Story 3 - Relocate the entire working/data directory (Priority: P3)
+### User Story 3 - Relocate the runtime data folder (Priority: P3)
 
-An operator running multiple isolated hub environments (for example, per project or per branch) wants all harness runtime state — including the combined agent directory — to live under a different root than the default. They set exactly one option to point to that root; every runtime-relevant item is found beneath it automatically.
+An operator running multiple isolated hub environments (for example, per project or per branch) wants all harness runtime state to live under a different root than the default. They set exactly one option to point to that root; every runtime-relevant item is found beneath it automatically.
 
-**Why this priority**: Full relocation of runtime state is needed for isolation between environments, but it is a less frequent need than either running with defaults or relocating just the wiki output, so it is lower priority than Stories 1 and 2.
+**Why this priority**: Full relocation of runtime state is needed for isolation between environments, but it is a less frequent need than either running with defaults or pointing the wiki somewhere specific.
 
-**Independent Test**: Can be fully tested by setting only the working/data-directory option to a custom path, running hub commands that create runtime state (intake, state database, secrets, write-locks, agent instructions/runtime), and confirming every one of those items is created under the configured custom path with no separate options needed.
+**Independent Test**: Can be fully tested by setting only the runtime-data-folder option, running hub commands that create runtime state (raw intake, state database, secrets, write-locks), and confirming every one of those items is created under the configured path with no separate options needed.
 
 **Acceptance Scenarios**:
 
-1. **Given** only the working/data-directory option is set to a custom path, **When** hub commands run and produce runtime state, **Then** raw intake, the operational state database, secrets, write-locks, and the agent directory are all located under the configured custom path.
-2. **Given** only the working/data-directory option is set to a custom path and the wiki-directory option is left unset, **When** an operation that produces agent results runs, **Then** the wiki output is created at its own independent default location — a sibling of the default working/data directory, unaffected by the working/data-directory override, not nested inside the configured custom path.
+1. **Given** only the runtime-data-folder option is set to a custom path, **When** hub commands run and produce runtime state, **Then** raw intake, the operational state database, secrets, and write-locks are all located under the configured path.
+2. **Given** only the runtime-data-folder option is set to a custom path and the wiki-folder option is left at its default, **When** an operation that produces agent results runs, **Then** the wiki output is created at its own configured default location — a sibling of the default runtime data directory — not nested inside the configured custom path.
 
 ---
 
-### User Story 4 - Customize internal directory layout via a configuration file (Priority: P4)
+### User Story 4 - Use a custom agent folder fed by the agent build (Priority: P4)
 
-An advanced operator with unusual infrastructure needs (for example, putting the state database on different storage than raw intake) wants to relocate a specific internal sub-path beneath the working/data directory, the wiki directory, or the agent directory, without the CLI growing extra switches for it. They declare the override in a configuration file; the two CLI options keep working unchanged for everyone else.
+An operator wants the agents' instruction files and runtime data in a folder of their choosing rather than the default beneath the runtime data directory. They point the agent-folder option at it, and use the supported build-time mechanism to direct the agent build's output into that same folder so the instruction files are present and stay current across rebuilds.
 
-**Why this priority**: This is a power-user escape hatch, not required for the core simplification goal, so it is the lowest priority — but it preserves the layout flexibility the current 16-switch surface offers today, without reintroducing CLI complexity.
+**Why this priority**: Relocating agents is the least common of the three directory needs, and it only becomes useful once the build-output redirect exists — so it is the lowest-priority directory story. It is still required, because instruction files are bound to the agent build rather than authored by the hub.
 
-**Independent Test**: Can be fully tested by declaring one sub-path override in the configuration file (e.g. relocating the state database), running a hub command, and confirming that artifact resolves to the overridden path while every other artifact stays at its default.
+**Independent Test**: Can be fully tested by directing an agent build's output at a custom folder, pointing the agent-folder option at that same folder, running a hub command, and confirming the agents run from the instruction files in that folder.
 
 **Acceptance Scenarios**:
 
-1. **Given** a configuration file declares an override for one internal sub-path beneath the working/data directory, **When** a hub command runs, **Then** that artifact resolves to the overridden path while all other artifacts keep their default locations.
-2. **Given** no configuration-file overrides are present, **When** a hub command runs, **Then** internal sub-paths resolve to their built-in defaults beneath the working/data directory, the wiki directory, and the agent directory.
+1. **Given** an agent build has been directed to output into a custom folder and the agent-folder option points at that folder, **When** a hub command runs an agent, **Then** the agent operates under the instruction files in that folder.
+2. **Given** the agent-folder option points at a folder that is missing or contains no instruction files, **When** a hub command runs, **Then** the hub fails with an error identifying the empty or missing agent directory.
+3. **Given** an agent has been rebuilt after its instruction sources changed, **When** the build completes, **Then** the target agent directory holds the updated instruction files.
+
+---
+
+### User Story 5 - Adjust defaults and internal layout in the configuration file (Priority: P5)
+
+An operator with unusual infrastructure needs (for example, putting the state database on different storage than raw intake) changes a default root or relocates a specific internal sub-path. They edit the versioned `appsettings.json`; the three command-line options keep working unchanged for everyone else, and the CLI never grows extra switches.
+
+**Why this priority**: This is a power-user escape hatch, not required for the core simplification goal — but it preserves the layout flexibility today's 16-switch surface offers, without reintroducing CLI complexity.
+
+**Independent Test**: Can be fully tested by changing one internal sub-path in the configuration file, running a hub command, and confirming that artifact resolves to the changed path while every other artifact stays where it was.
+
+**Acceptance Scenarios**:
+
+1. **Given** the configuration file declares a different value for one internal sub-path, **When** a hub command runs, **Then** that artifact resolves to the configured path while all other artifacts keep their configured defaults.
+2. **Given** the configuration file sets a root directory and a command-line flag sets the same root, **When** a hub command runs, **Then** the command-line value wins, and an environment variable for that root wins over the configuration file but loses to the command-line flag.
 
 ---
 
 ### Edge Cases
 
-- What happens when the configured working/data directory or wiki directory does not yet exist? The system MUST create it automatically rather than failing.
-- What happens when the wiki-directory path is explicitly configured to be the same as, or nested inside, the working/data directory? The system MUST accept this as a valid explicit override — even though it departs from the default sibling relationship — without treating it as an error.
-- What happens when only the wiki directory is overridden and the working/data directory is left at its default? All runtime-relevant state other than agent results MUST still resolve correctly under the default working/data directory.
-- What happens when an operator supplies a CLI option that no longer exists (e.g. a former per-artifact path switch)? The command fails with the CLI parser's standard "unrecognized option" error; no dedicated legacy-option detection or replacement guidance is built for this.
-- What happens when a configuration-file layout override and a CLI-provided root directory option are both present? The configuration-file override only relocates a sub-path *within* whichever working/data or wiki directory is already in effect (from the CLI option or its default) — it cannot replace or redirect the root directories themselves.
+- What happens when `appsettings.json` is missing, empty, or does not supply the three root directories? The hub MUST fail with an error rather than falling back to code-level defaults — the versioned configuration file is the single source of default paths.
+- What happens when the agent directory is missing or contains no instruction files? The hub MUST fail with an error identifying the agent directory, rather than running agents without instructions.
+- What happens when the configured runtime data directory or wiki directory does not yet exist? The hub MUST create it automatically rather than failing. (This does not apply to the agent directory, which is produced by the agent build.)
+- What happens when the wiki folder is explicitly configured to be the same as, or nested inside, the runtime data directory? The hub MUST accept it as a valid explicit choice — even though it departs from the default sibling relationship — without treating it as an error.
+- What happens to an operator's hand edits to instruction files inside an agent directory? The next agent build overwrites them, because instruction files are versioned with the agent. Durable instruction changes are made in the agent's own sources, not in the output directory.
+- What happens when data from the old layout (`data/agents`, `data/state`, `data/conversations`, `data/findings`, `wiki/`, `tasks/`, `remediation-tasks/`) is present on disk? The hub neither detects nor migrates it; it simply uses the configured locations. Relocating old data is a manual operator step.
+- What happens when an operator supplies a command-line option that no longer exists (e.g. a former per-artifact path switch)? The command fails with the CLI parser's standard "unrecognized option" error; no dedicated legacy-option detection or replacement guidance is built.
 
 ## Requirements *(mandatory)*
 
 ### Functional Requirements
 
-- **FR-001**: The system MUST allow every hub command to run successfully with zero explicitly-provided configuration, relying entirely on built-in default paths.
-- **FR-002**: The system MUST expose exactly one configuration option for the working/data directory: the single root beneath which all harness runtime state is located.
-- **FR-003**: The system MUST expose exactly one configuration option, independent of the working/data directory, for the wiki directory: the root beneath which all agent-produced results (wiki content, `index.md`, `log.md`, tasks, conversations, findings, and remediation tasks) are located.
-- **FR-004**: The system MUST allow the working/data-directory option and the wiki-directory option to each be set independently — configuring one MUST NOT require configuring the other.
-- **FR-005**: The system MUST locate all runtime-relevant harness state under the working/data directory: raw intake, the operational state database, secrets, write-locks, and the agent directory.
-- **FR-006**: The system MUST combine agent instruction files and agent runtime data for every agent type (ingest, query, lint) into a single agent directory nested under the working/data directory, rather than exposing a separate configuration option per agent type.
-- **FR-007**: The system MUST automatically create the working/data directory and the wiki directory when they do not already exist, rather than requiring the operator to pre-create them.
-- **FR-008**: The system MUST default the working/data directory to a fixed-name subfolder of the process's current working directory (not the current working directory itself) when the option is not explicitly provided, so that the default working/data directory and the default wiki directory can be siblings rather than one nesting inside the other.
-- **FR-009**: The system MUST default the wiki directory to a fixed-name subfolder of the process's current working directory when the option is not explicitly provided, as a sibling of the default working/data directory — not nested inside it. Only the agent directory (FR-006) nests inside the working/data directory by default.
-- **FR-010**: The system MUST allow further customization of internal sub-paths beneath the working/data directory, the wiki directory, or the agent directory only through a configuration file (e.g. an `appsettings.json`-style settings file), never through additional CLI switches, so the CLI surface remains fixed at the two options in FR-002 and FR-003. Such overrides relocate a sub-path within whichever root directory is already in effect; they MUST NOT be usable to set the root directories themselves.
+- **FR-001**: The hub MUST run successfully with no command-line flags and no environment variables set, resolving every directory from the versioned configuration file.
+- **FR-002**: The hub MUST expose exactly three directory options on the command line — runtime data folder, agent folder, and wiki folder — and no other path switches.
+- **FR-003**: The hub MUST allow each of the three directory options to be set independently; setting one MUST NOT require setting another.
+- **FR-004**: The hub MUST resolve each of the three directory options by the precedence command-line flag > environment variable > configuration file, evaluated per option rather than as an all-or-nothing group.
+- **FR-005**: The hub MUST treat the configuration file as the sole source of default paths, with no code-level fallback, and MUST fail with an error when it is missing, empty, or does not supply the three root directories. A valid configuration file MUST be versioned in the repository.
+- **FR-006**: The hub MUST locate all harness runtime state under the runtime data folder: raw intake, the operational state database, secrets, and write-locks.
+- **FR-007**: The hub MUST locate all agent-produced results under the wiki folder: wiki content, `index.md`, `log.md`, tasks, conversations, findings, and remediation tasks.
+- **FR-008**: The hub MUST treat the agent folder as a single directory holding both instruction files and runtime data for every agent type (ingest, query, lint), organized as per-agent-type subfolders rather than as separately configurable directories.
+- **FR-009**: The shipped configuration file MUST default the runtime data folder to `.grimoire/` and the wiki folder to `llm-wiki/`, both as siblings under the process's current working directory, and MUST default the agent folder to a subfolder of the runtime data folder.
+- **FR-010**: The hub MUST create the runtime data folder and the wiki folder automatically when they do not exist.
+- **FR-011**: The agent build MUST create and refresh the default agent directory, writing each agent's instruction files there on every build, so that instruction files are versioned and distributed with the agent rather than authored by the hub at runtime.
+- **FR-012**: The build MUST provide a supported mechanism (build script, build-tool task, or build property) for directing agent build output into an operator-chosen agent folder, so a custom agent folder can be kept current across rebuilds.
+- **FR-013**: The hub MUST fail with an error identifying the agent directory when that directory is missing or contains no instruction files, rather than running agents without instructions.
+- **FR-014**: The hub MUST NOT detect or migrate data left in the previous directory layout; relocating such data is a manual operator step.
+- **FR-015**: The hub MUST confine any further customization of internal sub-paths beneath the three root folders to the configuration file, never exposing them as additional command-line switches.
 
 ### Key Entities
 
-- **Working/Data Directory**: The single configurable root holding all harness runtime state — raw intake, the operational state database, secrets, write-locks, and the Agent Directory. Defaults to a fixed-name subfolder of the process's current working directory, kept separate from (a sibling of) the default Wiki Directory.
-- **Wiki Directory**: The single, independently configurable root holding all agent-produced results — wiki content pages, `index.md`, `log.md`, tasks, conversations, findings, and remediation tasks. Defaults to a fixed-name subfolder of the process's current working directory, as a sibling of the default Working/Data Directory rather than nested inside it — but may be pointed anywhere (e.g. a separately git-tracked location).
-- **Agent Directory**: A single directory nested under the Working/Data Directory containing both instruction files and runtime data for every agent type (ingest, query, lint), replacing today's three separate per-agent instruction directories. Not independently configurable via the CLI.
-- **Directory Layout Configuration File**: An optional settings file (e.g. `appsettings.json`-style) that advanced operators may use to relocate specific internal sub-paths beneath the Working/Data Directory, the Wiki Directory, or the Agent Directory. Not required for normal operation and never exposed as a CLI switch.
+- **Runtime Data Folder**: The configurable root holding all harness runtime state — raw intake, the operational state database, secrets, and write-locks — plus the Agent Folder at its default location. Defaults to `.grimoire/` under the current working directory.
+- **Wiki Folder**: The independently configurable root holding all agent-produced results — wiki content pages, `index.md`, `log.md`, tasks, conversations, findings, and remediation tasks. Defaults to `llm-wiki/` under the current working directory, as a sibling of the Runtime Data Folder, and may be pointed anywhere (e.g. a separately git-tracked location).
+- **Agent Folder**: The independently configurable directory holding both instruction files and runtime data for every agent type (ingest, query, lint) in per-type subfolders. Defaults to a subfolder of the Runtime Data Folder. Its contents are produced and refreshed by the agent build, not by the hub; the hub refuses to run when it is empty.
+- **Configuration File**: The versioned `appsettings.json` that supplies the default values for all three root folders and any internal sub-path customization. Mandatory — the hub fails without it — and never mirrored as extra command-line switches.
 
 ## Success Criteria *(mandatory)*
 
+<!--
+  All criteria below are deterministic harness guarantees (Constitution Principle II).
+  This feature changes configuration resolution and directory layout only; it introduces
+  no agent-judgment behavior, so no evaluation-threshold criteria apply.
+-->
+
 ### Measurable Outcomes
 
-- **SC-001**: 100% of hub commands complete successfully when invoked with zero explicitly-provided configuration options.
-- **SC-002**: The user-facing CLI configuration surface consists of exactly 2 options (working/data directory, wiki directory), down from the current 16 independent path switches. Optional configuration-file-based sub-path overrides (FR-010) do not add to this count.
-- **SC-003**: 100% of runtime-relevant artifacts (raw intake, state database, secrets, write-locks, agent instructions, agent runtime data) resolve under the single configured working/data directory.
-- **SC-004**: 100% of agent-result artifacts (wiki content, `index.md`, `log.md`, tasks, conversations, findings, remediation tasks) resolve under the single configured wiki directory, regardless of the working/data directory's location.
-- **SC-005**: 100% of internal sub-path overrides declared in the directory-layout configuration file are honored at runtime without requiring any additional CLI switches beyond the two root options.
+- **SC-001**: 100% of hub commands complete successfully when invoked with no command-line flags and no environment variables set, against the versioned configuration file and a built agent directory.
+- **SC-002**: The command-line directory surface consists of exactly 3 options (runtime data folder, agent folder, wiki folder), down from the current 16 independent path switches.
+- **SC-003**: 100% of harness runtime artifacts (raw intake, state database, secrets, write-locks) resolve under the configured runtime data folder.
+- **SC-004**: 100% of agent-result artifacts (wiki content, `index.md`, `log.md`, tasks, conversations, findings, remediation tasks) resolve under the configured wiki folder, regardless of where the runtime data folder points.
+- **SC-005**: For each of the three options, 100% of resolutions honor the precedence command-line flag > environment variable > configuration file.
+- **SC-006**: 100% of hub starts with a missing, empty, or incomplete configuration file fail with an error naming the configuration file, with no silent fallback to code-level defaults.
+- **SC-007**: 100% of hub starts against a missing or empty agent directory fail with an error naming that directory.
+- **SC-008**: 100% of agent builds leave the target agent directory holding that agent's current instruction files.
 
 ## Assumptions
 
-- The working/data directory and the wiki directory each default to a fixed-name subfolder of the process's current working directory, as siblings of each other — neither nests inside the other by default. Only the Agent Directory nests inside the working/data directory by default. This preserves today's ADR-009 rationale of keeping the git-tracked wiki independent from harness-internal runtime state, while still requiring zero configuration for a first run.
-- The operator can still point the wiki directory anywhere, including inside the working/data directory, by explicitly overriding it — the sibling relationship is only the default, not an enforced constraint.
-- Agent worker executable resolution (today three separate switches, one per agent type) is no longer independently configurable via the CLI; workers are always auto-resolved relative to the hub's own binaries, consistent with reducing the CLI surface to the two options described above.
-- This is a breaking change to the existing 16-switch/environment-variable configuration surface. Since the hub is pre-1.0 with no external consumers depending on the old surface, removed options are simply no longer recognized by the CLI parser (a standard "unrecognized option" failure) — no dedicated legacy-option detection, deprecation aliases, or migration shims are built for this feature.
-- The three existing per-agent instruction directories (ingest, query, lint) are consolidated into subfolders of the single Agent Directory rather than being merged into one undifferentiated set of files.
-- The directory-layout configuration file (FR-010) only relocates sub-paths within whichever working/data directory and wiki directory are already in effect; it cannot be used to set the two root directories themselves, keeping that root-vs-internal-layout boundary clear between the two CLI options and the file-based escape hatch.
+- The three root folders each default to a fixed-name location under the process's current working directory — `.grimoire/` and `llm-wiki/` as siblings, with the agent folder inside `.grimoire/`. Keeping the wiki out of the runtime data folder preserves ADR-009's rationale of tracking the wiki in git independently of harness-internal state, while still requiring no command-line configuration for a first run.
+- "No configuration needed" means no command-line flags and no environment variables. The versioned configuration file is always present in the repository and is not something the operator has to author.
+- The operator may still point the wiki folder inside the runtime data folder by setting it explicitly — the sibling relationship is the default, not an enforced constraint.
+- Agent worker executable resolution (today three separate switches, one per agent type) is no longer configurable; workers are always resolved relative to the hub's own binaries.
+- Instruction files are versioned with the agent harness and regenerated by every agent build. Per-project instruction customization therefore happens in the agent's sources, not by editing the build output; the hub never authors or seeds instruction content itself, which keeps the Principle V boundary intact.
+- This is a breaking change to the existing 16-switch configuration surface. Since the hub is pre-1.0 with no external consumers, removed options simply stop being recognized by the CLI parser — no deprecation aliases, detection logic, or migration shims are built, and no on-disk data is migrated.
+- The three existing per-agent instruction directories (ingest, query, lint) become subfolders of the single agent folder rather than being merged into one undifferentiated set of files.
