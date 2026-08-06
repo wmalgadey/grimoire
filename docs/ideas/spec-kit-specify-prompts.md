@@ -3,6 +3,27 @@
 This document contains ready-to-use prompts for the `speckit-specify` skill.
 Each prompt is written to fit this repository's architecture and constitution constraints.
 
+## Resolution Status (Stand: 2026-08-06)
+
+Diese Tabelle ist der maßgebliche Nachweis für den Bearbeitungsstand jedes Prompts. Jeder
+Eintrag ist entweder **erledigt** (Spec existiert bereits unter `specs/`, mit Datum/Beleg)
+oder **nach GitHub übertragen** (mit Issue-Link, da noch keine Spec dafür existiert). Es
+gibt keinen offenen, nicht nachverfolgten Rest in diesem Dokument.
+
+| Prompt | Status | Beleg |
+| --- | --- | --- |
+| 1 — Query Minimal | ✅ Erledigt | Spec `specs/008-query-agent/` (erstellt 2026-07-23), weitgehend implementiert (Phase 16 Convergence) |
+| 2 — UI MVP (Ingest & Tasks) | ✅ Erledigt | Spec `specs/003-ingest-intake-webui/` (erstellt 2026-07-06); Restlücke separat getrackt in [Issue #27](https://github.com/wmalgadey/grimoire/issues/27) |
+| 3 — Token and Model Usage Tracking | ➡️ Nach GitHub übertragen | Keine Spec vorhanden. [Issue #53](https://github.com/wmalgadey/grimoire/issues/53) |
+| 4 — Docker Compose Local Stack | ➡️ Nach GitHub übertragen | Keine Spec vorhanden; `016-devcontainer-setup` deckt nur die Coding-Toolchain ab, nicht den Service-Stack. [Issue #54](https://github.com/wmalgadey/grimoire/issues/54) |
+| 5 — Lint Minimal (Task-First Findings) | ✅ Erledigt | Spec `specs/013-lint-agent/` (erstellt 2026-07-27); Restimplementierung separat getrackt in [Issue #24](https://github.com/wmalgadey/grimoire/issues/24) |
+
+Hinweis zum Geltungsbereich: "Erledigt" heißt hier, dass die in diesem Dokument
+beschriebene Aufgabe — eine Spec über `/speckit-specify` anzulegen — erfüllt ist. Ob die
+jeweilige Spec vollständig *implementiert* ist, ist eine separate Frage und, soweit
+bekannt, bereits über eigene GitHub Issues nachverfolgt (s. o.), nicht über dieses
+Dokument.
+
 ## Usage
 
 Run one prompt at a time with the specify skill.
@@ -14,6 +35,8 @@ Run one prompt at a time with the specify skill.
 ---
 
 ## Prompt 1: Query Minimal (Wiki Answers First)
+
+**Status:** ✅ Erledigt — siehe `specs/008-query-agent/`.
 
 ```text
 Create a new feature spec named "query-minimal".
@@ -54,6 +77,8 @@ Also define measurable success criteria for answer grounding quality and citatio
 ---
 
 ## Prompt 2: UI MVP (First User-Integrated Surface)
+
+**Status:** ✅ Erledigt — siehe `specs/003-ingest-intake-webui/`; offener Restpunkt getrackt in [Issue #27](https://github.com/wmalgadey/grimoire/issues/27).
 
 ```text
 Create a new feature spec named "ui-mvp-ingest-and-tasks".
@@ -96,6 +121,8 @@ Also require success criteria for time-to-first-ingest, task visibility reliabil
 
 ## Prompt 3: Token and Model Usage Tracking
 
+**Status:** ➡️ Nach GitHub übertragen — keine Spec vorhanden, siehe [Issue #53](https://github.com/wmalgadey/grimoire/issues/53).
+
 ```text
 Create a new feature spec named "usage-tracking-model-and-token-observability".
 
@@ -133,6 +160,8 @@ Also define measurable success criteria for coverage rate of recorded usage fiel
 ---
 
 ## Prompt 4: Docker Compose Local Stack
+
+**Status:** ➡️ Nach GitHub übertragen — keine Spec vorhanden (`016-devcontainer-setup` deckt nur die Coding-Toolchain ab, nicht diesen Service-Stack), siehe [Issue #54](https://github.com/wmalgadey/grimoire/issues/54).
 
 ```text
 Create a new feature spec named "docker-compose-local-stack".
@@ -172,6 +201,8 @@ Also require measurable success criteria for setup time, startup reliability, an
 
 ## Prompt 5: Lint Minimal (Task-First Findings)
 
+**Status:** ✅ Erledigt — siehe `specs/013-lint-agent/`; Restimplementierung getrackt in [Issue #24](https://github.com/wmalgadey/grimoire/issues/24).
+
 ```text
 Create a new feature spec named "lint-minimal-task-findings".
 
@@ -209,10 +240,13 @@ Also define measurable success criteria for finding coverage and false-positive 
 
 ## Suggested Execution Order
 
-1. `ui-mvp-ingest-and-tasks`
-2. `usage-tracking-model-and-token-observability`
-3. `docker-compose-local-stack`
-4. `query-minimal`
-5. `lint-minimal-task-findings`
+1. `ui-mvp-ingest-and-tasks` — ✅ spec'd (`specs/003-ingest-intake-webui/`)
+2. `usage-tracking-model-and-token-observability` — ➡️ open, [Issue #53](https://github.com/wmalgadey/grimoire/issues/53)
+3. `docker-compose-local-stack` — ➡️ open, [Issue #54](https://github.com/wmalgadey/grimoire/issues/54)
+4. `query-minimal` — ✅ spec'd (`specs/008-query-agent/`)
+5. `lint-minimal-task-findings` — ✅ spec'd (`specs/013-lint-agent/`)
 
 If you prefer strict North Star sequencing, swap 4 and 1.
+
+Remaining actionable work from this document lives in Issue #53 and Issue #54 — both are
+ready to feed into `/speckit-specify` whenever picked up.

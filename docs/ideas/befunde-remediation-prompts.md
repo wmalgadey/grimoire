@@ -7,6 +7,34 @@ reader: manual remediation and workflow prompting
 usage: "Prompt library only; never cite as normative requirement in specs, plans, or ADRs."
 ---
 
+## Resolution Status (Stand: 2026-08-06)
+
+Diese Tabelle ist der maßgebliche Nachweis für den Bearbeitungsstand aller in diesem
+Dokument beschriebenen Befunde und Schritte. Jeder Eintrag ist entweder **erledigt**
+(mit Datum/Commit als Beleg) oder **nach GitHub übertragen** (mit Issue-Link). Es gibt
+keinen offenen, nicht nachverfolgten Rest in diesem Dokument.
+
+| Punkt | Status | Beleg |
+| --- | --- | --- |
+| Lücke 1 — Keine CI-Pipeline | ✅ Erledigt | 2026-07-05, `.github/workflows/ci.yml` (Commit `d8e17d3`); Feature 002 Phase 7, T040–T042 |
+| Lücke 2 — tasks-template "Tests optional" | ✅ Erledigt | 2026-07-05, Constitution v1.1.1 (Commit `b5566d0`) |
+| Lücke 3 — Keine Test-Strategy-Sektion im Plan | ✅ Erledigt | 2026-07-05, Constitution v1.1.1 (Commit `b5566d0`), `plan-template.md` §Test Strategy |
+| Schritt 1 — CI-Pipeline über Feature-Workflow ergänzen | ✅ Erledigt | siehe Lücke 1 |
+| Schritt 2 — Template-Fixes per Constitution-Propagation | ✅ Erledigt | siehe Lücke 2/3 |
+| Schritt 3 — Optionaler Qualitäts-Check (`/speckit-analyze`) | ➡️ Nach GitHub übertragen | [Issue #52](https://github.com/wmalgadey/grimoire/issues/52) — kein Nachweis einer Ausführung gefunden |
+| Schritt 4 — Logging für "aktuelles Feature" verbindlich machen | ⚪ Obsolet, durch Schritt 5+6 abgedeckt | Ziel dauerhaft erreicht via Constitution v1.2.0 (Schritt 5) + Anwendung auf 002 (Schritt 6); kein eigenständiger Restauftrag |
+| Schritt 5 — Logging-Vertrag in Constitution verankern | ✅ Erledigt | 2026-07-05, Constitution v1.2.0 (Commit `fffe95e`) |
+| Schritt 6 — Logging in Spec 002 nachträglich ergänzen | ✅ Erledigt | 2026-07-05, `specs/002-agentic-ingest-core/tasks.md` Phase 8/9, T043–T049 |
+| Schritt 7 — Trace-Spans in Constitution verankern | ✅ Erledigt | 2026-07-05, Constitution v1.3.0 (Commit `3074cc2`) |
+
+Hinweis zum Geltungsbereich: Diese Tabelle deckt ausschließlich die in diesem Dokument
+beschriebenen Befunde ab. Spätere, hiervon unabhängige Convergence-Arbeit in Feature 002
+(z. B. die Eval-Reruns in Phase 13, T060–T065) ist separat in
+`specs/002-agentic-ingest-core/tasks.md` und [Issue #26](https://github.com/wmalgadey/grimoire/issues/26)
+nachverfolgt — sie war nie Teil der hier dokumentierten Befunde.
+
+---
+
 # Befund: Die Grundlagen sind größtenteils da — aber mit drei echten Lücken
 
 Ich habe Constitution, alle fünf .specify/templates/, die Feature-Artefakte von 002 und die Repo-Struktur geprüft. Test-Coverage und Logging sind auf Prinzipien- und Plan-Ebene gut verankert, aber auf Template- und CI-Ebene gibt es Widersprüche bzw. Leerstellen.
@@ -20,13 +48,19 @@ Feature 002 selbst: vorbildlich — vollständige Observability-Tabellen im Plan
 Lücke 1 — Keine CI-Pipeline (die gravierendste)
 .github/workflows/ existiert nicht; es gibt keinerlei Pipeline-Konfiguration. Die Constitution sagt aber wörtlich: "Conventions not enforced by CI/CD do not exist" (Principle IV), und die Definition of Done von 002 verlangt "CI/CD pipeline passes: architecture tests, integration tests, linting, build". Nach der eigenen Logik der Constitution existieren die Regeln derzeit formal nicht — und 002 kann sein DoD strukturell nicht erfüllen.
 
+**Status:** ✅ Erledigt (2026-07-05) — `.github/workflows/ci.yml` (Commit `d8e17d3`); Feature 002 Phase 7, T040–T042.
+
 ## Lücke 2 — tasks-template.md widerspricht der Constitution
 
 tasks-template.md:12 sagt: "Tests are OPTIONAL - only include them if explicitly requested", und jede User-Story-Phase trägt "Tests (OPTIONAL - only if tests requested) ⚠️". Das ist der unveränderte Spec-Kit-Stock-Default und kollidiert direkt mit Principle II (Integrationstests sind der primäre Verifikationsmechanismus, nicht optional). Bei 002 wurde das manuell übersteuert ("Tests: Included and non-optional"), aber jedes zukünftige /speckit-tasks kann per Template Tests legal weglassen. Die finale Phase mit Observability-Tests und Evals ist dagegen bereits korrekt angepasst (tasks-template.md:199-200).
 
+**Status:** ✅ Erledigt (2026-07-05) — Constitution v1.1.1 (Commit `b5566d0`); "OPTIONAL"-Formulierung ist aus tasks-template.md entfernt.
+
 ## Lücke 3 — Keine Test-Strategie-Sektion im plan-template
 
 Der Technical Context hat nur eine einzeilige **Testing**: [framework]-Angabe. Es gibt keinen Ort, an dem der Plan die Zuordnung Success Criterion → Testart (hermetischer Integrationstest vs. Eval mit Threshold, welches Test-Double, welche Fixtures) festhalten muss — bei 002 wurde das ad hoc in der tasks.md-Präambel gelöst. Eine ## Test Strategy-Sektion analog zu ## Observability würde den Split aus Principle II auf Planungsebene erzwingen statt ihn dem Tasks-Schritt zu überlassen.
+
+**Status:** ✅ Erledigt (2026-07-05) — Constitution v1.1.1 (Commit `b5566d0`); `plan-template.md` hat jetzt eine ## Test Strategy-Sektion.
 
 Bewusst keine Lücke: Es gibt kein Coverage-Prozent-Gate. Das würde ich so lassen — die Constitution definiert Coverage qualitativ ("all API boundaries"), und ein %-Threshold widerspräche dem pragmatischen Testing-Prinzip. Logging ist ebenfalls ausreichend abgedeckt (ADR-005 + Plan-Sektion + Log-Test-Tasks); dort fehlt nichts Wesentliches.
 
@@ -69,6 +103,8 @@ Erwartetes Ergebnis:
 - Neue CI-bezogene Tasks in specs/002-agentic-ingest-core/tasks.md
 - Klare Abgrenzung zwischen deterministischen CI-Tests und optionalen Evals
 
+**Status:** ✅ Erledigt (2026-07-05) — `specs/002-agentic-ingest-core/tasks.md` Phase 7, T040–T042; `.github/workflows/ci.yml` (Commit `d8e17d3`).
+
 ---
 
 ### Schritt 2: Template-Fixes per Constitution-Propagation
@@ -89,6 +125,8 @@ Erwartetes Ergebnis:
 - Aktualisierte .specify/templates/plan-template.md
 - Nachvollziehbarer Constitution/Template-Sync mit Impact-Hinweis
 
+**Status:** ✅ Erledigt (2026-07-05) — Constitution v1.1.1 (Commit `b5566d0`).
+
 ---
 
 ### Schritt 3: Optionaler Qualitäts-Check nach den Änderungen
@@ -105,6 +143,8 @@ Prompt:
 Erwartetes Ergebnis:
 
 - Klare Liste relevanter Findings oder explizite Bestätigung, dass keine kritischen Inkonsistenzen vorliegen
+
+**Status:** ➡️ Nach GitHub übertragen (2026-08-06) — kein Nachweis, dass dieser Schritt je ausgeführt wurde. Tracked in [Issue #52](https://github.com/wmalgadey/grimoire/issues/52).
 
 ---
 
@@ -123,6 +163,8 @@ Erwartetes Ergebnis:
 
 - Logging-spezifische Tasks in tasks.md (Implementierung + Tests + CI-Enforcement)
 - Eindeutige Zuordnung Plan-Event -> Code-Emission -> Testfall
+
+**Status:** ⚪ Obsolet, durch Schritt 5+6 abgedeckt — das dauerhafte Ziel (Logging-Vertrag für jedes künftige Feature) wurde stattdessen über die Constitution selbst erzwungen (Schritt 5) und für das damals aktuelle Feature 002 konkret umgesetzt (Schritt 6). Kein eigenständiger Restauftrag.
 
 ---
 
@@ -143,6 +185,8 @@ Erwartetes Ergebnis:
 - plan-template.md und tasks-template.md erzwingen die Umsetzung des Logging-Vertrags künftig standardmäßig
 - Nachvollziehbarer Version-Bump und Sync Impact Report
 
+**Status:** ✅ Erledigt (2026-07-05) — Constitution v1.2.0 (Commit `fffe95e`).
+
 ---
 
 ### Schritt 6: Logging in Spec 002 nachträglich via Converge ergänzen
@@ -161,6 +205,8 @@ Erwartetes Ergebnis:
 - Konkrete Nachtrags-Tasks für Logging-Lücken in specs/002-agentic-ingest-core/tasks.md
 - Vollständigere Abdeckung der geplanten Log-Events durch deterministische Tests
 
+**Status:** ✅ Erledigt (2026-07-05) — `specs/002-agentic-ingest-core/tasks.md` Phase 8/9, T043–T049; alle acht Events plus Mandatory Fields durch `ObservabilityLogTests.cs` abgedeckt.
+
 ---
 
 ### Optional: Kompakter Abschluss-Prompt (alles nacheinander)
@@ -168,6 +214,8 @@ Erwartetes Ergebnis:
 Wenn du die Schritte in einem Stück anstoßen willst:
 
 "Bitte führe nacheinander aus: zuerst /speckit-converge für Feature 002 zur Ergänzung der fehlenden CI-Tasks vor der finalen DoD-Validierung, danach /speckit-constitution zur Korrektur von tasks-template (Tests nicht optional) und plan-template (verpflichtende Test Strategy), danach /speckit-constitution zur verbindlichen Verankerung des Logging-Vertrags in Constitution plus Template-Propagation, danach /speckit-analyze als Abschlussprüfung. Arbeite minimal-invasiv, dokumentiere nur echte Änderungen und nenne abschließend offene Risiken."
+
+**Status:** ➡️ Teilweise erledigt, Rest nach GitHub übertragen (2026-08-06) — CI- und Constitution-Teilschritte sind erledigt (siehe Schritt 1, 2, 5); der abschließende `/speckit-analyze`-Lauf fehlt weiterhin, siehe [Issue #52](https://github.com/wmalgadey/grimoire/issues/52).
 
 ---
 
@@ -188,3 +236,5 @@ Erwartetes Ergebnis:
 - Constitution behandelt Trace-Spans als gleichwertigen, verpflichtenden Teil des Observability-Vertrags
 - plan-template.md und tasks-template.md erzwingen die Trace-Verknüpfung für zukünftige Features
 - Span-Verknüpfung zwischen Logs, Metriken und Traces wird als DoD-prüfbarer Standard festgelegt
+
+**Status:** ✅ Erledigt (2026-07-05) — Constitution v1.3.0 (Commit `3074cc2`).
