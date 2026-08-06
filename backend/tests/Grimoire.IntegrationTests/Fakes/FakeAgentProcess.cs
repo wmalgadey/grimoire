@@ -565,6 +565,15 @@ public sealed class FakeAgentProcessLauncher : IAgentProcessLauncher
 
             Fake agent run ({status}).
             """;
-        await File.WriteAllTextAsync(path, content);
+
+        // Atomic temp-file + rename, mirroring HubTaskArtifactWriter.WriteAsync: a reader
+        // (KanbanBoardProjectionStore) may be concurrently polling this same path, and an
+        // in-place File.WriteAllTextAsync can hand it a torn read (truncated-then-partially-
+        // written content) that fails TryParse and looks like "file gone" — rare under full
+        // suite serialization, reachable once 019 (ADR-021) enabled collection parallelization.
+        var directory = Path.GetDirectoryName(path)!;
+        var tempPath = Path.Combine(directory, $".{Path.GetFileName(path)}.{Guid.NewGuid():N}.tmp");
+        await File.WriteAllTextAsync(tempPath, content);
+        File.Move(tempPath, path, overwrite: true);
     }
 }

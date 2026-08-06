@@ -223,6 +223,7 @@ public class QueryTurnSubmissionApiTests
         LintPolicyPath: Path.Combine(root, "agents", "lint", "policy.json"),
         LintAgentWorkerPath: "unused",
         RemediationTasksDir: Path.Combine(root, "remediation-tasks"),
+        LintPidPath: Path.Combine(root, "lint.pid"),
         Locations: []);
 
     internal static async Task<IHost> BuildHostAsync(

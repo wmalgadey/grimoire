@@ -52,6 +52,7 @@ public sealed record ResolvedGrimoirePaths(
     string LintPolicyPath,
     string LintAgentWorkerPath,
     string RemediationTasksDir,
+    string LintPidPath,
     IReadOnlyList<PathLocation> Locations)
 {
     /// <summary>Per-task artifact path within <see cref="TasksDir"/> (mirrors IngestCliOptions.TaskArtifactPath).</summary>

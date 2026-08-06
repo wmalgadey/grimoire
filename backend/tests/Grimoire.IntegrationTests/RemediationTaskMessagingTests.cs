@@ -409,6 +409,14 @@ internal sealed class RemediationMessagingHarness : IAsyncDisposable
             recordStore,
             paths,
             logger: NullLogger<RemediationMessageTurnCoordinator>.Instance));
+        // 018-hub-cli-commands T022: the extracted authorize/dismiss/withdraw transition
+        // service the endpoint handlers now delegate to.
+        builder.Services.AddSingleton<RemediationTaskTransitionService>(sp => new RemediationTaskTransitionService(
+            repository,
+            sp.GetRequiredService<RemediationLifecyclePublisher>(),
+            sp.GetRequiredService<RemediationRunCoordinator>(),
+            recordStore,
+            NullLogger<RemediationLifecyclePublisher>.Instance));
 
         var app = builder.Build();
         app.MapHub<RemediationLifecycleHub>("/hubs/remediation-lifecycle");

@@ -308,6 +308,7 @@ internal sealed class LintCoordinatorHarness : IDisposable
             LintPolicyPath: Path.Combine(root, "agents", "lint", "policy.json"),
             LintAgentWorkerPath: "unused",
             RemediationTasksDir: Path.Combine(root, "remediation-tasks"),
+            LintPidPath: Path.Combine(root, "lint.pid"),
             Locations: []);
 
         var effectiveLauncher = launcher ?? new FakeAgentProcessLauncher(autoPlay: true);

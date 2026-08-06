@@ -102,6 +102,17 @@ public sealed class GrimoirePathOptions
     public const string DefaultTasksDirName = "tasks";
     public const string DefaultRemediationTasksDirName = "remediation-tasks";
 
+    /// <summary>
+    /// 018-hub-cli-commands (ADR-020): the exclusive cross-process lock file
+    /// <c>Grimoire.Hub.LintDispatch.LintRunCoordinator.TriggerAsync</c> holds for a Lint
+    /// Run's full duration, on both the HTTP and CLI entry paths. Not independently
+    /// configurable (no <see cref="GrimoirePathOptions"/> field, no ADR-009 switch) —
+    /// always <c>lint.pid</c> under the data directory, mirroring how <c>index.md</c>/
+    /// <c>log.md</c> are fixed filenames under an already-configurable directory rather
+    /// than their own switch.
+    /// </summary>
+    public const string DefaultLintPidFileName = "lint.pid";
+
     // Not a `const`: NetArchTest's HaveDependencyOn scan treats string *field constants*
     // as candidate dependency evidence, and this filename's "Grimoire.IngestAgent" prefix
     // would otherwise false-positive HubAgentDispatchBoundaryRuleTests (ADR-002) even
