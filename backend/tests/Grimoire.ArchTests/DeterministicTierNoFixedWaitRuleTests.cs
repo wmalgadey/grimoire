@@ -46,7 +46,7 @@ public class DeterministicTierNoFixedWaitRuleTests
 
         foreach (var assemblyPath in ScannedAssemblyPaths())
         {
-            var assembly = AssemblyDefinition.ReadAssembly(assemblyPath);
+            using var assembly = AssemblyDefinition.ReadAssembly(assemblyPath);
             foreach (var module in assembly.Modules)
             {
                 var allTypes = module.Types.SelectMany(GetAllTypesIncludingNested).ToList();

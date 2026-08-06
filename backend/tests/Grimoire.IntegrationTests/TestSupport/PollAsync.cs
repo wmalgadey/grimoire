@@ -84,9 +84,9 @@ public static class PollAsync
         TimeSpan? pollInterval = null)
     {
         var interval = pollInterval ?? DefaultPollInterval;
-        var deadline = DateTime.UtcNow + timeout;
+        var stopwatch = System.Diagnostics.Stopwatch.StartNew();
 
-        while (DateTime.UtcNow < deadline)
+        while (stopwatch.Elapsed < timeout)
         {
             if (await condition().ConfigureAwait(false))
             {

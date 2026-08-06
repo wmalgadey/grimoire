@@ -28,7 +28,7 @@ public class HubRequestTracingTests
     [Fact]
     public async Task PostIngestSubmission_ExportsHubSubmitSpan_UnderProductionTelemetryRegistration()
     {
-        var exportedItems = new List<Activity>();
+        var exportedItems = new SynchronizedActivityCollection();
         using var fixture = new IngestSubmissionPipelineFixture(urlFetchHandler: new StaticHtmlHandler());
         using var host = await BuildHostAsync(fixture, exportedItems);
         var client = host.GetTestClient();
@@ -42,14 +42,14 @@ public class HubRequestTracingTests
         Assert.True(submitSpan.Recorded);
     }
 
-    private static async Task<Activity> WaitForSpanAsync(List<Activity> exportedItems, string operationName)
+    private static async Task<Activity> WaitForSpanAsync(SynchronizedActivityCollection exportedItems, string operationName)
     {
         await PollAsync.WaitAsync(
-            () => exportedItems.Any(a => a.OperationName == operationName),
+            () => exportedItems.Snapshot().Any(a => a.OperationName == operationName),
             TimeSpan.FromSeconds(10),
             $"Span '{operationName}' was never exported.");
 
-        var match = exportedItems.FirstOrDefault(a => a.OperationName == operationName);
+        var match = exportedItems.Snapshot().FirstOrDefault(a => a.OperationName == operationName);
         if (match is not null)
         {
             return match;
@@ -58,7 +58,31 @@ public class HubRequestTracingTests
         throw new TimeoutException($"Span '{operationName}' was never exported.");
     }
 
-    private static async Task<IHost> BuildHostAsync(IngestSubmissionPipelineFixture fixture, List<Activity> exportedItems)
+    /// <summary>
+    /// The in-memory exporter appends from the request-processing thread while the test thread
+    /// polls; a plain List makes that enumeration race (mirrors IngestTaskRecordTraceTests).
+    /// </summary>
+    private sealed class SynchronizedActivityCollection : ICollection<Activity>
+    {
+        private readonly List<Activity> _items = [];
+        private readonly object _gate = new();
+
+        public int Count { get { lock (_gate) { return _items.Count; } } }
+        public bool IsReadOnly => false;
+
+        public void Add(Activity item) { lock (_gate) { _items.Add(item); } }
+        public void Clear() { lock (_gate) { _items.Clear(); } }
+        public bool Contains(Activity item) { lock (_gate) { return _items.Contains(item); } }
+        public void CopyTo(Activity[] array, int arrayIndex) { lock (_gate) { _items.CopyTo(array, arrayIndex); } }
+        public bool Remove(Activity item) { lock (_gate) { return _items.Remove(item); } }
+
+        public Activity[] Snapshot() { lock (_gate) { return [.. _items]; } }
+
+        public IEnumerator<Activity> GetEnumerator() => ((IEnumerable<Activity>)Snapshot()).GetEnumerator();
+        System.Collections.IEnumerator System.Collections.IEnumerable.GetEnumerator() => GetEnumerator();
+    }
+
+    private static async Task<IHost> BuildHostAsync(IngestSubmissionPipelineFixture fixture, ICollection<Activity> exportedItems)
     {
         var hostBuilder = new HostBuilder()
             .ConfigureWebHost(webHost =>
