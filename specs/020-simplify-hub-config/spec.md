@@ -25,6 +25,8 @@ we should only need to configure, what the user currently wants to configure, no
 - Q: On a fresh run, where do the agent instruction files come from? → A: Instruction files are bound to the agent and versioned alongside the agent harness itself. Building the agent creates and refreshes the default agent directory; every agent build updates it. When the hub is pointed at a different agent folder, a supported build-time mechanism (build script, MSBuild task or property) MUST let the operator direct the agent build output into that folder. The hub MUST fail if the agent directory is empty.
 - Q: What happens to data already on disk in the old layout (`data/agents`, `data/state`, `data/conversations`, `data/findings`, `wiki/`, `tasks/`, `remediation-tasks/`)? → A: No migration — the hub uses the new defaults and neither detects nor moves old folders; the operator relocates them manually or points the three options at them.
 - Q: What should the default directory names be? → A: `.grimoire/` for the runtime data folder and `llm-wiki/` for the wiki folder, both as siblings under the process's current working directory; the agent folder defaults to a subfolder of `.grimoire/`.
+- Q: Where do the eval recordings currently under `data/evals/recordings/` belong, given they are git-tracked test fixtures rather than runtime state or agent results? → A: Into a fixture folder inside the test project, alongside the existing eval fixtures. The eval runner resolves them from a hardcoded location matching the test project's expectations, so the recordings path is no longer a command-line switch.
+- Q: The eval runner also hardcodes the agent instruction paths this feature relocates — where should it read instructions from? → A: From the agent project sources, repo-anchored and independent of build output, so eval runs do not depend on the runtime agent directory or on a prior agent build.
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -112,7 +114,8 @@ An operator with unusual infrastructure needs (for example, putting the state da
 - What happens when the wiki folder is explicitly configured to be the same as, or nested inside, the runtime data directory? The hub MUST accept it as a valid explicit choice — even though it departs from the default sibling relationship — without treating it as an error.
 - What happens to an operator's hand edits to instruction files inside an agent directory? The next agent build overwrites them, because instruction files are versioned with the agent. Durable instruction changes are made in the agent's own sources, not in the output directory.
 - What happens when data from the old layout (`data/agents`, `data/state`, `data/conversations`, `data/findings`, `wiki/`, `tasks/`, `remediation-tasks/`) is present on disk? The hub neither detects nor migrates it; it simply uses the configured locations. Relocating old data is a manual operator step.
-- What happens when an operator supplies a command-line option that no longer exists (e.g. a former per-artifact path switch)? The command fails with the CLI parser's standard "unrecognized option" error; no dedicated legacy-option detection or replacement guidance is built.
+- What happens when an operator supplies a command-line option that no longer exists (e.g. a former per-artifact path switch, or the eval runner's recordings-root switch)? The command fails with the CLI parser's standard "unrecognized option" error; no dedicated legacy-option detection or replacement guidance is built.
+- What happens to eval runs when an operator has pointed the three directory options at unusual locations? Nothing — eval recordings and agent instructions resolve from repo-anchored locations, so eval results do not vary with hub configuration.
 
 ## Requirements *(mandatory)*
 
@@ -133,6 +136,9 @@ An operator with unusual infrastructure needs (for example, putting the state da
 - **FR-013**: The hub MUST fail with an error identifying the agent directory when that directory is missing or contains no instruction files, rather than running agents without instructions.
 - **FR-014**: The hub MUST NOT detect or migrate data left in the previous directory layout; relocating such data is a manual operator step.
 - **FR-015**: The hub MUST confine any further customization of internal sub-paths beneath the three root folders to the configuration file, never exposing them as additional command-line switches.
+- **FR-016**: Eval recordings MUST live in a fixture folder inside the test project rather than under the runtime data folder, and the eval runner MUST resolve them from a hardcoded location matching the test project's expectations — removing the recordings-root command-line switch.
+- **FR-017**: The eval runner MUST resolve agent instruction files from the agent project sources, repo-anchored, so eval runs depend on neither the configured runtime agent directory nor a prior agent build.
+- **FR-018**: Eval fixture and instruction resolution MUST be independent of all three configured directory options, so eval runs produce the same result regardless of how an operator has configured the hub.
 
 ### Key Entities
 
@@ -140,6 +146,7 @@ An operator with unusual infrastructure needs (for example, putting the state da
 - **Wiki Folder**: The independently configurable root holding all agent-produced results — wiki content pages, `index.md`, `log.md`, tasks, conversations, findings, and remediation tasks. Defaults to `llm-wiki/` under the current working directory, as a sibling of the Runtime Data Folder, and may be pointed anywhere (e.g. a separately git-tracked location).
 - **Agent Folder**: The independently configurable directory holding both instruction files and runtime data for every agent type (ingest, query, lint) in per-type subfolders. Defaults to a subfolder of the Runtime Data Folder. Its contents are produced and refreshed by the agent build, not by the hub; the hub refuses to run when it is empty.
 - **Configuration File**: The versioned `appsettings.json` that supplies the default values for all three root folders and any internal sub-path customization. Mandatory — the hub fails without it — and never mirrored as extra command-line switches.
+- **Eval Fixtures**: Git-tracked eval recordings, held in a fixture folder inside the test project alongside the existing eval fixtures. Resolved by the eval runner from a hardcoded location, outside all three configurable root folders, and therefore unaffected by how an operator configures the hub.
 
 ## Success Criteria *(mandatory)*
 
@@ -159,6 +166,8 @@ An operator with unusual infrastructure needs (for example, putting the state da
 - **SC-006**: 100% of hub starts with a missing, empty, or incomplete configuration file fail with an error naming the configuration file, with no silent fallback to code-level defaults.
 - **SC-007**: 100% of hub starts against a missing or empty agent directory fail with an error naming that directory.
 - **SC-008**: 100% of agent builds leave the target agent directory holding that agent's current instruction files.
+- **SC-009**: 100% of eval runs resolve their recordings from the hardcoded test-fixture location, with no recordings path accepted on the command line.
+- **SC-010**: 100% of eval runs produce identical results regardless of how the three directory options are configured, resolving instructions from the agent project sources without requiring an agent build.
 
 ## Assumptions
 
@@ -169,3 +178,6 @@ An operator with unusual infrastructure needs (for example, putting the state da
 - Instruction files are versioned with the agent harness and regenerated by every agent build. Per-project instruction customization therefore happens in the agent's sources, not by editing the build output; the hub never authors or seeds instruction content itself, which keeps the Principle V boundary intact.
 - This is a breaking change to the existing 16-switch configuration surface. Since the hub is pre-1.0 with no external consumers, removed options simply stop being recognized by the CLI parser — no deprecation aliases, detection logic, or migration shims are built, and no on-disk data is migrated.
 - The three existing per-agent instruction directories (ingest, query, lint) become subfolders of the single agent folder rather than being merged into one undifferentiated set of files.
+- The eval runner is in scope for this feature because it currently hardcodes paths this change relocates. Its recordings become test fixtures and its instruction resolution becomes repo-anchored; it is deliberately *not* wired to the three configurable directories, keeping eval runs reproducible and independent of operator configuration.
+- The eval runner's local secrets/env file follows the runtime data folder's new default location, consistent with where the hub reads secrets. This is the least surprising placement given the runtime data folder now owns secrets, and it is the one eval-runner path not settled by explicit direction.
+- Nothing else moves out of the runtime data folder as part of this change: with eval recordings relocated to the test project, the runtime data folder holds only genuine runtime state (raw intake, state database, secrets, write-locks) plus the default agent folder.

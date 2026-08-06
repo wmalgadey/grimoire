@@ -76,3 +76,18 @@ so no evaluation-threshold criteria apply. A note to that effect is embedded in 
 Success Criteria section.
 
 All 16 checklist items still pass after round 3.
+
+**2026-08-06 clarification session (round 4)**: closed the eval-data gap flagged at the end of
+round 3. Eval recordings move out of the runtime data folder into a fixture folder inside the
+test project, resolved from a hardcoded location with the recordings-root switch removed
+(FR-016). The eval runner's agent-instruction resolution becomes repo-anchored against the
+agent project sources rather than the runtime agent directory or build output (FR-017), and
+eval resolution is required to be independent of all three directory options so eval results
+never vary with operator configuration (FR-018, SC-009, SC-010). With recordings relocated,
+the runtime data folder now holds only genuine runtime state.
+
+One eval-runner path was settled by inference rather than explicit direction — the runner's
+local secrets/env file, which is assumed to follow the runtime data folder's new default. It
+is called out as such in the Assumptions section and is worth confirming during planning.
+
+All 16 checklist items still pass after round 4.
