@@ -1,0 +1,51 @@
+<Project>
+
+  <!--
+    Feature 020 (ADR-022): agent-runtime build distribution.
+
+    Any project that declares <GrimoireAgentId> is an "agent project". After every build,
+    its entire output — worker executable, deps.json, runtimeconfig.json, every
+    dependency assembly, and its instruction files (copied into $(OutDir)\Instructions\
+    by that project's own Content item, see each agent .csproj) — is copied, clear-then-
+    copy, into its own subfolder of $(GrimoireAgentDir). This is the ONLY mechanism that
+    populates the hub's configured agent directory: the hub itself never builds one
+    (ADR-022 rule R4, NoRuntimeBuildInvocationRuleTests) and only ever reads from here.
+
+    $(GrimoireAgentDir) defaults to the repo-relative .grimoire/agents (a sibling of
+    backend/) and is the supported operator redirect:
+      dotnet build backend/Grimoire.slnx -p:GrimoireAgentDir=/srv/grimoire/agents
+  -->
+
+  <PropertyGroup>
+    <GrimoireAgentDir Condition="'$(GrimoireAgentDir)' == ''">$(MSBuildThisFileDirectory)..\.grimoire\agents\</GrimoireAgentDir>
+  </PropertyGroup>
+
+  <Target Name="PublishAgentRuntime"
+          AfterTargets="Build"
+          Condition="'$(GrimoireAgentId)' != ''">
+    <PropertyGroup>
+      <_GrimoireAgentDestDir>$([System.IO.Path]::GetFullPath('$(GrimoireAgentDir)$(GrimoireAgentId)\'))</_GrimoireAgentDestDir>
+    </PropertyGroup>
+
+    <!-- Clear-then-copy: the destination states exactly what THIS build produced, with
+         no stale assembly or renamed instruction file left over from a previous one
+         (FR-011/SC-008). Only the agent-id subfolder is deleted — never $(GrimoireAgentDir)
+         itself or anything beside it. -->
+    <RemoveDir Directories="$(_GrimoireAgentDestDir)" Condition="Exists('$(_GrimoireAgentDestDir)')" />
+    <MakeDir Directories="$(_GrimoireAgentDestDir)" />
+
+    <ItemGroup>
+      <_GrimoireAgentBuildOutput Include="$(OutDir)**\*.*" />
+    </ItemGroup>
+
+    <!-- The WHOLE output is copied, not a selection: deps.json enumerates every assembly
+         the app expects, so a partial copy fails at launch (the failure
+         Grimoire.EvalRunner's AgentProcessInvoker already documents). -->
+    <Copy SourceFiles="@(_GrimoireAgentBuildOutput)"
+          DestinationFiles="@(_GrimoireAgentBuildOutput -> '$(_GrimoireAgentDestDir)%(RecursiveDir)%(Filename)%(Extension)')"
+          SkipUnchangedFiles="false" />
+
+    <Message Importance="high" Text="Grimoire agent runtime published: $(GrimoireAgentId) -&gt; $(_GrimoireAgentDestDir)" />
+  </Target>
+
+</Project>
