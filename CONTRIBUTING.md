@@ -81,7 +81,10 @@ and SlowEval classes in one invocation, exactly as it always has.
 ### Writing new backend tests
 
 - Write tests TDD-style against expected system behavior, not after the fact against
-  whatever the implementation happens to do.
+  whatever the implementation happens to do. The binding style is the classicist
+  (Chicago-school) rule set in the constitution (Principle II): assert observable
+  state — never interactions — use hand-rolled fakes implementing existing port
+  interfaces as the only test doubles, and never add a mocking framework.
 - Place a new test in the tier that matches what it verifies: hermetic domain/harness
   logic with no external process or real infrastructure belongs in the Fast tier
   (`Grimoire.Domain.UnitTests`, `Grimoire.ArchTests`, or a `Tier=Fast`-tagged

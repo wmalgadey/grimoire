@@ -104,6 +104,11 @@
   Include the concrete doubles, fixtures, and recorded samples required to keep the
   test suite reproducible. Hermetic tests MUST NOT require live LLM provider calls or
   production credentials.
+
+  Doubles MUST follow Constitution Principle II's classicist (Chicago-school) rule:
+  hand-rolled fakes implementing an existing port interface only — never
+  mocking-framework mocks (Moq/NSubstitute/FakeItEasy are banned) and never a double
+  introduced solely to isolate an internal collaborator. Verification is state-based.
 -->
 
 | Success criterion | Category | Primary test type | Doubles / external dependencies | Fixtures / sampled data | Notes |
