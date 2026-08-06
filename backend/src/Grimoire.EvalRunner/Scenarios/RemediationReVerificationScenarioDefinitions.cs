@@ -26,7 +26,7 @@ public sealed record RemediationReVerificationScenarioDefinition(
     /// <summary>Stable serialization for the `scenario_definition` staleness fingerprint (mirrors <see cref="LintScenarioDefinition.StableSerialization"/>).</summary>
     public string StableSerialization() =>
         $"id={Id}\nfixture={FixtureName}\ntitle={ProposalTitle}\ndescription={ProposalDescription}\n" +
-        $"targetPath={ProposalTargetPath}\nexpected={ExpectedOutcome}\nthreshold={Threshold:0.00}\nscorer={ScorerId}\n";
+        $"targetPath={ProposalTargetPath}\nexpected={ExpectedOutcome}\nthreshold={Threshold.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture)}\nscorer={ScorerId}\n";
 }
 
 /// <summary>

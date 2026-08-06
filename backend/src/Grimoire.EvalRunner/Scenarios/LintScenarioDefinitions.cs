@@ -21,7 +21,7 @@ public sealed record LintScenarioDefinition(
     /// <see cref="ScenarioDefinition.StableSerialization"/>/<see cref="QueryScenarioDefinition.StableSerialization"/>).
     /// </summary>
     public string StableSerialization() =>
-        $"id={Id}\nfixture={FixtureName}\nthreshold={Threshold:0.00}\nscorer={ScorerId}\n";
+        $"id={Id}\nfixture={FixtureName}\nthreshold={Threshold.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture)}\nscorer={ScorerId}\n";
 }
 
 /// <summary>
