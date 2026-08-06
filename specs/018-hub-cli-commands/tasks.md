@@ -161,3 +161,10 @@
 ## Implementation Strategy
 
 **MVP = Phase 0 + 1 + 2 + Phase 3 (US1)**: the lint-run command proves the entire pattern — Spectre dispatch, in-process composition, blocking supervision, contract outputs, cross-process lock — end to end. Each subsequent story adds value without touching the previous ones; the shared integration-test files grow per story. Stop and validate at every checkpoint.
+
+---
+
+## Phase 8: Convergence
+
+- [ ] T041 Wrap the lock-acquisition-to-terminal-state critical section in `LintRunCoordinator.TriggerAsync` (`backend/src/Grimoire.Hub/LintDispatch/LintRunCoordinator.cs`, lines ~163-190) in try/finally so the `lint.pid` file lock (`_pidLock`) and in-process `_slot` semaphore are always released, even when an exception is thrown between acquisition and the existing launcher-start `try` block (e.g. a failing `PublishRunChangedAsync` call at line 179), preventing a permanent cross-process lint-run lockout per plan: lint.pid lock (D1a) (contradicts)
+- [ ] T042 Add description text to every `[CommandOption]`/`[CommandArgument]` across `backend/src/Grimoire.Hub/Cli/*Settings.cs` (and inline settings classes in command files) so `<command> --help` shows each argument's/option's description, as `contracts/cli-commands.md`'s help contract requires per FR-010 (missing)
