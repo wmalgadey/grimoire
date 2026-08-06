@@ -1,46 +1,45 @@
 <!--
 SYNC IMPACT REPORT
 ==================
-Version change: 1.4.0 → 1.5.0
+Version change: 1.5.0 → 1.6.0
 
 Principles modified:
-  - III. ADR-Driven & Test-Enforced Architecture (clarified the observability-test and
-    agent-behavior-evaluation-test placement rule: these MAY now be implemented and
-    tested co-located with the user-story phase that triggers them, instead of being
-    strictly confined to the final phase, PROVIDED the final phase carries a named
-    completeness-audit task proving every plan.md Observability row and every
-    agent-judgment success criterion has a passing implementation + test)
+  - II. Pragmatic Testing Strategy (added the named, binding "Classicist
+    (Chicago-school) TDD" block: tests are written TDD-style against expected
+    behavior; verification is state-based, never interaction-based; real
+    collaborators inside the hexagon; test doubles only as hand-rolled fakes
+    implementing existing Principle I port interfaces; mocking/interaction-
+    verification frameworks are banned from test projects)
 
 Principles added: none
 
 Sections modified:
-  - Definition of Done (reworded the observability and agent-behavior-evaluation
-    gates to require a final-phase completeness-audit task rather than requiring the
-    tests themselves to live in the final phase)
+  - Definition of Done (new gate: classicist test-style compliance — state-based
+    assertions, port-fake-only doubles, no mocking-framework reference in any
+    test project)
 
 Sections removed: none
 
 Templates updated:
-  - .specify/templates/tasks-template.md ✅ (Phase 0 comment no longer states
-    observability tests "belong in the final phase"; Phase N template now models a
-    named completeness-audit task instead of monolithic final-phase observability/eval
-    test tasks)
-  - .specify/templates/plan-template.md ✅ no change required (Observability section
-    doesn't prescribe phase placement)
-  - .specify/templates/spec-template.md ✅ no change required (spec stays tech-agnostic)
+  - .specify/templates/plan-template.md ✅ (Test Strategy guidance comment now
+    states doubles MUST be hand-rolled port fakes per Principle II — no
+    mocking-framework mocks)
+  - .specify/templates/tasks-template.md ✅ no change required (test-task
+    categories are style-agnostic; the DoD gate and plan-template carry the rule)
+  - .specify/templates/spec-template.md ✅ no change required (spec stays
+    tech-agnostic; its Principle II reference concerns the success-criteria
+    split, which is unchanged)
   - .specify/templates/checklist-template.md ✅ no change required
 
-Rationale for MINOR bump: this is a material clarification of an existing MUST rule's
-enforceable meaning (which phase satisfies the requirement), not a new principle and
-not a removal of enforcement — the DoD gate and the mandatory final-phase audit remain.
-It resolves a real, already-lived conflict: every implemented feature to date (001,
-004, 006, 007, 008, 009) places observability/eval implementation and tests inside
-each user story's own phase and uses the final phase for a completeness-audit task
-instead, which the prior wording ("belong in the final polish phase," "MUST each
-appear as a named task in the final phase") did not permit. Codifying the practice
-already in use, rather than requiring a retroactive rewrite of every feature's
-tasks.md, is the correct fix (raised as finding H1 by `/speckit-analyze` on
-008-query-agent).
+Rationale for MINOR bump: materially expanded guidance inside an existing
+principle — the anti-mocking stance ("excessive mocking rejected", "mocked
+repository test is a false negative") is expanded into a named school with
+enforceable rules and a new DoD gate. Nothing previously permitted is removed:
+the codebase already contains zero mocking-framework references, and every
+existing test double (FakeAgentProcess, FakeModelClient, FakeUrlContentFetcher,
+FakeMarkdownConverter) is a hand-rolled port fake, so no existing test becomes
+non-compliant. Codifies the de facto practice so future SDD flows (plan/tasks/
+implement) inherit it from the constitution rather than from convention.
 
 Deferred TODOs: none.
 -->
@@ -111,6 +110,31 @@ integration tests cover them implicitly.
 
 Dogmatic Red-Green-Refactor and excessive mocking are explicitly rejected. A test that
 mocks the database for a repository implementation is considered a false negative.
+
+**Classicist (Chicago-school) TDD.** All backend tests follow the classicist
+(Chicago/Detroit) school of test-driven development; the mockist (London) style of
+interaction-driven design is rejected. Concretely:
+
+- Tests MUST be written TDD-style against expected system behavior — before or alongside
+  the implementation — not retrofitted to whatever the implementation happens to do.
+- Verification MUST be state-based: assert observable outcomes (returned values,
+  persisted files/records, HTTP responses, emitted telemetry) — never interaction
+  sequences ("method X was called with arguments Y") on collaborators.
+- Inside the hexagon, tests exercise real collaborators. Test doubles are permitted ONLY
+  as hand-rolled fakes implementing an existing port interface (the Principle I
+  external-system ports — model client, agent process, converter, outbound fetch).
+  Introducing a port or a double solely to isolate an internal collaborator violates
+  both this principle and Principle I's persistence exemption.
+- Mocking/interaction-verification frameworks (e.g., Moq, NSubstitute, FakeItEasy)
+  MUST NOT be referenced by any test project. A PR introducing one is an architectural
+  signal to re-examine the boundary it is trying to mock, not a tooling choice.
+
+Rationale: this names and makes enforceable the practice the codebase already follows
+(zero mocking-framework references; doubles exist only as port fakes; integration tests
+against real infrastructure are primary). State-based classicist tests survive
+refactoring of internals, while interaction-based tests couple the suite to
+implementation structure — the opposite of what a harness whose intelligence lives in
+agent instructions (Principle V) needs from its safety net.
 
 **Harness contracts vs. agent behavior.** The two halves of the system defined by
 Principle V are tested differently, and conflating them is a violation in both directions:
@@ -287,6 +311,7 @@ A feature increment is DONE when ALL of the following conditions hold:
 - [ ] The agentic boundary (Principle V) is respected: no wiki-content judgment is implemented as deterministic backend code, instruction files are loaded into the agent's context, and the guarded-tool structural test passes
 - [ ] Hexagonal boundary rules (Principle I) hold: external-system dependencies introduced or touched by the feature are consumed via ports with production adapter and test fake, and infrastructure packages appear only in their designated adapter namespaces (enforced by structural architecture tests)
 - [ ] Integration tests via Testcontainers cover all API boundaries introduced by the feature
+- [ ] Test style follows Principle II's classicist (Chicago-school) rules: assertions are state-based (no interaction verification), test doubles are hand-rolled fakes implementing existing port interfaces only, and no mocking framework is referenced by any test project
 - [ ] CI/CD pipeline passes: architecture tests, integration tests, linting, build
 - [ ] No unapproved infrastructure was introduced
 
@@ -306,4 +331,4 @@ per semantic versioning (MAJOR: incompatible principle removals/redefinitions; M
 or materially expanded principles; PATCH: clarifications), update the Sync Impact Report,
 and propagate changes to the dependent templates in `.specify/templates/`.
 
-**Version**: 1.5.0 | **Ratified**: 2026-06-23 | **Last Amended**: 2026-07-26
+**Version**: 1.6.0 | **Ratified**: 2026-06-23 | **Last Amended**: 2026-08-06
