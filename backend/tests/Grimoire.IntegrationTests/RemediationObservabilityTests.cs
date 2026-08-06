@@ -29,6 +29,7 @@ namespace Grimoire.IntegrationTests;
 /// pattern per ADR-005, mirroring <see cref="LintRemediationObservabilityTests"/>/
 /// <see cref="QueryConversationLogEventTests"/>.
 /// </summary>
+[Collection("HubActivityListenerObservability")]
 public class RemediationObservabilityTests
 {
     // ── log events ──────────────────────────────────────────────────────────────

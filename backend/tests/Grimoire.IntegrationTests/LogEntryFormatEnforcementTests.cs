@@ -22,6 +22,7 @@ namespace Grimoire.IntegrationTests;
 /// than any single agent's frozen tracing identity) — ADR-017's check applies uniformly
 /// to whichever agent process's <c>GuardedToolExecutor</c> reaches it.
 /// </summary>
+[Collection("HubActivityListenerObservability")]
 public class LogEntryFormatEnforcementTests
 {
     private static readonly ActivitySource TestActivitySource = new("LogEntryFormatEnforcementTests");

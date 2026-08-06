@@ -14,6 +14,7 @@ namespace Grimoire.IntegrationTests;
 /// and the recordings/replay counters — all correlated via `task_id`. Runs in the
 /// standard PR pipeline; no provider, no process spawns.
 /// </summary>
+[Collection("HubActivityListenerObservability")]
 public class EvalRunnerObservabilityTests
 {
     [Fact]

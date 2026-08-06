@@ -10,6 +10,7 @@ namespace Grimoire.IntegrationTests.PathConfiguration;
 /// <c>&lt;cwd&gt;/data</c>; overriding a single location leaves every other default intact
 /// (US2 acceptance scenario 2).
 /// </summary>
+[Collection("CurrentDirectoryMutation")]
 public class DefaultLayoutTests
 {
     [Fact]

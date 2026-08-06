@@ -10,6 +10,7 @@ namespace Grimoire.IntegrationTests.PathConfiguration;
 /// <c>--findings-dir</c>/env-var overrides, mirroring <see cref="WriteLocksPathTests"/>'s
 /// cases for <c>write_locks_dir</c> (single composition point, no ambient discovery).
 /// </summary>
+[Collection("CurrentDirectoryMutation")]
 public class FindingsPathTests
 {
     [Fact]

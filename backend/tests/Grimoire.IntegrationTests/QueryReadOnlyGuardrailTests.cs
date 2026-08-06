@@ -121,19 +121,12 @@ public class QueryReadOnlyGuardrailTests
             }
         });
 
-        var deadline = DateTime.UtcNow.AddSeconds(5);
-        Grimoire.Hub.QueryDispatch.QueryTurnState? turn = null;
         var coordinator = host.Services.GetRequiredService<Grimoire.Hub.QueryDispatch.QueryRunCoordinator>();
-        while (DateTime.UtcNow < deadline)
-        {
-            turn = coordinator.GetTurn(turnId);
-            if (turn is { Status: Grimoire.Hub.QueryDispatch.QueryTurnStatus.Completed })
-            {
-                break;
-            }
-
-            await Task.Delay(20);
-        }
+        await PollAsync.WaitAsync(
+            () => coordinator.GetTurn(turnId) is { Status: Grimoire.Hub.QueryDispatch.QueryTurnStatus.Completed },
+            TimeSpan.FromSeconds(5),
+            $"Expected turn '{turnId}' to reach Completed status within 5s.");
+        var turn = coordinator.GetTurn(turnId);
 
         Assert.NotNull(turn);
         Assert.Equal(Grimoire.Hub.QueryDispatch.QueryTurnStatus.Completed, turn!.Status);
@@ -142,11 +135,10 @@ public class QueryReadOnlyGuardrailTests
         // bookkeeping block of the Conversation Record (SC-002).
         var resolvedPaths = host.Services.GetRequiredService<Grimoire.Hub.Runtime.Paths.ResolvedGrimoirePaths>();
         var recordPath = resolvedPaths.ConversationRecordPathFor("c-denial-record");
-        var recordDeadline = DateTime.UtcNow.AddSeconds(5);
-        while (!File.Exists(recordPath) && DateTime.UtcNow < recordDeadline)
-        {
-            await Task.Delay(20);
-        }
+        await PollAsync.WaitAsync(
+            () => File.Exists(recordPath),
+            TimeSpan.FromSeconds(5),
+            $"Expected the Conversation Record at '{recordPath}' to exist within 5s.");
 
         Assert.True(File.Exists(recordPath));
         var parsed = Assert.IsType<Grimoire.Hub.QueryConversations.ConversationRecordParseResult.Parsed>(

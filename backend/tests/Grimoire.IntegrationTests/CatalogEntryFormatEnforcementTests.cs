@@ -19,6 +19,7 @@ namespace Grimoire.IntegrationTests;
 /// the trace span test below) — ADR-017's check applies uniformly to whichever agent
 /// process's <c>GuardedToolExecutor</c> reaches it.
 /// </summary>
+[Collection("HubActivityListenerObservability")]
 public class CatalogEntryFormatEnforcementTests
 {
     private static readonly ActivitySource TestActivitySource = new("CatalogEntryFormatEnforcementTests");

@@ -16,7 +16,8 @@ namespace Grimoire.AgentEvals;
 /// which always Skipped in the standard CI run (no GRIMOIRE_EVAL=1) and so always failed
 /// SC-008's (feature 009) zero-skip gate.
 /// </summary>
-[Collection("EvalRunnerProcessTests")]
+[Trait("Tier", "SlowEval")]
+[Collection("EvalRunnerReplayScenarios")]
 public class QueryReplayEvalTests
 {
     [Fact]

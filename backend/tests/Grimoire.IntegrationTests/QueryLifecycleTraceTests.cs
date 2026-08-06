@@ -18,6 +18,7 @@ namespace Grimoire.IntegrationTests;
 /// and the agent-process-side subtree (run → load_instructions/model_turn/tool_call/
 /// query_agent.finalize_artifact retired by 011/T027), since the two are separate processes/ActivitySources in production.
 /// </summary>
+[Collection("HubActivityListenerObservability")]
 public class QueryLifecycleTraceTests
 {
     [Fact]
@@ -44,12 +45,10 @@ public class QueryLifecycleTraceTests
         var accepted = Assert.IsType<Grimoire.Hub.QueryDispatch.QuerySubmissionResult.Accepted>(submission);
         var turnId = accepted.Turn.TurnId;
 
-        var deadline = DateTime.UtcNow.AddSeconds(5);
-        while (DateTime.UtcNow < deadline &&
-               coordinator.GetTurn(turnId)?.Status != Grimoire.Hub.QueryDispatch.QueryTurnStatus.Completed)
-        {
-            await Task.Delay(25);
-        }
+        await PollAsync.WaitAsync(
+            () => coordinator.GetTurn(turnId)?.Status == Grimoire.Hub.QueryDispatch.QueryTurnStatus.Completed,
+            TimeSpan.FromSeconds(5),
+            $"Expected turn '{turnId}' to reach Completed status within 5s.");
 
         Assert.Equal(Grimoire.Hub.QueryDispatch.QueryTurnStatus.Completed, coordinator.GetTurn(turnId)!.Status);
 

@@ -19,6 +19,7 @@ namespace Grimoire.IntegrationTests;
 /// <c>query.conversation.record_append_failed</c> while the turn still reaches its
 /// terminal state and the <c>queryTurnChanged</c> publish still fires.
 /// </summary>
+[Collection("HubActivityListenerObservability")]
 public class QueryConversationLogEventTests
 {
     [Fact]

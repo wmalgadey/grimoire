@@ -10,6 +10,7 @@ namespace Grimoire.IntegrationTests;
 /// T049 (US2) - deterministic validation of span name and correlation attributes for
 /// `hub.ingest_lifecycle.publish_update` (plan.md ## Observability > Distributed Trace Spans).
 /// </summary>
+[Collection("HubActivityListenerObservability")]
 public class IngestLifecycleTraceTests
 {
     [Fact]

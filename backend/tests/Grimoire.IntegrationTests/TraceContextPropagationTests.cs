@@ -12,6 +12,7 @@ namespace Grimoire.IntegrationTests;
 /// (Constitution IV: "distributed trace spans MUST be implemented as an end-to-end, observable
 /// trace chain in code").
 /// </summary>
+[Collection("HubActivityListenerObservability")]
 public class TraceContextPropagationTests
 {
     [Fact]

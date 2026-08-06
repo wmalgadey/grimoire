@@ -21,7 +21,8 @@ namespace Grimoire.AgentEvals;
 /// standard PR pipeline, silently losing CI coverage for every agent-judgment success
 /// criterion this feature defines (Constitution Principle II/III).
 /// </summary>
-[Collection("EvalRunnerProcessTests")]
+[Trait("Tier", "SlowEval")]
+[Collection("EvalRunnerReplayScenarios")]
 public class LintReplayEvalTests
 {
     [Fact]

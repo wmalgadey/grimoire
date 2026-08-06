@@ -31,9 +31,9 @@ public class QueryConversationRecordDurabilityTests
             var client = host.GetTestClient();
 
             await QueryConversationRecordLifecycleTests.RunScriptedTurnAsync(client, launcher, 0, "c-durable",
-                prompt: "First?", answerChunks: ["First answer."], terminalExtra: new { summary = "done" });
+                prompt: "First?", answerChunks: ["First answer."], terminalExtra: new { summary = "done" }, root: root);
             await QueryConversationRecordLifecycleTests.RunScriptedTurnAsync(client, launcher, 1, "c-durable",
-                prompt: "Second?", answerChunks: ["Second answer."], terminalExtra: new { summary = "done" });
+                prompt: "Second?", answerChunks: ["Second answer."], terminalExtra: new { summary = "done" }, root: root);
 
             // Third turn: the agent is killed mid-stream (chunk, then silence — the
             // liveness watchdog terminates it per the existing supervision rules).
@@ -83,7 +83,7 @@ public class QueryConversationRecordDurabilityTests
             var client = host.GetTestClient();
 
             await QueryConversationRecordLifecycleTests.RunScriptedTurnAsync(client, launcher, 0, "c-rehydrate",
-                prompt: "First?", answerChunks: ["First answer."], terminalExtra: new { summary = "done" });
+                prompt: "First?", answerChunks: ["First answer."], terminalExtra: new { summary = "done" }, root: root);
 
             // Interrupted second turn: its partial answer must reach the hydrated context.
             var turn2 = await QueryConversationRecordLifecycleTests.SubmitAsync(client, "c-rehydrate", "Second, interrupted?");

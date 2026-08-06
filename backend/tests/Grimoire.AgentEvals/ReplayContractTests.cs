@@ -13,7 +13,7 @@ namespace Grimoire.AgentEvals;
 /// conversation divergence (FR-010/FR-004). Spawns the real agent executable with the
 /// replay adapter — no provider, no network.
 /// </summary>
-[Collection("EvalRunnerProcessTests")]
+[Trait("Tier", "Fast")]
 public class ReplayContractTests : IDisposable
 {
     private static readonly string[] ProviderEnvKeys =

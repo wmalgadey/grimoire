@@ -12,6 +12,7 @@ namespace Grimoire.IntegrationTests.PathConfiguration;
 /// <see cref="FindingsPathTests"/>'s cases (single composition point, no ambient
 /// discovery).
 /// </summary>
+[Collection("CurrentDirectoryMutation")]
 public class RemediationTasksPathTests
 {
     [Fact]

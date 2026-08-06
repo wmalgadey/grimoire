@@ -24,6 +24,7 @@ namespace Grimoire.IntegrationTests;
 /// <c>hub.remediation_lifecycle_updates_total{stage}</c> broadcast counter. US4/US5
 /// extend this class with their own signal rows (T038/T044).
 /// </summary>
+[Collection("HubActivityListenerObservability")]
 public class LintRemediationObservabilityTests
 {
     [Fact]
@@ -86,15 +87,10 @@ public class LintRemediationObservabilityTests
             var accepted = Assert.IsType<LintSubmissionResult.Accepted>(result);
             var runId = accepted.Run.RunId;
 
-            var deadline = DateTime.UtcNow.AddSeconds(10);
-            while (DateTime.UtcNow < deadline)
-            {
-                if (coordinator.GetRun(runId) is { IsTerminal: true } run && run.FindingsReportPath is not null)
-                {
-                    break;
-                }
-                await Task.Delay(25);
-            }
+            await PollAsync.WaitAsync(
+                () => coordinator.GetRun(runId) is { IsTerminal: true } run && run.FindingsReportPath is not null,
+                TimeSpan.FromSeconds(10),
+                $"Expected lint run '{runId}' to reach a terminal status with a Findings Report within 10s.");
 
             var supervision = Assert.Single(activities.Where(
                 a => a.OperationName == "hub.lint.run_supervision" && GetTag(a, "run_id") == runId));

@@ -34,6 +34,12 @@ public class IngestTaskRecordWatcherTests
         Assert.True(evt.ChangedAt <= DateTimeOffset.UtcNow);
     }
 
+    // 019-fast-test-tier (ADR-021 R4): the writes must land within the watcher's 300ms
+    // debounce window for coalescing to be exercised at all, and the subsequent settle
+    // wait IS the test's own subject (does the window actually coalesce them into one
+    // event?) — there is no earlier observable signal to poll for, since the assertion
+    // is the absence of further events. Exempt from the fixed-wait ban (FR-005).
+    [Trait("TimingDependent", "true")]
     [Fact]
     public async Task RapidSuccessiveWrites_WithinDebounceWindow_CoalesceToOneEvent()
     {
@@ -53,6 +59,10 @@ public class IngestTaskRecordWatcherTests
         Assert.Single(events);
     }
 
+    // 019-fast-test-tier (ADR-021 R4): asserts the absence of events for temp files — there
+    // is no positive completion signal to poll for, so a fixed wait past the debounce
+    // window is the only way to gain confidence nothing arrives. Exempt (FR-005).
+    [Trait("TimingDependent", "true")]
     [Fact]
     public async Task TempFiles_NeverProduceEvents()
     {
@@ -65,6 +75,10 @@ public class IngestTaskRecordWatcherTests
         Assert.Empty(harness.EventsFor("ingest-watcher-3"));
     }
 
+    // 019-fast-test-tier (ADR-021 R4): the watcher's documented 1s self-restart delay is
+    // itself the behavior under test — waiting past it is the point, not a proxy for an
+    // earlier completion signal. Exempt from the fixed-wait ban (FR-005).
+    [Trait("TimingDependent", "true")]
     [Fact]
     public async Task WatcherIoFailure_TriggersSelfRestart_AndEventsResume()
     {
@@ -183,15 +197,13 @@ public class IngestTaskRecordWatcherTests
                 WriteRecordAtomically(sentinelId, "running", narrative: $"arming attempt {attempt}");
 
                 // Each probe needs the 300 ms debounce window plus delivery margin.
-                var deadline = DateTime.UtcNow + TimeSpan.FromSeconds(1);
-                while (DateTime.UtcNow < deadline)
-                {
-                    if (EventsFor(sentinelId).Count > seen)
-                    {
-                        return;
-                    }
+                var delivered = await PollAsync.TryWaitAsync(
+                    () => EventsFor(sentinelId).Count > seen,
+                    TimeSpan.FromSeconds(1));
 
-                    await Task.Delay(25);
+                if (delivered)
+                {
+                    return;
                 }
             }
 
@@ -228,18 +240,12 @@ public class IngestTaskRecordWatcherTests
 
         public async Task<List<TaskRecordChangedEvent>> WaitForEventsAsync(string taskId, int expectedCount, TimeSpan timeout)
         {
-            var deadline = DateTime.UtcNow + timeout;
-            while (DateTime.UtcNow < deadline)
-            {
-                var matches = EventsFor(taskId);
-                if (matches.Count >= expectedCount)
-                {
-                    return matches;
-                }
-                await Task.Delay(25);
-            }
+            await PollAsync.WaitAsync(
+                () => EventsFor(taskId).Count >= expectedCount,
+                timeout,
+                $"Expected {expectedCount} taskRecordChanged event(s) for '{taskId}', got {EventsFor(taskId).Count}.");
 
-            throw new TimeoutException($"Expected {expectedCount} taskRecordChanged event(s) for '{taskId}', got {EventsFor(taskId).Count}.");
+            return EventsFor(taskId);
         }
 
         public async ValueTask DisposeAsync()

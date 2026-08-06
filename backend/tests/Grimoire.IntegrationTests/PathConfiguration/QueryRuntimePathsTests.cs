@@ -16,6 +16,7 @@ namespace Grimoire.IntegrationTests.PathConfiguration;
 /// data directory to the base directory (a sibling of the content root), so it no longer
 /// nests beneath <c>data/</c> the way the Query instruction locations still do.
 /// </summary>
+[Collection("CurrentDirectoryMutation")]
 public class QueryRuntimePathsTests
 {
     [Fact]

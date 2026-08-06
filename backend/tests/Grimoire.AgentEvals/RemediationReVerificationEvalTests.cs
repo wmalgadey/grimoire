@@ -48,7 +48,8 @@ namespace Grimoire.AgentEvals;
 /// eval-capture workflow used for 013's `lint-*` scenarios and 008/012's `query-*`
 /// scenarios.)
 /// </summary>
-[Collection("EvalRunnerProcessTests")]
+[Trait("Tier", "SlowEval")]
+[Collection("EvalRunnerReplayScenarios")]
 public class RemediationReVerificationEvalTests
 {
     [Fact]

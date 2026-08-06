@@ -129,18 +129,16 @@ public class LintLifecycleHubTests
     private static async Task<List<LintRunLifecycleEvent>> WaitForEventsAsync(
         List<LintRunLifecycleEvent> received, object lockObj, int expectedCount)
     {
-        var deadline = DateTime.UtcNow + TimeSpan.FromSeconds(10);
-        while (DateTime.UtcNow < deadline)
-        {
-            lock (lockObj)
+        await PollAsync.WaitAsync(
+            () =>
             {
-                if (received.Count >= expectedCount)
+                lock (lockObj)
                 {
-                    break;
+                    return received.Count >= expectedCount;
                 }
-            }
-            await Task.Delay(25);
-        }
+            },
+            TimeSpan.FromSeconds(10),
+            $"Expected at least {expectedCount} lint lifecycle event(s) within 10s.");
 
         lock (lockObj)
         {

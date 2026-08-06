@@ -14,6 +14,10 @@ namespace Grimoire.IntegrationTests.Fakes;
 /// a channel — event sequences, silence, malformed lines, and pipe-close without a
 /// terminal event are all expressible without spawning a real process.
 /// </summary>
+// 019-fast-test-tier (ADR-021 R4): EmitAnswerChunksAsync's scripted per-chunk delay
+// simulates the production streaming timing tests assert against (SC-003 latency budgets)
+// — it is the behavior under test's own timing, not a wait for an unrelated async op.
+[Trait("TimingDependent", "true")]
 public sealed class ScriptedAgentProcessHandle : IAgentProcessHandle
 {
     private readonly Channel<string> _lines = Channel.CreateUnbounded<string>();
@@ -111,6 +115,10 @@ public sealed class ScriptedAgentProcessHandle : IAgentProcessHandle
 /// writes, `started` + terminal events) without a real child process or credentials.
 /// Pass <c>autoPlay: false</c> to script the handle manually (supervision tests).
 /// </summary>
+// 019-fast-test-tier (ADR-021 R4): _simulatedRunDuration models the real agent process's
+// own run-window timing (tests assert non-overlapping windows, FIFO ordering, etc. against
+// it) — it is the behavior under test's own timing, not a wait for an unrelated async op.
+[Trait("TimingDependent", "true")]
 public sealed class FakeAgentProcessLauncher : IAgentProcessLauncher
 {
     private readonly string _terminalStatus;

@@ -18,6 +18,7 @@ namespace Grimoire.IntegrationTests;
 /// supervision-detected terminals or by the interrupt HTTP request for user
 /// interruption.
 /// </summary>
+[Collection("HubActivityListenerObservability")]
 public class QueryConversationTraceTests
 {
     private static ActivityListener CreateListener(ConcurrentQueue<Activity> activities, params string[] sources) => new()

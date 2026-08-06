@@ -12,7 +12,8 @@ namespace Grimoire.AgentEvals;
 /// fingerprint kinds plus the refresh command. Operates on a copied fake repo root so
 /// the real instruction files are never mutated.
 /// </summary>
-[Collection("EvalRunnerProcessTests")]
+[Trait("Tier", "Fast")]
+[Collection("EvalRunnerEnvMutatingTests")]
 public class StalenessTests : IDisposable
 {
     private readonly string _fakeRepoRoot;

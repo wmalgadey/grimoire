@@ -105,25 +105,28 @@ public class LintTriggerPreconditionTests
         Assert.Equal(HttpStatusCode.Accepted, first.StatusCode);
 
         var sawAccepted = false;
-        var deadline = DateTime.UtcNow + TimeSpan.FromSeconds(10);
-        while (DateTime.UtcNow < deadline)
-        {
-            var response = await client.PostAsync("/api/lint-runs/", content: null);
-            using var body = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
-
-            if (response.StatusCode == HttpStatusCode.Accepted)
+        await PollAsync.WaitAsync(
+            async () =>
             {
-                // Clean accept: a new run definitively exists.
-                Assert.False(string.IsNullOrWhiteSpace(body.RootElement.GetProperty("runId").GetString()));
-                sawAccepted = true;
-                break;
-            }
+                var response = await client.PostAsync("/api/lint-runs/", content: null);
+                using var body = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
 
-            // Clean reject: 409 naming the reason — never any other shape.
-            Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
-            Assert.Equal("lint_run_active", body.RootElement.GetProperty("reason").GetString());
-            await Task.Delay(10);
-        }
+                if (response.StatusCode == HttpStatusCode.Accepted)
+                {
+                    // Clean accept: a new run definitively exists.
+                    Assert.False(string.IsNullOrWhiteSpace(body.RootElement.GetProperty("runId").GetString()));
+                    sawAccepted = true;
+                    return true;
+                }
+
+                // Clean reject: 409 naming the reason — never any other shape.
+                Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
+                Assert.Equal("lint_run_active", body.RootElement.GetProperty("reason").GetString());
+                return false;
+            },
+            TimeSpan.FromSeconds(10),
+            "Retrying after the previous run finished must eventually yield a clean 202.",
+            pollInterval: TimeSpan.FromMilliseconds(10));
 
         Assert.True(sawAccepted, "Retrying after the previous run finished must eventually yield a clean 202.");
     }

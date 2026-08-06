@@ -72,21 +72,26 @@ public class IngestRunQueueTests
         var positions = await restarted.GetQueuePositionsAsync();
         Assert.Equal(1, positions["task-r1"]);
         Assert.Equal(2, positions["task-r2"]);
-        await Task.Delay(200);
+        await AssertNoAutomaticDispatchWithinAsync(TimeSpan.FromMilliseconds(200));
         Assert.Empty(restartedLauncher.Requests);
 
         // Explicit whole-queue resume re-arms FIFO processing.
         await restarted.ResumeAsync();
 
-        var deadline = DateTime.UtcNow + TimeSpan.FromSeconds(10);
-        while (DateTime.UtcNow < deadline && restartedLauncher.RunWindows.Count < 2)
-        {
-            await Task.Delay(25);
-        }
+        await PollAsync.WaitAsync(
+            () => restartedLauncher.RunWindows.Count >= 2,
+            TimeSpan.FromSeconds(10),
+            $"Expected 2 run windows after resume, saw {restartedLauncher.RunWindows.Count}.");
 
         Assert.Equal(["task-r1", "task-r2"], restartedLauncher.Requests.Select(r => r.TaskId).ToArray());
         Assert.False(await restarted.IsQueuePausedAsync());
     }
+
+    // 019-fast-test-tier (ADR-021 R4): asserts the absence of automatic dispatch after a
+    // paused-queue restart — there is no positive completion signal to poll for, so a fixed
+    // wait is the only way to gain confidence nothing starts on its own. Exempt (FR-005).
+    [Trait("TimingDependent", "true")]
+    private static async Task AssertNoAutomaticDispatchWithinAsync(TimeSpan window) => await Task.Delay(window);
 
     [Fact]
     public async Task RetriggerSingleTask_AfterRestart_ReArmsProcessing_WithoutQueueJumping()
@@ -104,11 +109,10 @@ public class IngestRunQueueTests
         var retriggered = await fixture.Coordinator.RetriggerAsync("task-p2");
         Assert.True(retriggered);
 
-        var deadline = DateTime.UtcNow + TimeSpan.FromSeconds(10);
-        while (DateTime.UtcNow < deadline && launcher.RunWindows.Count < 2)
-        {
-            await Task.Delay(25);
-        }
+        await PollAsync.WaitAsync(
+            () => launcher.RunWindows.Count >= 2,
+            TimeSpan.FromSeconds(10),
+            $"Expected 2 run windows after re-trigger, saw {launcher.RunWindows.Count}.");
 
         Assert.Equal(["task-p1", "task-p2"], launcher.Requests.Select(r => r.TaskId).ToArray());
     }

@@ -113,7 +113,14 @@ public class QueryLivenessSupervisionTests
 
         var paths = QueryTurnSubmissionApiTests.BuildResolvedPaths(root);
         var recordPath = paths.ConversationRecordPathFor("c-liveness-record");
-        await WaitUntilAsync(() => Task.FromResult(File.Exists(recordPath)));
+        // 019-fast-test-tier (ADR-021 edge case: genuine race surfaced by suite
+        // parallelization, fixed at the root): File.Exists becoming true does not mean the
+        // write has finished — poll for a successful structured parse too.
+        await PollAsync.WaitAsync(
+            () => File.Exists(recordPath) && Grimoire.Hub.QueryConversations.ConversationRecordFormat.Parse(File.ReadAllText(recordPath))
+                is Grimoire.Hub.QueryConversations.ConversationRecordParseResult.Parsed { Turns.Count: >= 1 },
+            TimeSpan.FromSeconds(10),
+            $"Expected the Conversation Record at '{recordPath}' to exist and parse with at least one turn within 10s.");
 
         var parsed = Assert.IsType<Grimoire.Hub.QueryConversations.ConversationRecordParseResult.Parsed>(
             Grimoire.Hub.QueryConversations.ConversationRecordFormat.Parse(await File.ReadAllTextAsync(recordPath)));
@@ -152,7 +159,11 @@ public class QueryLivenessSupervisionTests
 
         var paths = QueryTurnSubmissionApiTests.BuildResolvedPaths(root);
         var recordPath = paths.ConversationRecordPathFor("c-liveness-empty");
-        await WaitUntilAsync(() => Task.FromResult(File.Exists(recordPath)));
+        await PollAsync.WaitAsync(
+            () => File.Exists(recordPath) && Grimoire.Hub.QueryConversations.ConversationRecordFormat.Parse(File.ReadAllText(recordPath))
+                is Grimoire.Hub.QueryConversations.ConversationRecordParseResult.Parsed { Turns.Count: >= 1 },
+            TimeSpan.FromSeconds(10),
+            $"Expected the Conversation Record at '{recordPath}' to exist and parse with at least one turn within 10s.");
 
         var content = await File.ReadAllTextAsync(recordPath);
         Assert.Contains("answer_chars: 0", content, StringComparison.Ordinal);
@@ -161,19 +172,8 @@ public class QueryLivenessSupervisionTests
         Assert.Equal(string.Empty, Assert.Single(parsed.Turns).Answer);
     }
 
-    private static async Task WaitUntilAsync(Func<Task<bool>> condition, int timeoutMs = 5000)
-    {
-        var deadline = DateTime.UtcNow.AddMilliseconds(timeoutMs);
-        while (DateTime.UtcNow < deadline)
-        {
-            if (await condition())
-            {
-                return;
-            }
-
-            await Task.Delay(20);
-        }
-
-        Assert.Fail("Condition was not met within the timeout.");
-    }
+    // 019-fast-test-tier (ADR-021 R4): thin wrapper over the shared PollAsync helper —
+    // kept as a same-signature local method so every call site above is unchanged.
+    private static Task WaitUntilAsync(Func<Task<bool>> condition, int timeoutMs = 5000) =>
+        PollAsync.WaitAsync(condition, TimeSpan.FromMilliseconds(timeoutMs), "Condition was not met within the timeout.", TimeSpan.FromMilliseconds(20));
 }
