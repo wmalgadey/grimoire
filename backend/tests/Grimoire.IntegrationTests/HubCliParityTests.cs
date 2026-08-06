@@ -67,18 +67,17 @@ public class HubCliParityTests
 
         var httpStatus = "running";
         var httpHasFindingsReport = false;
-        var deadline = DateTime.UtcNow + TimeSpan.FromSeconds(5);
-        while (httpStatus == "running" && DateTime.UtcNow < deadline)
-        {
-            var runResponse = await httpClient.GetAsync($"/api/lint-runs/{httpRunId}");
-            using var runBody = JsonDocument.Parse(await runResponse.Content.ReadAsStringAsync());
-            httpStatus = runBody.RootElement.GetProperty("status").GetString()!;
-            httpHasFindingsReport = runBody.RootElement.GetProperty("hasFindingsReport").GetBoolean();
-            if (httpStatus == "running")
+        await PollAsync.TryWaitAsync(
+            async () =>
             {
-                await Task.Delay(25);
-            }
-        }
+                var runResponse = await httpClient.GetAsync($"/api/lint-runs/{httpRunId}");
+                using var runBody = JsonDocument.Parse(await runResponse.Content.ReadAsStringAsync());
+                httpStatus = runBody.RootElement.GetProperty("status").GetString()!;
+                httpHasFindingsReport = runBody.RootElement.GetProperty("hasFindingsReport").GetBoolean();
+                return httpStatus != "running";
+            },
+            TimeSpan.FromSeconds(5),
+            pollInterval: TimeSpan.FromMilliseconds(25));
 
         var findingsResponse = await httpClient.GetAsync($"/api/lint-runs/{httpRunId}/findings");
         Assert.Equal(HttpStatusCode.OK, findingsResponse.StatusCode);
@@ -403,17 +402,16 @@ public class HubCliParityTests
         var httpTurnId = submitBody.RootElement.GetProperty("turnId").GetString()!;
 
         var httpState = "running";
-        var deadline = DateTime.UtcNow + TimeSpan.FromSeconds(5);
-        while (httpState == "running" && DateTime.UtcNow < deadline)
-        {
-            var turnResponse = await httpClient.GetAsync($"/api/query-turns/{httpTurnId}");
-            using var turnBody = JsonDocument.Parse(await turnResponse.Content.ReadAsStringAsync());
-            httpState = turnBody.RootElement.GetProperty("state").GetString()!;
-            if (httpState == "running")
+        await PollAsync.TryWaitAsync(
+            async () =>
             {
-                await Task.Delay(25);
-            }
-        }
+                var turnResponse = await httpClient.GetAsync($"/api/query-turns/{httpTurnId}");
+                using var turnBody = JsonDocument.Parse(await turnResponse.Content.ReadAsStringAsync());
+                httpState = turnBody.RootElement.GetProperty("state").GetString()!;
+                return httpState != "running";
+            },
+            TimeSpan.FromSeconds(5),
+            pollInterval: TimeSpan.FromMilliseconds(25));
 
         // --- CLI path: the production command, invoked exactly as HubCliApp would. ---
         var (cliExitCode, cliStdout, _) = await cliHarness.RunQueryCommandAsync(prompt, cliConversationId);
@@ -454,21 +452,12 @@ public class HubCliParityTests
         Assert.Equal(httpTurn.TurnsUsed, cliTurn.TurnsUsed);
     }
 
-    private static async Task WaitForFileAsync(string path, int timeoutMs = 5000)
-    {
-        var deadline = DateTime.UtcNow.AddMilliseconds(timeoutMs);
-        while (DateTime.UtcNow < deadline)
-        {
-            if (File.Exists(path))
-            {
-                return;
-            }
-
-            await Task.Delay(20);
-        }
-
-        Assert.Fail($"File '{path}' did not appear within the timeout.");
-    }
+    private static Task WaitForFileAsync(string path, int timeoutMs = 5000) =>
+        PollAsync.WaitAsync(
+            () => File.Exists(path),
+            TimeSpan.FromMilliseconds(timeoutMs),
+            $"File '{path}' did not appear within the timeout.",
+            pollInterval: TimeSpan.FromMilliseconds(20));
 }
 
 /// <summary>

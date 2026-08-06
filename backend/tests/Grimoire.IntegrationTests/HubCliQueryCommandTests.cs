@@ -294,21 +294,12 @@ public class HubCliQueryCommandTests
     /// <summary>Splits on '\n' after normalizing '\r\n', so line-based assertions don't depend on the host's newline convention.</summary>
     private static string[] NormalizeLines(string text) => text.Replace("\r\n", "\n").TrimEnd('\n').Split('\n');
 
-    private static async Task WaitUntilAsync(Func<bool> condition, int timeoutMs = 5000)
-    {
-        var deadline = DateTime.UtcNow.AddMilliseconds(timeoutMs);
-        while (DateTime.UtcNow < deadline)
-        {
-            if (condition())
-            {
-                return;
-            }
-
-            await Task.Delay(20);
-        }
-
-        Assert.Fail("Condition was not met within the timeout.");
-    }
+    private static Task WaitUntilAsync(Func<bool> condition, int timeoutMs = 5000) =>
+        PollAsync.WaitAsync(
+            condition,
+            TimeSpan.FromMilliseconds(timeoutMs),
+            "Condition was not met within the timeout.",
+            pollInterval: TimeSpan.FromMilliseconds(20));
 }
 
 /// <summary>

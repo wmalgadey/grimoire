@@ -145,16 +145,12 @@ public class HubCliCommandTests
             $"{simulatedDuration} terminal delay — it did not block on the run's terminal state.");
     }
 
-    private static async Task WaitUntilAsync(Func<bool> predicate, TimeSpan timeout)
-    {
-        var deadline = DateTime.UtcNow + timeout;
-        while (!predicate() && DateTime.UtcNow < deadline)
-        {
-            await Task.Delay(10);
-        }
-
-        Assert.True(predicate(), $"Condition was not satisfied within {timeout}.");
-    }
+    private static Task WaitUntilAsync(Func<bool> predicate, TimeSpan timeout) =>
+        PollAsync.WaitAsync(
+            predicate,
+            timeout,
+            $"Condition was not satisfied within {timeout}.",
+            pollInterval: TimeSpan.FromMilliseconds(10));
 
     // ── remediation-authorize / remediation-dismiss / remediation-withdraw ─────────
     // T026 (018-hub-cli-commands, US2): full contract matrix for the three remediation

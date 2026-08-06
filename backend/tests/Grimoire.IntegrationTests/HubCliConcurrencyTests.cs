@@ -65,13 +65,7 @@ public class HubCliConcurrencyTests
             await beginCommand.ExecuteNonQueryAsync();
 
             var holdDuration = TimeSpan.FromMilliseconds(750);
-            var releaseTask = Task.Run(async () =>
-            {
-                await Task.Delay(holdDuration);
-                var commitCommand = holderConnection.CreateCommand();
-                commitCommand.CommandText = "COMMIT;";
-                await commitCommand.ExecuteNonQueryAsync();
-            });
+            var releaseTask = ReleaseWriteLockAfterHoldDurationAsync(holderConnection, holdDuration);
 
             var taskId = "2026-08-03-concurrency-a1b2c3";
             var stopwatch = Stopwatch.StartNew();
@@ -95,6 +89,21 @@ public class HubCliConcurrencyTests
         {
             Directory.Delete(root, recursive: true);
         }
+    }
+
+    /// <summary>
+    /// Holds <paramref name="holderConnection"/>'s write lock for a fixed
+    /// <paramref name="holdDuration"/> before releasing it — the wait's subject (the elapsed
+    /// hold time) is what the test above asserts on, so it is genuinely time-based rather than
+    /// a substitute for a condition-based wait (ADR-021 FR-005).
+    /// </summary>
+    [Trait("TimingDependent", "true")]
+    private static async Task ReleaseWriteLockAfterHoldDurationAsync(SqliteConnection holderConnection, TimeSpan holdDuration)
+    {
+        await Task.Delay(holdDuration);
+        var commitCommand = holderConnection.CreateCommand();
+        commitCommand.CommandText = "COMMIT;";
+        await commitCommand.ExecuteNonQueryAsync();
     }
 
     /// <summary>
@@ -205,7 +214,10 @@ public class HubCliConcurrencyTests
             // Let A's scripted run wind down and release the lock before the temp
             // directory is torn down, so its background completion (FinishRunAsync's
             // Findings Report write) doesn't race the cleanup below.
-            await Task.Delay(TimeSpan.FromSeconds(2));
+            await PollAsync.WaitAsync(
+                () => !coordinatorA.IsRunActive,
+                TimeSpan.FromSeconds(5),
+                "Coordinator A's scripted run did not wind down and release the lint.pid lock within the timeout.");
         }
         finally
         {
@@ -343,24 +355,21 @@ public class HubCliConcurrencyTests
 
     private static async Task<Activity> WaitForSpanAsync(List<Activity> exportedItems, string operationName, TimeSpan timeout)
     {
-        var deadline = DateTime.UtcNow + timeout;
-        while (DateTime.UtcNow < deadline)
+        Activity? Find()
         {
-            Activity? match;
             lock (exportedItems)
             {
-                match = exportedItems.FirstOrDefault(a => a.OperationName == operationName);
+                return exportedItems.FirstOrDefault(a => a.OperationName == operationName);
             }
-
-            if (match is not null)
-            {
-                return match;
-            }
-
-            await Task.Delay(25);
         }
 
-        throw new TimeoutException($"Span '{operationName}' was never exported, even after host disposal.");
+        var found = await PollAsync.TryWaitAsync(() => Find() is not null, timeout, pollInterval: TimeSpan.FromMilliseconds(25));
+        if (!found)
+        {
+            throw new TimeoutException($"Span '{operationName}' was never exported, even after host disposal.");
+        }
+
+        return Find()!;
     }
 
     private static string CreateTempDir(string prefix)
