@@ -1,3 +1,4 @@
+using System.ComponentModel;
 using Spectre.Console;
 using Spectre.Console.Cli;
 
@@ -14,6 +15,7 @@ namespace Grimoire.Hub.Cli;
 public sealed class RemediationTaskSettings : HubPathSettings
 {
     [CommandOption("--task-id <ID>", isRequired: true)]
+    [Description("Id of the remediation task to transition (required).")]
     public string? TaskId { get; set; }
 
     public override ValidationResult Validate() =>

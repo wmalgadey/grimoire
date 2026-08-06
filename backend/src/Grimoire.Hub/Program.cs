@@ -6,10 +6,12 @@ using Grimoire.Hub.Realtime;
 using Grimoire.Hub.RemediationTasks;
 
 // 018-hub-cli-commands (FR-011, ADR-020 D3): the single dispatch gate. --help/-h anywhere
-// in args, or args[0] matching a Grimoire.Hub.Cli.HubCliCommands catalog name, hands off
-// to the Spectre CommandApp — before ANY startup side effect (path resolution, secrets
-// loading, SQLite init). Otherwise the web-host path below runs completely unchanged
-// (ADR-009 precedence, PathSwitchCatalog untouched, app.Run() still binds the port).
+// in args, or a bareword args[0] (any command-shaped first argument, not just a
+// Grimoire.Hub.Cli.HubCliCommands catalog name — see ShouldDispatchToCli below), hands
+// off to the Spectre CommandApp — before ANY startup side effect (path resolution,
+// secrets loading, SQLite init). Otherwise the web-host path below runs completely
+// unchanged (ADR-009 precedence, PathSwitchCatalog untouched, app.Run() still binds the
+// port).
 if (ShouldDispatchToCli(args))
 {
     return await HubCliApp.RunAsync(args);

@@ -1,3 +1,4 @@
+using System.ComponentModel;
 using Grimoire.Hub.ContentRoot;
 using Grimoire.Hub.IngestSubmission;
 using Spectre.Console;
@@ -14,9 +15,11 @@ namespace Grimoire.Hub.Cli;
 public sealed class SubmitSourceSettings : HubPathSettings
 {
     [CommandOption("--path <PATH>", isRequired: true)]
+    [Description("Path to the source file to submit for ingest (required).")]
     public string? Path { get; set; }
 
     [CommandOption("--source-kind <KIND>")]
+    [Description("Kind of the submitted source (default: file).")]
     public string SourceKind { get; set; } = "file";
 
     public override ValidationResult Validate() =>

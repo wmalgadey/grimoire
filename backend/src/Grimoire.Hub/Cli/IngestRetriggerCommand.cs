@@ -1,3 +1,4 @@
+using System.ComponentModel;
 using Grimoire.Hub.ContentRoot;
 using Grimoire.Hub.IngestDispatch;
 using Grimoire.Hub.IngestSubmission;
@@ -18,6 +19,7 @@ namespace Grimoire.Hub.Cli;
 public sealed class IngestRetriggerSettings : HubPathSettings
 {
     [CommandOption("--task-id <ID>", isRequired: true)]
+    [Description("Id of the queued ingest task to retrigger (required).")]
     public string? TaskId { get; set; }
 
     public override ValidationResult Validate() =>

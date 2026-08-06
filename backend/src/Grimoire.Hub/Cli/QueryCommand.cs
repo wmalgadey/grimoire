@@ -1,3 +1,4 @@
+using System.ComponentModel;
 using System.Text.RegularExpressions;
 using Grimoire.Hub.QueryDispatch;
 using Grimoire.Hub.QuerySubmission;
@@ -21,12 +22,15 @@ namespace Grimoire.Hub.Cli;
 public sealed partial class QuerySettings : HubPathSettings
 {
     [CommandArgument(0, "<prompt>")]
+    [Description("Query prompt text to submit (required, non-empty).")]
     public string? Prompt { get; set; }
 
     [CommandOption("--conversation-id <ID>")]
+    [Description("Conversation id to continue; generated when omitted.")]
     public string? ConversationId { get; set; }
 
     [CommandOption("--timeout <SECONDS>")]
+    [Description("Seconds to wait for the turn before interrupting it (default: 300).")]
     public int Timeout { get; set; } = 300;
 
     // ADR-014: the same conversationId path-safety pattern QuerySubmissionValidator

@@ -172,40 +172,62 @@ public sealed class LintRunCoordinator
 
         LintLifecycleLogEvents.LogRunTriggered(_logger, runId);
 
-        // 015-lint-board-parity T011 (SC-001): the board sees the run as running the
-        // moment it is accepted, however it was triggered (board or /lint page).
-        if (_lifecyclePublisher is not null)
-        {
-            await _lifecyclePublisher.PublishRunChangedAsync(
-                runId, fromStatus: null, toStatus: "running", failureReason: null, cancellationToken);
-        }
-
-        var request = new LintAgentRequest(
-            RunId: runId,
-            WikiRoot: _paths.ContentRoot,
-            SystemPromptPath: _paths.LintSystemPromptPath,
-            PolicyPath: _paths.LintPolicyPath,
-            WriteLocksDir: _paths.WriteLocksDir,
-            ReviewWindowDays: _reviewWindowOptions.LintReviewWindowDays);
-
-        AgentDispatch.IAgentProcessHandle handle;
+        // 018-hub-cli-commands T041: guards the lock-acquisition-to-terminal-state
+        // critical section below. If anything up to and including the launcher-start
+        // try block throws (e.g. a failing PublishRunChangedAsync call), the finally
+        // releases `_pidLock`/`_slot` instead of leaking them for the rest of the
+        // process's lifetime — a permanent cross-process lint-run lockout (D1a). Once
+        // ownership is handed to `FinishRunAsync` (launcher failure) or `SuperviseAsync`
+        // (dispatched run), `dispatchStarted` stops the finally from double-releasing.
+        var dispatchStarted = false;
         try
         {
-            handle = await _launcher.StartAsync(request, cancellationToken);
-        }
-        catch (Exception ex)
-        {
-            await FinishRunAsync(runId, LintRunStatus.Failed,
-                $"Lint agent process could not be started: {ex.Message}", narrative: null, systemPromptSha256: null,
-                deniedActions: [], touchedPaths: [], CancellationToken.None);
+            // 015-lint-board-parity T011 (SC-001): the board sees the run as running the
+            // moment it is accepted, however it was triggered (board or /lint page).
+            if (_lifecyclePublisher is not null)
+            {
+                await _lifecyclePublisher.PublishRunChangedAsync(
+                    runId, fromStatus: null, toStatus: "running", failureReason: null, cancellationToken);
+            }
+
+            var request = new LintAgentRequest(
+                RunId: runId,
+                WikiRoot: _paths.ContentRoot,
+                SystemPromptPath: _paths.LintSystemPromptPath,
+                PolicyPath: _paths.LintPolicyPath,
+                WriteLocksDir: _paths.WriteLocksDir,
+                ReviewWindowDays: _reviewWindowOptions.LintReviewWindowDays);
+
+            AgentDispatch.IAgentProcessHandle handle;
+            try
+            {
+                handle = await _launcher.StartAsync(request, cancellationToken);
+            }
+            catch (Exception ex)
+            {
+                dispatchStarted = true;
+                await FinishRunAsync(runId, LintRunStatus.Failed,
+                    $"Lint agent process could not be started: {ex.Message}", narrative: null, systemPromptSha256: null,
+                    deniedActions: [], touchedPaths: [], CancellationToken.None);
+                return new LintSubmissionResult.Accepted(run);
+            }
+
+            _handles[runId] = handle;
+            dispatchStarted = true;
+
+            _ = Task.Run(() => SuperviseAsync(runId, handle, CancellationToken.None), CancellationToken.None);
+
             return new LintSubmissionResult.Accepted(run);
         }
-
-        _handles[runId] = handle;
-
-        _ = Task.Run(() => SuperviseAsync(runId, handle, CancellationToken.None), CancellationToken.None);
-
-        return new LintSubmissionResult.Accepted(run);
+        finally
+        {
+            if (!dispatchStarted)
+            {
+                _pidLock?.Dispose();
+                _pidLock = null;
+                _slot.Release();
+            }
+        }
     }
 
     private async Task SuperviseAsync(string runId, AgentDispatch.IAgentProcessHandle handle, CancellationToken cancellationToken)
