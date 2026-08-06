@@ -87,7 +87,7 @@ An operator wants the agents' instruction files and runtime data in a folder of 
 **Acceptance Scenarios**:
 
 1. **Given** an agent build has been directed to output into a custom folder and the agent-folder option points at that folder, **When** a hub command runs an agent, **Then** the agent operates under the instruction files in that folder.
-2. **Given** the agent-folder option points at a folder that is missing or contains no instruction files, **When** a hub command runs, **Then** the hub fails with an error identifying the empty or missing agent directory.
+2. **Given** the agent-folder option points at a folder that is missing or contains no agent runtime, **When** a hub command runs, **Then** the hub fails with an error identifying the empty or missing agent directory.
 3. **Given** an agent has been rebuilt after its instruction sources changed, **When** the build completes, **Then** the target agent directory holds the updated instruction files.
 
 ---
@@ -110,7 +110,8 @@ An operator with unusual infrastructure needs (for example, putting the state da
 ### Edge Cases
 
 - What happens when `appsettings.json` is missing, empty, or does not supply the three root directories? The hub MUST fail with an error rather than falling back to code-level defaults — the versioned configuration file is the single source of default paths.
-- What happens when the agent directory is missing or contains no instruction files? The hub MUST fail with an error identifying the agent directory, rather than running agents without instructions.
+- What happens when the agent directory is missing or contains no agent runtime? The hub MUST fail with an error identifying the agent directory, rather than running agents without instructions or without their executables. A missing worker executable specifically MUST name the build command that produces it.
+- What happens when an operator starts the hub without having built the solution? The hub MUST fail at startup naming what is missing; it MUST NOT build the agent itself, at startup or at dispatch.
 - What happens when the configured runtime data directory or wiki directory does not yet exist? The hub MUST create it automatically rather than failing. (This does not apply to the agent directory, which is produced by the agent build.)
 - What happens when the wiki folder is explicitly configured to be the same as, or nested inside, the runtime data directory? The hub MUST accept it as a valid explicit choice — even though it departs from the default sibling relationship — without treating it as an error.
 - What happens to an operator's hand edits to instruction files inside an agent directory? The next agent build overwrites them, because instruction files are versioned with the agent. Durable instruction changes are made in the agent's own sources, not in the output directory.
@@ -134,20 +135,22 @@ An operator with unusual infrastructure needs (for example, putting the state da
 - **FR-010**: The hub MUST create the runtime data folder and the wiki folder automatically when they do not exist.
 - **FR-011**: The agent build MUST create and refresh the default agent directory, writing each agent's instruction files there on every build, so that instruction files are versioned and distributed with the agent rather than authored by the hub at runtime.
 - **FR-012**: The build MUST provide a supported mechanism (build script, build-tool task, or build property) for directing agent build output into an operator-chosen agent folder, so a custom agent folder can be kept current across rebuilds.
-- **FR-013**: The hub MUST fail with an error identifying the agent directory when that directory is missing or contains no instruction files, rather than running agents without instructions.
+- **FR-013**: The hub MUST fail with an error identifying the agent directory when that directory is missing or contains no agent runtime, rather than attempting to run agents without their instructions or their executables.
 - **FR-014**: The hub MUST NOT detect or migrate data left in the previous directory layout; relocating such data is a manual operator step.
 - **FR-015**: The hub MUST confine any further customization of internal sub-paths beneath the three root folders to the configuration file, never exposing them as additional command-line switches.
 - **FR-016**: Eval recordings MUST live in a fixture folder inside the test project rather than under the runtime data folder, and the eval runner MUST resolve them from a hardcoded location matching the test project's expectations — removing the recordings-root command-line switch.
 - **FR-017**: The eval runner MUST resolve agent instruction files from the agent project sources, repo-anchored, so eval runs depend on neither the configured runtime agent directory nor a prior agent build.
 - **FR-018**: Eval fixture and instruction resolution MUST be independent of all three configured directory options, so eval runs produce the same result regardless of how an operator has configured the hub.
 - **FR-019**: The hub and the eval runner MUST read the secrets file from the project root, alongside the example file the operator copies it from, rather than from inside any of the three configurable folders. The secrets file location MUST NOT be affected by any of the three directory options.
+- **FR-020**: The hub MUST launch agent workers exclusively from pre-built artifacts in the agent folder, and MUST NOT invoke a build, restore, or compilation at any point — neither at startup nor at dispatch. A missing worker artifact MUST fail at startup with an error naming the artifact and the build command that produces it.
+- **FR-021**: The agent build MUST deliver each agent's complete runtime — its worker executable, the dependency assemblies that executable needs, and its instruction files — into that agent's subfolder of the agent folder, so the subfolder is self-contained and directly executable without reference to any other location.
 
 ### Key Entities
 
 - **Runtime Data Folder**: The configurable root holding all harness runtime state — raw intake, the operational state database, and write-locks — plus the Agent Folder at its default location. Defaults to `.grimoire/` under the current working directory.
 - **Secrets File**: The operator-supplied `.env` file at the project root, created by copying the example file that already sits there. Read from the project root by both the hub and the eval runner, outside all three configurable folders and unaffected by any directory option.
 - **Wiki Folder**: The independently configurable root holding all agent-produced results — wiki content pages, `index.md`, `log.md`, tasks, conversations, findings, and remediation tasks. Defaults to `llm-wiki/` under the current working directory, as a sibling of the Runtime Data Folder, and may be pointed anywhere (e.g. a separately git-tracked location).
-- **Agent Folder**: The independently configurable directory holding both instruction files and runtime data for every agent type (ingest, query, lint) in per-type subfolders. Defaults to a subfolder of the Runtime Data Folder. Its contents are produced and refreshed by the agent build, not by the hub; the hub refuses to run when it is empty.
+- **Agent Folder**: The independently configurable directory holding the complete runtime for every agent type (ingest, query, lint) in per-type subfolders — each subfolder holding that agent's worker executable, the dependency assemblies it needs, and its instruction files, so it is self-contained and directly executable. Defaults to a subfolder of the Runtime Data Folder. Its contents are produced and refreshed by the agent build, not by the hub; the hub reads and launches from it, never writes to it, and refuses to run when it is empty.
 - **Configuration File**: The versioned `appsettings.json` that supplies the default values for all three root folders and any internal sub-path customization. Mandatory — the hub fails without it — and never mirrored as extra command-line switches.
 - **Eval Fixtures**: Git-tracked eval recordings, held in a fixture folder inside the test project alongside the existing eval fixtures. Resolved by the eval runner from a hardcoded location, outside all three configurable root folders, and therefore unaffected by how an operator configures the hub.
 
@@ -167,19 +170,21 @@ An operator with unusual infrastructure needs (for example, putting the state da
 - **SC-004**: 100% of agent-result artifacts (wiki content, `index.md`, `log.md`, tasks, conversations, findings, remediation tasks) resolve under the configured wiki folder, regardless of where the runtime data folder points.
 - **SC-005**: For each of the three options, 100% of resolutions honor the precedence command-line flag > environment variable > configuration file.
 - **SC-006**: 100% of hub starts with a missing, empty, or incomplete configuration file fail with an error naming the configuration file, with no silent fallback to code-level defaults.
-- **SC-007**: 100% of hub starts against a missing or empty agent directory fail with an error naming that directory.
-- **SC-008**: 100% of agent builds leave the target agent directory holding that agent's current instruction files.
+- **SC-007**: 100% of hub starts against a missing agent directory, or one holding no agent runtime, fail with an error naming that directory.
+- **SC-008**: 100% of agent builds leave the target agent directory holding that agent's current runtime — worker executable, dependency assemblies, and instruction files — with no artifact left over from a previous build.
 - **SC-009**: 100% of eval runs resolve their recordings from the hardcoded test-fixture location, with no recordings path accepted on the command line.
 - **SC-010**: 100% of eval runs produce identical results regardless of how the three directory options are configured, resolving instructions from the agent project sources without requiring an agent build.
 - **SC-011**: 100% of secrets lookups by the hub and the eval runner resolve to the project-root secrets file, regardless of how the three directory options are configured.
+- **SC-012**: 100% of agent launches start a pre-built worker artifact from the configured agent folder, and 0% of hub code paths are capable of invoking a build tool.
 
 ## Assumptions
 
 - The three root folders each default to a fixed-name location under the process's current working directory — `.grimoire/` and `llm-wiki/` as siblings, with the agent folder inside `.grimoire/`. Keeping the wiki out of the runtime data folder preserves ADR-009's rationale of tracking the wiki in git independently of harness-internal state, while still requiring no command-line configuration for a first run.
 - "No configuration needed" means no command-line flags and no environment variables. The versioned configuration file is always present in the repository and is not something the operator has to author.
 - The operator may still point the wiki folder inside the runtime data folder by setting it explicitly — the sibling relationship is the default, not an enforced constraint.
-- Agent worker executable resolution (today three separate switches, one per agent type) is no longer configurable; workers are always resolved relative to the hub's own binaries.
+- Agent worker executable resolution (today three separate switches, one per agent type) is no longer configurable; workers are always resolved inside the configured agent folder, in the same per-agent-type subfolder as that agent's instruction files. An earlier draft assumed workers would resolve relative to the hub's own binaries; planning established that this is not implementable — the hub holds no assembly reference to any agent (a deliberate dispatch-only boundary), so no build ever places the worker executables in the hub's own output directory.
 - Instruction files are versioned with the agent harness and regenerated by every agent build. Per-project instruction customization therefore happens in the agent's sources, not by editing the build output; the hub never authors or seeds instruction content itself, which keeps the Principle V boundary intact.
+- The same build step delivers instruction files and worker artifacts together, so "the agent folder is current" is one condition rather than two that can drift apart. Consequently the hub consumes build artifacts and never produces them: an operator who has not built the solution gets a named startup failure, not an implicit build.
 - This is a breaking change to the existing 16-switch configuration surface. Since the hub is pre-1.0 with no external consumers, removed options simply stop being recognized by the CLI parser — no deprecation aliases, detection logic, or migration shims are built, and no on-disk data is migrated.
 - The three existing per-agent instruction directories (ingest, query, lint) become subfolders of the single agent folder rather than being merged into one undifferentiated set of files.
 - The eval runner is in scope for this feature because it currently hardcodes paths this change relocates. Its recordings become test fixtures and its instruction resolution becomes repo-anchored; it is deliberately *not* wired to the three configurable directories, keeping eval runs reproducible and independent of operator configuration.
