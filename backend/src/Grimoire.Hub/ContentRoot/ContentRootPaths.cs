@@ -3,11 +3,12 @@ using Grimoire.Hub.Runtime.Paths;
 namespace Grimoire.Hub.ContentRoot;
 
 /// <summary>
-/// Wiki content root and agent-instruction locations, as a flat projection of the
-/// single-composition-point <see cref="ResolvedGrimoirePaths"/> (ADR-009). Kept as a
+/// Wiki root and Ingest agent-instruction locations, as a flat projection of the
+/// single-composition-point <see cref="ResolvedGrimoirePaths"/> (ADR-022). Kept as a
 /// plain record (rather than folded into <see cref="ResolvedGrimoirePaths"/> itself) so
-/// consumers that only need content-root paths, and hermetic tests, do not have to
-/// depend on the full runtime-paths resolution/validation pipeline.
+/// consumers that only need wiki-root paths, and hermetic tests, do not have to depend on
+/// the full runtime-paths resolution/validation pipeline. Retains its pre-020 name
+/// (research.md R9): internal projection type, no operator-facing surface.
 /// </summary>
 public sealed record ContentRootPaths(
     string Root,
@@ -21,12 +22,12 @@ public sealed record ContentRootPaths(
 {
     public static ContentRootPaths FromResolved(ResolvedGrimoirePaths resolved) =>
         new(
-            Root: resolved.ContentRoot,
+            Root: resolved.WikiDir,
             TasksDir: resolved.TasksDir,
             IndexPath: resolved.IndexPath,
             LogPath: resolved.LogPath,
-            SystemPromptPath: resolved.SystemPromptPath,
-            DefaultUserPromptPath: resolved.DefaultUserPromptPath,
-            PolicyPath: resolved.PolicyPath,
+            SystemPromptPath: resolved.Ingest.SystemPromptPath,
+            DefaultUserPromptPath: resolved.Ingest.DefaultUserPromptPath!,
+            PolicyPath: resolved.Ingest.PolicyPath,
             WriteLocksDir: resolved.WriteLocksDir);
 }

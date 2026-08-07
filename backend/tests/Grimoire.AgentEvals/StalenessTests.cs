@@ -28,12 +28,15 @@ public class StalenessTests : IDisposable
         _fakeRepoRoot = Path.Combine(Path.GetTempPath(), "grimoire-staleness", Guid.NewGuid().ToString("N"));
         var real = EvalPaths.Discover();
 
-        CopyDirectory(real.AgentInstructionsDir, Path.Combine(_fakeRepoRoot, "data", "agents", "ingest"));
+        CopyDirectory(real.AgentInstructionsDir, Path.Combine(_fakeRepoRoot, "backend", "src", "Grimoire.IngestAgent", "Instructions"));
+        // FixturesRoot already contains recordings/ on disk (ADR-022: relocated from
+        // data/evals/recordings/), so this one copy carries both fixtures and recordings
+        // into the fake repo root.
         CopyDirectory(real.FixturesRoot, Path.Combine(_fakeRepoRoot, "backend", "tests", "Grimoire.AgentEvals", "Fixtures"));
         Directory.CreateDirectory(Path.Combine(_fakeRepoRoot, ".specify"));
 
         _paths = new EvalPaths(_fakeRepoRoot);
-        _recordingsRoot = Path.Combine(_fakeRepoRoot, "data", "evals", "recordings");
+        _recordingsRoot = _paths.RecordingsRoot;
         _store = new RecordingStore(_recordingsRoot);
     }
 

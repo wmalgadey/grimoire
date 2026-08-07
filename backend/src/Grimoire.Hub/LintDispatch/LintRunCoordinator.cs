@@ -192,9 +192,9 @@ public sealed class LintRunCoordinator
 
             var request = new LintAgentRequest(
                 RunId: runId,
-                WikiRoot: _paths.ContentRoot,
-                SystemPromptPath: _paths.LintSystemPromptPath,
-                PolicyPath: _paths.LintPolicyPath,
+                WikiRoot: _paths.WikiDir,
+                SystemPromptPath: _paths.Lint.SystemPromptPath,
+                PolicyPath: _paths.Lint.PolicyPath,
                 WriteLocksDir: _paths.WriteLocksDir,
                 ReviewWindowDays: _reviewWindowOptions.LintReviewWindowDays);
 

@@ -5,10 +5,10 @@ using Microsoft.Extensions.Logging.Abstractions;
 namespace Grimoire.IntegrationTests.PathConfiguration;
 
 /// <summary>
-/// T019t (US3, SC-002, FR-006) — a missing or wrong-kind required-input location fails
-/// startup immediately, naming the logical location, the configured value, and the
-/// resolved path; absent writable-data locations are instead created and reported
-/// (US3 acceptance scenarios 1-2).
+/// SC-007, FR-013 — a missing or wrong-kind required-input location fails startup
+/// immediately, naming the logical location, the configured value, and the resolved
+/// path; absent writable-data locations are instead created and reported (US1 acceptance
+/// scenarios).
 /// </summary>
 public class StartupValidationTests
 {
@@ -31,7 +31,7 @@ public class StartupValidationTests
     [Fact]
     public void MissingInstructionsDir_FailsBeforeServing_NamingLocationAndPaths()
     {
-        RunFailureCase(seed => Directory.Delete(seed.InstructionsDir, recursive: true), "instructions_dir");
+        RunFailureCase(seed => Directory.Delete(Path.Combine(seed.IngestDir, "Instructions"), recursive: true), "ingest_instructions_dir");
     }
 
     [Fact]
@@ -39,27 +39,28 @@ public class StartupValidationTests
     {
         RunFailureCase(seed =>
         {
-            Directory.Delete(seed.InstructionsDir, recursive: true);
-            File.WriteAllText(seed.InstructionsDir, "not a directory");
-        }, "instructions_dir");
+            var instructionsDir = Path.Combine(seed.IngestDir, "Instructions");
+            Directory.Delete(instructionsDir, recursive: true);
+            File.WriteAllText(instructionsDir, "not a directory");
+        }, "ingest_instructions_dir");
     }
 
     [Fact]
     public void MissingSystemPrompt_FailsNamingSystemPromptLocation()
     {
-        RunFailureCase(seed => File.Delete(seed.SystemPromptPath), "system_prompt");
+        RunFailureCase(seed => File.Delete(seed.SystemPromptPath), "ingest_system_prompt");
     }
 
     [Fact]
     public void MissingDefaultUserPrompt_FailsNamingDefaultUserPromptLocation()
     {
-        RunFailureCase(seed => File.Delete(seed.DefaultUserPromptPath), "default_user_prompt");
+        RunFailureCase(seed => File.Delete(seed.DefaultUserPromptPath), "ingest_default_user_prompt");
     }
 
     [Fact]
     public void MissingPolicyFile_FailsNamingPolicyLocation()
     {
-        RunFailureCase(seed => File.Delete(seed.PolicyPath), "policy");
+        RunFailureCase(seed => File.Delete(seed.PolicyPath), "ingest_policy");
     }
 
     [Fact]
@@ -69,13 +70,16 @@ public class StartupValidationTests
         {
             File.Delete(seed.PolicyPath);
             Directory.CreateDirectory(seed.PolicyPath);
-        }, "policy");
+        }, "ingest_policy");
     }
 
     [Fact]
-    public void MissingAgentWorker_FailsNamingAgentWorkerLocation()
+    public void MissingAgentWorker_FailsNamingAgentWorkerLocation_AndTellsOperatorToBuild()
     {
-        RunFailureCase(seed => File.Delete(seed.AgentWorkerPath), "agent_worker");
+        RunFailureCase(seed => File.Delete(seed.AgentWorkerPath), "ingest_agent_worker", exception =>
+        {
+            Assert.Contains("Build first: dotnet build backend/Grimoire.slnx", exception.Message, StringComparison.Ordinal);
+        });
     }
 
     [Fact]
@@ -85,32 +89,32 @@ public class StartupValidationTests
         {
             File.Delete(seed.AgentWorkerPath);
             Directory.CreateDirectory(seed.AgentWorkerPath);
-        }, "agent_worker");
+        }, "ingest_agent_worker");
     }
 
     [Fact]
-    public void ContentRootIsAFile_FailsCleanlyInsteadOfThrowingRawIOException()
+    public void WikiDirIsAFile_FailsCleanlyInsteadOfThrowingRawIOException()
     {
         var baseDir = Path.Combine(Path.GetTempPath(), $"grimoire-startup-wrongkind-writable-{Guid.NewGuid():N}");
         Directory.CreateDirectory(baseDir);
 
         try
         {
-            var options = PathConfigurationTestHelpers.SeedRequiredInputs(baseDir);
+            var seeded = PathConfigurationTestHelpers.SeedRequiredInputsWithPaths(baseDir);
             var configRoot = new ConfigurationBuilder().Build();
 
-            // content_root is a writable-data location (auto-created) — but here it already
-            // exists as a file, the exact FR-006 edge case: "A configured path points at a
-            // file where a directory is expected ... startup validation fails with a message
-            // naming the location." Must not surface as a raw System.IO.IOException.
-            var contentRootPath = Path.Combine(baseDir, "wiki");
-            File.WriteAllText(contentRootPath, "not a directory");
+            // wiki_dir is a writable-data location (auto-created, and never pre-created by
+            // the seeding helper) — but here it already exists as a file, the exact FR-010
+            // edge case: "A configured path points at a file where a directory is expected
+            // ... startup validation fails with a message naming the location." Must not
+            // surface as a raw System.IO.IOException.
+            File.WriteAllText(seeded.WikiDir, "not a directory");
 
             var exception = Assert.Throws<GrimoirePathValidationException>(
-                () => GrimoirePathResolver.Resolve(options, configRoot, NullLogger.Instance));
+                () => GrimoirePathResolver.Resolve(seeded.Options, configRoot, NullLogger.Instance));
 
-            Assert.Equal("content_root", exception.Location);
-            Assert.Equal(contentRootPath, exception.ResolvedPath);
+            Assert.Equal("wiki_dir", exception.Location);
+            Assert.Equal(seeded.WikiDir, exception.ResolvedPath);
             Assert.Contains(exception.Location, exception.Message, StringComparison.Ordinal);
             Assert.Contains(exception.ResolvedPath, exception.Message, StringComparison.Ordinal);
         }
@@ -131,34 +135,34 @@ public class StartupValidationTests
 
         try
         {
-            var options = PathConfigurationTestHelpers.SeedRequiredInputs(baseDir);
+            var seeded = PathConfigurationTestHelpers.SeedRequiredInputsWithPaths(baseDir);
+            var options = seeded.Options;
             var configRoot = new ConfigurationBuilder().Build();
 
             // None of the writable locations exist yet — only the required inputs seeded above do.
-            var contentRoot = Path.Combine(baseDir, "wiki");
-            Assert.False(Directory.Exists(contentRoot));
-            Assert.False(Directory.Exists(Path.Combine(baseDir, "data", "raw")));
-            Assert.False(Directory.Exists(Path.Combine(baseDir, "data", "state")));
+            Assert.False(Directory.Exists(seeded.WikiDir));
+            Assert.False(Directory.Exists(Path.Combine(seeded.DataDir, "raw")));
+            Assert.False(Directory.Exists(Path.Combine(seeded.DataDir, "state")));
 
             var resolved = GrimoirePathResolver.Resolve(options, configRoot, NullLogger.Instance);
 
-            // US3 acceptance scenario 2: writable locations are created and the effective
-            // (resolved) location is reported.
-            Assert.True(Directory.Exists(resolved.ContentRoot));
+            // Writable locations are created and the effective (resolved) location is reported.
+            Assert.True(Directory.Exists(resolved.WikiDir));
             Assert.True(Directory.Exists(resolved.TasksDir));
             Assert.True(Directory.Exists(resolved.RawOriginalsDir));
             Assert.True(Directory.Exists(resolved.RawSourcesDir));
             Assert.True(Directory.Exists(Path.GetDirectoryName(resolved.StateDbPath)));
             Assert.True(Directory.Exists(resolved.FindingsDir));
 
-            // US3 acceptance scenario 3: every effective location is present in the report.
+            // Every effective, independently-configured location is present in the report
+            // (agent subfolders/instructions/workers are derived from agent_dir, not
+            // independently configured, so they have no Locations entry of their own).
             var reportedNames = resolved.Locations.Select(l => l.Name).ToHashSet();
             Assert.Equal(
                 new HashSet<string>
                 {
-                    "base_dir", "data_dir", "content_root", "raw_dir", "state_db", "secrets_file", "instructions_dir", "agent_worker",
-                    "query_instructions_dir", "conversations_dir", "tasks_dir", "query_agent_worker", "write_locks_dir", "findings_dir",
-                    "lint_instructions_dir", "lint_agent_worker", "remediation_tasks_dir",
+                    "data_dir", "wiki_dir", "agent_dir", "raw_dir", "state_db", "write_locks_dir",
+                    "tasks_dir", "conversations_dir", "findings_dir", "remediation_tasks_dir", "secrets_file",
                 },
                 reportedNames);
             Assert.All(resolved.Locations, l => Assert.True(Path.IsPathRooted(l.ResolvedPath)));
@@ -172,7 +176,7 @@ public class StartupValidationTests
         }
     }
 
-    private static void RunFailureCase(Action<SeededRequiredInputs> corrupt, string expectedLocation)
+    private static void RunFailureCase(Action<SeededRequiredInputs> corrupt, string expectedLocation, Action<GrimoirePathValidationException>? assertAdditional = null)
     {
         var baseDir = Path.Combine(Path.GetTempPath(), $"grimoire-startup-validation-{Guid.NewGuid():N}");
         Directory.CreateDirectory(baseDir);
@@ -184,9 +188,9 @@ public class StartupValidationTests
 
             var configRoot = new ConfigurationBuilder().Build();
 
-            // US3 acceptance scenario 1: startup fails immediately (before serving any
-            // request — resolution happens before Program.cs ever builds the host),
-            // naming the offending location, its configured value, and its resolved path.
+            // Startup fails immediately (before serving any request — resolution happens
+            // before Program.cs ever builds the host), naming the offending location, its
+            // configured value, and its resolved path.
             var exception = Assert.Throws<GrimoirePathValidationException>(
                 () => GrimoirePathResolver.Resolve(seeded.Options, configRoot, NullLogger.Instance));
 
@@ -194,6 +198,7 @@ public class StartupValidationTests
             Assert.True(Path.IsPathRooted(exception.ResolvedPath));
             Assert.Contains(exception.Location, exception.Message, StringComparison.Ordinal);
             Assert.Contains(exception.ResolvedPath, exception.Message, StringComparison.Ordinal);
+            assertAdditional?.Invoke(exception);
         }
         finally
         {

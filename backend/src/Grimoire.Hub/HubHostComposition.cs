@@ -55,10 +55,11 @@ internal static class HubHostComposition
     {
         // WebApplicationBuilder defaults ContentRootPath to the process working directory,
         // which the "prod"/"dev"/"proxy" launch profiles deliberately set to the repo root
-        // (so GrimoirePathResolver's cwd-based BaseDir default, a separate lookup below,
-        // resolves correctly). That leaves appsettings.{Environment}.json looked up at the
-        // repo root instead of next to Grimoire.Hub.dll, where it actually lives — pin it
-        // explicitly so environment-specific settings load regardless of the launching cwd.
+        // (so GrimoirePathResolver's cwd-based DataDir/WikiDir defaults, a separate lookup
+        // below, resolve correctly). That leaves appsettings.{Environment}.json looked up
+        // at the repo root instead of next to Grimoire.Hub.dll, where it actually lives —
+        // pin it explicitly so environment-specific settings load regardless of the
+        // launching cwd (ADR-022: ProcessBaseDirectory's one remaining consumer).
         var builder = WebApplication.CreateBuilder(new WebApplicationOptions
         {
             Args = args,
@@ -72,8 +73,10 @@ internal static class HubHostComposition
         builder.Services.AddSingleton<HubTaskArtifactWriter>();
         builder.Services.AddSingleton<KanbanBoardProjectionStore>();
 
-        // ADR-009: every runtime location is composed in exactly one place, resolved before
-        // the host is built (no repository/project-structure discovery, FR-002/FR-003).
+        // ADR-022: every runtime location is composed in exactly one place, resolved before
+        // the host is built (no repository/project-structure discovery, FR-002/FR-003). The
+        // mandatory-configuration check (FR-005/SC-006) happens inside Resolve itself,
+        // before any location is touched — fail fast, before the DI graph below is built.
         builder.Configuration.AddCommandLine(args, PathConfigurationSwitchMappingsFactory());
 
         var pathOptions = new GrimoirePathOptions();
@@ -114,8 +117,8 @@ internal static class HubHostComposition
             builder.Services.AddSingleton(contentPaths);
             builder.Services.AddSingleton(new LocalSecretsLoader(resolvedPaths.SecretsFilePath));
             builder.Services.AddSingleton<AgentProcessHost>(sp => new AgentProcessHost(
-                sp.GetRequiredService<LocalSecretsLoader>(), resolvedPaths.AgentWorkerPath, resolvedPaths.QueryAgentWorkerPath,
-                resolvedPaths.LintAgentWorkerPath));
+                sp.GetRequiredService<LocalSecretsLoader>(), resolvedPaths.Ingest.WorkerPath, resolvedPaths.Query.WorkerPath,
+                resolvedPaths.Lint.WorkerPath));
             builder.Services.AddSingleton<IAgentProcessLauncher>(sp => sp.GetRequiredService<AgentProcessHost>());
             builder.Services.AddSingleton<IngestRunCoordinator>(sp => new IngestRunCoordinator(
                 sp.GetRequiredService<OperationalStateRepository>(),

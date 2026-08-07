@@ -33,14 +33,13 @@ public class IngestRepoLessStartupTests
             var resolvedPaths = GrimoirePathResolver.Resolve(options, configRoot, NullLogger.Instance);
 
             // Every resolved location is confined to the base directory (FR-002/FR-003).
-            Assert.Equal(Path.GetFullPath(baseDir), resolvedPaths.BaseDir);
-            AssertUnderBase(baseDir, resolvedPaths.ContentRoot);
+            AssertUnderBase(baseDir, resolvedPaths.WikiDir);
             AssertUnderBase(baseDir, resolvedPaths.DataDir);
             AssertUnderBase(baseDir, resolvedPaths.RawOriginalsDir);
             AssertUnderBase(baseDir, resolvedPaths.RawSourcesDir);
             AssertUnderBase(baseDir, resolvedPaths.StateDbPath);
             AssertUnderBase(baseDir, resolvedPaths.SecretsFilePath);
-            AssertUnderBase(baseDir, resolvedPaths.InstructionsDir);
+            AssertUnderBase(baseDir, resolvedPaths.Ingest.Dir);
 
             var contentPaths = ContentRootPaths.FromResolved(resolvedPaths);
             var rawPaths = RawStoragePaths.FromResolved(resolvedPaths);

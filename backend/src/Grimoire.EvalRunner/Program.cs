@@ -15,7 +15,7 @@ using Microsoft.Extensions.Logging;
 var (subcommand, options) = CliOptions.Parse(args);
 if (subcommand is null)
 {
-    Console.Error.WriteLine("Usage: Grimoire.EvalRunner <capture|replay|status> [--scenario <id>]... [--samples <n>] [--recordings-root <path>] [--summary <path>]");
+    Console.Error.WriteLine("Usage: Grimoire.EvalRunner <capture|replay|status> [--scenario <id>]... [--samples <n>] [--summary <path>]");
     return 2;
 }
 
@@ -25,7 +25,7 @@ using var loggerFactory = LoggerFactory.Create(builder => builder
 var logger = loggerFactory.CreateLogger("Grimoire.EvalRunner");
 
 var paths = EvalPaths.Discover();
-var store = new RecordingStore(options.RecordingsRoot ?? paths.DefaultRecordingsRoot);
+var store = new RecordingStore(paths.RecordingsRoot);
 var invoker = AgentProcessInvoker.ForRepo(paths);
 var queryInvoker = QueryAgentProcessInvoker.ForRepo(paths);
 var lintInvoker = LintAgentProcessInvoker.ForRepo(paths);
@@ -312,11 +312,15 @@ static IModelClient CreateJudgeClient(ProviderConfiguration configuration)
     }
 }
 
-/// <summary>Parsed CLI options per contracts/eval-cli.md.</summary>
+/// <summary>
+/// Parsed CLI options per contracts/eval-cli.md. No <c>--recordings-root</c> switch
+/// (ADR-022/FR-016/SC-009): recordings always resolve from the fixture folder inside the
+/// test project via <see cref="EvalPaths.RecordingsRoot"/>, independent of hub
+/// configuration.
+/// </summary>
 internal sealed record CliOptions(
     IReadOnlyList<string> Scenarios,
     int? Samples,
-    string? RecordingsRoot,
     string? SummaryPath)
 {
     public static (string? Subcommand, CliOptions Options) Parse(string[] args)
@@ -327,7 +331,6 @@ internal sealed record CliOptions(
 
         var scenarios = new List<string>();
         int? samples = null;
-        string? recordingsRoot = null;
         string? summaryPath = null;
 
         for (var i = subcommand is null ? 0 : 1; i < args.Length - 1; i += 2)
@@ -340,15 +343,12 @@ internal sealed record CliOptions(
                 case "--samples" when int.TryParse(args[i + 1], out var parsed):
                     samples = Math.Clamp(parsed, 1, 20);
                     break;
-                case "--recordings-root":
-                    recordingsRoot = args[i + 1];
-                    break;
                 case "--summary":
                     summaryPath = args[i + 1];
                     break;
             }
         }
 
-        return (subcommand, new CliOptions(scenarios, samples, recordingsRoot, summaryPath));
+        return (subcommand, new CliOptions(scenarios, samples, summaryPath));
     }
 }

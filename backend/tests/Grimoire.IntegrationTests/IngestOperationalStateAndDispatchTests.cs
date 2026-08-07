@@ -45,12 +45,22 @@ public class IngestOperationalStateAndDispatchTests
         var envPath = Path.Combine(root, ".env");
         var loader = new LocalSecretsLoader(envPath);
 
+        // ADR-022: the hub launches only pre-built worker DLLs (one launch mode, rule R4)
+        // — never a .csproj. Deliberately NOT AppContext.BaseDirectory: ProjectReference
+        // copy-local only copies what THIS test project's own dependency closure needs,
+        // which can omit assemblies the agent needs but this test host takes from
+        // elsewhere (research.md R5's documented failure mode) — the agent's own build
+        // output under .grimoire/agents/ (produced by PublishAgentRuntime, which copies
+        // the agent's ENTIRE $(OutDir)) is the only copy guaranteed complete.
         var repoRoot = FindRepoRoot(Directory.GetCurrentDirectory());
-        var agentProjectPath = Path.Combine(repoRoot, "backend", "src", "Grimoire.IngestAgent", "Grimoire.IngestAgent.csproj");
-        var processHost = new AgentProcessHost(loader, agentProjectPath);
+        var agentDir = Path.Combine(repoRoot, ".grimoire", "agents");
+        var agentWorkerPath = Path.Combine(agentDir, "ingest", "Grimoire.IngestAgent.dll");
+        var queryAgentWorkerPath = Path.Combine(agentDir, "query", "Grimoire.QueryAgent.dll");
+        var lintAgentWorkerPath = Path.Combine(agentDir, "lint", "Grimoire.LintAgent.dll");
+        var processHost = new AgentProcessHost(loader, agentWorkerPath, queryAgentWorkerPath, lintAgentWorkerPath);
 
         var taskId = $"test-{Guid.NewGuid():N}";
-        var repoRootForPaths = FindRepoRoot(Directory.GetCurrentDirectory());
+        var instructionsDir = Path.Combine(repoRoot, "backend", "src", "Grimoire.IngestAgent", "Instructions");
         var exitCode = await processHost.RunToExitAsync(new IngestAgentRequest(
             TaskId: taskId,
             SourceRef: sourcePath,
@@ -61,9 +71,9 @@ public class IngestOperationalStateAndDispatchTests
             IndexPath: indexPath,
             LogPath: logPath,
             PastedText: null,
-            SystemPromptPath: Path.Combine(repoRootForPaths, "data", "agents", "ingest", "system-prompt.md"),
-            DefaultUserPromptPath: Path.Combine(repoRootForPaths, "data", "agents", "ingest", "default-user-prompt.md"),
-            PolicyPath: Path.Combine(repoRootForPaths, "data", "agents", "ingest", "policy.json"),
+            SystemPromptPath: Path.Combine(instructionsDir, "system-prompt.md"),
+            DefaultUserPromptPath: Path.Combine(instructionsDir, "default-user-prompt.md"),
+            PolicyPath: Path.Combine(instructionsDir, "policy.json"),
             WriteLocksDir: Path.Combine(root, "write-locks")));
 
         // Agent should fail (exit 1) due to missing source, without making any LLM call.

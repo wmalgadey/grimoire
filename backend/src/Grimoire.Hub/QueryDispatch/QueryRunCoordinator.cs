@@ -152,12 +152,12 @@ public sealed class QueryRunCoordinator
             ConversationId: conversationId,
             Prompt: prompt,
             PriorTurns: priorTurns,
-            WikiRoot: _paths.ContentRoot,
-            ContentRoot: _paths.ContentRoot,
+            WikiRoot: _paths.WikiDir,
+            ContentRoot: _paths.WikiDir,
             IndexPath: _paths.IndexPath,
             LogPath: _paths.LogPath,
-            SystemPromptPath: _paths.QuerySystemPromptPath,
-            PolicyPath: _paths.QueryPolicyPath,
+            SystemPromptPath: _paths.Query.SystemPromptPath,
+            PolicyPath: _paths.Query.PolicyPath,
             WriteLocksDir: _paths.WriteLocksDir);
 
         AgentDispatch.IAgentProcessHandle handle;
@@ -353,7 +353,7 @@ public sealed class QueryRunCoordinator
             recordSpan?.SetTag("turn_id", turnId);
             recordSpan?.SetTag("outcome", outcome);
 
-            await _recordStore.AppendTurnAsync(turn.ConversationId, BuildRecordedTurn(turn, outcome, _paths.ContentRoot), CancellationToken.None);
+            await _recordStore.AppendTurnAsync(turn.ConversationId, BuildRecordedTurn(turn, outcome, _paths.WikiDir), CancellationToken.None);
         }
         catch (Exception ex)
         {

@@ -198,9 +198,9 @@ public sealed class RemediationRunCoordinator
             Title: row.Title,
             Description: row.Description,
             TargetPath: row.TargetPath,
-            WikiRoot: _paths.ContentRoot,
-            SystemPromptPath: _paths.LintSystemPromptPath,
-            PolicyPath: _paths.LintPolicyPath,
+            WikiRoot: _paths.WikiDir,
+            SystemPromptPath: _paths.Lint.SystemPromptPath,
+            PolicyPath: _paths.Lint.PolicyPath,
             WriteLocksDir: _paths.WriteLocksDir,
             AttachedContext: attachedContext);
 
