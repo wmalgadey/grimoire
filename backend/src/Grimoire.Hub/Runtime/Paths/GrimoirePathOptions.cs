@@ -17,8 +17,9 @@ public sealed class GrimoirePathOptions
     public const string SectionName = "Grimoire:Paths";
 
     /// <summary>
-    /// Root for all harness runtime state (raw intake, state DB, write-locks) and, by
-    /// default, the agent directory. Anchor: process working directory. Required — no
+    /// Root for all harness runtime state (raw intake, state DB, write-locks). Anchor:
+    /// process working directory, independent of <see cref="AgentDir"/> — relocating this
+    /// does not move the agent directory (PR #55 reviewer confirmation). Required — no
     /// code default.
     /// </summary>
     public string? DataDir { get; set; }
@@ -34,9 +35,11 @@ public sealed class GrimoirePathOptions
     /// <summary>
     /// Directory holding the complete agent runtime — worker binaries, dependency
     /// assemblies and instruction files — for every agent type, in per-agent-type
-    /// subfolders. Anchor: the resolved <see cref="DataDir"/>. Produced and refreshed by
-    /// the agent build (backend/Directory.Build.targets), never written by the hub.
-    /// Required — no code default.
+    /// subfolders. Anchor: process working directory, independent of
+    /// <see cref="DataDir"/> (relocating <see cref="DataDir"/> never moves this — PR #55
+    /// reviewer confirmation). Produced and refreshed by the agent build
+    /// (backend/Directory.Build.targets), never written by the hub. Required — no code
+    /// default.
     /// </summary>
     public string? AgentDir { get; set; }
 

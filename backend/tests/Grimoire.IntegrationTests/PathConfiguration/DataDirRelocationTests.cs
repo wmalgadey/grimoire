@@ -6,16 +6,17 @@ namespace Grimoire.IntegrationTests.PathConfiguration;
 
 /// <summary>
 /// SC-003 (US3 AS1/AS2) — relocating only <c>DataDir</c> carries every location anchored
-/// on it (raw intake, state DB, write-locks, lint pid, and the agent directory) to the new
-/// root, while <c>SecretsFile</c> — anchored at the process working directory, never at any
-/// root (FR-019) — is unaffected, and the wiki directory stays at its own cwd-anchored
-/// default rather than nesting inside the relocated data directory.
+/// on it (raw intake, state DB, write-locks, lint pid) to the new root, while
+/// <c>SecretsFile</c> — anchored at the process working directory, never at any root
+/// (FR-019) — is unaffected, and both the wiki directory and the agent directory stay at
+/// their own cwd-anchored defaults rather than nesting inside the relocated data
+/// directory (PR #55 reviewer confirmation: AgentDir no longer moves with DataDir).
 /// </summary>
 [Collection("CurrentDirectoryMutation")]
 public class DataDirRelocationTests
 {
     [Fact]
-    public void CustomDataDir_RelocatesEveryDataDirDerivedLocation_ButLeavesSecretsFileAtCwd()
+    public void CustomDataDir_RelocatesEveryDataDirDerivedLocation_ButLeavesSecretsFileAndAgentDirAtCwd()
     {
         var cwd = Path.Combine(Path.GetTempPath(), $"grimoire-datadir-relocation-{Guid.NewGuid():N}");
         Directory.CreateDirectory(cwd);
@@ -29,13 +30,10 @@ public class DataDirRelocationTests
             // same canonical form the resolver itself observes.
             cwd = Directory.GetCurrentDirectory();
 
+            // Seeds a complete agent runtime at the cwd-anchored default (.grimoire/agents)
+            // — AgentDir is left unset here (its own default, unaffected by DataDir).
             var options = PathConfigurationTestHelpers.SeedRequiredInputsForZeroConfig(cwd);
             options.DataDir = customDataDir;
-
-            // AgentDir's documented default ("agents") anchors on the resolved DataDir, so
-            // relocating DataDir alone relocates where the agent runtime must live too —
-            // seed it there instead of at the zero-config helper's own default location.
-            PathConfigurationTestHelpers.SeedAgentRuntimeAt(Path.Combine(customDataDir, "agents"));
 
             var configRoot = new ConfigurationBuilder().Build();
             var resolved = GrimoirePathResolver.Resolve(options, configRoot, NullLogger.Instance);
@@ -50,7 +48,6 @@ public class DataDirRelocationTests
                 resolved.StateDbPath,
                 resolved.WriteLocksDir,
                 resolved.LintPidPath,
-                resolved.AgentDir,
             })
             {
                 Assert.StartsWith(expectedDataDir, dataDirDerived, StringComparison.Ordinal);
@@ -63,6 +60,11 @@ public class DataDirRelocationTests
             // *default* data directory, not nested inside the relocated one (US3 AS2).
             Assert.Equal(Path.GetFullPath(Path.Combine(cwd, "llm-wiki")), resolved.WikiDir);
             Assert.DoesNotContain(expectedDataDir, resolved.WikiDir, StringComparison.Ordinal);
+
+            // AgentDir resolves to its own cwd-anchored default too — relocating DataDir
+            // does not drag the agent runtime along with it.
+            Assert.Equal(Path.GetFullPath(Path.Combine(cwd, ".grimoire", "agents")), resolved.AgentDir);
+            Assert.DoesNotContain(expectedDataDir, resolved.AgentDir, StringComparison.Ordinal);
         }
         finally
         {

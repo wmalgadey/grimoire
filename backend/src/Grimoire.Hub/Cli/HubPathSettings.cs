@@ -29,7 +29,7 @@ namespace Grimoire.Hub.Cli;
 public class HubPathSettings : CommandSettings
 {
     [CommandOption("--data-dir <PATH>")]
-    [Description("Root for harness runtime state (raw intake, state DB, write-locks) and, by default, the agent directory.")]
+    [Description("Root for harness runtime state (raw intake, state DB, write-locks).")]
     public string? DataDir { get; set; }
 
     [CommandOption("--agent-dir <PATH>")]

@@ -100,8 +100,9 @@ must be fixed by ADR rather than decided inside the feature:
 
 ### Root shape
 
-- **S1: Three independent roots** (`DataDir`, `AgentDir`, `WikiDir`), `AgentDir`
-  defaulting inside `DataDir`, `WikiDir` a cwd-anchored sibling of `DataDir`.
+- **S1: Three independent roots** (`DataDir`, `AgentDir`, `WikiDir`), each its own
+  cwd-anchored sibling — `AgentDir`'s shipped default value (`.grimoire/agents`) happens
+  to nest under `DataDir`'s default, but relocating `DataDir` does not move it.
 - **S2: Keep `BaseDir` and derive all three from it.** Rejected: spec US3 AS2 requires
   relocating runtime data to leave the wiki where it is — under a shared base, moving the
   base moves everything, and re-pinning the wiki needs a second option anyway.
@@ -174,7 +175,7 @@ split into two tiers:
 | --- | --- | --- | --- |
 | **Roots** | `DataDir` | process working directory | `--data-dir` |
 | | `WikiDir` | process working directory | `--wiki-dir` |
-| | `AgentDir` | `DataDir` | `--agent-dir` |
+| | `AgentDir` | process working directory | `--agent-dir` |
 | **Sub-paths** | `RawDir`, `StateDb`, `WriteLocksDir` | `DataDir` | *none* |
 | | `TasksDir`, `ConversationsDir`, `FindingsDir`, `RemediationTasksDir` | `WikiDir` | *none* |
 | | `SecretsFile` | process working directory | *none* |

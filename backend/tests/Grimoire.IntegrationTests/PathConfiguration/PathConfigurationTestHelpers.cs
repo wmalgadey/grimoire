@@ -112,7 +112,9 @@ internal static class PathConfigurationTestHelpers
         {
             DataDir = ".grimoire",
             WikiDir = "llm-wiki",
-            AgentDir = "agents",
+            // Anchored at cwd (independent of DataDir) — the value is spelled out in full
+            // rather than a bare "agents" now that there is no implicit DataDir-nesting.
+            AgentDir = ".grimoire/agents",
             RawDir = "raw",
             StateDb = "state/operational-state.db",
             WriteLocksDir = "write-locks",

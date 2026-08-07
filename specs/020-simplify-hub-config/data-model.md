@@ -19,7 +19,7 @@ Bound from the `Grimoire:Paths` section. Every value is a string that is either 
 | --- | --- | --- | --- | --- |
 | `DataDir` | working directory | `.grimoire` | `--data-dir` | **yes** |
 | `WikiDir` | working directory | `llm-wiki` | `--wiki-dir` | **yes** |
-| `AgentDir` | resolved `DataDir` | `agents` | `--agent-dir` | **yes** |
+| `AgentDir` | working directory | `.grimoire/agents` | `--agent-dir` | **yes** |
 
 "Required" means: absent or whitespace after binding ⇒ startup fails naming
 `appsettings.json` and the missing key (FR-005). There is no code constant holding these
@@ -147,7 +147,7 @@ bind Grimoire:Paths
    ├─▶ any of DataDir / WikiDir / AgentDir empty?
    │        └─▶ FAIL  paths_configuration_missing   (names appsettings.json + missing keys)
    │
-   ├─▶ resolve roots (cwd anchors) ─▶ resolve AgentDir (DataDir anchor)
+   ├─▶ resolve roots (DataDir/WikiDir/AgentDir — all three independently cwd-anchored)
    ├─▶ resolve sub-paths against their roots; resolve SecretsFile against cwd
    │
    ├─▶ validate required inputs, fail-fast, before any write:

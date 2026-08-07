@@ -16,7 +16,7 @@ only place default paths exist. Every key below must be present and non-empty.
     "Paths": {
       "DataDir": ".grimoire",
       "WikiDir": "llm-wiki",
-      "AgentDir": "agents",
+      "AgentDir": ".grimoire/agents",
 
       "RawDir": "raw",
       "StateDb": "state/operational-state.db",
@@ -39,7 +39,7 @@ only place default paths exist. Every key below must be present and non-empty.
 | --- | --- | --- | --- |
 | `DataDir` | working directory | `--data-dir` | Root — required |
 | `WikiDir` | working directory | `--wiki-dir` | Root — required |
-| `AgentDir` | resolved `DataDir` | `--agent-dir` | Root — required |
+| `AgentDir` | working directory | `--agent-dir` | Root — required; independent of `DataDir` |
 | `RawDir` | `DataDir` | — | `originals/` and `sources/` are fixed subfolders |
 | `StateDb` | `DataDir` | — | file path; its directory is auto-created |
 | `WriteLocksDir` | `DataDir` | — | |

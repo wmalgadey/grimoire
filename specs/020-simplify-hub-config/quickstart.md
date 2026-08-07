@@ -72,7 +72,7 @@ dotnet run --project backend/src/Grimoire.Hub -- --help
 
 ```bash
 dotnet run --project backend/src/Grimoire.Hub -- \
-  --wiki-dir /tmp/my-wiki submit-source ./some-source.md
+  submit-source --path ./some-source.md --wiki-dir /tmp/my-wiki
 ```
 
 **Expected**: `/tmp/my-wiki/` receives the pages, `index.md`, `log.md`, `tasks/`,
@@ -83,16 +83,15 @@ else to set.
 ## Scenario 3 — Relocate the runtime data folder (US3 · SC-003)
 
 ```bash
-dotnet run --project backend/src/Grimoire.Hub -- --data-dir /tmp/env-a submit-source ./some-source.md
+dotnet run --project backend/src/Grimoire.Hub -- submit-source --path ./some-source.md --data-dir /tmp/env-a
 ```
 
-**Expected**: `/tmp/env-a/` holds `raw/`, `state/operational-state.db`, `write-locks/` and
-`agents/` — but the wiki lands at `<cwd>/llm-wiki`, its own cwd-anchored default, **not**
-inside `/tmp/env-a` (US3 AS2). The secrets file is still read from `<cwd>/.env` (SC-011).
-
-Note: `/tmp/env-a/agents` will be empty on a first run, so the hub fails naming
-`agent_dir` — redirect an agent build there first (Scenario 4) or leave `--agent-dir` at
-its default.
+**Expected**: `/tmp/env-a/` holds `raw/`, `state/operational-state.db` and `write-locks/`
+— but the wiki lands at `<cwd>/llm-wiki` and the agent directory stays at its own default
+`<cwd>/.grimoire/agents`, neither one moving into `/tmp/env-a` (US3 AS2 — relocating
+`DataDir` moves only what is actually anchored on it; `WikiDir` and `AgentDir` are
+independent cwd-anchored roots of their own). The secrets file is still read from
+`<cwd>/.env` (SC-011).
 
 ## Scenario 4 — Custom agent folder fed by the build (US4 · SC-008)
 
@@ -101,7 +100,7 @@ dotnet build backend/Grimoire.slnx -p:GrimoireAgentDir=/tmp/my-agents
 ls /tmp/my-agents/ingest                  # worker dll + deps + assemblies + Instructions/
 ls /tmp/my-agents/ingest/Instructions     # system-prompt.md  default-user-prompt.md  policy.json
 
-dotnet run --project backend/src/Grimoire.Hub -- --agent-dir /tmp/my-agents lint-run
+dotnet run --project backend/src/Grimoire.Hub -- lint-run --agent-dir /tmp/my-agents
 ```
 
 **Expected**: the whole agent runtime — binaries and instructions — lives in

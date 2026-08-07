@@ -14,18 +14,20 @@ Every runtime location Grimoire uses is composed in one place
 configurable roots, none nested inside one another under any configuration:
 
 - **The data directory** (`.grimoire` by default, cwd-anchored) — internal harness
-  runtime state: raw intake storage, the operational-state database,
-  write-coordination locks, and, by default, the agent directory. Never git-tracked.
+  runtime state: raw intake storage, the operational-state database, and
+  write-coordination locks. Never git-tracked.
 - **The wiki directory** (`llm-wiki` by default, cwd-anchored, independent of the data
   directory) — the knowledge base an agent maintains (`index.md`, `log.md`, topical
   article subfolders) plus agent-produced results: tasks, conversations, findings, and
   remediation-task records. Deliberately kept independent of the data directory so it
   can be committed to its own git repository.
-- **The agent directory** (`agents` by default, anchored under the resolved data
-  directory) — the complete agent runtime (worker binaries, dependency assemblies, and
-  instruction files) for every agent type, in per-agent-type subfolders. Produced and
-  refreshed by the agent build (`backend/Directory.Build.targets`'s `PublishAgentRuntime`
-  target) — the Hub never writes here, only reads.
+- **The agent directory** (`.grimoire/agents` by default, cwd-anchored, independent of
+  the data directory) — the complete agent runtime (worker binaries, dependency
+  assemblies, and instruction files) for every agent type, in per-agent-type subfolders.
+  Produced and refreshed by the agent build (`backend/Directory.Build.targets`'s
+  `PublishAgentRuntime` target) — the Hub never writes here, only reads. Its default
+  value happens to nest under the data directory's default, but relocating `--data-dir`
+  does not move it — the two are resolved independently.
 
 Every other runtime location (raw intake, the state DB, write-locks, tasks,
 conversations, findings, remediation tasks) is a fixed sub-path anchored under one of
@@ -48,7 +50,7 @@ does not invoke `git` or any other version-control tooling at runtime.
 | --- | --- | --- | --- | --- | --- |
 | Data directory | `--data-dir` | `Grimoire__Paths__DataDir` | `.grimoire` | process working directory | required input (must exist) |
 | Wiki directory | `--wiki-dir` | `Grimoire__Paths__WikiDir` | `llm-wiki` | process working directory | writable (auto-created) |
-| Agent directory | `--agent-dir` | `Grimoire__Paths__AgentDir` | `agents` | data directory | required input (must hold a complete agent runtime) |
+| Agent directory | `--agent-dir` | `Grimoire__Paths__AgentDir` | `.grimoire/agents` | process working directory | required input (must hold a complete agent runtime) |
 | Secrets file | — | — | `.env` | process working directory | required input |
 
 ### Sub-paths (`appsettings.json`-only, no CLI switch)

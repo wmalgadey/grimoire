@@ -15,13 +15,14 @@ Exactly three, accepted by the web host and by every `Grimoire.Hub.Cli` command 
 
 | Switch | Configuration key | Environment variable | Meaning |
 | --- | --- | --- | --- |
-| `--data-dir <PATH>` | `Grimoire:Paths:DataDir` | `Grimoire__Paths__DataDir` | Root for all harness runtime state (raw intake, state DB, write-locks) and, by default, the agent directory. |
+| `--data-dir <PATH>` | `Grimoire:Paths:DataDir` | `Grimoire__Paths__DataDir` | Root for all harness runtime state (raw intake, state DB, write-locks). |
 | `--agent-dir <PATH>` | `Grimoire:Paths:AgentDir` | `Grimoire__Paths__AgentDir` | Directory holding the complete agent runtime — worker binaries, dependency assemblies and instruction files — in per-agent-type subfolders. Produced by the agent build. |
 | `--wiki-dir <PATH>` | `Grimoire:Paths:WikiDir` | `Grimoire__Paths__WikiDir` | Root for all agent-produced results (wiki pages, `index.md`, `log.md`, tasks, conversations, findings, remediation tasks). |
 
-Relative values resolve against the option's anchor (`--data-dir` and `--wiki-dir`:
-process working directory; `--agent-dir`: the resolved data directory). Absolute values
-are used verbatim.
+Relative values resolve against the process working directory for all three switches —
+each independently (relocating one never moves another). Absolute values are used
+verbatim. `AgentDir`'s shipped default is spelled out in full (`.grimoire/agents`) rather
+than a bare `agents`, precisely because it does not nest under `DataDir` implicitly.
 
 ### Removed switches
 
@@ -48,14 +49,14 @@ command-line switch  >  environment variable  >  appsettings.json
 There is no fourth tier. A root absent from all three is a startup failure (§4).
 
 **Worked example** — `Grimoire__Paths__DataDir=/env/data` in the environment,
-`--data-dir /cli/data` on the command line, `"WikiDir": "llm-wiki"` in the file, nothing
-else set:
+`--data-dir /cli/data` on the command line, `"WikiDir": "llm-wiki"` and
+`"AgentDir": ".grimoire/agents"` in the file, nothing else set:
 
 | Option | Effective value | Source |
 | --- | --- | --- |
 | `DataDir` | `/cli/data` | `command-line` |
 | `WikiDir` | `<cwd>/llm-wiki` | `config-file` |
-| `AgentDir` | `/cli/data/agents` | `config-file` (value), anchored at the CLI-set root |
+| `AgentDir` | `<cwd>/.grimoire/agents` | `config-file` (value), anchored at cwd — unaffected by `DataDir` moving to `/cli/data` |
 
 ---
 

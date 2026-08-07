@@ -86,7 +86,12 @@ public static class GrimoirePathResolver
 
         var dataDir = ResolveAgainst(options.DataDir, CurrentWorkingDirectory);
         var wikiDir = ResolveAgainst(options.WikiDir, CurrentWorkingDirectory);
-        var agentDir = ResolveAgainst(options.AgentDir, dataDir);
+        // Anchored at cwd, same as DataDir/WikiDir — NOT at the resolved DataDir (reviewer
+        // confirmation, PR #55): relocating --data-dir must never silently drag the agent
+        // runtime along with it. The default literal value (".grimoire/agents" in
+        // appsettings.json) spells the nesting out explicitly instead of relying on an
+        // anchor-level special case.
+        var agentDir = ResolveAgainst(options.AgentDir, CurrentWorkingDirectory);
 
         var rawDir = ResolveAgainst(options.RawDir, dataDir);
         var stateDbPath = ResolveAgainst(options.StateDb, dataDir);

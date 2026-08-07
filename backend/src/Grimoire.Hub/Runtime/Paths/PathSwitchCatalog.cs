@@ -21,7 +21,7 @@ internal static class PathSwitchCatalog
 {
     public static readonly IReadOnlyList<PathSwitch> All =
     [
-        new("--data-dir", "Grimoire:Paths:DataDir", "Root for harness runtime state (raw intake, state DB, write-locks) and, by default, the agent directory."),
+        new("--data-dir", "Grimoire:Paths:DataDir", "Root for harness runtime state (raw intake, state DB, write-locks)."),
         new("--agent-dir", "Grimoire:Paths:AgentDir", "Directory holding the complete agent runtime — worker binaries, dependency assemblies and instruction files — in per-agent-type subfolders. Produced by the agent build."),
         new("--wiki-dir", "Grimoire:Paths:WikiDir", "Root for all agent-produced results (wiki pages, index.md, log.md, tasks, conversations, findings, remediation tasks)."),
     ];
