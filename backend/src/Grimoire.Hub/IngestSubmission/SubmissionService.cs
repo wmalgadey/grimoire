@@ -21,7 +21,7 @@ public sealed class SubmissionService
         _logger = logger ?? NullLogger<SubmissionService>.Instance;
     }
 
-    public async Task<string> SubmitAsync(SubmitSourceOptions options, ContentRootPaths contentPaths, CancellationToken cancellationToken = default)
+    public async Task<string> SubmitAsync(SubmitSourceOptions options, IngestContentPaths contentPaths, ResolvedGrimoirePaths resolvedPaths, CancellationToken cancellationToken = default)
     {
         var taskId = $"{DateTime.UtcNow:yyyy-MM-dd}-ingest-{Guid.NewGuid():N}";
         var normalizedSourceRef = ResolveSourcePath(options.Path);
@@ -54,9 +54,9 @@ public sealed class SubmissionService
             IndexPath: contentPaths.IndexPath,
             LogPath: contentPaths.LogPath,
             PastedText: options.PastedText,
-            SystemPromptPath: contentPaths.SystemPromptPath,
-            DefaultUserPromptPath: contentPaths.DefaultUserPromptPath,
-            PolicyPath: contentPaths.PolicyPath,
+            SystemPromptPath: resolvedPaths.Ingest.SystemPromptPath,
+            DefaultUserPromptPath: resolvedPaths.Ingest.DefaultUserPromptPath!,
+            PolicyPath: resolvedPaths.Ingest.PolicyPath,
             WriteLocksDir: contentPaths.WriteLocksDir);
 
         using (var spawnSpan = HubTracing.ActivitySource.StartActivity("hub.ingest.spawn_agent"))

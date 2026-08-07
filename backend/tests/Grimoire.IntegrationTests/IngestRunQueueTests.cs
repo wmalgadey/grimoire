@@ -64,7 +64,8 @@ public class IngestRunQueueTests
             restartedLauncher,
             fixture.Publisher,
             new HubTaskArtifactWriter(),
-            fixture.ContentPaths);
+            fixture.ContentPaths,
+            fixture.ResolvedPaths);
         await restarted.InitializeAsync();
 
         // Queue survived and is paused; nothing starts automatically (FR-021).

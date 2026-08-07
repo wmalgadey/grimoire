@@ -42,7 +42,7 @@ public sealed class IngestSubmissionPipeline
     private readonly IUrlContentFetcher _urlFetcher;
     private readonly IngestLifecyclePublisher _publisher;
     private readonly IngestRunCoordinator _coordinator;
-    private readonly ContentRootPaths _contentPaths;
+    private readonly IngestContentPaths _contentPaths;
     private readonly ILogger<IngestSubmissionPipeline> _logger;
 
     public IngestSubmissionPipeline(
@@ -52,7 +52,7 @@ public sealed class IngestSubmissionPipeline
         IUrlContentFetcher urlFetcher,
         IngestLifecyclePublisher publisher,
         IngestRunCoordinator coordinator,
-        ContentRootPaths contentPaths,
+        IngestContentPaths contentPaths,
         ILogger<IngestSubmissionPipeline>? logger = null)
     {
         _taskArtifactWriter = taskArtifactWriter;

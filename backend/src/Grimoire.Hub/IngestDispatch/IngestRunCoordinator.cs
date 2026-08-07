@@ -5,6 +5,7 @@ using Grimoire.Hub.IngestSubmission;
 using Grimoire.Hub.OperationalState;
 using Grimoire.Hub.Realtime;
 using Grimoire.Hub.IngestTaskArtifact;
+using Grimoire.Hub.Runtime.Paths;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Grimoire.Hub.AgentDispatch;
@@ -35,7 +36,8 @@ public sealed class IngestRunCoordinator
     private readonly IAgentProcessLauncher _launcher;
     private readonly IngestLifecyclePublisher _publisher;
     private readonly HubTaskArtifactWriter _taskArtifactWriter;
-    private readonly ContentRootPaths _contentPaths;
+    private readonly IngestContentPaths _contentPaths;
+    private readonly ResolvedGrimoirePaths _resolvedPaths;
     private readonly TimeProvider _timeProvider;
     private readonly TimeSpan _livenessWindow;
     private readonly ILogger<IngestRunCoordinator> _logger;
@@ -49,7 +51,8 @@ public sealed class IngestRunCoordinator
         IAgentProcessLauncher launcher,
         IngestLifecyclePublisher publisher,
         HubTaskArtifactWriter taskArtifactWriter,
-        ContentRootPaths contentPaths,
+        IngestContentPaths contentPaths,
+        ResolvedGrimoirePaths resolvedPaths,
         TimeProvider? timeProvider = null,
         TimeSpan? livenessWindow = null,
         ILogger<IngestRunCoordinator>? logger = null)
@@ -59,6 +62,7 @@ public sealed class IngestRunCoordinator
         _publisher = publisher;
         _taskArtifactWriter = taskArtifactWriter;
         _contentPaths = contentPaths;
+        _resolvedPaths = resolvedPaths;
         _timeProvider = timeProvider ?? TimeProvider.System;
         _livenessWindow = livenessWindow ?? TimeSpan.FromSeconds(60);
         _logger = logger ?? NullLogger<IngestRunCoordinator>.Instance;
@@ -208,9 +212,9 @@ public sealed class IngestRunCoordinator
             IndexPath: _contentPaths.IndexPath,
             LogPath: _contentPaths.LogPath,
             PastedText: null,
-            SystemPromptPath: _contentPaths.SystemPromptPath,
-            DefaultUserPromptPath: _contentPaths.DefaultUserPromptPath,
-            PolicyPath: _contentPaths.PolicyPath,
+            SystemPromptPath: _resolvedPaths.Ingest.SystemPromptPath,
+            DefaultUserPromptPath: _resolvedPaths.Ingest.DefaultUserPromptPath!,
+            PolicyPath: _resolvedPaths.Ingest.PolicyPath,
             WriteLocksDir: _contentPaths.WriteLocksDir,
             UserPrompt: run.UserPrompt);
 

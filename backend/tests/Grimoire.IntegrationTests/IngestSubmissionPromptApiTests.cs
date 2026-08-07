@@ -44,7 +44,7 @@ public class IngestSubmissionPromptApiTests
     public async Task GetDefaults_FailsClosed_WhenDefaultPromptDocumentIsMissing()
     {
         using var fixture = new IngestSubmissionPipelineFixture();
-        File.Delete(fixture.ContentPaths.DefaultUserPromptPath);
+        File.Delete(fixture.ResolvedPaths.Ingest.DefaultUserPromptPath!);
 
         using var host = await BuildHostAsync(fixture);
         var client = host.GetTestClient();
@@ -127,6 +127,7 @@ public class IngestSubmissionPromptApiTests
                     services.AddSingleton(fixture.Pipeline);
                     services.AddSingleton(fixture.BoardStore);
                     services.AddSingleton(fixture.ContentPaths);
+                    services.AddSingleton(fixture.ResolvedPaths);
                     services.AddSingleton(fixture.SourceArtifactStore);
                     services.AddSingleton(fixture.Coordinator);
                     services.AddSingleton(new TaskRecordReadModel(fixture.ResolvedPaths));

@@ -2,8 +2,10 @@ using System.Text.Json;
 using Grimoire.Domain.Ingest;
 using Grimoire.Hub.AgentDispatch;
 using Grimoire.Hub.ContentRoot;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 using Grimoire.Hub.IngestDispatch;
+using Grimoire.Hub.Runtime.Paths;
 
 namespace Grimoire.Hub.IngestSubmission;
 
@@ -206,22 +208,26 @@ public static class IngestSubmissionEndpoints
     /// default user prompt and the convert-step registry. Fail-closed: a missing/empty
     /// default-prompt document is a 500 with a human-readable reason.
     /// </summary>
-    private static async Task<IResult> GetDefaultsAsync(ContentRootPaths contentPaths, CancellationToken cancellationToken)
+    private static async Task<IResult> GetDefaultsAsync(
+        [FromServices] ResolvedGrimoirePaths resolvedPaths, CancellationToken cancellationToken)
     {
-        if (!File.Exists(contentPaths.DefaultUserPromptPath))
+        // Non-null for Ingest (AgentRuntimePaths doc comment); nullable only for Query/Lint.
+        var defaultUserPromptPath = resolvedPaths.Ingest.DefaultUserPromptPath!;
+
+        if (!File.Exists(defaultUserPromptPath))
         {
             return Results.Json(new
             {
-                message = $"Default user prompt document not found at '{contentPaths.DefaultUserPromptPath}'.",
+                message = $"Default user prompt document not found at '{defaultUserPromptPath}'.",
             }, statusCode: StatusCodes.Status500InternalServerError);
         }
 
-        var defaultUserPrompt = await File.ReadAllTextAsync(contentPaths.DefaultUserPromptPath, cancellationToken);
+        var defaultUserPrompt = await File.ReadAllTextAsync(defaultUserPromptPath, cancellationToken);
         if (string.IsNullOrWhiteSpace(defaultUserPrompt))
         {
             return Results.Json(new
             {
-                message = $"Default user prompt document at '{contentPaths.DefaultUserPromptPath}' is empty.",
+                message = $"Default user prompt document at '{defaultUserPromptPath}' is empty.",
             }, statusCode: StatusCodes.Status500InternalServerError);
         }
 
@@ -240,7 +246,7 @@ public static class IngestSubmissionEndpoints
     }
 
     private static async Task<IResult> GetBoardAsync(
-        KanbanBoardProjectionStore store, ContentRootPaths contentPaths, IngestRunCoordinator coordinator, CancellationToken cancellationToken)
+        KanbanBoardProjectionStore store, IngestContentPaths contentPaths, IngestRunCoordinator coordinator, CancellationToken cancellationToken)
     {
         var tasks = await store.GetAllAsync(contentPaths.TasksDir, cancellationToken);
         var queuePositions = await coordinator.GetQueuePositionsAsync(cancellationToken);
@@ -266,7 +272,7 @@ public static class IngestSubmissionEndpoints
         string taskId,
         KanbanBoardProjectionStore store,
         Conversion.SourceArtifactStore sourceArtifactStore,
-        ContentRootPaths contentPaths,
+        IngestContentPaths contentPaths,
         IngestRunCoordinator coordinator,
         CancellationToken cancellationToken)
     {
@@ -370,7 +376,7 @@ public static class IngestSubmissionEndpoints
 
     /// <summary>Re-arms a single queued task after a Hub restart (004 FR-021).</summary>
     private static async Task<IResult> PostRetriggerAsync(
-        string taskId, IngestRunCoordinator coordinator, KanbanBoardProjectionStore store, ContentRootPaths contentPaths, CancellationToken cancellationToken)
+        string taskId, IngestRunCoordinator coordinator, KanbanBoardProjectionStore store, IngestContentPaths contentPaths, CancellationToken cancellationToken)
     {
         var projection = await store.GetByTaskIdAsync(contentPaths.TasksDir, taskId, cancellationToken);
         if (projection is null)

@@ -56,7 +56,7 @@ public sealed class IngestRetriggerCommand : AsyncCommand<IngestRetriggerSetting
 
     private readonly IngestRunCoordinator _coordinator;
     private readonly KanbanBoardProjectionStore _store;
-    private readonly ContentRootPaths _contentPaths;
+    private readonly IngestContentPaths _contentPaths;
     private readonly CliStatusRenderer _status;
     private readonly TextWriter _stdout;
 
@@ -65,14 +65,14 @@ public sealed class IngestRetriggerCommand : AsyncCommand<IngestRetriggerSetting
     // between this constructor and the test seam below.
     [ActivatorUtilitiesConstructor]
     public IngestRetriggerCommand(
-        IngestRunCoordinator coordinator, KanbanBoardProjectionStore store, ContentRootPaths contentPaths)
+        IngestRunCoordinator coordinator, KanbanBoardProjectionStore store, IngestContentPaths contentPaths)
         : this(coordinator, store, contentPaths, new CliStatusRenderer(), Console.Out)
     {
     }
 
     /// <summary>Test seam: inject a status renderer / stdout writer instead of the real stderr/stdout streams.</summary>
     public IngestRetriggerCommand(
-        IngestRunCoordinator coordinator, KanbanBoardProjectionStore store, ContentRootPaths contentPaths,
+        IngestRunCoordinator coordinator, KanbanBoardProjectionStore store, IngestContentPaths contentPaths,
         CliStatusRenderer status, TextWriter stdout)
     {
         _coordinator = coordinator;

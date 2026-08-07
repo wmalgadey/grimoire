@@ -1,6 +1,7 @@
 using System.ComponentModel;
 using Grimoire.Hub.ContentRoot;
 using Grimoire.Hub.IngestSubmission;
+using Grimoire.Hub.Runtime.Paths;
 using Spectre.Console;
 using Spectre.Console.Cli;
 
@@ -41,12 +42,15 @@ public sealed class SubmitSourceSettings : HubPathSettings
 public sealed class SubmitSourceCommand : AsyncCommand<SubmitSourceSettings>
 {
     private readonly SubmissionService _submissionService;
-    private readonly ContentRootPaths _contentPaths;
+    private readonly IngestContentPaths _contentPaths;
+    private readonly ResolvedGrimoirePaths _resolvedPaths;
 
-    public SubmitSourceCommand(SubmissionService submissionService, ContentRootPaths contentPaths)
+    public SubmitSourceCommand(
+        SubmissionService submissionService, IngestContentPaths contentPaths, ResolvedGrimoirePaths resolvedPaths)
     {
         _submissionService = submissionService;
         _contentPaths = contentPaths;
+        _resolvedPaths = resolvedPaths;
     }
 
     protected override async Task<int> ExecuteAsync(
@@ -61,6 +65,7 @@ public sealed class SubmitSourceCommand : AsyncCommand<SubmitSourceSettings>
         var taskId = await _submissionService.SubmitAsync(
             new SubmitSourceOptions(settings.Path!, settings.SourceKind, pastedText),
             _contentPaths,
+            _resolvedPaths,
             cancellationToken);
 
         Console.WriteLine($"Submitted ingest task: {taskId}");
