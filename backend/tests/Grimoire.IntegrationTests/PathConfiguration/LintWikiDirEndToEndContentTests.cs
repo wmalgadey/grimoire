@@ -57,18 +57,25 @@ public class LintWikiDirEndToEndContentTests
                 logger: NullLogger<LintRunCoordinator>.Instance, stateRepository: repository);
 
             var result = await coordinator.TriggerAsync();
-            Assert.IsType<LintSubmissionResult.Accepted>(result);
+            var accepted = Assert.IsType<LintSubmissionResult.Accepted>(result);
+            var runId = accepted.Run.RunId;
 
             await PollAsync.WaitAsync(
                 () => !coordinator.IsRunActive,
                 TimeSpan.FromSeconds(10),
                 "Expected the scripted lint run to reach a terminal state within 10s.");
 
-            var runId = coordinator.LatestRunId;
-            Assert.False(string.IsNullOrWhiteSpace(runId));
-            var reportPath = resolved.FindingsReportPathFor(runId!);
+            // LintRunCoordinator.FinishRunAsync flips the run's terminal status (and
+            // therefore IsRunActive) slightly before it finishes writing the Findings
+            // Report — poll for the file too (mirrors LintRunLifecycleTests.
+            // LintCoordinatorHarness.WaitForTerminalAsync's established idiom for this
+            // exact race).
+            var reportPath = resolved.FindingsReportPathFor(runId);
+            await PollAsync.WaitAsync(
+                () => File.Exists(reportPath),
+                TimeSpan.FromSeconds(5),
+                $"Expected a findings report at {reportPath}.");
 
-            Assert.True(File.Exists(reportPath), $"Expected a findings report at {reportPath}.");
             Assert.StartsWith(resolved.WikiDir, reportPath, StringComparison.Ordinal);
             Assert.DoesNotContain(resolved.DataDir, reportPath, StringComparison.Ordinal);
         }
