@@ -22,7 +22,7 @@ namespace Grimoire.IntegrationTests.Fakes;
 public sealed class IngestSubmissionPipelineFixture : IDisposable
 {
     public string Root { get; }
-    public ContentRootPaths ContentPaths { get; }
+    public IngestContentPaths ContentPaths { get; }
     public RawStoragePaths RawPaths { get; }
     public ResolvedGrimoirePaths ResolvedPaths { get; }
     public SourceArtifactStore SourceArtifactStore { get; }
@@ -53,7 +53,8 @@ public sealed class IngestSubmissionPipelineFixture : IDisposable
         string markItDownExecutablePath = "markitdown",
         TimeSpan? livenessWindow = null,
         TimeProvider? timeProvider = null,
-        ContentRootPaths? contentPaths = null,
+        IngestContentPaths? contentPaths = null,
+        ResolvedGrimoirePaths? resolvedPaths = null,
         RawStoragePaths? rawPaths = null,
         string? root = null,
         IMarkdownConverter? converter = null,
@@ -62,83 +63,88 @@ public sealed class IngestSubmissionPipelineFixture : IDisposable
         Root = root ?? Path.Combine(Path.GetTempPath(), $"grimoire-ingest-submission-{Guid.NewGuid():N}");
         Directory.CreateDirectory(Root);
 
-        if (contentPaths is not null)
-        {
-            ContentPaths = contentPaths;
-            Directory.CreateDirectory(ContentPaths.Root);
-            Directory.CreateDirectory(ContentPaths.TasksDir);
-            if (!File.Exists(ContentPaths.IndexPath)) File.WriteAllText(ContentPaths.IndexPath, "# Index\n");
-            if (!File.Exists(ContentPaths.LogPath)) File.WriteAllText(ContentPaths.LogPath, string.Empty);
-            Directory.CreateDirectory(Path.GetDirectoryName(ContentPaths.SystemPromptPath)!);
-            if (!File.Exists(ContentPaths.SystemPromptPath)) File.WriteAllText(ContentPaths.SystemPromptPath, "# Test system prompt\nRules.\n");
-            if (!File.Exists(ContentPaths.DefaultUserPromptPath)) File.WriteAllText(ContentPaths.DefaultUserPromptPath, "Please integrate the source.\n");
-        }
-        else
-        {
-            var contentRoot = Path.Combine(Root, "wiki");
-            var instructionsDir = Path.Combine(Root, "agents", "ingest");
-            ContentPaths = new ContentRootPaths(
-                Root: contentRoot,
-                TasksDir: Path.Combine(contentRoot, "tasks"),
-                IndexPath: Path.Combine(contentRoot, "index.md"),
-                LogPath: Path.Combine(contentRoot, "log.md"),
-                SystemPromptPath: Path.Combine(instructionsDir, "system-prompt.md"),
-                DefaultUserPromptPath: Path.Combine(instructionsDir, "default-user-prompt.md"),
-                PolicyPath: Path.Combine(instructionsDir, "policy.json"),
-                WriteLocksDir: Path.Combine(Root, "write-locks"));
-            Directory.CreateDirectory(ContentPaths.Root);
-            Directory.CreateDirectory(ContentPaths.TasksDir);
-            File.WriteAllText(ContentPaths.IndexPath, "# Index\n");
-            File.WriteAllText(ContentPaths.LogPath, string.Empty);
-            Directory.CreateDirectory(instructionsDir);
-            File.WriteAllText(ContentPaths.SystemPromptPath, "# Test system prompt\nRules.\n");
-            File.WriteAllText(ContentPaths.DefaultUserPromptPath, "Please integrate the source.\n");
-        }
-
         RawPaths = rawPaths ?? new RawStoragePaths(
             OriginalsDir: Path.Combine(Root, "raw", "originals"),
             SourcesDir: Path.Combine(Root, "raw", "sources"));
         SourceArtifactStore = new SourceArtifactStore(RawPaths);
 
         var agentDir = Path.Combine(Root, "agents");
-        ResolvedPaths = new ResolvedGrimoirePaths(
-            DataDir: Root,
-            WikiDir: ContentPaths.Root,
-            AgentDir: agentDir,
-            RawOriginalsDir: RawPaths.OriginalsDir,
-            RawSourcesDir: RawPaths.SourcesDir,
-            StateDbPath: Path.Combine(Root, "operational-state.db"),
-            WriteLocksDir: Path.Combine(Root, "write-locks"),
-            LintPidPath: Path.Combine(Root, "lint.pid"),
-            TasksDir: ContentPaths.TasksDir,
-            ConversationsDir: Path.Combine(ContentPaths.Root, "conversations"),
-            FindingsDir: Path.Combine(ContentPaths.Root, "findings"),
-            RemediationTasksDir: Path.Combine(ContentPaths.Root, "remediation-tasks"),
-            IndexPath: ContentPaths.IndexPath,
-            LogPath: ContentPaths.LogPath,
-            SecretsFilePath: Path.Combine(Root, ".env"),
-            Ingest: new AgentRuntimePaths(
-                Dir: Path.GetDirectoryName(Path.GetDirectoryName(ContentPaths.SystemPromptPath))!,
-                WorkerPath: "unused",
-                InstructionsDir: Path.GetDirectoryName(ContentPaths.SystemPromptPath)!,
-                SystemPromptPath: ContentPaths.SystemPromptPath,
-                PolicyPath: ContentPaths.PolicyPath,
-                DefaultUserPromptPath: ContentPaths.DefaultUserPromptPath),
-            Query: new AgentRuntimePaths(
-                Dir: Path.Combine(agentDir, "query"),
-                WorkerPath: "unused",
-                InstructionsDir: Path.Combine(agentDir, "query", "Instructions"),
-                SystemPromptPath: Path.Combine(agentDir, "query", "Instructions", "system-prompt.md"),
-                PolicyPath: Path.Combine(agentDir, "query", "Instructions", "policy.json"),
-                DefaultUserPromptPath: null),
-            Lint: new AgentRuntimePaths(
-                Dir: Path.Combine(agentDir, "lint"),
-                WorkerPath: "unused",
-                InstructionsDir: Path.Combine(agentDir, "lint", "Instructions"),
-                SystemPromptPath: Path.Combine(agentDir, "lint", "Instructions", "system-prompt.md"),
-                PolicyPath: Path.Combine(agentDir, "lint", "Instructions", "policy.json"),
-                DefaultUserPromptPath: null),
-            Locations: []);
+
+        if (resolvedPaths is not null)
+        {
+            ResolvedPaths = resolvedPaths;
+
+            Directory.CreateDirectory(ResolvedPaths.Ingest.InstructionsDir);
+            if (!File.Exists(ResolvedPaths.Ingest.SystemPromptPath)) File.WriteAllText(ResolvedPaths.Ingest.SystemPromptPath, "# Test system prompt\nRules.\n");
+            if (ResolvedPaths.Ingest.DefaultUserPromptPath is not null && !File.Exists(ResolvedPaths.Ingest.DefaultUserPromptPath)) File.WriteAllText(ResolvedPaths.Ingest.DefaultUserPromptPath, "Please integrate the source.\n");
+
+            ContentPaths = contentPaths ?? IngestContentPaths.FromResolved(ResolvedPaths);
+            Directory.CreateDirectory(ContentPaths.Root);
+            Directory.CreateDirectory(ContentPaths.TasksDir);
+            if (!File.Exists(ContentPaths.IndexPath)) File.WriteAllText(ContentPaths.IndexPath, "# Index\n");
+            if (!File.Exists(ContentPaths.LogPath)) File.WriteAllText(ContentPaths.LogPath, string.Empty);
+        }
+        else
+        {
+            var contentRoot = Path.Combine(Root, "wiki");
+            var instructionsDir = Path.Combine(Root, "agents", "ingest");
+            var tasksDir = Path.Combine(contentRoot, "tasks");
+            var indexPath = Path.Combine(contentRoot, "index.md");
+            var logPath = Path.Combine(contentRoot, "log.md");
+            var systemPromptPath = Path.Combine(instructionsDir, "system-prompt.md");
+            var defaultUserPromptPath = Path.Combine(instructionsDir, "default-user-prompt.md");
+            var policyPath = Path.Combine(instructionsDir, "policy.json");
+            var writeLocksDir = Path.Combine(Root, "write-locks");
+
+            Directory.CreateDirectory(contentRoot);
+            Directory.CreateDirectory(tasksDir);
+            File.WriteAllText(indexPath, "# Index\n");
+            File.WriteAllText(logPath, string.Empty);
+            Directory.CreateDirectory(instructionsDir);
+            File.WriteAllText(systemPromptPath, "# Test system prompt\nRules.\n");
+            File.WriteAllText(defaultUserPromptPath, "Please integrate the source.\n");
+
+            ResolvedPaths = new ResolvedGrimoirePaths(
+                DataDir: Root,
+                WikiDir: contentRoot,
+                AgentDir: agentDir,
+                RawOriginalsDir: RawPaths.OriginalsDir,
+                RawSourcesDir: RawPaths.SourcesDir,
+                StateDbPath: Path.Combine(Root, "operational-state.db"),
+                WriteLocksDir: writeLocksDir,
+                LintPidPath: Path.Combine(Root, "lint.pid"),
+                TasksDir: tasksDir,
+                ConversationsDir: Path.Combine(contentRoot, "conversations"),
+                FindingsDir: Path.Combine(contentRoot, "findings"),
+                RemediationTasksDir: Path.Combine(contentRoot, "remediation-tasks"),
+                IndexPath: indexPath,
+                LogPath: logPath,
+                SecretsFilePath: Path.Combine(Root, ".env"),
+                Ingest: new AgentRuntimePaths(
+                    Dir: Path.GetDirectoryName(Path.GetDirectoryName(systemPromptPath))!,
+                    WorkerPath: "unused",
+                    InstructionsDir: Path.GetDirectoryName(systemPromptPath)!,
+                    SystemPromptPath: systemPromptPath,
+                    PolicyPath: policyPath,
+                    DefaultUserPromptPath: defaultUserPromptPath),
+                Query: new AgentRuntimePaths(
+                    Dir: Path.Combine(agentDir, "query"),
+                    WorkerPath: "unused",
+                    InstructionsDir: Path.Combine(agentDir, "query", "Instructions"),
+                    SystemPromptPath: Path.Combine(agentDir, "query", "Instructions", "system-prompt.md"),
+                    PolicyPath: Path.Combine(agentDir, "query", "Instructions", "policy.json"),
+                    DefaultUserPromptPath: null),
+                Lint: new AgentRuntimePaths(
+                    Dir: Path.Combine(agentDir, "lint"),
+                    WorkerPath: "unused",
+                    InstructionsDir: Path.Combine(agentDir, "lint", "Instructions"),
+                    SystemPromptPath: Path.Combine(agentDir, "lint", "Instructions", "system-prompt.md"),
+                    PolicyPath: Path.Combine(agentDir, "lint", "Instructions", "policy.json"),
+                    DefaultUserPromptPath: null),
+                Locations: []);
+
+            ContentPaths = contentPaths ?? IngestContentPaths.FromResolved(ResolvedPaths);
+        }
 
         var dbPath = Path.Combine(Root, "operational-state.db");
         Repository = new OperationalStateRepository(dbPath);
@@ -156,6 +162,7 @@ public sealed class IngestSubmissionPipelineFixture : IDisposable
             publisher,
             new HubTaskArtifactWriter(),
             ContentPaths,
+            ResolvedPaths,
             timeProvider,
             livenessWindow ?? TimeSpan.FromSeconds(60),
             CoordinatorLogger);

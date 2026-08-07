@@ -363,7 +363,7 @@ internal sealed class BoardHostHarness : IDisposable
         File.WriteAllText(paths.IndexPath, "# Index\n");
         File.WriteAllText(paths.LogPath, string.Empty);
 
-        var contentPaths = ContentRootPaths.FromResolved(paths);
+        var contentPaths = IngestContentPaths.FromResolved(paths);
         var effectiveLauncher = launcher ?? new FakeAgentProcessLauncher(autoPlay: true);
 
         var repository = new OperationalStateRepository(paths.StateDbPath);
@@ -402,6 +402,7 @@ internal sealed class BoardHostHarness : IDisposable
                         sp.GetRequiredService<IngestLifecyclePublisher>(),
                         new HubTaskArtifactWriter(),
                         contentPaths,
+                        paths,
                         logger: NullLogger<IngestRunCoordinator>.Instance));
                     services.AddSingleton<FindingsReportStore>(sp =>
                         new FindingsReportStore(paths, NullLogger<FindingsReportStore>.Instance));

@@ -28,7 +28,7 @@ public static class BoardEndpoints
 
     private static async Task<IResult> GetCompositeBoardAsync(
         KanbanBoardProjectionStore store,
-        ContentRootPaths contentPaths,
+        IngestContentPaths contentPaths,
         IngestRunCoordinator ingestCoordinator,
         LintRunCoordinator lintCoordinator,
         OperationalStateRepository stateRepository,

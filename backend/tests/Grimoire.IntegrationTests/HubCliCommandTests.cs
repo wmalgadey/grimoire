@@ -862,7 +862,7 @@ internal sealed class HubCliIngestTestHarness : IDisposable
     public OperationalStateRepository Repository => _fixture.Repository;
     public IngestRunCoordinator Coordinator => _fixture.Coordinator;
     public KanbanBoardProjectionStore Store => _fixture.BoardStore;
-    public ContentRootPaths ContentPaths => _fixture.ContentPaths;
+    public IngestContentPaths ContentPaths => _fixture.ContentPaths;
 
     public static HubCliIngestTestHarness Create(FakeAgentProcessLauncher? launcher = null) =>
         new(new IngestSubmissionPipelineFixture(launcher: launcher));

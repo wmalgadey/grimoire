@@ -101,7 +101,7 @@ internal static class HubHostComposition
             var pathLogger = bootstrapLoggerFactory.CreateLogger("Grimoire.Hub.Runtime.Paths");
             var resolvedPaths = GrimoirePathResolver.Resolve(pathOptions, builder.Configuration, pathLogger);
 
-            var contentPaths = ContentRootPaths.FromResolved(resolvedPaths);
+            var contentPaths = IngestContentPaths.FromResolved(resolvedPaths);
             var rawStoragePaths = RawStoragePaths.FromResolved(resolvedPaths);
 
             builder.Services.AddSingleton(resolvedPaths);
@@ -125,7 +125,8 @@ internal static class HubHostComposition
                 sp.GetRequiredService<IAgentProcessLauncher>(),
                 sp.GetRequiredService<IngestLifecyclePublisher>(),
                 sp.GetRequiredService<HubTaskArtifactWriter>(),
-                sp.GetRequiredService<ContentRootPaths>(),
+                sp.GetRequiredService<IngestContentPaths>(),
+                sp.GetRequiredService<ResolvedGrimoirePaths>(),
                 logger: sp.GetRequiredService<ILogger<IngestRunCoordinator>>()));
             builder.Services.AddSingleton<IngestSubmissionValidator>();
             builder.Services.AddSingleton<IngestSubmissionPipeline>();

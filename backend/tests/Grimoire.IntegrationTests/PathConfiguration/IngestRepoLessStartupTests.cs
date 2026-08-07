@@ -41,11 +41,11 @@ public class IngestRepoLessStartupTests
             AssertUnderBase(baseDir, resolvedPaths.SecretsFilePath);
             AssertUnderBase(baseDir, resolvedPaths.Ingest.Dir);
 
-            var contentPaths = ContentRootPaths.FromResolved(resolvedPaths);
+            var contentPaths = IngestContentPaths.FromResolved(resolvedPaths);
             var rawPaths = RawStoragePaths.FromResolved(resolvedPaths);
 
             using var fixture = new IngestSubmissionPipelineFixture(
-                contentPaths: contentPaths, rawPaths: rawPaths, root: baseDir);
+                contentPaths: contentPaths, rawPaths: rawPaths, root: baseDir, resolvedPaths: resolvedPaths);
 
             var bytes = System.Text.Encoding.UTF8.GetBytes("# Hello\n\nSome content.");
             var taskId = await fixture.Pipeline.AcceptAsync(

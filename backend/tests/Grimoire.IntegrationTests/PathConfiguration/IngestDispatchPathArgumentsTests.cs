@@ -28,12 +28,12 @@ public class IngestDispatchPathArgumentsTests
             var configRoot = new ConfigurationBuilder().Build();
             var resolvedPaths = GrimoirePathResolver.Resolve(options, configRoot, NullLogger.Instance);
 
-            var contentPaths = ContentRootPaths.FromResolved(resolvedPaths);
+            var contentPaths = IngestContentPaths.FromResolved(resolvedPaths);
             var rawPaths = RawStoragePaths.FromResolved(resolvedPaths);
             var launcher = new FakeAgentProcessLauncher();
 
             using var fixture = new IngestSubmissionPipelineFixture(
-                launcher: launcher, contentPaths: contentPaths, rawPaths: rawPaths, root: baseDir);
+                launcher: launcher, contentPaths: contentPaths, rawPaths: rawPaths, root: baseDir, resolvedPaths: resolvedPaths);
 
             var bytes = System.Text.Encoding.UTF8.GetBytes("# Hello\n\nSome content.");
             var taskId = await fixture.Pipeline.AcceptAsync(
