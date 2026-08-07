@@ -18,12 +18,12 @@ using Grimoire.Hub.AgentDispatch;
 public sealed class AgentProcessHost : IAgentProcessLauncher
 {
     private readonly LocalSecretsLoader _secretsLoader;
-    private readonly string _agentWorkerPath;
+    private readonly string _ingestAgentWorkerPath;
     private readonly string _queryAgentWorkerPath;
     private readonly string _lintAgentWorkerPath;
 
     /// <summary>
-    /// <paramref name="agentWorkerPath"/>, <paramref name="queryAgentWorkerPath"/> and
+    /// <paramref name="ingestAgentWorkerPath"/>, <paramref name="queryAgentWorkerPath"/> and
     /// <paramref name="lintAgentWorkerPath"/> are the Hub-resolved
     /// <c>&lt;AgentDir&gt;/&lt;agent-id&gt;/Grimoire.&lt;Type&gt;Agent.dll</c> worker
     /// locations (ADR-022 — no longer independently configurable; all three are governed
@@ -35,12 +35,12 @@ public sealed class AgentProcessHost : IAgentProcessLauncher
     /// </summary>
     public AgentProcessHost(
         LocalSecretsLoader secretsLoader,
-        string agentWorkerPath,
+        string ingestAgentWorkerPath,
         string queryAgentWorkerPath,
         string lintAgentWorkerPath)
     {
         _secretsLoader = secretsLoader;
-        _agentWorkerPath = agentWorkerPath;
+        _ingestAgentWorkerPath = ingestAgentWorkerPath;
         _queryAgentWorkerPath = queryAgentWorkerPath;
         _lintAgentWorkerPath = lintAgentWorkerPath;
     }
@@ -497,7 +497,7 @@ public sealed class AgentProcessHost : IAgentProcessLauncher
         };
 
         startInfo.FileName = "dotnet";
-        startInfo.ArgumentList.Add(_agentWorkerPath);
+        startInfo.ArgumentList.Add(_ingestAgentWorkerPath);
 
         startInfo.ArgumentList.Add("--task-id");
         startInfo.ArgumentList.Add(request.TaskId);
