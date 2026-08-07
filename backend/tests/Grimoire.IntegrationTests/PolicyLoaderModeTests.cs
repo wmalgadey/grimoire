@@ -161,7 +161,7 @@ public class PolicyLoaderModeTests
         try
         {
             var repoRoot = FindRepositoryRoot();
-            var ingestPolicyPath = Path.Combine(repoRoot, "data", "agents", "ingest", "policy.json");
+            var ingestPolicyPath = Path.Combine(repoRoot, "backend", "src", "Grimoire.IngestAgent", "Instructions", "policy.json");
             Assert.True(File.Exists(ingestPolicyPath), $"Expected repo file not found: {ingestPolicyPath}");
 
             var loader = new PolicyLoader(root);
@@ -195,7 +195,7 @@ public class PolicyLoaderModeTests
     private static string FindRepositoryRoot()
     {
         var dir = new DirectoryInfo(AppContext.BaseDirectory);
-        while (dir is not null && !Directory.Exists(Path.Combine(dir.FullName, "data", "agents", "ingest")))
+        while (dir is not null && !Directory.Exists(Path.Combine(dir.FullName, "backend", "src", "Grimoire.IngestAgent", "Instructions")))
         {
             dir = dir.Parent;
         }

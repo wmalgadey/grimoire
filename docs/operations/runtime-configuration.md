@@ -1,91 +1,98 @@
 # Runtime Path Configuration
 
 Operator-facing reference for where Grimoire reads and writes data, and how to configure
-it. Full contract: [`specs/005-content-root-config/contracts/path-configuration.md`](../../specs/005-content-root-config/contracts/path-configuration.md).
-Defaults and resolution rules: [`specs/005-content-root-config/data-model.md`](../../specs/005-content-root-config/data-model.md).
-Worked examples: [`specs/005-content-root-config/quickstart.md`](../../specs/005-content-root-config/quickstart.md).
-Architectural rationale: [ADR-009](../adr/ADR-009-runtime-path-configuration.md).
+it. Full contract: [`specs/020-simplify-hub-config/contracts/directory-options.md`](../../specs/020-simplify-hub-config/contracts/directory-options.md).
+Defaults and resolution rules: [`specs/020-simplify-hub-config/data-model.md`](../../specs/020-simplify-hub-config/data-model.md).
+Worked examples: [`specs/020-simplify-hub-config/quickstart.md`](../../specs/020-simplify-hub-config/quickstart.md).
+Architectural rationale: [ADR-022](../adr/ADR-022-minimal-directory-configuration-surface.md)
+(supersedes [ADR-009](../adr/ADR-009-runtime-path-configuration.md)'s switch surface).
 
-## The base-level layout
+## The three roots
 
 Every runtime location Grimoire uses is composed in one place
-(`Grimoire.Hub.Runtime.Paths.GrimoirePathResolver`) beneath a single base directory —
-either an explicitly configured `--base-dir`, or the process working directory when none
-is given. As of 014-wiki-storage-restructure, that base has four top-level homes (up
-from the original two, below), none nested inside one another under any configuration:
+(`Grimoire.Hub.Runtime.Paths.GrimoirePathResolver`) beneath exactly three independently
+configurable roots, none nested inside one another under any configuration:
 
-- **The wiki content root** (`<base>/wiki` by default) — the knowledge base an agent
-  maintains: topical article subfolders directly (no wrapper folder), the catalog
-  (`index.md`), and the ingest log (`log.md`). Deliberately kept outside the data
-  directory so it can be committed to its own git repository, independently of the
-  application's internal runtime data and independently of the task/conversation
-  bookkeeping below.
-- **The tasks directory** (`<base>/tasks` by default) — Hub-written task artifacts, one
-  per Ingest task. A sibling of the content root, not nested inside it (before
-  014-wiki-storage-restructure this lived at `<base>/wiki/tasks`).
-- **The conversations directory** (`<base>/conversations` by default) — Hub-written
-  Conversation Records, one per Query conversation. A sibling of the content root
-  (before 014-wiki-storage-restructure this lived at `<base>/data/conversations`).
-- **The remediation tasks directory** (`<base>/remediation-tasks` by default,
-  015-lint-board-parity) — Hub-written Remediation Task Records (ADR-014-shaped, one
-  per agent-proposed remediation action), plus the CAS-backed queue/authorization
-  rows that live in the operational-state database below. A sibling of `tasks/` and
-  `conversations/`, following the same pattern.
-- **The consolidated data directory** (`<base>/data` by default) — every other piece of
-  internal runtime data the application owns: raw intake storage, the operational-state
-  database, the secrets file, write-coordination locks, Lint Findings Reports, and the
-  agent instruction set. Unaffected by the 014-wiki-storage-restructure relocation
-  above.
+- **The data directory** (`.grimoire` by default, cwd-anchored) — internal harness
+  runtime state: raw intake storage, the operational-state database, and
+  write-coordination locks. Never git-tracked.
+- **The wiki directory** (`llm-wiki` by default, cwd-anchored, independent of the data
+  directory) — the knowledge base an agent maintains (`index.md`, `log.md`, topical
+  article subfolders) plus agent-produced results: tasks, conversations, findings, and
+  remediation-task records. Deliberately kept independent of the data directory so it
+  can be committed to its own git repository.
+- **The agent directory** (`.grimoire/agents` by default, cwd-anchored, independent of
+  the data directory) — the complete agent runtime (worker binaries, dependency
+  assemblies, and instruction files) for every agent type, in per-agent-type subfolders.
+  Produced and refreshed by the agent build (`backend/Directory.Build.targets`'s
+  `PublishAgentRuntime` target) — the Hub never writes here, only reads. Its default
+  value happens to nest under the data directory's default, but relocating `--data-dir`
+  does not move it — the two are resolved independently.
+
+Every other runtime location (raw intake, the state DB, write-locks, tasks,
+conversations, findings, remediation tasks) is a fixed sub-path anchored under one of
+these three roots — configurable only through `appsettings.json`, never via a CLI
+switch (see "Sub-paths" below).
+
+The secrets file (`.env`) is the one location anchored independently of all three
+roots — always at the process working directory — so relocating runtime data, the
+agent directory, or the wiki never separates an operator from their credentials.
 
 ## Configuration table
 
-Precedence for every location: **command line > environment > `appsettings.json` >
-code default**. Relative values always resolve against the documented anchor below —
-never against a discovered repository or project root; the application does not invoke
-`git` or any other version-control tooling at runtime.
+Precedence for every location: **command line > environment > `appsettings.json`**.
+There is no fourth "code default" tier — `appsettings.json` is the sole source of
+default values (ADR-022). Relative values always resolve against the documented
+anchor below — never against a discovered repository or project root; the application
+does not invoke `git` or any other version-control tooling at runtime.
 
-| Location | CLI switch | Environment variable | Default | Resolves against | Kind |
+| Location | CLI switch | Environment variable | Shipped default | Resolves against | Kind |
 | --- | --- | --- | --- | --- | --- |
-| Base directory | `--base-dir` | `Grimoire__Paths__BaseDir` | process working directory | — | required input (must exist) |
-| Wiki content root | `--content-root` | `Grimoire__Paths__ContentRoot` | `wiki` | base directory | writable (auto-created) |
-| Data directory | `--data-dir` | `Grimoire__Paths__DataDir` | `data` | base directory | writable (auto-created) |
-| Raw intake storage | `--raw-dir` | `Grimoire__Paths__RawDir` | `raw` | data directory | writable (auto-created) |
-| Operational state DB | `--state-db` | `Grimoire__Paths__StateDb` | `state/operational-state.db` | data directory | writable (auto-created) |
-| Secrets file | `--secrets-file` | `Grimoire__Paths__SecretsFile` | `.env` | data directory | required input |
-| Agent instructions dir | `--instructions-dir` | `Grimoire__Paths__InstructionsDir` | `agents/ingest` | data directory | required input |
-| Agent worker | `--agent-worker` | `Grimoire__Paths__AgentWorker` | `Grimoire.IngestAgent.dll` | application install directory | required input |
+| Data directory | `--data-dir` | `Grimoire__Paths__DataDir` | `.grimoire` | process working directory | required input (must exist) |
+| Wiki directory | `--wiki-dir` | `Grimoire__Paths__WikiDir` | `llm-wiki` | process working directory | writable (auto-created) |
+| Agent directory | `--agent-dir` | `Grimoire__Paths__AgentDir` | `.grimoire/agents` | process working directory | required input (must hold a complete agent runtime) |
+| Secrets file | — | — | `.env` | process working directory | required input |
+
+### Sub-paths (`appsettings.json`-only, no CLI switch)
+
+| Location | Configuration key | Shipped default | Resolves against |
+| --- | --- | --- | --- |
+| Raw intake storage | `Grimoire:Paths:RawDir` | `raw` | data directory |
+| Operational state DB | `Grimoire:Paths:StateDb` | `state/operational-state.db` | data directory |
+| Write-coordination locks | `Grimoire:Paths:WriteLocksDir` | `write-locks` | data directory |
+| Task artifacts | `Grimoire:Paths:TasksDir` | `tasks` | wiki directory |
+| Conversation Records | `Grimoire:Paths:ConversationsDir` | `conversations` | wiki directory |
+| Findings Reports | `Grimoire:Paths:FindingsDir` | `findings` | wiki directory |
+| Remediation Task Records | `Grimoire:Paths:RemediationTasksDir` | `remediation-tasks` | wiki directory |
+
+An operator who needs to relocate one of these internal locations without moving its
+whole root edits `appsettings.json` directly — no CLI switch exists for any sub-path
+(FR-015), and every other sub-path under the same root stays at its own default.
 
 Required-input locations that are missing, or of the wrong kind (a file where a
 directory is expected, or vice versa), abort startup immediately with a message naming
-the location, the configured value, and the resolved path. Writable-data locations are
-created automatically. Every successful start logs the fully resolved absolute path of
-all eight locations (`paths_resolved`), so an operator can always confirm where data
-actually lives.
+the location, the configured value, and the resolved path. A root missing from every
+configuration tier (including `appsettings.json`) fails distinctly, naming the
+configuration file and every missing key, before any location is touched. Writable-data
+locations are created automatically. Every successful start logs the fully resolved
+absolute path of every location (`paths_resolved`), so an operator can always confirm
+where data actually lives.
 
-## Migrating an existing checkout
+## The agent directory is a build artifact
 
-A checkout created before this configuration model moved its instruction set and
-secrets under the consolidated data directory once, manually — there is no automatic
-migration:
+Unlike the data and wiki directories, the agent directory is never written by the Hub.
+It is produced entirely by `dotnet build backend/Grimoire.slnx`, which — for every
+agent project — copies that project's complete build output (worker DLL, dependency
+assemblies, `deps.json`, `runtimeconfig.json`, and its `Instructions/` folder) into
+`<AgentDir>/<agent-id>/`, clearing and replacing that subfolder on every build. To
+redirect where the build delivers it:
 
 ```bash
-mkdir -p data/state
-# wiki/ stays where it is — it already matches the <base>/wiki default.
-git mv agents data/agents
-[ -d raw ] && mv raw data/raw || mkdir -p data/raw
-mv .env data/.env
-[ -f backend/data/operational-state.db ] && mv backend/data/operational-state.db data/state/
+dotnet build backend/Grimoire.slnx -p:GrimoireAgentDir=/srv/grimoire/agents
 ```
 
-After moving `agents/` to `data/agents/`, the policy file's path prefixes and the
-system prompt's path references both had to become content-root-relative (at the time:
-`pages/`, `tasks/`, `index.md`, `log.md` — no `wiki/` prefix; as of
-014-wiki-storage-restructure the policy prefix is `.`, the wiki root itself, since the
-`pages/` wrapper and the in-root `tasks/` folder are both retired — see the base-level
-layout above), since the agent now addresses locations relative to the wiki root it is
-explicitly given (`--wiki-root`), not a discovered repository root. `.gitignore` was
-updated (`backend/data/` → `data/state/` + `data/raw/`), and `.vscode/launch.json` now
-sets `cwd` to the workspace root and passes an absolute `--agent-worker` path — both
-required because `dotnet run --project` changes the process's own working directory to
-the project's directory, and the agent-worker default resolves against the install
-directory, not the base.
+and point the Hub at the same location with `--agent-dir /srv/grimoire/agents` (or the
+matching `Grimoire__Paths__AgentDir` environment variable / `appsettings.json` value).
+An agent directory that is missing, empty, or missing one required file (a worker DLL
+or an instruction document) fails startup naming exactly what is missing, including a
+"Build first: `dotnet build backend/Grimoire.slnx`" hint when a worker binary is absent.

@@ -277,39 +277,8 @@ internal sealed class LintCoordinatorHarness : IDisposable
         Grimoire.Hub.Realtime.LintLifecyclePublisher? lifecyclePublisher = null)
     {
         var root = Path.Combine(Path.GetTempPath(), $"grimoire-lint-lifecycle-{Guid.NewGuid():N}");
-        var findingsDir = Path.Combine(root, "findings");
-        Directory.CreateDirectory(findingsDir);
-
-        var paths = new ResolvedGrimoirePaths(
-            BaseDir: root,
-            DataDir: root,
-            ContentRoot: Path.Combine(root, "wiki"),
-            TasksDir: Path.Combine(root, "wiki", "tasks"),
-            IndexPath: Path.Combine(root, "wiki", "index.md"),
-            LogPath: Path.Combine(root, "wiki", "log.md"),
-            RawOriginalsDir: Path.Combine(root, "raw", "originals"),
-            RawSourcesDir: Path.Combine(root, "raw", "sources"),
-            StateDbPath: Path.Combine(root, "state.db"),
-            SecretsFilePath: Path.Combine(root, ".env"),
-            InstructionsDir: Path.Combine(root, "agents", "ingest"),
-            SystemPromptPath: Path.Combine(root, "agents", "ingest", "system-prompt.md"),
-            DefaultUserPromptPath: Path.Combine(root, "agents", "ingest", "default-user-prompt.md"),
-            PolicyPath: Path.Combine(root, "agents", "ingest", "policy.json"),
-            AgentWorkerPath: "unused",
-            QueryInstructionsDir: Path.Combine(root, "agents", "query"),
-            QuerySystemPromptPath: Path.Combine(root, "agents", "query", "system-prompt.md"),
-            QueryPolicyPath: Path.Combine(root, "agents", "query", "policy.json"),
-            ConversationsDir: Path.Combine(root, "conversations"),
-            QueryAgentWorkerPath: "unused",
-            WriteLocksDir: Path.Combine(root, "write-locks"),
-            FindingsDir: findingsDir,
-            LintInstructionsDir: Path.Combine(root, "agents", "lint"),
-            LintSystemPromptPath: Path.Combine(root, "agents", "lint", "system-prompt.md"),
-            LintPolicyPath: Path.Combine(root, "agents", "lint", "policy.json"),
-            LintAgentWorkerPath: "unused",
-            RemediationTasksDir: Path.Combine(root, "remediation-tasks"),
-            LintPidPath: Path.Combine(root, "lint.pid"),
-            Locations: []);
+        var paths = TestResolvedGrimoirePathsFactory.Create(root);
+        Directory.CreateDirectory(paths.FindingsDir);
 
         var effectiveLauncher = launcher ?? new FakeAgentProcessLauncher(autoPlay: true);
         var reportStore = new FindingsReportStore(paths, NullLogger<FindingsReportStore>.Instance);

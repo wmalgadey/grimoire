@@ -19,7 +19,7 @@ public class QueryInstructionLoadTests
     public async Task RealQuerySystemPrompt_LoadsVerbatim_WithSha256Recorded()
     {
         var repoRoot = FindRepositoryRoot();
-        var systemPromptPath = Path.Combine(repoRoot, "data", "agents", "query", "system-prompt.md");
+        var systemPromptPath = Path.Combine(repoRoot, "backend", "src", "Grimoire.QueryAgent", "Instructions", "system-prompt.md");
         Assert.True(File.Exists(systemPromptPath), $"Expected the real Query system prompt at '{systemPromptPath}'.");
 
         var loader = new SystemPromptLoader();
@@ -118,7 +118,7 @@ public class QueryInstructionLoadTests
         var current = new DirectoryInfo(AppContext.BaseDirectory);
         while (current is not null)
         {
-            if (Directory.Exists(Path.Combine(current.FullName, "data", "agents", "query")))
+            if (Directory.Exists(Path.Combine(current.FullName, "backend", "src", "Grimoire.QueryAgent", "Instructions")))
             {
                 return current.FullName;
             }

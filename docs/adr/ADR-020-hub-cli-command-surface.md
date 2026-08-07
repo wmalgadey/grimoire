@@ -4,6 +4,13 @@ status: accepted
 
 # ADR-020: Hub CLI Command Surface — Framework, Dispatch, and In-Process Blocking Execution
 
+> **Amended by [ADR-022](ADR-022-minimal-directory-configuration-surface.md)**: every
+> command still accepts the ADR-009 path switches exactly as this ADR describes, but
+> `PathSwitchCatalog.All` — the single source of truth this ADR already deferred to —
+> is now capped at exactly three entries (`--data-dir`, `--agent-dir`, `--wiki-dir`)
+> instead of sixteen. The Spectre.Console.Cli framework, dispatch, and blocking-execution
+> model this ADR establishes are unchanged.
+
 ## Context and Problem Statement
 
 Feature 018 (`specs/018-hub-cli-commands/spec.md`) grows the Hub binary's command

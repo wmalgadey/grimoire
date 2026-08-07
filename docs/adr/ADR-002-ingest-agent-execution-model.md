@@ -4,6 +4,12 @@ status: accepted
 
 # ADR-002: Ingest Agent Execution Model
 
+> **Amended by [ADR-022](ADR-022-minimal-directory-configuration-surface.md)**: the Hub
+> now spawns every agent in a single launch mode — `dotnet <AgentDir>/<agent-id>/
+> Grimoire.<Type>Agent.dll` against the agent's build-published runtime — replacing the
+> prior `.csproj`/`dotnet run --project` dev-convenience branch alongside the standalone-
+> executable model this ADR describes.
+
 ## Context and Problem Statement
 
 Grimoire's Hub dispatches work to specialized agents (Ingest, Query, Lint). Most agents

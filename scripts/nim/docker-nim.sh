@@ -1,6 +1,6 @@
 #!/bin/bash
 
-source "$(dirname "$0")/../../data/.env"
+source "$(dirname "$0")/../../.env"
 
 if [ -z "$NVIDIA_API_KEY" ]; then
   echo "Fehler: NVIDIA_API_KEY Umgebungsvariable fehlt."

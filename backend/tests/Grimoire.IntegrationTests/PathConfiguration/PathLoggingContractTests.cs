@@ -6,11 +6,12 @@ using Microsoft.Extensions.Logging;
 namespace Grimoire.IntegrationTests.PathConfiguration;
 
 /// <summary>
-/// T020 (MANDATORY — Constitution IV logging contract) — deterministic coverage for every
-/// row in plan.md ## Observability &gt; Structured Log Events: <c>paths_resolved</c>,
-/// <c>paths_location_created</c>, and <c>paths_validation_failed</c>, driven through the
-/// real <see cref="GrimoirePathResolver"/> trigger paths (not called in isolation), using
-/// the same <c>CaptureLogger&lt;T&gt;</c> idiom as <c>IngestObservabilityLogTests</c> (ADR-005).
+/// MANDATORY — Constitution IV logging contract: deterministic coverage for every row in
+/// plan.md ## Observability &gt; Structured Log Events: <c>paths_resolved</c>,
+/// <c>paths_location_created</c>, <c>paths_validation_failed</c>, and
+/// <c>paths_configuration_missing</c> (ADR-022), driven through the real
+/// <see cref="GrimoirePathResolver"/> trigger paths (not called in isolation), using the
+/// same <c>CaptureLogger&lt;T&gt;</c> idiom as <c>IngestObservabilityLogTests</c> (ADR-005).
 /// </summary>
 public class PathLoggingContractTests
 {
@@ -33,21 +34,18 @@ public class PathLoggingContractTests
 
             foreach (var field in new[]
             {
-                "base_dir", "data_dir", "content_root", "raw_dir", "state_db",
-                "secrets_file", "instructions_dir", "agent_worker", "sources",
+                "data_dir", "wiki_dir", "agent_dir", "secrets_file", "state_db", "raw_dir", "sources",
             })
             {
                 Assert.True(entry.Fields.ContainsKey(field), $"Missing mandatory field '{field}' on paths_resolved.");
             }
 
-            Assert.Equal(resolved.BaseDir, entry.Fields["base_dir"]?.ToString());
             Assert.Equal(resolved.DataDir, entry.Fields["data_dir"]?.ToString());
-            Assert.Equal(resolved.ContentRoot, entry.Fields["content_root"]?.ToString());
-            Assert.Equal(resolved.RawOriginalsDir, entry.Fields["raw_dir"]?.ToString());
-            Assert.Equal(resolved.StateDbPath, entry.Fields["state_db"]?.ToString());
+            Assert.Equal(resolved.WikiDir, entry.Fields["wiki_dir"]?.ToString());
+            Assert.Equal(resolved.AgentDir, entry.Fields["agent_dir"]?.ToString());
             Assert.Equal(resolved.SecretsFilePath, entry.Fields["secrets_file"]?.ToString());
-            Assert.Equal(resolved.InstructionsDir, entry.Fields["instructions_dir"]?.ToString());
-            Assert.Equal(resolved.AgentWorkerPath, entry.Fields["agent_worker"]?.ToString());
+            Assert.Equal(resolved.StateDbPath, entry.Fields["state_db"]?.ToString());
+            Assert.Equal(resolved.RawOriginalsDir, entry.Fields["raw_dir"]?.ToString());
         }
         finally
         {
@@ -70,19 +68,19 @@ public class PathLoggingContractTests
             var configRoot = new ConfigurationBuilder().Build();
             var logger = new CaptureLogger<PathLoggingContractTests>();
 
-            // The content root does not exist yet — this resolve call must auto-create it
-            // and report the creation (FR-006, US3 acceptance scenario 2).
-            var contentRoot = Path.Combine(baseDir, "wiki");
-            Assert.False(Directory.Exists(contentRoot));
+            // The wiki directory does not exist yet — this resolve call must auto-create
+            // it and report the creation (FR-010, US1 acceptance scenario 2).
+            var wikiDir = Path.Combine(baseDir, "wiki-dir");
+            Assert.False(Directory.Exists(wikiDir));
 
             var resolved = GrimoirePathResolver.Resolve(options, configRoot, logger);
 
             var entry = Assert.Single(logger.Entries.Where(
-                e => e.EventName == "paths_location_created" && e.Fields["location"]?.ToString() == "content_root"));
+                e => e.EventName == "paths_location_created" && e.Fields["location"]?.ToString() == "wiki_dir"));
             Assert.Equal(LogLevel.Information, entry.Level);
             Assert.True(entry.Fields.ContainsKey("location"));
             Assert.True(entry.Fields.ContainsKey("resolved_path"));
-            Assert.Equal(resolved.ContentRoot, entry.Fields["resolved_path"]?.ToString());
+            Assert.Equal(resolved.WikiDir, entry.Fields["resolved_path"]?.ToString());
         }
         finally
         {
@@ -127,5 +125,67 @@ public class PathLoggingContractTests
                 Directory.Delete(baseDir, recursive: true);
             }
         }
+    }
+
+    /// <summary>
+    /// FR-013/SC-007: an agent directory present but holding no agent runtime fails
+    /// naming <c>agent_dir</c> itself (not an individual file inside it), with the
+    /// distinct reason text (data-model.md §5).
+    /// </summary>
+    [Fact]
+    public void EmptyAgentDirectory_Emits_PathsValidationFailed_NamingAgentDir()
+    {
+        var baseDir = Path.Combine(Path.GetTempPath(), $"grimoire-log-contract-empty-agent-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(baseDir);
+
+        try
+        {
+            var seeded = PathConfigurationTestHelpers.SeedRequiredInputsWithPaths(baseDir);
+            Directory.Delete(seeded.AgentDir, recursive: true);
+            Directory.CreateDirectory(seeded.AgentDir);
+            var configRoot = new ConfigurationBuilder().Build();
+            var logger = new CaptureLogger<PathLoggingContractTests>();
+
+            Assert.Throws<GrimoirePathValidationException>(
+                () => GrimoirePathResolver.Resolve(seeded.Options, configRoot, logger));
+
+            var entry = Assert.Single(logger.Entries.Where(e => e.EventName == "paths_validation_failed"));
+            Assert.Equal("agent_dir", entry.Fields["location"]?.ToString());
+            Assert.Contains("no agent runtime", entry.Fields["reason"]?.ToString(), StringComparison.Ordinal);
+        }
+        finally
+        {
+            if (Directory.Exists(baseDir))
+            {
+                Directory.Delete(baseDir, recursive: true);
+            }
+        }
+    }
+
+    /// <summary>
+    /// FR-005/SC-006 (ADR-022): a root absent from every configuration tier emits the new
+    /// <c>paths_configuration_missing</c> ERROR event naming the configuration file and
+    /// every missing key, before any location is touched.
+    /// </summary>
+    [Fact]
+    public void MissingRoot_Emits_PathsConfigurationMissing_NamingConfigurationFileAndMissingKeys()
+    {
+        var options = new GrimoirePathOptions { DataDir = "  ", WikiDir = "llm-wiki" };
+        var configRoot = new ConfigurationBuilder().Build();
+        var logger = new CaptureLogger<PathLoggingContractTests>();
+
+        var ex = Assert.Throws<GrimoirePathConfigurationMissingException>(
+            () => GrimoirePathResolver.Resolve(options, configRoot, logger));
+
+        var entry = Assert.Single(logger.Entries.Where(e => e.EventName == "paths_configuration_missing"));
+        Assert.Equal(LogLevel.Error, entry.Level);
+        Assert.True(entry.Fields.ContainsKey("configuration_file"));
+        Assert.True(entry.Fields.ContainsKey("missing_keys"));
+        Assert.Equal("appsettings.json", entry.Fields["configuration_file"]?.ToString());
+        Assert.Contains("DataDir", entry.Fields["missing_keys"]?.ToString(), StringComparison.Ordinal);
+        Assert.Contains("AgentDir", entry.Fields["missing_keys"]?.ToString(), StringComparison.Ordinal);
+        Assert.Contains("DataDir", ex.MissingKeys);
+        Assert.Contains("AgentDir", ex.MissingKeys);
+        Assert.DoesNotContain("WikiDir", ex.MissingKeys);
     }
 }

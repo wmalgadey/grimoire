@@ -102,19 +102,19 @@ public class HubHelpUsageTests
     }
 
     [Fact]
-    public async Task Help_CombinedWithBogusBaseDir_StillWinsAndExitsZero()
+    public async Task Help_CombinedWithBogusDataDir_StillWinsAndExitsZero()
     {
         // FR-004: --help must win before any path resolution is attempted against this
-        // (deliberately nonexistent) --base-dir value — proven by the process exiting
+        // (deliberately nonexistent) --data-dir value — proven by the process exiting
         // promptly rather than failing on/creating the bogus path.
         var bogusPath = Path.Combine(Path.GetTempPath(), $"grimoire-help-bogus-{Guid.NewGuid():N}");
 
-        var result = await RunHubAsync(["--help", "--base-dir", bogusPath]);
+        var result = await RunHubAsync(["--help", "--data-dir", bogusPath]);
 
         Assert.False(result.TimedOut, "--help combined with other args must still exit promptly.");
         Assert.Equal(0, result.ExitCode);
         Assert.DoesNotContain("Now listening on:", result.StdOut, StringComparison.Ordinal);
-        Assert.False(Directory.Exists(bogusPath), "No path resolution against the bogus --base-dir may be attempted.");
+        Assert.False(Directory.Exists(bogusPath), "No path resolution against the bogus --data-dir may be attempted.");
     }
 
     [Fact]
@@ -223,14 +223,14 @@ public class HubHelpUsageTests
     {
         var bogusPath = Path.Combine(Path.GetTempPath(), $"grimoire-help-bogus-{Guid.NewGuid():N}");
 
-        var result = await RunHubAsync(["remediation-authorize", "--base-dir", bogusPath]);
+        var result = await RunHubAsync(["remediation-authorize", "--data-dir", bogusPath]);
 
         Assert.False(result.TimedOut, "A missing required option must fail validation promptly, not hang.");
         Assert.Equal(2, result.ExitCode);
         Assert.DoesNotContain("Now listening on:", result.StdOut, StringComparison.Ordinal);
         Assert.False(
             Directory.Exists(bogusPath),
-            "Settings validation must fail before any path resolution against --base-dir is attempted.");
+            "Settings validation must fail before any path resolution against --data-dir is attempted.");
     }
 
     /// <summary>
@@ -261,18 +261,26 @@ public class HubHelpUsageTests
     public async Task RemediationDismiss_RealOutOfProcessInvocation_ReachesExecuteAsync_ViaActivatorUtilities()
     {
         var repoRoot = EvalPaths.Discover().RepoRoot;
-        var scratchDir = CreateScratchDataDirectory(repoRoot);
+        var scratchDir = CreateScratchDataDirectory();
 
         try
         {
-            var result = await RunHubAsync([
-                "remediation-dismiss",
-                "--base-dir", scratchDir,
-                "--agent-worker", ResolveAgentDllPath(repoRoot, "Grimoire.IngestAgent"),
-                "--query-agent-worker", ResolveAgentDllPath(repoRoot, "Grimoire.QueryAgent"),
-                "--lint-agent-worker", ResolveAgentDllPath(repoRoot, "Grimoire.LintAgent"),
-                "--task-id", "does-not-exist",
-            ]);
+            // ADR-022: only --data-dir/--wiki-dir/--agent-dir exist; per-agent worker
+            // switches are gone (FR-008 — a single --agent-dir governs the whole agent
+            // runtime). --agent-dir points at the repo's own solution-wide build output
+            // (.grimoire/agents), populated by the normal `dotnet build`/`dotnet test`
+            // ProjectReference chain (Grimoire.IntegrationTests references all three agent
+            // projects) — never copied or reconstructed by this test.
+            var agentDir = Path.Combine(repoRoot, ".grimoire", "agents");
+            var result = await RunHubAsync(
+                [
+                    "remediation-dismiss",
+                    "--data-dir", Path.Combine(scratchDir, "data"),
+                    "--wiki-dir", Path.Combine(scratchDir, "wiki"),
+                    "--agent-dir", agentDir,
+                    "--task-id", "does-not-exist",
+                ],
+                workingDirectory: scratchDir);
 
             Assert.False(result.TimedOut, "A real remediation-dismiss invocation must exit promptly, not hang.");
             Assert.Equal((int)CliExitCode.NotFound, result.ExitCode);
@@ -285,63 +293,60 @@ public class HubHelpUsageTests
     }
 
     /// <summary>
-    /// Builds a minimal but genuinely valid Hub data directory — real Ingest/Query/Lint
-    /// instruction files copied from this repo's own <c>data/agents/</c> (the same
-    /// directory the "dev" launch profile points at), plus a placeholder secrets file —
-    /// satisfying every <c>GrimoirePathResolver.Resolve</c> required-input check
-    /// (instructions dirs, prompt/policy files, secrets file) so the composition
-    /// genuinely builds, without requiring real provider credentials (only reached if a
-    /// command actually spawns an agent, which <c>remediation-dismiss</c> never does).
+    /// ADR-022 quickstart validation finding (Scenario 3/6): a path-resolution failure
+    /// hit while Spectre lazily resolves a real command's constructor dependencies (as
+    /// opposed to the always-eager <c>HubHostComposition</c> path the web-host/server-mode
+    /// invocation takes) arrives at <c>HubCliApp.RunAsync</c> wrapped in Spectre's own
+    /// generic <c>CommandRuntimeException</c> ("Could not resolve type '...'.") unless
+    /// unwrapped — this only reproduces through the real out-of-process CLI dispatch path
+    /// (an in-process command construction, as most tests in this file use, bypasses
+    /// Spectre's type resolver entirely and never hits the wrapping).
     /// </summary>
-    private static string CreateScratchDataDirectory(string repoRoot)
+    [Fact]
+    public async Task RemediationDismiss_RealOutOfProcessInvocation_MissingAgentDir_ReportsTheRealMessage_NotSpectresGenericResolutionFailure()
     {
-        var root = Path.Combine(Path.GetTempPath(), $"grimoire-hub-cli-realdispatch-{Guid.NewGuid():N}");
-        foreach (var agentKind in new[] { "ingest", "query", "lint" })
-        {
-            var destination = Path.Combine(root, "data", "agents", agentKind);
-            Directory.CreateDirectory(destination);
-            var source = Path.Combine(repoRoot, "data", "agents", agentKind);
-            foreach (var file in Directory.GetFiles(source))
-            {
-                File.Copy(file, Path.Combine(destination, Path.GetFileName(file)));
-            }
-        }
+        var scratchDir = CreateScratchDataDirectory();
+        var missingAgentDir = Path.Combine(scratchDir, "no-such-agent-dir");
 
-        // GrimoirePathOptions.DefaultSecretsFileName (".env") — GrimoirePathResolver.Resolve
-        // only checks this file EXISTS (ValidateRequiredFile); its contents are never read
-        // by remediation-dismiss, which never spawns an agent.
-        File.WriteAllText(Path.Combine(root, "data", ".env"), string.Empty);
-        return root;
+        try
+        {
+            var result = await RunHubAsync(
+                [
+                    "remediation-dismiss",
+                    "--data-dir", Path.Combine(scratchDir, "data"),
+                    "--wiki-dir", Path.Combine(scratchDir, "wiki"),
+                    "--agent-dir", missingAgentDir,
+                    "--task-id", "does-not-exist",
+                ],
+                workingDirectory: scratchDir);
+
+            Assert.False(result.TimedOut, "A real remediation-dismiss invocation must exit promptly, not hang.");
+            Assert.Equal((int)CliExitCode.OperationFailed, result.ExitCode);
+            Assert.DoesNotContain("Could not resolve type", result.StdErr, StringComparison.Ordinal);
+            Assert.Contains("agent_dir", result.StdErr, StringComparison.Ordinal);
+            Assert.Contains(Path.GetFullPath(missingAgentDir), result.StdErr, StringComparison.Ordinal);
+        }
+        finally
+        {
+            Directory.Delete(scratchDir, recursive: true);
+        }
     }
 
     /// <summary>
-    /// Mirrors <see cref="ResolveHubDllPath"/> for the three other agent worker projects
-    /// (Ingest/Query/Lint), whose build outputs GrimoirePathResolver's default agent-worker
-    /// locations (relative to Grimoire.Hub's OWN build output directory) do not actually
-    /// contain — the Hub project has no ProjectReference to any of them (they are spawned
-    /// as separate child processes, never linked). This test therefore points the ADR-009
-    /// <c>--agent-worker</c>/<c>--query-agent-worker</c>/<c>--lint-agent-worker</c>
-    /// switches explicitly at each project's own build output instead of relying on the
-    /// (here, unmet) default location.
+    /// A scratch directory containing only the one thing ADR-022 anchors at the process
+    /// working directory rather than any of the three roots: the secrets file
+    /// (FR-019 — <c>GrimoirePathResolver.Resolve</c> only checks it EXISTS, never reads
+    /// its contents unless a command actually spawns an agent, which
+    /// <c>remediation-dismiss</c> never does). <c>--data-dir</c>/<c>--wiki-dir</c> point
+    /// at sibling subfolders the resolver auto-creates; <c>--agent-dir</c> points at the
+    /// repo's real build output instead of anything under this scratch directory.
     /// </summary>
-    private static string ResolveAgentDllPath(string repoRoot, string projectName)
+    private static string CreateScratchDataDirectory()
     {
-        var separator = Path.DirectorySeparatorChar;
-        var preferred = AppContext.BaseDirectory.Contains($"{separator}Release{separator}", StringComparison.OrdinalIgnoreCase)
-            ? new[] { "Release", "Debug" }
-            : ["Debug", "Release"];
-
-        foreach (var configuration in preferred)
-        {
-            var candidate = Path.Combine(repoRoot, "backend", "src", projectName, "bin", configuration, "net10.0", $"{projectName}.dll");
-            if (File.Exists(candidate))
-            {
-                return candidate;
-            }
-        }
-
-        throw new InvalidOperationException(
-            $"{projectName}.dll not found in its build output. Build first: dotnet build backend/Grimoire.slnx");
+        var root = Path.Combine(Path.GetTempPath(), $"grimoire-hub-cli-realdispatch-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(root);
+        File.WriteAllText(Path.Combine(root, ".env"), string.Empty);
+        return root;
     }
 
     /// <summary>
@@ -388,7 +393,7 @@ public class HubHelpUsageTests
         }
     }
 
-    private static async Task<HubRunResult> RunHubAsync(IReadOnlyList<string> args)
+    private static async Task<HubRunResult> RunHubAsync(IReadOnlyList<string> args, string? workingDirectory = null)
     {
         var startInfo = new ProcessStartInfo
         {
@@ -397,6 +402,10 @@ public class HubHelpUsageTests
             RedirectStandardError = true,
             UseShellExecute = false,
         };
+        if (workingDirectory is not null)
+        {
+            startInfo.WorkingDirectory = workingDirectory;
+        }
         startInfo.ArgumentList.Add(ResolveHubDllPath(EvalPaths.Discover().RepoRoot));
         foreach (var arg in args)
         {

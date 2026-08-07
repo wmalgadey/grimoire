@@ -5,18 +5,19 @@ using Microsoft.Extensions.Logging.Abstractions;
 namespace Grimoire.IntegrationTests.PathConfiguration;
 
 /// <summary>
-/// T003 (015-lint-board-parity, ADR-009/ADR-018) — the Remediation Task Record storage
+/// ADR-018/FR-007 (clarification 2026-08-06) — the Remediation Task Record storage
 /// directory resolves correctly under the default layout (a sibling of <c>tasks/</c> and
-/// <c>conversations/</c>, anchored at the base directory per the ADR-009/014 layout) and
-/// under explicit <c>--remediation-tasks-dir</c>/env-var overrides, mirroring
-/// <see cref="FindingsPathTests"/>'s cases (single composition point, no ambient
-/// discovery).
+/// <c>conversations/</c>, anchored at the wiki directory as agent output) and under an
+/// explicit env-var override, mirroring <see cref="FindingsPathTests"/>'s cases (single
+/// composition point, no ambient discovery). No CLI switch exists for this sub-path
+/// (FR-015, rule R1) — only <c>Grimoire:Paths:RemediationTasksDir</c> in the config file
+/// or its environment-variable equivalent.
 /// </summary>
 [Collection("CurrentDirectoryMutation")]
 public class RemediationTasksPathTests
 {
     [Fact]
-    public void ZeroConfiguration_ResolvesRemediationTasksDir_BeneathBaseDir_AndAutoCreatesIt()
+    public void ZeroFlags_ResolvesRemediationTasksDir_BeneathWikiDir_AndAutoCreatesIt()
     {
         var cwd = Path.Combine(Path.GetTempPath(), $"grimoire-remtasks-default-{Guid.NewGuid():N}");
         Directory.CreateDirectory(cwd);
@@ -32,14 +33,15 @@ public class RemediationTasksPathTests
 
             var resolved = GrimoirePathResolver.Resolve(options, configRoot, NullLogger.Instance);
 
-            // Sibling of tasks/ and conversations/, directly under the base — not the data dir.
-            Assert.Equal(Path.GetFullPath(Path.Combine(cwd, "remediation-tasks")), resolved.RemediationTasksDir);
+            // Sibling of tasks/ and conversations/, directly under the wiki directory —
+            // agent output, not the data directory.
+            Assert.Equal(Path.GetFullPath(Path.Combine(cwd, "llm-wiki", "remediation-tasks")), resolved.RemediationTasksDir);
             Assert.Equal(Path.GetDirectoryName(resolved.TasksDir), Path.GetDirectoryName(resolved.RemediationTasksDir));
             Assert.Equal(Path.GetDirectoryName(resolved.ConversationsDir), Path.GetDirectoryName(resolved.RemediationTasksDir));
             Assert.True(Directory.Exists(resolved.RemediationTasksDir));
 
             var location = resolved.Locations.Single(l => l.Name == "remediation_tasks_dir");
-            Assert.Equal("default", location.Source);
+            Assert.Equal("config-file", location.Source);
             Assert.Equal(PathLocationKind.WritableData, location.Kind);
         }
         finally
@@ -53,25 +55,25 @@ public class RemediationTasksPathTests
     }
 
     [Fact]
-    public void ExplicitBaseOverride_ResolvesRemediationTasksDir_BeneathTheOverriddenBase()
+    public void ExplicitWikiDirOverride_ResolvesRemediationTasksDir_BeneathTheOverriddenWikiDir()
     {
-        var baseDir = Path.Combine(Path.GetTempPath(), $"grimoire-remtasks-base-{Guid.NewGuid():N}");
-        Directory.CreateDirectory(baseDir);
+        var root = Path.Combine(Path.GetTempPath(), $"grimoire-remtasks-wikidir-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(root);
 
         try
         {
-            var options = PathConfigurationTestHelpers.SeedRequiredInputs(baseDir);
+            var options = PathConfigurationTestHelpers.SeedRequiredInputs(root);
             var configRoot = new ConfigurationBuilder().Build();
 
             var resolved = GrimoirePathResolver.Resolve(options, configRoot, NullLogger.Instance);
 
-            Assert.Equal(Path.GetFullPath(Path.Combine(baseDir, "remediation-tasks")), resolved.RemediationTasksDir);
+            Assert.Equal(Path.GetFullPath(Path.Combine(root, "wiki-dir", "remediation-tasks")), resolved.RemediationTasksDir);
         }
         finally
         {
-            if (Directory.Exists(baseDir))
+            if (Directory.Exists(root))
             {
-                Directory.Delete(baseDir, recursive: true);
+                Directory.Delete(root, recursive: true);
             }
         }
     }
@@ -80,14 +82,14 @@ public class RemediationTasksPathTests
     public void EnvironmentVariableOverride_ForRemediationTasksDir_WinsOverDefault_AndSourceReportsEnvironment()
     {
         const string envVarName = "Grimoire__Paths__RemediationTasksDir";
-        var baseDir = Path.Combine(Path.GetTempPath(), $"grimoire-remtasks-env-{Guid.NewGuid():N}");
+        var root = Path.Combine(Path.GetTempPath(), $"grimoire-remtasks-env-{Guid.NewGuid():N}");
         var overrideDir = Path.Combine(Path.GetTempPath(), $"grimoire-remtasks-override-{Guid.NewGuid():N}");
-        Directory.CreateDirectory(baseDir);
+        Directory.CreateDirectory(root);
 
         Environment.SetEnvironmentVariable(envVarName, null);
         try
         {
-            var options = PathConfigurationTestHelpers.SeedRequiredInputs(baseDir);
+            var options = PathConfigurationTestHelpers.SeedRequiredInputs(root);
 
             Environment.SetEnvironmentVariable(envVarName, overrideDir);
             var configRoot = new ConfigurationBuilder().AddEnvironmentVariables().Build();
@@ -103,50 +105,9 @@ public class RemediationTasksPathTests
         finally
         {
             Environment.SetEnvironmentVariable(envVarName, null);
-            if (Directory.Exists(baseDir))
+            if (Directory.Exists(root))
             {
-                Directory.Delete(baseDir, recursive: true);
-            }
-            if (Directory.Exists(overrideDir))
-            {
-                Directory.Delete(overrideDir, recursive: true);
-            }
-        }
-    }
-
-    [Fact]
-    public void CommandLineOverride_ForRemediationTasksDir_WinsOverDefault_AndSourceReportsCommandLine()
-    {
-        var baseDir = Path.Combine(Path.GetTempPath(), $"grimoire-remtasks-cli-{Guid.NewGuid():N}");
-        var overrideDir = Path.Combine(Path.GetTempPath(), $"grimoire-remtasks-cli-override-{Guid.NewGuid():N}");
-        Directory.CreateDirectory(baseDir);
-
-        try
-        {
-            var options = PathConfigurationTestHelpers.SeedRequiredInputs(baseDir);
-
-            // Same switch mapping Program.cs registers for --remediation-tasks-dir (ADR-009).
-            var configRoot = new ConfigurationBuilder()
-                .AddCommandLine(
-                    ["--remediation-tasks-dir", overrideDir],
-                    new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
-                    {
-                        ["--remediation-tasks-dir"] = "Grimoire:Paths:RemediationTasksDir",
-                    })
-                .Build();
-            configRoot.GetSection(GrimoirePathOptions.SectionName).Bind(options);
-
-            var resolved = GrimoirePathResolver.Resolve(options, configRoot, NullLogger.Instance);
-
-            Assert.Equal(Path.GetFullPath(overrideDir), resolved.RemediationTasksDir);
-            var location = resolved.Locations.Single(l => l.Name == "remediation_tasks_dir");
-            Assert.Equal("command-line", location.Source);
-        }
-        finally
-        {
-            if (Directory.Exists(baseDir))
-            {
-                Directory.Delete(baseDir, recursive: true);
+                Directory.Delete(root, recursive: true);
             }
             if (Directory.Exists(overrideDir))
             {
@@ -158,12 +119,12 @@ public class RemediationTasksPathTests
     [Fact]
     public void RemediationTaskRecordPathFor_ComposesTaskIdBeneathRemediationTasksDir()
     {
-        var baseDir = Path.Combine(Path.GetTempPath(), $"grimoire-remtasks-record-path-{Guid.NewGuid():N}");
-        Directory.CreateDirectory(baseDir);
+        var root = Path.Combine(Path.GetTempPath(), $"grimoire-remtasks-record-path-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(root);
 
         try
         {
-            var options = PathConfigurationTestHelpers.SeedRequiredInputs(baseDir);
+            var options = PathConfigurationTestHelpers.SeedRequiredInputs(root);
             var configRoot = new ConfigurationBuilder().Build();
 
             var resolved = GrimoirePathResolver.Resolve(options, configRoot, NullLogger.Instance);
@@ -175,9 +136,9 @@ public class RemediationTasksPathTests
         }
         finally
         {
-            if (Directory.Exists(baseDir))
+            if (Directory.Exists(root))
             {
-                Directory.Delete(baseDir, recursive: true);
+                Directory.Delete(root, recursive: true);
             }
         }
     }

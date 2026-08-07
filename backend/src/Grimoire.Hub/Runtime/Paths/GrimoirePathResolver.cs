@@ -7,8 +7,8 @@ using Microsoft.Extensions.Logging;
 namespace Grimoire.Hub.Runtime.Paths;
 
 /// <summary>
-/// Startup validation failure for a runtime path location (FR-006, SC-002). Carries the
-/// logical location name, the raw configured value, and the resolved absolute path so
+/// Startup validation failure for a runtime path location (FR-013, SC-006/SC-007). Carries
+/// the logical location name, the raw configured value, and the resolved absolute path so
 /// the message names exactly what is wrong (Constitution IV / plan.md ## Observability).
 /// </summary>
 public sealed class GrimoirePathValidationException(string location, string configuredValue, string resolvedPath, string reason)
@@ -21,7 +21,22 @@ public sealed class GrimoirePathValidationException(string location, string conf
 }
 
 /// <summary>
-/// The single composition point for every runtime location (ADR-009): resolves
+/// Startup failure when one of the three mandatory roots (<c>DataDir</c>, <c>WikiDir</c>,
+/// <c>AgentDir</c>) is absent from every configuration tier (ADR-022 FR-005/SC-006). The
+/// versioned <c>appsettings.json</c> is the sole source of default paths — there is no
+/// code-level fallback — so this is a distinct, named failure from
+/// <see cref="GrimoirePathValidationException"/> rather than a location that merely fails
+/// to resolve.
+/// </summary>
+public sealed class GrimoirePathConfigurationMissingException(string configurationFile, IReadOnlyList<string> missingKeys)
+    : Exception($"{configurationFile}: missing required configuration key(s) {string.Join(", ", missingKeys)}.")
+{
+    public string ConfigurationFile { get; } = configurationFile;
+    public IReadOnlyList<string> MissingKeys { get; } = missingKeys;
+}
+
+/// <summary>
+/// The single composition point for every runtime location (ADR-022): resolves
 /// <see cref="GrimoirePathOptions"/> against their documented anchors, records each
 /// location's effective configuration source, validates required inputs (fail-fast),
 /// auto-creates writable data locations, and reports the result via
@@ -41,9 +56,10 @@ public static class GrimoirePathResolver
 
     /// <summary>
     /// The only sanctioned read of the process's install/build-output directory (017-
-    /// hub-help-usage) — used both to pin WebApplicationBuilder's ContentRootPath in
-    /// Program.cs and as the default anchor for the agent worker paths below, instead of
-    /// calling <see cref="AppContext.BaseDirectory"/> directly.
+    /// hub-help-usage). Its sole remaining consumer is pinning
+    /// <c>WebApplicationBuilder.ContentRootPath</c> in <c>HubHostComposition</c> so
+    /// <c>appsettings.json</c> loads from beside <c>Grimoire.Hub.dll</c> regardless of the
+    /// launching working directory — no runtime path anchors here any more (ADR-022).
     /// </summary>
     public static string ProcessBaseDirectory => AppContext.BaseDirectory;
 
@@ -54,91 +70,84 @@ public static class GrimoirePathResolver
                 "Configuration must be an IConfigurationRoot to determine each location's effective source.",
                 nameof(configuration));
 
-        var baseDir = ResolveAgainst(options.BaseDir, CurrentWorkingDirectory, string.Empty);
-        var contentRoot = ResolveAgainst(options.ContentRoot, baseDir, GrimoirePathOptions.DefaultContentRootDirName);
-        var dataDir = ResolveAgainst(options.DataDir, baseDir, GrimoirePathOptions.DefaultDataDirName);
+        // Mandatory-configuration gate (FR-005/SC-006): the three roots must each carry a
+        // non-empty value before anything is resolved or touched on disk. appsettings.json
+        // is the sole source of default paths — there is no code-level fallback tier.
+        var missingRootKeys = new List<string>();
+        if (string.IsNullOrWhiteSpace(options.DataDir)) missingRootKeys.Add("DataDir");
+        if (string.IsNullOrWhiteSpace(options.WikiDir)) missingRootKeys.Add("WikiDir");
+        if (string.IsNullOrWhiteSpace(options.AgentDir)) missingRootKeys.Add("AgentDir");
+        if (missingRootKeys.Count > 0)
+        {
+            HubMetrics.RecordPathResolutionFailure("configuration_missing");
+            GrimoirePathLogEvents.LogConfigurationMissing(logger, "appsettings.json", missingRootKeys);
+            throw new GrimoirePathConfigurationMissingException("appsettings.json", missingRootKeys);
+        }
 
-        var rawDir = ResolveAgainst(options.RawDir, dataDir, GrimoirePathOptions.DefaultRawDirName);
-        var stateDbPath = ResolveAgainst(options.StateDb, dataDir, GrimoirePathOptions.DefaultStateDbRelativePath);
-        var secretsFilePath = ResolveAgainst(options.SecretsFile, dataDir, GrimoirePathOptions.DefaultSecretsFileName);
-        var instructionsDir = ResolveAgainst(options.InstructionsDir, dataDir, GrimoirePathOptions.DefaultInstructionsDirRelativePath);
-        var queryInstructionsDir = ResolveAgainst(options.QueryInstructionsDir, dataDir, GrimoirePathOptions.DefaultQueryInstructionsDirRelativePath);
-        var lintInstructionsDir = ResolveAgainst(options.LintInstructionsDir, dataDir, GrimoirePathOptions.DefaultLintInstructionsDirRelativePath);
-        var conversationsDir = ResolveAgainst(options.ConversationsDir, baseDir, GrimoirePathOptions.DefaultConversationsDirName);
-        var writeLocksDir = ResolveAgainst(options.WriteLocksDir, dataDir, GrimoirePathOptions.DefaultWriteLocksDirName);
-        var findingsDir = ResolveAgainst(options.FindingsDir, dataDir, GrimoirePathOptions.DefaultFindingsDirName);
-        var tasksDir = ResolveAgainst(options.TasksDir, baseDir, GrimoirePathOptions.DefaultTasksDirName);
-        var remediationTasksDir = ResolveAgainst(options.RemediationTasksDir, baseDir, GrimoirePathOptions.DefaultRemediationTasksDirName);
+        var dataDir = ResolveAgainst(options.DataDir, CurrentWorkingDirectory);
+        var wikiDir = ResolveAgainst(options.WikiDir, CurrentWorkingDirectory);
+        // Anchored at cwd, same as DataDir/WikiDir — NOT at the resolved DataDir (reviewer
+        // confirmation, PR #55): relocating --data-dir must never silently drag the agent
+        // runtime along with it. The default literal value (".grimoire/agents" in
+        // appsettings.json) spells the nesting out explicitly instead of relying on an
+        // anchor-level special case.
+        var agentDir = ResolveAgainst(options.AgentDir, CurrentWorkingDirectory);
 
-        var agentWorkerPath = ResolveAgainst(options.AgentWorker, ProcessBaseDirectory, GrimoirePathOptions.DefaultAgentWorkerFileName);
-        var queryAgentWorkerPath = ResolveAgainst(options.QueryAgentWorker, ProcessBaseDirectory, GrimoirePathOptions.DefaultQueryAgentWorkerFileName);
-        var lintAgentWorkerPath = ResolveAgainst(options.LintAgentWorker, ProcessBaseDirectory, GrimoirePathOptions.DefaultLintAgentWorkerFileName);
+        var rawDir = ResolveAgainst(options.RawDir, dataDir);
+        var stateDbPath = ResolveAgainst(options.StateDb, dataDir);
+        var writeLocksDir = ResolveAgainst(options.WriteLocksDir, dataDir);
+        var tasksDir = ResolveAgainst(options.TasksDir, wikiDir);
+        var conversationsDir = ResolveAgainst(options.ConversationsDir, wikiDir);
+        var findingsDir = ResolveAgainst(options.FindingsDir, wikiDir);
+        var remediationTasksDir = ResolveAgainst(options.RemediationTasksDir, wikiDir);
+        var secretsFilePath = ResolveAgainst(options.SecretsFile, CurrentWorkingDirectory);
 
-        var indexPath = Path.Combine(contentRoot, "index.md");
-        var logPath = Path.Combine(contentRoot, "log.md");
+        var indexPath = Path.Combine(wikiDir, "index.md");
+        var logPath = Path.Combine(wikiDir, "log.md");
         // 018-hub-cli-commands (ADR-020): fixed filename under the already-resolved data
         // directory, same treatment as indexPath/logPath above — no GrimoirePathOptions
-        // field, no ADR-009 switch, no PathLocation/validation entry (not independently
-        // configurable, not a required input).
+        // field, no switch, no Locations entry (not independently configurable, not a
+        // required input).
         var lintPidPath = Path.Combine(dataDir, GrimoirePathOptions.DefaultLintPidFileName);
         var rawOriginalsDir = Path.Combine(rawDir, "originals");
         var rawSourcesDir = Path.Combine(rawDir, "sources");
-        var systemPromptPath = Path.Combine(instructionsDir, "system-prompt.md");
-        var defaultUserPromptPath = Path.Combine(instructionsDir, "default-user-prompt.md");
-        var policyPath = Path.Combine(instructionsDir, "policy.json");
-        var querySystemPromptPath = Path.Combine(queryInstructionsDir, "system-prompt.md");
-        var queryPolicyPath = Path.Combine(queryInstructionsDir, "policy.json");
-        var lintSystemPromptPath = Path.Combine(lintInstructionsDir, "system-prompt.md");
-        var lintPolicyPath = Path.Combine(lintInstructionsDir, "policy.json");
+
+        var ingest = BuildAgentRuntimePaths(agentDir, "ingest", GrimoirePathOptions.DefaultAgentWorkerFileName, hasDefaultUserPrompt: true);
+        var query = BuildAgentRuntimePaths(agentDir, "query", GrimoirePathOptions.DefaultQueryAgentWorkerFileName, hasDefaultUserPrompt: false);
+        var lint = BuildAgentRuntimePaths(agentDir, "lint", GrimoirePathOptions.DefaultLintAgentWorkerFileName, hasDefaultUserPrompt: false);
 
         var locations = new List<PathLocation>
         {
-            BuildLocation("base_dir", "BaseDir", options.BaseDir, baseDir, PathLocationKind.RequiredInput, configRoot),
             BuildLocation("data_dir", "DataDir", options.DataDir, dataDir, PathLocationKind.WritableData, configRoot),
-            BuildLocation("content_root", "ContentRoot", options.ContentRoot, contentRoot, PathLocationKind.WritableData, configRoot),
+            BuildLocation("wiki_dir", "WikiDir", options.WikiDir, wikiDir, PathLocationKind.WritableData, configRoot),
+            BuildLocation("agent_dir", "AgentDir", options.AgentDir, agentDir, PathLocationKind.RequiredInput, configRoot),
             BuildLocation("raw_dir", "RawDir", options.RawDir, rawDir, PathLocationKind.WritableData, configRoot),
             BuildLocation("state_db", "StateDb", options.StateDb, stateDbPath, PathLocationKind.WritableData, configRoot),
-            BuildLocation("secrets_file", "SecretsFile", options.SecretsFile, secretsFilePath, PathLocationKind.RequiredInput, configRoot),
-            BuildLocation("instructions_dir", "InstructionsDir", options.InstructionsDir, instructionsDir, PathLocationKind.RequiredInput, configRoot),
-            BuildLocation("agent_worker", "AgentWorker", options.AgentWorker, agentWorkerPath, PathLocationKind.RequiredInput, configRoot),
-            BuildLocation("query_instructions_dir", "QueryInstructionsDir", options.QueryInstructionsDir, queryInstructionsDir, PathLocationKind.RequiredInput, configRoot),
-            BuildLocation("conversations_dir", "ConversationsDir", options.ConversationsDir, conversationsDir, PathLocationKind.WritableData, configRoot),
-            BuildLocation("tasks_dir", "TasksDir", options.TasksDir, tasksDir, PathLocationKind.WritableData, configRoot),
-            BuildLocation("remediation_tasks_dir", "RemediationTasksDir", options.RemediationTasksDir, remediationTasksDir, PathLocationKind.WritableData, configRoot),
-            BuildLocation("query_agent_worker", "QueryAgentWorker", options.QueryAgentWorker, queryAgentWorkerPath, PathLocationKind.RequiredInput, configRoot),
             BuildLocation("write_locks_dir", "WriteLocksDir", options.WriteLocksDir, writeLocksDir, PathLocationKind.WritableData, configRoot),
+            BuildLocation("tasks_dir", "TasksDir", options.TasksDir, tasksDir, PathLocationKind.WritableData, configRoot),
+            BuildLocation("conversations_dir", "ConversationsDir", options.ConversationsDir, conversationsDir, PathLocationKind.WritableData, configRoot),
             BuildLocation("findings_dir", "FindingsDir", options.FindingsDir, findingsDir, PathLocationKind.WritableData, configRoot),
-            BuildLocation("lint_instructions_dir", "LintInstructionsDir", options.LintInstructionsDir, lintInstructionsDir, PathLocationKind.RequiredInput, configRoot),
-            BuildLocation("lint_agent_worker", "LintAgentWorker", options.LintAgentWorker, lintAgentWorkerPath, PathLocationKind.RequiredInput, configRoot),
+            BuildLocation("remediation_tasks_dir", "RemediationTasksDir", options.RemediationTasksDir, remediationTasksDir, PathLocationKind.WritableData, configRoot),
+            BuildLocation("secrets_file", "SecretsFile", options.SecretsFile, secretsFilePath, PathLocationKind.RequiredInput, configRoot),
         };
 
         // Validate required inputs — fail fast, before any writable location is touched.
-        ValidateRequiredDirectory(logger, "base_dir", options.BaseDir, baseDir);
+        ValidateAgentDirectory(logger, options.AgentDir, agentDir);
+        ValidateAgentRuntime(logger, "ingest", ingest);
+        ValidateAgentRuntime(logger, "query", query);
+        ValidateAgentRuntime(logger, "lint", lint);
         ValidateRequiredFile(logger, "secrets_file", options.SecretsFile, secretsFilePath);
-        ValidateRequiredDirectory(logger, "instructions_dir", options.InstructionsDir, instructionsDir);
-        ValidateRequiredFile(logger, "system_prompt", options.InstructionsDir, systemPromptPath);
-        ValidateRequiredFile(logger, "default_user_prompt", options.InstructionsDir, defaultUserPromptPath);
-        ValidateRequiredFile(logger, "policy", options.InstructionsDir, policyPath);
-        ValidateRequiredFile(logger, "agent_worker", options.AgentWorker, agentWorkerPath);
-        ValidateRequiredDirectory(logger, "query_instructions_dir", options.QueryInstructionsDir, queryInstructionsDir);
-        ValidateRequiredFile(logger, "query_system_prompt", options.QueryInstructionsDir, querySystemPromptPath);
-        ValidateRequiredFile(logger, "query_policy", options.QueryInstructionsDir, queryPolicyPath);
-        ValidateRequiredFile(logger, "query_agent_worker", options.QueryAgentWorker, queryAgentWorkerPath);
-        ValidateRequiredDirectory(logger, "lint_instructions_dir", options.LintInstructionsDir, lintInstructionsDir);
-        ValidateRequiredFile(logger, "lint_system_prompt", options.LintInstructionsDir, lintSystemPromptPath);
-        ValidateRequiredFile(logger, "lint_policy", options.LintInstructionsDir, lintPolicyPath);
-        ValidateRequiredFile(logger, "lint_agent_worker", options.LintAgentWorker, lintAgentWorkerPath);
 
         // Auto-create writable data locations.
         CreateDirectoryIfMissing(logger, "data_dir", options.DataDir, dataDir);
-        CreateDirectoryIfMissing(logger, "content_root", options.ContentRoot, contentRoot);
+        CreateDirectoryIfMissing(logger, "wiki_dir", options.WikiDir, wikiDir);
         CreateDirectoryIfMissing(logger, "raw_dir", options.RawDir, rawDir);
         CreateDirectoryIfMissing(logger, "raw_originals_dir", options.RawDir, rawOriginalsDir);
         CreateDirectoryIfMissing(logger, "raw_sources_dir", options.RawDir, rawSourcesDir);
-        CreateDirectoryIfMissing(logger, "conversations_dir", options.ConversationsDir, conversationsDir);
         CreateDirectoryIfMissing(logger, "write_locks_dir", options.WriteLocksDir, writeLocksDir);
-        CreateDirectoryIfMissing(logger, "findings_dir", options.FindingsDir, findingsDir);
         CreateDirectoryIfMissing(logger, "tasks_dir", options.TasksDir, tasksDir);
+        CreateDirectoryIfMissing(logger, "conversations_dir", options.ConversationsDir, conversationsDir);
+        CreateDirectoryIfMissing(logger, "findings_dir", options.FindingsDir, findingsDir);
         CreateDirectoryIfMissing(logger, "remediation_tasks_dir", options.RemediationTasksDir, remediationTasksDir);
         var stateDbDir = Path.GetDirectoryName(stateDbPath);
         if (!string.IsNullOrEmpty(stateDbDir))
@@ -147,50 +156,59 @@ public static class GrimoirePathResolver
         }
 
         var resolved = new ResolvedGrimoirePaths(
-            BaseDir: baseDir,
             DataDir: dataDir,
-            ContentRoot: contentRoot,
-            TasksDir: tasksDir,
-            IndexPath: indexPath,
-            LogPath: logPath,
+            WikiDir: wikiDir,
+            AgentDir: agentDir,
             RawOriginalsDir: rawOriginalsDir,
             RawSourcesDir: rawSourcesDir,
             StateDbPath: stateDbPath,
-            SecretsFilePath: secretsFilePath,
-            InstructionsDir: instructionsDir,
-            SystemPromptPath: systemPromptPath,
-            DefaultUserPromptPath: defaultUserPromptPath,
-            PolicyPath: policyPath,
-            AgentWorkerPath: agentWorkerPath,
-            QueryInstructionsDir: queryInstructionsDir,
-            QuerySystemPromptPath: querySystemPromptPath,
-            QueryPolicyPath: queryPolicyPath,
-            ConversationsDir: conversationsDir,
-            QueryAgentWorkerPath: queryAgentWorkerPath,
             WriteLocksDir: writeLocksDir,
-            FindingsDir: findingsDir,
-            LintInstructionsDir: lintInstructionsDir,
-            LintSystemPromptPath: lintSystemPromptPath,
-            LintPolicyPath: lintPolicyPath,
-            LintAgentWorkerPath: lintAgentWorkerPath,
-            RemediationTasksDir: remediationTasksDir,
             LintPidPath: lintPidPath,
+            TasksDir: tasksDir,
+            ConversationsDir: conversationsDir,
+            FindingsDir: findingsDir,
+            RemediationTasksDir: remediationTasksDir,
+            IndexPath: indexPath,
+            LogPath: logPath,
+            SecretsFilePath: secretsFilePath,
+            Ingest: ingest,
+            Query: query,
+            Lint: lint,
             Locations: locations);
 
         GrimoirePathLogEvents.LogPathsResolved(logger, resolved);
         return resolved;
     }
 
-    private static string ResolveAgainst(string? configuredValue, string anchor, string defaultRelative)
+    /// <summary>
+    /// Derives one agent type's complete runtime layout under the (already-resolved)
+    /// agent directory — a fixed, non-configurable subfolder structure per the agent
+    /// build contract (FR-008, data-model.md §2): <c>&lt;AgentDir&gt;/&lt;agentId&gt;/</c>
+    /// holds the worker DLL at its root and instruction documents under
+    /// <c>Instructions/</c>.
+    /// </summary>
+    private static AgentRuntimePaths BuildAgentRuntimePaths(string agentDir, string agentId, string workerFileName, bool hasDefaultUserPrompt)
     {
-        if (!string.IsNullOrWhiteSpace(configuredValue))
+        var dir = Path.Combine(agentDir, agentId);
+        var workerPath = Path.Combine(dir, workerFileName);
+        var instructionsDir = Path.Combine(dir, "Instructions");
+        var systemPromptPath = Path.Combine(instructionsDir, "system-prompt.md");
+        var policyPath = Path.Combine(instructionsDir, "policy.json");
+        var defaultUserPromptPath = hasDefaultUserPrompt ? Path.Combine(instructionsDir, "default-user-prompt.md") : null;
+
+        return new AgentRuntimePaths(dir, workerPath, instructionsDir, systemPromptPath, policyPath, defaultUserPromptPath);
+    }
+
+    private static string ResolveAgainst(string? configuredValue, string anchor)
+    {
+        if (string.IsNullOrWhiteSpace(configuredValue))
         {
-            return Path.IsPathRooted(configuredValue)
-                ? Path.GetFullPath(configuredValue)
-                : Path.GetFullPath(Path.Combine(anchor, configuredValue));
+            return Path.GetFullPath(anchor);
         }
 
-        return Path.GetFullPath(Path.Combine(anchor, defaultRelative));
+        return Path.IsPathRooted(configuredValue)
+            ? Path.GetFullPath(configuredValue)
+            : Path.GetFullPath(Path.Combine(anchor, configuredValue));
     }
 
     private static PathLocation BuildLocation(
@@ -219,7 +237,57 @@ public static class GrimoirePathResolver
             };
         }
 
-        return "default";
+        // Unreachable in practice: the mandatory-configuration gate above already fails
+        // fast before this point for any of the three roots, and every other configured
+        // key ships a non-empty value in the versioned appsettings.json.
+        return "config-file";
+    }
+
+    /// <summary>
+    /// <c>agent_dir</c> gets a distinct check beyond "directory exists": present but
+    /// empty fails with a reason that names the directory, not an individual file inside
+    /// it (FR-013/SC-007, data-model.md §5).
+    /// </summary>
+    private static void ValidateAgentDirectory(ILogger logger, string? configuredValue, string agentDir)
+    {
+        var displayValue = string.IsNullOrWhiteSpace(configuredValue) ? "(default)" : configuredValue;
+
+        if (File.Exists(agentDir))
+        {
+            Fail(logger, "agent_dir", displayValue, agentDir, "expected a directory but found a file.", "agent_directory_empty");
+        }
+
+        if (!Directory.Exists(agentDir))
+        {
+            Fail(logger, "agent_dir", displayValue, agentDir, "required directory does not exist.", "agent_directory_empty");
+        }
+
+        if (!Directory.EnumerateFileSystemEntries(agentDir).Any())
+        {
+            Fail(logger, "agent_dir", displayValue, agentDir, "agent directory contains no agent runtime.", "agent_directory_empty");
+        }
+    }
+
+    /// <summary>
+    /// Validates one agent type's subfolder, instruction documents, and worker DLL — all
+    /// derived from <c>agent_dir</c>, so their "configured value" is displayed as such
+    /// rather than looked up independently (FR-008: only <c>--agent-dir</c> is
+    /// configurable, not any file beneath it).
+    /// </summary>
+    private static void ValidateAgentRuntime(ILogger logger, string agentId, AgentRuntimePaths paths)
+    {
+        const string derivedFromAgentDir = "(derived from agent_dir)";
+
+        ValidateRequiredDirectory(logger, $"{agentId}_dir", derivedFromAgentDir, paths.Dir);
+        ValidateRequiredDirectory(logger, $"{agentId}_instructions_dir", derivedFromAgentDir, paths.InstructionsDir);
+        ValidateRequiredFile(logger, $"{agentId}_system_prompt", derivedFromAgentDir, paths.SystemPromptPath);
+        ValidateRequiredFile(logger, $"{agentId}_policy", derivedFromAgentDir, paths.PolicyPath);
+        if (paths.DefaultUserPromptPath is not null)
+        {
+            ValidateRequiredFile(logger, $"{agentId}_default_user_prompt", derivedFromAgentDir, paths.DefaultUserPromptPath);
+        }
+
+        ValidateRequiredWorkerFile(logger, $"{agentId}_agent_worker", derivedFromAgentDir, paths.WorkerPath);
     }
 
     private static void ValidateRequiredFile(ILogger logger, string location, string? configuredValue, string resolvedPath)
@@ -233,6 +301,25 @@ public static class GrimoirePathResolver
         if (!File.Exists(resolvedPath))
         {
             Fail(logger, location, displayValue, resolvedPath, "required file does not exist.");
+        }
+    }
+
+    /// <summary>
+    /// A missing agent worker DLL gets a distinct, actionable reason (FR-020/FR-021):
+    /// the hub never builds one itself, so the message tells the operator what to run.
+    /// </summary>
+    private static void ValidateRequiredWorkerFile(ILogger logger, string location, string configuredValue, string resolvedPath)
+    {
+        if (Directory.Exists(resolvedPath))
+        {
+            Fail(logger, location, configuredValue, resolvedPath, "expected a file but found a directory.");
+        }
+
+        if (!File.Exists(resolvedPath))
+        {
+            var workerFileName = Path.GetFileName(resolvedPath);
+            Fail(logger, location, configuredValue, resolvedPath,
+                $"{workerFileName} not found in the agent directory. Build first: dotnet build backend/Grimoire.slnx");
         }
     }
 
@@ -250,8 +337,9 @@ public static class GrimoirePathResolver
         }
     }
 
-    private static void Fail(ILogger logger, string location, string configuredValue, string resolvedPath, string reason)
+    private static void Fail(ILogger logger, string location, string configuredValue, string resolvedPath, string reason, string metricReason = "location_invalid")
     {
+        HubMetrics.RecordPathResolutionFailure(metricReason);
         GrimoirePathLogEvents.LogValidationFailed(logger, location, configuredValue, resolvedPath, reason);
         throw new GrimoirePathValidationException(location, configuredValue, resolvedPath, reason);
     }

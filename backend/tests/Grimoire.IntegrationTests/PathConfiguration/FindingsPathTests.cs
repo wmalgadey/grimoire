@@ -5,16 +5,17 @@ using Microsoft.Extensions.Logging.Abstractions;
 namespace Grimoire.IntegrationTests.PathConfiguration;
 
 /// <summary>
-/// T014 (013-lint-agent, ADR-009/ADR-003) — the Findings Report storage directory
-/// (<c>data/findings/</c>) resolves correctly under the default layout and under explicit
-/// <c>--findings-dir</c>/env-var overrides, mirroring <see cref="WriteLocksPathTests"/>'s
-/// cases for <c>write_locks_dir</c> (single composition point, no ambient discovery).
+/// FR-007 (clarification 2026-08-06) — the Findings Report storage directory resolves
+/// correctly under the default layout (agent output, anchored at the wiki directory) and
+/// under an explicit env-var override, mirroring <see cref="WriteLocksPathTests"/>'s
+/// cases for <c>write_locks_dir</c> (single composition point, no ambient discovery). No
+/// CLI switch exists for this sub-path (FR-015, rule R1).
 /// </summary>
 [Collection("CurrentDirectoryMutation")]
 public class FindingsPathTests
 {
     [Fact]
-    public void ZeroConfiguration_ResolvesFindingsDir_BeneathDataDir_AndAutoCreatesIt()
+    public void ZeroFlags_ResolvesFindingsDir_BeneathWikiDir_AndAutoCreatesIt()
     {
         var cwd = Path.Combine(Path.GetTempPath(), $"grimoire-findings-default-{Guid.NewGuid():N}");
         Directory.CreateDirectory(cwd);
@@ -30,11 +31,11 @@ public class FindingsPathTests
 
             var resolved = GrimoirePathResolver.Resolve(options, configRoot, NullLogger.Instance);
 
-            Assert.Equal(Path.GetFullPath(Path.Combine(cwd, "data", "findings")), resolved.FindingsDir);
+            Assert.Equal(Path.GetFullPath(Path.Combine(cwd, "llm-wiki", "findings")), resolved.FindingsDir);
             Assert.True(Directory.Exists(resolved.FindingsDir));
 
             var location = resolved.Locations.Single(l => l.Name == "findings_dir");
-            Assert.Equal("default", location.Source);
+            Assert.Equal("config-file", location.Source);
             Assert.Equal(PathLocationKind.WritableData, location.Kind);
         }
         finally
@@ -48,25 +49,25 @@ public class FindingsPathTests
     }
 
     [Fact]
-    public void ExplicitBaseOverride_ResolvesFindingsDir_BeneathTheOverriddenBase()
+    public void ExplicitWikiDirOverride_ResolvesFindingsDir_BeneathTheOverriddenWikiDir()
     {
-        var baseDir = Path.Combine(Path.GetTempPath(), $"grimoire-findings-base-{Guid.NewGuid():N}");
-        Directory.CreateDirectory(baseDir);
+        var root = Path.Combine(Path.GetTempPath(), $"grimoire-findings-wikidir-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(root);
 
         try
         {
-            var options = PathConfigurationTestHelpers.SeedRequiredInputs(baseDir);
+            var options = PathConfigurationTestHelpers.SeedRequiredInputs(root);
             var configRoot = new ConfigurationBuilder().Build();
 
             var resolved = GrimoirePathResolver.Resolve(options, configRoot, NullLogger.Instance);
 
-            Assert.Equal(Path.GetFullPath(Path.Combine(baseDir, "data", "findings")), resolved.FindingsDir);
+            Assert.Equal(Path.GetFullPath(Path.Combine(root, "wiki-dir", "findings")), resolved.FindingsDir);
         }
         finally
         {
-            if (Directory.Exists(baseDir))
+            if (Directory.Exists(root))
             {
-                Directory.Delete(baseDir, recursive: true);
+                Directory.Delete(root, recursive: true);
             }
         }
     }
@@ -75,14 +76,14 @@ public class FindingsPathTests
     public void EnvironmentVariableOverride_ForFindingsDir_WinsOverDefault_AndSourceReportsEnvironment()
     {
         const string envVarName = "Grimoire__Paths__FindingsDir";
-        var baseDir = Path.Combine(Path.GetTempPath(), $"grimoire-findings-env-{Guid.NewGuid():N}");
+        var root = Path.Combine(Path.GetTempPath(), $"grimoire-findings-env-{Guid.NewGuid():N}");
         var overrideDir = Path.Combine(Path.GetTempPath(), $"grimoire-findings-override-{Guid.NewGuid():N}");
-        Directory.CreateDirectory(baseDir);
+        Directory.CreateDirectory(root);
 
         Environment.SetEnvironmentVariable(envVarName, null);
         try
         {
-            var options = PathConfigurationTestHelpers.SeedRequiredInputs(baseDir);
+            var options = PathConfigurationTestHelpers.SeedRequiredInputs(root);
 
             Environment.SetEnvironmentVariable(envVarName, overrideDir);
             var configRoot = new ConfigurationBuilder().AddEnvironmentVariables().Build();
@@ -98,50 +99,9 @@ public class FindingsPathTests
         finally
         {
             Environment.SetEnvironmentVariable(envVarName, null);
-            if (Directory.Exists(baseDir))
+            if (Directory.Exists(root))
             {
-                Directory.Delete(baseDir, recursive: true);
-            }
-            if (Directory.Exists(overrideDir))
-            {
-                Directory.Delete(overrideDir, recursive: true);
-            }
-        }
-    }
-
-    [Fact]
-    public void CommandLineOverride_ForFindingsDir_WinsOverDefault_AndSourceReportsCommandLine()
-    {
-        var baseDir = Path.Combine(Path.GetTempPath(), $"grimoire-findings-cli-{Guid.NewGuid():N}");
-        var overrideDir = Path.Combine(Path.GetTempPath(), $"grimoire-findings-cli-override-{Guid.NewGuid():N}");
-        Directory.CreateDirectory(baseDir);
-
-        try
-        {
-            var options = PathConfigurationTestHelpers.SeedRequiredInputs(baseDir);
-
-            // Same switch mapping Program.cs would register for --findings-dir (ADR-009).
-            var configRoot = new ConfigurationBuilder()
-                .AddCommandLine(
-                    ["--findings-dir", overrideDir],
-                    new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
-                    {
-                        ["--findings-dir"] = "Grimoire:Paths:FindingsDir",
-                    })
-                .Build();
-            configRoot.GetSection(GrimoirePathOptions.SectionName).Bind(options);
-
-            var resolved = GrimoirePathResolver.Resolve(options, configRoot, NullLogger.Instance);
-
-            Assert.Equal(Path.GetFullPath(overrideDir), resolved.FindingsDir);
-            var location = resolved.Locations.Single(l => l.Name == "findings_dir");
-            Assert.Equal("command-line", location.Source);
-        }
-        finally
-        {
-            if (Directory.Exists(baseDir))
-            {
-                Directory.Delete(baseDir, recursive: true);
+                Directory.Delete(root, recursive: true);
             }
             if (Directory.Exists(overrideDir))
             {
@@ -153,12 +113,12 @@ public class FindingsPathTests
     [Fact]
     public void FindingsReportPathFor_ComposesRunIdBeneathFindingsDir()
     {
-        var baseDir = Path.Combine(Path.GetTempPath(), $"grimoire-findings-report-path-{Guid.NewGuid():N}");
-        Directory.CreateDirectory(baseDir);
+        var root = Path.Combine(Path.GetTempPath(), $"grimoire-findings-report-path-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(root);
 
         try
         {
-            var options = PathConfigurationTestHelpers.SeedRequiredInputs(baseDir);
+            var options = PathConfigurationTestHelpers.SeedRequiredInputs(root);
             var configRoot = new ConfigurationBuilder().Build();
 
             var resolved = GrimoirePathResolver.Resolve(options, configRoot, NullLogger.Instance);
@@ -170,9 +130,9 @@ public class FindingsPathTests
         }
         finally
         {
-            if (Directory.Exists(baseDir))
+            if (Directory.Exists(root))
             {
-                Directory.Delete(baseDir, recursive: true);
+                Directory.Delete(root, recursive: true);
             }
         }
     }

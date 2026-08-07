@@ -29,35 +29,19 @@ Thumbs.db
 #.vscode/
 .idea/
 
-# Consolidated internal runtime data directory (ADR-009). data/.env is already covered by
-# the .env pattern above; data/agents/ (instructions) is git-tracked deliberately.
+# Runtime data directory (ADR-022) — harness runtime state and, by default, the agent
+# runtime: raw intake, operational state, write-locks, and the agent build output
+# (worker binaries + Instructions/, populated by PublishAgentRuntime). Entirely git-ignored:
+# it is either build output or working state, never source. Instruction files now live as
+# agent-project sources (backend/src/Grimoire.*Agent/Instructions/), tracked there instead.
+.grimoire/
 
-# Hub operational state (ADR-003)
-data/state/
-data/raw/
-
-# Conversation Records (011-query-conversations, ADR-014/ADR-003/ADR-009) — Hub-written
-# operational harness bookkeeping, one append-only file per conversation. Anchored at
-# the base directory as a sibling of the wiki content root (014-wiki-storage-restructure).
-conversations/
-
-# Write-coordination lock files (012-query-synthesis-writes, ADR-015/ADR-003/ADR-009) —
-# operational bookkeeping for cross-process write coordination, outside wiki/ and git.
-data/write-locks/
-
-# Findings Reports (013-lint-agent, ADR-009/ADR-003) — Hub-written operational harness
-# bookkeeping, one file per Lint Run, outside wiki/ and git.
-data/findings/
-
-# Task artifacts (014-wiki-storage-restructure, ADR-009/ADR-003) — Hub-written operational
-# harness bookkeeping, one directory per Task; anchored at the base directory as a sibling
-# of the wiki content root (previously nested inside wiki/, uncovered by this file).
-tasks/
-
-# Remediation Task Records (015-lint-board-parity, ADR-009/ADR-003/ADR-014) — Hub-written
-# operational harness bookkeeping, one append-only file per remediation action task;
-# anchored at the base directory as a sibling of the wiki content root.
-remediation-tasks/
+# Default wiki directory (ADR-022) — a sibling of .grimoire/, holding wiki content and
+# agent output (index.md, log.md, tasks/, conversations/, findings/, remediation-tasks/).
+# Git-ignored by default in this repository (a dev/example checkout, not one that ships
+# tracked wiki content); an operator who wants their own wiki version-controlled points
+# --wiki-dir at a location outside this ignore rule or adds their own tracked repo there.
+llm-wiki/
 
 # dotnet test output (results.trx etc.), not build artifacts (bin/obj already covered above)
 TestResults/

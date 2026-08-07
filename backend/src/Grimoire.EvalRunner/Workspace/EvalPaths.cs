@@ -1,13 +1,16 @@
 namespace Grimoire.EvalRunner.Workspace;
 
 /// <summary>
-/// Repository-anchored input locations for eval runs (ADR-009: paths are explicit; the
-/// runner resolves them once from the repo root and passes copies into each isolated
-/// workspace).
+/// Repository-anchored input locations for eval runs (ADR-022: instructions resolve from
+/// the agent project SOURCES — never the runtime agent directory and never build output —
+/// so an eval run needs neither a prior agent build nor any hub configuration, FR-017/
+/// FR-018/SC-010; recordings resolve from a fixture folder inside the test project,
+/// FR-016/SC-009; the runner resolves everything once from the repo root and passes
+/// copies into each isolated workspace).
 /// </summary>
 public sealed record EvalPaths(string RepoRoot)
 {
-    public string AgentInstructionsDir => Path.Combine(RepoRoot, "data", "agents", "ingest");
+    public string AgentInstructionsDir => Path.Combine(RepoRoot, "backend", "src", "Grimoire.IngestAgent", "Instructions");
 
     public string SystemPromptPath => Path.Combine(AgentInstructionsDir, "system-prompt.md");
 
@@ -18,7 +21,7 @@ public sealed record EvalPaths(string RepoRoot)
     // Query's own instruction surface (ADR-007 pattern, ADR-011) — a sibling of Ingest's,
     // with no default-user-prompt document (the user's Query Prompt is always supplied
     // per turn, research.md R1 of 008-query-agent).
-    public string QueryInstructionsDir => Path.Combine(RepoRoot, "data", "agents", "query");
+    public string QueryInstructionsDir => Path.Combine(RepoRoot, "backend", "src", "Grimoire.QueryAgent", "Instructions");
 
     public string QuerySystemPromptPath => Path.Combine(QueryInstructionsDir, "system-prompt.md");
 
@@ -27,7 +30,7 @@ public sealed record EvalPaths(string RepoRoot)
     // Lint's own instruction surface (013-lint-agent, ADR-013 pattern) — a sibling of
     // Query's, also with no default-user-prompt document (Lint takes no per-run input
     // at all; the whole wiki is its input, per LintCliOptions).
-    public string LintInstructionsDir => Path.Combine(RepoRoot, "data", "agents", "lint");
+    public string LintInstructionsDir => Path.Combine(RepoRoot, "backend", "src", "Grimoire.LintAgent", "Instructions");
 
     public string LintSystemPromptPath => Path.Combine(LintInstructionsDir, "system-prompt.md");
 
@@ -37,9 +40,9 @@ public sealed record EvalPaths(string RepoRoot)
 
     public string FixtureWikiRoot(string fixtureName) => Path.Combine(FixturesRoot, fixtureName, "wiki");
 
-    public string DefaultRecordingsRoot => Path.Combine(RepoRoot, "data", "evals", "recordings");
+    public string RecordingsRoot => Path.Combine(FixturesRoot, "recordings");
 
-    public string LocalEnvPath => Path.Combine(RepoRoot, "data", ".env");
+    public string LocalEnvPath => Path.Combine(RepoRoot, ".env");
 
     public static EvalPaths Discover(string? start = null)
     {

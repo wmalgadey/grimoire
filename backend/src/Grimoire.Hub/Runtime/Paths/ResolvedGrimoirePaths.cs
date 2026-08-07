@@ -10,6 +10,8 @@ public enum PathLocationKind
 /// <summary>
 /// One resolved, reportable path location (data-model.md "PathLocation"). Carries the
 /// vocabulary used by the startup report and by the <c>paths_*</c> structured log events.
+/// <see cref="Source"/> is always one of <c>command-line</c>, <c>environment</c>, or
+/// <c>config-file</c> (ADR-022: no code-default tier exists any more).
 /// </summary>
 public sealed record PathLocation(
     string Name,
@@ -19,40 +21,43 @@ public sealed record PathLocation(
     string Source);
 
 /// <summary>
-/// The fully resolved and validated set of runtime locations (ADR-009), produced once at
+/// Everything one agent type needs to run — its subfolder, its worker DLL, and its
+/// instruction surface (ADR-022, data-model.md §3). <see cref="DefaultUserPromptPath"/> is
+/// non-null for Ingest only.
+/// </summary>
+public sealed record AgentRuntimePaths(
+    string Dir,
+    string WorkerPath,
+    string InstructionsDir,
+    string SystemPromptPath,
+    string PolicyPath,
+    string? DefaultUserPromptPath);
+
+/// <summary>
+/// The fully resolved and validated set of runtime locations (ADR-022), produced once at
 /// startup by <see cref="GrimoirePathResolver"/> and registered as the only path source in
 /// DI. Replaces the repo-root parameters of the former <c>ContentRootPaths</c> /
 /// <c>RawStoragePaths</c> — those types now project from this record.
 /// </summary>
 public sealed record ResolvedGrimoirePaths(
-    string BaseDir,
     string DataDir,
-    string ContentRoot,
-    string TasksDir,
-    string IndexPath,
-    string LogPath,
+    string WikiDir,
+    string AgentDir,
     string RawOriginalsDir,
     string RawSourcesDir,
     string StateDbPath,
-    string SecretsFilePath,
-    string InstructionsDir,
-    string SystemPromptPath,
-    string DefaultUserPromptPath,
-    string PolicyPath,
-    string AgentWorkerPath,
-    string QueryInstructionsDir,
-    string QuerySystemPromptPath,
-    string QueryPolicyPath,
-    string ConversationsDir,
-    string QueryAgentWorkerPath,
     string WriteLocksDir,
-    string FindingsDir,
-    string LintInstructionsDir,
-    string LintSystemPromptPath,
-    string LintPolicyPath,
-    string LintAgentWorkerPath,
-    string RemediationTasksDir,
     string LintPidPath,
+    string TasksDir,
+    string ConversationsDir,
+    string FindingsDir,
+    string RemediationTasksDir,
+    string IndexPath,
+    string LogPath,
+    string SecretsFilePath,
+    AgentRuntimePaths Ingest,
+    AgentRuntimePaths Query,
+    AgentRuntimePaths Lint,
     IReadOnlyList<PathLocation> Locations)
 {
     /// <summary>Per-task artifact path within <see cref="TasksDir"/> (mirrors IngestCliOptions.TaskArtifactPath).</summary>

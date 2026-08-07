@@ -97,6 +97,24 @@ public static class HubCliApp
         }
         catch (CommandAppException ex)
         {
+            // ADR-022 quickstart validation finding (Scenario 3/6): Spectre resolves a
+            // command's constructor dependencies (and therefore first touches
+            // HubHostComposition.BuildAsync, which resolves and validates every runtime
+            // path) lazily, inside its own type-resolution machinery — a
+            // GrimoirePathValidationException/GrimoirePathConfigurationMissingException
+            // thrown there arrives here wrapped in a generic Spectre
+            // CommandRuntimeException ("Could not resolve type '<Command>'.") that hides
+            // the actual, actionable path-configuration message an operator needs.
+            // Unwrap it so a misconfigured --data-dir/--agent-dir/--wiki-dir (or a missing
+            // appsettings.json root) reports the same message a server-mode start does,
+            // instead of a generic DI failure.
+            var pathFailure = UnwrapPathResolutionFailure(ex);
+            if (pathFailure is not null)
+            {
+                Console.Error.WriteLine(pathFailure.Message);
+                return (int)CliExitCode.OperationFailed;
+            }
+
             Console.Error.WriteLine(ex.Message);
             return (int)CliExitCode.UsageError;
         }
@@ -112,5 +130,28 @@ public static class HubCliApp
                 await builtApp.DisposeAsync();
             }
         }
+    }
+
+    /// <summary>
+    /// Walks <paramref name="exception"/>'s <see cref="Exception.InnerException"/> chain
+    /// for a <see cref="Runtime.Paths.GrimoirePathValidationException"/> or
+    /// <see cref="Runtime.Paths.GrimoirePathConfigurationMissingException"/> — the two
+    /// exception types <see cref="Runtime.Paths.GrimoirePathResolver.Resolve"/> throws.
+    /// Spectre's type-resolution machinery is the only place these can end up wrapped
+    /// (see the call site above); the exception's own message already names the
+    /// location/configuration file and is otherwise unrelated to Spectre's usage-error
+    /// vocabulary, so it is surfaced verbatim rather than folded into a usage error.
+    /// </summary>
+    private static Exception? UnwrapPathResolutionFailure(Exception exception)
+    {
+        for (var current = exception; current is not null; current = current.InnerException)
+        {
+            if (current is Runtime.Paths.GrimoirePathValidationException or Runtime.Paths.GrimoirePathConfigurationMissingException)
+            {
+                return current;
+            }
+        }
+
+        return null;
     }
 }

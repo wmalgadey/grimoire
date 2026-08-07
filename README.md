@@ -9,7 +9,7 @@ backend harness owns dispatch, credential scoping, guardrails, and observability
 
 - **Backend** (`backend/`) — .NET / C#, hexagonal (ports & adapters) architecture
 - **Frontend** (`frontend/`) — SvelteKit
-- **Agents** (`data/agents/`) — per-agent instruction files (`system-prompt.md`, `policy.json`) that govern each agent's behavior at runtime
+- **Agents** (`backend/src/Grimoire.*Agent/Instructions/`) — per-agent instruction files (`system-prompt.md`, `policy.json`) that govern each agent's behavior at runtime, delivered to the configured agent directory by the agent build
 
 ## Development process
 

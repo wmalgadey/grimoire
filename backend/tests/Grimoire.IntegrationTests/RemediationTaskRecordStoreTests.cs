@@ -175,7 +175,7 @@ public class RemediationTaskRecordStoreTests
         await store.AppendMessageAsync(TaskId, RemediationTaskRecordFormat.SenderHuman, "context question", _t0.AddMinutes(1));
         await store.AppendOutcomeAsync(TaskId, RemediationTaskStates.Dismissed, reason: null, _t0.AddMinutes(2));
 
-        var (restartedStore, _) = CreateStore(existingRoot: paths.BaseDir);
+        var (restartedStore, _) = CreateStore(existingRoot: paths.DataDir);
         var parsed = Assert.IsType<RemediationTaskRecordParseResult.Parsed>(await restartedStore.ReadAsync(TaskId));
 
         Assert.Equal(3, parsed.Entries.Count);

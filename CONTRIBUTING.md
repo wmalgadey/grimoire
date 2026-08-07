@@ -4,7 +4,7 @@
 
 - .NET SDK matching `backend/Directory.Build.props`
 - Node.js + [Bun](https://bun.sh) (frontend uses `bun.lock`)
-- Copy `.env-example` to `data/.env` and fill in the credentials you need locally
+- Copy `.env-example` to `.env` (repository root) and fill in the credentials you need locally
   (`ANTHROPIC_AUTH_TOKEN` for agent runs; NVIDIA/LiteLLM vars only if you run evals
   against the affordable provider — see `specs/007-eval-tests-nim-endpoint/quickstart.md`)
 
@@ -25,12 +25,12 @@ editor (e.g. VS Code with the [Dev Containers extension](https://marketplace.vis
 See `specs/016-devcontainer-setup/quickstart.md` for a full step-by-step validation
 walkthrough (build, test suites, credentials).
 
-Local credentials still go through the same `data/.env` file (copied from
-`.env-example`) as the native setup — the devcontainer doesn't change that; it just
-makes `data/.env` reachable from inside the container.
+Local credentials still go through the same `.env` file (copied from `.env-example`,
+repository root) as the native setup — the devcontainer doesn't change that; it just
+makes `.env` reachable from inside the container.
 
 **Known limitation**: the `prod` launch configuration in `.vscode/launch.json`
-hardcodes a personal, host-absolute `--content-root` path and is not reachable from
+hardcodes a personal, host-absolute `--wiki-dir` path and is not reachable from
 inside the devcontainer. This is an intentional, permanent host-only limitation, not a
 bug — use `dev`/`proxy` inside the devcontainer, or run `prod` natively on the host.
 

@@ -35,7 +35,7 @@ public class QuerySynthesisWriteTests
         try
         {
             var repoRoot = FindRepositoryRoot();
-            var policyPath = Path.Combine(repoRoot, "data", "agents", "query", "policy.json");
+            var policyPath = Path.Combine(repoRoot, "backend", "src", "Grimoire.QueryAgent", "Instructions", "policy.json");
             Assert.True(File.Exists(policyPath), $"Expected repo file not found: {policyPath}");
 
             var loader = new PolicyLoader(wikiRoot);
@@ -214,7 +214,7 @@ public class QuerySynthesisWriteTests
     private static string FindRepositoryRoot()
     {
         var dir = new DirectoryInfo(AppContext.BaseDirectory);
-        while (dir is not null && !Directory.Exists(Path.Combine(dir.FullName, "data", "agents", "query")))
+        while (dir is not null && !Directory.Exists(Path.Combine(dir.FullName, "backend", "src", "Grimoire.QueryAgent", "Instructions")))
         {
             dir = dir.Parent;
         }

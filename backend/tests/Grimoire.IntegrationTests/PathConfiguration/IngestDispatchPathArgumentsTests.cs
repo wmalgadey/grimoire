@@ -43,8 +43,8 @@ public class IngestDispatchPathArgumentsTests
 
             var request = Assert.Single(launcher.Requests);
 
-            // SC-004: --wiki-root is present and matches the Hub-resolved content root exactly.
-            Assert.Equal(resolvedPaths.ContentRoot, request.WikiRoot);
+            // SC-004: --wiki-root is present and matches the Hub-resolved wiki directory exactly.
+            Assert.Equal(resolvedPaths.WikiDir, request.WikiRoot);
             Assert.True(Path.IsPathRooted(request.WikiRoot));
 
             // Every other path argument is absolute and Hub-resolved — never left for the
@@ -57,13 +57,13 @@ public class IngestDispatchPathArgumentsTests
             Assert.True(Path.IsPathRooted(request.DefaultUserPromptPath));
             Assert.True(Path.IsPathRooted(request.PolicyPath));
 
-            Assert.Equal(resolvedPaths.ContentRoot, request.ContentRoot);
+            Assert.Equal(resolvedPaths.WikiDir, request.ContentRoot);
             Assert.Equal(resolvedPaths.TasksDir, request.TasksDir);
             Assert.Equal(resolvedPaths.IndexPath, request.IndexPath);
             Assert.Equal(resolvedPaths.LogPath, request.LogPath);
-            Assert.Equal(resolvedPaths.SystemPromptPath, request.SystemPromptPath);
-            Assert.Equal(resolvedPaths.DefaultUserPromptPath, request.DefaultUserPromptPath);
-            Assert.Equal(resolvedPaths.PolicyPath, request.PolicyPath);
+            Assert.Equal(resolvedPaths.Ingest.SystemPromptPath, request.SystemPromptPath);
+            Assert.Equal(resolvedPaths.Ingest.DefaultUserPromptPath, request.DefaultUserPromptPath);
+            Assert.Equal(resolvedPaths.Ingest.PolicyPath, request.PolicyPath);
         }
         finally
         {

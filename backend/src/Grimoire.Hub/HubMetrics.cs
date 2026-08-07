@@ -340,4 +340,19 @@ public static class HubMetrics
 
     public static void RecordRemediationMessageTurn(string outcome)
         => _remediationMessageTurnsTotal.Add(1, new KeyValuePair<string, object?>("outcome", outcome));
+
+    // --- 020-simplify-hub-config (plan.md ## Observability > Business Metrics) ---
+
+    /// <summary>
+    /// Startup path-composition failures, incremented immediately before the process
+    /// exits non-zero — lets an operator distinguish "misconfigured" from "crashed"
+    /// without reading logs. <paramref name="reason"/> is one of
+    /// <c>configuration_missing</c>, <c>agent_directory_empty</c>, <c>location_invalid</c>.
+    /// </summary>
+    private static readonly Counter<long> _pathResolutionFailuresTotal =
+        Meter.CreateCounter<long>("grimoire.hub.path_resolution_failures_total",
+            description: "Startup path-composition failures, by reason");
+
+    public static void RecordPathResolutionFailure(string reason)
+        => _pathResolutionFailuresTotal.Add(1, new KeyValuePair<string, object?>("reason", reason));
 }

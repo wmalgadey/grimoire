@@ -195,36 +195,7 @@ public class QueryTurnSubmissionApiTests
         return root;
     }
 
-    internal static ResolvedGrimoirePaths BuildResolvedPaths(string root) => new(
-        BaseDir: root,
-        DataDir: root,
-        ContentRoot: Path.Combine(root, "wiki"),
-        TasksDir: Path.Combine(root, "wiki", "tasks"),
-        IndexPath: Path.Combine(root, "wiki", "index.md"),
-        LogPath: Path.Combine(root, "wiki", "log.md"),
-        RawOriginalsDir: Path.Combine(root, "raw", "originals"),
-        RawSourcesDir: Path.Combine(root, "raw", "sources"),
-        StateDbPath: Path.Combine(root, "state.db"),
-        SecretsFilePath: Path.Combine(root, ".env"),
-        InstructionsDir: Path.Combine(root, "agents", "ingest"),
-        SystemPromptPath: Path.Combine(root, "agents", "ingest", "system-prompt.md"),
-        DefaultUserPromptPath: Path.Combine(root, "agents", "ingest", "default-user-prompt.md"),
-        PolicyPath: Path.Combine(root, "agents", "ingest", "policy.json"),
-        AgentWorkerPath: "unused",
-        QueryInstructionsDir: Path.Combine(root, "agents", "query"),
-        QuerySystemPromptPath: Path.Combine(root, "agents", "query", "system-prompt.md"),
-        QueryPolicyPath: Path.Combine(root, "agents", "query", "policy.json"),
-        ConversationsDir: Path.Combine(root, "conversations"),
-        QueryAgentWorkerPath: "unused",
-        WriteLocksDir: Path.Combine(root, "write-locks"),
-        FindingsDir: Path.Combine(root, "findings"),
-        LintInstructionsDir: Path.Combine(root, "agents", "lint"),
-        LintSystemPromptPath: Path.Combine(root, "agents", "lint", "system-prompt.md"),
-        LintPolicyPath: Path.Combine(root, "agents", "lint", "policy.json"),
-        LintAgentWorkerPath: "unused",
-        RemediationTasksDir: Path.Combine(root, "remediation-tasks"),
-        LintPidPath: Path.Combine(root, "lint.pid"),
-        Locations: []);
+    internal static ResolvedGrimoirePaths BuildResolvedPaths(string root) => TestResolvedGrimoirePathsFactory.Create(root);
 
     internal static async Task<IHost> BuildHostAsync(
         FakeAgentProcessLauncher launcher,

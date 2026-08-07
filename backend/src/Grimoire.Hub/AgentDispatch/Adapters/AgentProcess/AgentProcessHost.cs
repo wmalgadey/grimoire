@@ -18,27 +18,29 @@ using Grimoire.Hub.AgentDispatch;
 public sealed class AgentProcessHost : IAgentProcessLauncher
 {
     private readonly LocalSecretsLoader _secretsLoader;
-    private readonly string _agentWorkerPath;
-    private readonly string? _queryAgentWorkerPath;
-    private readonly string? _lintAgentWorkerPath;
+    private readonly string _ingestAgentWorkerPath;
+    private readonly string _queryAgentWorkerPath;
+    private readonly string _lintAgentWorkerPath;
 
     /// <summary>
-    /// <paramref name="agentWorkerPath"/> is the Hub-resolved agent-worker location
-    /// (Grimoire:Paths:AgentWorker, research R4): a <c>.csproj</c> launches via
-    /// <c>dotnet run --project</c> (dev convenience), a <c>.dll</c> via <c>dotnet &lt;dll&gt;</c>,
-    /// anything else is launched directly as an executable. <paramref name="queryAgentWorkerPath"/>
-    /// (Grimoire:Paths:QueryAgentWorker, ADR-011) and <paramref name="lintAgentWorkerPath"/>
-    /// (Grimoire:Paths:LintAgentWorker, ADR-016/013-lint-agent) are optional so existing
-    /// Ingest-only call sites/tests are unaffected; only Query/Lint dispatch requires them.
+    /// <paramref name="ingestAgentWorkerPath"/>, <paramref name="queryAgentWorkerPath"/> and
+    /// <paramref name="lintAgentWorkerPath"/> are the Hub-resolved
+    /// <c>&lt;AgentDir&gt;/&lt;agent-id&gt;/Grimoire.&lt;Type&gt;Agent.dll</c> worker
+    /// locations (ADR-022 — no longer independently configurable; all three are governed
+    /// entirely by <c>--agent-dir</c>). <c>GrimoirePathResolver</c> validates all
+    /// three exist before the host is ever constructed, so every spawn here launches
+    /// exactly one way: <c>dotnet &lt;dll&gt;</c> — the hub consumes build artifacts and
+    /// never produces them (rule R4, no <c>.csproj</c>/bare-executable launch mode exists
+    /// any more).
     /// </summary>
     public AgentProcessHost(
         LocalSecretsLoader secretsLoader,
-        string agentWorkerPath,
-        string? queryAgentWorkerPath = null,
-        string? lintAgentWorkerPath = null)
+        string ingestAgentWorkerPath,
+        string queryAgentWorkerPath,
+        string lintAgentWorkerPath)
     {
         _secretsLoader = secretsLoader;
-        _agentWorkerPath = agentWorkerPath;
+        _ingestAgentWorkerPath = ingestAgentWorkerPath;
         _queryAgentWorkerPath = queryAgentWorkerPath;
         _lintAgentWorkerPath = lintAgentWorkerPath;
     }
@@ -164,12 +166,6 @@ public sealed class AgentProcessHost : IAgentProcessLauncher
 
     private Process StartMessageTurnProcess(RemediationMessageTurnAgentRequest request)
     {
-        if (string.IsNullOrWhiteSpace(_lintAgentWorkerPath))
-        {
-            throw new InvalidOperationException(
-                "AgentProcessHost was not configured with a Lint agent worker path (Grimoire:Paths:LintAgentWorker).");
-        }
-
         var startInfo = new ProcessStartInfo
         {
             RedirectStandardInput = true,
@@ -178,23 +174,8 @@ public sealed class AgentProcessHost : IAgentProcessLauncher
             UseShellExecute = false,
         };
 
-        if (_lintAgentWorkerPath.EndsWith(".csproj", StringComparison.OrdinalIgnoreCase))
-        {
-            startInfo.FileName = "dotnet";
-            startInfo.ArgumentList.Add("run");
-            startInfo.ArgumentList.Add("--project");
-            startInfo.ArgumentList.Add(_lintAgentWorkerPath);
-            startInfo.ArgumentList.Add("--");
-        }
-        else if (_lintAgentWorkerPath.EndsWith(".dll", StringComparison.OrdinalIgnoreCase))
-        {
-            startInfo.FileName = "dotnet";
-            startInfo.ArgumentList.Add(_lintAgentWorkerPath);
-        }
-        else
-        {
-            startInfo.FileName = _lintAgentWorkerPath;
-        }
+        startInfo.FileName = "dotnet";
+        startInfo.ArgumentList.Add(_lintAgentWorkerPath);
 
         startInfo.ArgumentList.Add("--mode");
         startInfo.ArgumentList.Add("message-turn");
@@ -249,12 +230,6 @@ public sealed class AgentProcessHost : IAgentProcessLauncher
 
     private Process StartRemediationProcess(RemediationExecutionAgentRequest request)
     {
-        if (string.IsNullOrWhiteSpace(_lintAgentWorkerPath))
-        {
-            throw new InvalidOperationException(
-                "AgentProcessHost was not configured with a Lint agent worker path (Grimoire:Paths:LintAgentWorker).");
-        }
-
         var startInfo = new ProcessStartInfo
         {
             RedirectStandardInput = true,
@@ -263,23 +238,8 @@ public sealed class AgentProcessHost : IAgentProcessLauncher
             UseShellExecute = false,
         };
 
-        if (_lintAgentWorkerPath.EndsWith(".csproj", StringComparison.OrdinalIgnoreCase))
-        {
-            startInfo.FileName = "dotnet";
-            startInfo.ArgumentList.Add("run");
-            startInfo.ArgumentList.Add("--project");
-            startInfo.ArgumentList.Add(_lintAgentWorkerPath);
-            startInfo.ArgumentList.Add("--");
-        }
-        else if (_lintAgentWorkerPath.EndsWith(".dll", StringComparison.OrdinalIgnoreCase))
-        {
-            startInfo.FileName = "dotnet";
-            startInfo.ArgumentList.Add(_lintAgentWorkerPath);
-        }
-        else
-        {
-            startInfo.FileName = _lintAgentWorkerPath;
-        }
+        startInfo.FileName = "dotnet";
+        startInfo.ArgumentList.Add(_lintAgentWorkerPath);
 
         startInfo.ArgumentList.Add("--mode");
         startInfo.ArgumentList.Add("remediation-execution");
@@ -336,12 +296,6 @@ public sealed class AgentProcessHost : IAgentProcessLauncher
 
     private Process StartLintProcess(LintAgentRequest request)
     {
-        if (string.IsNullOrWhiteSpace(_lintAgentWorkerPath))
-        {
-            throw new InvalidOperationException(
-                "AgentProcessHost was not configured with a Lint agent worker path (Grimoire:Paths:LintAgentWorker).");
-        }
-
         var startInfo = new ProcessStartInfo
         {
             RedirectStandardInput = true,
@@ -350,23 +304,8 @@ public sealed class AgentProcessHost : IAgentProcessLauncher
             UseShellExecute = false,
         };
 
-        if (_lintAgentWorkerPath.EndsWith(".csproj", StringComparison.OrdinalIgnoreCase))
-        {
-            startInfo.FileName = "dotnet";
-            startInfo.ArgumentList.Add("run");
-            startInfo.ArgumentList.Add("--project");
-            startInfo.ArgumentList.Add(_lintAgentWorkerPath);
-            startInfo.ArgumentList.Add("--");
-        }
-        else if (_lintAgentWorkerPath.EndsWith(".dll", StringComparison.OrdinalIgnoreCase))
-        {
-            startInfo.FileName = "dotnet";
-            startInfo.ArgumentList.Add(_lintAgentWorkerPath);
-        }
-        else
-        {
-            startInfo.FileName = _lintAgentWorkerPath;
-        }
+        startInfo.FileName = "dotnet";
+        startInfo.ArgumentList.Add(_lintAgentWorkerPath);
 
         startInfo.ArgumentList.Add("--run-id");
         startInfo.ArgumentList.Add(request.RunId);
@@ -451,12 +390,6 @@ public sealed class AgentProcessHost : IAgentProcessLauncher
 
     private Process StartQueryProcess(QueryAgentRequest request)
     {
-        if (string.IsNullOrWhiteSpace(_queryAgentWorkerPath))
-        {
-            throw new InvalidOperationException(
-                "AgentProcessHost was not configured with a Query agent worker path (Grimoire:Paths:QueryAgentWorker).");
-        }
-
         var startInfo = new ProcessStartInfo
         {
             RedirectStandardInput = true,
@@ -465,23 +398,8 @@ public sealed class AgentProcessHost : IAgentProcessLauncher
             UseShellExecute = false,
         };
 
-        if (_queryAgentWorkerPath.EndsWith(".csproj", StringComparison.OrdinalIgnoreCase))
-        {
-            startInfo.FileName = "dotnet";
-            startInfo.ArgumentList.Add("run");
-            startInfo.ArgumentList.Add("--project");
-            startInfo.ArgumentList.Add(_queryAgentWorkerPath);
-            startInfo.ArgumentList.Add("--");
-        }
-        else if (_queryAgentWorkerPath.EndsWith(".dll", StringComparison.OrdinalIgnoreCase))
-        {
-            startInfo.FileName = "dotnet";
-            startInfo.ArgumentList.Add(_queryAgentWorkerPath);
-        }
-        else
-        {
-            startInfo.FileName = _queryAgentWorkerPath;
-        }
+        startInfo.FileName = "dotnet";
+        startInfo.ArgumentList.Add(_queryAgentWorkerPath);
 
         startInfo.ArgumentList.Add("--turn-id");
         startInfo.ArgumentList.Add(request.TurnId);
@@ -578,23 +496,8 @@ public sealed class AgentProcessHost : IAgentProcessLauncher
             UseShellExecute = false,
         };
 
-        if (_agentWorkerPath.EndsWith(".csproj", StringComparison.OrdinalIgnoreCase))
-        {
-            startInfo.FileName = "dotnet";
-            startInfo.ArgumentList.Add("run");
-            startInfo.ArgumentList.Add("--project");
-            startInfo.ArgumentList.Add(_agentWorkerPath);
-            startInfo.ArgumentList.Add("--");
-        }
-        else if (_agentWorkerPath.EndsWith(".dll", StringComparison.OrdinalIgnoreCase))
-        {
-            startInfo.FileName = "dotnet";
-            startInfo.ArgumentList.Add(_agentWorkerPath);
-        }
-        else
-        {
-            startInfo.FileName = _agentWorkerPath;
-        }
+        startInfo.FileName = "dotnet";
+        startInfo.ArgumentList.Add(_ingestAgentWorkerPath);
 
         startInfo.ArgumentList.Add("--task-id");
         startInfo.ArgumentList.Add(request.TaskId);

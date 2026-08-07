@@ -13,6 +13,16 @@
 
   <PropertyGroup>
     <OutputType>Exe</OutputType>
+    <!-- ADR-022: marks this project as an agent whose build output is delivered whole
+         into <GrimoireAgentDir>/lint/ by backend/Directory.Build.targets. -->
+    <GrimoireAgentId>lint</GrimoireAgentId>
   </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Instruction files are project sources (ADR-007/ADR-022): the only authoritative
+         copies, versioned with the agent and copied to $(OutDir)\Instructions\ on every
+         build, from where PublishAgentRuntime delivers them to the agent directory. -->
+    <Content Include="Instructions\**" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
 
 </Project>
