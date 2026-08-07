@@ -2,6 +2,7 @@ using System.Text.Json;
 using Grimoire.Domain.Ingest;
 using Grimoire.Hub.AgentDispatch;
 using Grimoire.Hub.ContentRoot;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 using Grimoire.Hub.IngestDispatch;
 using Grimoire.Hub.Runtime.Paths;
@@ -207,7 +208,8 @@ public static class IngestSubmissionEndpoints
     /// default user prompt and the convert-step registry. Fail-closed: a missing/empty
     /// default-prompt document is a 500 with a human-readable reason.
     /// </summary>
-    private static async Task<IResult> GetDefaultsAsync(ResolvedGrimoirePaths resolvedPaths, CancellationToken cancellationToken)
+    private static async Task<IResult> GetDefaultsAsync(
+        [FromServices] ResolvedGrimoirePaths resolvedPaths, CancellationToken cancellationToken)
     {
         if (!File.Exists(resolvedPaths.Ingest.DefaultUserPromptPath))
         {
