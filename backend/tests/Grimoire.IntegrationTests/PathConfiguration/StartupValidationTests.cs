@@ -176,6 +176,57 @@ public class StartupValidationTests
         }
     }
 
+    /// <summary>
+    /// SC-006: no configuration at all — an empty options instance, mirroring what a
+    /// fully-empty <c>appsettings.json</c> (or a section missing all three roots) would
+    /// bind to.
+    /// </summary>
+    [Fact]
+    public void EmptyConfiguration_ThrowsConfigurationMissing_NamingAllThreeRoots_BeforeTouchingAnyDirectory()
+    {
+        // No temp root is created anywhere in this test — the options carry no path that
+        // could be turned into a directory. A resolve call that created anything before
+        // the mandatory-config gate would have nowhere valid to create it, and would
+        // throw a different, unexpected exception instead of GrimoirePathConfigurationMissingException.
+        var options = new GrimoirePathOptions();
+        var configRoot = new ConfigurationBuilder().Build();
+
+        var exception = Assert.Throws<GrimoirePathConfigurationMissingException>(
+            () => GrimoirePathResolver.Resolve(options, configRoot, NullLogger.Instance));
+
+        Assert.Equal("appsettings.json", exception.ConfigurationFile);
+        Assert.Contains("DataDir", exception.MissingKeys);
+        Assert.Contains("WikiDir", exception.MissingKeys);
+        Assert.Contains("AgentDir", exception.MissingKeys);
+    }
+
+    /// <summary>SC-006: a section missing exactly one of the three roots names only that one.</summary>
+    [Fact]
+    public void ConfigurationMissingOneRoot_ThrowsConfigurationMissing_NamingOnlyThatRoot()
+    {
+        var options = new GrimoirePathOptions { DataDir = "/tmp/data", WikiDir = "/tmp/wiki" };
+        var configRoot = new ConfigurationBuilder().Build();
+
+        var exception = Assert.Throws<GrimoirePathConfigurationMissingException>(
+            () => GrimoirePathResolver.Resolve(options, configRoot, NullLogger.Instance));
+
+        Assert.Equal("appsettings.json", exception.ConfigurationFile);
+        Assert.Equal(["AgentDir"], exception.MissingKeys);
+    }
+
+    /// <summary>SC-006: a whitespace-only root is treated as absent, not as a literal path value.</summary>
+    [Fact]
+    public void WhitespaceOnlyRoot_ThrowsConfigurationMissing_NamingIt()
+    {
+        var options = new GrimoirePathOptions { DataDir = "   ", WikiDir = "/tmp/wiki", AgentDir = "/tmp/agents" };
+        var configRoot = new ConfigurationBuilder().Build();
+
+        var exception = Assert.Throws<GrimoirePathConfigurationMissingException>(
+            () => GrimoirePathResolver.Resolve(options, configRoot, NullLogger.Instance));
+
+        Assert.Equal(["DataDir"], exception.MissingKeys);
+    }
+
     private static void RunFailureCase(Action<SeededRequiredInputs> corrupt, string expectedLocation, Action<GrimoirePathValidationException>? assertAdditional = null)
     {
         var baseDir = Path.Combine(Path.GetTempPath(), $"grimoire-startup-validation-{Guid.NewGuid():N}");
