@@ -75,7 +75,8 @@ jobs:
       # against the affordable provider through the real agent executable, scores them,
       # and (re)writes the provenance-carrying recordings that the hermetic replay tier
       # (ci.yml) consumes. Download the recordings artifact and commit it to refresh
-      # data/evals/recordings/.
+      # backend/tests/Grimoire.AgentEvals/Fixtures/recordings/ (ADR-022: relocated from
+      # data/evals/recordings/ as test-project sources).
       - name: Run capture via eval runner
         env:
           GRIMOIRE_EVAL_PROVIDER_BASE_URL: "http://localhost:4000"
@@ -105,7 +106,7 @@ jobs:
           name: agent-eval-results
           path: |
             eval-summary.md
-            data/evals/recordings/**
+            backend/tests/Grimoire.AgentEvals/Fixtures/recordings/**
           if-no-files-found: warn
 
       # FR-007 no-PR fallback: only attempted when pr_number was provided; artifacts and

@@ -18,7 +18,7 @@ namespace Grimoire.IntegrationTests.PathConfiguration;
 /// stay at their unset, cwd-anchored defaults.
 /// </summary>
 [Collection("CurrentDirectoryMutation")]
-public class WikiDirEndToEndContentTests
+public class LintWikiDirEndToEndContentTests
 {
     [Fact]
     public async Task OnlyWikiDirFlagSet_LintRunFindingsReport_LandsUnderCustomWikiDir_DataAndAgentDirsStayDefault()

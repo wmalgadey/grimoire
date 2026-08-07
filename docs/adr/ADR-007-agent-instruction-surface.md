@@ -4,6 +4,13 @@ status: accepted
 
 # ADR-007: Agent Instruction Surface — Single System Prompt and Versioned Default User Prompt
 
+> **Amended by [ADR-022](ADR-022-minimal-directory-configuration-surface.md)**:
+> instruction files now live as agent-project sources
+> (`backend/src/Grimoire.*Agent/Instructions/`), copied to the configured `AgentDir` by
+> the agent build (`PublishAgentRuntime`) rather than tracked under `data/agents/<id>/`
+> — the instruction surface (system prompt, default user prompt, policy) this ADR
+> defines is unchanged; only where the authoritative copy is versioned moved.
+
 ## Context and Problem Statement
 
 The Ingest agent's instructions currently live in `agents/ingest/CLAUDE.md` plus

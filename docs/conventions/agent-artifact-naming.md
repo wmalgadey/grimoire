@@ -15,7 +15,7 @@ ownership map (below): agent-owned types live in agent-prefixed namespaces; the
 shared dispatch namespace (`Grimoire.Hub.AgentDispatch`) keeps only the cross-agent
 port surface.
 
-Instruction folders already conform: `data/agents/<agent>/`.
+Instruction folders already conform: `backend/src/Grimoire.<Agent>Agent/Instructions/`.
 
 ## Rationale
 

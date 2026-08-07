@@ -4,6 +4,12 @@ status: accepted
 
 # ADR-009: Explicit Runtime Path Configuration and Consolidated Data Directory
 
+> **Superseded in part by [ADR-022](ADR-022-minimal-directory-configuration-surface.md)**:
+> the one-composition-point/one-precedence-chain principle established here still holds,
+> but the switch surface it grew ("friendly switch mappings" read as "each new location
+> gets its own switch") is replaced by ADR-022's three-root model, mandatory
+> configuration file, and code-default-free resolver.
+
 ## Context and Problem Statement
 
 Every runtime location Grimoire uses — wiki content root, raw intake storage, the
