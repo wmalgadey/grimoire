@@ -293,6 +293,46 @@ public class HubHelpUsageTests
     }
 
     /// <summary>
+    /// ADR-022 quickstart validation finding (Scenario 3/6): a path-resolution failure
+    /// hit while Spectre lazily resolves a real command's constructor dependencies (as
+    /// opposed to the always-eager <c>HubHostComposition</c> path the web-host/server-mode
+    /// invocation takes) arrives at <c>HubCliApp.RunAsync</c> wrapped in Spectre's own
+    /// generic <c>CommandRuntimeException</c> ("Could not resolve type '...'.") unless
+    /// unwrapped — this only reproduces through the real out-of-process CLI dispatch path
+    /// (an in-process command construction, as most tests in this file use, bypasses
+    /// Spectre's type resolver entirely and never hits the wrapping).
+    /// </summary>
+    [Fact]
+    public async Task RemediationDismiss_RealOutOfProcessInvocation_MissingAgentDir_ReportsTheRealMessage_NotSpectresGenericResolutionFailure()
+    {
+        var scratchDir = CreateScratchDataDirectory();
+        var missingAgentDir = Path.Combine(scratchDir, "no-such-agent-dir");
+
+        try
+        {
+            var result = await RunHubAsync(
+                [
+                    "remediation-dismiss",
+                    "--data-dir", Path.Combine(scratchDir, "data"),
+                    "--wiki-dir", Path.Combine(scratchDir, "wiki"),
+                    "--agent-dir", missingAgentDir,
+                    "--task-id", "does-not-exist",
+                ],
+                workingDirectory: scratchDir);
+
+            Assert.False(result.TimedOut, "A real remediation-dismiss invocation must exit promptly, not hang.");
+            Assert.Equal((int)CliExitCode.OperationFailed, result.ExitCode);
+            Assert.DoesNotContain("Could not resolve type", result.StdErr, StringComparison.Ordinal);
+            Assert.Contains("agent_dir", result.StdErr, StringComparison.Ordinal);
+            Assert.Contains(Path.GetFullPath(missingAgentDir), result.StdErr, StringComparison.Ordinal);
+        }
+        finally
+        {
+            Directory.Delete(scratchDir, recursive: true);
+        }
+    }
+
+    /// <summary>
     /// A scratch directory containing only the one thing ADR-022 anchors at the process
     /// working directory rather than any of the three roots: the secrets file
     /// (FR-019 — <c>GrimoirePathResolver.Resolve</c> only checks it EXISTS, never reads
