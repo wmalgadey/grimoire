@@ -55,7 +55,7 @@ public sealed class SubmissionService
             LogPath: contentPaths.LogPath,
             PastedText: options.PastedText,
             SystemPromptPath: resolvedPaths.Ingest.SystemPromptPath,
-            DefaultUserPromptPath: resolvedPaths.Ingest.DefaultUserPromptPath,
+            DefaultUserPromptPath: resolvedPaths.Ingest.DefaultUserPromptPath!,
             PolicyPath: resolvedPaths.Ingest.PolicyPath,
             WriteLocksDir: contentPaths.WriteLocksDir);
 

@@ -211,20 +211,23 @@ public static class IngestSubmissionEndpoints
     private static async Task<IResult> GetDefaultsAsync(
         [FromServices] ResolvedGrimoirePaths resolvedPaths, CancellationToken cancellationToken)
     {
-        if (!File.Exists(resolvedPaths.Ingest.DefaultUserPromptPath))
+        // Non-null for Ingest (AgentRuntimePaths doc comment); nullable only for Query/Lint.
+        var defaultUserPromptPath = resolvedPaths.Ingest.DefaultUserPromptPath!;
+
+        if (!File.Exists(defaultUserPromptPath))
         {
             return Results.Json(new
             {
-                message = $"Default user prompt document not found at '{resolvedPaths.Ingest.DefaultUserPromptPath}'.",
+                message = $"Default user prompt document not found at '{defaultUserPromptPath}'.",
             }, statusCode: StatusCodes.Status500InternalServerError);
         }
 
-        var defaultUserPrompt = await File.ReadAllTextAsync(resolvedPaths.Ingest.DefaultUserPromptPath, cancellationToken);
+        var defaultUserPrompt = await File.ReadAllTextAsync(defaultUserPromptPath, cancellationToken);
         if (string.IsNullOrWhiteSpace(defaultUserPrompt))
         {
             return Results.Json(new
             {
-                message = $"Default user prompt document at '{resolvedPaths.Ingest.DefaultUserPromptPath}' is empty.",
+                message = $"Default user prompt document at '{defaultUserPromptPath}' is empty.",
             }, statusCode: StatusCodes.Status500InternalServerError);
         }
 

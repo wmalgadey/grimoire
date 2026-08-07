@@ -68,8 +68,6 @@ public sealed class IngestSubmissionPipelineFixture : IDisposable
             SourcesDir: Path.Combine(Root, "raw", "sources"));
         SourceArtifactStore = new SourceArtifactStore(RawPaths);
 
-        var agentDir = Path.Combine(Root, "agents");
-
         if (resolvedPaths is not null)
         {
             ResolvedPaths = resolvedPaths;
@@ -86,6 +84,7 @@ public sealed class IngestSubmissionPipelineFixture : IDisposable
         }
         else
         {
+            var agentDir = Path.Combine(Root, "agents");
             var contentRoot = Path.Combine(Root, "wiki");
             var instructionsDir = Path.Combine(Root, "agents", "ingest");
             var tasksDir = Path.Combine(contentRoot, "tasks");

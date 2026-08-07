@@ -213,7 +213,7 @@ public sealed class IngestRunCoordinator
             LogPath: _contentPaths.LogPath,
             PastedText: null,
             SystemPromptPath: _resolvedPaths.Ingest.SystemPromptPath,
-            DefaultUserPromptPath: _resolvedPaths.Ingest.DefaultUserPromptPath,
+            DefaultUserPromptPath: _resolvedPaths.Ingest.DefaultUserPromptPath!,
             PolicyPath: _resolvedPaths.Ingest.PolicyPath,
             WriteLocksDir: _contentPaths.WriteLocksDir,
             UserPrompt: run.UserPrompt);
