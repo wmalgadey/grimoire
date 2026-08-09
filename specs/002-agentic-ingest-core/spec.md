@@ -4,7 +4,7 @@
 
 **Created**: 2026-07-04
 
-**Status**: Draft
+**Status**: Implemented — completed 2026-07-05
 
 **Input**: User description: "Agentic Ingest Core — Replace the deterministic ingest
 pipeline with an agent-driven execution model, building on the foundation of

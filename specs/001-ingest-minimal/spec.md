@@ -4,7 +4,7 @@
 
 **Created**: 2026-07-02
 
-**Status**: Draft
+**Status**: Implemented — completed 2026-07-04
 
 **Input**: User description: "Ingest Minimal — source in, wiki file + task artifact out"
 

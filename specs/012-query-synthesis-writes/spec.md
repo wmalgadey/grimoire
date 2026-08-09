@@ -4,7 +4,7 @@
 
 **Created**: 2026-07-27
 
-**Status**: Draft
+**Status**: Implemented — completed 2026-07-30
 
 **Input**: User description: "The query agent should be extended to its final
 state. It should not have only read-only access to the wiki but write new content:

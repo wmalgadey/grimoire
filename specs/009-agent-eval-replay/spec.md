@@ -4,7 +4,7 @@
 
 **Created**: 2026-07-23
 
-**Status**: Draft
+**Status**: Implemented — completed 2026-07-26
 
 **Input**: User description: "der agent eval test ist ziemlich aufwendig. er testet llm antworten und ist damit auch noch teuer. wir brauchen eine alternative, den agenten zu testen. evtl. könnten wir snapshots der antworten speichern, um damit einen agent durchlauf zu simulieren? oder wir entfernen die eval tests komplett und testen den deterministischen teil der anwendung"
 

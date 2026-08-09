@@ -4,7 +4,7 @@
 
 **Created**: 2026-07-19
 
-**Status**: Draft
+**Status**: Implemented — completed 2026-07-19
 
 **Input**: User description: "die constitution wurde geändert und um aspekte der hexagonalen architektur erweitert. passe die codebase an, damit diese prinzipien umgesetzt werden. ergänze in diesem zusammenhang das ui mit einer darstellung der tasks. aktuell kann man in den tasks-cards auf details klicken, und sieht die json daten des jeweiligen endpunktes. idealerweise zeigt das ui bei details die entsprechende tasks.md. die darstellung soll das markdown der tasks.md rendern und automatisch aktualisieren, wenn sich der inhalt ändert."
 

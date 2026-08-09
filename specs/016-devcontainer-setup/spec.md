@@ -4,7 +4,7 @@
 
 **Created**: 2026-08-02
 
-**Status**: Draft
+**Status**: Implemented — completed 2026-08-02 (residual validation: tasks.md T017 — ADR-019 probe needs one green `devcontainer-ci.yml` run in real GitHub Actions)
 
 **Input**: User description: "erstelle einen devcontainer (https://containers.dev/) für das aktuelle projekt um die entwicklung zu beschleunigen und die abhängigkeiten im system zu reduzieren"
 (English: "create a devcontainer (https://containers.dev/) for the current project to

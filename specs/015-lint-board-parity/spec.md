@@ -4,7 +4,7 @@
 
 **Created**: 2026-07-31
 
-**Status**: Draft
+**Status**: Implemented — completed 2026-08-01
 
 **Input**: User description: "use <https://github.com/wmalgadey/grimoire/issues/40>" — GitHub issue #40, "Lint and ingest both create tasks — both should be triggerable/visible on the task board." Scope was subsequently expanded during clarification: lint findings become agent-proposed, individually actionable task cards on the board, authorized by a human before the agent executes them.
 

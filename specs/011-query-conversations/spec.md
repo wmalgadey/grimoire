@@ -4,7 +4,7 @@
 
 **Created**: 2026-07-27
 
-**Status**: Draft
+**Status**: Implemented — completed 2026-07-29 (residual manual validation: tasks.md T044 — quickstart scenarios 1–5 need a live Hub with a real API key)
 
 **Input**: User description: "The query-runs markdown files could be renamed to
 conversations, and they should include the complete conversation, not just the

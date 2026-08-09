@@ -4,7 +4,7 @@
 
 **Created**: 2026-08-02
 
-**Status**: Draft
+**Status**: Implemented — completed 2026-08-06
 
 **Input**: User description: "setze die anforderungen in https://github.com/wmalgadey/grimoire/issues/45 und seine kommentare um" (implement the requirements in GitHub issue #45 and its comments)
 

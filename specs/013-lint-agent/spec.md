@@ -4,7 +4,7 @@
 
 **Created**: 2026-07-27
 
-**Status**: Draft
+**Status**: Implemented — completed 2026-07-30
 
 **Input**: User description: "Add the next agent: lint. It is the same as ingest
 and query — same platform, different intent. The lint agent performs the wiki

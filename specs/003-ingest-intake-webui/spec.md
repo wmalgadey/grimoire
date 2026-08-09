@@ -4,7 +4,7 @@
 
 **Created**: 2026-07-06
 
-**Status**: Draft
+**Status**: Implemented — completed 2026-07-11
 
 **Input**: User description: "Build a Web UI for using the Ingest agent. The user
 submits a source to the Hub: either a URL, Markdown files, PDFs, or Office documents. The

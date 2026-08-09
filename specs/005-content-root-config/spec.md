@@ -4,7 +4,7 @@
 
 **Created**: 2026-07-18
 
-**Status**: Draft
+**Status**: Implemented — completed 2026-07-27
 
 **Input**: User description: "currently the code relies on the repo structure (repoRoot variable) and the content-root is relative to this repoRoot. That is not intuitive and wrong for a production ready application. the application should be called with relative or fixed file paths and should not rely on a specific project structure, which might not exists in a deployed production environment"
 

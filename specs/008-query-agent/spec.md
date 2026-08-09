@@ -4,7 +4,7 @@
 
 **Created**: 2026-07-17
 
-**Status**: Draft
+**Status**: Implemented — completed 2026-07-27
 
 **Input**: User description: "füge den /query prozess hinzu. Der benutzer soll ein query
 prompt im ui eingeben können, der hub empfängt den prompt, leitet ihn an einen query

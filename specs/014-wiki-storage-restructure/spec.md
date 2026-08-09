@@ -4,7 +4,7 @@
 
 **Created**: 2026-07-30
 
-**Status**: Draft
+**Status**: Implemented — completed 2026-07-31
 
 **Input**: User description: "Restructure the wiki content-root storage layout so it mirrors the reference 'llm-wiki' folder layout, and change how agents append to the wiki's activity log so it stays human-readable across multiple contributing agents."
 

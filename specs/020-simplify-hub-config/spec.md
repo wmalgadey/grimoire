@@ -4,7 +4,7 @@
 
 **Created**: 2026-08-06
 
-**Status**: Draft
+**Status**: Implemented — completed 2026-08-07
 
 **Input**: User description: "the current hub cli options are too complex and do not work as expected. there should be a minimum of configuration options which have to be present to run the system, everything else should be default.
 

@@ -4,7 +4,7 @@
 
 **Created**: 2026-07-11
 
-**Status**: Draft
+**Status**: Implemented — completed 2026-07-14
 
 **Input**: User description: "die claude.md und skill.md des ingest agent sind
 irreführend und sollen durch einen einzelnen systemprompt ersetzt werden. Außerdem soll

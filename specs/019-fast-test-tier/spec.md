@@ -4,7 +4,7 @@
 
 **Created**: 2026-08-02
 
-**Status**: Draft
+**Status**: Implemented — completed 2026-08-04
 
 **Input**: User description: "Fast developer feedback tier for the backend test suite (from GitHub issue #44, https://github.com/wmalgadey/grimoire/issues/44). The backend test suite currently takes over 300 seconds to run locally, which makes it useless as a developer feedback loop. Grimoire.AgentEvals alone accounts for ~64% of runtime, and CI's PR gate runs all four suites in the same sequence a developer would run locally, so there is no fast inner loop. Investigation showed the slowness is not caused by edge-case bloat (IntegrationTests are already traceable to concrete FR/user-story slices) but by (a) fixed real-time waits (Task.Delay/Thread.Sleep, 146 occurrences) in Grimoire.IntegrationTests instead of deterministic condition-based synchronization, and (b) no fast/slow test-tier separation. Goals: a developer-facing fast tier (Domain.UnitTests, ArchTests, and ideally the non-timing-dependent parts of IntegrationTests) completes in low single-digit seconds and can be run independently of AgentEvals; fixed delays in IntegrationTests are replaced with deterministic condition-based waiting wherever they exist only to out-wait an async operation; AgentEvals is documented/runnable as an explicitly slower, separate opt-in tier so its cost is not paid on every default test run; and going forward new tests are written TDD-style against expected system behavior, with edge-case coverage added only when traceable to a concrete user-facing scenario (spec/FR/user story)."
 

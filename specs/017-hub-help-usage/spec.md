@@ -4,7 +4,7 @@
 
 **Created**: 2026-08-02
 
-**Status**: Draft
+**Status**: Implemented — completed 2026-08-02
 
 **Input**: User description: "Hub startet mit --help und zeigt eine Usage-Meldung an, statt den Web-Server zu starten. Wer die Grimoire.Hub-Executable mit --help (oder -h) aufruft, bekommt eine Übersicht der verfügbaren Kommandozeilen-Optionen (u.a. submit-source sowie die ADR-009 Pfad-Switches wie --base-dir, --data-dir, --content-root usw.) auf der Konsole ausgegeben und der Prozess beendet sich sofort mit Exit-Code 0, ohne den Hub-Host tatsächlich hochzufahren."
 

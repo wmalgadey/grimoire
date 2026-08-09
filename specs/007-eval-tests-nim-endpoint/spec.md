@@ -4,7 +4,7 @@
 
 **Created**: 2026-07-17
 
-**Status**: Draft
+**Status**: Implemented — completed 2026-07-23
 
 **Input**: User description: "die eval agent tests sollen ohne anthropic subscription laufen, sondern mit günstigeren anbietern. Im Projekt befindet sich bereits ein script um nim endpunkte über den litellm Proxy verfügbar zu machen. Diese test sollten idealerweise mit diesem nim endpunkt laufen und könnten auch on demand in github worklfows laufen, der api key dann als github secrets."
 

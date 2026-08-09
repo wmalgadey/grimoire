@@ -4,7 +4,7 @@
 
 **Created**: 2026-07-27
 
-**Status**: Draft
+**Status**: Implemented — completed 2026-07-30
 
 **Input**: User description: "IngestAgent and QueryAgent could actually be the same
 code, just with different system prompts. The functionality of the agents is
