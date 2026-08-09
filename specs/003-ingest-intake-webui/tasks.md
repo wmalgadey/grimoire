@@ -706,9 +706,18 @@ defects uncovered while adding the C1 test (the added parallel load surfaced the
   sees either the whole old or the whole new file. This also removed the last intermittent
   full-suite failure (`IngestSubmissionLifecycleTests`), per FR-007/FR-008 / Constitution II
   (contradicts)
-- [ ] T085 Add an explicit test for FR-005 normalized-artifact immutability (analyze finding U1,
+- [X] T085 Add an explicit test for FR-005 normalized-artifact immutability (analyze finding U1,
   deferred): assert that a persisted `raw/sources/{taskId}.md` re-reads to exactly the checksum
   `SourceArtifactStore` recorded at write time. Deferred from this pass as optional/low-value — the
   existing `SourceArtifactPersistenceTests` already round-trips and asserts the normalized content,
   and the complementary "agent never writes into raw-source location" guarantee is enforced
   structurally by the guarded-tool boundary (002-agentic-ingest-core), per FR-005 (missing)
+
+  **Closed 2026-08-09 as won't-do.** The deferral rationale above still holds and no one has
+  needed this test in the five weeks since: FR-005's two halves are each already covered —
+  round-trip content equality by `SourceArtifactPersistenceTests`, and "nothing else writes
+  into the raw-source location" structurally by the guarded-tool boundary rule, which is
+  stronger than a checksum assertion because it fails at build time rather than at test time.
+  Checked off rather than left open so the task list reflects a decision instead of an
+  unowned intention (`/speckit-analyze` finding). Reopen if the raw-source location ever
+  gains a second writer.

@@ -371,14 +371,24 @@ advances; restart → queue intact, paused, manual resume.
       (`.github/workflows/` backend job runs `Grimoire.IntegrationTests`; frontend
       job runs the new component tests — adjust for the bun toolchain if the
       workflow switched from npm); fail the build on violation.
-- [ ] T048 Agent-behavior evaluation SC-006 (MANDATORY — Principles II & V): run
+- [X] T048 Agent-behavior evaluation SC-006 (MANDATORY — Principles II & V): run
       `backend/tests/Grimoire.AgentEvals` convention-adherence +
       instruction-change-adoption suites against the consolidated
       `agents/ingest/system-prompt.md` at 002's thresholds; document results.
-      **BLOCKED** in this environment: requires `GRIMOIRE_EVAL=1` +
-      `ANTHROPIC_AUTH_TOKEN` (live model credentials), neither available here. The
-      suites themselves are already wired to `system-prompt.md` (T014) and compile/
-      skip correctly; only the actual sampled run + result documentation remains.
+      **CLOSED 2026-08-09 — satisfied by feature 009.** This was BLOCKED at the time
+      for want of `GRIMOIRE_EVAL=1` + `ANTHROPIC_AUTH_TOKEN`. Feature 009 removed the
+      blocker structurally: it retired the `GRIMOIRE_EVAL` gate entirely and replaced
+      the live tier with recorded replay, then ran a real bootstrap capture against
+      `claude-haiku-4-5`. Both suites this task names — `convention-adherence` and
+      `instruction-change-adoption` — are among the six scenarios recorded as
+      **trusted and passing at their spec-defined thresholds** in
+      `specs/009-agent-eval-replay/tasks.md` § "Bootstrap Capture Update (2026-07-26)",
+      and both are re-asserted on every PR by `ReplayEvalTests`. Note that 009's
+      bootstrap found `convention-adherence` initially scoring 0% for a *scorer* defect
+      (it required frontmatter fields that the consolidated `system-prompt.md` never
+      defined, sourced from the very `SKILL.md` this feature retired) — fixing the
+      scorer took it to 100%, confirming SC-006's no-regression claim for the
+      consolidation. Residual obligation: none.
 - [X] T049 Agent-behavior evaluation SC-007 (MANDATORY — Principles II & V): new
       `backend/tests/Grimoire.AgentEvals/SteeringAdoptionEvals.cs` — ≥ 10
       source/steer pairs, LLM-judge rubric scoring summary + touched pages against
@@ -406,9 +416,16 @@ advances; restart → queue intact, paused, manual resume.
       covered deterministically by `RunSupervisionTests.cs` / `RunActivityRealtimeTests.cs`
       via a scripted fake agent process and controllable clock — more reliable than a
       live 60s wall-clock wait for the same assertion.
-- [ ] T052 [P] Propose the Principle V example-wording PATCH via
+- [X] T052 [P] Propose the Principle V example-wording PATCH via
       `/speckit-constitution` (research R13) — separate follow-up, not blocking this
       feature's DoD.
+      **DONE 2026-08-09**: applied as part of constitution **v1.7.0**. Principle V's
+      instruction-file example no longer reads "agent `CLAUDE.md` / `SKILL.md`" but
+      names the ADR-007 surface this feature established — one `system-prompt.md` per
+      agent, plus `default-user-prompt.md` where the agent has a default steering
+      message. Substance of the principle unchanged, exactly as research R13 proposed.
+      The constitution had described a layout this feature deliberately abolished for
+      four weeks; `/speckit-analyze` surfaced it as finding X2 (CRITICAL).
 
 ---
 

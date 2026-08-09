@@ -310,9 +310,31 @@ below runs with `FakeModelClient` or direct component composition and no API key
 to temporary provider rate limiting, and close the remaining quality-threshold gap once
 the rate window resets.
 
-- [ ] T060 Re-run `GRIMOIRE_EVAL=1 dotnet test backend/tests/Grimoire.AgentEvals --configuration Release` with a real `ANTHROPIC_AUTH_TOKEN` immediately after the rate-limit window resets, capture per-suite pass/fail output for SC-006..SC-010, and append evidence to the completion notes (missing)
-- [ ] T061 If SC-006 remains below threshold, refine the instruction-layer update-vs-duplicate guidance in `agents/ingest/CLAUDE.md` and `agents/ingest/skills/wiki-maintenance/SKILL.md`, then re-run `backend/tests/Grimoire.AgentEvals/UpdateOverDuplicateEvals.cs` to reach the spec threshold (partial)
-- [ ] T062 If SC-007 or SC-008 remain below threshold, refine instruction-layer conventions and catalog-upkeep guidance in `agents/ingest/skills/wiki-maintenance/SKILL.md`, then re-run `backend/tests/Grimoire.AgentEvals/ConventionAdherenceEvals.cs` and `backend/tests/Grimoire.AgentEvals/CatalogDiscoverabilityEvals.cs` to threshold (partial)
-- [ ] T063 If SC-009 remains below threshold, strengthen instruction-change adoption cues in `agents/ingest/CLAUDE.md` and re-run `backend/tests/Grimoire.AgentEvals/InstructionChangeAdoptionEvals.cs` to threshold without backend code changes (partial)
-- [ ] T064 If SC-010 remains below threshold, tighten source-is-data and denial-continuation instruction text in `agents/ingest/CLAUDE.md` and re-run `backend/tests/Grimoire.AgentEvals/AdversarialSourceEvals.cs` to satisfy both denial and completion criteria (partial)
-- [ ] T065 Record final SC-006..SC-010 pass evidence and updated percentages in `specs/002-agentic-ingest-core/tasks.md` completion notes once all evaluation suites meet thresholds, then run `/speckit-converge` again to confirm no remaining actionable gaps (missing)
+- [X] T060 Re-run `GRIMOIRE_EVAL=1 dotnet test backend/tests/Grimoire.AgentEvals --configuration Release` with a real `ANTHROPIC_AUTH_TOKEN` immediately after the rate-limit window resets, capture per-suite pass/fail output for SC-006..SC-010, and append evidence to the completion notes (missing)
+- [X] T061 If SC-006 remains below threshold, refine the instruction-layer update-vs-duplicate guidance in `agents/ingest/CLAUDE.md` and `agents/ingest/skills/wiki-maintenance/SKILL.md`, then re-run `backend/tests/Grimoire.AgentEvals/UpdateOverDuplicateEvals.cs` to reach the spec threshold (partial)
+- [X] T062 If SC-007 or SC-008 remain below threshold, refine instruction-layer conventions and catalog-upkeep guidance in `agents/ingest/skills/wiki-maintenance/SKILL.md`, then re-run `backend/tests/Grimoire.AgentEvals/ConventionAdherenceEvals.cs` and `backend/tests/Grimoire.AgentEvals/CatalogDiscoverabilityEvals.cs` to threshold (partial)
+- [X] T063 If SC-009 remains below threshold, strengthen instruction-change adoption cues in `agents/ingest/CLAUDE.md` and re-run `backend/tests/Grimoire.AgentEvals/InstructionChangeAdoptionEvals.cs` to threshold without backend code changes (partial)
+- [X] T064 If SC-010 remains below threshold, tighten source-is-data and denial-continuation instruction text in `agents/ingest/CLAUDE.md` and re-run `backend/tests/Grimoire.AgentEvals/AdversarialSourceEvals.cs` to satisfy both denial and completion criteria (partial)
+- [X] T065 Record final SC-006..SC-010 pass evidence and updated percentages in `specs/002-agentic-ingest-core/tasks.md` completion notes once all evaluation suites meet thresholds, then run `/speckit-converge` again to confirm no remaining actionable gaps (missing)
+
+  Completion notes (2026-08-09, closed by `/speckit-analyze` remediation): T060-T065 are
+  **closed as superseded by feature 009 (Recorded-Replay Agent Evaluations)**. The premise
+  of this phase — that SC-006..SC-010 could only be measured by a paid live re-run once a
+  provider rate-limit window reset — no longer holds: 009 replaced the always-live eval tier
+  with recorded replay at the `IModelClient` port, and its bootstrap capture
+  (`specs/009-agent-eval-replay/tasks.md` § "Bootstrap Capture Update (2026-07-26)") ran all
+  six scenarios against a real provider (`claude-haiku-4-5`) across three diagnose-and-fix
+  iterations. Final recorded state: **all 6 scenarios trusted and passing at their
+  spec-defined thresholds**, `dotnet test backend/tests/Grimoire.AgentEvals` 40/40 passed,
+  0 skipped, and those thresholds are now re-asserted on every PR by
+  `ReplayEvalTests` in the standard CI pipeline (`.github/workflows/ci.yml`).
+
+  The conditional refinement tasks T061-T064 were therefore never needed as written: the
+  instruction-layer work they anticipated was in fact performed during 009's bootstrap
+  (two scorer/fixture defects and one genuine `system-prompt.md` gap around operator
+  task-framing vs. untrusted source content, each re-verified against real recorded
+  evidence). T065's "record final pass evidence" obligation is discharged by 009's
+  completion notes, which are the authoritative record.
+
+  Residual obligation: **none**. SC-006..SC-010 are gated continuously rather than by a
+  one-off manual run.

@@ -288,10 +288,12 @@ locatable by pattern search.
   `backend/src/Grimoire.EvalRunner/Scoring/`): checks a sampled log paragraph's
   specificity against the task's actual diff, not a generic restatement of the
   heading; wire into existing ingest/query eval scenarios, threshold ≥90%.
-- [ ] T042 [US3] Re-record `Grimoire.EvalRunner` recordings affected by the new log
+- [X] T042 [US3] Re-record `Grimoire.EvalRunner` recordings affected by the new log
   format instruction (existing ingest/query scenarios) under `data/evals/recordings/`.
   **Superseded/consolidated by T062** (Phase 7 completeness audit) — do this as part of
   T062's single re-recording pass covering all 17 stale scenarios, not separately.
+  **Closed 2026-08-09**: T062 is complete, so this task's obligation is discharged; it is
+  checked off to stop it reading as outstanding work (`/speckit-analyze` finding).
 - [X] T043 [US3] Run `quickstart.md` Scenario 3; confirm the documented expected
   outcome.
 
@@ -338,10 +340,12 @@ link-description-status format, independent of any other change in this feature.
 - [X] T050 [P] [US4] New `Grimoire.EvalRunner` scorer (SC-007, in
   `backend/src/Grimoire.EvalRunner/Scoring/`): checks a sampled catalog description's
   specificity against the article's actual content, threshold ≥90%.
-- [ ] T051 [US4] Re-record `Grimoire.EvalRunner` recordings affected by the new
+- [X] T051 [US4] Re-record `Grimoire.EvalRunner` recordings affected by the new
   catalog format instruction. **Superseded/consolidated by T062** (Phase 7
   completeness audit) — do this as part of T062's single re-recording pass covering
   all 17 stale scenarios, not separately.
+  **Closed 2026-08-09**: T062 is complete, so this task's obligation is discharged; it is
+  checked off to stop it reading as outstanding work (`/speckit-analyze` finding).
 - [X] T052 [US4] Run `quickstart.md` Scenario 4; confirm the documented expected
   outcome.
 

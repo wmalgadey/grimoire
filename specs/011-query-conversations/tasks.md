@@ -575,6 +575,16 @@ what gates the DoD.
   validation remains for the project owner to run locally before declaring the
   DoD met.*
 
+  **Status confirmed still open 2026-08-09** (`/speckit-analyze` remediation pass).
+  Deliberately left unchecked rather than closed: unlike 002/004/007/014, this task has
+  no superseding evidence anywhere in the corpus — it needs a live Hub holding a real
+  `ANTHROPIC_AUTH_TOKEN`, which no automated session can supply. Everything that *can*
+  be verified without one is green (whole-repo run 2026-08-09: 924 tests, 0 failed,
+  0 skipped, including this feature's Conversation Record persistence, bookkeeping,
+  durability and observability suites). The residual risk is confined to live-conversation
+  ergonomics, not to any harness guarantee. **This is the sole outstanding item behind
+  spec 011's `Implemented` status.**
+
 ---
 
 ## Dependencies & Execution Order

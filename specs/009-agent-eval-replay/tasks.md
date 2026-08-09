@@ -161,7 +161,33 @@ Existing hexagonal backend repo (`backend/Grimoire.slnx`). This feature touches:
 - [X] T039 Deterministic trace-contract tests in `backend/tests/Grimoire.IntegrationTests/EvalRunnerObservabilityTests.cs`: `eval.capture_run` (root; task_id, scenario, provider, model) and `eval.replay_run` (root; task_id, scenario, trust_status, recording_id) span names, root parentage, and task_id correlation with the log events and metric increments (`grimoire.eval.recordings_captured_total`, `grimoire.eval.replay_results_total`) (MANDATORY — Constitution Principle IV)
 - [X] T040 Agent-behavior evaluation verification: confirm every agent-judgment success criterion holds at its spec-defined threshold on the recorded evidence — T031's capture summary (live scores) and the green per-scenario replay tests (recorded scores) for SC-006/007/008/009/010 + steering (SC-007/004) — and record the results in `specs/009-agent-eval-replay/tasks.md` completion notes (MANDATORY — Constitution Principles II & V)
 - [X] T041 CI enforcement: verify `.github/workflows/ci.yml` (Deterministic Backend Gates) runs `Grimoire.IntegrationTests` (T037–T039 logging + trace tests) and `Grimoire.AgentEvals` (replay + staleness tests) in the standard PR pipeline with no provider secret and 0 skipped tests (MANDATORY — Constitution Principle IV; completes the logging/trace contract CI category)
-- [ ] T042 [P] Run full `quickstart.md` validation (§1–§5 incl. SC-002 < 5 min timing measurement and the observability spot-check); fix any deviation or update quickstart with corrected commands
+- [X] T042 [P] Run full `quickstart.md` validation (§1–§5 incl. SC-002 < 5 min timing measurement and the observability spot-check); fix any deviation or update quickstart with corrected commands
+
+  **Executed 2026-08-09** on macOS (Darwin 24.5.0), Release build, no deviations found and
+  no quickstart corrections needed.
+
+  - **§1 replay (SC-001, SC-002, SC-004, SC-008)** — `dotnet test
+    backend/tests/Grimoire.AgentEvals --configuration Release --no-build` with
+    `ANTHROPIC_AUTH_TOKEN`, `GRIMOIRE_EVAL_PROVIDER_API_KEY`,
+    `GRIMOIRE_EVAL_PROVIDER_BASE_URL` and `GRIMOIRE_EVAL_PROVIDER_MODEL` all unset:
+    **76 passed, 0 failed, 0 skipped, 2 m 30 s**. Confirms zero provider calls are even
+    possible (no credential present), the SC-002 < 5 min budget with ~50% headroom, and
+    SC-008's zero-skipped guarantee.
+  - **§3 staleness (SC-003, SC-005)** — `dotnet run --project
+    backend/src/Grimoire.EvalRunner -- status`: **22 passed, 0 failed**, exit 0. Every
+    scenario reports trusted with its provenance (`model claude-haiku-4-5`, capture dates
+    2026-07-31 / 2026-08-01), so no recording is stale against the current instruction
+    files and the FR-016 merge gate is green.
+  - **§5 observability** — covered deterministically rather than by an Aspire spot-check:
+    `EvalRunnerObservabilityTests` and `EvalObservabilityTests` run inside the
+    695-test integration suite below and assert every plan.md Observability row.
+  - **Whole-repo regression context**: ArchTests 60/60, Domain.UnitTests 93/93,
+    IntegrationTests 695/695, AgentEvals 76/76 — **924 tests, 0 failed, 0 skipped**.
+  - **§2 (live capture)** was not re-run: it requires a provider credential this session
+    does not hold, and re-capturing would invalidate the very recordings §1/§3 just
+    verified as trusted. Its evidence remains the "Bootstrap Capture Update (2026-07-26)"
+    notes above, which are the authoritative record of the one live run this feature
+    exists to make rare.
 - [X] T043 [P] Documentation closure: update `specs/007-eval-tests-nim-endpoint/`-referencing docs where behavior moved (`.env-example` cross-check, `scripts/ci/format-eval-summary` usage note for the runner summary), and verify `docs/adr/ADR-012-eval-runner-recorded-replay.md` Verification section matches the implemented rule names/files
 
 **Checkpoint**: Definition of Done satisfiable — all ADRs Accepted with live structural tests, observability contracts implemented+tested+CI-enforced, evaluation thresholds verified on recorded evidence, zero skipped tests.

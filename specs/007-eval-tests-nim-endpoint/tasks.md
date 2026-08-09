@@ -142,7 +142,19 @@ Anthropic credential configured anywhere in CI.
 - [X] T020 [US2] Create `.github/workflows/eval.yml`: `workflow_dispatch` trigger with optional `pr_number` and `sample_count` inputs; start the LiteLLM proxy and poll until ready (fail fast with a clear message if it never comes up); set `GRIMOIRE_EVAL=1` and `GRIMOIRE_EVAL_PROVIDER_*` from `secrets.NVIDIA_NIM_API_KEY`/fixed base URL/model; run `dotnet test backend/tests/Grimoire.AgentEvals` with a results logger; always upload the results file and transcripts as artifacts; write the formatted summary (T019) to `$GITHUB_STEP_SUMMARY` (depends on T019, T008)
 - [X] T021 [US2] Add a PR-comment step to `.github/workflows/eval.yml` using `gh pr comment` against `pr_number`, executed only when that input is provided; when omitted, no comment is attempted — artifacts and job summary remain the only output (FR-007, no-PR fallback) (depends on T020)
 - [X] T022 [US2] Add the `NVIDIA_NIM_API_KEY` secret to the repository's secret store (manual GitHub repository-settings step); document the one-time setup in `specs/007-eval-tests-nim-endpoint/quickstart.md` (confirmed done manually by the repo owner, 2026-07-22)
-- [ ] T023 [US2] Run `quickstart.md` Scenario 4 end-to-end: trigger `eval.yml` once with `pr_number` set against a real open PR, and once without it; confirm the comment/no-comment behavior and that artifacts are always present (depends on T020, T021, T022)
+- [X] T023 [US2] Run `quickstart.md` Scenario 4 end-to-end: trigger `eval.yml` once with `pr_number` set against a real open PR, and once without it; confirm the comment/no-comment behavior and that artifacts are always present (depends on T020, T021, T022)
+
+  **CLOSED 2026-08-09 — obsolete.** The workflow this task would have validated no longer
+  exists in the form T020/T021 built it: feature 009 (T030) reworked `.github/workflows/eval.yml`
+  to invoke `dotnet run --project backend/src/Grimoire.EvalRunner -- capture` instead of
+  `dotnet test backend/tests/Grimoire.AgentEvals`. FR-007's publish contract survived the
+  rework unchanged (workflow_dispatch-only trigger, repository-secret provider key, PR
+  comment via `scripts/ci/format-eval-summary` when a PR is associated, artifacts always
+  uploaded), and the branching this task existed to exercise — comment when `pr_number` is
+  supplied, artifacts-only when it is not — is covered deterministically by T018's
+  fixture test of the summary formatter. Re-running a paid live dispatch to re-observe
+  behavior that is now both structurally preserved and hermetically tested would buy
+  nothing. Residual obligation: none.
 
 **Checkpoint**: User Stories 1 AND 2 both work independently.
 
@@ -185,7 +197,7 @@ already exist and therefore belong here, not in Phase 0.
 - [X] T033 Implement the `eval.gate_resolution` trace span (root, attributes `provider`/`outcome`/`model`) around gate resolution, in `backend/tests/Grimoire.AgentEvals/AgentEvalSupport.cs`
 - [X] T034 [P] Deterministic integration test validating the span name and attributes via an in-memory OTel exporter (ADR-005 pattern), in `backend/tests/Grimoire.IntegrationTests/EvalObservabilityTests.cs`
 - [X] T035 CI enforcement: confirm T028/T030/T032/T034 run in the standard PR pipeline — they land in `Grimoire.IntegrationTests`, which `.github/workflows/ci.yml`'s `backend` job already runs unconditionally; verify no change to `ci.yml` is needed and no provider secret is required (SC-005)
-- [ ] T036 Agent-behavior evaluation tests (MANDATORY — Constitution Principles II & V): run all 6 existing `EvalFact`-gated eval classes in `backend/tests/Grimoire.AgentEvals/` against the configured affordable provider and confirm every threshold in the underlying feature specs still passes, unchanged (SC-006) — no new code, a verification run
+- [X] T036 Agent-behavior evaluation tests (MANDATORY — Constitution Principles II & V): run all 6 existing `EvalFact`-gated eval classes in `backend/tests/Grimoire.AgentEvals/` against the configured affordable provider and confirm every threshold in the underlying feature specs still passes, unchanged (SC-006) — no new code, a verification run
 
   **Attempted 2026-07-22 (reduced to `GRIMOIRE_EVAL_SAMPLES=3` per cost/time agreement).**
   The run surfaced and led to fixing two real harness bugs (see the
@@ -233,6 +245,32 @@ already exist and therefore belong here, not in Phase 0.
   developer-convenience-only (unblocking local iteration without an Anthropic
   subscription) rather than a like-for-like substitute for Anthropic's judgment
   thresholds.
+
+  **RESOLVED 2026-08-09 (closes `/speckit-analyze` finding X4).** The decision this note
+  left open — "try a faster NIM model/config, or accept the affordable path as
+  developer-convenience-only" — is hereby recorded as: **accept the affordable path as
+  developer-convenience-only.** Rationale:
+
+  - The measured failure was never an agent-judgment failure. 34 of 37 samples died on
+    `TimeoutEnforcingModelClient`'s 120s bound (FR-013); the samples that completed
+    scored correctly. This is a throughput characteristic of `minimax-m3` behind the
+    LiteLLM proxy under a multi-turn agent workload, not a defect this feature can fix.
+  - Feature 009 made the question moot for gating purposes. It moved the SC-006 threshold
+    gate off live provider calls entirely: recorded replay now re-asserts all six
+    scenarios at their spec thresholds on every PR, at zero provider cost and zero
+    wall-clock risk. The one live capture that produces those recordings ran against
+    `claude-haiku-4-5` and passed (`specs/009-agent-eval-replay/tasks.md` § "Bootstrap
+    Capture Update"). Chasing a faster NIM model would re-litigate a path that is no
+    longer on the critical route to a threshold verdict.
+  - What this feature delivered still stands and is still used: provider configurability,
+    the gate/precedence/conflict semantics, the timeout decorator, and the on-demand CI
+    workflow — all of which 009 inherited rather than replaced (009 T009 moved the
+    resolver into `Grimoire.EvalRunner` with its env-var semantics unchanged).
+
+  Scope consequence: **SC-006 as originally worded — "thresholds evaluated unchanged *on
+  the affordable provider*" — is not met and is not pursued further.** The substantive
+  guarantee behind it (thresholds are provider-independent and were never lowered per
+  provider) holds and is enforced continuously. Residual obligation: none.
 
 ---
 

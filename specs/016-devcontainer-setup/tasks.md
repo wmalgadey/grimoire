@@ -204,6 +204,16 @@ completeness audit.
       exercised the identical commands `devcontainers/ci` runs, but the workflow itself
       has not executed inside real GitHub Actions yet.
 
+      **Status confirmed still open 2026-08-09** (`/speckit-analyze` remediation pass).
+      Deliberately left unchecked: this is the **Green half of ADR-019's Red/Green
+      structural-enforcement probe**, so until `devcontainer-ci.yml` runs green in real
+      GitHub Actions, ADR-019 is an accepted ADR whose enforcement test has never been
+      observed passing in the environment it guards — Constitution Principle III's
+      ordering (rule → Red → Green → feature code) is therefore incomplete for this
+      feature alone. Closing it requires only pushing a branch and opening a PR; it needs
+      no code change. **This is the sole outstanding item behind spec 016's `Implemented`
+      status.**
+
 ---
 
 ## Dependencies & Execution Order
