@@ -151,8 +151,18 @@ policy ⇒ visible failure listing every intended action.
 ## Phase 6: Polish & Cross-Cutting Concerns (gates the Definition of Done)
 
 **Purpose**: Observability verification (Principle IV) and agent-behavior evaluations
-(Principles II & V) — both REQUIRE the implementation to exist and belong here, not
-earlier.
+(Principles II & V). Both REQUIRE the implementation to exist, so neither can sit in
+Phase 0; this feature places them in the final phase.
+
+> **Corrected 2026-08-09** (issue #52, finding 2). This purpose previously read that such
+> tests "belong here, not earlier". That was true under the constitution in force when
+> this feature was written, but Constitution **v1.5.0** (2026-07-26) relaxed it: observability
+> and agent-behavior evaluation tests **MAY** be co-located with the user-story phase that
+> introduces the signal, instead of being deferred to the final phase, provided the
+> final-phase completeness audit covers them. The old wording is left corrected rather than
+> merely annotated because it states a rule, and anyone reading this feature as a pattern
+> would carry the over-strict version forward. Final-phase placement remains valid — it is
+> now one of two compliant options, not the only one.
 
 - [X] T030 [P] Observability tests — metrics: extend `backend/tests/Grimoire.IntegrationTests/ObservabilityMetricsTests.cs` with in-memory-exporter assertions for every counter in `plan.md ## Observability` (`wiki.ingest.pages_touched_total{superseded}`, `agent_turns_total`, `tool_calls_total`, `actions_denied_total`, `runs_rolled_back_total`, `instruction_load_failures_total`, `model_tokens_total`) (MANDATORY — Constitution Principle IV)
 - [X] T031 [P] Observability tests — log events: extend `backend/tests/Grimoire.IntegrationTests/ObservabilityLogTests.cs` for `ingest.instructions.loaded/load_failed`, `ingest.tool.allowed/denied`, `ingest.run.rolled_back`, `ingest.log.backstop_appended`, `ingest.agent.completed/cap_exceeded` with their mandatory fields (MANDATORY — Constitution Principle IV)
