@@ -31,6 +31,15 @@ description: "Task list template for feature implementation"
 - **[Story]**: Which user story this task belongs to (e.g., US1, US2, US3)
 - Include exact file paths in descriptions
 
+**Traceability (MANDATORY)**: every task MUST name at least one `FR-###` or `SC-###`
+identifier from `spec.md` that it implements or verifies, cited literally so the reference
+is greppable. Setup, refactoring, and cross-cutting tasks that serve no single requirement
+cite the story or phase goal instead and say so explicitly. Requirement IDs are the join
+key between `spec.md` and `tasks.md`: a `/speckit-analyze` coverage pass matches them by
+literal ID, so a task that only paraphrases its requirement reads as an uncovered
+requirement. Do not mix conventions within one `tasks.md` — pick FR-citation and hold it
+for every task.
+
 ## Path Conventions
 
 - **Single project**: `src/`, `tests/` at repository root

@@ -1,7 +1,7 @@
 <!--
 SYNC IMPACT REPORT
 ==================
-Version change: 1.6.0 → 1.7.0
+Version change: 1.6.0 → 1.8.0 (two amendments, same day)
 
 Principles modified:
   - II. Pragmatic Testing Strategy (the blanket "Integration tests via
@@ -57,6 +57,52 @@ Findings this amendment closes (from /speckit-analyze over specs 001-020,
     pair that feature 004 and ADR-007 deliberately retired. This is the
     example-wording PATCH that spec 004 task T052 was filed to make; T052 is
     closed by this amendment.
+
+
+--------------------------------------------------------------------------
+SECOND AMENDMENT, same day: 1.7.0 → 1.8.0
+--------------------------------------------------------------------------
+
+Principles modified:
+  - IV. Behavioral & Observable Engineering (NEW binding rule: "Contract tests
+    MUST exercise the production wiring". An observability contract test MUST
+    obtain its signals from the same composition root the production process
+    uses — real telemetry registration, real sampler, real exporter pipeline.
+    A test-only provider proves the emitting line runs, not that the signal
+    reaches an observer in production.)
+
+Sections modified:
+  - Governance (NEW: "Amendments are not retroactive." An amendment binds
+    features whose /speckit-plan runs after the amendment date; already-merged
+    features are not rendered non-compliant by a later amendment, and audits
+    MUST date a finding against the constitution version in force when the spec
+    was authored.)
+
+Templates updated:
+  - .specify/templates/tasks-template.md ✅ (NEW mandatory Traceability rule:
+    every task cites at least one literal FR-###/SC-### identifier; one
+    convention per tasks.md, held throughout)
+
+Rationale for the second MINOR bump: Principle IV gains a new enforceable rule
+rather than a clarification of an existing one.
+
+Findings this amendment closes (from the same /speckit-analyze pass):
+  - X8 (MEDIUM, systemic): convergence phases, not the DoD, were the real
+    quality gate — 002 has 7 convergence phases, 003 has 5, 008 has 9, and their
+    tasks are labelled (contradicts)/(missing)/(partial), several CRITICAL. The
+    common root cause is now named and forbidden: contract tests passed against
+    test-only telemetry providers while production emitted nothing (003 T075:
+    the Hub exported zero traces for the entire feature because the ParentBased
+    sampler dropped every request-path span; 002 T048/T049/T050: misparented
+    tool_call spans, finalize_artifact missing on the success path, and a metric
+    label outside its own declared set).
+  - X7 (MEDIUM): the v1.5.0 completeness-audit mandate is absent from specs
+    001-009, all authored before it. Non-retroactivity is now stated so this
+    stops reading as an open violation in every future audit.
+  - X9 (MEDIUM): FR->task traceability used two incompatible conventions with no
+    rule — 11 of 21 specs leave 30-90% of their FRs unreferenced because they
+    trace via SC or user-story tags instead, and 001 references no SC at all.
+    The tasks template now mandates one convention, held throughout.
 
 Deferred TODOs: none.
 -->
@@ -280,6 +326,24 @@ code, not only documented in planning artifacts. Logs and metrics MUST be emitte
 the active span context and be correlatable to spans through shared identifiers
 (for example `task_id`).
 
+**Contract tests MUST exercise the production wiring.** An observability contract test
+MUST obtain its signals from the same composition root the production process uses — the
+real telemetry registration, the real sampler, the real exporter pipeline. Standing up a
+test-only provider (an always-on sampler, a hand-registered `ActivitySource`, a listener
+attached directly to an instrumentation class) proves only that the emitting line of code
+runs; it does NOT prove the signal reaches an observer in production, and a test that
+passes under such a provider while production emits nothing is a false negative of exactly
+the kind Principle II rejects for repositories.
+
+Rationale: this rule is written from repeated, verified failures. Feature 003 shipped with
+green trace tests while the Hub exported no traces at all — ASP.NET Core's unsampled
+request activity made every request-path span the child of an unsampled parent, and the
+default `ParentBased` sampler dropped all of them; the gap surfaced only during manual
+inspection of a live Aspire Dashboard. Feature 002 declared its trace and metric contracts
+met while `tool_call` spans were misparented, `finalize_artifact` was never emitted on the
+success path, and `pages_touched_total` used a label outside its own declared label set.
+In every case the tests were satisfied and the system was not.
+
 Code submitted without the instrumentation specified in the Observability section fails
 the Definition of Done and MUST NOT be merged.
 
@@ -364,4 +428,13 @@ per semantic versioning (MAJOR: incompatible principle removals/redefinitions; M
 or materially expanded principles; PATCH: clarifications), update the Sync Impact Report,
 and propagate changes to the dependent templates in `.specify/templates/`.
 
-**Version**: 1.7.0 | **Ratified**: 2026-06-23 | **Last Amended**: 2026-08-09
+**Amendments are not retroactive.** An amendment binds every feature whose `/speckit-plan`
+runs after the amendment date. Already-merged features are NOT rendered non-compliant by a
+later amendment and MUST NOT be retrofitted merely to satisfy it — audits such as
+`/speckit-analyze` MUST date a finding against the constitution version in force when the
+spec was authored before treating it as a violation. Retrofitting is warranted only when
+the amendment closes a live defect in the merged feature, not when it adds a new artifact
+or ceremony. (Concretely: the final-phase completeness-audit task introduced in v1.5.0 is
+absent from specs 001–009, all authored earlier; that absence is not a violation.)
+
+**Version**: 1.8.0 | **Ratified**: 2026-06-23 | **Last Amended**: 2026-08-09
