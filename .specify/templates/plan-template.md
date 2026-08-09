@@ -113,7 +113,7 @@
 
 | Success criterion | Category | Primary test type | Doubles / external dependencies | Fixtures / sampled data | Notes |
 |-------------------|----------|-------------------|----------------------------------|-------------------------|-------|
-| `[e.g., Submission is persisted atomically]` | Deterministic guarantee | Hermetic integration test | `[e.g., Testcontainers PostgreSQL, fake clock]` | `[e.g., valid submission payload, rollback scenario fixture]` | `[Why this test proves the criterion]` |
+| `[e.g., Submission is persisted atomically]` | Deterministic guarantee | Hermetic integration test | `[e.g., real filesystem in a temp dir, fake clock; Testcontainers only if a containerized dependency is genuinely involved]` | `[e.g., valid submission payload, rollback scenario fixture]` | `[Why this test proves the criterion]` |
 | `[e.g., Agent chooses update over duplicate creation in >= 90% of sampled runs]` | Agent-judgment threshold | Evaluation with threshold | `[e.g., recorded LLM responses or approved live-eval gate]` | `[e.g., sampled wiki/source pairs, golden adjudication set]` | `[Threshold, scorer, retry policy]` |
 
 ## Observability

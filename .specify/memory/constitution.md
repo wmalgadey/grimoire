@@ -1,45 +1,62 @@
 <!--
 SYNC IMPACT REPORT
 ==================
-Version change: 1.5.0 → 1.6.0
+Version change: 1.6.0 → 1.7.0
 
 Principles modified:
-  - II. Pragmatic Testing Strategy (added the named, binding "Classicist
-    (Chicago-school) TDD" block: tests are written TDD-style against expected
-    behavior; verification is state-based, never interaction-based; real
-    collaborators inside the hexagon; test doubles only as hand-rolled fakes
-    implementing existing Principle I port interfaces; mocking/interaction-
-    verification frameworks are banned from test projects)
+  - II. Pragmatic Testing Strategy (the blanket "Integration tests via
+    Testcontainers are the primary verification mechanism" mandate is restated as
+    "Integration tests against real infrastructure are the primary verification
+    mechanism", with real infrastructure defined concretely — real filesystem in
+    per-test temp directories, real spawned agent child processes, real HTTP
+    hosting, the real embedded database file — and Testcontainers named as the
+    tool of choice only where a genuinely containerized dependency exists. The
+    binding intent, real infrastructure and never mocked doubles, is unchanged.)
+  - V. Agentic Core & Deterministic Harness (the instruction-file example
+    "agent `CLAUDE.md` / `SKILL.md`" is replaced by the surface ADR-007 actually
+    established: one `system-prompt.md` per agent plus `default-user-prompt.md`
+    where the agent has a default steering message. Substance unchanged.)
 
 Principles added: none
 
 Sections modified:
-  - Definition of Done (new gate: classicist test-style compliance — state-based
-    assertions, port-fake-only doubles, no mocking-framework reference in any
-    test project)
+  - Definition of Done (the Testcontainers checkbox now reads "Integration tests
+    against real infrastructure cover all API boundaries introduced by the
+    feature (Testcontainers only where a containerized dependency is genuinely
+    involved)")
 
 Sections removed: none
 
 Templates updated:
-  - .specify/templates/plan-template.md ✅ (Test Strategy guidance comment now
-    states doubles MUST be hand-rolled port fakes per Principle II — no
-    mocking-framework mocks)
-  - .specify/templates/tasks-template.md ✅ no change required (test-task
-    categories are style-agnostic; the DoD gate and plan-template carry the rule)
-  - .specify/templates/spec-template.md ✅ no change required (spec stays
-    tech-agnostic; its Principle II reference concerns the success-criteria
-    split, which is unchanged)
+  - .specify/templates/plan-template.md ✅ (Test Strategy example double changed
+    from "Testcontainers PostgreSQL, fake clock" to "real filesystem in a temp
+    dir, fake clock; Testcontainers only if a containerized dependency is
+    genuinely involved")
+  - .specify/templates/tasks-template.md ✅ no change required (task categories
+    do not name a test-infrastructure tool)
+  - .specify/templates/spec-template.md ✅ no change required (specs stay
+    tech-agnostic)
   - .specify/templates/checklist-template.md ✅ no change required
 
-Rationale for MINOR bump: materially expanded guidance inside an existing
-principle — the anti-mocking stance ("excessive mocking rejected", "mocked
-repository test is a false negative") is expanded into a named school with
-enforceable rules and a new DoD gate. Nothing previously permitted is removed:
-the codebase already contains zero mocking-framework references, and every
-existing test double (FakeAgentProcess, FakeModelClient, FakeUrlContentFetcher,
-FakeMarkdownConverter) is a hand-rolled port fake, so no existing test becomes
-non-compliant. Codifies the de facto practice so future SDD flows (plan/tasks/
-implement) inherit it from the constitution rather than from convention.
+Rationale for MINOR bump: the Principle II change materially redefines a
+principle's verification mechanism rather than merely clarifying it, which the
+Governance section's own versioning rule puts above PATCH. It is not MAJOR
+because nothing previously permitted becomes forbidden and no principle is
+removed — the requirement that tests run against real infrastructure and never
+against mocked doubles is preserved verbatim in intent.
+
+Findings this amendment closes (from /speckit-analyze over specs 001-020,
+2026-08-09):
+  - X1 (CRITICAL): Principle II and the DoD mandated Testcontainers, of which the
+    repository contains zero references anywhere in backend/ or frontend/ — spec
+    019 FR-015 removed the last unused package reference. Grimoire has no
+    containerized runtime dependency, so the mandate was unsatisfiable by
+    construction while the practice it intended to enforce was in fact followed
+    throughout. Every feature failed one DoD checkbox as written.
+  - X2 (CRITICAL): Principle V still named the `CLAUDE.md`/`SKILL.md` instruction
+    pair that feature 004 and ADR-007 deliberately retired. This is the
+    example-wording PATCH that spec 004 task T052 was filed to make; T052 is
+    closed by this amendment.
 
 Deferred TODOs: none.
 -->
@@ -99,9 +116,24 @@ establishes a stronger boundary.
 
 ### II. Pragmatic Testing Strategy
 
-Integration tests via Testcontainers are the primary verification mechanism for all API
-boundaries, repository contracts, and inter-service communication. Tests MUST run against
-real infrastructure (database, message broker, HTTP services) — not mocked doubles.
+Integration tests against real infrastructure are the primary verification mechanism for
+all API boundaries, repository contracts, and inter-service communication. "Real
+infrastructure" means the actual dependency the production code talks to — the real
+filesystem (in per-test temporary directories), real spawned agent child processes, real
+HTTP hosting, the real embedded database file — never a mocked double. Where a dependency
+is genuinely containerized (a database server, message broker, or third-party service run
+as a container), Testcontainers is the tool of choice for standing it up; it is a means to
+this principle, not a requirement in its own right, and a feature whose dependencies are
+all in-process, on-disk, or child-process MUST NOT introduce a container merely to satisfy
+a tooling name.
+
+Rationale for the 2026-08-09 amendment: the prior wording named Testcontainers as the
+blanket mandate. Grimoire has no containerized runtime dependency — its state is markdown
+files, an embedded SQLite file, and spawned .NET processes — so the suite verifies against
+those directly and references no Testcontainers package anywhere. The mandate as written
+was unsatisfiable by construction while the practice it intended to enforce (real
+infrastructure, no mocked doubles) was being followed throughout. This restates the
+binding intent and names the tool where it actually applies.
 
 Unit tests are reserved exclusively for complex Domain logic: non-trivial business rules,
 Entities with invariants, and Domain Services with decision-making behavior. Simple DTOs,
@@ -260,8 +292,9 @@ code. This boundary is architectural and non-negotiable:
 **Agentic core.** Judgment about wiki content — which pages exist, what they say,
 update-vs-create decisions, supersession, categorization, confidence scoring, tagging,
 cross-referencing, and index/log content — MUST be exercised by an LLM agent operating
-under versioned instruction files (agent `CLAUDE.md` / `SKILL.md`) that are actually
-loaded into the agent's working context at runtime. Loading, hashing, or recording
+under versioned instruction files — per ADR-007, one `system-prompt.md` per agent, plus
+`default-user-prompt.md` where the agent has a default steering message — that are
+actually loaded into the agent's working context at runtime. Loading, hashing, or recording
 instruction files without them governing the agent's context does NOT satisfy this
 requirement. Reimplementing such judgment as deterministic backend code (string matching,
 rule tables, classifiers, templating of page content) is an architectural violation.
@@ -310,7 +343,7 @@ A feature increment is DONE when ALL of the following conditions hold:
 - [ ] Agent-behavior evaluation tests pass for every agent-judgment success criterion in the spec, at the thresholds the spec defines — implemented and tested either co-located with their triggering user-story phase or in the final phase, confirmed complete by the final-phase completeness-audit task (only for features with agentic behavior)
 - [ ] The agentic boundary (Principle V) is respected: no wiki-content judgment is implemented as deterministic backend code, instruction files are loaded into the agent's context, and the guarded-tool structural test passes
 - [ ] Hexagonal boundary rules (Principle I) hold: external-system dependencies introduced or touched by the feature are consumed via ports with production adapter and test fake, and infrastructure packages appear only in their designated adapter namespaces (enforced by structural architecture tests)
-- [ ] Integration tests via Testcontainers cover all API boundaries introduced by the feature
+- [ ] Integration tests against real infrastructure cover all API boundaries introduced by the feature (Testcontainers only where a containerized dependency is genuinely involved)
 - [ ] Test style follows Principle II's classicist (Chicago-school) rules: assertions are state-based (no interaction verification), test doubles are hand-rolled fakes implementing existing port interfaces only, and no mocking framework is referenced by any test project
 - [ ] CI/CD pipeline passes: architecture tests, integration tests, linting, build
 - [ ] No unapproved infrastructure was introduced
@@ -331,4 +364,4 @@ per semantic versioning (MAJOR: incompatible principle removals/redefinitions; M
 or materially expanded principles; PATCH: clarifications), update the Sync Impact Report,
 and propagate changes to the dependent templates in `.specify/templates/`.
 
-**Version**: 1.6.0 | **Ratified**: 2026-06-23 | **Last Amended**: 2026-08-06
+**Version**: 1.7.0 | **Ratified**: 2026-06-23 | **Last Amended**: 2026-08-09
