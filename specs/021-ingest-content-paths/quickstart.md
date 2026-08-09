@@ -10,20 +10,26 @@ Run from the repository root, after implementation is complete.
 ## 1. Confirm no dangling references to the old name (SC-001)
 
 ```bash
-grep -rn "ContentRootPaths" backend --include="*.cs"
+grep -rn "ContentRootPaths" backend --include="*.cs" | grep -v '^\s*[^:]*:[0-9]*:\s*///'
 ```
 
-Expected: no output. Any match is a missed reference to fix before proceeding.
+Expected: no output. Any match is a missed reference to fix before proceeding. The
+unfiltered grep returns two doc-comment lines by design — `ResolvedGrimoirePaths.cs`
+(pre-ADR-022 history) and `IngestContentPaths.cs` (the renamed type's own provenance
+note), both exempted by spec.md Edge Cases; the `///` filter drops them.
 
 ## 2. Confirm the removed fields are gone from the renamed type (SC-002, SC-003)
 
 ```bash
 grep -n "SystemPromptPath\|DefaultUserPromptPath\|PolicyPath" \
-  backend/src/Grimoire.Hub/ContentRoot/IngestContentPaths.cs
+  backend/src/Grimoire.Hub/ContentRoot/IngestContentPaths.cs | grep -v '^[0-9]*:\s*///'
 ```
 
 Expected: no output — the renamed type declares only `Root`, `TasksDir`, `IndexPath`,
-`LogPath`, `WriteLocksDir`.
+`LogPath`, `WriteLocksDir`. As in §1, the `///` filter drops the type's own doc comment,
+which names the three removed fields while pointing readers at
+`ResolvedGrimoirePaths.Ingest` — that pointer is the reason the comment exists and is
+exempt per spec.md Edge Cases.
 
 ## 3. Build the solution
 

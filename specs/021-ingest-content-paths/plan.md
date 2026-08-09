@@ -42,9 +42,11 @@ performance characteristic is targeted or expected to shift.
 existing backend test suite must pass with no test-outcome changes beyond mechanical
 reference updates (spec FR-008, SC-004).
 
-**Scale/Scope**: 11 production files, 5 test files (spec FR-005/FR-006/FR-007; enumerated
-in Project Structure below), all already identified by direct codebase inspection — no
-open-ended discovery required.
+**Scale/Scope**: 10 production files, 6 test files changed (spec FR-005/FR-006/FR-007;
+enumerated in Project Structure below), all already identified by direct codebase
+inspection — no open-ended discovery required. Three further files appear in the tree
+below for context and are deliberately **not** modified: `ResolvedGrimoirePaths.cs`,
+`StartupValidationTests.cs`, and `AgentArtifactNamingRuleTests.cs`.
 
 ## Constitution Check
 
@@ -186,15 +188,17 @@ backend/
     │   └── PathConfiguration/
     │       ├── IngestDispatchPathArgumentsTests.cs
     │       ├── IngestRepoLessStartupTests.cs
-    │       └── StartupValidationTests.cs
+    │       └── StartupValidationTests.cs             # unchanged (no reference to the type)
     └── Grimoire.ArchTests/
         └── AgentArtifactNamingRuleTests.cs               # verification only, not modified
 ```
 
 **Structure Decision**: No new directories, projects, or namespaces. All changes land
-inside the existing `Grimoire.Hub` (production) and `Grimoire.IntegrationTests` /
-`Grimoire.ArchTests` (verification) projects, matching the file list the source issue
-(#56) and direct codebase grep both identified — 11 production files, 7 test files.
+inside the existing `Grimoire.Hub` (production) and `Grimoire.IntegrationTests`
+(verification) projects, matching the file list the source issue (#56) and direct
+codebase grep both identified — 10 production files and 6 test files changed, plus the
+three context-only files noted under Scale/Scope. `Grimoire.ArchTests` is run, not
+modified.
 
 ## Complexity Tracking
 
