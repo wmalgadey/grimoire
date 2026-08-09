@@ -42,7 +42,7 @@
       "cwd": "${workspaceFolder}",
       "args": [
         "--wiki-dir",
-        "/Volumes/Daten/parainoid/llm-wiki"
+        "${input:wikiDir}"
       ],
       "env": {
         "ASPNETCORE_ENVIRONMENT": "Production",
@@ -51,6 +51,14 @@
       },
       "stopAtEntry": false,
       "console": "externalTerminal"
+    }
+  ],
+  "inputs": [
+    {
+      "id": "wikiDir",
+      "type": "promptString",
+      "description": "Absolute path to the llm-wiki folder this profile writes into (VS Code remembers previous entries)",
+      "default": "${workspaceFolder}/llm-wiki"
     }
   ]
 }
