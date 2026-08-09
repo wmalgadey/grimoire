@@ -154,9 +154,14 @@ naming that location.
 ### Functional Requirements
 
 - **FR-001**: Every file-system location the system uses MUST be individually
-  configurable by the operator: wiki content root, raw intake storage, operational
-  state store, secrets location, agent instruction set location, and the location of
-  the agent worker the harness launches.
+  configurable by the operator: the base directory, the consolidated data directory,
+  the wiki content root, raw intake storage, the operational state store, the secrets
+  location, the agent instruction set location, and the location of the agent worker the
+  harness launches — eight locations in total, matching the eight keys the
+  implementation and `plan.md` define. *(The base and data directories were added to this
+  list on 2026-08-09; the original wording listed only the six leaf locations while
+  plan.md and tasks.md consistently implemented eight — `/speckit-analyze` count-drift
+  finding.)*
 - **FR-002**: The application MUST NOT discover, require, or assume a source-code
   repository or development project structure at runtime, and MUST NOT require
   version-control tooling to be installed on the host.

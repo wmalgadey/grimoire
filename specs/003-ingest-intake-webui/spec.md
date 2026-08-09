@@ -246,8 +246,6 @@ and no stored Markdown file for that submission.
   or reinterpret the agent's wiki-content decisions (e.g., pages created, updated, or
   superseded) itself.
 
-### Key Entities
-
 ### Terminology
 
 - **Ingest**: The umbrella capability from user-provided source through terminal task
@@ -280,12 +278,16 @@ and no stored Markdown file for that submission.
 - **Kanban Board**: A visualization surfacing every Task Artifact grouped by its current
   lifecycle stage, giving the user a single place to observe all submissions.
 
+*(The entities above are this feature's Key Entities. An empty `### Key Entities` heading
+that preceded `### Terminology` was removed 2026-08-09 — `/speckit-analyze` structural
+finding.)*
+
 ## Success Criteria *(mandatory)*
 
 ### Measurable Outcomes
 
 - **SC-001**: 100% of accepted submissions produce a visible task on the Kanban board
-  within seconds of submission.
+  within 2 seconds (p95) of submission.
 - **SC-002**: 100% of successfully converted submissions result in a Markdown file
   present in the raw-source location, discoverable by the user via its task.
 - **SC-003**: 100% of failed conversions leave no partial or corrupt file in the
@@ -294,8 +296,9 @@ and no stored Markdown file for that submission.
 - **SC-004**: Users can determine any submission's current processing stage and final
   outcome entirely from the board, without consulting the filesystem, logs, or any other
   tool.
-- **SC-005**: Users can distinguish a successful submission from a failed one within a
-  few seconds of opening the board, for 100% of completed tasks.
+- **SC-005**: For 100% of terminal tasks, the board renders completed and failed states
+  as visually distinct treatments (not merely differing text), with the failure reason
+  shown on the card — so the two are distinguishable at a glance without opening a task.
 - **SC-006**: 100% of Task Artifacts that reach `queued` automatically proceed to a
   triggered ingest run, without any additional user action.
 - **SC-007**: Users can observe a submission's full journey — from acceptance through

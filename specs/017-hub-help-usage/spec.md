@@ -56,14 +56,12 @@ without starting the web server.
 - **FR-001**: The Hub MUST recognize `--help` and `-h` as equivalent requests to show
   usage information, regardless of where they appear among the supplied arguments.
 - **FR-002**: When a help request is recognized, the Hub MUST print a usage message to
-  standard output that lists every documented top-level command (currently
-  `submit-source`) and every documented command-line option (the ADR-009 path switches:
-  `--base-dir`, `--data-dir`, `--content-root`, `--raw-dir`, `--state-db`,
-  `--secrets-file`, `--instructions-dir`, `--agent-worker`, `--query-instructions-dir`,
-  `--conversations-dir`, `--query-agent-worker`, `--write-locks-dir`, `--findings-dir`,
-  `--lint-instructions-dir`, `--lint-agent-worker`, `--remediation-tasks-dir`; plus
-  `submit-source`'s own `--path` and `--source-kind` options), each with a short
-  description of its purpose.
+  standard output that lists **every** top-level command the Hub registers and **every**
+  directory switch in the Hub's switch catalog, each with a short description of its
+  purpose, plus each command's own options (e.g. `submit-source`'s `--path` and
+  `--source-kind`). The requirement is completeness against those two registries, not
+  against a list enumerated here: the usage output MUST NOT be able to drift from the
+  commands and switches the Hub actually accepts, and a parity test enforces this.
 - **FR-003**: When a help request is recognized, the Hub MUST exit with status code 0
   immediately after printing the usage message, without building or starting the web
   host, without binding any port, and without performing any other startup side effect
@@ -73,6 +71,19 @@ without starting the web server.
   usage and exit rather than executing `submit-source` or starting the server.
 - **FR-005**: The usage message MUST be human-readable plain text suitable for a
   terminal (no implementation-internal detail such as .NET type names or stack traces).
+
+**Amendment 2026-08-09** (`/speckit-analyze` finding X5): FR-002 and SC-002 originally
+enumerated one command (`submit-source`) and sixteen ADR-009 path switches — and SC-002
+miscounted its own FR-002 list as fifteen. Both enumerations went stale within days:
+feature **018** added seven more commands (`lint-run`, `remediation-authorize`,
+`remediation-dismiss`, `remediation-withdraw`, `ingest-retrigger`, `ingest-resume`,
+`query`), and feature **020** / **ADR-022** cut the directory surface from sixteen
+switches to exactly three (`--data-dir`, `--agent-dir`, `--wiki-dir`). The implementation
+tracked both changes correctly — `PathSwitchCatalog` is the capped single source of truth
+and `HubHelpUsageTests` asserts parity against it — so this was documentation drift, not a
+defect. Both requirements are now expressed as completeness against those registries
+rather than as literal lists, which is what the parity test has always actually enforced
+and what stops the same drift recurring with the next feature.
 
 ### Key Entities
 
@@ -85,8 +96,11 @@ output.
 
 - **SC-001**: 100% of Hub invocations with `--help` or `-h` anywhere in the arguments
   print a usage message and exit with code 0, without starting the web server.
-- **SC-002**: 100% of currently documented commands and options (`submit-source` and
-  the 15 ADR-009 path switches) appear in the printed usage message.
+- **SC-002**: 100% of the commands the Hub registers and 100% of the directory switches
+  in its switch catalog appear in the printed usage message, verified by a parity test
+  that derives both lists from the same single sources of truth the runtime uses — so
+  adding or removing a command or switch without updating the usage output fails the
+  build.
 - **SC-003**: A developer unfamiliar with the Hub's command-line surface can identify
   the correct switch to relocate the content root within 30 seconds of reading the
   `--help` output (readable, organized listing — no separate documentation lookup
