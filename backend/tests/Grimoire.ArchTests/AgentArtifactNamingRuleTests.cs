@@ -344,19 +344,15 @@ public class AgentArtifactNamingRuleTests
             $"only in fixture: [{string.Join(", ", onlyInFixture)}]");
     }
 
+    // 022-align-wiki-structure (T004): repo-root discovery is shared via ArchScan.FindRepositoryRoot
+    // rather than duplicated per rule class.
     private static string FindConventionDocument()
     {
-        var directory = new DirectoryInfo(AppContext.BaseDirectory);
-        while (directory is not null)
-        {
-            var candidate = Path.Combine(directory.FullName, "docs", "conventions", "agent-artifact-naming.md");
-            if (File.Exists(candidate))
-                return candidate;
-            directory = directory.Parent;
-        }
+        var candidate = Path.Combine(ArchScan.FindRepositoryRoot(), "docs", "conventions", "agent-artifact-naming.md");
+        if (File.Exists(candidate))
+            return candidate;
 
-        throw new FileNotFoundException(
-            "docs/conventions/agent-artifact-naming.md not found in any parent of " + AppContext.BaseDirectory);
+        throw new FileNotFoundException("docs/conventions/agent-artifact-naming.md not found under repository root.", candidate);
     }
 
     // -------------------------------------------------------------------------

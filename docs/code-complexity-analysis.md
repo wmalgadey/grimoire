@@ -185,11 +185,12 @@ concern.
 ### 6. Tests: two heavyweight helpers in ArchTests
 
 Test code is simple on average (CC 1.98), as expected for state-based classicist tests.
-The outliers are hand-rolled C# scanners inside
-`PagesWrapperRetirementBoundaryRuleTests` (`Tokenize` CC 39, `ScanString` CC 25). They
-are structural-test infrastructure, not product code, but at this size they warrant
-either extraction into a shared ArchTests utility or their own focused tests, since a
-bug in the scanner silently weakens the boundary rule it powers.
+The outliers are hand-rolled C# scanners, now extracted into the shared
+`ArchScan.Tokenize`/`ArchScan.ScanString` (`Tokenize` CC 39, `ScanString` CC 25) used by
+`RetiredPagesWrapperPathRuleTests` and `HarnessSurfaceScopeRuleTests`
+(022-align-wiki-structure). They are structural-test infrastructure, not product code,
+but at this size they warrant either their own focused tests or further decomposition,
+since a bug in the scanner silently weakens the boundary rules it powers.
 
 ### Prioritized refactoring backlog
 
