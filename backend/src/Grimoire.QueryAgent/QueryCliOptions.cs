@@ -19,7 +19,10 @@ public sealed record QueryCliOptions(
     // fail-closed before any tool call is dispatched, same posture as a missing policy
     // file.
     string WriteLocksDir,
-    int HeartbeatSeconds = 10);
+    int HeartbeatSeconds = 10,
+    // ADR-023 (022-align-wiki-structure, Phase 5): the ordered list of reserved
+    // harness-surface names this run's operator has granted (empty = none granted).
+    IReadOnlyList<string>? GrantedHarnessSurfaces = null);
 
 /// <summary>One prior turn of the conversation, supplied by the client (research.md R6).</summary>
 public sealed record PriorTurnInput(int Position, string Prompt, string Answer, string State);

@@ -58,7 +58,8 @@ return await new AgentHost(profile).RunAsync(
         WikiRoot: options.WikiRoot,
         SystemPromptPath: options.SystemPromptPath,
         PolicyPath: options.PolicyPath,
-        HeartbeatSeconds: options.HeartbeatSeconds),
+        HeartbeatSeconds: options.HeartbeatSeconds,
+        GrantedHarnessSurfaces: options.GrantedHarnessSurfaces),
     runEvents,
     intent,
     CancellationToken.None);
@@ -86,7 +87,8 @@ static QueryCliOptions ReadCliOptions(string[] args)
         SystemPromptPath: reader.GetRequired("--system-prompt-path"),
         PolicyPath: reader.GetRequired("--policy-path"),
         WriteLocksDir: reader.GetRequired("--write-locks-dir"),
-        HeartbeatSeconds: reader.GetHeartbeatSeconds());
+        HeartbeatSeconds: reader.GetHeartbeatSeconds(),
+        GrantedHarnessSurfaces: reader.GetGrantedHarnessSurfaces());
 }
 
 /// <summary>
@@ -210,7 +212,8 @@ internal sealed class QueryIntentHandler : IAgentIntentHandler
             Model: modelClient.ModelId,
             TurnsUsed: result.TurnsUsed,
             DeniedActions: executor.Denials,
-            CreatedArtifacts: executor.CreatedPaths));
+            CreatedArtifacts: executor.CreatedPaths,
+            GrantedHarnessSurfaces: _options.GrantedHarnessSurfaces));
         return 0;
     }
 

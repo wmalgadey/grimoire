@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using Grimoire.Hub.HarnessSurfaces;
 using Grimoire.Hub.LintFindings;
 using Grimoire.Hub.Runtime.Paths;
 using Microsoft.Extensions.Logging;
@@ -45,6 +46,7 @@ public sealed class LintRunCoordinator
     private readonly OperationalState.OperationalStateRepository? _stateRepository;
     private readonly RemediationTasks.RemediationTaskRecordStore? _remediationRecordStore;
     private readonly RemediationTasks.RemediationLifecyclePublisher? _remediationLifecyclePublisher;
+    private readonly HarnessSurfaceReadOptions _harnessSurfaceReadOptions;
     private readonly SemaphoreSlim _slot = new(1, 1);
 
     /// <summary>
@@ -75,7 +77,10 @@ public sealed class LintRunCoordinator
         Realtime.LintLifecyclePublisher? lifecyclePublisher = null,
         OperationalState.OperationalStateRepository? stateRepository = null,
         RemediationTasks.RemediationTaskRecordStore? remediationRecordStore = null,
-        RemediationTasks.RemediationLifecyclePublisher? remediationLifecyclePublisher = null)
+        RemediationTasks.RemediationLifecyclePublisher? remediationLifecyclePublisher = null,
+        // ADR-023 (022-align-wiki-structure, Phase 5): defaults to a fresh (deny-by-
+        // default) options instance so every pre-existing call site keeps compiling.
+        HarnessSurfaceReadOptions? harnessSurfaceReadOptions = null)
     {
         _launcher = launcher;
         _reportStore = reportStore;
@@ -96,6 +101,7 @@ public sealed class LintRunCoordinator
         // materialize no proposals.
         _remediationRecordStore = remediationRecordStore;
         _remediationLifecyclePublisher = remediationLifecyclePublisher;
+        _harnessSurfaceReadOptions = harnessSurfaceReadOptions ?? new HarnessSurfaceReadOptions();
     }
 
     public LintRunState? GetRun(string runId) => _runs.TryGetValue(runId, out var run) ? run : null;
@@ -196,7 +202,8 @@ public sealed class LintRunCoordinator
                 SystemPromptPath: _paths.Lint.SystemPromptPath,
                 PolicyPath: _paths.Lint.PolicyPath,
                 WriteLocksDir: _paths.WriteLocksDir,
-                ReviewWindowDays: _reviewWindowOptions.LintReviewWindowDays);
+                ReviewWindowDays: _reviewWindowOptions.LintReviewWindowDays,
+                GrantedHarnessSurfaces: HarnessSurfaceGrantResolver.ResolveGranted(_harnessSurfaceReadOptions));
 
             AgentDispatch.IAgentProcessHandle handle;
             try

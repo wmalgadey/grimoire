@@ -62,7 +62,13 @@ public sealed record AgentRunEvent(
     // ADR-018: the remediation-execution mode's re-verification judgment on its terminal
     // completed event — "applied" | "not_applicable" (reason reuses the existing Reason
     // field). Transported only, never computed by the harness (Principle V).
-    [property: JsonPropertyName("remediationOutcome")] string? RemediationOutcome = null)
+    [property: JsonPropertyName("remediationOutcome")] string? RemediationOutcome = null,
+    // ADR-023 (022-align-wiki-structure, Phase 5, FR-017/SC-011): the ordered list of
+    // reserved harness-surface names this run was permitted to read
+    // (RunCompletionMetadata.GrantedHarnessSurfaces). Null/empty ⇒ none granted
+    // (deny-by-default) — DO NOT rename the pre-existing createdPages field alongside
+    // this one; that rename is Phase 6's job (contracts/terminology-rename-map.md).
+    [property: JsonPropertyName("grantedHarnessSurfaces")] IReadOnlyList<string>? GrantedHarnessSurfaces = null)
 {
     public const string TypeStarted = "started";
     public const string TypeHeartbeat = "heartbeat";

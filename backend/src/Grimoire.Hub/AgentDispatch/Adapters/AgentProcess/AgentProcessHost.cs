@@ -207,6 +207,9 @@ public sealed class AgentProcessHost : IAgentProcessLauncher
             startInfo.ArgumentList.Add(request.AttachedContext);
         }
 
+        startInfo.ArgumentList.Add("--granted-harness-surfaces");
+        startInfo.ArgumentList.Add(JoinGrantedHarnessSurfaces(request.GrantedHarnessSurfaces));
+
         var authToken = _secretsLoader.GetAnthropicAuthToken();
         var lintModel = _secretsLoader.GetLintModel();
         var lintBaseUrl = _secretsLoader.GetLintBase();
@@ -273,6 +276,9 @@ public sealed class AgentProcessHost : IAgentProcessLauncher
             startInfo.ArgumentList.Add(request.AttachedContext);
         }
 
+        startInfo.ArgumentList.Add("--granted-harness-surfaces");
+        startInfo.ArgumentList.Add(JoinGrantedHarnessSurfaces(request.GrantedHarnessSurfaces));
+
         var authToken = _secretsLoader.GetAnthropicAuthToken();
         var lintModel = _secretsLoader.GetLintModel();
         var lintBaseUrl = _secretsLoader.GetLintBase();
@@ -319,6 +325,8 @@ public sealed class AgentProcessHost : IAgentProcessLauncher
         startInfo.ArgumentList.Add(request.WriteLocksDir);
         startInfo.ArgumentList.Add("--review-window-days");
         startInfo.ArgumentList.Add(request.ReviewWindowDays.ToString(System.Globalization.CultureInfo.InvariantCulture));
+        startInfo.ArgumentList.Add("--granted-harness-surfaces");
+        startInfo.ArgumentList.Add(JoinGrantedHarnessSurfaces(request.GrantedHarnessSurfaces));
 
         var authToken = _secretsLoader.GetAnthropicAuthToken();
         var lintModel = _secretsLoader.GetLintModel();
@@ -340,6 +348,18 @@ public sealed class AgentProcessHost : IAgentProcessLauncher
 
         return Process.Start(startInfo) ?? throw new InvalidOperationException("Failed to start lint agent process.");
     }
+
+    /// <summary>
+    /// ADR-023 (022-align-wiki-structure, Phase 5): serializes the effective
+    /// granted-surface list into the single <c>--granted-harness-surfaces</c> CLI argument
+    /// value every spawn site passes (contracts/harness-surface-read-scope.md "Delivery to
+    /// the agent" — "the value is the ordered list of granted surface names; empty means
+    /// none granted"). Comma-separated, matching the CLI's plain `--key value` shape
+    /// (<c>AgentArgumentReader</c>); an empty request list serializes to an empty string,
+    /// still passed explicitly so the argument is always present.
+    /// </summary>
+    private static string JoinGrantedHarnessSurfaces(IReadOnlyList<string>? grantedHarnessSurfaces)
+        => string.Join(',', grantedHarnessSurfaces ?? []);
 
     /// <summary>
     /// Lint's own credential/model-scoping (ADR-004) and trace-propagation (Constitution
@@ -417,6 +437,8 @@ public sealed class AgentProcessHost : IAgentProcessLauncher
         startInfo.ArgumentList.Add(request.PolicyPath);
         startInfo.ArgumentList.Add("--write-locks-dir");
         startInfo.ArgumentList.Add(request.WriteLocksDir);
+        startInfo.ArgumentList.Add("--granted-harness-surfaces");
+        startInfo.ArgumentList.Add(JoinGrantedHarnessSurfaces(request.GrantedHarnessSurfaces));
 
         var authToken = _secretsLoader.GetAnthropicAuthToken();
         var queryModel = _secretsLoader.GetQueryModel();
@@ -528,6 +550,9 @@ public sealed class AgentProcessHost : IAgentProcessLauncher
             startInfo.ArgumentList.Add("--user-prompt");
             startInfo.ArgumentList.Add(request.UserPrompt);
         }
+
+        startInfo.ArgumentList.Add("--granted-harness-surfaces");
+        startInfo.ArgumentList.Add(JoinGrantedHarnessSurfaces(request.GrantedHarnessSurfaces));
 
         var authToken = _secretsLoader.GetAnthropicAuthToken();
         var ingestModel = _secretsLoader.GetIngestModel();

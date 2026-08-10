@@ -21,4 +21,7 @@ public sealed record LintCliOptions(
     // Grimoire:LintReviewWindowDays, default 90) — threaded into the kickoff message so
     // the agent's own stated default (data/agents/lint/system-prompt.md) can be
     // overridden without an instruction-file edit.
-    int ReviewWindowDays = 90);
+    int ReviewWindowDays = 90,
+    // ADR-023 (022-align-wiki-structure, Phase 5): the ordered list of reserved
+    // harness-surface names this run's operator has granted (empty = none granted).
+    IReadOnlyList<string>? GrantedHarnessSurfaces = null);

@@ -121,6 +121,23 @@ public static class ConversationRecordFormat
             }
         }
 
+        // ADR-023 (022-align-wiki-structure, Phase 5, FR-017/SC-011): same "always
+        // present, never omitted" convention as created_pages above — do not rename this
+        // field or created_pages here; the created_pages -> created_articles rename is
+        // Phase 6's job (contracts/terminology-rename-map.md), a separate concern.
+        if (turn.GrantedHarnessSurfacesOrEmpty.Count == 0)
+        {
+            sb.Append("granted_harness_surfaces: []\n");
+        }
+        else
+        {
+            sb.Append("granted_harness_surfaces:\n");
+            foreach (var surface in turn.GrantedHarnessSurfacesOrEmpty)
+            {
+                sb.Append("  - ").Append(EscapeString(surface)).Append('\n');
+            }
+        }
+
         sb.Append("prompt_chars: ").Append(turn.Prompt.Length).Append('\n');
         sb.Append("answer_chars: ").Append(turn.Answer.Length).Append('\n');
         sb.Append(CommentClose).Append('\n');
@@ -309,7 +326,8 @@ public static class ConversationRecordFormat
                 DeniedActions: bookkeeping.DeniedActions,
                 Prompt: prompt,
                 Answer: answer,
-                CreatedPages: bookkeeping.CreatedPages));
+                CreatedPages: bookkeeping.CreatedPages,
+                GrantedHarnessSurfaces: bookkeeping.GrantedHarnessSurfaces));
         }
 
         return new ConversationRecordParseResult.Parsed(turns, droppedTrailingFragment);
@@ -338,6 +356,8 @@ public static class ConversationRecordFormat
         // stays the default empty list (forward-compat, ADR-014), tolerated by the
         // "unknown key" default case below for old records that omit the key entirely.
         public List<string> CreatedPages = [];
+        // ADR-023 (022-align-wiki-structure, Phase 5): same forward-compat shape.
+        public List<string> GrantedHarnessSurfaces = [];
         public int PromptChars = -1;
         public int AnswerChars = -1;
     }
@@ -510,6 +530,24 @@ public static class ConversationRecordFormat
                         }
 
                         if (!TryParseStringList(lines, ref i, result.CreatedPages, ref error)) return false;
+                        break;
+                    }
+                case "granted_harness_surfaces":
+                    {
+                        // ADR-023 (022-align-wiki-structure, Phase 5): same '[]' or flat
+                        // block-list-of-strings grammar as created_pages above.
+                        if (raw == "[]")
+                        {
+                            break;
+                        }
+
+                        if (raw.Length != 0)
+                        {
+                            error = $"granted_harness_surfaces must be '[]' or a block list, got: '{raw}'";
+                            return false;
+                        }
+
+                        if (!TryParseStringList(lines, ref i, result.GrantedHarnessSurfaces, ref error)) return false;
                         break;
                     }
                 default:

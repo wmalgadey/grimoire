@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using Grimoire.Hub.HarnessSurfaces;
 using Grimoire.Hub.QueryConversations;
 using Grimoire.Hub.Realtime;
 using Grimoire.Hub.Runtime.Paths;
@@ -47,6 +48,7 @@ public sealed class QueryRunCoordinator
     private readonly TimeSpan _livenessWindow;
     private readonly ILogger<QueryRunCoordinator> _logger;
     private readonly SemaphoreSlim _concurrencySlots;
+    private readonly HarnessSurfaceReadOptions _harnessSurfaceReadOptions;
 
     private readonly ConcurrentDictionary<string, QueryTurnState> _turns = new();
     private readonly ConcurrentDictionary<string, string> _activeTurnByConversation = new();
@@ -60,7 +62,10 @@ public sealed class QueryRunCoordinator
         QueryConcurrencyOptions concurrencyOptions,
         TimeProvider? timeProvider = null,
         TimeSpan? livenessWindow = null,
-        ILogger<QueryRunCoordinator>? logger = null)
+        ILogger<QueryRunCoordinator>? logger = null,
+        // ADR-023 (022-align-wiki-structure, Phase 5): defaults to a fresh (deny-by-
+        // default) options instance so every pre-existing call site keeps compiling.
+        HarnessSurfaceReadOptions? harnessSurfaceReadOptions = null)
     {
         _launcher = launcher;
         _publisher = publisher;
@@ -70,6 +75,7 @@ public sealed class QueryRunCoordinator
         _livenessWindow = livenessWindow ?? TimeSpan.FromSeconds(60);
         _logger = logger ?? NullLogger<QueryRunCoordinator>.Instance;
         _concurrencySlots = new SemaphoreSlim(concurrencyOptions.QueryConcurrencyLimit, concurrencyOptions.QueryConcurrencyLimit);
+        _harnessSurfaceReadOptions = harnessSurfaceReadOptions ?? new HarnessSurfaceReadOptions();
     }
 
     public QueryTurnState? GetTurn(string turnId) => _turns.TryGetValue(turnId, out var turn) ? turn : null;
@@ -158,7 +164,8 @@ public sealed class QueryRunCoordinator
             LogPath: _paths.LogPath,
             SystemPromptPath: _paths.Query.SystemPromptPath,
             PolicyPath: _paths.Query.PolicyPath,
-            WriteLocksDir: _paths.WriteLocksDir);
+            WriteLocksDir: _paths.WriteLocksDir,
+            GrantedHarnessSurfaces: HarnessSurfaceGrantResolver.ResolveGranted(_harnessSurfaceReadOptions));
 
         AgentDispatch.IAgentProcessHandle handle;
         try
@@ -280,7 +287,8 @@ public sealed class QueryRunCoordinator
                 terminalEvent.Model,
                 terminalEvent.TurnsUsed,
                 terminalEvent.DeniedActions ?? [],
-                terminalEvent.CreatedPages ?? []);
+                terminalEvent.CreatedPages ?? [],
+                terminalEvent.GrantedHarnessSurfaces ?? []);
             await FinishTurnAsync(turnId, status, terminalEvent.Reason, metadata, CancellationToken.None);
         }
 
@@ -395,7 +403,10 @@ public sealed class QueryRunCoordinator
             // ADR-015 (012-query-synthesis-writes): the agent process reports canonical
             // (absolute) paths; the record stores wiki-root-relative paths
             // (data-model.md "Run Completion Metadata").
-            CreatedPages: [.. (metadata?.CreatedPages ?? []).Select(canonical => ToWikiRelative(canonical, wikiRoot))]);
+            CreatedPages: [.. (metadata?.CreatedPages ?? []).Select(canonical => ToWikiRelative(canonical, wikiRoot))],
+            // ADR-023 (022-align-wiki-structure, Phase 5, FR-017/SC-011): surface names,
+            // not paths — no relativization needed.
+            GrantedHarnessSurfaces: metadata?.GrantedHarnessSurfaces ?? []);
     }
 
     private static string ToWikiRelative(string canonicalPath, string wikiRoot)

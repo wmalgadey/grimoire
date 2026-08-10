@@ -24,4 +24,8 @@ public sealed record QueryAgentRequest(
     // directory (contracts/query-write-scope-and-coordination.md §4), supplied the same
     // way as WikiRoot/PolicyPath — a single Hub-resolved composition point
     // (ResolvedGrimoirePaths.WriteLocksDir, ADR-009), not agent-discovered.
-    string WriteLocksDir);
+    string WriteLocksDir,
+    // ADR-023 (022-align-wiki-structure, Phase 5): the effective granted-surface list for
+    // this run (Grimoire:HarnessSurfaceReads), threaded to AgentProcessHost's
+    // --granted-harness-surfaces spawn argument. Empty means none granted (deny-by-default).
+    IReadOnlyList<string>? GrantedHarnessSurfaces = null);

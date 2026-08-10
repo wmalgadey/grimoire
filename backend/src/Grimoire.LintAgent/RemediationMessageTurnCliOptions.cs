@@ -23,7 +23,10 @@ public sealed record RemediationMessageTurnCliOptions(
     string ProposalDescription,
     string? ProposalTargetPath,
     string? AttachedContext,
-    int HeartbeatSeconds = 10);
+    int HeartbeatSeconds = 10,
+    // ADR-023 (022-align-wiki-structure, Phase 5): the ordered list of reserved
+    // harness-surface names this run's operator has granted (empty = none granted).
+    IReadOnlyList<string>? GrantedHarnessSurfaces = null);
 
 /// <summary>
 /// Stdin JSON payload for the message-turn mode: this turn's new human message plus

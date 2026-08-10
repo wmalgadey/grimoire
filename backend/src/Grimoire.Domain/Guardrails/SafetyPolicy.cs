@@ -83,6 +83,7 @@ public sealed class SafetyPolicy
     private readonly IReadOnlyList<string> _readPrefixes;
     private readonly IReadOnlyList<WriteRule> _writeRules;
     private readonly string _repositoryRoot;
+    private readonly IReadOnlyList<string> _deniedReadSubtrees;
 
     /// <summary>
     /// Initializes a policy with absolute-path canonical prefixes already resolved
@@ -121,14 +122,24 @@ public sealed class SafetyPolicy
     /// Canonical absolute path prefixes (each with its <see cref="WriteMode"/>) that allow
     /// write-scope tool calls.
     /// </param>
+    /// <param name="deniedReadSubtrees">
+    /// ADR-023 (022-align-wiki-structure, Phase 5): canonical absolute directory-style
+    /// path prefixes (trailing separator) whose subtree — including the bare directory
+    /// itself — is denied on read, evaluated before <paramref name="readPrefixes"/>.
+    /// Plain strings only, exactly like every other prefix list here — this type stays
+    /// dependency-free (Constitution Principle I; ADR-023 H1). Defaults to empty so every
+    /// pre-ADR-023 caller compiles and behaves unchanged.
+    /// </param>
     public SafetyPolicy(
         string repositoryRoot,
         IReadOnlyList<string> readPrefixes,
-        IReadOnlyList<WriteRule> writeRules)
+        IReadOnlyList<WriteRule> writeRules,
+        IReadOnlyList<string>? deniedReadSubtrees = null)
     {
         _repositoryRoot = repositoryRoot;
         _readPrefixes = readPrefixes;
         _writeRules = writeRules;
+        _deniedReadSubtrees = deniedReadSubtrees ?? [];
     }
 
     /// <summary>
@@ -151,6 +162,19 @@ public sealed class SafetyPolicy
 
         if (!isWrite)
         {
+            // ADR-023: denied harness-surface read subtrees are checked BEFORE the allow
+            // loop — ordering is fixed by the ADR and pinned by
+            // SafetyPolicyHarnessSurfaceTests. Reuses PrefixMatches' existing
+            // directory-style semantics (subtree + bare directory itself), the same
+            // mechanism the allow loop below already relies on for "list_files(pages)".
+            foreach (var deniedSubtree in _deniedReadSubtrees)
+            {
+                if (PrefixMatches(deniedSubtree, canonicalTarget))
+                {
+                    return PolicyDecision.Deny("harness_surface_not_granted");
+                }
+            }
+
             foreach (var prefix in _readPrefixes)
             {
                 if (PrefixMatches(prefix, canonicalTarget))
@@ -206,7 +230,19 @@ public sealed class SafetyPolicy
     /// this method only changes what the in-memory <see cref="SafetyPolicy"/> instance
     /// enforces for that one run.
     /// </summary>
-    public SafetyPolicy WithNoWriteAccess() => new(_repositoryRoot, _readPrefixes, Array.Empty<WriteRule>());
+    public SafetyPolicy WithNoWriteAccess() => new(_repositoryRoot, _readPrefixes, Array.Empty<WriteRule>(), _deniedReadSubtrees);
+
+    /// <summary>
+    /// ADR-023 (022-align-wiki-structure, Phase 5): a runtime narrowing of this already-
+    /// loaded policy's read scope, modelled directly on <see cref="WithNoWriteAccess"/>'s
+    /// documented distinction — the loaded policy identity (version/sha256) still
+    /// describes what was read from <c>policy.json</c> on disk; this method only changes
+    /// what the in-memory <see cref="SafetyPolicy"/> instance enforces for that one run.
+    /// Every other rule (read prefixes, write rules, traversal check) is preserved
+    /// unchanged; only <paramref name="deniedReadSubtrees"/> is replaced wholesale.
+    /// </summary>
+    public SafetyPolicy WithDeniedReadSubtrees(IReadOnlyList<string> deniedReadSubtrees) =>
+        new(_repositoryRoot, _readPrefixes, _writeRules, deniedReadSubtrees);
 
     private static bool PrefixMatches(string prefix, string canonicalTarget)
     {

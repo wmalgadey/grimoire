@@ -22,4 +22,8 @@ public sealed record LintAgentRequest(
     // the spawned process's kickoff context so the agent's own default (also 90, stated
     // in data/agents/lint/system-prompt.md) can be overridden without an instruction-file
     // edit. Optional/defaulted so every pre-existing positional call site keeps compiling.
-    int ReviewWindowDays = 90);
+    int ReviewWindowDays = 90,
+    // ADR-023 (022-align-wiki-structure, Phase 5): the effective granted-surface list for
+    // this run (Grimoire:HarnessSurfaceReads), threaded to AgentProcessHost's
+    // --granted-harness-surfaces spawn argument. Empty means none granted (deny-by-default).
+    IReadOnlyList<string>? GrantedHarnessSurfaces = null);

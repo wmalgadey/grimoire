@@ -18,7 +18,11 @@ public sealed record QueryTurnCompletionMetadata(
     // ADR-015 (012-query-synthesis-writes): canonical paths of pages this turn created;
     // defaults to empty so pre-feature call sites (none currently — all Query terminal
     // events flow through QueryRunCoordinator) need no change.
-    IReadOnlyList<string> CreatedPages);
+    IReadOnlyList<string> CreatedPages,
+    // ADR-023 (022-align-wiki-structure, Phase 5, FR-017/SC-011): the ordered list of
+    // reserved harness-surface names this turn was permitted to read. Defaults to empty
+    // for the same reason CreatedPages does.
+    IReadOnlyList<string> GrantedHarnessSurfaces);
 
 /// <summary>Terminal-inclusive state machine for one Query Turn (data-model.md QueryTurn).</summary>
 public enum QueryTurnStatus

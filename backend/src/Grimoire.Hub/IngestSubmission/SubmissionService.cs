@@ -1,5 +1,6 @@
 using Grimoire.Hub.AgentDispatch;
 using Grimoire.Hub.ContentRoot;
+using Grimoire.Hub.HarnessSurfaces;
 using Grimoire.Hub.OperationalState;
 using Grimoire.Hub.Runtime.Paths;
 using Microsoft.Extensions.Logging;
@@ -13,12 +14,24 @@ public sealed class SubmissionService
     private readonly OperationalStateRepository _repository;
     private readonly IAgentProcessLauncher _processHost;
     private readonly ILogger<SubmissionService> _logger;
+    private readonly HarnessSurfaceReadOptions _harnessSurfaceReadOptions;
 
-    public SubmissionService(OperationalStateRepository repository, IAgentProcessLauncher processHost, ILogger<SubmissionService>? logger = null)
+    // T054 (022-align-wiki-structure, US3): the manual `submit-source` CLI path binds
+    // through the exact same HubHostComposition-resolved HarnessSurfaceReadOptions
+    // singleton the HTTP-triggered IngestRunCoordinator path uses (ADR-020 CLI/HTTP
+    // parity) — no separate configuration read, so an operator sees the same effective
+    // scope from either entry point. Defaults to a fresh (deny-by-default) instance so
+    // every pre-existing call site (including test fixtures) keeps compiling.
+    public SubmissionService(
+        OperationalStateRepository repository,
+        IAgentProcessLauncher processHost,
+        ILogger<SubmissionService>? logger = null,
+        HarnessSurfaceReadOptions? harnessSurfaceReadOptions = null)
     {
         _repository = repository;
         _processHost = processHost;
         _logger = logger ?? NullLogger<SubmissionService>.Instance;
+        _harnessSurfaceReadOptions = harnessSurfaceReadOptions ?? new HarnessSurfaceReadOptions();
     }
 
     public async Task<string> SubmitAsync(SubmitSourceOptions options, IngestContentPaths contentPaths, ResolvedGrimoirePaths resolvedPaths, CancellationToken cancellationToken = default)
@@ -57,7 +70,8 @@ public sealed class SubmissionService
             SystemPromptPath: resolvedPaths.Ingest.SystemPromptPath,
             DefaultUserPromptPath: resolvedPaths.Ingest.DefaultUserPromptPath!,
             PolicyPath: resolvedPaths.Ingest.PolicyPath,
-            WriteLocksDir: contentPaths.WriteLocksDir);
+            WriteLocksDir: contentPaths.WriteLocksDir,
+            GrantedHarnessSurfaces: HarnessSurfaceGrantResolver.ResolveGranted(_harnessSurfaceReadOptions));
 
         using (var spawnSpan = HubTracing.ActivitySource.StartActivity("hub.ingest.spawn_agent"))
         {

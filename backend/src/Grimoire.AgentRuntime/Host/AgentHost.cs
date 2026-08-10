@@ -1,3 +1,4 @@
+using Grimoire.AgentRuntime.HarnessSurfaces;
 using Grimoire.AgentRuntime.Instructions;
 using Grimoire.AgentRuntime.RunEvents;
 
@@ -147,6 +148,15 @@ public sealed class AgentHost
             }
             policyResult.IsFirst(out var loadedPolicy);
 
+            // ADR-023 (022-align-wiki-structure, Phase 5): applied once here, in the one
+            // shared startup template every spawn mode passes through, rather than
+            // duplicated in each agent's own composition — a runtime narrowing of the
+            // just-loaded policy (SafetyPolicy.WithDeniedReadSubtrees), never touching the
+            // loaded policy identity (version/sha256) recorded above.
+            var deniedReadSubtrees = HarnessSurfaceReadScope.ResolveDeniedSubtreePaths(
+                run.WikiRoot, run.GrantedHarnessSurfaces);
+            loadedPolicy = loadedPolicy! with { Policy = loadedPolicy.Policy.WithDeniedReadSubtrees(deniedReadSubtrees) };
+
             var instructions = new LoadedInstructions(
                 loadedSystemPrompt!, loadedPolicy!, effectiveUserPrompt, userPromptSource);
             await intent.OnInstructionsLoadedAsync(instructions, cancellationToken);
@@ -178,4 +188,10 @@ public sealed record AgentHostRun(
     string PolicyPath,
     int HeartbeatSeconds,
     string? DefaultUserPromptPath = null,
-    string? UserPromptOverride = null);
+    string? UserPromptOverride = null,
+    // ADR-023 (022-align-wiki-structure, Phase 5): the ordered list of reserved
+    // harness-surface names this run's operator has granted (CLI-delivered per spawn,
+    // "--granted-harness-surfaces"); empty/null means none granted (the deny-by-default
+    // posture). Mapped to SafetyPolicy's denied-read-subtree narrowing once, here in the
+    // shared template — see the ResolveDeniedSubtreePaths call above.
+    IReadOnlyList<string>? GrantedHarnessSurfaces = null);

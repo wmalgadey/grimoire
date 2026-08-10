@@ -53,4 +53,9 @@ public sealed record TaskArtifactDocument(
     // 004 field: Hub-owned convert-step configuration, carried forward verbatim
     // across every write this process makes so it survives the agent taking over
     // the artifact from the Hub (FR-014).
-    IReadOnlyDictionary<string, bool>? ConvertSteps = null);
+    IReadOnlyDictionary<string, bool>? ConvertSteps = null,
+    // ADR-023 (022-align-wiki-structure, Phase 5, FR-017/SC-011): the ordered list of
+    // reserved harness-surface names this run was permitted to read — same serializer
+    // (BuildStringList/ParseStringList) as PagesTouched et al. Empty/omitted means none
+    // granted (deny-by-default).
+    IReadOnlyList<string>? GrantedHarnessSurfaces = null);

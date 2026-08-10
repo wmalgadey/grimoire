@@ -76,7 +76,8 @@ return await new AgentHost(profile).RunAsync(
         PolicyPath: options.PolicyPath,
         HeartbeatSeconds: options.HeartbeatSeconds,
         DefaultUserPromptPath: options.DefaultUserPromptPath,
-        UserPromptOverride: options.UserPrompt),
+        UserPromptOverride: options.UserPrompt,
+        GrantedHarnessSurfaces: options.GrantedHarnessSurfaces),
     runEvents,
     intent,
     CancellationToken.None);
@@ -105,7 +106,8 @@ static IngestCliOptions ReadCliOptions(string[] args)
         UserPrompt: reader.GetOptional("--user-prompt"),
         PolicyPath: reader.GetRequired("--policy-path"),
         WriteLocksDir: reader.GetRequired("--write-locks-dir"),
-        HeartbeatSeconds: reader.GetHeartbeatSeconds());
+        HeartbeatSeconds: reader.GetHeartbeatSeconds(),
+        GrantedHarnessSurfaces: reader.GetGrantedHarnessSurfaces());
 }
 
 /// <summary>
@@ -173,7 +175,8 @@ internal sealed class IngestIntentHandler : IAgentIntentHandler
                 PagesTouched: [],
                 FailureReason: null,
                 Narrative: $"Ingest started for source: {_options.SourceRef}",
-                ConvertSteps: _convertSteps),
+                ConvertSteps: _convertSteps,
+                GrantedHarnessSurfaces: _options.GrantedHarnessSurfaces),
             CancellationToken.None);
     }
 
@@ -311,7 +314,8 @@ internal sealed class IngestIntentHandler : IAgentIntentHandler
                 RolledBack: null,
                 UserPromptSource: instructions.UserPromptSource,
                 UserPrompt: instructions.EffectiveUserPrompt,
-                ConvertSteps: _convertSteps),
+                ConvertSteps: _convertSteps,
+                GrantedHarnessSurfaces: _options.GrantedHarnessSurfaces),
             CancellationToken.None);
 
         await _logAppender.EnsureLogEntryAsync(
@@ -405,7 +409,8 @@ internal sealed class IngestIntentHandler : IAgentIntentHandler
                 RolledBack: journal is not null ? rolledBack : null,
                 UserPromptSource: userPromptSource,
                 UserPrompt: userPrompt,
-                ConvertSteps: _convertSteps),
+                ConvertSteps: _convertSteps,
+                GrantedHarnessSurfaces: _options.GrantedHarnessSurfaces),
             CancellationToken.None);
 
         await _logAppender.EnsureLogEntryAsync(

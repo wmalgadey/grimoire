@@ -32,4 +32,8 @@ public sealed record RemediationMessageTurnAgentRequest(
     string WriteLocksDir,
     string? AttachedContext,
     string Message,
-    IReadOnlyList<RemediationPriorMessage> PriorMessages);
+    IReadOnlyList<RemediationPriorMessage> PriorMessages,
+    // ADR-023 (022-align-wiki-structure, Phase 5): the effective granted-surface list for
+    // this run (Grimoire:HarnessSurfaceReads), threaded to AgentProcessHost's
+    // --granted-harness-surfaces spawn argument. Empty means none granted (deny-by-default).
+    IReadOnlyList<string>? GrantedHarnessSurfaces = null);

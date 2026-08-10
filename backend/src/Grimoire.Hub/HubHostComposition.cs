@@ -3,6 +3,7 @@ using Grimoire.Hub.AgentDispatch;
 using Grimoire.Hub.AgentDispatch.Adapters.AgentProcess;
 using Grimoire.Hub.ContentRoot;
 using Grimoire.Hub.Conversion;
+using Grimoire.Hub.HarnessSurfaces;
 using Grimoire.Hub.IngestDispatch;
 using Grimoire.Hub.IngestSubmission;
 using Grimoire.Hub.IngestSubmission.Adapters.HttpFetch;
@@ -96,6 +97,15 @@ internal static class HubHostComposition
         builder.Configuration.GetSection(LintReviewWindowOptions.SectionName).Bind(lintReviewWindowOptions);
         builder.Services.AddSingleton(lintReviewWindowOptions);
 
+        // T053 (022-align-wiki-structure, US3, ADR-023): the operator's read scope over
+        // the four reserved harness surfaces, read alongside the other Grimoire:* settings
+        // (same binding convention as LintReviewWindowOptions/QueryConcurrencyOptions
+        // above) — every coordinator that spawns an agent process resolves the effective
+        // granted-surface list from this one singleton via HarnessSurfaceGrantResolver.
+        var harnessSurfaceReadOptions = new HarnessSurfaceReadOptions();
+        builder.Configuration.GetSection(HarnessSurfaceReadOptions.SectionName).Bind(harnessSurfaceReadOptions);
+        builder.Services.AddSingleton(harnessSurfaceReadOptions);
+
         using (var bootstrapLoggerFactory = TelemetryExtensions.CreateBootstrapLoggerFactory())
         {
             var pathLogger = bootstrapLoggerFactory.CreateLogger("Grimoire.Hub.Runtime.Paths");
@@ -127,7 +137,8 @@ internal static class HubHostComposition
                 sp.GetRequiredService<HubTaskArtifactWriter>(),
                 sp.GetRequiredService<IngestContentPaths>(),
                 sp.GetRequiredService<ResolvedGrimoirePaths>(),
-                logger: sp.GetRequiredService<ILogger<IngestRunCoordinator>>()));
+                logger: sp.GetRequiredService<ILogger<IngestRunCoordinator>>(),
+                harnessSurfaceReadOptions: sp.GetRequiredService<HarnessSurfaceReadOptions>()));
             builder.Services.AddSingleton<IngestSubmissionValidator>();
             builder.Services.AddSingleton<IngestSubmissionPipeline>();
             // 018-hub-cli-commands T010: SubmitSourceCommand resolves this via DI instead
@@ -153,7 +164,8 @@ internal static class HubHostComposition
                 sp.GetRequiredService<ConversationRecordStore>(),
                 resolvedPaths,
                 sp.GetRequiredService<QueryConcurrencyOptions>(),
-                logger: sp.GetRequiredService<ILogger<QueryRunCoordinator>>()));
+                logger: sp.GetRequiredService<ILogger<QueryRunCoordinator>>(),
+                harnessSurfaceReadOptions: sp.GetRequiredService<HarnessSurfaceReadOptions>()));
 
             // 013-lint-agent: immediate-rejection single-active-run dispatch (ADR-016),
             // fully decoupled from Ingest's and Query's coordinators — its own Findings
@@ -178,7 +190,8 @@ internal static class HubHostComposition
                 stateRepository: sp.GetRequiredService<OperationalStateRepository>(),
                 // 015-lint-board-parity T022 (FR-007): proposal materialization gates completion.
                 remediationRecordStore: sp.GetRequiredService<RemediationTaskRecordStore>(),
-                remediationLifecyclePublisher: sp.GetRequiredService<RemediationLifecyclePublisher>()));
+                remediationLifecyclePublisher: sp.GetRequiredService<RemediationLifecyclePublisher>(),
+                harnessSurfaceReadOptions: sp.GetRequiredService<HarnessSurfaceReadOptions>()));
 
             // 015-lint-board-parity (ADR-018): remediation-task composition, mirroring the
             // Lint/Query pattern above — record store, lifecycle publisher (T023), read
@@ -194,7 +207,8 @@ internal static class HubHostComposition
                 sp.GetRequiredService<RemediationLifecyclePublisher>(),
                 sp.GetRequiredService<RemediationTaskRecordStore>(),
                 resolvedPaths,
-                logger: sp.GetRequiredService<ILogger<RemediationRunCoordinator>>()));
+                logger: sp.GetRequiredService<ILogger<RemediationRunCoordinator>>(),
+                harnessSurfaceReadOptions: sp.GetRequiredService<HarnessSurfaceReadOptions>()));
             // 018-hub-cli-commands T021 (ADR-020): the authorize/dismiss/withdraw
             // transition service shared by RemediationTaskEndpoints and the CLI's
             // remediation-authorize/-dismiss/-withdraw commands (FR-005/SC-005).
@@ -212,7 +226,8 @@ internal static class HubHostComposition
                 sp.GetRequiredService<RemediationLifecyclePublisher>(),
                 sp.GetRequiredService<RemediationTaskRecordStore>(),
                 resolvedPaths,
-                logger: sp.GetRequiredService<ILogger<RemediationMessageTurnCoordinator>>()));
+                logger: sp.GetRequiredService<ILogger<RemediationMessageTurnCoordinator>>(),
+                harnessSurfaceReadOptions: sp.GetRequiredService<HarnessSurfaceReadOptions>()));
 
             var reconciler = new RestartReconciler(repository);
             await reconciler.ReconcileRunningTasksAsync(contentPaths.TasksDir, contentPaths.LogPath);

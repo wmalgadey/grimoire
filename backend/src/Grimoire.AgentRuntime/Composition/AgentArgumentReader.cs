@@ -37,4 +37,16 @@ public sealed class AgentArgumentReader
         => int.TryParse(GetOptional("--heartbeat-seconds"), out var parsedHeartbeat) && parsedHeartbeat > 0
             ? parsedHeartbeat
             : 10;
+
+    /// <summary>
+    /// ADR-023 (022-align-wiki-structure, Phase 5): the shared
+    /// `--granted-harness-surfaces` option — a comma-separated, ordered list of reserved
+    /// surface names (<c>AgentProcessHost.JoinGrantedHarnessSurfaces</c>'s wire shape).
+    /// Missing or empty means none granted (deny-by-default) — returns an empty list,
+    /// never null, so every call site can treat "argument absent" and "explicitly empty"
+    /// identically.
+    /// </summary>
+    public IReadOnlyList<string> GetGrantedHarnessSurfaces()
+        => (GetOptional("--granted-harness-surfaces") ?? string.Empty)
+            .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
 }

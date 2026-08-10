@@ -63,7 +63,8 @@ static async Task<int> RunLintRunAsync(string[] args, AgentProfile profile, ILog
             WikiRoot: options.WikiRoot,
             SystemPromptPath: options.SystemPromptPath,
             PolicyPath: options.PolicyPath,
-            HeartbeatSeconds: options.HeartbeatSeconds),
+            HeartbeatSeconds: options.HeartbeatSeconds,
+            GrantedHarnessSurfaces: options.GrantedHarnessSurfaces),
         runEvents,
         intent,
         CancellationToken.None);
@@ -84,7 +85,8 @@ static LintCliOptions ReadCliOptions(string[] args)
         // shared AgentArgumentReader helper, since only Lint has this option.
         ReviewWindowDays: int.TryParse(reader.GetOptional("--review-window-days"), out var parsedReviewWindow) && parsedReviewWindow > 0
             ? parsedReviewWindow
-            : 90);
+            : 90,
+        GrantedHarnessSurfaces: reader.GetGrantedHarnessSurfaces());
 }
 
 /// <summary>
@@ -109,7 +111,8 @@ static async Task<int> RunRemediationExecutionAsync(string[] args, AgentProfile 
             WikiRoot: options.WikiRoot,
             SystemPromptPath: options.SystemPromptPath,
             PolicyPath: options.PolicyPath,
-            HeartbeatSeconds: options.HeartbeatSeconds),
+            HeartbeatSeconds: options.HeartbeatSeconds,
+            GrantedHarnessSurfaces: options.GrantedHarnessSurfaces),
         runEvents,
         intent,
         CancellationToken.None);
@@ -130,7 +133,8 @@ static RemediationExecutionCliOptions ReadRemediationExecutionCliOptions(string[
         ProposalDescription: reader.GetRequired("--proposal-description"),
         ProposalTargetPath: reader.GetOptional("--proposal-target-path"),
         AttachedContext: reader.GetOptional("--attached-context"),
-        HeartbeatSeconds: reader.GetHeartbeatSeconds());
+        HeartbeatSeconds: reader.GetHeartbeatSeconds(),
+        GrantedHarnessSurfaces: reader.GetGrantedHarnessSurfaces());
 }
 
 /// <summary>
@@ -157,7 +161,8 @@ static async Task<int> RunMessageTurnAsync(string[] args, AgentProfile profile, 
             WikiRoot: options.WikiRoot,
             SystemPromptPath: options.SystemPromptPath,
             PolicyPath: options.PolicyPath,
-            HeartbeatSeconds: options.HeartbeatSeconds),
+            HeartbeatSeconds: options.HeartbeatSeconds,
+            GrantedHarnessSurfaces: options.GrantedHarnessSurfaces),
         runEvents,
         intent,
         CancellationToken.None);
@@ -178,7 +183,8 @@ static RemediationMessageTurnCliOptions ReadMessageTurnCliOptions(string[] args)
         ProposalDescription: reader.GetRequired("--proposal-description"),
         ProposalTargetPath: reader.GetOptional("--proposal-target-path"),
         AttachedContext: reader.GetOptional("--attached-context"),
-        HeartbeatSeconds: reader.GetHeartbeatSeconds());
+        HeartbeatSeconds: reader.GetHeartbeatSeconds(),
+        GrantedHarnessSurfaces: reader.GetGrantedHarnessSurfaces());
 }
 
 /// <summary>
@@ -314,7 +320,8 @@ internal sealed class LintIntentHandler : IAgentIntentHandler
             TurnsUsed: result.TurnsUsed,
             DeniedActions: executor.Denials,
             CreatedArtifacts: executor.TouchedPaths,
-            ProposedActions: proposedActions.Count > 0 ? proposedActions : null));
+            ProposedActions: proposedActions.Count > 0 ? proposedActions : null,
+            GrantedHarnessSurfaces: _options.GrantedHarnessSurfaces));
         return 0;
     }
 
@@ -499,7 +506,8 @@ internal sealed class RemediationExecutionIntentHandler : IAgentIntentHandler
             TurnsUsed: result.TurnsUsed,
             DeniedActions: executor.Denials,
             CreatedArtifacts: executor.TouchedPaths,
-            RemediationOutcome: remediationOutcome);
+            RemediationOutcome: remediationOutcome,
+            GrantedHarnessSurfaces: _options.GrantedHarnessSurfaces);
 
         if (failed)
         {
@@ -657,7 +665,8 @@ internal sealed class MessageTurnIntentHandler : IAgentIntentHandler
             Model: modelClient.ModelId,
             TurnsUsed: result.TurnsUsed,
             DeniedActions: executor.Denials,
-            CreatedArtifacts: executor.TouchedPaths);
+            CreatedArtifacts: executor.TouchedPaths,
+            GrantedHarnessSurfaces: _options.GrantedHarnessSurfaces);
 
         // No outcome block (contract: "no new field: the agent's reply travels in the
         // existing text field of the completed event") — the whole narrative IS the reply.

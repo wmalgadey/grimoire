@@ -42,11 +42,19 @@ public sealed record RecordedTurn(
     // "Run Completion Metadata". Defaults to `[]` so the many pre-feature call sites
     // (parser reconstruction from records predating this feature, existing tests) need
     // no change.
-    IReadOnlyList<string>? CreatedPages = null)
+    IReadOnlyList<string>? CreatedPages = null,
+    // ADR-023 (022-align-wiki-structure, Phase 5, FR-017/SC-011): wiki-content-root
+    // surface names (not paths — no relativization needed), same "always present, never
+    // omitted" convention as CreatedPages once written; defaults to null so pre-feature
+    // positional call sites (test fixtures reconstructing a RecordedTurn) keep compiling.
+    IReadOnlyList<string>? GrantedHarnessSurfaces = null)
 {
     /// <summary>Non-null view of <see cref="CreatedPages"/> (constructor default is null so
     /// positional pre-feature call sites compile unchanged).</summary>
     public IReadOnlyList<string> CreatedPagesOrEmpty => CreatedPages ?? [];
+
+    /// <summary>Non-null view of <see cref="GrantedHarnessSurfaces"/>, mirroring <see cref="CreatedPagesOrEmpty"/>.</summary>
+    public IReadOnlyList<string> GrantedHarnessSurfacesOrEmpty => GrantedHarnessSurfaces ?? [];
 
     /// <summary>
     /// The <c>{ position, prompt, answer, state }</c> context projection — exactly the
@@ -78,7 +86,8 @@ public sealed record RecordedTurn(
         Prompt == other.Prompt &&
         Answer == other.Answer &&
         DeniedActions.SequenceEqual(other.DeniedActions) &&
-        CreatedPagesOrEmpty.SequenceEqual(other.CreatedPagesOrEmpty);
+        CreatedPagesOrEmpty.SequenceEqual(other.CreatedPagesOrEmpty) &&
+        GrantedHarnessSurfacesOrEmpty.SequenceEqual(other.GrantedHarnessSurfacesOrEmpty);
 
     public override int GetHashCode() => HashCode.Combine(TurnId, Position, State, Prompt, Answer);
 }

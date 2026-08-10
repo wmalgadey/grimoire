@@ -112,6 +112,15 @@ public class AgentArtifactNamingRuleTests
         "HubCliCommandTests",
         "HubCliConcurrencyTests",
         "HubCliParityTests",
+        // 022-align-wiki-structure (Phase 5, T067): exercises all three of ADR-023's
+        // named provenance records side by side — the Ingest task artifact
+        // (Grimoire.IngestAgent.TaskArtifact), the terminal NDJSON event
+        // (cross-agent Grimoire.AgentRuntime.RunEvents), and the Query conversation
+        // record (Grimoire.Hub.QueryConversations) — genuinely cross-agent, same
+        // precedent as SiblingDirectoryLayoutTests below: QueryConversations is not one
+        // of Part 1's reference-detection prefixes, so without this exemption the scan
+        // would see only the Ingest reference.
+        "HarnessSurfaceGrantProvenanceTests",
     ];
 
     // Shared fixture namespaces: everything under *.Fakes is cross-agent by definition
@@ -240,6 +249,12 @@ public class AgentArtifactNamingRuleTests
         "Grimoire.Hub.OperationalState",
         "Grimoire.Hub.Conversion",
         "Grimoire.Hub.Cli",
+        // 022-align-wiki-structure (Phase 5, ADR-023): HarnessSurfaceReadOptions and
+        // HarnessSurfaceGrantResolver govern one uniform grant set applied to every
+        // agent spawn (spec clarification 2026-08-09: no per-agent variant exists) —
+        // genuinely cross-agent, like QueryConcurrencyOptions/LintReviewWindowOptions'
+        // own dispatch-adjacent namespaces are for their one agent.
+        "Grimoire.Hub.HarnessSurfaces",
     ];
 
     [Fact]

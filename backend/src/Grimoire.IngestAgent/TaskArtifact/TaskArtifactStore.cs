@@ -48,6 +48,9 @@ public sealed class TaskArtifactStore
         sb.AppendLine($"rolled_back: {(doc.RolledBack.HasValue ? (doc.RolledBack.Value ? "true" : "false") : "null")}");
         sb.AppendLine($"user_prompt_source: {(doc.UserPromptSource is null ? "null" : doc.UserPromptSource)}");
         sb.AppendLine($"convert_steps: {BuildConvertSteps(doc.ConvertSteps)}");
+        // ADR-023 (022-align-wiki-structure, Phase 5, FR-017/SC-011): same list-serialiser
+        // idiom as pages_touched/pages_created above.
+        sb.AppendLine($"granted_harness_surfaces: {BuildStringList(doc.GrantedHarnessSurfaces)}");
         sb.AppendLine($"failure_reason: {failure}");
         sb.AppendLine("---");
         sb.AppendLine();
@@ -157,6 +160,9 @@ public sealed class TaskArtifactStore
         var pagesCreated = ParseStringList(frontmatter, "pages_created");
         var pagesUpdated = ParseStringList(frontmatter, "pages_updated");
         var pagesSuperseded = ParseStringList(frontmatter, "pages_superseded");
+        // ADR-023 (022-align-wiki-structure, Phase 5): absent on records predating this
+        // feature — ParseStringList returns [] when the key is missing (forward-compat).
+        var grantedHarnessSurfaces = ParseStringList(frontmatter, "granted_harness_surfaces");
 
         DateTimeOffset? completedAt = frontmatter.TryGetValue("completed_at", out var completedAtRaw) && !string.Equals(completedAtRaw, "null", StringComparison.OrdinalIgnoreCase)
             ? DateTimeOffset.Parse(completedAtRaw, CultureInfo.InvariantCulture)
@@ -231,7 +237,8 @@ public sealed class TaskArtifactStore
             RolledBack: rolledBack,
             UserPromptSource: userPromptSource,
             UserPrompt: userPrompt,
-            ConvertSteps: convertSteps);
+            ConvertSteps: convertSteps,
+            GrantedHarnessSurfaces: grantedHarnessSurfaces);
     }
 
     private static string NarrativeWithoutUserPromptSection(string body)

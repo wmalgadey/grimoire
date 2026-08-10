@@ -37,7 +37,11 @@ public sealed record PolicyDecision(
 
     /// <summary>Constructs a denied decision with an explicit reason.</summary>
     /// <param name="reason">
-    /// One of: <c>no_rule</c>, <c>out_of_scope</c>, <c>traversal</c> (pure
+    /// One of: <c>no_rule</c>, <c>out_of_scope</c>, <c>traversal</c>,
+    /// <c>harness_surface_not_granted</c> (ADR-023, 022-align-wiki-structure Phase 5 — a
+    /// read-scope target falls under a reserved harness surface the operator has not
+    /// granted; checked before the read allow loop, distinct from <c>no_rule</c> so an
+    /// operator can tell "not granted" apart from "outside the policy") (pure
     /// <see cref="SafetyPolicy"/> scope decisions), or one of the write-coordination
     /// reasons produced by <c>Coordination.SharedFileWriteGuard</c>.
     /// </param>

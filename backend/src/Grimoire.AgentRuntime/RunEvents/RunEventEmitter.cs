@@ -35,7 +35,13 @@ public sealed record RunCompletionMetadata(
     // never computed by the harness (Principle V); only the remediation-execution mode
     // sets it. The accompanying reason travels via <see cref="RunEventEmitter.EmitCompleted"/>'s
     // own <c>reason</c> parameter, mirroring <c>EmitFailed</c>'s shape.
-    string? RemediationOutcome = null);
+    string? RemediationOutcome = null,
+    // ADR-023 (022-align-wiki-structure, Phase 5, FR-017/SC-011): the ordered list of
+    // reserved harness-surface names this run was permitted to read (the same list every
+    // spawn received on its --granted-harness-surfaces CLI argument). Rides the terminal
+    // event like DeniedActions/CreatedArtifacts above — mechanical transport, no judgment.
+    // Null/empty means none granted (deny-by-default).
+    IReadOnlyList<string>? GrantedHarnessSurfaces = null);
 
 /// <summary>
 /// One agent-proposed remediation action as reported on the lint-run terminal event
@@ -152,6 +158,9 @@ public sealed class RunEventEmitter : IDisposable
             // T035 (015-lint-board-parity, ADR-018): remediation-execution mode's
             // re-verification outcome, null for every other agent/mode.
             remediationOutcome = metadata?.RemediationOutcome,
+            // ADR-023 (022-align-wiki-structure, Phase 5, FR-017/SC-011): the effective
+            // read-scope grant for this run.
+            grantedHarnessSurfaces = metadata?.GrantedHarnessSurfaces,
         };
 
     private void Emit(object payload)

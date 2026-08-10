@@ -27,7 +27,14 @@ namespace Grimoire.AgentRuntime.Guardrails;
 /// US4 extension (014-wiki-storage-restructure), <c>catalog_entry_malformed</c> (a newly
 /// added <c>index.md</c> line starting with <c>- [</c> — present in the proposed content
 /// but absent, byte-for-byte, from the current content — does not match
-/// <c>^- \[.+\]\(.+\) — .+ — .+$</c>).
+/// <c>^- \[.+\]\(.+\) — .+ — .+$</c>); or, since ADR-023 (022-align-wiki-structure Phase
+/// 5), <c>harness_surface_not_granted</c> (a read-scope target — <c>list_files</c> or
+/// <c>read_file</c> — falls under one of the four reserved harness surfaces
+/// (<c>tasks/</c>, <c>conversations/</c>, <c>findings/</c>, <c>remediation-tasks/</c>)
+/// the operator has not granted via <c>Grimoire:HarnessSurfaceReads</c>; checked before
+/// <see cref="Grimoire.Domain.Guardrails.SafetyPolicy"/>'s read allow loop, distinct from
+/// <c>no_rule</c> so an operator can distinguish "you have not granted this" from "this
+/// is outside the policy" — SC-010).
 /// </summary>
 public sealed record DeniedActionRecord(
     string Action,

@@ -1,6 +1,7 @@
 using System.Collections.Concurrent;
 using System.Diagnostics;
 using Grimoire.Hub.ContentRoot;
+using Grimoire.Hub.HarnessSurfaces;
 using Grimoire.Hub.IngestSubmission;
 using Grimoire.Hub.OperationalState;
 using Grimoire.Hub.Realtime;
@@ -41,6 +42,7 @@ public sealed class IngestRunCoordinator
     private readonly TimeProvider _timeProvider;
     private readonly TimeSpan _livenessWindow;
     private readonly ILogger<IngestRunCoordinator> _logger;
+    private readonly HarnessSurfaceReadOptions _harnessSurfaceReadOptions;
 
     private readonly SemaphoreSlim _slotLock = new(1, 1);
     private readonly ConcurrentDictionary<string, RunActivitySnapshot> _activity = new();
@@ -55,7 +57,12 @@ public sealed class IngestRunCoordinator
         ResolvedGrimoirePaths resolvedPaths,
         TimeProvider? timeProvider = null,
         TimeSpan? livenessWindow = null,
-        ILogger<IngestRunCoordinator>? logger = null)
+        ILogger<IngestRunCoordinator>? logger = null,
+        // ADR-023 (022-align-wiki-structure, Phase 5): defaults to a fresh
+        // (all-false, deny-by-default) options instance so every pre-existing call site
+        // (including every test harness constructing this coordinator directly) keeps
+        // compiling and behaving exactly as before this feature.
+        HarnessSurfaceReadOptions? harnessSurfaceReadOptions = null)
     {
         _repository = repository;
         _launcher = launcher;
@@ -66,6 +73,7 @@ public sealed class IngestRunCoordinator
         _timeProvider = timeProvider ?? TimeProvider.System;
         _livenessWindow = livenessWindow ?? TimeSpan.FromSeconds(60);
         _logger = logger ?? NullLogger<IngestRunCoordinator>.Instance;
+        _harnessSurfaceReadOptions = harnessSurfaceReadOptions ?? new HarnessSurfaceReadOptions();
     }
 
     public string? RunningTaskId => _runningTaskId;
@@ -216,7 +224,8 @@ public sealed class IngestRunCoordinator
             DefaultUserPromptPath: _resolvedPaths.Ingest.DefaultUserPromptPath!,
             PolicyPath: _resolvedPaths.Ingest.PolicyPath,
             WriteLocksDir: _contentPaths.WriteLocksDir,
-            UserPrompt: run.UserPrompt);
+            UserPrompt: run.UserPrompt,
+            GrantedHarnessSurfaces: HarnessSurfaceGrantResolver.ResolveGranted(_harnessSurfaceReadOptions));
 
         IAgentProcessHandle handle;
         try

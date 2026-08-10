@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using Grimoire.Hub.HarnessSurfaces;
 using Grimoire.Hub.OperationalState;
 using Grimoire.Hub.Runtime.Paths;
 using Microsoft.Extensions.Logging;
@@ -37,6 +38,7 @@ public sealed class RemediationRunCoordinator
     private readonly TimeProvider _timeProvider;
     private readonly TimeSpan _livenessWindow;
     private readonly ILogger<RemediationRunCoordinator> _logger;
+    private readonly HarnessSurfaceReadOptions _harnessSurfaceReadOptions;
 
     private readonly SemaphoreSlim _slotLock = new(1, 1);
     private string? _runningTaskId;
@@ -49,13 +51,17 @@ public sealed class RemediationRunCoordinator
         ResolvedGrimoirePaths paths,
         TimeProvider? timeProvider = null,
         TimeSpan? livenessWindow = null,
-        ILogger<RemediationRunCoordinator>? logger = null)
+        ILogger<RemediationRunCoordinator>? logger = null,
+        // ADR-023 (022-align-wiki-structure, Phase 5): defaults to a fresh (deny-by-
+        // default) options instance so every pre-existing call site keeps compiling.
+        HarnessSurfaceReadOptions? harnessSurfaceReadOptions = null)
     {
         _repository = repository;
         _launcher = launcher;
         _publisher = publisher;
         _recordStore = recordStore;
         _paths = paths;
+        _harnessSurfaceReadOptions = harnessSurfaceReadOptions ?? new HarnessSurfaceReadOptions();
         _timeProvider = timeProvider ?? TimeProvider.System;
         _livenessWindow = livenessWindow ?? TimeSpan.FromSeconds(60);
         _logger = logger ?? NullLogger<RemediationRunCoordinator>.Instance;
@@ -202,7 +208,8 @@ public sealed class RemediationRunCoordinator
             SystemPromptPath: _paths.Lint.SystemPromptPath,
             PolicyPath: _paths.Lint.PolicyPath,
             WriteLocksDir: _paths.WriteLocksDir,
-            AttachedContext: attachedContext);
+            AttachedContext: attachedContext,
+            GrantedHarnessSurfaces: HarnessSurfaceGrantResolver.ResolveGranted(_harnessSurfaceReadOptions));
 
         AgentDispatch.IAgentProcessHandle handle;
         try
