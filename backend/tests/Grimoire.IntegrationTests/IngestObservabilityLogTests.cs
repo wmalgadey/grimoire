@@ -134,6 +134,23 @@ public class IngestObservabilityLogTests
     }
 
     [Fact]
+    public void HubSubmissionConfigRejectedEvent_StripsLineBreaksFromUserControlledFields()
+    {
+        var logger = new CaptureLogger<IngestObservabilityLogTests>();
+
+        IngestSubmissionLogEvents.LogConfigRejected(
+            logger,
+            sourceKind: "url\r\nforged",
+            reason: "unknown_convert_step:\nspoofed");
+
+        var entry = Assert.Single(logger.Entries.Where(e => e.EventName == "ingest.submission.config_rejected"));
+        Assert.Equal("urlforged", entry.Fields["source_kind"]);
+        Assert.Equal("unknown_convert_step:spoofed", entry.Fields["reason"]);
+        Assert.DoesNotContain('\r', entry.Message);
+        Assert.DoesNotContain('\n', entry.Message);
+    }
+
+    [Fact]
     public async Task AgentCompletedEvent_ReportsJournalDerivedCounts_ForMixedCreateUpdateRun()
     {
         var root = Path.Combine(Path.GetTempPath(), $"log-completed-{Guid.NewGuid():N}");
