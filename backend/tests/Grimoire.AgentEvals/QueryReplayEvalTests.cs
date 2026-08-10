@@ -55,6 +55,18 @@ public class QueryReplayEvalTests
     public Task SC008_SynthesisDeclineEditRequest_ReplaysAtThreshold()
         => AssertScenarioAsync(QueryScenarioDefinitions.SynthesisDeclineEditRequest);
 
+    // 022-align-wiki-structure (US1): the two new scenarios that verify the reported
+    // defect is fixed — a populated content root is described accurately (SC-006) and a
+    // genuinely empty one is described honestly without referencing the retired wrapper
+    // path (SC-007).
+    [Fact]
+    public Task SC006_WikiStateReport_ReplaysAtThreshold()
+        => AssertScenarioAsync(QueryScenarioDefinitions.WikiStateReport);
+
+    [Fact]
+    public Task SC007_EmptyWikiHonesty_ReplaysAtThreshold()
+        => AssertScenarioAsync(QueryScenarioDefinitions.EmptyWikiHonesty);
+
     private static async Task AssertScenarioAsync(QueryScenarioDefinition scenario)
     {
         var paths = EvalPaths.Discover();

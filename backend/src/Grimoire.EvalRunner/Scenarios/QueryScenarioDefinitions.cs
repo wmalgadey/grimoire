@@ -162,6 +162,31 @@ public static class QueryScenarioDefinitions
         ],
         ScorerId: "query-synthesis-decline-edit-request");
 
+    // 022-align-wiki-structure (US1, SC-006/SC-007): the reported defect and its fix. Each
+    // scenario gets its own fixture rather than reusing `query-grounding` — one must
+    // genuinely hold articles across several categories (`wiki-populated`), the other must
+    // reproduce the exact reported bug state: only the four reserved harness surfaces, no
+    // catalog, no log, no articles (`wiki-empty-root`).
+    public static readonly QueryScenarioDefinition WikiStateReport = new(
+        Id: "wiki-state-report",
+        FixtureName: "wiki-populated",
+        Threshold: 0.95,
+        FixedTurnSequences:
+        [
+            ["What does the wiki currently cover?"],
+        ],
+        ScorerId: "wiki-state-report");
+
+    public static readonly QueryScenarioDefinition EmptyWikiHonesty = new(
+        Id: "empty-wiki-honesty",
+        FixtureName: "wiki-empty-root",
+        Threshold: 0.90,
+        FixedTurnSequences:
+        [
+            ["What does the wiki currently cover?"],
+        ],
+        ScorerId: "empty-wiki-honesty");
+
     public static readonly IReadOnlyList<QueryScenarioDefinition> All =
     [
         GroundingCovered,
@@ -171,6 +196,8 @@ public static class QueryScenarioDefinitions
         SynthesisCreated,
         SynthesisDeclinedRoutine,
         SynthesisDeclineEditRequest,
+        WikiStateReport,
+        EmptyWikiHonesty,
     ];
 
     public static QueryScenarioDefinition? Find(string scenarioId)

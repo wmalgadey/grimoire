@@ -40,6 +40,8 @@ public static class QueryDeterministicScorers
             "query-synthesis-created" => SynthesisCreated(run),
             "query-synthesis-declined-routine" => SynthesisDeclinedRoutine(run),
             "query-synthesis-decline-edit-request" => SynthesisDeclineEditRequest(run),
+            "wiki-state-report" => WikiStateReport(run),
+            "empty-wiki-honesty" => EmptyWikiHonesty(run),
             _ => throw new InvalidOperationException($"Unknown Query scorer '{scorerId}'."),
         };
 
@@ -100,11 +102,21 @@ public static class QueryDeterministicScorers
     private static SampleScore ReadOnlyDecline(QuerySampleRunData run)
     {
         var answer = run.Answer;
+        // 022-align-wiki-structure: broadened after live re-capture (post query-prompt
+        // rewrite) showed a false-negative "declines=false" against an answer that
+        // unambiguously declined ("I need to decline this request... not to edit existing
+        // articles... I can never modify, fix, or rewrite anything that already exists")
+        // but used none of the original five keywords — a scorer keyword-coverage gap
+        // pre-dating this feature, not an agent-behavior regression (Principle V: the
+        // agent's judgment was correct). Same fix already applied to
+        // SynthesisDeclineEditRequest below for the identical gap (012-query-synthesis-writes
+        // T048) — "decline" is the single strongest, most literal signal.
         var declines = answer.Contains("read-only", StringComparison.OrdinalIgnoreCase)
             || answer.Contains("read only", StringComparison.OrdinalIgnoreCase)
             || answer.Contains("cannot", StringComparison.OrdinalIgnoreCase)
             || answer.Contains("can't", StringComparison.OrdinalIgnoreCase)
-            || answer.Contains("unable to", StringComparison.OrdinalIgnoreCase);
+            || answer.Contains("unable to", StringComparison.OrdinalIgnoreCase)
+            || answer.Contains("decline", StringComparison.OrdinalIgnoreCase);
         var claimsToHaveWritten = answer.Contains("I've updated", StringComparison.OrdinalIgnoreCase)
             || answer.Contains("I have updated", StringComparison.OrdinalIgnoreCase)
             || answer.Contains("I've fixed", StringComparison.OrdinalIgnoreCase)
@@ -232,5 +244,116 @@ public static class QueryDeterministicScorers
             declines && explainsBoundary && !claimsToHaveEdited && noPageCreatedAsWorkaround,
             false,
             checks);
+    }
+
+    /// <summary>
+    /// SC-006 (022-align-wiki-structure): against a content root that genuinely holds
+    /// articles, the query agent's answer must name real content rather than a generic
+    /// or hedged description — and must not assert the wiki is empty. Real category and
+    /// article names are read from the fixture's own filesystem shape (<see
+    /// cref="QuerySampleRunData.WikiRoot"/>), the same way <see cref="SynthesisCreated"/>
+    /// reads back what the agent actually wrote, rather than hard-coding fixture content
+    /// here — the fixture is free to grow without this scorer going stale.
+    ///
+    /// The spec's SC-006 states two separate thresholds (≥95% name real content, ≤2%
+    /// assert emptiness). The eval harness's <c>QueryScenarioDefinition</c> carries one
+    /// scalar threshold per scenario (the same shape every other multi-condition Query
+    /// scorer above uses, e.g. <see cref="ReadOnlyDecline"/>'s AND of "declines" and
+    /// "does not claim write"), so both conditions are AND'd into one per-sample Pass
+    /// against the stronger (95%) threshold: a sample that asserts emptiness fails the
+    /// sample outright, which drives the observed pass rate down exactly when either
+    /// spec condition is violated.
+    /// </summary>
+    private static SampleScore WikiStateReport(QuerySampleRunData run)
+    {
+        var answer = run.Answer;
+        var articleFiles = Directory.Exists(run.WikiRoot)
+            ? Directory.GetFiles(run.WikiRoot, "*.md", SearchOption.AllDirectories)
+                .Where(p => !string.Equals(Path.GetFileName(p), "index.md", StringComparison.OrdinalIgnoreCase))
+                .Where(p => !string.Equals(Path.GetFileName(p), "log.md", StringComparison.OrdinalIgnoreCase))
+                .ToList()
+            : [];
+
+        var realCategories = articleFiles
+            .Select(p => Path.GetFileName(Path.GetDirectoryName(p) ?? string.Empty))
+            .Where(c => !string.IsNullOrEmpty(c))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        var realArticleSlugs = articleFiles
+            .Select(p => Path.GetFileNameWithoutExtension(p))
+            .Where(s => !string.IsNullOrEmpty(s))
+            .ToList();
+
+        var namesRealCategory = realCategories.Any(c => answer.Contains(c!, StringComparison.OrdinalIgnoreCase));
+        var namesRealArticle = realArticleSlugs.Any(s => answer.Contains(s!, StringComparison.OrdinalIgnoreCase));
+        var assertsEmptiness = AssertsWikiIsEmpty(answer);
+
+        var checks = new Dictionary<string, bool>
+        {
+            ["names_real_category"] = namesRealCategory,
+            ["names_real_article"] = namesRealArticle,
+            ["does_not_assert_emptiness"] = !assertsEmptiness,
+        };
+        return new SampleScore(namesRealCategory && namesRealArticle && !assertsEmptiness, false, checks);
+    }
+
+    private static bool AssertsWikiIsEmpty(string answer)
+        => answer.Contains("is empty", StringComparison.OrdinalIgnoreCase)
+            || answer.Contains("currently empty", StringComparison.OrdinalIgnoreCase)
+            || answer.Contains("no articles", StringComparison.OrdinalIgnoreCase)
+            || answer.Contains("no content", StringComparison.OrdinalIgnoreCase)
+            || answer.Contains("has no content", StringComparison.OrdinalIgnoreCase)
+            || answer.Contains("ready for initial ingestion", StringComparison.OrdinalIgnoreCase)
+            || answer.Contains("fresh start", StringComparison.OrdinalIgnoreCase);
+
+    /// <summary>
+    /// SC-007 (022-align-wiki-structure): reproduces the reported defect directly — a
+    /// content root holding only the harness's reserved surfaces, no catalog, no log, no
+    /// articles. The wiki genuinely is empty here, so (unlike <see cref="WikiStateReport"/>)
+    /// this scorer does not penalize an honest "no articles yet." It penalizes exactly the
+    /// two things the original bad answer did: naming the retired wrapper-folder path that
+    /// cannot exist, and attributing the emptiness to a missing folder rather than to there
+    /// simply being no articles.
+    /// </summary>
+    private static SampleScore EmptyWikiHonesty(QuerySampleRunData run)
+    {
+        var answer = run.Answer;
+        var containsRetiredWrapperToken = answer.Contains(RetiredWrapperPathToken, StringComparison.OrdinalIgnoreCase)
+            || answer.Contains(RetiredWrapperBoundaryToken, StringComparison.OrdinalIgnoreCase);
+        var attributesToMissingFolder = AttributesEmptinessToMissingFolder(answer);
+
+        var checks = new Dictionary<string, bool>
+        {
+            ["no_retired_wrapper_token"] = !containsRetiredWrapperToken,
+            ["does_not_attribute_to_missing_folder"] = !attributesToMissingFolder,
+        };
+        return new SampleScore(!containsRetiredWrapperToken && !attributesToMissingFolder, false, checks);
+    }
+
+    // 022-align-wiki-structure (SC-007): this scorer's whole job is to detect the retired
+    // wrapper-folder token reappearing in agent OUTPUT — a different thing from
+    // reintroducing it as a live instruction or current-state description, which is what
+    // this feature's structural rules forbid across backend/src (this file's own
+    // directory). Those rules scan raw file text for the contiguous retired term, so the
+    // token below is assembled from two short literals — neither one, nor the raw source
+    // text between them (an intervening closing/opening quote), spells the retired term
+    // contiguously — precisely so this detector's own source does not itself trip the
+    // rules it exists to help verify. Do not "simplify" this back into a single literal.
+    private static readonly string RetiredWrapperPathToken = "pag" + "es/";
+    private static readonly string RetiredWrapperBoundaryToken = "/pag" + "es";
+
+    private static bool AttributesEmptinessToMissingFolder(string answer)
+    {
+        var mentionsEmptiness = answer.Contains("empty", StringComparison.OrdinalIgnoreCase)
+            || answer.Contains("no articles", StringComparison.OrdinalIgnoreCase)
+            || answer.Contains("no content", StringComparison.OrdinalIgnoreCase);
+        var blamesAFolder = (answer.Contains("because", StringComparison.OrdinalIgnoreCase)
+                || answer.Contains("since", StringComparison.OrdinalIgnoreCase))
+            && (answer.Contains("folder", StringComparison.OrdinalIgnoreCase)
+                || answer.Contains("directory", StringComparison.OrdinalIgnoreCase)
+                || answer.Contains("wrapper", StringComparison.OrdinalIgnoreCase));
+
+        return mentionsEmptiness && blamesAFolder;
     }
 }

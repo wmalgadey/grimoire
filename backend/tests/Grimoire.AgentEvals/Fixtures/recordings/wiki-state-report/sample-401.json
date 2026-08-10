@@ -1,0 +1,127 @@
+{
+  "schema_version": 1,
+  "sample": 401,
+  "task_id": "capture-wiki-state-report-04-t1-98d111a241334756a4f8276c706c10a8",
+  "model": "claude-haiku-4-5",
+  "turns": [
+    {
+      "turn": 1,
+      "system_prompt_sha256": "sha256:2f39df798e66766980daa82ca82e8324df017cf9a4453e4b27e5bbf7d1df15c8",
+      "conversation": [
+        {
+          "role": "user",
+          "content_sha256": "sha256:9995368bd45311b566307dd0e01c1c8828fa428d00be5dc887b7601dd51bada4"
+        }
+      ],
+      "tool_names": [
+        "list_files",
+        "read_file",
+        "write_file"
+      ],
+      "stop_reason": "tool_use",
+      "tool_uses": [
+        {
+          "tool_use_id": "toolu_01TzDXp9ztdDjod33KuCzNDM",
+          "tool_name": "list_files",
+          "input_json": "{\u0022path\u0022: \u0022.\u0022}"
+        }
+      ],
+      "assistant_text": "I\u0027ll explore the wiki to see what it currently contains.",
+      "input_tokens": 4702,
+      "output_tokens": 65
+    },
+    {
+      "turn": 2,
+      "system_prompt_sha256": "sha256:2f39df798e66766980daa82ca82e8324df017cf9a4453e4b27e5bbf7d1df15c8",
+      "conversation": [
+        {
+          "role": "user",
+          "content_sha256": "sha256:9995368bd45311b566307dd0e01c1c8828fa428d00be5dc887b7601dd51bada4"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:373f072e1dc081abc181fdcf613ad29a34e3e76ceb29bddc31f738bc269c83f6"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:c0b73915690efa180357f0e0567eb78fa14ab2caf5bb50439760bc8ba5db5c7c"
+        }
+      ],
+      "tool_names": [
+        "list_files",
+        "read_file",
+        "write_file"
+      ],
+      "stop_reason": "tool_use",
+      "tool_uses": [
+        {
+          "tool_use_id": "toolu_01WMnfmDbThTq7xCbuRtUP9t",
+          "tool_name": "read_file",
+          "input_json": "{\u0022path\u0022: \u0022index.md\u0022}"
+        },
+        {
+          "tool_use_id": "toolu_01NtSHvERrat1AXvNYkLgNLG",
+          "tool_name": "list_files",
+          "input_json": "{\u0022path\u0022: \u0022concepts\u0022}"
+        },
+        {
+          "tool_use_id": "toolu_01TYWpnmLWzBjqFok3F1CtYD",
+          "tool_name": "list_files",
+          "input_json": "{\u0022path\u0022: \u0022tech\u0022}"
+        },
+        {
+          "tool_use_id": "toolu_01Ax6zeMJUonNxMMbX8cicuw",
+          "tool_name": "list_files",
+          "input_json": "{\u0022path\u0022: \u0022tools\u0022}"
+        }
+      ],
+      "assistant_text": "Good, the wiki has some structure. Let me read the index and see what articles exist, then check each category folder.",
+      "input_tokens": 4795,
+      "output_tokens": 189
+    },
+    {
+      "turn": 3,
+      "system_prompt_sha256": "sha256:2f39df798e66766980daa82ca82e8324df017cf9a4453e4b27e5bbf7d1df15c8",
+      "conversation": [
+        {
+          "role": "user",
+          "content_sha256": "sha256:9995368bd45311b566307dd0e01c1c8828fa428d00be5dc887b7601dd51bada4"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:373f072e1dc081abc181fdcf613ad29a34e3e76ceb29bddc31f738bc269c83f6"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:c0b73915690efa180357f0e0567eb78fa14ab2caf5bb50439760bc8ba5db5c7c"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:c29a2c53f0688939ea33ddb1ffc885b7df5b0ddc7436aeacc8d9cbf79abb9093"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:6e406178e750242cc69c1b9460d77d0411ed6fa669eb681320335aba89884eca"
+        }
+      ],
+      "tool_names": [
+        "list_files",
+        "read_file",
+        "write_file"
+      ],
+      "stop_reason": "end_turn",
+      "tool_uses": [],
+      "assistant_text": "Perfect! Here\u0027s what the wiki currently covers:\n\n## Wiki Coverage\n\nThe wiki is small but well-structured, with **4 active articles** organized into 3 category folders:\n\n### **concepts/**\n- [[concepts/idempotency]] \u2014 An operation that can be applied multiple times without changing the result beyond the first application.\n\n### **tech/**\n- [[tech/kubernetes]] \u2014 Container orchestration platform for running workloads across a cluster.\n- [[tech/circuit-breaker]] \u2014 Fail fast against a downstream dependency that is already struggling.\n\n### **tools/**\n- [[tools/terraform]] \u2014 Infrastructure-as-code tool for declaratively provisioning cloud resources.\n\nAll articles are marked as **active** status. The wiki has both an index (\u0060index.md\u0060) and an activity log (\u0060log.md\u0060), providing a foundation for future growth. The categories are open-ended, so new topics can be added in these folders or new category folders created as needed.",
+      "input_tokens": 5254,
+      "output_tokens": 214
+    }
+  ],
+  "outcome": {
+    "status": "completed",
+    "checks": {
+      "names_real_category": true,
+      "names_real_article": true,
+      "does_not_assert_emptiness": true
+    }
+  }
+}
