@@ -254,6 +254,6 @@ public static class IngestSubmissionLogEvents
         return span;
     }
 
-    private static string SanitizeForLog(string value) =>
-        value.Replace("\r", string.Empty).Replace("\n", string.Empty);
+    private static string SanitizeForLog(string? value) =>
+        (value ?? string.Empty).Replace("\r", string.Empty).Replace("\n", string.Empty);
 }
