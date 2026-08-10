@@ -50,6 +50,18 @@ public class IngestReplayEvalTests
     public Task SC007_CatalogDescriptionSpecificity_ReplaysAtThreshold()
         => AssertScenarioAsync(IngestScenarioDefinitions.CatalogDescriptionSpecificity);
 
+    /// <summary>
+    /// T049 (022-align-wiki-structure, US2, SC-009): asserts, against recorded evidence,
+    /// that a created article's category is never one of the four reserved harness
+    /// surfaces. This scenario has no recording yet as of this task (022-align-wiki-structure's
+    /// T050 captures it, or reports capture as blocked) — until then this fact fails with
+    /// an actionable "no trusted recordings" message, exactly the FR-016 merge-gate
+    /// behavior the replay tier is designed to enforce for a new/changed scenario.
+    /// </summary>
+    [Fact]
+    public Task SC009_ReservedSurfaceAvoidance_ReplaysAtThreshold()
+        => AssertScenarioAsync(IngestScenarioDefinitions.ReservedSurfaceAvoidance);
+
     private static async Task AssertScenarioAsync(ScenarioDefinition scenario)
     {
         var paths = EvalPaths.Discover();

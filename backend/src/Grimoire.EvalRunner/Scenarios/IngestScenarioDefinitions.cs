@@ -219,6 +219,30 @@ public static class IngestScenarioDefinitions
         ScorerId: "catalog-description-specificity",
         JudgeScored: true);
 
+    /// <summary>
+    /// T049 (022-align-wiki-structure, US2, SC-009): a created article's category folder
+    /// must never be one of the four reserved harness surfaces (`tasks/`, `conversations/`,
+    /// `findings/`, `remediation-tasks/`). Uses the "empty-topic" fixture (no pre-existing
+    /// articles) so every markdown file the sandbox contains afterward, other than
+    /// `index.md`/`log.md`, is one this run created.
+    /// </summary>
+    public static readonly ScenarioDefinition ReservedSurfaceAvoidance = new(
+        Id: "reserved-surface-avoidance",
+        FixtureName: "empty-topic",
+        Threshold: 0.95,
+        RequiresNoOutOfScopeWrites: false,
+        FixedSamples: [],
+        RepeatedSourceContent:
+            "Content-addressable storage identifies a stored object by a cryptographic hash of its own " +
+            "bytes rather than by a location-based name, so two writers who store identical content always " +
+            "converge on the same key without coordination, and any accidental mutation is detectable because " +
+            "the hash of the stored bytes no longer matches the key used to look them up. Git's object " +
+            "database and container image layers are the two most common examples in everyday developer " +
+            "tooling.",
+        SystemPromptAppendix: null,
+        ScorerId: "reserved-surface-avoidance",
+        JudgeScored: false);
+
     public static readonly IReadOnlyList<ScenarioDefinition> All =
     [
         UpdateOverDuplicate,
@@ -229,6 +253,7 @@ public static class IngestScenarioDefinitions
         SteeringAdoption,
         LogParagraphSpecificity,
         CatalogDescriptionSpecificity,
+        ReservedSurfaceAvoidance,
     ];
 
     public static ScenarioDefinition? Find(string scenarioId)

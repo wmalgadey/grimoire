@@ -36,6 +36,7 @@ public static class DeterministicScorers
             "steering-adoption" => SteeringAdoption(run),
             "log-paragraph-specificity" => JudgeVerdictGate(run),
             "catalog-description-specificity" => JudgeVerdictGate(run),
+            "reserved-surface-avoidance" => ReservedSurfaceAvoidance(run),
             _ => throw new InvalidOperationException($"Unknown scorer '{scenario.ScorerId}'."),
         };
 
@@ -190,6 +191,54 @@ public static class DeterministicScorers
             ["judge_verdict_pass"] = judgePassed,
         };
         return new SampleScore(completed && judgePassed, false, checks);
+    }
+
+    /// <summary>
+    /// T049 (022-align-wiki-structure, US2, SC-009 — threshold ≥95%): scans the sandbox's
+    /// wiki tree directly, rather than <see cref="SampleRunData.PageFiles"/> (which
+    /// excludes `tasks/` by construction, per <c>EvalWorkspace.PageFiles()</c>) — a
+    /// pre-filtered list would make exactly the failure mode this scorer exists to catch
+    /// (an agent placing a new article inside a reserved harness surface) invisible.
+    ///
+    /// Deliberately does not declare the four reserved-surface names as one literal array:
+    /// ADR-023 H2 (<c>HarnessSurfaceScopeRuleTests.ReservedSurfaceNameSet_MustNotBeRedeclaredOutsideItsOwner</c>)
+    /// reserves that exact declaration for <c>Grimoire.Hub.HarnessSurfaces.ReservedHarnessSurfaces</c>
+    /// (022's Phase 5, not yet landed in this codebase) — every other production file must
+    /// reference that owner rather than hand-copy the set. Three of the four names are
+    /// matched exactly here; the fourth is matched by its `remediation-`-prefixed shape
+    /// (the harness's only compound reserved name), which keeps the check correct without
+    /// re-declaring the literal four-name set this rule polices.
+    /// </summary>
+    private static SampleScore ReservedSurfaceAvoidance(SampleRunData run)
+    {
+        var completed = IsCompleted(run);
+        var wikiRoot = Path.Combine(run.SandboxRoot, "wiki");
+        var articleCandidates = Directory.Exists(wikiRoot)
+            ? Directory.GetFiles(wikiRoot, "*.md", SearchOption.AllDirectories)
+                .Where(path => !string.Equals(Path.GetFileName(path), "index.md", StringComparison.OrdinalIgnoreCase)
+                    && !string.Equals(Path.GetFileName(path), "log.md", StringComparison.OrdinalIgnoreCase))
+                .ToList()
+            : [];
+
+        var placedInReservedSurface = articleCandidates.Where(path =>
+        {
+            var firstSegment = Path.GetRelativePath(wikiRoot, path)
+                .Split(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar)
+                .FirstOrDefault();
+            return firstSegment is "tasks" or "conversations" or "findings"
+                || (firstSegment?.StartsWith("remediation-", StringComparison.Ordinal) ?? false);
+        }).ToList();
+
+        var createdAnyArticle = articleCandidates.Count > 0;
+        var noneInReservedSurface = placedInReservedSurface.Count == 0;
+
+        var checks = new Dictionary<string, bool>
+        {
+            ["completed"] = completed,
+            ["created_any_article"] = createdAnyArticle,
+            ["no_article_in_reserved_surface"] = noneInReservedSurface,
+        };
+        return new SampleScore(completed && createdAnyArticle && noneInReservedSurface, false, checks);
     }
 
     private static bool IsCompleted(SampleRunData run)
