@@ -127,39 +127,7 @@ public class EvalProviderResolverTests
     }
 }
 
-/// <summary>
-/// T016 (US1) — the harness half of FR-008: the configured affordable-provider credential
-/// must never appear in a failure's <c>FailureReason</c>/<c>Narrative</c>. Mutates the real
-/// process environment (the sanitizer reads it directly, mirroring Program.cs), so this
-/// runs in the sequential <c>EvalProviderEnvironment</c> collection.
-/// </summary>
-[Trait("Tier", "Fast")]
-[Collection("EvalRunnerEnvMutatingTests")]
-public class EvalCredentialRedactionTests
-{
-    [Fact]
-    public void SanitizeErrorText_RedactsConfiguredAffordableProviderApiKey()
-    {
-        const string fakeKey = "nvapi-super-secret-eval-key-0123456789";
-        var originalKey = Environment.GetEnvironmentVariable("GRIMOIRE_EVAL_PROVIDER_API_KEY");
-        var originalToken = Environment.GetEnvironmentVariable("ANTHROPIC_AUTH_TOKEN");
-
-        try
-        {
-            Environment.SetEnvironmentVariable("GRIMOIRE_EVAL_PROVIDER_API_KEY", fakeKey);
-            Environment.SetEnvironmentVariable("ANTHROPIC_AUTH_TOKEN", null);
-
-            var rejectedAuthMessage = $"401 Unauthorized: invalid credential '{fakeKey}' for request to affordable provider";
-
-            var sanitized = EvalProviderResolver.SanitizeErrorText(rejectedAuthMessage);
-
-            Assert.DoesNotContain(fakeKey, sanitized, StringComparison.Ordinal);
-            Assert.Contains("[REDACTED]", sanitized, StringComparison.Ordinal);
-        }
-        finally
-        {
-            Environment.SetEnvironmentVariable("GRIMOIRE_EVAL_PROVIDER_API_KEY", originalKey);
-            Environment.SetEnvironmentVariable("ANTHROPIC_AUTH_TOKEN", originalToken);
-        }
-    }
-}
+// T016 (US1)'s EvalCredentialRedactionTests.SanitizeErrorText_RedactsConfiguredAffordableProviderApiKey
+// was removed (constitution v1.9.0 "Test what we own"): it was a strict subset — one
+// credential source — of CaptureHygieneTests.SanitizeErrorText_RedactsBothCredentialSources,
+// which covers both sources and already carries the env-mutation collection cost.

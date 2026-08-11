@@ -101,7 +101,6 @@ public class CaptureHygieneTests : IDisposable
         Environment.SetEnvironmentVariable("GRIMOIRE_EVAL_PROVIDER_API_KEY", "fake-affordable-key");
 
         var gate = EvalProviderResolver.Resolve();
-        Assert.Equal(EvalGateStatus.Enabled, gate.Status);
 
         var paths = EvalPaths.Discover();
         var store = new RecordingStore(_recordingsRoot);

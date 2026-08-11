@@ -121,10 +121,9 @@ public static class SyntheticRecordings
 }
 
 /// <summary>
-/// 019-fast-test-tier (ADR-021, T018): serializes only the two classes that mutate real
-/// process environment variables (<see cref="Environment.SetEnvironmentVariable"/>) —
-/// <c>StalenessTests</c> and <c>EvalCredentialRedactionTests</c>. Neither spawns an agent
-/// process, so this is a small, fast-running serialized group, not a bottleneck.
+/// 019-fast-test-tier (ADR-021, T018): serializes the classes that mutate real process
+/// environment variables (<see cref="Environment.SetEnvironmentVariable"/>) —
+/// <c>StalenessTests</c> and <c>EvalIndependenceFromHubConfigurationTests</c>.
 /// </summary>
 [CollectionDefinition("EvalRunnerEnvMutatingTests", DisableParallelization = true)]
 public sealed class EvalRunnerEnvMutatingTestsCollection;
