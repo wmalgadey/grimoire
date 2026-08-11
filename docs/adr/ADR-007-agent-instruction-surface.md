@@ -4,6 +4,10 @@ status: accepted
 
 # ADR-007: Agent Instruction Surface — Single System Prompt and Versioned Default User Prompt
 
+> **Amended by [ADR-009](ADR-009-runtime-path-configuration.md)**: gains the `--wiki-root`
+> argument and a policy-prefix anchor from ADR-009's path configuration; the instruction
+> surface (system prompt, default user prompt, policy) this ADR defines is unchanged.
+
 > **Amended by [ADR-022](ADR-022-minimal-directory-configuration-surface.md)**:
 > instruction files now live as agent-project sources
 > (`backend/src/Grimoire.*Agent/Instructions/`), copied to the configured `AgentDir` by

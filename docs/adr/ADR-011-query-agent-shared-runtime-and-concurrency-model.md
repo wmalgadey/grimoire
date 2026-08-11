@@ -113,6 +113,17 @@ Chosen option: **Option 1.**
   wraps it exactly as ADR-007 wraps ingest's effective prompt, so it stays
   non-agent-editable.
 
+> **Amended by [ADR-013](ADR-013-unified-agent-platform-packaging-and-naming.md)**
+> (010-unified-agent-platform), packaging / runtime-sharing aspects only:
+> `Grimoire.AgentRuntime`'s scope above is extended to also own telemetry bootstrap,
+> tracing scaffold, model-client composition, error sanitization, CLI scaffold, and the
+> host startup template (`Telemetry`/`Composition`/`Host` namespaces) as a
+> near-identical thin host per agent. The "write_file is not compiled into the process
+> at all" rationale above is superseded by ADR-013's profile-declared tool-registry
+> formulation (the no-write guarantee itself is unchanged). Everything else in this
+> subsection — the separate-process model, spawn/CLI/credential contracts, streaming,
+> concurrency, and persistence — remains in force.
+
 ### Hub dispatch, concurrency, and interruption
 
 - New `QueryRunCoordinator` (`Grimoire.Hub.QueryDispatch`, sibling to

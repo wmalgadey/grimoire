@@ -4,6 +4,15 @@ status: accepted
 
 # ADR-008: Agent Event Channel, Run Supervision, and Persistent Run Queue
 
+> **Amends [ADR-002](ADR-002-ingest-agent-execution-model.md)**: result reporting moves
+> from an awaited exit code to events and queue supervision; ADR-002's spawn model
+> (child process, CLI args, file-based artifacts, credential scoping per ADR-004) remains
+> in force.
+
+> **Amended by [ADR-009](ADR-009-runtime-path-configuration.md)**: gains the `--wiki-root`
+> argument and a policy-prefix anchor from ADR-009's path configuration; the event/queue
+> supervision model itself is unchanged.
+
 ## Context and Problem Statement
 
 Under ADR-002 the Hub spawns the Ingest agent as a child process and awaits its exit

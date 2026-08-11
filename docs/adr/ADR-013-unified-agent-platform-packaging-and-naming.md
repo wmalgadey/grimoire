@@ -4,6 +4,10 @@ status: accepted
 
 # ADR-013: Unified Agent Platform Packaging and Agent-Artifact Naming Convention
 
+> **Amends [ADR-011](ADR-011-query-agent-shared-runtime-and-concurrency-model.md)**
+> (packaging / runtime-sharing aspects only): see "Relationship to ADR-011 (partial
+> supersession)" below for the specific scope and what is left intact.
+
 ## Context and Problem Statement
 
 Feature 010 (unified-agent-platform) consolidates Ingest and Query onto one agent

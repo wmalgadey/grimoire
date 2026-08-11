@@ -4,6 +4,13 @@ status: accepted
 
 # ADR-003: Domain vs. Operational State Persistence
 
+> **Superseded in part by [ADR-009](ADR-009-runtime-path-configuration.md)**: the
+> illustrative `.grimoire/` runtime-directory naming this ADR used is replaced by
+> ADR-009's explicit path configuration and consolidated data directory. This ADR's
+> substance — git-friendly domain state vs. git-ignored operational SQLite — is
+> retained and strengthened (`data/state/` and `data/raw/` git-ignored, the wiki a
+> clean, independently trackable tree), not reopened.
+
 ## Context and Problem Statement
 
 Grimoire persists two materially different kinds of state. Domain state — wiki pages,

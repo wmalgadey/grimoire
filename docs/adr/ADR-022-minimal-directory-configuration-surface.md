@@ -4,6 +4,16 @@ status: accepted
 
 # ADR-022: Minimal Directory Configuration Surface — Three Roots, Mandatory Configuration File, and Build-Distributed Agent Artifacts
 
+> **Amends [ADR-002](ADR-002-ingest-agent-execution-model.md),
+> [ADR-007](ADR-007-agent-instruction-surface.md),
+> [ADR-012](ADR-012-eval-runner-recorded-replay.md),
+> [ADR-019](ADR-019-devcontainer-host-runtime-and-credential-access.md), and
+> [ADR-020](ADR-020-hub-cli-command-surface.md); supersedes in part
+> [ADR-009](ADR-009-runtime-path-configuration.md)**: this ADR is the current source of
+> truth for directory/path configuration and the build-distributed agent-artifact
+> layout. See the "Superseded and amended decisions" table below for the specific
+> change to each, and each linked ADR's own status note for the reverse pointer.
+
 ## Context and Problem Statement
 
 ADR-009 established one composition point (`GrimoirePathOptions` /
