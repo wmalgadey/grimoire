@@ -11,6 +11,13 @@ status: accepted
 > instead of sixteen. The Spectre.Console.Cli framework, dispatch, and blocking-execution
 > model this ADR establishes are unchanged.
 
+> **Amended by [ADR-023](ADR-023-hub-cli-default-command-and-root-help-routing.md)**:
+> the command framework, exit codes, in-process blocking execution, and C9 containment
+> from this ADR remain in force, but the root invocation/help routing now lives in ADR-023.
+> The `ShouldDispatchToCli` gate, hand-padded root "Server options:" block, and the
+> `Program.cs` dispatch branch are superseded there; `PathSwitchCatalog.All` remains the
+> single source of truth.
+
 ## Context and Problem Statement
 
 Feature 018 (`specs/018-hub-cli-commands/spec.md`) grows the Hub binary's command
