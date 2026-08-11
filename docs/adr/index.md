@@ -5,8 +5,10 @@ Central overview of all Architecture Decision Records, per Constitution Principl
 whose status or existence changes — it is the single place to see which ADRs currently
 govern the codebase without opening every file.
 
-Status is one of exactly: `Accepted`, `Proposed`, `Deprecated`, `Superseded`. When an ADR
-supersedes or amends another, both status headers carry the link (`Supersedes ADR-NNN` /
+Status is one of exactly: `Accepted`, `Proposed`, `Deprecated`, `Superseded` (case-
+insensitive — ADR files' YAML frontmatter uses lowercase, e.g. `status: accepted`; this
+table uses Title Case for readability, not a distinct value). When an ADR supersedes or
+amends another, both status headers carry the link (`Supersedes ADR-NNN` /
 `Superseded by ADR-NNN`, or `Amends ADR-NNN` / `Amended by ADR-NNN`) — see the individual
 ADR files for the authoritative header; this table mirrors it. None of the relationships
 below fully retires an ADR's core decision (each is scoped — "in part", "this section

@@ -56,9 +56,13 @@ adr.github.io, Microsoft's Well-Architected guidance) converged on the same
 fix: Accepted ADRs are immutable, supersession is a bidirectional link
 between old and new status headers, and an unreviewed ADR collection silently
 accumulates stale "Accepted" entries. This amendment makes that structurally
-required going forward. Per Governance's non-retroactivity clause, ADR-001
-through ADR-023 are NOT retroactively migrated by this amendment — that
-migration, if undertaken, is a separate follow-up.
+required going forward. The user separately requested the retroactive
+migration in the same change set: ADR-001 through ADR-023 were reviewed for
+existing one-sided supersede/amend prose, and every reverse pointer found
+missing was added (see `docs/adr/index.md` and each affected ADR's own status
+header). This is a one-time migration explicitly requested alongside the
+amendment, not a standing exception to Governance's non-retroactivity clause —
+future amendments still do not obligate retrofitting past ADRs.
 
 Deferred TODOs: none.
 
@@ -463,9 +467,12 @@ decision content itself.
   MUST NOT ship; a reader who opens ADR-A alone has no other way to learn it is no longer
   current.
 - **Lifecycle minimum.** Every ADR carries a status from exactly {Proposed, Accepted,
-  Deprecated, Superseded}. ADR numbers are permanent: never reused, never renumbered, and
-  never merged into a single file to "consolidate" history — consolidation happens at the
-  status and index layer below, not by rewriting or collapsing files.
+  Deprecated, Superseded} (case-insensitive; the repository's convention is lowercase
+  YAML frontmatter — `status: accepted` — the Title Case above names the four states for
+  prose, not a required casing). ADR numbers are permanent: never reused, never
+  renumbered, and never merged into a single file to "consolidate" history —
+  consolidation happens at the status and index layer below, not by rewriting or
+  collapsing files.
 - **Review cadence.** Accepted ADRs MUST be periodically checked for staleness rather
   than assumed current indefinitely. ADRs governing an externally observable surface
   (CLI command surface, credential/security boundaries, agent-facing tool contracts)
@@ -483,10 +490,14 @@ Rationale: MADR/Nygard practice treats Accepted ADRs as immutable and supersessi
 bidirectional pointer for exactly this reason — without it, the common failure mode is a
 new ADR that references the old one while the old one still reads as current, or a
 collection where nobody can tell which "Accepted" entries have actually been overtaken.
-This is not hypothetical here: ADR-022's own "Superseded and amended decisions" table
-already rewrites parts of ADR-009 without ADR-009's status header recording that fact.
-This rule makes that structurally impossible going forward. Per Governance's
-non-retroactivity clause, existing ADRs are not retroactively migrated by this amendment.
+This was not hypothetical here: ADR-022's own "Superseded and amended decisions" table
+rewrote parts of ADR-009 without ADR-009's status header recording that fact. This rule
+makes that structurally impossible going forward; ADR-001 through ADR-023 were also
+migrated to it in the same change set (a one-time follow-up the user requested alongside
+this amendment — see `docs/adr/index.md` and each ADR's own status header), so the rule
+and the repository agree from the moment it lands. Future amendments are still not
+obligated to retrofit past ADRs under Governance's non-retroactivity clause; this
+migration was a deliberate, explicitly requested exception, not a new standing rule.
 
 ### IV. Behavioral & Observable Engineering
 

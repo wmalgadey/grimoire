@@ -4,6 +4,16 @@ status: accepted
 
 # ADR-011: Shared Agent Runtime, Streaming, and Query Concurrency Model
 
+> **Amended by [ADR-013](ADR-013-unified-agent-platform-packaging-and-naming.md)**
+> (packaging / runtime-sharing aspects only): `Grimoire.AgentRuntime`'s scope is
+> extended and the Query no-write-guarantee rationale is restated; see "Shared runtime
+> library" below for the specific passages and what is left intact.
+>
+> **Partially superseded by [ADR-014](ADR-014-query-conversation-records.md)** (this
+> ADR's "Persistence and conversation context" section only) and by
+> **[ADR-015](ADR-015-query-write-scope-and-wiki-write-coordination.md)** (the "Query is
+> structurally write-free" framing only) — see those sections below for detail.
+
 ## Context and Problem Statement
 
 Feature 008 (query-agent) introduces the Query agent: a read-only agent that answers
