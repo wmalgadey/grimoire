@@ -38,7 +38,7 @@ public class LintInboundLinkRefreshTests
     public async Task ScriptedFrontmatterOnlyWrite_RefreshingInboundLinks_Succeeds_BodyByteIdentical_OnlyWriteInTheRun()
     {
         var (executor, wikiRoot) = await BuildExecutorAsync();
-        var pagePath = Path.Combine(wikiRoot, "pages", "sample-page.md");
+        var pagePath = Path.Combine(wikiRoot, "tech", "sample-page.md");
         Directory.CreateDirectory(Path.GetDirectoryName(pagePath)!);
         await File.WriteAllTextAsync(pagePath, OriginalPage);
 
@@ -61,8 +61,8 @@ public class LintInboundLinkRefreshTests
                 """;
 
             var fakeModel = new FakeModelClient([
-                FakeModelClient.ReadFileTurn("t1", "pages/sample-page.md"),
-                FakeModelClient.WriteFileTurn("t2", "pages/sample-page.md", refreshedPage),
+                FakeModelClient.ReadFileTurn("t1", "tech/sample-page.md"),
+                FakeModelClient.WriteFileTurn("t2", "tech/sample-page.md", refreshedPage),
                 FakeModelClient.FinalTurn("Refreshed the stale inbound-link count."),
             ]);
 
@@ -104,7 +104,7 @@ public class LintInboundLinkRefreshTests
         // reviewed yet — the first refresh adds the field rather than requiring it to
         // pre-exist.
         var (executor, wikiRoot) = await BuildExecutorAsync();
-        var pagePath = Path.Combine(wikiRoot, "pages", "never-reviewed.md");
+        var pagePath = Path.Combine(wikiRoot, "tech", "never-reviewed.md");
         Directory.CreateDirectory(Path.GetDirectoryName(pagePath)!);
         const string pageWithoutInboundLinks =
             """
@@ -135,8 +135,8 @@ public class LintInboundLinkRefreshTests
                 """;
 
             var fakeModel = new FakeModelClient([
-                FakeModelClient.ReadFileTurn("t1", "pages/never-reviewed.md"),
-                FakeModelClient.WriteFileTurn("t2", "pages/never-reviewed.md", withInboundLinksAdded),
+                FakeModelClient.ReadFileTurn("t1", "tech/never-reviewed.md"),
+                FakeModelClient.WriteFileTurn("t2", "tech/never-reviewed.md", withInboundLinksAdded),
                 FakeModelClient.FinalTurn("Added the previously-missing inbound-link count."),
             ]);
 
@@ -163,7 +163,7 @@ public class LintInboundLinkRefreshTests
     {
         var root = Path.Combine(Path.GetTempPath(), $"lint-inbound-link-refresh-{Guid.NewGuid():N}");
         var wikiRoot = Path.Combine(root, "wiki");
-        Directory.CreateDirectory(Path.Combine(wikiRoot, "pages"));
+        Directory.CreateDirectory(Path.Combine(wikiRoot, "tech"));
 
         var repoRoot = FindRepositoryRoot();
         var policyPath = Path.Combine(repoRoot, "backend", "src", "Grimoire.LintAgent", "Instructions", "policy.json");

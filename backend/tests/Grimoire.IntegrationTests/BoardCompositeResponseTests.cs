@@ -208,9 +208,9 @@ public class BoardCompositeResponseTests
             t => t.GetProperty("taskId").GetString() == "2026-08-01-remediation-list0000000000000000a");
         Assert.Equal("2026-08-01-lint-boardparity", proposed.GetProperty("runId").GetString());
         Assert.Equal("Add missing tags to runtime-paths page", proposed.GetProperty("title").GetString());
-        Assert.Equal("The page pages/runtime-paths.md has no tags frontmatter.",
+        Assert.Equal("The page concepts/runtime-paths.md has no tags frontmatter.",
             proposed.GetProperty("description").GetString());
-        Assert.Equal("pages/runtime-paths.md", proposed.GetProperty("targetPath").GetString());
+        Assert.Equal("concepts/runtime-paths.md", proposed.GetProperty("targetPath").GetString());
         Assert.Equal("proposed", proposed.GetProperty("state").GetString());
         Assert.Equal(JsonValueKind.Null, proposed.GetProperty("authorizedAt").ValueKind);
         Assert.Equal(JsonValueKind.Null, proposed.GetProperty("queuePosition").ValueKind);
@@ -241,8 +241,8 @@ public class BoardCompositeResponseTests
         await harness.RecordStore.CreateAsync(
             taskId, "2026-08-01-lint-boardparity", proposedAt,
             "Add missing tags to runtime-paths page",
-            "The page pages/runtime-paths.md has no tags frontmatter.",
-            "pages/runtime-paths.md");
+            "The page concepts/runtime-paths.md has no tags frontmatter.",
+            "concepts/runtime-paths.md");
         var attachedAt = proposedAt.AddMinutes(1);
         await harness.RecordStore.AppendContextAsync(
             taskId, "Use the tag taxonomy from wiki/index.md, not free-form tags.", attachedAt);
@@ -255,7 +255,7 @@ public class BoardCompositeResponseTests
         var root = detail.RootElement;
         Assert.Equal(taskId, root.GetProperty("taskId").GetString());
         Assert.Equal("proposed", root.GetProperty("state").GetString());
-        Assert.Equal("The page pages/runtime-paths.md has no tags frontmatter.",
+        Assert.Equal("The page concepts/runtime-paths.md has no tags frontmatter.",
             root.GetProperty("description").GetString());
 
         // attachedContext is sourced from the task's record (FR-011/FR-014).
@@ -287,8 +287,8 @@ public class BoardCompositeResponseTests
             TaskId: taskId,
             RunId: runId,
             Title: "Add missing tags to runtime-paths page",
-            Description: "The page pages/runtime-paths.md has no tags frontmatter.",
-            TargetPath: "pages/runtime-paths.md",
+            Description: "The page concepts/runtime-paths.md has no tags frontmatter.",
+            TargetPath: "concepts/runtime-paths.md",
             State: state,
             ProposedAt: at,
             AuthorizedAt: authorizedAt,

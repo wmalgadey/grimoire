@@ -41,7 +41,7 @@ public class IngestObservabilityTraceTests
         await File.WriteAllTextAsync(logPath, string.Empty);
 
         var appender = new WikiLogAppender(IngestAgentTracing.ActivitySource, TestMeter);
-        await appender.AppendAsync(logPath, "ingest", "completed", "source.md", "Create pages/test.md", "task-001", CancellationToken.None);
+        await appender.AppendAsync(logPath, "ingest", "completed", "source.md", "Create tech/test.md", "task-001", CancellationToken.None);
 
         Assert.Contains("wiki_log.backstop_append", spanNames);
     }
@@ -133,20 +133,20 @@ public class IngestObservabilityTraceTests
 
         var root = Path.Combine(Path.GetTempPath(), $"trace-contract-{Guid.NewGuid():N}");
         var wikiDir = Path.Combine(root, "wiki");
-        var pagesDir = Path.Combine(wikiDir, "pages");
-        Directory.CreateDirectory(pagesDir);
-        await File.WriteAllTextAsync(Path.Combine(pagesDir, "existing.md"), "before");
+        var techDir = Path.Combine(wikiDir, "tech");
+        Directory.CreateDirectory(techDir);
+        await File.WriteAllTextAsync(Path.Combine(techDir, "existing.md"), "before");
 
         var policy = new SafetyPolicy(
             root,
             readPrefixes: [wikiDir + Path.DirectorySeparatorChar],
-            writePrefixes: [pagesDir + Path.DirectorySeparatorChar]);
+            writePrefixes: [techDir + Path.DirectorySeparatorChar]);
         var journal = new WriteJournal();
         var executor = new GuardedToolExecutor(
             policy, journal, root, taskId: "task-123",
             instrumentation: new IngestToolCallInstrumentation(new CaptureLogger<IngestObservabilityTraceTests>()));
         var fakeModel = new FakeModelClient([
-            FakeModelClient.WriteFileTurn("tool-1", "wiki/pages/new.md", "# New page"),
+            FakeModelClient.WriteFileTurn("tool-1", "wiki/tech/new.md", "# New page"),
             FakeModelClient.FinalTurn("Trace contract run complete.")]);
         var loop = new AgentLoop(fakeModel, executor, instrumentation: new IngestAgentLoopInstrumentation());
 
@@ -171,7 +171,7 @@ public class IngestObservabilityTraceTests
                 cancellationToken: CancellationToken.None);
 
             var rollbackJournal = new WriteJournal();
-            var rollbackTarget = Path.Combine(root, "wiki", "pages", "rollback.md");
+            var rollbackTarget = Path.Combine(root, "wiki", "tech", "rollback.md");
             await File.WriteAllTextAsync(rollbackTarget, "before rollback");
             await rollbackJournal.RecordAsync(rollbackTarget, CancellationToken.None);
             await File.WriteAllTextAsync(rollbackTarget, "after rollback");
@@ -232,7 +232,7 @@ public class IngestObservabilityTraceTests
 
         Assert.Equal("task-123", GetTag(tool, "task_id"));
         Assert.Equal("write_file", GetTag(tool, "tool"));
-        Assert.Equal(Path.Combine(root, "wiki", "pages", "new.md"), GetTag(tool, "target"));
+        Assert.Equal(Path.Combine(root, "wiki", "tech", "new.md"), GetTag(tool, "target"));
         Assert.Equal("allowed", GetTag(tool, "decision"));
 
         Assert.Equal("task-123", GetTag(rollback, "task_id"));

@@ -18,9 +18,9 @@ public class SafetyPolicyModeTests
         var policy = new SafetyPolicy(
             RepoRoot,
             readPrefixes: [],
-            writeRules: [new WriteRule("/repo/wiki/pages/", CreateOnly: true)]);
+            writeRules: [new WriteRule("/repo/wiki/tech/", CreateOnly: true)]);
 
-        var decision = policy.Evaluate("/repo/wiki/pages/new.md", isWrite: true);
+        var decision = policy.Evaluate("/repo/wiki/tech/new.md", isWrite: true);
 
         Assert.True(decision.IsAllowed);
         Assert.True(decision.IsCreateOnly);
@@ -49,9 +49,9 @@ public class SafetyPolicyModeTests
         var policy = new SafetyPolicy(
             RepoRoot,
             readPrefixes: [],
-            writePrefixes: ["/repo/wiki/pages/"]);
+            writePrefixes: ["/repo/wiki/tech/"]);
 
-        var decision = policy.Evaluate("/repo/wiki/pages/existing.md", isWrite: true);
+        var decision = policy.Evaluate("/repo/wiki/tech/existing.md", isWrite: true);
 
         Assert.True(decision.IsAllowed);
         Assert.False(decision.IsCreateOnly);
@@ -63,9 +63,9 @@ public class SafetyPolicyModeTests
         var policy = new SafetyPolicy(
             RepoRoot,
             readPrefixes: ["/repo/wiki/"],
-            writeRules: [new WriteRule("/repo/wiki/pages/", CreateOnly: true)]);
+            writeRules: [new WriteRule("/repo/wiki/tech/", CreateOnly: true)]);
 
-        var decision = policy.Evaluate("/repo/wiki/pages/foo.md", isWrite: false);
+        var decision = policy.Evaluate("/repo/wiki/tech/foo.md", isWrite: false);
 
         Assert.True(decision.IsAllowed);
         Assert.False(decision.IsCreateOnly);
@@ -77,7 +77,7 @@ public class SafetyPolicyModeTests
         var policy = new SafetyPolicy(
             RepoRoot,
             readPrefixes: [],
-            writeRules: [new WriteRule("/repo/wiki/pages/", CreateOnly: true)]);
+            writeRules: [new WriteRule("/repo/wiki/tech/", CreateOnly: true)]);
 
         var decision = policy.Evaluate("/etc/passwd", isWrite: true);
 
@@ -92,7 +92,7 @@ public class SafetyPolicyModeTests
         var policy = new SafetyPolicy(
             RepoRoot,
             readPrefixes: [],
-            writeRules: [new WriteRule("/repo/wiki/pages/", CreateOnly: true)]);
+            writeRules: [new WriteRule("/repo/wiki/tech/", CreateOnly: true)]);
 
         var decision = policy.Evaluate("/repo/wiki/index.md", isWrite: true);
 
@@ -107,9 +107,9 @@ public class SafetyPolicyModeTests
         var policy = new SafetyPolicy(
             RepoRoot,
             readPrefixes: [],
-            writeRules: [new WriteRule("/repo/wiki/pages/", CreateOnly: true)]);
+            writeRules: [new WriteRule("/repo/wiki/tech/", CreateOnly: true)]);
 
-        var decision = policy.Evaluate("/repo/wiki/pages/foo.md", isWrite: false);
+        var decision = policy.Evaluate("/repo/wiki/tech/foo.md", isWrite: false);
 
         Assert.False(decision.IsAllowed);
         Assert.Equal("no_rule", decision.DenialReason);

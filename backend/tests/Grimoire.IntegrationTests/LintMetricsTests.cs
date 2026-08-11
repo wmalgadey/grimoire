@@ -228,7 +228,7 @@ public class LintMetricsTests
         harness.Launcher.ScriptedLintTerminalMetadata = new Dictionary<string, object?>
         {
             ["summary"] = narrative,
-            ["createdPages"] = new[] { "pages/refreshed-1.md", "pages/refreshed-2.md" },
+            ["createdPages"] = new[] { "tech/refreshed-1.md", "tech/refreshed-2.md" },
         };
 
         var result = await harness.Coordinator.TriggerAsync();

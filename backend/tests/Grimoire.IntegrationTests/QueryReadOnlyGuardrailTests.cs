@@ -25,9 +25,9 @@ public class QueryReadOnlyGuardrailTests
     {
         var root = Path.Combine(Path.GetTempPath(), $"query-readonly-guardrail-{Guid.NewGuid():N}");
         var wikiDir = Path.Combine(root, "wiki");
-        var pagesDir = Path.Combine(wikiDir, "pages");
-        Directory.CreateDirectory(pagesDir);
-        await File.WriteAllTextAsync(Path.Combine(pagesDir, "adr.md"), "# ADR notes");
+        var techDir = Path.Combine(wikiDir, "tech");
+        Directory.CreateDirectory(techDir);
+        await File.WriteAllTextAsync(Path.Combine(techDir, "adr.md"), "# ADR notes");
 
         // 011-query-conversations (T019 cutover): the out-of-scope harness location the
         // agent must not read is now the Conversation Record store, not query-runs.
@@ -44,7 +44,7 @@ public class QueryReadOnlyGuardrailTests
             // itself does declare write rules since ADR-015 (012-query-synthesis-writes).
             var policy = new SafetyPolicy(
                 wikiDir,
-                readPrefixes: [Path.Combine(wikiDir, "pages") + Path.DirectorySeparatorChar],
+                readPrefixes: [Path.Combine(wikiDir, "tech") + Path.DirectorySeparatorChar],
                 writePrefixes: []);
 
             var journal = new WriteJournal();
@@ -53,7 +53,7 @@ public class QueryReadOnlyGuardrailTests
 
             var fakeModel = new FakeModelClient([
                 FakeModelClient.ReadFileTurn("tool-1", "../data/conversations/other-conversation.md"),
-                FakeModelClient.ReadFileTurn("tool-2", "pages/adr.md"),
+                FakeModelClient.ReadFileTurn("tool-2", "tech/adr.md"),
                 FakeModelClient.FinalTurn("The wiki covers ADR notes. I could not access an out-of-scope file.")]);
 
             var loop = new AgentLoop(fakeModel, executor, registry: QueryToolRegistry.Default);

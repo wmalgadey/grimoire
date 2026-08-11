@@ -93,21 +93,21 @@ public class LintTraceTests
 
         var root = Path.Combine(Path.GetTempPath(), $"lint-agent-trace-{Guid.NewGuid():N}");
         var wikiDir = Path.Combine(root, "wiki");
-        var pagesDir = Path.Combine(wikiDir, "pages");
-        Directory.CreateDirectory(pagesDir);
-        await File.WriteAllTextAsync(Path.Combine(pagesDir, "adr.md"), "---\ntype: Technology\n---\n# ADR notes");
+        var techDir = Path.Combine(wikiDir, "tech");
+        Directory.CreateDirectory(techDir);
+        await File.WriteAllTextAsync(Path.Combine(techDir, "adr.md"), "---\ntype: Technology\n---\n# ADR notes");
 
         var policy = new SafetyPolicy(
             wikiDir,
-            readPrefixes: [pagesDir + Path.DirectorySeparatorChar],
-            writeRules: [new WriteRule(pagesDir + Path.DirectorySeparatorChar, WriteMode.FrontmatterOnly)]);
+            readPrefixes: [techDir + Path.DirectorySeparatorChar],
+            writeRules: [new WriteRule(techDir + Path.DirectorySeparatorChar, WriteMode.FrontmatterOnly)]);
         var journal = new WriteJournal();
         var executor = new GuardedToolExecutor(
             policy, journal, wikiDir, taskId: "run-trace-1",
             registry: LintToolRegistry.Default,
             instrumentation: new LintToolCallInstrumentation(Microsoft.Extensions.Logging.Abstractions.NullLogger.Instance));
         var fakeModel = new FakeModelClient([
-            FakeModelClient.ReadFileTurn("tool-1", "pages/adr.md"),
+            FakeModelClient.ReadFileTurn("tool-1", "tech/adr.md"),
             FakeModelClient.FinalTurn("## Content Quality\n\nNo content-quality findings.\n")]);
         var loop = new AgentLoop(
             fakeModel, executor,
@@ -157,15 +157,15 @@ public class LintTraceTests
 
         var root = Path.Combine(Path.GetTempPath(), $"lint-agent-trace-denied-{Guid.NewGuid():N}");
         var wikiDir = Path.Combine(root, "wiki");
-        var pagesDir = Path.Combine(wikiDir, "pages");
-        Directory.CreateDirectory(pagesDir);
-        var pagePath = Path.Combine(pagesDir, "a.md");
+        var techDir = Path.Combine(wikiDir, "tech");
+        Directory.CreateDirectory(techDir);
+        var pagePath = Path.Combine(techDir, "a.md");
         await File.WriteAllTextAsync(pagePath, "---\ntype: Technology\n---\nOriginal body.");
 
         var policy = new SafetyPolicy(
             wikiDir,
-            readPrefixes: [pagesDir + Path.DirectorySeparatorChar],
-            writeRules: [new WriteRule(pagesDir + Path.DirectorySeparatorChar, WriteMode.FrontmatterOnly)]);
+            readPrefixes: [techDir + Path.DirectorySeparatorChar],
+            writeRules: [new WriteRule(techDir + Path.DirectorySeparatorChar, WriteMode.FrontmatterOnly)]);
         var journal = new WriteJournal();
         var writeLocksDir = Path.Combine(root, "write-locks");
         var executor = new GuardedToolExecutor(
@@ -174,8 +174,8 @@ public class LintTraceTests
             instrumentation: new LintToolCallInstrumentation(Microsoft.Extensions.Logging.Abstractions.NullLogger.Instance),
             writeLocksDir: writeLocksDir);
         var fakeModel = new FakeModelClient([
-            FakeModelClient.ReadFileTurn("tool-1", "pages/a.md"),
-            FakeModelClient.WriteFileTurn("tool-2", "pages/a.md", "---\ntype: Technology\n---\nRewritten body!"),
+            FakeModelClient.ReadFileTurn("tool-1", "tech/a.md"),
+            FakeModelClient.WriteFileTurn("tool-2", "tech/a.md", "---\ntype: Technology\n---\nRewritten body!"),
             FakeModelClient.FinalTurn("Done.")]);
         var loop = new AgentLoop(
             fakeModel, executor,

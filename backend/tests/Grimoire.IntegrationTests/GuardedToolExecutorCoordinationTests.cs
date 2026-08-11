@@ -18,16 +18,16 @@ public class GuardedToolExecutorCoordinationTests
         var root = CreateTempRoot();
         try
         {
-            var pagesDir = Path.Combine(root, "wiki", "pages");
-            Directory.CreateDirectory(pagesDir);
-            var existingPage = Path.Combine(pagesDir, "existing.md");
+            var techDir = Path.Combine(root, "wiki", "tech");
+            Directory.CreateDirectory(techDir);
+            var existingPage = Path.Combine(techDir, "existing.md");
             await File.WriteAllTextAsync(existingPage, "original content");
 
-            var executor = BuildExecutor(root, createOnlyPagesPrefix: true);
+            var executor = BuildExecutor(root, createOnlyTechPrefix: true);
 
             var result = await executor.ExecuteAsync(
                 ToolRegistry.WriteFile,
-                JsonSerializer.Serialize(new { path = "wiki/pages/existing.md", content = "overwrite attempt" }),
+                JsonSerializer.Serialize(new { path = "wiki/tech/existing.md", content = "overwrite attempt" }),
                 turn: 1,
                 CancellationToken.None);
 
@@ -54,7 +54,7 @@ public class GuardedToolExecutorCoordinationTests
             Directory.CreateDirectory(Path.GetDirectoryName(indexPath)!);
             await File.WriteAllTextAsync(indexPath, "- entry 1");
 
-            var executor = BuildExecutor(root, createOnlyPagesPrefix: false);
+            var executor = BuildExecutor(root, createOnlyTechPrefix: false);
 
             var readResult = await executor.ExecuteAsync(
                 ToolRegistry.ReadFile,
@@ -95,7 +95,7 @@ public class GuardedToolExecutorCoordinationTests
             Directory.CreateDirectory(Path.GetDirectoryName(indexPath)!);
             await File.WriteAllTextAsync(indexPath, "- entry 1");
 
-            var executor = BuildExecutor(root, createOnlyPagesPrefix: false);
+            var executor = BuildExecutor(root, createOnlyTechPrefix: false);
 
             var readResult = await executor.ExecuteAsync(
                 ToolRegistry.ReadFile,
@@ -128,7 +128,7 @@ public class GuardedToolExecutorCoordinationTests
         try
         {
             var writeLocksDir = Path.Combine(root, "write-locks");
-            var executor = BuildExecutor(root, createOnlyPagesPrefix: false, writeLocksDir: writeLocksDir);
+            var executor = BuildExecutor(root, createOnlyTechPrefix: false, writeLocksDir: writeLocksDir);
 
             var result = await executor.ExecuteAsync(
                 ToolRegistry.WriteFile,
@@ -161,21 +161,21 @@ public class GuardedToolExecutorCoordinationTests
         var root = CreateTempRoot();
         try
         {
-            var pagesDir = Path.Combine(root, "wiki", "pages");
-            Directory.CreateDirectory(pagesDir);
-            var existingPage = Path.Combine(pagesDir, "existing.md");
+            var techDir = Path.Combine(root, "wiki", "tech");
+            Directory.CreateDirectory(techDir);
+            var existingPage = Path.Combine(techDir, "existing.md");
             await File.WriteAllTextAsync(existingPage, "original content");
 
             var policy = new SafetyPolicy(
                 root,
                 readPrefixes: [Path.Combine(root, "wiki") + Path.DirectorySeparatorChar],
-                writePrefixes: [Path.Combine(root, "wiki", "pages") + Path.DirectorySeparatorChar]);
+                writePrefixes: [Path.Combine(root, "wiki", "tech") + Path.DirectorySeparatorChar]);
             var journal = new WriteJournal();
             var executor = new GuardedToolExecutor(policy, journal, root); // no writeLocksDir
 
             var result = await executor.ExecuteAsync(
                 ToolRegistry.WriteFile,
-                JsonSerializer.Serialize(new { path = "wiki/pages/existing.md", content = "overwritten, never read first" }),
+                JsonSerializer.Serialize(new { path = "wiki/tech/existing.md", content = "overwritten, never read first" }),
                 turn: 1,
                 CancellationToken.None);
 
@@ -212,13 +212,13 @@ public class GuardedToolExecutorCoordinationTests
 
             var result = await executor.ExecuteAsync(
                 ToolRegistry.WriteFile,
-                JsonSerializer.Serialize(new { path = "wiki/pages/missing.md", content = SamplePage }),
+                JsonSerializer.Serialize(new { path = "wiki/tech/missing.md", content = SamplePage }),
                 turn: 1,
                 CancellationToken.None);
 
             Assert.True(result.IsError);
             Assert.Contains("frontmatter_only_target_missing", result.Content, StringComparison.Ordinal);
-            Assert.False(File.Exists(Path.Combine(root, "wiki", "pages", "missing.md")));
+            Assert.False(File.Exists(Path.Combine(root, "wiki", "tech", "missing.md")));
 
             var denial = Assert.Single(executor.Denials);
             Assert.Equal("frontmatter_only_target_missing", denial.Reason);
@@ -235,16 +235,16 @@ public class GuardedToolExecutorCoordinationTests
         var root = CreateTempRoot();
         try
         {
-            var pagesDir = Path.Combine(root, "wiki", "pages");
-            Directory.CreateDirectory(pagesDir);
-            var existingPage = Path.Combine(pagesDir, "existing.md");
+            var techDir = Path.Combine(root, "wiki", "tech");
+            Directory.CreateDirectory(techDir);
+            var existingPage = Path.Combine(techDir, "existing.md");
             await File.WriteAllTextAsync(existingPage, SamplePage);
 
             var executor = BuildFrontmatterOnlyExecutor(root);
 
             var readResult = await executor.ExecuteAsync(
                 ToolRegistry.ReadFile,
-                JsonSerializer.Serialize(new { path = "wiki/pages/existing.md" }),
+                JsonSerializer.Serialize(new { path = "wiki/tech/existing.md" }),
                 turn: 1,
                 CancellationToken.None);
             Assert.False(readResult.IsError);
@@ -262,7 +262,7 @@ public class GuardedToolExecutorCoordinationTests
 
             var writeResult = await executor.ExecuteAsync(
                 ToolRegistry.WriteFile,
-                JsonSerializer.Serialize(new { path = "wiki/pages/existing.md", content = proposed }),
+                JsonSerializer.Serialize(new { path = "wiki/tech/existing.md", content = proposed }),
                 turn: 2,
                 CancellationToken.None);
 
@@ -283,16 +283,16 @@ public class GuardedToolExecutorCoordinationTests
         var root = CreateTempRoot();
         try
         {
-            var pagesDir = Path.Combine(root, "wiki", "pages");
-            Directory.CreateDirectory(pagesDir);
-            var existingPage = Path.Combine(pagesDir, "existing.md");
+            var techDir = Path.Combine(root, "wiki", "tech");
+            Directory.CreateDirectory(techDir);
+            var existingPage = Path.Combine(techDir, "existing.md");
             await File.WriteAllTextAsync(existingPage, SamplePage);
 
             var executor = BuildFrontmatterOnlyExecutor(root);
 
             var readResult = await executor.ExecuteAsync(
                 ToolRegistry.ReadFile,
-                JsonSerializer.Serialize(new { path = "wiki/pages/existing.md" }),
+                JsonSerializer.Serialize(new { path = "wiki/tech/existing.md" }),
                 turn: 1,
                 CancellationToken.None);
             Assert.False(readResult.IsError);
@@ -308,7 +308,7 @@ public class GuardedToolExecutorCoordinationTests
 
             var writeResult = await executor.ExecuteAsync(
                 ToolRegistry.WriteFile,
-                JsonSerializer.Serialize(new { path = "wiki/pages/existing.md", content = bodyChanging }),
+                JsonSerializer.Serialize(new { path = "wiki/tech/existing.md", content = bodyChanging }),
                 turn: 2,
                 CancellationToken.None);
 
@@ -332,23 +332,23 @@ public class GuardedToolExecutorCoordinationTests
         var root = CreateTempRoot();
         try
         {
-            var pagesDir = Path.Combine(root, "wiki", "pages");
-            Directory.CreateDirectory(pagesDir);
-            var existingPage = Path.Combine(pagesDir, "existing.md");
+            var techDir = Path.Combine(root, "wiki", "tech");
+            Directory.CreateDirectory(techDir);
+            var existingPage = Path.Combine(techDir, "existing.md");
             await File.WriteAllTextAsync(existingPage, SamplePage);
 
             var executor = BuildFrontmatterOnlyExecutor(root);
 
             var readResult = await executor.ExecuteAsync(
                 ToolRegistry.ReadFile,
-                JsonSerializer.Serialize(new { path = "wiki/pages/existing.md" }),
+                JsonSerializer.Serialize(new { path = "wiki/tech/existing.md" }),
                 turn: 1,
                 CancellationToken.None);
             Assert.False(readResult.IsError);
 
             var writeResult = await executor.ExecuteAsync(
                 ToolRegistry.WriteFile,
-                JsonSerializer.Serialize(new { path = "wiki/pages/existing.md", content = "no frontmatter block at all" }),
+                JsonSerializer.Serialize(new { path = "wiki/tech/existing.md", content = "no frontmatter block at all" }),
                 turn: 2,
                 CancellationToken.None);
 
@@ -401,16 +401,14 @@ public class GuardedToolExecutorCoordinationTests
 
     private static GuardedToolExecutor BuildFrontmatterOnlyExecutor(string root)
     {
-        var pagesPrefix = Path.Combine(root, "wiki", "pages") + Path.DirectorySeparatorChar;
+        var techPrefix = Path.Combine(root, "wiki", "tech") + Path.DirectorySeparatorChar;
 
-        // Mirrors data/agents/lint/policy.json's exact shape (data-model.md): read pages/,
-        // write pages/ at frontmatter-only, no write rule for index.md/log.md at all.
         var policy = new SafetyPolicy(
             root,
             readPrefixes: [Path.Combine(root, "wiki") + Path.DirectorySeparatorChar],
             writeRules:
             [
-                new WriteRule(pagesPrefix, WriteMode.FrontmatterOnly),
+                new WriteRule(techPrefix, WriteMode.FrontmatterOnly),
             ]);
 
         var journal = new WriteJournal();
@@ -423,9 +421,9 @@ public class GuardedToolExecutorCoordinationTests
 
     // ── helpers ──────────────────────────────────────────────────────────────────
 
-    private static GuardedToolExecutor BuildExecutor(string root, bool createOnlyPagesPrefix, string? writeLocksDir = null)
+    private static GuardedToolExecutor BuildExecutor(string root, bool createOnlyTechPrefix, string? writeLocksDir = null)
     {
-        var pagesPrefix = Path.Combine(root, "wiki", "pages") + Path.DirectorySeparatorChar;
+        var techPrefix = Path.Combine(root, "wiki", "tech") + Path.DirectorySeparatorChar;
         var indexPath = Path.Combine(root, "wiki", "index.md");
 
         var policy = new SafetyPolicy(
@@ -433,7 +431,7 @@ public class GuardedToolExecutorCoordinationTests
             readPrefixes: [Path.Combine(root, "wiki") + Path.DirectorySeparatorChar],
             writeRules:
             [
-                new WriteRule(pagesPrefix, CreateOnly: createOnlyPagesPrefix),
+                new WriteRule(techPrefix, CreateOnly: createOnlyTechPrefix),
                 new WriteRule(indexPath, CreateOnly: false),
             ]);
 

@@ -108,19 +108,19 @@ public class IngestObservabilityMetricsTests
 
         var root = Path.Combine(Path.GetTempPath(), $"metrics-split-{Guid.NewGuid():N}");
         var wikiDir = Path.Combine(root, "wiki");
-        var pagesDir = Path.Combine(wikiDir, "pages");
-        Directory.CreateDirectory(pagesDir);
-        await File.WriteAllTextAsync(Path.Combine(pagesDir, "existing.md"), "before");
+        var techDir = Path.Combine(wikiDir, "tech");
+        Directory.CreateDirectory(techDir);
+        await File.WriteAllTextAsync(Path.Combine(techDir, "existing.md"), "before");
 
         var policy = new SafetyPolicy(
             root,
             readPrefixes: [wikiDir + Path.DirectorySeparatorChar],
-            writePrefixes: [pagesDir + Path.DirectorySeparatorChar]);
+            writePrefixes: [techDir + Path.DirectorySeparatorChar]);
         var journal = new WriteJournal();
         var executor = new GuardedToolExecutor(policy, journal, root, taskId: "task-metrics");
         var fake = new FakeModelClient([
-            FakeModelClient.WriteFileTurn("tool-1", "wiki/pages/existing.md", "after"),
-            FakeModelClient.WriteFileTurn("tool-2", "wiki/pages/new.md", "# New page"),
+            FakeModelClient.WriteFileTurn("tool-1", "wiki/tech/existing.md", "after"),
+            FakeModelClient.WriteFileTurn("tool-2", "wiki/tech/new.md", "# New page"),
             FakeModelClient.FinalTurn("Metrics split run complete.")]);
         var loop = new AgentLoop(fake, executor);
 

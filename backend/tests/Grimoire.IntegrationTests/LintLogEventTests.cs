@@ -61,8 +61,8 @@ public class LintLogEventTests
         // out-of-scope write denials — no new event, extended reason enumeration only.
         var logger = new CaptureLogger<LintLogEventTests>();
 
-        LintAgentLogEvents.LogWriteConflictRejected(logger, runId: "run-1", path: "/wiki/pages/a.md", reason: "frontmatter_only_body_changed", turn: 2);
-        LintAgentLogEvents.LogWriteLockTimeout(logger, runId: "run-1", path: "/wiki/pages/a.md", waitMs: 5000);
+        LintAgentLogEvents.LogWriteConflictRejected(logger, runId: "run-1", path: "/wiki/tech/a.md", reason: "frontmatter_only_body_changed", turn: 2);
+        LintAgentLogEvents.LogWriteLockTimeout(logger, runId: "run-1", path: "/wiki/tech/a.md", waitMs: 5000);
 
         AssertEvent(logger.Entries, "wiki.write_conflict.rejected", LogLevel.Warning, ["task_id", "path", "reason", "turn"]);
         AssertEvent(logger.Entries, "wiki.write_lock.timeout", LogLevel.Warning, ["task_id", "path", "wait_ms"]);

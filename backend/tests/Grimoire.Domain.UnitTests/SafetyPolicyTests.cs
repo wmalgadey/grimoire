@@ -21,7 +21,7 @@ public class SafetyPolicyTests
     {
         var policy = BuildPolicy(readPrefixes: []);
 
-        var decision = policy.Evaluate("/repo/wiki/pages/foo.md", isWrite: false);
+        var decision = policy.Evaluate("/repo/wiki/tech/foo.md", isWrite: false);
 
         Assert.False(decision.IsAllowed);
         Assert.Equal("no_rule", decision.DenialReason);
@@ -32,7 +32,7 @@ public class SafetyPolicyTests
     {
         var policy = BuildPolicy(writePrefixes: []);
 
-        var decision = policy.Evaluate("/repo/wiki/pages/foo.md", isWrite: true);
+        var decision = policy.Evaluate("/repo/wiki/tech/foo.md", isWrite: true);
 
         Assert.False(decision.IsAllowed);
         Assert.Equal("out_of_scope", decision.DenialReason);
@@ -45,13 +45,13 @@ public class SafetyPolicyTests
     {
         var policy = BuildPolicy(
             readPrefixes: ["/repo/wiki/"],
-            writePrefixes: ["/repo/wiki/pages/"]);
+            writePrefixes: ["/repo/wiki/tech/"]);
 
         // Sanity: the original policy permits this write.
-        Assert.True(policy.Evaluate("/repo/wiki/pages/foo.md", isWrite: true).IsAllowed);
+        Assert.True(policy.Evaluate("/repo/wiki/tech/foo.md", isWrite: true).IsAllowed);
 
         var readOnly = policy.WithNoWriteAccess();
-        var decision = readOnly.Evaluate("/repo/wiki/pages/foo.md", isWrite: true);
+        var decision = readOnly.Evaluate("/repo/wiki/tech/foo.md", isWrite: true);
 
         Assert.False(decision.IsAllowed);
         Assert.Equal("out_of_scope", decision.DenialReason);
@@ -62,10 +62,10 @@ public class SafetyPolicyTests
     {
         var policy = BuildPolicy(
             readPrefixes: ["/repo/wiki/"],
-            writePrefixes: ["/repo/wiki/pages/"]);
+            writePrefixes: ["/repo/wiki/tech/"]);
 
         var readOnly = policy.WithNoWriteAccess();
-        var decision = readOnly.Evaluate("/repo/wiki/pages/foo.md", isWrite: false);
+        var decision = readOnly.Evaluate("/repo/wiki/tech/foo.md", isWrite: false);
 
         Assert.True(decision.IsAllowed);
     }
@@ -89,7 +89,7 @@ public class SafetyPolicyTests
     {
         var policy = BuildPolicy(readPrefixes: ["/repo/wiki/"]);
 
-        var decision = policy.Evaluate("/repo/wiki/pages/foo.md", isWrite: false);
+        var decision = policy.Evaluate("/repo/wiki/tech/foo.md", isWrite: false);
 
         Assert.True(decision.IsAllowed);
         Assert.Null(decision.DenialReason);
@@ -98,11 +98,11 @@ public class SafetyPolicyTests
     [Fact]
     public void ReadPrefix_AllowsTheDirectoryItself()
     {
-        var policy = BuildPolicy(readPrefixes: ["/repo/wiki/pages/"]);
+        var policy = BuildPolicy(readPrefixes: ["/repo/wiki/tech/"]);
 
-        // A list_files(path: "pages") call canonicalizes to the bare directory path,
+        // A list_files(path: "tech") call canonicalizes to the bare directory path,
         // with no trailing separator — the directory rule must still match it.
-        var decision = policy.Evaluate("/repo/wiki/pages", isWrite: false);
+        var decision = policy.Evaluate("/repo/wiki/tech", isWrite: false);
 
         Assert.True(decision.IsAllowed);
         Assert.Null(decision.DenialReason);
@@ -158,7 +158,7 @@ public class SafetyPolicyTests
             readPrefixes: ["/repo/wiki/"],
             writePrefixes: []);
 
-        var decision = policy.Evaluate("/repo/wiki/pages/foo.md", isWrite: true);
+        var decision = policy.Evaluate("/repo/wiki/tech/foo.md", isWrite: true);
 
         Assert.False(decision.IsAllowed);
         Assert.Equal("out_of_scope", decision.DenialReason);
@@ -169,9 +169,9 @@ public class SafetyPolicyTests
     {
         var policy = BuildPolicy(
             readPrefixes: [],
-            writePrefixes: ["/repo/wiki/pages/"]);
+            writePrefixes: ["/repo/wiki/tech/"]);
 
-        var decision = policy.Evaluate("/repo/wiki/pages/foo.md", isWrite: false);
+        var decision = policy.Evaluate("/repo/wiki/tech/foo.md", isWrite: false);
 
         Assert.False(decision.IsAllowed);
         Assert.Equal("no_rule", decision.DenialReason);
@@ -194,7 +194,7 @@ public class SafetyPolicyTests
     [Fact]
     public void PathOutsideRepoRoot_DeniedWithTraversalReason_ForWrite()
     {
-        var policy = BuildPolicy(writePrefixes: ["/repo/wiki/pages/"]);
+        var policy = BuildPolicy(writePrefixes: ["/repo/wiki/tech/"]);
 
         var decision = policy.Evaluate("/tmp/evil.md", isWrite: true);
 

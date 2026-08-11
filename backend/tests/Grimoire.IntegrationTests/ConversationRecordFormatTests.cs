@@ -204,14 +204,14 @@ public class ConversationRecordFormatTests
     [Fact]
     public void CreatedPages_RoundTripsThroughWriteAndParse()
     {
-        var original = MakeTurn() with { CreatedPages = ["pages/concepts/a.md", "pages/concepts/b.md"] };
+        var original = MakeTurn() with { CreatedPages = ["tech/concepts/a.md", "tech/concepts/b.md"] };
         var content = BuildRecord(original);
 
         var turns = ParseOk(content);
         var parsed = Assert.Single(turns);
 
         Assert.Equal(original, parsed);
-        Assert.Equal(["pages/concepts/a.md", "pages/concepts/b.md"], parsed.CreatedPagesOrEmpty);
+        Assert.Equal(["tech/concepts/a.md", "tech/concepts/b.md"], parsed.CreatedPagesOrEmpty);
     }
 
     [Fact]

@@ -25,8 +25,8 @@ public class QuerySynthesisWriteTests
     {
         var root = Path.Combine(Path.GetTempPath(), $"query-synthesis-write-{Guid.NewGuid():N}");
         var wikiRoot = Path.Combine(root, "wiki");
-        var pagesDir = Path.Combine(wikiRoot, "pages", "concepts");
-        Directory.CreateDirectory(pagesDir);
+        var techDir = Path.Combine(wikiRoot, "tech", "concepts");
+        Directory.CreateDirectory(techDir);
         var indexPath = Path.Combine(wikiRoot, "index.md");
         var logPath = Path.Combine(wikiRoot, "log.md");
         await File.WriteAllTextAsync(indexPath, "# Wiki Index\n\n- [[credential-scoping]] — existing page.\n");
@@ -52,7 +52,7 @@ public class QuerySynthesisWriteTests
                 registry: QueryToolRegistry.Default,
                 writeLocksDir: writeLocksDir);
 
-            const string newPageRelativePath = "pages/concepts/single-composition-point.md";
+            const string newPageRelativePath = "tech/concepts/single-composition-point.md";
             const string newPageContent = """
                 ---
                 type: Concept
@@ -144,7 +144,7 @@ public class QuerySynthesisWriteTests
         // The agent process reports the canonical (absolute) path it wrote, exactly like
         // GuardedToolExecutor.CreatedPaths (data-model.md "Run Completion Metadata") — the
         // Hub converts it to wiki-root-relative before it reaches the record (ADR-015).
-        var canonicalCreatedPage = Path.Combine(root, "wiki", "pages", "concepts", "single-composition-point.md");
+        var canonicalCreatedPage = Path.Combine(root, "wiki", "tech", "concepts", "single-composition-point.md");
         handle.EmitEvent("completed", turnId, new
         {
             summary = "Saved as [[concepts/single-composition-point]].",
@@ -154,7 +154,7 @@ public class QuerySynthesisWriteTests
 
         var recordedTurn = await ReadSingleTurnAsync(root, "c-synthesis-created");
 
-        Assert.Equal(["pages/concepts/single-composition-point.md"], recordedTurn.CreatedPagesOrEmpty);
+        Assert.Equal(["tech/concepts/single-composition-point.md"], recordedTurn.CreatedPagesOrEmpty);
     }
 
     [Fact]

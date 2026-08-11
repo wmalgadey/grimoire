@@ -29,7 +29,7 @@ public class ConcurrentWikiWriteIntegrityTests
         {
             var wikiRoot = Path.Combine(root, "wiki");
             var writeLocksDir = Path.Combine(root, "write-locks");
-            Directory.CreateDirectory(Path.Combine(wikiRoot, "pages"));
+            Directory.CreateDirectory(Path.Combine(wikiRoot, "tech"));
             var indexPath = Path.Combine(wikiRoot, "index.md");
             var logPath = Path.Combine(wikiRoot, "log.md");
             await File.WriteAllTextAsync(indexPath, "# Wiki Index");
@@ -63,13 +63,13 @@ public class ConcurrentWikiWriteIntegrityTests
             }
 
             await Task.WhenAll(
-                RunSynthesisWriterAsync(writerA, "pages/synthesis-a.md", "entry-A"),
-                RunSynthesisWriterAsync(writerB, "pages/synthesis-b.md", "entry-B"),
+                RunSynthesisWriterAsync(writerA, "tech/synthesis-a.md", "entry-A"),
+                RunSynthesisWriterAsync(writerB, "tech/synthesis-b.md", "entry-B"),
                 RunIngestStyleWriterAsync(writerC, "entry-C"));
 
             // Both new pages are complete.
-            Assert.Equal("# entry-A", await File.ReadAllTextAsync(Path.Combine(wikiRoot, "pages", "synthesis-a.md")));
-            Assert.Equal("# entry-B", await File.ReadAllTextAsync(Path.Combine(wikiRoot, "pages", "synthesis-b.md")));
+            Assert.Equal("# entry-A", await File.ReadAllTextAsync(Path.Combine(wikiRoot, "tech", "synthesis-a.md")));
+            Assert.Equal("# entry-B", await File.ReadAllTextAsync(Path.Combine(wikiRoot, "tech", "synthesis-b.md")));
 
             // No index/log entry was lost to a lost update.
             var finalIndex = await File.ReadAllTextAsync(indexPath);
@@ -161,20 +161,20 @@ public class ConcurrentWikiWriteIntegrityTests
         {
             var wikiRoot = Path.Combine(root, "wiki");
             var writeLocksDir = Path.Combine(root, "write-locks");
-            var pagesDir = Path.Combine(wikiRoot, "pages");
+            var techDir = Path.Combine(wikiRoot, "tech");
             var trapDir = Path.Combine(wikiRoot, "trap");
-            Directory.CreateDirectory(pagesDir);
+            Directory.CreateDirectory(techDir);
             var indexPath = Path.Combine(wikiRoot, "index.md");
             await File.WriteAllTextAsync(indexPath, "# Wiki Index");
 
-            var pagesPrefix = pagesDir + Path.DirectorySeparatorChar;
+            var techPrefix = techDir + Path.DirectorySeparatorChar;
             var trapPrefix = trapDir + Path.DirectorySeparatorChar;
             var policy = new SafetyPolicy(
                 wikiRoot,
                 readPrefixes: [wikiRoot + Path.DirectorySeparatorChar],
                 writeRules:
                 [
-                    new WriteRule(pagesPrefix, CreateOnly: true),
+                    new WriteRule(techPrefix, CreateOnly: true),
                     new WriteRule(indexPath, CreateOnly: false),
                     new WriteRule(trapPrefix, CreateOnly: false),
                 ]);
@@ -185,11 +185,11 @@ public class ConcurrentWikiWriteIntegrityTests
             // completed "immediately before the turn was interrupted" (FR-011's scenario).
             var pageResult = await executor.ExecuteAsync(
                 ToolRegistry.WriteFile,
-                JsonSerializer.Serialize(new { path = "pages/synthesis.md", content = "# Preserved insight" }),
+                JsonSerializer.Serialize(new { path = "tech/synthesis.md", content = "# Preserved insight" }),
                 turn: 1,
                 CancellationToken.None);
             Assert.False(pageResult.IsError);
-            var pagePath = Path.Combine(pagesDir, "synthesis.md");
+            var pagePath = Path.Combine(techDir, "synthesis.md");
             Assert.True(File.Exists(pagePath));
 
             // 2. Before the turn reaches its terminal state, its *next* write hits a real
@@ -238,7 +238,7 @@ public class ConcurrentWikiWriteIntegrityTests
         {
             var wikiRoot = Path.Combine(root, "wiki");
             var writeLocksDir = Path.Combine(root, "write-locks");
-            Directory.CreateDirectory(Path.Combine(wikiRoot, "pages"));
+            Directory.CreateDirectory(Path.Combine(wikiRoot, "tech"));
             var indexPath = Path.Combine(wikiRoot, "index.md");
             var logPath = Path.Combine(wikiRoot, "log.md");
             await File.WriteAllTextAsync(indexPath, "# Wiki Index");
@@ -253,7 +253,7 @@ public class ConcurrentWikiWriteIntegrityTests
 
             await Task.WhenAll(writers.Select((executor, i) => Task.Run(async () =>
             {
-                var pageRelativePath = $"pages/synthesis-{i}.md";
+                var pageRelativePath = $"tech/synthesis-{i}.md";
                 var entryMarker = $"entry-{i}";
 
                 var pageResult = await executor.ExecuteAsync(
@@ -355,7 +355,7 @@ public class ConcurrentWikiWriteIntegrityTests
     private static GuardedToolExecutor BuildExecutor(
         string wikiRoot, string writeLocksDir, IToolCallInstrumentation? instrumentation = null)
     {
-        var pagesPrefix = Path.Combine(wikiRoot, "pages") + Path.DirectorySeparatorChar;
+        var techPrefix = Path.Combine(wikiRoot, "tech") + Path.DirectorySeparatorChar;
         var indexPath = Path.Combine(wikiRoot, "index.md");
         var logPath = Path.Combine(wikiRoot, "log.md");
 
@@ -364,7 +364,7 @@ public class ConcurrentWikiWriteIntegrityTests
             readPrefixes: [wikiRoot + Path.DirectorySeparatorChar],
             writeRules:
             [
-                new WriteRule(pagesPrefix, CreateOnly: true),
+                new WriteRule(techPrefix, CreateOnly: true),
                 new WriteRule(indexPath, CreateOnly: false),
                 new WriteRule(logPath, CreateOnly: false),
             ]);

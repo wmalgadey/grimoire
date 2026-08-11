@@ -82,8 +82,8 @@ public class PolicyMisconfigurationTests
             var executor = new GuardedToolExecutor(policy, journal, root);
             var fake = new FakeModelClient(
             [
-                FakeModelClient.WriteFileTurn("w1", "wiki/pages/a.md", "A"),
-                FakeModelClient.WriteFileTurn("w2", "wiki/pages/b.md", "B"),
+                FakeModelClient.WriteFileTurn("w1", "wiki/tech/a.md", "A"),
+                FakeModelClient.WriteFileTurn("w2", "wiki/tech/b.md", "B"),
                 FakeModelClient.FinalTurn("done")
             ]);
 
@@ -93,8 +93,8 @@ public class PolicyMisconfigurationTests
             Assert.Equal(3, result.TurnsUsed);
             Assert.Equal(2, executor.Denials.Count);
             Assert.Empty(journal.TouchedPaths);
-            Assert.False(File.Exists(Path.Combine(root, "wiki", "pages", "a.md")));
-            Assert.False(File.Exists(Path.Combine(root, "wiki", "pages", "b.md")));
+            Assert.False(File.Exists(Path.Combine(root, "wiki", "tech", "a.md")));
+            Assert.False(File.Exists(Path.Combine(root, "wiki", "tech", "b.md")));
 
             var runShouldFail = journal.TouchedPaths.Count == 0 && executor.Denials.Count > 0;
             Assert.True(runShouldFail);

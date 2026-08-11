@@ -37,7 +37,7 @@ public class AgentProfileFidelityTests
     {
         // ADR-015 (012-query-synthesis-writes) supersedes the "no write tool at all"
         // framing of ADR-011/feature 008: Query's write capability is now scoped by
-        // policy (create-only pages/ + index.md/log.md), not by omitting the tool.
+        // policy (create-only "." + index.md/log.md), not by omitting the tool.
         Assert.Equal(
             ["list_files", "read_file", "write_file"],
             QueryToolRegistry.Default.Tools.Select(t => t.Name).ToArray());
@@ -51,14 +51,14 @@ public class AgentProfileFidelityTests
     public async Task Query_OutOfProfileToolRequest_IsRejectedAtTheGuardedBoundary_AndTheRunContinues()
     {
         var root = Path.Combine(Path.GetTempPath(), $"profile-fidelity-query-{Guid.NewGuid():N}");
-        var pagesDir = Path.Combine(root, "pages");
-        Directory.CreateDirectory(pagesDir);
+        var techDir = Path.Combine(root, "tech");
+        Directory.CreateDirectory(techDir);
 
         try
         {
             var policy = new SafetyPolicy(
                 root,
-                readPrefixes: [pagesDir + Path.DirectorySeparatorChar],
+                readPrefixes: [techDir + Path.DirectorySeparatorChar],
                 writePrefixes: []);
 
             var journal = new WriteJournal();
@@ -69,7 +69,7 @@ public class AgentProfileFidelityTests
             // Ingest variant below) — write_file is now legitimately in Query's profile
             // (ADR-015), so it no longer demonstrates an out-of-profile rejection.
             var fakeModel = new FakeModelClient([
-                FakeModelClient.ToolCallTurn("tool-1", "delete_file", """{"path":"pages/adr.md"}"""),
+                FakeModelClient.ToolCallTurn("tool-1", "delete_file", """{"path":"tech/adr.md"}"""),
                 FakeModelClient.FinalTurn("I cannot do that; here is the answer instead.")]);
 
             var loop = new AgentLoop(fakeModel, executor, registry: QueryToolRegistry.Default);
@@ -91,8 +91,8 @@ public class AgentProfileFidelityTests
             Assert.Equal(2, fakeModel.CallCount);
             Assert.Empty(journal.JournaledPaths);
             Assert.Empty(executor.TouchedPaths);
-            Assert.False(File.Exists(Path.Combine(pagesDir, "new.md")));
-            Assert.False(File.Exists(Path.Combine(pagesDir, "adr.md")));
+            Assert.False(File.Exists(Path.Combine(techDir, "new.md")));
+            Assert.False(File.Exists(Path.Combine(techDir, "adr.md")));
         }
         finally
         {
@@ -105,15 +105,15 @@ public class AgentProfileFidelityTests
     public async Task Ingest_OutOfProfileToolRequest_IsRejectedAtTheGuardedBoundary_AndTheRunContinues()
     {
         var root = Path.Combine(Path.GetTempPath(), $"profile-fidelity-ingest-{Guid.NewGuid():N}");
-        var pagesDir = Path.Combine(root, "pages");
-        Directory.CreateDirectory(pagesDir);
+        var techDir = Path.Combine(root, "tech");
+        Directory.CreateDirectory(techDir);
 
         try
         {
             var policy = new SafetyPolicy(
                 root,
-                readPrefixes: [pagesDir + Path.DirectorySeparatorChar],
-                writePrefixes: [pagesDir + Path.DirectorySeparatorChar]);
+                readPrefixes: [techDir + Path.DirectorySeparatorChar],
+                writePrefixes: [techDir + Path.DirectorySeparatorChar]);
 
             var journal = new WriteJournal();
             var executor = new GuardedToolExecutor(
@@ -121,7 +121,7 @@ public class AgentProfileFidelityTests
 
             // The model requests a tool no Grimoire profile declares at all.
             var fakeModel = new FakeModelClient([
-                FakeModelClient.ToolCallTurn("tool-1", "delete_file", """{"path":"pages/adr.md"}"""),
+                FakeModelClient.ToolCallTurn("tool-1", "delete_file", """{"path":"tech/adr.md"}"""),
                 FakeModelClient.FinalTurn("Ingest finished without the unknown tool.")]);
 
             var loop = new AgentLoop(fakeModel, executor, registry: IngestToolRegistry.Default);

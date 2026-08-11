@@ -37,11 +37,11 @@ public class LintAgentProposalCarriageTests
           {
             "title": "Cross-reference [[a]] and [[b]]",
             "description": "Both pages describe the same flow but do not link each other.\nAdd a See-also wikilink in each body.",
-            "targetPath": "pages/a.md"
+            "targetPath": "tech/a.md"
           },
           {
             "title": "Add missing tags to [[b]]",
-            "description": "pages/b.md has no tags frontmatter."
+            "description": "tech/b.md has no tags frontmatter."
           }
         ]
         ```
@@ -57,7 +57,7 @@ public class LintAgentProposalCarriageTests
         Assert.Equal(
             "Both pages describe the same flow but do not link each other.\nAdd a See-also wikilink in each body.",
             actions[0].Description);
-        Assert.Equal("pages/a.md", actions[0].TargetPath);
+        Assert.Equal("tech/a.md", actions[0].TargetPath);
         Assert.Null(actions[1].TargetPath);
 
         // The report narrative keeps every finding but loses the transport block.
@@ -123,8 +123,8 @@ public class LintAgentProposalCarriageTests
                     new ProposedActionRecord(
                         "Cross-reference [[a]] and [[b]]",
                         "Both pages describe the same flow.",
-                        "pages/a.md"),
-                    new ProposedActionRecord("Add missing tags to [[b]]", "pages/b.md has no tags frontmatter."),
+                        "tech/a.md"),
+                    new ProposedActionRecord("Add missing tags to [[b]]", "tech/b.md has no tags frontmatter."),
                 ]));
         }
 
@@ -137,7 +137,7 @@ public class LintAgentProposalCarriageTests
         Assert.Equal(2, parsed.ProposedActions!.Count);
         Assert.Equal("Cross-reference [[a]] and [[b]]", parsed.ProposedActions[0].Title);
         Assert.Equal("Both pages describe the same flow.", parsed.ProposedActions[0].Description);
-        Assert.Equal("pages/a.md", parsed.ProposedActions[0].TargetPath);
+        Assert.Equal("tech/a.md", parsed.ProposedActions[0].TargetPath);
         Assert.Null(parsed.ProposedActions[1].TargetPath);
     }
 

@@ -38,8 +38,8 @@ public class LintRemediationProposalMaterializationTests
         new
         {
             title = "Add missing tags to [[runtime-paths]]",
-            description = "The page pages/runtime-paths.md has no `tags` frontmatter.\n\nPropose adding tags: [tech/dotnet, concept/paths].",
-            targetPath = "pages/runtime-paths.md",
+            description = "The page concepts/runtime-paths.md has no `tags` frontmatter.\n\nPropose adding tags: [tech/dotnet, concept/paths].",
+            targetPath = "concepts/runtime-paths.md",
         },
         new
         {
@@ -103,9 +103,9 @@ public class LintRemediationProposalMaterializationTests
         // Principle V: agent-authored proposal text is stored verbatim.
         var first = Assert.Single(rowsAtBroadcast, r => r.Title == "Add missing tags to [[runtime-paths]]");
         Assert.Equal(
-            "The page pages/runtime-paths.md has no `tags` frontmatter.\n\nPropose adding tags: [tech/dotnet, concept/paths].",
+            "The page concepts/runtime-paths.md has no `tags` frontmatter.\n\nPropose adding tags: [tech/dotnet, concept/paths].",
             first.Description);
-        Assert.Equal("pages/runtime-paths.md", first.TargetPath);
+        Assert.Equal("concepts/runtime-paths.md", first.TargetPath);
 
         var second = Assert.Single(rowsAtBroadcast,
             r => r.Title == "Cross-reference [[credential-scoping]] and [[agent-dispatch]] <!-- grimoire:proposal -->");

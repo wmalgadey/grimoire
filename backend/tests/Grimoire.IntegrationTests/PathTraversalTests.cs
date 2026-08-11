@@ -14,7 +14,7 @@ public class PathTraversalTests
 
         try
         {
-            var wikiPages = Path.Combine(root, "wiki", "pages");
+            var wikiPages = Path.Combine(root, "wiki", "tech");
             Directory.CreateDirectory(wikiPages);
 
             var outsideFile = Path.Combine(root, "outside-read.txt");
@@ -26,7 +26,7 @@ public class PathTraversalTests
             var policy = new SafetyPolicy(
                 root,
                 readPrefixes: [Path.Combine(root, "wiki") + Path.DirectorySeparatorChar],
-                writePrefixes: [Path.Combine(root, "wiki", "pages") + Path.DirectorySeparatorChar]);
+                writePrefixes: [Path.Combine(root, "wiki", "tech") + Path.DirectorySeparatorChar]);
 
             var journal = new WriteJournal();
             var executor = new GuardedToolExecutor(policy, journal, root);
@@ -45,7 +45,7 @@ public class PathTraversalTests
 
             var symlinkResult = await executor.ExecuteAsync(
                 ToolRegistry.ReadFile,
-                JsonSerializer.Serialize(new { path = "wiki/pages/outside-link.md" }),
+                JsonSerializer.Serialize(new { path = "wiki/tech/outside-link.md" }),
                 turn: 3,
                 CancellationToken.None);
 
@@ -74,7 +74,7 @@ public class PathTraversalTests
 
         try
         {
-            var wikiPages = Path.Combine(root, "wiki", "pages");
+            var wikiPages = Path.Combine(root, "wiki", "tech");
             Directory.CreateDirectory(wikiPages);
 
             var outsideFile = Path.Combine(root, "outside-write.txt");
@@ -86,7 +86,7 @@ public class PathTraversalTests
             var policy = new SafetyPolicy(
                 root,
                 readPrefixes: [Path.Combine(root, "wiki") + Path.DirectorySeparatorChar],
-                writePrefixes: [Path.Combine(root, "wiki", "pages") + Path.DirectorySeparatorChar]);
+                writePrefixes: [Path.Combine(root, "wiki", "tech") + Path.DirectorySeparatorChar]);
 
             var journal = new WriteJournal();
             var executor = new GuardedToolExecutor(policy, journal, root);
@@ -105,7 +105,7 @@ public class PathTraversalTests
 
             var symlinkResult = await executor.ExecuteAsync(
                 ToolRegistry.WriteFile,
-                JsonSerializer.Serialize(new { path = "wiki/pages/outside-link.md", content = "hijack" }),
+                JsonSerializer.Serialize(new { path = "wiki/tech/outside-link.md", content = "hijack" }),
                 turn: 3,
                 CancellationToken.None);
 

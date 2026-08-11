@@ -19,7 +19,7 @@ public class SharedFileWriteGuardTests
         try
         {
             var guard = NewGuard(Path.Combine(root, "write-locks"));
-            var target = Path.Combine(root, "pages", "new.md");
+            var target = Path.Combine(root, "tech", "new.md");
 
             var decision = await guard.EvaluateWriteAsync(target, isCreateOnly: true, CancellationToken.None);
 
@@ -39,7 +39,7 @@ public class SharedFileWriteGuardTests
         var root = CreateTempDir();
         try
         {
-            var target = Path.Combine(root, "pages", "existing.md");
+            var target = Path.Combine(root, "tech", "existing.md");
             Directory.CreateDirectory(Path.GetDirectoryName(target)!);
             await File.WriteAllTextAsync(target, "already here");
 
@@ -63,7 +63,7 @@ public class SharedFileWriteGuardTests
         try
         {
             var guard = NewGuard(Path.Combine(root, "write-locks"));
-            var target = Path.Combine(root, "pages", "brand-new.md");
+            var target = Path.Combine(root, "tech", "brand-new.md");
 
             var decision = await guard.EvaluateWriteAsync(target, isCreateOnly: false, CancellationToken.None);
 
@@ -156,7 +156,7 @@ public class SharedFileWriteGuardTests
         var root = CreateTempDir();
         try
         {
-            var target = Path.Combine(root, "pages", "created-by-this-run.md");
+            var target = Path.Combine(root, "tech", "created-by-this-run.md");
             Directory.CreateDirectory(Path.GetDirectoryName(target)!);
 
             var guard = NewGuard(Path.Combine(root, "write-locks"));

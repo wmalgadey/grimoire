@@ -18,11 +18,11 @@ public class IngestTaskArtifactTests
             StartedAt: DateTimeOffset.Parse("2026-07-05T10:00:00Z"),
             CompletedAt: DateTimeOffset.Parse("2026-07-05T10:05:00Z"),
             SourceRef: "source.md",
-            PagesTouched: ["wiki/pages/topic.md"],
+            PagesTouched: ["wiki/tech/topic.md"],
             FailureReason: null,
             Narrative: "Updated the topic page because the source refined it.",
             PagesCreated: [],
-            PagesUpdated: ["wiki/pages/topic.md"],
+            PagesUpdated: ["wiki/tech/topic.md"],
             PagesSuperseded: [],
             DeniedActions: deniedActions,
             InstructionFiles: [new InstructionFileRecord("agents/ingest/CLAUDE.md", "abc123")],
@@ -118,8 +118,8 @@ public class IngestTaskArtifactTests
     public async Task CompletedArtifact_NarrativeMatches_AndListedPagesExistOnDisk()
     {
         var root = Path.Combine(Path.GetTempPath(), $"artifact-consistency-{Guid.NewGuid():N}");
-        var updatedPage = Path.Combine(root, "wiki", "pages", "existing.md");
-        var createdPage = Path.Combine(root, "wiki", "pages", "new.md");
+        var updatedPage = Path.Combine(root, "wiki", "tech", "existing.md");
+        var createdPage = Path.Combine(root, "wiki", "tech", "new.md");
         Directory.CreateDirectory(Path.GetDirectoryName(updatedPage)!);
         await File.WriteAllTextAsync(updatedPage, "existing");
         await File.WriteAllTextAsync(createdPage, "new");

@@ -56,8 +56,8 @@ public class IngestUserPromptTests
     public async Task AdversarialUserPrompt_CannotWidenWriteScope_GuardrailsDenyUnchanged()
     {
         var root = Path.Combine(Path.GetTempPath(), $"user-prompt-adversarial-{Guid.NewGuid():N}");
-        var pagesDir = Path.Combine(root, "wiki", "pages");
-        Directory.CreateDirectory(pagesDir);
+        var techDir = Path.Combine(root, "wiki", "tech");
+        Directory.CreateDirectory(techDir);
 
         try
         {
@@ -70,7 +70,7 @@ public class IngestUserPromptTests
             var policy = new SafetyPolicy(
                 root,
                 readPrefixes: [Path.Combine(root, "wiki") + Path.DirectorySeparatorChar],
-                writePrefixes: [pagesDir + Path.DirectorySeparatorChar]);
+                writePrefixes: [techDir + Path.DirectorySeparatorChar]);
             var journal = new WriteJournal();
             var executor = new GuardedToolExecutor(policy, journal, root, taskId: "task-adversarial");
             var loop = new AgentLoop(fake, executor);

@@ -28,7 +28,7 @@ public class IngestRunLifecycleTests
             // Create initial wiki structure
             var wikiDir = Path.Combine(tempRoot, "wiki");
             Directory.CreateDirectory(wikiDir);
-            var existingPagePath = Path.Combine(wikiDir, "pages", "existing.md");
+            var existingPagePath = Path.Combine(wikiDir, "tech", "existing.md");
             Directory.CreateDirectory(Path.GetDirectoryName(existingPagePath)!);
             File.WriteAllText(existingPagePath, "# Existing\n\nOriginal content.");
             var indexPath = Path.Combine(wikiDir, "index.md");
@@ -57,11 +57,11 @@ public class IngestRunLifecycleTests
                         new ToolUseRequest(
                             ToolUseId: "tool-2",
                             ToolName: "write_file",
-                            InputJson: "{\"path\": \"wiki/pages/existing.md\", \"content\": \"# Existing\\n\\nUpdated content.\"}"),
+                            InputJson: "{\"path\": \"wiki/tech/existing.md\", \"content\": \"# Existing\\n\\nUpdated content.\"}"),
                         new ToolUseRequest(
                             ToolUseId: "tool-3",
                             ToolName: "write_file",
-                            InputJson: "{\"path\": \"wiki/pages/test-source.md\", \"content\": \"# Test\\n\\nProcessed from source.\"}")
+                            InputJson: "{\"path\": \"wiki/tech/test-source.md\", \"content\": \"# Test\\n\\nProcessed from source.\"}")
                     ],
                     StopReason: ModelStopReason.ToolUse,
                     InputTokens: 150,
@@ -83,7 +83,7 @@ public class IngestRunLifecycleTests
                 readPrefixes: new[] { Path.Combine(tempRoot, "wiki") + Path.DirectorySeparatorChar },
                 writePrefixes: new[]
                 {
-                    Path.Combine(tempRoot, "wiki", "pages") + Path.DirectorySeparatorChar,
+                    Path.Combine(tempRoot, "wiki", "tech") + Path.DirectorySeparatorChar,
                     Path.Combine(tempRoot, "wiki", "index.md"),
                     Path.Combine(tempRoot, "wiki", "log.md"),
                 });
@@ -111,7 +111,7 @@ public class IngestRunLifecycleTests
 
             // Verify pages were written and journaled with the correct action split.
             Assert.Contains(existingPagePath, journal.UpdatedPaths);
-            var pagePath = Path.Combine(wikiDir, "pages", "test-source.md");
+            var pagePath = Path.Combine(wikiDir, "tech", "test-source.md");
             Assert.Contains(pagePath, journal.CreatedPaths);
             Assert.True(File.Exists(pagePath));
             var pageContent = File.ReadAllText(pagePath);
@@ -136,16 +136,16 @@ public class IngestRunLifecycleTests
 
         try
         {
-            var existingPath = Path.Combine(root, "wiki", "pages", "existing.md");
+            var existingPath = Path.Combine(root, "wiki", "tech", "existing.md");
             Directory.CreateDirectory(Path.GetDirectoryName(existingPath)!);
             await File.WriteAllTextAsync(existingPath, "original");
 
-            var createdPath = Path.Combine(root, "wiki", "pages", "new.md");
+            var createdPath = Path.Combine(root, "wiki", "tech", "new.md");
 
             var turns = new[]
             {
-                FakeModelClient.WriteFileTurn("w1", "wiki/pages/existing.md", "updated"),
-                FakeModelClient.WriteFileTurn("w2", "wiki/pages/new.md", "created"),
+                FakeModelClient.WriteFileTurn("w1", "wiki/tech/existing.md", "updated"),
+                FakeModelClient.WriteFileTurn("w2", "wiki/tech/new.md", "created"),
                 // Unexpected stop reason after writes to force failure.
                 new ModelTurn("bad", [], ModelStopReason.Unknown, 1, 1),
             };
@@ -154,7 +154,7 @@ public class IngestRunLifecycleTests
             var policy = new SafetyPolicy(
                 root,
                 readPrefixes: [Path.Combine(root, "wiki") + Path.DirectorySeparatorChar],
-                writePrefixes: [Path.Combine(root, "wiki", "pages") + Path.DirectorySeparatorChar]);
+                writePrefixes: [Path.Combine(root, "wiki", "tech") + Path.DirectorySeparatorChar]);
             var journal = new WriteJournal();
             var executor = new GuardedToolExecutor(policy, journal, root);
             var loop = new AgentLoop(fake, executor);
@@ -190,21 +190,21 @@ public class IngestRunLifecycleTests
 
         try
         {
-            var existingPath = Path.Combine(root, "wiki", "pages", "existing.md");
+            var existingPath = Path.Combine(root, "wiki", "tech", "existing.md");
             Directory.CreateDirectory(Path.GetDirectoryName(existingPath)!);
             await File.WriteAllTextAsync(existingPath, "before-cap");
 
             var turns = new[]
             {
-                FakeModelClient.WriteFileTurn("w1", "wiki/pages/existing.md", "during-cap"),
-                FakeModelClient.WriteFileTurn("w2", "wiki/pages/new.md", "new"),
+                FakeModelClient.WriteFileTurn("w1", "wiki/tech/existing.md", "during-cap"),
+                FakeModelClient.WriteFileTurn("w2", "wiki/tech/new.md", "new"),
             };
 
             var fake = new FakeModelClient(turns);
             var policy = new SafetyPolicy(
                 root,
                 readPrefixes: [Path.Combine(root, "wiki") + Path.DirectorySeparatorChar],
-                writePrefixes: [Path.Combine(root, "wiki", "pages") + Path.DirectorySeparatorChar]);
+                writePrefixes: [Path.Combine(root, "wiki", "tech") + Path.DirectorySeparatorChar]);
             var journal = new WriteJournal();
             var executor = new GuardedToolExecutor(policy, journal, root);
             var loop = new AgentLoop(fake, executor, turnCap: 1);
@@ -222,7 +222,7 @@ public class IngestRunLifecycleTests
             var rollback = await journal.RollbackAsync(CancellationToken.None);
             Assert.All(rollback.Values, Assert.True);
             Assert.Equal("before-cap", await File.ReadAllTextAsync(existingPath));
-            Assert.False(File.Exists(Path.Combine(root, "wiki", "pages", "new.md")));
+            Assert.False(File.Exists(Path.Combine(root, "wiki", "tech", "new.md")));
         }
         finally
         {
@@ -265,7 +265,7 @@ public class IngestRunLifecycleTests
                     AssistantText: "Write was denied, continuing with allowed action.",
                     ToolUseRequests: [
                         new ToolUseRequest("t2", "write_file",
-                            "{\"path\": \"wiki/pages/allowed.md\", \"content\": \"Good content\"}")
+                            "{\"path\": \"wiki/tech/allowed.md\", \"content\": \"Good content\"}")
                     ],
                     StopReason: ModelStopReason.ToolUse,
                     InputTokens: 100,
@@ -286,7 +286,7 @@ public class IngestRunLifecycleTests
                 readPrefixes: new[] { Path.Combine(tempRoot, "wiki") + Path.DirectorySeparatorChar },
                 writePrefixes: new[]
                 {
-                    Path.Combine(tempRoot, "wiki", "pages") + Path.DirectorySeparatorChar,
+                    Path.Combine(tempRoot, "wiki", "tech") + Path.DirectorySeparatorChar,
                     Path.Combine(tempRoot, "wiki", "index.md"),
                 });
 
@@ -315,7 +315,7 @@ public class IngestRunLifecycleTests
             Assert.Equal(forbiddenFile, executor.Denials[0].CanonicalTarget);
 
             // Allowed file should exist
-            var allowedFile = Path.Combine(wikiDir, "pages", "allowed.md");
+            var allowedFile = Path.Combine(wikiDir, "tech", "allowed.md");
             Assert.True(File.Exists(allowedFile));
             Assert.Contains("Good content", File.ReadAllText(allowedFile));
         }

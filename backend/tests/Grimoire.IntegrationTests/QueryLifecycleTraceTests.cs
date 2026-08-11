@@ -116,18 +116,18 @@ public class QueryLifecycleTraceTests
 
         var root = Path.Combine(Path.GetTempPath(), $"query-agent-trace-{Guid.NewGuid():N}");
         var wikiDir = Path.Combine(root, "wiki");
-        var pagesDir = Path.Combine(wikiDir, "pages");
-        Directory.CreateDirectory(pagesDir);
-        await File.WriteAllTextAsync(Path.Combine(pagesDir, "adr.md"), "# ADR notes");
+        var techDir = Path.Combine(wikiDir, "tech");
+        Directory.CreateDirectory(techDir);
+        await File.WriteAllTextAsync(Path.Combine(techDir, "adr.md"), "# ADR notes");
 
-        var policy = new SafetyPolicy(wikiDir, readPrefixes: [pagesDir + Path.DirectorySeparatorChar], writePrefixes: []);
+        var policy = new SafetyPolicy(wikiDir, readPrefixes: [techDir + Path.DirectorySeparatorChar], writePrefixes: []);
         var journal = new WriteJournal();
         var executor = new GuardedToolExecutor(
             policy, journal, wikiDir, taskId: "turn-trace-1",
             registry: Grimoire.QueryAgent.QueryToolRegistry.Default,
             instrumentation: new QueryToolCallInstrumentation(Microsoft.Extensions.Logging.Abstractions.NullLogger.Instance));
         var fakeModel = new FakeModelClient([
-            FakeModelClient.ReadFileTurn("tool-1", "pages/adr.md"),
+            FakeModelClient.ReadFileTurn("tool-1", "tech/adr.md"),
             FakeModelClient.FinalTurn("The wiki covers ADR notes.")]);
         var loop = new AgentLoop(
             fakeModel, executor,
@@ -181,10 +181,10 @@ public class QueryLifecycleTraceTests
 
         var root = Path.Combine(Path.GetTempPath(), $"query-agent-trace-denied-{Guid.NewGuid():N}");
         var wikiDir = Path.Combine(root, "wiki");
-        var pagesDir = Path.Combine(wikiDir, "pages");
-        Directory.CreateDirectory(pagesDir);
+        var techDir = Path.Combine(wikiDir, "tech");
+        Directory.CreateDirectory(techDir);
 
-        var policy = new SafetyPolicy(wikiDir, readPrefixes: [pagesDir + Path.DirectorySeparatorChar], writePrefixes: []);
+        var policy = new SafetyPolicy(wikiDir, readPrefixes: [techDir + Path.DirectorySeparatorChar], writePrefixes: []);
         var journal = new WriteJournal();
         var executor = new GuardedToolExecutor(
             policy, journal, wikiDir, taskId: "turn-trace-denied-1",

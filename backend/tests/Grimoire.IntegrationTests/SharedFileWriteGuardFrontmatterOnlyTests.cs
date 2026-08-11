@@ -32,7 +32,7 @@ public class SharedFileWriteGuardFrontmatterOnlyTests
         try
         {
             var guard = NewGuard(Path.Combine(root, "write-locks"));
-            var target = Path.Combine(root, "pages", "missing.md");
+            var target = Path.Combine(root, "tech", "missing.md");
 
             var decision = await guard.EvaluateWriteAsync(
                 target, WriteMode.FrontmatterOnly, SamplePage, CancellationToken.None);
@@ -53,7 +53,7 @@ public class SharedFileWriteGuardFrontmatterOnlyTests
         var root = CreateTempDir();
         try
         {
-            var target = Path.Combine(root, "pages", "existing.md");
+            var target = Path.Combine(root, "tech", "existing.md");
             Directory.CreateDirectory(Path.GetDirectoryName(target)!);
             await File.WriteAllTextAsync(target, SamplePage);
 
@@ -89,7 +89,7 @@ public class SharedFileWriteGuardFrontmatterOnlyTests
         var root = CreateTempDir();
         try
         {
-            var target = Path.Combine(root, "pages", "existing.md");
+            var target = Path.Combine(root, "tech", "existing.md");
             Directory.CreateDirectory(Path.GetDirectoryName(target)!);
             await File.WriteAllTextAsync(target, SamplePage);
 
@@ -127,7 +127,7 @@ public class SharedFileWriteGuardFrontmatterOnlyTests
         var root = CreateTempDir();
         try
         {
-            var target = Path.Combine(root, "pages", "existing.md");
+            var target = Path.Combine(root, "tech", "existing.md");
             Directory.CreateDirectory(Path.GetDirectoryName(target)!);
             await File.WriteAllTextAsync(target, SamplePage);
 
@@ -154,7 +154,7 @@ public class SharedFileWriteGuardFrontmatterOnlyTests
         var root = CreateTempDir();
         try
         {
-            var target = Path.Combine(root, "pages", "existing.md");
+            var target = Path.Combine(root, "tech", "existing.md");
             Directory.CreateDirectory(Path.GetDirectoryName(target)!);
             var malformedOnDisk = "not a frontmatter document";
             await File.WriteAllTextAsync(target, malformedOnDisk);
@@ -180,7 +180,7 @@ public class SharedFileWriteGuardFrontmatterOnlyTests
         var root = CreateTempDir();
         try
         {
-            var target = Path.Combine(root, "pages", "existing.md");
+            var target = Path.Combine(root, "tech", "existing.md");
             Directory.CreateDirectory(Path.GetDirectoryName(target)!);
             var onlyOpeningDelimiter = "---\ntitle: no closing delimiter\n# Body\n";
             await File.WriteAllTextAsync(target, onlyOpeningDelimiter);
@@ -206,7 +206,7 @@ public class SharedFileWriteGuardFrontmatterOnlyTests
         var root = CreateTempDir();
         try
         {
-            var target = Path.Combine(root, "pages", "existing.md");
+            var target = Path.Combine(root, "tech", "existing.md");
             Directory.CreateDirectory(Path.GetDirectoryName(target)!);
             await File.WriteAllTextAsync(target, SamplePage);
 

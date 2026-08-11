@@ -20,9 +20,9 @@ public class WriteModeTests
         var policy = new SafetyPolicy(
             RepoRoot,
             readPrefixes: [],
-            writeRules: [new WriteRule("/repo/wiki/pages/", WriteMode.FrontmatterOnly)]);
+            writeRules: [new WriteRule("/repo/wiki/tech/", WriteMode.FrontmatterOnly)]);
 
-        var decision = policy.Evaluate("/repo/wiki/pages/existing.md", isWrite: true);
+        var decision = policy.Evaluate("/repo/wiki/tech/existing.md", isWrite: true);
 
         Assert.True(decision.IsAllowed);
         Assert.Equal(WriteMode.FrontmatterOnly, decision.Mode);
@@ -35,9 +35,9 @@ public class WriteModeTests
         var policy = new SafetyPolicy(
             RepoRoot,
             readPrefixes: [],
-            writeRules: [new WriteRule("/repo/wiki/pages/", WriteMode.CreateOnly)]);
+            writeRules: [new WriteRule("/repo/wiki/tech/", WriteMode.CreateOnly)]);
 
-        var decision = policy.Evaluate("/repo/wiki/pages/new.md", isWrite: true);
+        var decision = policy.Evaluate("/repo/wiki/tech/new.md", isWrite: true);
 
         Assert.True(decision.IsAllowed);
         Assert.Equal(WriteMode.CreateOnly, decision.Mode);
@@ -64,7 +64,7 @@ public class WriteModeTests
     {
         // Backward compatibility (ADR-016): the pre-existing bool constructor shape must
         // still produce the equivalent Mode value.
-        var rule = new WriteRule("/repo/wiki/pages/", CreateOnly: true);
+        var rule = new WriteRule("/repo/wiki/tech/", CreateOnly: true);
 
         Assert.Equal(WriteMode.CreateOnly, rule.Mode);
         Assert.True(rule.CreateOnly);
@@ -100,7 +100,7 @@ public class WriteModeTests
         var policy = new SafetyPolicy(
             RepoRoot,
             readPrefixes: [],
-            writeRules: [new WriteRule("/repo/wiki/pages/", WriteMode.FrontmatterOnly)]);
+            writeRules: [new WriteRule("/repo/wiki/tech/", WriteMode.FrontmatterOnly)]);
 
         var decision = policy.Evaluate("/etc/passwd", isWrite: true);
 
@@ -115,7 +115,7 @@ public class WriteModeTests
         var policy = new SafetyPolicy(
             RepoRoot,
             readPrefixes: [],
-            writeRules: [new WriteRule("/repo/wiki/pages/", WriteMode.FrontmatterOnly)]);
+            writeRules: [new WriteRule("/repo/wiki/tech/", WriteMode.FrontmatterOnly)]);
 
         var decision = policy.Evaluate("/repo/wiki/index.md", isWrite: true);
 

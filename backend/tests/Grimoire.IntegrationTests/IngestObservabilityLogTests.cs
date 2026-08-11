@@ -155,20 +155,20 @@ public class IngestObservabilityLogTests
     {
         var root = Path.Combine(Path.GetTempPath(), $"log-completed-{Guid.NewGuid():N}");
         var wikiDir = Path.Combine(root, "wiki");
-        var pagesDir = Path.Combine(wikiDir, "pages");
-        Directory.CreateDirectory(pagesDir);
-        var existingPage = Path.Combine(pagesDir, "existing.md");
+        var techDir = Path.Combine(wikiDir, "tech");
+        Directory.CreateDirectory(techDir);
+        var existingPage = Path.Combine(techDir, "existing.md");
         await File.WriteAllTextAsync(existingPage, "before");
 
         var policy = new SafetyPolicy(
             root,
             readPrefixes: [wikiDir + Path.DirectorySeparatorChar],
-            writePrefixes: [pagesDir + Path.DirectorySeparatorChar]);
+            writePrefixes: [techDir + Path.DirectorySeparatorChar]);
         var journal = new WriteJournal();
         var executor = new GuardedToolExecutor(policy, journal, root, taskId: "task-mixed");
         var fake = new FakeModelClient([
-            FakeModelClient.WriteFileTurn("tool-1", "wiki/pages/existing.md", "after"),
-            FakeModelClient.WriteFileTurn("tool-2", "wiki/pages/new.md", "# New page"),
+            FakeModelClient.WriteFileTurn("tool-1", "wiki/tech/existing.md", "after"),
+            FakeModelClient.WriteFileTurn("tool-2", "wiki/tech/new.md", "# New page"),
             FakeModelClient.FinalTurn("Mixed create/update run complete.")]);
         var loop = new AgentLoop(fake, executor);
 

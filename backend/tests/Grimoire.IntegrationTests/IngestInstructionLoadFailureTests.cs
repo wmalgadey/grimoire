@@ -70,13 +70,13 @@ public class IngestInstructionLoadFailureTests
             var policy = new SafetyPolicy(
                 root,
                 readPrefixes: [Path.Combine(root, "wiki") + Path.DirectorySeparatorChar],
-                writePrefixes: [Path.Combine(root, "wiki", "pages") + Path.DirectorySeparatorChar]);
+                writePrefixes: [Path.Combine(root, "wiki", "tech") + Path.DirectorySeparatorChar]);
             var journal = new WriteJournal();
             _ = new GuardedToolExecutor(policy, journal, root);
 
             Assert.Equal(0, fake.CallCount);
             Assert.Empty(journal.JournaledPaths);
-            Assert.False(File.Exists(Path.Combine(root, "wiki", "pages", "result.md")));
+            Assert.False(File.Exists(Path.Combine(root, "wiki", "tech", "result.md")));
         }
         finally
         {

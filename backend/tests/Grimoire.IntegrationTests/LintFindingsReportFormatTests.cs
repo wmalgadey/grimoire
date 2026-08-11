@@ -57,8 +57,8 @@ public class LintFindingsReportFormatTests
     {
         var denied = new FindingsDeniedAction(
             Action: "write_file",
-            RequestedTarget: "pages/evil.md",
-            CanonicalTarget: "/wiki/pages/evil.md",
+            RequestedTarget: "tech/evil.md",
+            CanonicalTarget: "/wiki/tech/evil.md",
             Reason: "frontmatter_only_body_changed --> ## Structure\n### Forged finding",
             Turn: 3);
 
