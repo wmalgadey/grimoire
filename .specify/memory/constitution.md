@@ -1,6 +1,66 @@
 <!--
 SYNC IMPACT REPORT
 ==================
+Version change: 1.8.0 → 1.9.0
+
+Principles modified:
+  - II. Pragmatic Testing Strategy (NEW subsection "Assertion ownership
+    boundary": tests exercising a third-party framework the product depends
+    on but does not own — e.g., Spectre.Console's CLI rendering — MUST
+    assert only product-owned contracts (command/switch catalog sourced from
+    the product's own single source of truth, --help precedence over
+    execution, exit-code semantics, guardrail/validation behavior the
+    product defines) and MUST NOT pin exact framework-rendered
+    formatting/text it does not own (column widths, word-wrap points, ANSI
+    styling). Minimal framework wire-up smoke checks are permitted but MUST
+    be isolated and explicitly labeled as such, not conflated with contract
+    tests. Every assertion against framework-produced output MUST carry a
+    comment naming the product requirement it enforces.)
+
+Principles added: none
+
+Sections modified: none
+
+Sections removed: none
+
+Templates updated:
+  - .specify/templates/plan-template.md ✅ (Test Strategy doubles/fixtures
+    guidance note now also points to the Principle II assertion-ownership
+    boundary for any feature whose success criteria are verified through a
+    third-party-rendered surface, e.g. a CLI framework)
+  - .specify/templates/tasks-template.md ✅ no change required (task
+    categories are framework-agnostic; the new rule is enforced through
+    Principle II, already referenced by the classicist-TDD task guidance)
+  - .specify/templates/spec-template.md ✅ no change required (specs stay
+    tech-agnostic and do not name test frameworks)
+  - .specify/templates/checklist-template.md ✅ no change required
+
+Rationale for MINOR bump: this adds a new enforceable rule to an existing
+principle (Principle II) rather than merely clarifying prior wording, which
+the Governance section's versioning rule puts at MINOR. It is not MAJOR
+because nothing previously required becomes forbidden — real-infrastructure,
+state-based, classicist testing is unchanged; this only draws an explicit
+line between what a test may assert about the product versus about a
+framework dependency it does not own.
+
+Motivating context: an audit of the Hub CLI integration suite (Spectre.Console-
+based) found the existing tests already largely practiced this discipline —
+sourcing expected switch/command names from the product's own catalogs
+(`PathSwitchCatalog.All`, `HubCliCommands.All`) instead of duplicated
+literals, and asserting description prefixes rather than full text to stay
+robust to Spectre's own word-wrap — but the discipline was implicit,
+inconsistently documented, and not binding for future specs. This amendment
+names the boundary so it is enforceable and reviewable going forward,
+without requiring a retroactive rewrite of already-compliant tests
+(Governance: "Amendments are not retroactive").
+
+Deferred TODOs: none.
+
+
+--------------------------------------------------------------------------
+PRIOR AMENDMENTS
+--------------------------------------------------------------------------
+
 Version change: 1.6.0 → 1.8.0 (two amendments, same day)
 
 Principles modified:
@@ -213,6 +273,41 @@ against real infrastructure are primary). State-based classicist tests survive
 refactoring of internals, while interaction-based tests couple the suite to
 implementation structure — the opposite of what a harness whose intelligence lives in
 agent instructions (Principle V) needs from its safety net.
+
+**Assertion ownership boundary.** Where a test exercises a third-party framework the
+product depends on but does not own (e.g., Spectre.Console's CLI rendering), it MUST
+assert only what the product itself defines, never the framework's internal rendering
+behavior:
+
+- **Product-owned contracts** MUST be asserted, and strengthened where coverage is
+  thin: the command/switch catalog (names, presence, required options) sourced from the
+  product's own single source of truth (e.g., `PathSwitchCatalog.All`,
+  `HubCliCommands.All`) rather than duplicated literals that can silently drift;
+  `--help`/`-h` precedence over command execution (no side effects triggered); exit-code
+  semantics the product defines; guardrail and validation behavior the product specifies.
+- **Framework-owned behavior** MUST NOT be pinned by exact-match assertions: column
+  widths, word-wrap points, ANSI styling, table borders, or any other rendering detail
+  that originates from the framework's own layout engine and is not a product
+  requirement. Where a test needs to confirm content is present in framework-rendered
+  output, it MUST assert on substrings/prefixes robust to reflow, not full-text equality.
+- **Wire-up smoke checks** — a minimal check that the framework boots and dispatches at
+  all (e.g., a real command reaches its handler through the framework's real resolver) —
+  MAY exist, but MUST be isolated as an explicitly labeled wire-up test whose doc comment
+  states that its intent is process/dispatch integration, not a rendering or
+  business-logic contract.
+- Every assertion against framework-produced output MUST carry a comment naming the
+  product requirement it enforces (an FR-###/SC-### or ADR reference) and, where the
+  assertion is scoped to a substring/prefix rather than full text, why that scoping is
+  needed to avoid coupling to framework-internal formatting.
+
+Rationale: a test suite that pins a framework's exact rendered text breaks on every
+framework upgrade with zero product regression, and a green suite built on such
+assertions gives false confidence — it proves the framework renders as the framework
+always renders, not that the product's contract holds. Sourcing expectations from the
+product's own catalogs, rather than duplicating literals inline, also closes the drift
+this constitution's other principles exist to prevent: a hardcoded switch list silently
+diverging from `Program.cs`'s actual accepted switches is the same class of false
+negative Principle II rejects for repositories that mock their database.
 
 **Harness contracts vs. agent behavior.** The two halves of the system defined by
 Principle V are tested differently, and conflating them is a violation in both directions:
@@ -437,4 +532,4 @@ the amendment closes a live defect in the merged feature, not when it adds a new
 or ceremony. (Concretely: the final-phase completeness-audit task introduced in v1.5.0 is
 absent from specs 001–009, all authored earlier; that absence is not a violation.)
 
-**Version**: 1.8.0 | **Ratified**: 2026-06-23 | **Last Amended**: 2026-08-09
+**Version**: 1.9.0 | **Ratified**: 2026-06-23 | **Last Amended**: 2026-08-11

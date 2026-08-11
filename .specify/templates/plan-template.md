@@ -109,6 +109,12 @@
   hand-rolled fakes implementing an existing port interface only — never
   mocking-framework mocks (Moq/NSubstitute/FakeItEasy are banned) and never a double
   introduced solely to isolate an internal collaborator. Verification is state-based.
+
+  If a success criterion is verified through a third-party-rendered surface (e.g., a CLI
+  framework's help/usage output), the test MUST follow Principle II's assertion
+  ownership boundary: assert product-owned contracts (catalog parity, --help precedence,
+  exit codes, guardrail behavior) sourced from the product's own single source of truth,
+  never exact framework-rendered formatting/text the product does not own.
 -->
 
 | Success criterion | Category | Primary test type | Doubles / external dependencies | Fixtures / sampled data | Notes |
