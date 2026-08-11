@@ -5,13 +5,18 @@ using Spectre.Console.Cli.Unsafe;
 namespace Grimoire.Hub.Cli;
 
 /// <summary>
-/// The Hub CLI's entry point (018-hub-cli-commands, ADR-020): builds the Hub's one
-/// composition (<see cref="HubHostComposition.BuildAsync"/> — <c>builder.Build()</c>,
-/// never <c>app.Run()</c>, so no port is ever bound), wires a Spectre <see cref="CommandApp"/>
-/// over it via <see cref="HubCliTypeRegistrar"/> so every command resolves the same
-/// coordinators/services the HTTP endpoints use, and registers every catalog entry that
-/// already has a command class (<see cref="HubCliCommands.All"/> — later phases add
-/// entries by giving them a non-null <c>CommandType</c>; no change needed here).
+/// The Hub's single entry point (018-hub-cli-commands, ADR-020): builds the Hub's one
+/// composition (<see cref="HubHostComposition.BuildAsync"/>), wires a Spectre
+/// <see cref="CommandApp{TDefaultCommand}"/> over it via <see cref="HubCliTypeRegistrar"/> so
+/// every command resolves the same coordinators/services the HTTP endpoints use, and
+/// registers every catalog entry that already has a command class
+/// (<see cref="HubCliCommands.All"/> — later phases add entries by giving them a non-null
+/// <c>CommandType</c>; no change needed here).
+///
+/// <b>Every invocation goes through here</b>, including starting the web server:
+/// <see cref="HubRootCommand"/> is the default command, so <c>Program.cs</c> no longer needs
+/// a hand-written gate deciding between "CLI" and "web host". The named commands remain
+/// one-shot invocations that never bind a port; only the default command runs the server.
 ///
 /// Host construction is deferred until a command is actually about to execute (see
 /// <see cref="HubCliTypeRegistrar"/>) — <c>--help</c>, an unknown command name, and a
@@ -64,7 +69,29 @@ public static class HubCliApp
             return builtApp.Services;
         });
 
-        var cliApp = new CommandApp(registrar);
+        // The server path, handed to HubRootCommand as an instance in the registrar's
+        // supplementary container (see HubServerHost): resolving it must not build the host,
+        // so the composition happens here, inside the closure, only once the command actually
+        // runs. Assigning the same `builtApp` local the registrar's factory uses keeps this
+        // path covered by the finally-block's DisposeAsync (D8's OTLP-flush obligation) —
+        // whichever of the two ran first.
+        registrar.RegisterInstance(typeof(HubServerHost), new HubServerHost(async cancellationToken =>
+        {
+            builtApp ??= await HubHostComposition.BuildAsync(args);
+            builtApp.MapGrimoireEndpoints();
+            // WebApplication.RunAsync(string?) shadows the IHost extension that takes a
+            // token, so the cast is what lets this class's own cancellation reach the host:
+            // WaitForShutdownAsync registers StopApplication on the token. The host's
+            // ConsoleLifetime registers for the same OS signals independently, and both
+            // routes end in StopApplication — they are additive, not competing.
+            await ((IHost)builtApp).RunAsync(cancellationToken);
+            return (int)CliExitCode.Success;
+        }));
+
+        var cliApp = new CommandApp<HubRootCommand>(registrar);
+        // Rendered by Spectre as the root help's DESCRIPTION section — the tagline is part of
+        // the generated help now, not a hand-placed Markup line in HubCliHelpProvider.
+        cliApp.WithDescription("Grimoire is an AI harness that keeps a wiki current through supervised agents.");
         cliApp.Configure(config =>
         {
             config.SetApplicationName("Grimoire.Hub");

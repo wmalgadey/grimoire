@@ -24,7 +24,7 @@ namespace Grimoire.Hub.Cli;
 /// a parity test (<c>HubHelpUsageTests</c>) asserts the 1:1 mapping so the two can never
 /// independently drift. The <see cref="DescriptionAttribute"/> text below mirrors
 /// <see cref="PathSwitchCatalog.All"/>'s descriptions so `&lt;command&gt; --help` shows
-/// the same wording as the root help's "Server options:" section.
+/// the same wording as the root help's "Options:" section.
 /// </summary>
 public class HubPathSettings : CommandSettings
 {

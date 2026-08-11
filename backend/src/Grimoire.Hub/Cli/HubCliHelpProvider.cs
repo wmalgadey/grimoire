@@ -1,4 +1,4 @@
-using Grimoire.Hub.Runtime.Paths;
+using System.Reflection;
 using Spectre.Console;
 using Spectre.Console.Cli;
 using Spectre.Console.Cli.Help;
@@ -8,41 +8,160 @@ namespace Grimoire.Hub.Cli;
 
 /// <summary>
 /// Custom root help for the Hub CLI (018-hub-cli-commands, research.md D2/D3/D7, ADR-020):
-/// prepends the <c>FigletText("Grimoire")</c> logo and appends a <c>Server options:</c>
-/// section generated from <see cref="PathSwitchCatalog.All"/> — preserving 017's
-/// single-source-of-truth guarantee (every switch declared once) now that
-/// <c>BuildUsageText()</c> is retired.
+/// a centered <c>FigletText</c> "Grimoire" logo above Spectre's generated help, and
+/// operational guidance below it. Nothing in between is hand-rendered.
 ///
-/// Only the ROOT invocation (<c>command is null</c>, confirmed by Spectre's own
-/// <c>IHelpProvider.Write(ICommandModel, ICommandInfo?)</c> contract) gets the extra
-/// sections; per-command <c>--help</c> falls straight through to Spectre's default
-/// rendering — logo-free and compact, per contracts/cli-commands.md's help contract.
+/// The path switches used to be one of those hand-rendered pieces: Spectre builds the
+/// <c>OPTIONS:</c> section from <c>command?.Parameters</c>, and without a default command the
+/// root invocation passes <see langword="null"/> there, so <c>--data-dir</c> and friends could
+/// only be shown as a hand-padded block spliced in by searching the rendered output for
+/// <c>"COMMANDS:"</c>. <see cref="HubRootCommand"/> — the default command, deriving from
+/// <see cref="HubPathSettings"/> — removed the need: the root help now receives its parameters
+/// and renders them in the real options grid, aligned with <c>-h, --help</c> and wrapped by
+/// Spectre. Same for the tagline, which is the default command's description
+/// (<see cref="HubCliApp"/>) and therefore Spectre's own <c>DESCRIPTION:</c> section.
+///
+/// Only the ROOT invocation gets the logo and the guidance. With a default command registered,
+/// "root" is no longer <c>command is null</c> — Spectre passes the default command's
+/// <see cref="ICommandInfo"/> — so the check is <c>IsDefaultCommand</c>. Per-command
+/// <c>--help</c> falls straight through to Spectre's default rendering — logo-free and
+/// compact, per contracts/cli-commands.md's help contract.
 /// </summary>
 public sealed class HubCliHelpProvider : HelpProvider
 {
+    /// <summary>
+    /// The "DOS Rebel" FIGfont, embedded in this assembly (see the
+    /// <c>EmbeddedResource</c> item in Grimoire.Hub.csproj) rather than loaded from disk:
+    /// root <c>--help</c> must render before any path resolution has happened, so it can
+    /// have no on-disk dependency. Spectre ships exactly one built-in font, so a custom
+    /// look requires supplying the <c>.flf</c> ourselves.
+    ///
+    /// Loaded once and cached — <see cref="FigletFont"/> is immutable and parsing the
+    /// ~12 KB file on every help invocation would be pointless work.
+    ///
+    /// Note that Spectre's FIGfont parser does not accept every <c>.flf</c> in the
+    /// wild (the widely distributed <c>big.flf</c>, for one, throws "Unknown index for
+    /// FIGlet character" on load). Any replacement font MUST be verified by actually
+    /// rendering it, not merely by dropping the file in.
+    /// </summary>
+    private static readonly Lazy<FigletFont> LogoFont = new(() =>
+    {
+        const string ResourceName = "Grimoire.Hub.Cli.Fonts.dos-rebel.flf";
+        using var stream = typeof(HubCliHelpProvider).Assembly.GetManifestResourceStream(ResourceName)
+            ?? throw new InvalidOperationException(
+                $"Embedded Figlet font '{ResourceName}' is missing from the Grimoire.Hub assembly.");
+        return FigletFont.Load(stream);
+    });
+
+    /// <summary>
+    /// The Hub's own version, shown under the logo. Read from
+    /// <see cref="AssemblyInformationalVersionAttribute"/> — the assembly's most descriptive
+    /// version, set by <c>backend/Directory.Build.props</c> from <c>$(Version)</c> — falling
+    /// back to the assembly version if that attribute is ever absent. Anything after a '+' is
+    /// dropped: should a future SourceLink/versioning setup append build metadata (a commit
+    /// sha), this line should still name a release rather than a build.
+    ///
+    /// Deliberately read here rather than through Spectre's own
+    /// <c>ICommandModel.ApplicationVersion</c>: populating that (via
+    /// <c>SetApplicationVersion</c>) would also add a <c>-v, --version</c> option to every
+    /// help screen — a separate decision from showing the version in the logo block.
+    /// </summary>
+    private static readonly Lazy<string> LogoVersion = new(() =>
+    {
+        var assembly = typeof(HubCliHelpProvider).Assembly;
+        var informational = assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion;
+        var version = string.IsNullOrWhiteSpace(informational)
+            ? assembly.GetName().Version?.ToString()
+            : informational;
+
+        return version?.Split('+')[0] ?? string.Empty;
+    });
+
+    /// <summary>
+    /// The build configuration, but only when it is NOT a release build — worth flagging in
+    /// the help header so an operator can tell at a glance that this binary is not one.
+    /// Read from <see cref="AssemblyConfigurationAttribute"/>, which the SDK stamps from
+    /// <c>$(Configuration)</c>.
+    ///
+    /// <see langword="null"/> both for Release and for a missing attribute: an unknown
+    /// configuration is not evidence of a debug build, and claiming one would be worse than
+    /// saying nothing.
+    /// </summary>
+    private static readonly Lazy<string?> NonReleaseConfiguration = new(() =>
+    {
+        var configuration = typeof(HubCliHelpProvider).Assembly
+            .GetCustomAttribute<AssemblyConfigurationAttribute>()?.Configuration;
+
+        return string.IsNullOrWhiteSpace(configuration)
+            || string.Equals(configuration, "Release", StringComparison.OrdinalIgnoreCase)
+                ? null
+                : configuration;
+    });
+
     public HubCliHelpProvider(ICommandAppSettings settings)
         : base(settings)
     {
     }
 
-    public override IEnumerable<IRenderable> Write(ICommandModel model, ICommandInfo? command)
+    public override IEnumerable<IRenderable> GetHeader(ICommandModel model, ICommandInfo? command)
     {
-        var items = base.Write(model, command).ToList();
-        if (command is not null)
+        if (!IsRootHelp(command))
         {
-            // Per-command help (e.g. `submit-source --help`): logo-free, unmodified.
-            return items;
+            yield break;
         }
 
-        items.Insert(0, new FigletText("Grimoire"));
+        yield return new Align(new FigletText(LogoFont.Value, "Grimoire"), HorizontalAlignment.Center);
 
-        items.Add(new Markup("\n[bold]Server options:[/]\n"));
-        var column = PathSwitchCatalog.All.Max(s => s.Name.Length) + 2;
-        foreach (var pathSwitch in PathSwitchCatalog.All)
+        // FigletText's last line carries no trailing line break, so without these the next
+        // block would start on the logo's own last line.
+        yield return new Markup("\n");
+        if (BuildVersionLine() is { } versionLine)
         {
-            items.Add(new Markup($"  {pathSwitch.Name.PadRight(column)}{Markup.Escape(pathSwitch.Description)}\n"));
+            yield return new Align(new Markup(versionLine), HorizontalAlignment.Center);
+            yield return new Markup("\n\n");
         }
-
-        return items;
     }
+
+    public override IEnumerable<IRenderable> GetFooter(ICommandModel model, ICommandInfo? command)
+    {
+        if (!IsRootHelp(command))
+        {
+            yield break;
+        }
+
+        yield return new Markup("\n[bold]How to start the server:[/]\n");
+        yield return new Markup("  • [deepskyblue1]Grimoire.Hub[/] with no command (runs the HTTP server until stopped)\n");
+        yield return new Markup("  • The options above apply to every command and override data, agent runtime, or wiki roots\n");
+    }
+
+    /// <summary>
+    /// The line under the logo: the Hub's version, plus a marker when this is not a release
+    /// build. Returns <see langword="null"/> when neither is known, so the header stays the
+    /// bare logo rather than rendering an empty line.
+    /// </summary>
+    private static string? BuildVersionLine()
+    {
+        var parts = new List<string>(capacity: 2);
+
+        if (LogoVersion.Value.Length > 0)
+        {
+            parts.Add($"[italic]Version {Markup.Escape(LogoVersion.Value)}[/]");
+        }
+
+        if (NonReleaseConfiguration.Value is { } configuration)
+        {
+            parts.Add($"[italic yellow]{Markup.Escape(configuration)} build[/]");
+        }
+
+        return parts.Count == 0 ? null : string.Join(" [grey]·[/] ", parts);
+    }
+
+    /// <summary>
+    /// True for the root invocation. Spectre hands the default command's
+    /// <see cref="ICommandInfo"/> to the root help (<c>CommandExecutor</c> renders help for
+    /// the parsed leaf, which is <see cref="HubRootCommand"/> when no command was named); the
+    /// <see langword="null"/> case is kept because Spectre still uses it when no command tree
+    /// could be parsed at all.
+    /// </summary>
+    private static bool IsRootHelp(ICommandInfo? command) => command is null || command.IsDefaultCommand;
 }

@@ -17,6 +17,13 @@
     <PackageVersion Include="OpenTelemetry.Extensions.Hosting" Version="1.17.0" />
     <PackageVersion Include="OpenTelemetry.Instrumentation.AspNetCore" Version="1.17.0" />
     <PackageVersion Include="OpenTelemetry.Instrumentation.Http" Version="1.17.0" />
+    <!-- Two separate packages since the CLI was split into its own repository:
+         Spectre.Console is the rendering library (Markup/Grid/FigletText/Align), while
+         CommandApp/CommandSettings/[CommandOption]/HelpProvider live only in
+         Spectre.Console.Cli. 0.57.2 + 0.55.0 is the newest stable pairing — the CLI has
+         had no stable release past 0.55.0 (only 1.0.0-alpha.*) and requires only
+         Spectre.Console >= 0.55.0, so NuGet unifies on 0.57.2. -->
+    <PackageVersion Include="Spectre.Console" Version="0.57.2" />
     <PackageVersion Include="Spectre.Console.Cli" Version="0.55.0" />
     <PackageVersion Include="SQLitePCLRaw.bundle_e_sqlite3" Version="3.0.5" />
     <PackageVersion Include="xunit" Version="2.9.3" />

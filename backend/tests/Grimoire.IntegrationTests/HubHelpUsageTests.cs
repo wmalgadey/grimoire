@@ -1,3 +1,4 @@
+using System.ComponentModel;
 using System.Diagnostics;
 using System.Reflection;
 using Grimoire.EvalRunner.Workspace;
@@ -50,14 +51,13 @@ public class HubHelpUsageTests
         .. HubCliCommands.All.Select(c => (c.Name, DescriptionPrefix: c.Description[..Math.Min(30, c.Description.Length)])),
     ];
 
-    // 018-hub-cli-commands T036: HubCliHelpProvider (research.md D2/D3/D7) adds the
-    // FigletText logo and the "Server options:" section only for the ROOT invocation
-    // (command is null) — both in the same early-return branch, so either string is an
-    // equally valid "did the logo/root-only sections leak into per-command help" probe.
-    // "____" is a run that only the Figlet "Grimoire" rendering produces (checked against
-    // this file's captured root-help output); no path switch, command name, or
-    // description contains four consecutive underscores.
-    private const string FigletLogoMarker = "____";
+    // Root-only marker: unlike a font-specific glyph run, this tagline is intentionally
+    // stable across Figlet font changes, while still proving the root-only rendering
+    // happened. It is now the DEFAULT COMMAND's description (HubCliApp's WithDescription),
+    // so Spectre renders it in its own DESCRIPTION: section rather than HubCliHelpProvider
+    // placing it — which is also why the trailing period is absent here: Spectre's
+    // HelpProvider trims one from every description it renders (TrimTrailingPeriod).
+    private const string RootTagline = "Grimoire is an AI harness that keeps a wiki current through supervised agents";
 
     [Fact]
     public async Task Help_PrintsUsage_ExitsZeroPromptly_AndNeverStartsTheWebServer()
@@ -68,7 +68,45 @@ public class HubHelpUsageTests
         Assert.Equal(0, result.ExitCode);
         Assert.DoesNotContain("Now listening on:", result.StdOut, StringComparison.Ordinal);
         AssertUsageListsAllSwitches(result.StdOut);
-        Assert.Contains(FigletLogoMarker, result.StdOut, StringComparison.Ordinal);
+        Assert.Contains(RootTagline, result.StdOut, StringComparison.Ordinal);
+        Assert.Contains("How to start the server:", result.StdOut, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// The path switches are listed by Spectre's own <c>OPTIONS:</c> grid, not merely
+    /// somewhere in the output. Every other assertion in this file only proves presence
+    /// ("--data-dir appears in stdout"), which the retired hand-padded block satisfied just
+    /// as well while rendering outside the grid entirely. This pins the placement that
+    /// <see cref="Grimoire.Hub.Cli.HubRootCommand"/> — the default command, deriving from
+    /// <see cref="HubPathSettings"/> — exists to produce: Spectre builds the options section
+    /// from the DEFAULT command's parameters at the root invocation, so a regression to
+    /// <c>new CommandApp(...)</c> would drop them out of this range.
+    ///
+    /// Anchoring on the section headers is safe against console width: the options grid's
+    /// first column is <c>NoWrap</c>, so a switch name cannot be split across lines at the
+    /// 80-column fallback Spectre uses for redirected stdout.
+    /// </summary>
+    [Fact]
+    public async Task Help_ListsEveryPathSwitch_InsideSpectresOptionsSection()
+    {
+        var result = await RunHubAsync(["--help"]);
+
+        Assert.Equal(0, result.ExitCode);
+
+        var optionsHeaderIndex = result.StdOut.IndexOf("OPTIONS:", StringComparison.Ordinal);
+        var commandsHeaderIndex = result.StdOut.IndexOf("COMMANDS:", StringComparison.Ordinal);
+        Assert.True(optionsHeaderIndex >= 0, "Root help must render an OPTIONS: section.");
+        Assert.True(
+            commandsHeaderIndex > optionsHeaderIndex,
+            "Root help must render its COMMANDS: section after OPTIONS:, bounding the options block.");
+
+        foreach (var pathSwitch in PathSwitchCatalog.All)
+        {
+            var switchIndex = result.StdOut.IndexOf(pathSwitch.Name, optionsHeaderIndex, StringComparison.Ordinal);
+            Assert.True(
+                switchIndex > optionsHeaderIndex && switchIndex < commandsHeaderIndex,
+                $"{pathSwitch.Name} must be listed inside the OPTIONS: section of the root help.");
+        }
     }
 
     /// <summary>
@@ -146,7 +184,7 @@ public class HubHelpUsageTests
         // FR-006's status-line vocabulary ("Lint run {id} started.") never appears — no
         // run was ever triggered.
         Assert.DoesNotContain("started.", result.StdOut, StringComparison.Ordinal);
-        Assert.DoesNotContain(FigletLogoMarker, result.StdOut, StringComparison.Ordinal);
+        Assert.DoesNotContain(RootTagline, result.StdOut, StringComparison.Ordinal);
     }
 
     /// <summary>
@@ -164,7 +202,7 @@ public class HubHelpUsageTests
     [InlineData("lint-run", new string[0])]
     [InlineData("query", new[] { "<prompt>", "--conversation-id", "--timeout" })]
     [InlineData("remediation-authorize", new[] { "--task-id" })]
-    public async Task CommandHelp_ShowsItsOwnArguments_LogoFree_NoServerOptionsSection(string commandName, string[] expectedOwnArguments)
+    public async Task CommandHelp_ShowsItsOwnArguments_LogoFree_WithoutRootOnlySections(string commandName, string[] expectedOwnArguments)
     {
         var result = await RunHubAsync([commandName, "--help"]);
 
@@ -176,16 +214,19 @@ public class HubHelpUsageTests
             Assert.Contains(expectedArgument, result.StdOut, StringComparison.Ordinal);
         }
 
-        // Every path switch is still listed as an OPTION (HubPathSettings inheritance) —
-        // just not under a separate "Server options:" section, and without the logo:
-        // both are root-only per HubCliHelpProvider (research.md D3/D7).
+        // Every path switch is listed as an OPTION here too (HubPathSettings inheritance) —
+        // the same grid the root help now uses, just without the logo and the root-only
+        // sections below (research.md D3/D7).
         foreach (var pathSwitch in PathSwitchCatalog.All)
         {
             Assert.Contains(pathSwitch.Name, result.StdOut, StringComparison.Ordinal);
         }
 
-        Assert.DoesNotContain(FigletLogoMarker, result.StdOut, StringComparison.Ordinal);
-        Assert.DoesNotContain("Server options:", result.StdOut, StringComparison.Ordinal);
+        // The tagline is the DEFAULT command's description, so a named command's help must
+        // not carry it — this is what proves HubCliHelpProvider's IsDefaultCommand check
+        // still distinguishes root from per-command rendering.
+        Assert.DoesNotContain(RootTagline, result.StdOut, StringComparison.Ordinal);
+        Assert.DoesNotContain("How to start the server:", result.StdOut, StringComparison.Ordinal);
     }
 
     /// <summary>
@@ -383,6 +424,33 @@ public class HubHelpUsageTests
         // catalog (catches a stray non-path property slipping in).
         Assert.Equal(declaredProperties.Length, actualSwitchNames.Count);
         Assert.Equal(expectedSwitchNames, actualSwitchNames.OrderBy(name => name, StringComparer.Ordinal).ToArray());
+    }
+
+    /// <summary>
+    /// The help text an operator reads comes from <see cref="HubPathSettings"/>'s
+    /// <c>[Description]</c> attributes — Spectre renders the settings type, not the catalog.
+    /// <see cref="PathSwitchCatalog"/> carries the same descriptions and is the documented
+    /// single declaration point (ADR-020), so without this assertion its copy could silently
+    /// drift from (or outlive) the one actually shown. Extends the 1:1 name parity above to
+    /// the text.
+    /// </summary>
+    [Fact]
+    public void HubPathSettings_DescriptionsMatchThePathSwitchCatalogEntryTheyMirror()
+    {
+        var descriptionsBySwitchName = typeof(HubPathSettings)
+            .GetProperties(BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly)
+            .ToDictionary(
+                property => "--" + property.GetCustomAttribute<CommandOptionAttribute>()!.LongNames.Single(),
+                property => property.GetCustomAttribute<DescriptionAttribute>()?.Description,
+                StringComparer.Ordinal);
+
+        foreach (var pathSwitch in PathSwitchCatalog.All)
+        {
+            Assert.True(
+                descriptionsBySwitchName.TryGetValue(pathSwitch.Name, out var declaredDescription),
+                $"{nameof(HubPathSettings)} declares no [CommandOption] for {pathSwitch.Name}.");
+            Assert.Equal(pathSwitch.Description, declaredDescription);
+        }
     }
 
     private static void AssertUsageListsAllSwitches(string stdOut)

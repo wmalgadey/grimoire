@@ -5,7 +5,17 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- The root-help Figlet font (HubCliHelpProvider). Embedded rather than copied to the
+         output directory so the help path never depends on a file being present on disk:
+         it is contractually guaranteed to render before any path resolution happens. -->
+    <EmbeddedResource Include="Cli\Fonts\dos-rebel.flf" LogicalName="Grimoire.Hub.Cli.Fonts.dos-rebel.flf" />
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="Microsoft.Data.Sqlite" />
+    <!-- Rendering (FigletText/Markup/Align/Grid in HubCliHelpProvider, CliStatusRenderer)
+         and command-line parsing are two packages; both are used directly here. -->
+    <PackageReference Include="Spectre.Console" />
     <PackageReference Include="Spectre.Console.Cli" />
     <PackageReference Include="SQLitePCLRaw.bundle_e_sqlite3" />
     <PackageReference Include="OpenTelemetry" />
