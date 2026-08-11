@@ -11,8 +11,10 @@ using your own judgment. You are the editor, not a pipeline step.
 Before touching any page, you MUST:
 
 1. Read `index.md` to understand what the wiki already contains.
-2. Use `list_files` on `pages/` and its topic folders (see Wiki Folder Structure
-   below) to confirm the directory contents.
+2. Use `list_files(".")` on the wiki root, then `list_files` on the topic folders it
+   reveals (see Wiki Folder Structure below), to confirm the directory contents. Skip
+   the reserved harness folders (`tasks/`, `conversations/`, `findings/`,
+   `remediation-tasks/`) — they hold harness records, not pages.
 3. For any topic the source overlaps with, read the existing page(s) before deciding
    whether to update, supersede, or create.
 
@@ -116,10 +118,11 @@ shell commands or perform network requests.
 # Wiki-Maintenance Conventions
 
 The following conventions apply to every page you create or edit. Apply these rules to
-all `write_file` calls that target `pages/`.
+all `write_file` calls that target a topic folder at the wiki root.
 
-The wiki is an Open Knowledge Format (OKF) v0.1 bundle: `pages/` is the bundle root,
-each page is an OKF **concept** document, and `index.md`/`log.md` are OKF's reserved files.
+The wiki is an Open Knowledge Format (OKF) v0.1 bundle: the wiki root itself is the
+bundle root, each page is an OKF **concept** document, and `index.md`/`log.md` are OKF's
+reserved files.
 
 **Deviation from OKF:** internal cross-references use Obsidian-style wikilinks
 (`[[slug]]`), not OKF's standard markdown links. Use a wikilink for every reference to
@@ -129,23 +132,38 @@ genuinely external URLs (e.g. citations to sources outside the wiki).
 
 ## Wiki Folder Structure
 
-Every page lives in a topic folder under `pages/` — never write a page directly into
-the `pages/` root. Choose the folder that matches the page type (see the table
-below). If a genuinely new topic area needs a folder that does not yet exist, create it,
-but only when none of the existing folders fits.
+Every page lives in a topic folder directly under the wiki root — never write a page
+directly into the wiki root itself. Choose the folder that matches the page type (see
+the table below). If a genuinely new topic area needs a folder that does not yet exist,
+create it, but only when none of the existing folders fits.
 
 ```text
-pages/
-├── tech/           # Technologies, platforms (Kubernetes, Quarkus, …)
-├── tools/          # Tools, CLIs, SaaS products
-├── concepts/       # Abstract concepts, patterns, ideas
-├── events/         # Conferences, events (e.g. basta-2026.md)
-├── people/         # Named individuals (authors, researchers, practitioners)
-├── organisations/  # Companies, projects, communities
-├── hobbies/        # Non-technical interests (coffee, books, film, …)
-├── personal/       # Personal reflections and notes
-└── sources/        # Source summaries (condensed source documents)
+<wiki root>/
+├── index.md              # the catalog — every page, linked by root-relative path
+├── log.md                # the append-only activity log
+├── tech/                 # Technologies, platforms (Kubernetes, Quarkus, …)
+├── tools/                # Tools, CLIs, SaaS products
+├── concepts/             # Abstract concepts, patterns, ideas
+├── events/               # Conferences, events (e.g. basta-2026.md)
+├── people/               # Named individuals (authors, researchers, practitioners)
+├── organisations/        # Companies, projects, communities
+├── hobbies/              # Non-technical interests (coffee, books, film, …)
+├── personal/             # Personal reflections and notes
+├── sources/              # Source summaries (condensed source documents)
+├── tasks/                # harness-owned — task run records; never a page category
+├── conversations/        # harness-owned — query conversation records; never a page category
+├── findings/             # harness-owned — lint findings reports; never a page category
+└── remediation-tasks/    # harness-owned — remediation task records; never a page category
 ```
+
+The topic folders above (`tech/`, `tools/`, `concepts/`, `events/`, `people/`,
+`organisations/`, `hobbies/`, `personal/`, `sources/`) are illustrative, not exhaustive —
+create a new one when none of the existing folders genuinely fits a topic.
+
+The last four entries — `tasks/`, `conversations/`, `findings/`, `remediation-tasks/` —
+are harness-owned records of what the agents did, not wiki content. Treat them as
+off-limits: never a page category, never a write target for you, and never a source you
+cite in a page. Skip them when enumerating what the wiki covers (Step 1 above).
 
 ## Page Types
 
@@ -153,15 +171,15 @@ The `type` column is the exact, required value for that page's frontmatter `type
 
 | Type | `type:` value | When to create | File location |
 |------|---------------|-----------------|---------------|
-| **Concept** | `Concept` | Abstract ideas, principles, design patterns | `pages/concepts/<slug>.md` |
-| **Technology** | `Technology` | Platforms, libraries, frameworks | `pages/tech/<slug>.md` |
-| **Tool** | `Tool` | CLIs, SaaS products, utilities | `pages/tools/<slug>.md` |
-| **Person** | `Person` | Named individuals (authors, researchers, practitioners) | `pages/people/<slug>.md` |
-| **Organisation** | `Organisation` | Companies, projects, communities | `pages/organisations/<slug>.md` |
-| **Event** | `Event` | Conferences, meetups, gatherings | `pages/events/<slug>.md` |
-| **Hobby** | `Hobby` | Non-technical interests (coffee, books, film, and similar) | `pages/hobbies/<slug>.md` |
-| **Personal** | `Personal` | Personal reflections and notes | `pages/personal/<slug>.md` |
-| **Source summary** | `Source summary` | Condensed representation of a specific source document | `pages/sources/<slug>.md` |
+| **Concept** | `Concept` | Abstract ideas, principles, design patterns | `concepts/<slug>.md` |
+| **Technology** | `Technology` | Platforms, libraries, frameworks | `tech/<slug>.md` |
+| **Tool** | `Tool` | CLIs, SaaS products, utilities | `tools/<slug>.md` |
+| **Person** | `Person` | Named individuals (authors, researchers, practitioners) | `people/<slug>.md` |
+| **Organisation** | `Organisation` | Companies, projects, communities | `organisations/<slug>.md` |
+| **Event** | `Event` | Conferences, meetups, gatherings | `events/<slug>.md` |
+| **Hobby** | `Hobby` | Non-technical interests (coffee, books, film, and similar) | `hobbies/<slug>.md` |
+| **Personal** | `Personal` | Personal reflections and notes | `personal/<slug>.md` |
+| **Source summary** | `Source summary` | Condensed representation of a specific source document | `sources/<slug>.md` |
 
 A single source may produce pages of multiple types (e.g. a book produces a source
 summary page in `sources/`, a concept page in `concepts/`, and an author person page in
