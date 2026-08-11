@@ -131,13 +131,16 @@ public static class IngestSubmissionLogEvents
 
     public static void LogConfigRejected(ILogger logger, string sourceKind, string reason)
     {
+        var sanitizedSourceKind = SanitizeForLog(sourceKind);
+        var sanitizedReason = SanitizeForLog(reason);
+
         using var span = StartLogEventSpan("ingest.submission.config_rejected", "Warning");
-        span?.SetTag("source_kind", sourceKind);
-        span?.SetTag("reason", reason);
+        span?.SetTag("source_kind", sanitizedSourceKind);
+        span?.SetTag("reason", sanitizedReason);
 
         logger.LogWarning(ConfigRejectedEvent,
             "Ingest submission configuration rejected before task creation. source_kind={source_kind} reason={reason}",
-            sourceKind, reason);
+            sanitizedSourceKind, sanitizedReason);
     }
 
     public static void LogRunLivenessFailed(ILogger logger, string taskId, long secondsSinceLastEvent, long livenessWindowSeconds)
@@ -250,4 +253,7 @@ public static class IngestSubmissionLogEvents
         span?.SetTag("level", level);
         return span;
     }
+
+    private static string SanitizeForLog(string? value) =>
+        (value ?? string.Empty).Replace("\r", string.Empty).Replace("\n", string.Empty);
 }
