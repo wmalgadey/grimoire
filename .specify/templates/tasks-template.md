@@ -68,16 +68,35 @@ for every task.
 
 ## Phase 0: Structural Boundary Enforcement (MANDATORY — Constitution Principle III)
 
-**Purpose**: Write and verify structural boundary tests before any feature code is written.
-This phase MUST be the first phase in every tasks.md, regardless of feature scope.
-Enforce the structural rule from [ADR-XXX] before any feature code exists.
+**Purpose**: Write and verify structural boundary tests for this feature's **Boundary
+Rules** before any feature code is written. This phase MUST be the first phase in every
+tasks.md, regardless of feature scope — but it enforces only Boundary Rules, not every
+rule an ADR happens to name.
 
 **⚠️ NON-NEGOTIABLE**: No feature implementation can begin until Phase 0 is complete.
 
 <!--
-  ACTION REQUIRED: Replace T000 below with the concrete structural boundary test
-  for the ADR(s) referenced in plan.md § Architectural Constraints & ADRs.
-  Use the appropriate tool for the tech stack:
+  ACTION REQUIRED, before writing T000: classify every rule named by the ADR(s) referenced
+  in plan.md § Architectural Constraints & ADRs as exactly one of:
+
+  - Boundary Rule: a dependency-direction / layering / containment rule (Constitution
+    Principle I's domain-purity and adapter-containment family, or Principle V's
+    guarded-write boundary) — true regardless of how this feature's surface grows.
+    ONLY these get a Phase 0 task below.
+  - Feature-Scoped Invariant: a rule that protects this feature's current surface shape
+    (an option count, a forbidden literal, a graph/schema shape) rather than a dependency
+    direction. These do NOT belong in Phase 0 — schedule them as an ordinary task in the
+    user-story phase that introduces the surface, covered by a classicist integration test
+    of the real observable behavior (e.g. "start without the option → documented default";
+    "supply the superseded key → documented failure"), never by reflection/IL-inspection of
+    internal shape. Apply Principle II's Ownership Test to both categories first.
+
+  If the ADR names no Boundary Rule at all, do not fabricate one — replace the block below
+  with a single line: "No Boundary Rule introduced by this feature (see plan.md § ADRs)."
+  and move directly to Phase 1.
+
+  Otherwise, replace T000 with the concrete structural boundary test for each Boundary
+  Rule. Use the appropriate tool for the tech stack:
   - Python: import-linter, pytest with ast inspection, or custom module boundary checks
   - JVM: ArchUnit
   - .NET: NetArchTest.Rules or Roslyn Analyzers
@@ -91,7 +110,7 @@ Enforce the structural rule from [ADR-XXX] before any feature code exists.
   every row.
 -->
 
-- [ ] T000 Write and Verify Structural Boundary Tests for [ADR-XXX]
+- [ ] T000 Write and Verify Structural Boundary Tests for [ADR-XXX]'s Boundary Rule(s)
 
 **Requirements**:
 - Use ArchUnit (Java), NetArchTest.Rules (C#), import-linter (Python), or equivalent
@@ -100,6 +119,7 @@ Enforce the structural rule from [ADR-XXX] before any feature code exists.
   include an adapter-containment rule (infrastructure package importable only from its
   designated adapter namespace) with its own Red/Green probe
 - Do NOT implement any feature code in this task
+- Do NOT put a Feature-Scoped Invariant here — see the classification note above
 
 **Red/Green probe** (required — confirms the test actually catches violations):
 1. Write the boundary rule
@@ -109,7 +129,8 @@ Enforce the structural rule from [ADR-XXX] before any feature code exists.
 5. Run the test again — it MUST pass
 
 **Definition of Done**:
-- [ ] Rule written and committed
+- [ ] Every ADR rule classified as Boundary Rule or Feature-Scoped Invariant
+- [ ] Rule written and committed (for each Boundary Rule)
 - [ ] Red/Green probe completed (commit message documents the probe result)
 - [ ] Test passes in CI with no violations (probe file deleted)
 
