@@ -1,4 +1,5 @@
 using System.Text;
+using System.Text.RegularExpressions;
 using Grimoire.Hub.IngestSubmission;
 
 namespace Grimoire.Hub.IngestSubmission.Adapters.HttpFetch;
@@ -10,6 +11,13 @@ namespace Grimoire.Hub.IngestSubmission.Adapters.HttpFetch;
 /// </summary>
 public sealed class UrlContentFetcher : IUrlContentFetcher
 {
+    // Sites fronted by bot-protection (confirmed: Atlassian/CloudFront) reject requests that
+    // carry no User-Agent header with a 403, even though the same request succeeds from any
+    // ordinary browser. Identify honestly as an automated fetcher rather than spoofing a
+    // browser UA outright — a descriptive UA is enough to clear UA-less-request blocking.
+    private const string RequestUserAgent = "Grimoire-Hub/1.0 (+ingest-fetcher)";
+    private const string RequestAccept = "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8";
+
     // A 2xx HTTP status does not guarantee the requested article was actually returned: sites that
     // gate content behind a login (e.g. LinkedIn posts) commonly respond 200 OK with a login/auth
     // wall page instead of a 401/403. Detected either by a redirect landing on a known auth path, or
@@ -31,11 +39,31 @@ public sealed class UrlContentFetcher : IUrlContentFetcher
         "join now to see",
     ];
 
+    // Public pages commonly carry auth-wall-sounding phrases in element attributes aimed at
+    // logged-out visitors (e.g. GitHub's public repo pages render
+    // aria-label="You must be signed in to star a repository" on the Star/Watch buttons shown
+    // to everyone, signed in or not). That boilerplate must not trip the content-marker scan
+    // below, so marker matching only considers text outside of tag attribute values — stripping
+    // quoted attribute values (not full HTML parsing) is enough to tell "marker as visible page
+    // text" (a genuine auth wall) apart from "marker as attribute string" (UI chrome).
+    private static readonly Regex HtmlTagPattern = new("<[^>]+>", RegexOptions.Compiled);
+    private static readonly Regex AttributeValuePattern = new("=\"[^\"]*\"|='[^']*'", RegexOptions.Compiled);
+
     private readonly HttpClient _httpClient;
 
     public UrlContentFetcher(HttpClient httpClient)
     {
         _httpClient = httpClient;
+
+        if (_httpClient.DefaultRequestHeaders.UserAgent.Count == 0)
+        {
+            _httpClient.DefaultRequestHeaders.UserAgent.ParseAdd(RequestUserAgent);
+        }
+
+        if (_httpClient.DefaultRequestHeaders.Accept.Count == 0)
+        {
+            _httpClient.DefaultRequestHeaders.Accept.ParseAdd(RequestAccept);
+        }
     }
 
     public async Task<UrlFetchResult> FetchAsync(Uri url, CancellationToken cancellationToken = default)
@@ -92,6 +120,16 @@ public sealed class UrlContentFetcher : IUrlContentFetcher
     private static bool ContainsAuthWallMarker(byte[] bytes)
     {
         var text = Encoding.UTF8.GetString(bytes);
-        return AuthWallContentMarkers.Any(marker => text.Contains(marker, StringComparison.OrdinalIgnoreCase));
+        var visibleText = StripTagAttributeValues(text);
+        return AuthWallContentMarkers.Any(marker => visibleText.Contains(marker, StringComparison.OrdinalIgnoreCase));
     }
+
+    /// <summary>
+    /// Blanks out quoted attribute values (aria-label="...", title="...", class="...", etc.)
+    /// inside HTML tags while leaving tag names and visible text content untouched, so a marker
+    /// phrase embedded only in an attribute string (UI chrome for logged-out visitors) is not
+    /// mistaken for a marker appearing in the page's actual body text (a genuine auth wall).
+    /// </summary>
+    private static string StripTagAttributeValues(string html)
+        => HtmlTagPattern.Replace(html, tagMatch => AttributeValuePattern.Replace(tagMatch.Value, "=\"\""));
 }

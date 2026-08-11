@@ -50,10 +50,53 @@ public class IngestUrlContentFetcherTests
         Assert.Contains("authentication", result.FailureReason, StringComparison.OrdinalIgnoreCase);
     }
 
+    /// <summary>
+    /// Sites fronted by bot-protection (confirmed: Atlassian/CloudFront) return HTTP 403 for
+    /// requests carrying no User-Agent header at all. The fetcher must always send one, whether
+    /// its HttpClient was constructed directly (as in these tests) or via DI.
+    /// </summary>
+    [Fact]
+    public async Task FetchAsync_SendsNonEmptyUserAgentHeader()
+    {
+        using var handler = new StaticResponseHandler(HttpStatusCode.OK, "text/html",
+            "<html><body><article>Real article content</article></body></html>");
+        var fetcher = new UrlContentFetcher(new HttpClient(handler));
+
+        await fetcher.FetchAsync(new Uri("https://example.test/article"));
+
+        Assert.NotNull(handler.LastRequest);
+        Assert.True(handler.LastRequest!.Headers.UserAgent.Count > 0);
+    }
+
+    /// <summary>
+    /// Public GitHub repo pages render aria-label="You must be signed in to star a repository" on
+    /// the Star/Watch buttons shown to every visitor, signed in or not — that boilerplate must not
+    /// be mistaken for a genuine auth wall just because the marker phrase happens to appear inside
+    /// an attribute string rather than the page's visible body text.
+    /// </summary>
+    [Fact]
+    public async Task FetchAsync_Succeeds_WhenAuthWallMarkerOnlyAppearsInsideAnAttributeValue()
+    {
+        using var handler = new StaticResponseHandler(HttpStatusCode.OK, "text/html",
+            "<html><body>" +
+            "<button aria-label=\"You must be signed in to star a repository\">Star</button>" +
+            "<article>Real public repository content</article>" +
+            "</body></html>");
+        var fetcher = new UrlContentFetcher(new HttpClient(handler));
+
+        var result = await fetcher.FetchAsync(new Uri("https://github.com/ilindaniel/ponytail-lite"));
+
+        Assert.True(result.Success);
+        Assert.Null(result.FailureReason);
+    }
+
     private sealed class StaticResponseHandler(HttpStatusCode status, string contentType, string body) : HttpMessageHandler
     {
+        public HttpRequestMessage? LastRequest { get; private set; }
+
         protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
         {
+            LastRequest = request;
             var response = new HttpResponseMessage(status)
             {
                 RequestMessage = request,
