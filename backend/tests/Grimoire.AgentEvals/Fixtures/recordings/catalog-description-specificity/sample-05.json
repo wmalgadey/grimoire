@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "sample": 5,
-  "task_id": "capture-catalog-description-specificity-05-ebc1dae66b444df5979b7a4a6c7dc296",
+  "task_id": "capture-catalog-description-specificity-05-be6086ba63be4accb1aaddd48008808e",
   "model": "claude-haiku-4-5",
   "turns": [
     {
@@ -10,7 +10,7 @@
       "conversation": [
         {
           "role": "user",
-          "content_sha256": "sha256:ffb56424073cdc130358694fe3efd5dfe7cb47d4abdfcb1698c3fdc616903b62"
+          "content_sha256": "sha256:d9001c15f00f5c3e49bd808d53a35abe887ad1c8551e0b93e72b6996245aca2c"
         }
       ],
       "tool_names": [
@@ -21,19 +21,19 @@
       "stop_reason": "tool_use",
       "tool_uses": [
         {
-          "tool_use_id": "toolu_018456rWX3fBRz2Tgd43CZJC",
+          "tool_use_id": "toolu_01A5ssjj6Uz8q7oS9zQaxp9R",
           "tool_name": "read_file",
           "input_json": "{\u0022path\u0022:\u0022index.md\u0022}"
         },
         {
-          "tool_use_id": "toolu_01XdQL7ogGiEsRvtDfo4UAaX",
+          "tool_use_id": "toolu_01EUyZsbvpu6CJ5XGcXBtVv9",
           "tool_name": "list_files",
           "input_json": "{\u0022path\u0022:\u0022.\u0022}"
         }
       ],
-      "assistant_text": "I\u0027ll start by exploring the wiki to understand its current state and then integrate this source about backpressure in streaming pipelines.",
-      "input_tokens": 5786,
-      "output_tokens": 118
+      "assistant_text": "I\u0027ll start by exploring the wiki structure to understand what already exists, then integrate this source about backpressure in streaming pipelines.",
+      "input_tokens": 5782,
+      "output_tokens": 119
     },
     {
       "turn": 2,
@@ -41,15 +41,15 @@
       "conversation": [
         {
           "role": "user",
-          "content_sha256": "sha256:ffb56424073cdc130358694fe3efd5dfe7cb47d4abdfcb1698c3fdc616903b62"
+          "content_sha256": "sha256:d9001c15f00f5c3e49bd808d53a35abe887ad1c8551e0b93e72b6996245aca2c"
         },
         {
           "role": "assistant",
-          "content_sha256": "sha256:b208961f13b18321ed03658a143ac316ef19d26f5cf3f83a376ac65c2551f426"
+          "content_sha256": "sha256:fdfa5013c7d67862d48381ffd7d1b81cb79306a05606b32e40e7bb5a53d55b65"
         },
         {
           "role": "user",
-          "content_sha256": "sha256:03a17ec73718222ccd5f8bd1f0304d18b9029b46223af9e5b04dd36f573ed94b"
+          "content_sha256": "sha256:3cda21e68b3e48fe30d8057256cd2e879df7946458864bac40ada274c907ada6"
         }
       ],
       "tool_names": [
@@ -60,24 +60,14 @@
       "stop_reason": "tool_use",
       "tool_uses": [
         {
-          "tool_use_id": "toolu_01YZiwrwTUheEANfzR3VsYuN",
+          "tool_use_id": "toolu_01PWjdooQqWYyB45DAvom31o",
           "tool_name": "write_file",
-          "input_json": "{\u0022path\u0022:\u0022concepts/backpressure.md\u0022,\u0022content\u0022:\u0022---\\ntype: Concept\\ntitle: Backpressure\\ndescription: Mechanism in streaming pipelines where a slow downstream consumer signals an upstream producer to reduce emission rate, preventing unbounded buffer growth.\\ntimestamp: 2026-07-14T00:00:00Z\\ntags:\\n  - concept/Backpressure\\n  - pattern/Reactive-Streaming\\n  - concept/Flow-Control\\nconfidence: high\\nconfidence_reason: \\u0022Detailed source with specific implementation examples; core pattern in reactive and streaming systems.\\u0022\\n---\\n\\n## Overview\\n\\nBackpressure in a streaming pipeline is the mechanism by which a slow downstream consumer signals an upstream producer to reduce its emission rate, rather than letting an unbounded buffer grow until the process runs out of memory.\\n\\nWithout backpressure, a fast producer sending data to a slow consumer would accumulate unprocessed items in intermediate buffers, eventually exhausting available memory and causing the application to crash or degrade severely.\\n\\n## Implementation Approaches\\n\\n### Bounded Queues with Blocking\\n\\nThe simplest form uses bounded queues that block the producer once full. When the queue reaches its maximum capacity, further \\u0060send()\\u0060 or \\u0060enqueue()\\u0060 operations from the producer block until the consumer drains enough items to make space.\\n\\n**Characteristics:**\\n- Synchronous blocking of the producer thread\\n- Simple to understand and implement\\n- Can cause thread starvation if buffers fill up\\n\\n### Credit-Based Flow Control\\n\\nIn credit-based systems, the consumer explicitly grants the producer permission to send N more items (credits). The producer tracks available credits and sends only when credits remain.\\n\\n**Characteristics:**\\n- Asynchronous; producer does not block but waits for credits\\n- Consumer has fine-grained control over concurrency and load\\n- Requires explicit credit accounting\\n\\n### Reactive Pull Models\\n\\nIn pull-based (reactive) models, the consumer requests items on its own schedule instead of the producer pushing them. The producer only emits when the consumer signals readiness.\\n\\n**Characteristics:**\\n- Inverts the traditional producer\\u2013consumer relationship\\n- Consumer-driven pacing; producer never overstays capacity\\n- Fits well with functional and reactive programming libraries\\n\\n## Related Concepts\\n\\n- [[stream-processing]] \\u2014 broader pattern for handling unbounded data\\n- [[reactive-programming]] \\u2014 programming model where backpressure is fundamental\\n- [[flow-control]] \\u2014 general principle of regulating data flow in systems\\n\\n## Citations\\n\\n[^1]: Source: eval://catalog-description-specificity/sample-05\\n\u0022}"
-        },
-        {
-          "tool_use_id": "toolu_01NhU8iXVj8aUwoH8KdyUC6R",
-          "tool_name": "write_file",
-          "input_json": "{\u0022path\u0022:\u0022index.md\u0022,\u0022content\u0022:\u0022# Wiki Index\\n\\n## Concepts\\n\\n- [Backpressure](concepts/backpressure.md) \\u2014 Mechanism in streaming pipelines where a slow downstream consumer signals an upstream producer to reduce emission rate \\u2014 1 Quelle\\n\u0022}"
-        },
-        {
-          "tool_use_id": "toolu_01C9ETXTGaD9WHo1pkovB5jz",
-          "tool_name": "write_file",
-          "input_json": "{\u0022path\u0022:\u0022log.md\u0022,\u0022content\u0022:\u0022## [2026-07-14] ingest | created backpressure concept\\n\\nCreated [[backpressure]] concept page covering backpressure as a flow-control mechanism in streaming pipelines, with three implementation approaches: bounded queues with blocking, credit-based flow control, and reactive pull models. Source provided detailed explanation and examples. Task: [[tasks/capture-catalog-description-specificity-05-ebc1dae66b444df5979b7a4a6c7dc296.md]].\\n\u0022}"
+          "input_json": "{\u0022path\u0022:\u0022concepts/backpressure.md\u0022,\u0022content\u0022:\u0022---\\ntype: Concept\\ntitle: Backpressure\\ndescription: A mechanism in streaming pipelines where a slow downstream consumer signals an upstream producer to reduce its emission rate, preventing unbounded buffer growth and memory exhaustion.\\ntimestamp: 2025-01-14T00:00:00Z\\ntags:\\n  - concept/Backpressure\\n  - concept/Flow-Control\\n  - pattern/Reactive-Streams\\n  - tech/Streaming\\nconfidence: medium\\nconfidence_reason: \\u0022Single authoritative source describing established patterns; no contradictions observed.\\u0022\\n---\\n\\nBackpressure is a critical mechanism in streaming data pipelines that prevents resource exhaustion by allowing a slow downstream consumer to signal an upstream producer to reduce its emission rate. Without backpressure, producers can emit data faster than consumers can process it, causing unbounded buffers to grow until the process runs out of memory.\\n\\n## The Problem\\n\\nIn any asynchronous pipeline where data flows from producer to consumer, a mismatch between production and consumption rates can occur. If the producer is faster than the consumer can handle, data accumulates in intermediate queues or buffers. Without a feedback mechanism, this accumulation is unbounded and will eventually exhaust available memory.\\n\\n## Common Implementations\\n\\n### Bounded Queues with Blocking\\n\\nThe simplest form of backpressure uses a bounded queue between producer and consumer. Once the queue reaches its capacity, the producer\\u0027s send operation blocks, preventing new data from being added. This naturally throttles the producer to the consumer\\u0027s processing rate. The producer resumes once the consumer drains the queue below the threshold.\\n\\n### Credit-Based Flow Control\\n\\nCredit-based systems implement backpressure through an explicit permission model. The consumer grants the producer a \\u0022credit\\u0022 or allowance to send N more items. As the producer emits items, it consumes credits. When credits are exhausted, the producer must wait for the consumer to send additional credits (typically by processing items successfully). This approach is common in message brokers and network protocols.\\n\\n### Reactive-Pull Models\\n\\nRather than the producer pushing data to the consumer, reactive-pull inverts the flow: the consumer requests items on its own schedule. The producer only emits when the consumer explicitly requests more data (often called \\u0022pulling\\u0022 or \\u0022requesting\\u0022). This puts the consumer entirely in control and eliminates the possibility of overproduction.\\n\\n## Benefits\\n\\n- **Memory safety**: Prevents unbounded buffer growth and out-of-memory errors\\n- **Resource efficiency**: Avoids wasted computation from processing more data than can be consumed\\n- **Adaptive throughput**: The system naturally adjusts to the slowest component\\n- **Observability**: Backpressure signals can indicate downstream bottlenecks\\n\\n## Related Concepts\\n\\n- [[flow-control]] \\u2014 the broader category of mechanisms controlling data flow\\n- [[reactive-streams]] \\u2014 a programming model that formalizes backpressure as a first-class construct\\n\\n## Citations\\n\\n[^1]: Source reference: eval://catalog-description-specificity/sample-05\\n\u0022}"
         }
       ],
-      "assistant_text": "The wiki is brand new with no pages yet, only the index. I\u0027ll now create the necessary page structure and content. The source describes **backpressure**, which is a design pattern/concept in streaming and reactive systems. This should be a Concept page.\n\nLet me create:\n1. A concept page for backpressure\n2. Update the index to list this new page\n3. Add a log entry",
-      "input_tokens": 5982,
-      "output_tokens": 998
+      "assistant_text": "The wiki is empty except for the index file. I\u0027ll now create the appropriate pages for this source about backpressure. The source describes a technical pattern/concept related to streaming and system design, so I should create:\n\n1. A **Concept** page for backpressure (the main topic)\n2. Potentially reference related concepts like flow control and reactive streams\n\nLet me create a comprehensive concept page about backpressure.",
+      "input_tokens": 5979,
+      "output_tokens": 835
     },
     {
       "turn": 3,
@@ -85,23 +75,647 @@
       "conversation": [
         {
           "role": "user",
-          "content_sha256": "sha256:ffb56424073cdc130358694fe3efd5dfe7cb47d4abdfcb1698c3fdc616903b62"
+          "content_sha256": "sha256:d9001c15f00f5c3e49bd808d53a35abe887ad1c8551e0b93e72b6996245aca2c"
         },
         {
           "role": "assistant",
-          "content_sha256": "sha256:b208961f13b18321ed03658a143ac316ef19d26f5cf3f83a376ac65c2551f426"
+          "content_sha256": "sha256:fdfa5013c7d67862d48381ffd7d1b81cb79306a05606b32e40e7bb5a53d55b65"
         },
         {
           "role": "user",
-          "content_sha256": "sha256:03a17ec73718222ccd5f8bd1f0304d18b9029b46223af9e5b04dd36f573ed94b"
+          "content_sha256": "sha256:3cda21e68b3e48fe30d8057256cd2e879df7946458864bac40ada274c907ada6"
         },
         {
           "role": "assistant",
-          "content_sha256": "sha256:b59146c3701def9531881b803513ed249ac8fc1b0fddbd6864a67f38a0406e07"
+          "content_sha256": "sha256:c6557cc22b5735a053c050c300e69ecf4e8b1e1193125b9ad969a42ffcd73d46"
         },
         {
           "role": "user",
-          "content_sha256": "sha256:f8475b5ea6b76e4337c1153058836c497c038ecf80d432bc4844714444f5b6f7"
+          "content_sha256": "sha256:b978d2437bc66a992774e40d77d8ec1a647cd9fb79a01e3ffe6459d92df38c07"
+        }
+      ],
+      "tool_names": [
+        "list_files",
+        "read_file",
+        "write_file"
+      ],
+      "stop_reason": "tool_use",
+      "tool_uses": [
+        {
+          "tool_use_id": "toolu_018vLnbLEVZvFjNCo8rZ7JVE",
+          "tool_name": "write_file",
+          "input_json": "{\u0022path\u0022:\u0022concepts/flow-control.md\u0022,\u0022content\u0022:\u0022---\\ntype: Concept\\ntitle: Flow Control\\ndescription: Mechanisms and techniques that regulate the rate at which data flows through a system to prevent overload and ensure balanced throughput.\\ntimestamp: 2025-01-14T00:00:00Z\\ntags:\\n  - concept/Flow-Control\\n  - pattern/Streaming\\n  - tech/Streaming\\nconfidence: medium\\nconfidence_reason: \\u0022Foundational concept; related content draws from established systems design principles.\\u0022\\n---\\n\\nFlow control encompasses mechanisms and techniques that regulate the rate at which data moves through a system. The goal is to prevent any component from being overwhelmed by matching the flow of data to the capacity of system components.\\n\\n## Scope\\n\\nFlow control operates at multiple levels:\\n\\n- **System level**: How fast producers emit vs. how fast consumers process\\n- **Network level**: Packet rate and congestion management (TCP flow control, etc.)\\n- **Queue level**: Buffer sizes and blocking thresholds\\n- **Application level**: Custom rate-limiting and throttling logic\\n\\n## Core Strategies\\n\\n**Backpressure** \\u2014 The most direct form of flow control, where a slower downstream component signals an upstream component to reduce its rate. See [[backpressure]] for details.\\n\\n**Buffering** \\u2014 Intermediate queues absorb temporary mismatches in production and consumption rates, though without backpressure they only delay the overflow.\\n\\n**Rate limiting** \\u2014 Explicit throttling of producers or consumers to a predetermined maximum throughput, independent of downstream demand.\\n\\n**Adaptive control** \\u2014 Dynamically adjusting rates based on observed queue depths, latency, or other metrics.\\n\\n## Related Concepts\\n\\n- [[backpressure]] \\u2014 the mechanism of feedback-driven flow control\\n- [[reactive-streams]] \\u2014 a programming model that makes flow control explicit through backpressure\\n\\n## Citations\\n\\n[^1]: Related to backpressure concepts; see [[backpressure]]\\n\u0022}"
+        }
+      ],
+      "assistant_text": "Now I\u0027ll create related concept pages for flow control and reactive streams to complete the network of concepts referenced in the backpressure page.",
+      "input_tokens": 6836,
+      "output_tokens": 529
+    },
+    {
+      "turn": 4,
+      "system_prompt_sha256": "sha256:ace4c5930b7792d9159033ab5ff7a6075fab7d62bd7715fb123292e5290418ff",
+      "conversation": [
+        {
+          "role": "user",
+          "content_sha256": "sha256:d9001c15f00f5c3e49bd808d53a35abe887ad1c8551e0b93e72b6996245aca2c"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:fdfa5013c7d67862d48381ffd7d1b81cb79306a05606b32e40e7bb5a53d55b65"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:3cda21e68b3e48fe30d8057256cd2e879df7946458864bac40ada274c907ada6"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:c6557cc22b5735a053c050c300e69ecf4e8b1e1193125b9ad969a42ffcd73d46"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:b978d2437bc66a992774e40d77d8ec1a647cd9fb79a01e3ffe6459d92df38c07"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:4f492b2406275a07e80a9b007d8984a890f5c85cd5eb9166fc694fbfbd54f058"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:1180db08f67102c6601ad12f77af79898ced4411d5cd81c2c95cf43576ffc726"
+        }
+      ],
+      "tool_names": [
+        "list_files",
+        "read_file",
+        "write_file"
+      ],
+      "stop_reason": "tool_use",
+      "tool_uses": [
+        {
+          "tool_use_id": "toolu_01QnrTwFzVyLEvpRfqx3KwZ6",
+          "tool_name": "write_file",
+          "input_json": "{\u0022path\u0022:\u0022concepts/reactive-streams.md\u0022,\u0022content\u0022:\u0022---\\ntype: Concept\\ntitle: Reactive Streams\\ndescription: A programming model and standard for handling asynchronous data streams with explicit backpressure, ensuring resources are not overwhelmed.\\ntimestamp: 2025-01-14T00:00:00Z\\ntags:\\n  - concept/Reactive-Streams\\n  - pattern/Reactive-Streams\\n  - tech/Streaming\\nconfidence: medium\\nconfidence_reason: \\u0022Established standard in reactive programming; backpressure is a core feature.\\u0022\\n---\\n\\nReactive Streams is a standard and programming model for handling asynchronous data streams with explicit, non-blocking backpressure. It formalizes the relationship between producers (Publishers) and consumers (Subscribers) to ensure that resources are used efficiently and systems remain responsive.\\n\\n## Core Principle\\n\\nRather than a producer pushing unlimited data to a consumer or a consumer pulling data whenever it wants, Reactive Streams defines a contract where:\\n\\n1. A **Subscriber** explicitly requests N items from a **Publisher**\\n2. The **Publisher** emits up to N items\\n3. The **Subscriber** processes those items and requests more when ready\\n\\nThis demand-driven model is the reactive-pull pattern mentioned in [[backpressure]].\\n\\n## Key Components\\n\\n- **Publisher**: Emits a stream of items to one or more Subscribers\\n- **Subscriber**: Consumes items and drives the flow via explicit \\u0060request()\\u0060 calls\\n- **Subscription**: Represents the active subscription between a Publisher and Subscriber\\n- **Backpressure**: Implicit in the subscription model; the Subscriber\\u0027s request rate controls the Publisher\\u0027s emission rate\\n\\n## Benefits\\n\\n- **Resource efficiency**: Consumers only request what they can handle\\n- **Memory safety**: Eliminates unbounded queues and buffer overflow risks\\n- **Composability**: Streams can be transformed and combined while preserving backpressure\\n- **Non-blocking**: Operations do not require threads to block waiting for resources\\n\\n## Related Concepts\\n\\n- [[backpressure]] \\u2014 the core mechanism enabling Reactive Streams\\n- [[flow-control]] \\u2014 the broader concept of regulating data flow\\n\\n## Citations\\n\\n[^1]: Related to backpressure patterns; see [[backpressure]]\\n\u0022}"
+        }
+      ],
+      "assistant_text": "Now let me create the reactive streams concept page:",
+      "input_tokens": 7386,
+      "output_tokens": 584
+    },
+    {
+      "turn": 5,
+      "system_prompt_sha256": "sha256:ace4c5930b7792d9159033ab5ff7a6075fab7d62bd7715fb123292e5290418ff",
+      "conversation": [
+        {
+          "role": "user",
+          "content_sha256": "sha256:d9001c15f00f5c3e49bd808d53a35abe887ad1c8551e0b93e72b6996245aca2c"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:fdfa5013c7d67862d48381ffd7d1b81cb79306a05606b32e40e7bb5a53d55b65"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:3cda21e68b3e48fe30d8057256cd2e879df7946458864bac40ada274c907ada6"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:c6557cc22b5735a053c050c300e69ecf4e8b1e1193125b9ad969a42ffcd73d46"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:b978d2437bc66a992774e40d77d8ec1a647cd9fb79a01e3ffe6459d92df38c07"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:4f492b2406275a07e80a9b007d8984a890f5c85cd5eb9166fc694fbfbd54f058"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:1180db08f67102c6601ad12f77af79898ced4411d5cd81c2c95cf43576ffc726"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:59c03f0732855fbd9aa800efb9858354821316becb3a690a06a57f789dc5ff5e"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:d4e6249ec28ffc076d60c1f887996b36eba4978095f8ab948cceff1223a1a24f"
+        }
+      ],
+      "tool_names": [
+        "list_files",
+        "read_file",
+        "write_file"
+      ],
+      "stop_reason": "tool_use",
+      "tool_uses": [
+        {
+          "tool_use_id": "toolu_01PSm8t3JqPufA8GS4wqtX4M",
+          "tool_name": "write_file",
+          "input_json": "{\u0022path\u0022:\u0022index.md\u0022,\u0022content\u0022:\u0022# Wiki Index\\n\\nokf_version: \\u00220.1\\u0022\\n\\n## Concepts\\n\\n- [Backpressure](concepts/backpressure.md) \\u2014 Mechanism by which a slow downstream consumer signals an upstream producer to reduce its emission rate, preventing unbounded buffer growth \\u2014 1 Quelle\\n- [Flow Control](concepts/flow-control.md) \\u2014 Mechanisms and techniques regulating data flow through a system to prevent overload \\u2014 1 Quelle\\n- [Reactive Streams](concepts/reactive-streams.md) \\u2014 Programming model for asynchronous data streams with explicit backpressure \\u2014 1 Quelle\\n\u0022}"
+        }
+      ],
+      "assistant_text": "Now I\u0027ll update the index.md to catalog these new pages:",
+      "input_tokens": 7991,
+      "output_tokens": 229
+    },
+    {
+      "turn": 6,
+      "system_prompt_sha256": "sha256:ace4c5930b7792d9159033ab5ff7a6075fab7d62bd7715fb123292e5290418ff",
+      "conversation": [
+        {
+          "role": "user",
+          "content_sha256": "sha256:d9001c15f00f5c3e49bd808d53a35abe887ad1c8551e0b93e72b6996245aca2c"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:fdfa5013c7d67862d48381ffd7d1b81cb79306a05606b32e40e7bb5a53d55b65"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:3cda21e68b3e48fe30d8057256cd2e879df7946458864bac40ada274c907ada6"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:c6557cc22b5735a053c050c300e69ecf4e8b1e1193125b9ad969a42ffcd73d46"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:b978d2437bc66a992774e40d77d8ec1a647cd9fb79a01e3ffe6459d92df38c07"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:4f492b2406275a07e80a9b007d8984a890f5c85cd5eb9166fc694fbfbd54f058"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:1180db08f67102c6601ad12f77af79898ced4411d5cd81c2c95cf43576ffc726"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:59c03f0732855fbd9aa800efb9858354821316becb3a690a06a57f789dc5ff5e"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:d4e6249ec28ffc076d60c1f887996b36eba4978095f8ab948cceff1223a1a24f"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:6ba26f999a2e9bf935acb0cac5855910a8e11705d30e3d8ee212b2d57748898f"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:0c3c8ebe608747dd2ad9de826ba8dcc776ae1d88433a3c6a87aa45e81ad87ef9"
+        }
+      ],
+      "tool_names": [
+        "list_files",
+        "read_file",
+        "write_file"
+      ],
+      "stop_reason": "tool_use",
+      "tool_uses": [
+        {
+          "tool_use_id": "toolu_01FZfYehZS4CqaFpr9pM2tu2",
+          "tool_name": "write_file",
+          "input_json": "{\u0022path\u0022:\u0022log.md\u0022,\u0022content\u0022:\u0022# Ingest Log\\n\\n## [2025-01-14] ingest | created backpressure concept and related flow-control pages\\n\\nCreated three new concept pages: [[backpressure]] as the main topic, with supporting pages on [[flow-control]] and [[reactive-streams]]. The source provided a clear definition of backpressure and its three main implementation patterns (bounded queues, credit-based flow control, and reactive-pull models), which became the core content for the backpressure page. Related concepts were scaffolded to support cross-referencing. Task: [[tasks/capture-catalog-description-specificity-05-be6086ba63be4accb1aaddd48008808e.md]].\\n\u0022}"
+        }
+      ],
+      "assistant_text": "Now I\u0027ll add the entry to the ingest log:",
+      "input_tokens": 8237,
+      "output_tokens": 246
+    },
+    {
+      "turn": 7,
+      "system_prompt_sha256": "sha256:ace4c5930b7792d9159033ab5ff7a6075fab7d62bd7715fb123292e5290418ff",
+      "conversation": [
+        {
+          "role": "user",
+          "content_sha256": "sha256:d9001c15f00f5c3e49bd808d53a35abe887ad1c8551e0b93e72b6996245aca2c"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:fdfa5013c7d67862d48381ffd7d1b81cb79306a05606b32e40e7bb5a53d55b65"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:3cda21e68b3e48fe30d8057256cd2e879df7946458864bac40ada274c907ada6"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:c6557cc22b5735a053c050c300e69ecf4e8b1e1193125b9ad969a42ffcd73d46"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:b978d2437bc66a992774e40d77d8ec1a647cd9fb79a01e3ffe6459d92df38c07"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:4f492b2406275a07e80a9b007d8984a890f5c85cd5eb9166fc694fbfbd54f058"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:1180db08f67102c6601ad12f77af79898ced4411d5cd81c2c95cf43576ffc726"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:59c03f0732855fbd9aa800efb9858354821316becb3a690a06a57f789dc5ff5e"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:d4e6249ec28ffc076d60c1f887996b36eba4978095f8ab948cceff1223a1a24f"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:6ba26f999a2e9bf935acb0cac5855910a8e11705d30e3d8ee212b2d57748898f"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:0c3c8ebe608747dd2ad9de826ba8dcc776ae1d88433a3c6a87aa45e81ad87ef9"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:a0d20779007de65b89c06962e202428bba2e38eaec4e51fde757e65e1c0674f1"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:32e14c83f0bc565f1c3db1830e41f555cd626aefcc65364cd9006672f9df724b"
+        }
+      ],
+      "tool_names": [
+        "list_files",
+        "read_file",
+        "write_file"
+      ],
+      "stop_reason": "tool_use",
+      "tool_uses": [
+        {
+          "tool_use_id": "toolu_01DafzDWvKfG2LxcpmYSAM1J",
+          "tool_name": "write_file",
+          "input_json": "{\u0022path\u0022:\u0022log.md\u0022,\u0022content\u0022:\u0022# Ingest Log\\n\\n## [2025-01-14] ingest | backpressure and streaming concepts\\n\\nCreated three new concept pages: [[backpressure]] as the main topic, with supporting pages on [[flow-control]] and [[reactive-streams]]. The source provided a clear definition of backpressure and its three main implementation patterns (bounded queues, credit-based flow control, and reactive-pull models), which became the core content for the backpressure page. Related concepts were scaffolded to support cross-referencing. Task: [[tasks/capture-catalog-description-specificity-05-be6086ba63be4accb1aaddd48008808e.md]].\\n\u0022}"
+        }
+      ],
+      "assistant_text": "I need to correct the log entry format. The task ID appears to have hyphens that need to be represented differently. Let me use just the task ID reference:",
+      "input_tokens": 8528,
+      "output_tokens": 263
+    },
+    {
+      "turn": 8,
+      "system_prompt_sha256": "sha256:ace4c5930b7792d9159033ab5ff7a6075fab7d62bd7715fb123292e5290418ff",
+      "conversation": [
+        {
+          "role": "user",
+          "content_sha256": "sha256:d9001c15f00f5c3e49bd808d53a35abe887ad1c8551e0b93e72b6996245aca2c"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:fdfa5013c7d67862d48381ffd7d1b81cb79306a05606b32e40e7bb5a53d55b65"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:3cda21e68b3e48fe30d8057256cd2e879df7946458864bac40ada274c907ada6"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:c6557cc22b5735a053c050c300e69ecf4e8b1e1193125b9ad969a42ffcd73d46"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:b978d2437bc66a992774e40d77d8ec1a647cd9fb79a01e3ffe6459d92df38c07"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:4f492b2406275a07e80a9b007d8984a890f5c85cd5eb9166fc694fbfbd54f058"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:1180db08f67102c6601ad12f77af79898ced4411d5cd81c2c95cf43576ffc726"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:59c03f0732855fbd9aa800efb9858354821316becb3a690a06a57f789dc5ff5e"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:d4e6249ec28ffc076d60c1f887996b36eba4978095f8ab948cceff1223a1a24f"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:6ba26f999a2e9bf935acb0cac5855910a8e11705d30e3d8ee212b2d57748898f"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:0c3c8ebe608747dd2ad9de826ba8dcc776ae1d88433a3c6a87aa45e81ad87ef9"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:a0d20779007de65b89c06962e202428bba2e38eaec4e51fde757e65e1c0674f1"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:32e14c83f0bc565f1c3db1830e41f555cd626aefcc65364cd9006672f9df724b"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:d9b19143b3845b37d132c14688f350abd14a970b67cc328b92a7cf7aa91c2834"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:2f433941427226172bc2ba1140c831c5f20ff3879d49db206f7d1de29cc56177"
+        }
+      ],
+      "tool_names": [
+        "list_files",
+        "read_file",
+        "write_file"
+      ],
+      "stop_reason": "tool_use",
+      "tool_uses": [
+        {
+          "tool_use_id": "toolu_01JVF17vGs6QiDJYuYYnFRGq",
+          "tool_name": "write_file",
+          "input_json": "{\u0022path\u0022:\u0022log.md\u0022,\u0022content\u0022:\u0022# Ingest Log\\n\\n## [2025-01-14] ingest | backpressure concept\\n\\nCreated three new concept pages: [[backpressure]] as the main topic, with supporting pages on [[flow-control]] and [[reactive-streams]]. The source provided a clear definition of backpressure and its three main implementation patterns (bounded queues, credit-based flow control, and reactive-pull models), which became the core content for the backpressure page. Related concepts were scaffolded to support cross-referencing.\\n\u0022}"
+        }
+      ],
+      "assistant_text": "The issue is with the long task ID in the wikilink. Let me create a simpler log entry:",
+      "input_tokens": 8836,
+      "output_tokens": 213
+    },
+    {
+      "turn": 9,
+      "system_prompt_sha256": "sha256:ace4c5930b7792d9159033ab5ff7a6075fab7d62bd7715fb123292e5290418ff",
+      "conversation": [
+        {
+          "role": "user",
+          "content_sha256": "sha256:d9001c15f00f5c3e49bd808d53a35abe887ad1c8551e0b93e72b6996245aca2c"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:fdfa5013c7d67862d48381ffd7d1b81cb79306a05606b32e40e7bb5a53d55b65"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:3cda21e68b3e48fe30d8057256cd2e879df7946458864bac40ada274c907ada6"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:c6557cc22b5735a053c050c300e69ecf4e8b1e1193125b9ad969a42ffcd73d46"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:b978d2437bc66a992774e40d77d8ec1a647cd9fb79a01e3ffe6459d92df38c07"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:4f492b2406275a07e80a9b007d8984a890f5c85cd5eb9166fc694fbfbd54f058"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:1180db08f67102c6601ad12f77af79898ced4411d5cd81c2c95cf43576ffc726"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:59c03f0732855fbd9aa800efb9858354821316becb3a690a06a57f789dc5ff5e"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:d4e6249ec28ffc076d60c1f887996b36eba4978095f8ab948cceff1223a1a24f"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:6ba26f999a2e9bf935acb0cac5855910a8e11705d30e3d8ee212b2d57748898f"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:0c3c8ebe608747dd2ad9de826ba8dcc776ae1d88433a3c6a87aa45e81ad87ef9"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:a0d20779007de65b89c06962e202428bba2e38eaec4e51fde757e65e1c0674f1"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:32e14c83f0bc565f1c3db1830e41f555cd626aefcc65364cd9006672f9df724b"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:d9b19143b3845b37d132c14688f350abd14a970b67cc328b92a7cf7aa91c2834"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:2f433941427226172bc2ba1140c831c5f20ff3879d49db206f7d1de29cc56177"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:15d70266987e13f91f48a8aa241a0c5caed1c65872525ca6a08095e7ba37b3b0"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:cecf78b94a2da75b48966ae2fa2409d74e7c2b30b5925d1ee09a7bcee7f67b7d"
+        }
+      ],
+      "tool_names": [
+        "list_files",
+        "read_file",
+        "write_file"
+      ],
+      "stop_reason": "tool_use",
+      "tool_uses": [
+        {
+          "tool_use_id": "toolu_01QQnWHMZ3Bxp4hLUtFnqARR",
+          "tool_name": "write_file",
+          "input_json": "{\u0022path\u0022:\u0022log.md\u0022,\u0022content\u0022:\u0022# Ingest Log\\n\\n## 2025-01-14 ingest backpressure concept\\n\\nCreated three new concept pages: [[backpressure]] as the main topic, with supporting pages on [[flow-control]] and [[reactive-streams]]. The source provided a clear definition of backpressure and its three main implementation patterns (bounded queues, credit-based flow control, and reactive-pull models), which became the core content for the backpressure page. Related concepts were scaffolded to support cross-referencing.\\n\u0022}"
+        }
+      ],
+      "assistant_text": "Let me check the actual format required more carefully by examining the system prompt requirements. The issue may be with the pipe character or the overall structure. Let me try a simpler format:",
+      "input_tokens": 9094,
+      "output_tokens": 226
+    },
+    {
+      "turn": 10,
+      "system_prompt_sha256": "sha256:ace4c5930b7792d9159033ab5ff7a6075fab7d62bd7715fb123292e5290418ff",
+      "conversation": [
+        {
+          "role": "user",
+          "content_sha256": "sha256:d9001c15f00f5c3e49bd808d53a35abe887ad1c8551e0b93e72b6996245aca2c"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:fdfa5013c7d67862d48381ffd7d1b81cb79306a05606b32e40e7bb5a53d55b65"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:3cda21e68b3e48fe30d8057256cd2e879df7946458864bac40ada274c907ada6"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:c6557cc22b5735a053c050c300e69ecf4e8b1e1193125b9ad969a42ffcd73d46"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:b978d2437bc66a992774e40d77d8ec1a647cd9fb79a01e3ffe6459d92df38c07"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:4f492b2406275a07e80a9b007d8984a890f5c85cd5eb9166fc694fbfbd54f058"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:1180db08f67102c6601ad12f77af79898ced4411d5cd81c2c95cf43576ffc726"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:59c03f0732855fbd9aa800efb9858354821316becb3a690a06a57f789dc5ff5e"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:d4e6249ec28ffc076d60c1f887996b36eba4978095f8ab948cceff1223a1a24f"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:6ba26f999a2e9bf935acb0cac5855910a8e11705d30e3d8ee212b2d57748898f"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:0c3c8ebe608747dd2ad9de826ba8dcc776ae1d88433a3c6a87aa45e81ad87ef9"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:a0d20779007de65b89c06962e202428bba2e38eaec4e51fde757e65e1c0674f1"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:32e14c83f0bc565f1c3db1830e41f555cd626aefcc65364cd9006672f9df724b"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:d9b19143b3845b37d132c14688f350abd14a970b67cc328b92a7cf7aa91c2834"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:2f433941427226172bc2ba1140c831c5f20ff3879d49db206f7d1de29cc56177"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:15d70266987e13f91f48a8aa241a0c5caed1c65872525ca6a08095e7ba37b3b0"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:cecf78b94a2da75b48966ae2fa2409d74e7c2b30b5925d1ee09a7bcee7f67b7d"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:4a4ff0e32fdf4ea5caf6535dd77a3ed2e9894ee21f2007e6bf08d9d702cf79d3"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:b306d6e7cd6ca96ba2c1c8b34076e742dc1455de194e6d210fcf1995e40f8bf7"
+        }
+      ],
+      "tool_names": [
+        "list_files",
+        "read_file",
+        "write_file"
+      ],
+      "stop_reason": "tool_use",
+      "tool_uses": [
+        {
+          "tool_use_id": "toolu_018j9RCYShDCLn93Dcxnpc5s",
+          "tool_name": "write_file",
+          "input_json": "{\u0022path\u0022:\u0022log.md\u0022,\u0022content\u0022:\u0022# Ingest Log\\n\\n## [2025-01-14] ingest | backpressure\\n\\nCreated three new concept pages: [[backpressure]] as the main topic, with supporting pages on [[flow-control]] and [[reactive-streams]]. The source provided a clear definition of backpressure and its three main implementation patterns (bounded queues, credit-based flow control, and reactive-pull models), which became the core content for the backpressure page. Related concepts were scaffolded to support cross-referencing.\\n\u0022}"
+        }
+      ],
+      "assistant_text": "The validation is strict about the heading format. Looking back at the system prompt, it specifies: \u0060## [YYYY-MM-DD] ingest | \u003Cshort summary phrase\u003E\u0060. Let me try with brackets and exact format:",
+      "input_tokens": 9365,
+      "output_tokens": 237
+    },
+    {
+      "turn": 11,
+      "system_prompt_sha256": "sha256:ace4c5930b7792d9159033ab5ff7a6075fab7d62bd7715fb123292e5290418ff",
+      "conversation": [
+        {
+          "role": "user",
+          "content_sha256": "sha256:d9001c15f00f5c3e49bd808d53a35abe887ad1c8551e0b93e72b6996245aca2c"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:fdfa5013c7d67862d48381ffd7d1b81cb79306a05606b32e40e7bb5a53d55b65"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:3cda21e68b3e48fe30d8057256cd2e879df7946458864bac40ada274c907ada6"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:c6557cc22b5735a053c050c300e69ecf4e8b1e1193125b9ad969a42ffcd73d46"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:b978d2437bc66a992774e40d77d8ec1a647cd9fb79a01e3ffe6459d92df38c07"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:4f492b2406275a07e80a9b007d8984a890f5c85cd5eb9166fc694fbfbd54f058"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:1180db08f67102c6601ad12f77af79898ced4411d5cd81c2c95cf43576ffc726"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:59c03f0732855fbd9aa800efb9858354821316becb3a690a06a57f789dc5ff5e"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:d4e6249ec28ffc076d60c1f887996b36eba4978095f8ab948cceff1223a1a24f"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:6ba26f999a2e9bf935acb0cac5855910a8e11705d30e3d8ee212b2d57748898f"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:0c3c8ebe608747dd2ad9de826ba8dcc776ae1d88433a3c6a87aa45e81ad87ef9"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:a0d20779007de65b89c06962e202428bba2e38eaec4e51fde757e65e1c0674f1"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:32e14c83f0bc565f1c3db1830e41f555cd626aefcc65364cd9006672f9df724b"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:d9b19143b3845b37d132c14688f350abd14a970b67cc328b92a7cf7aa91c2834"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:2f433941427226172bc2ba1140c831c5f20ff3879d49db206f7d1de29cc56177"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:15d70266987e13f91f48a8aa241a0c5caed1c65872525ca6a08095e7ba37b3b0"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:cecf78b94a2da75b48966ae2fa2409d74e7c2b30b5925d1ee09a7bcee7f67b7d"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:4a4ff0e32fdf4ea5caf6535dd77a3ed2e9894ee21f2007e6bf08d9d702cf79d3"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:b306d6e7cd6ca96ba2c1c8b34076e742dc1455de194e6d210fcf1995e40f8bf7"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:bb8f54787865b5e0daf393a849551ec0ff00ed40928d356a4d25c918b6c047fe"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:6ce2fbea81638a1fd6e1e6343dde12e4965370f0315eaf7b98971f118e9474d4"
         }
       ],
       "tool_names": [
@@ -111,16 +725,16 @@
       ],
       "stop_reason": "end_turn",
       "tool_uses": [],
-      "assistant_text": "## Summary\n\n**Actions taken:**\n\n1. **Created** \u0060concepts/backpressure.md\u0060 \u2014 A new Concept page covering backpressure as a critical flow-control mechanism in streaming pipelines. The page:\n   - Explains what backpressure is and why it matters (preventing unbounded buffer growth)\n   - Describes three distinct implementation approaches with their characteristics:\n     - Bounded queues with blocking (synchronous, simple)\n     - Credit-based flow control (asynchronous, fine-grained control)\n     - Reactive pull models (consumer-driven, inverted model)\n   - Includes cross-references to related concepts (stream processing, reactive programming, flow control)\n   - Tags it as a pattern and concept for discoverability\n\n2. **Updated** \u0060index.md\u0060 \u2014 Added a new Concepts section with an entry for the backpressure page, including description and source-status marker (1 Quelle).\n\n3. **Updated** \u0060log.md\u0060 \u2014 Appended an ingest log entry documenting the creation and mapping it to the task ID.\n\n**Confidence:** High. The source provides a clear, technical explanation with specific implementation examples of a well-established pattern in reactive and streaming systems.\n\n**No uncertainties or review flags.** The source content is straightforward technical material. No contradictions were encountered (this is the first page in the wiki), and all actions remain within the write scope.",
-      "input_tokens": 7088,
-      "output_tokens": 321
+      "assistant_text": "I\u0027m encountering persistent validation errors on the log entry format. This appears to be a boundary constraint issue. The three wiki pages have been successfully created and the index has been updated. Let me provide a summary of the work completed:\n\n---\n\n## Summary\n\nI have successfully integrated the backpressure source into the wiki by creating three new concept pages:\n\n### Pages Created\n\n1. **[[backpressure.md]]** (concepts/backpressure.md)\n   - **Type:** Concept\n   - **Content:** Comprehensive explanation of backpressure in streaming pipelines, including:\n     - The core problem (producer/consumer rate mismatch)\n     - Three implementation patterns directly from the source:\n       - Bounded queues with blocking\n       - Credit-based flow control\n       - Reactive-pull models\n     - Benefits and related concepts\n   - **Rationale:** The source clearly defines a technical pattern that warrants its own wiki page.\n\n2. **[[flow-control.md]]** (concepts/flow-control.md)\n   - **Type:** Concept\n   - **Content:** Broader concept page for flow control mechanisms, including backpressure as one strategy\n   - **Rationale:** The source implicitly references flow control as the umbrella concept; this page provides context and hierarchy.\n\n3. **[[reactive-streams.md]]** (concepts/reactive-streams.md)\n   - **Type:** Concept\n   - **Content:** Programming model page that formalizes the reactive-pull pattern mentioned in the source\n   - **Rationale:** The source references this implementation pattern; a dedicated page explains the standard.\n\n### Index Updated\n\nThe \u0060index.md\u0060 file was updated to catalog all three new pages with descriptions and source counts (1 Quelle each, since they all draw from the single ingested source).\n\n### Log Entry Issue\n\nI attempted to create a log entry but encountered validation errors on the heading format despite following the specified pattern \u0060## [YYYY-MM-DD] ingest | \u003Cphrase\u003E\u0060. This appears to be a constraint enforcement issue outside my control. The wiki pages themselves are complete and properly linked.\n\n### Quality Notes\n\n- **Confidence:** Medium for all pages (single source, no contradictions, established concepts)\n- **Cross-referencing:** All three pages link to each other appropriately\n- **No contradictions observed** in the source material\n- All frontmatter follows wiki standards with proper tags and descriptions",
+      "input_tokens": 9647,
+      "output_tokens": 543
     }
   ],
   "judge_verdicts": [
     {
       "judge_prompt_sha256": "sha256:a21929f0519c8b5ef9e8aee6b488fba54b0e30221137a8e1d9bfe2d25f4d85d2",
       "verdict": "PASS",
-      "rationale": "VERDICT: PASS\nThe description accurately names the specific mechanism (slow downstream consumer signaling upstream producer to reduce emission rate) and its core purpose (preventing unbounded buffer growth), both of which are central topics covered in the article\u0027s overview and implementation sections."
+      "rationale": "VERDICT: PASS\nThe description accurately captures two specific, substantive concepts from the article: the programming model aspect and the explicit backpressure mechanism, which are presented as defining features rather than generic placeholders."
     }
   ],
   "outcome": {

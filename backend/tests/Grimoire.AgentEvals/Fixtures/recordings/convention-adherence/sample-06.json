@@ -1,16 +1,16 @@
 {
   "schema_version": 1,
   "sample": 6,
-  "task_id": "capture-convention-adherence-06-29abc9fc755b499384aff9723d2e05b8",
+  "task_id": "capture-convention-adherence-06-edec8145554e402690f92d5245b1a441",
   "model": "claude-haiku-4-5",
   "turns": [
     {
       "turn": 1,
-      "system_prompt_sha256": "sha256:ef45f3c3f71075acb05a350d81a004dfd1329b4c7de813f8b4ae08ce49c8aff3",
+      "system_prompt_sha256": "sha256:ace4c5930b7792d9159033ab5ff7a6075fab7d62bd7715fb123292e5290418ff",
       "conversation": [
         {
           "role": "user",
-          "content_sha256": "sha256:7b313099203e79e3861b9d2dd4c6dbcc546f1dd13017707916799d5fca6af3e6"
+          "content_sha256": "sha256:33d0390e2bb567cd06ab00a04519253a971adacfffc8a67df53026df74494068"
         }
       ],
       "tool_names": [
@@ -21,35 +21,35 @@
       "stop_reason": "tool_use",
       "tool_uses": [
         {
-          "tool_use_id": "toolu_01CCpuUfCWoMvXiF1HBsmBr8",
+          "tool_use_id": "toolu_01NUy9JTffdAvn4uss4KGczS",
           "tool_name": "read_file",
           "input_json": "{\u0022path\u0022:\u0022index.md\u0022}"
         },
         {
-          "tool_use_id": "toolu_01ANA3FgEdqjaEgc3MiVMYTP",
+          "tool_use_id": "toolu_01BsFF7cqWA6HmwnaDkMfJ6c",
           "tool_name": "list_files",
-          "input_json": "{\u0022path\u0022:\u0022pages\u0022}"
+          "input_json": "{\u0022path\u0022:\u0022.\u0022}"
         }
       ],
-      "assistant_text": "I\u0027ll start by exploring the wiki to understand its current state and then integrate this source about offline embedding refresh jobs.",
-      "input_tokens": 5483,
-      "output_tokens": 115
+      "assistant_text": "I\u0027ll start by exploring the wiki state to understand what\u0027s already there, then integrate this source material about offline embedding refresh jobs.",
+      "input_tokens": 5798,
+      "output_tokens": 117
     },
     {
       "turn": 2,
-      "system_prompt_sha256": "sha256:ef45f3c3f71075acb05a350d81a004dfd1329b4c7de813f8b4ae08ce49c8aff3",
+      "system_prompt_sha256": "sha256:ace4c5930b7792d9159033ab5ff7a6075fab7d62bd7715fb123292e5290418ff",
       "conversation": [
         {
           "role": "user",
-          "content_sha256": "sha256:7b313099203e79e3861b9d2dd4c6dbcc546f1dd13017707916799d5fca6af3e6"
+          "content_sha256": "sha256:33d0390e2bb567cd06ab00a04519253a971adacfffc8a67df53026df74494068"
         },
         {
           "role": "assistant",
-          "content_sha256": "sha256:433451cc2d3c47a3a3799a928d5beeb311bd50ebebf926383a75cfc2e3fe9424"
+          "content_sha256": "sha256:a46d53ea799ed8d2d2ffd3b80d7d441928fd36ec9fe6c13b14e1887468c3880c"
         },
         {
           "role": "user",
-          "content_sha256": "sha256:186c0f5d09c9ce2f19c46e5eca0325affeeec45c582bc327ca3d48c598bcbc21"
+          "content_sha256": "sha256:f487e602dadaa90d78b04cabf8b9492145804f58159a60c6cd26951e1b092068"
         }
       ],
       "tool_names": [
@@ -60,58 +60,38 @@
       "stop_reason": "tool_use",
       "tool_uses": [
         {
-          "tool_use_id": "toolu_01DWNG3yVez5AGe3be49rcop",
-          "tool_name": "write_file",
-          "input_json": "{\u0022path\u0022:\u0022pages/concepts/offline-embedding-refresh.md\u0022,\u0022content\u0022:\u0022---\\ntype: Concept\\ntitle: Offline Embedding Refresh\\ndescription: Scheduled batch processes that regenerate vector embeddings for a corpus when the embedding model changes or source documents update in bulk.\\ntimestamp: 2026-07-14T00:00:00Z\\ntags:\\n  - concept/Embeddings\\n  - concept/Batch-Processing\\n  - pattern/Blue-Green-Deployment\\nconfidence: medium\\nconfidence_reason: \\u0022Single source describing the operational pattern and key concerns; no external corroboration yet.\\u0022\\n---\\n\\nOffline embedding refresh jobs are scheduled batch processes that regenerate vector embeddings for a corpus when the underlying embedding model changes or source documents update in bulk. They typically run on a fixed cadence rather than on demand.\\n\\n## Operational Model\\n\\n- **Execution:** Batch processing on a fixed schedule (not on-demand)\\n- **Scope:** Re-embeds the full or incremental document set\\n- **Atomicity:** Swaps the new vectors into the retrieval index atomically to avoid serving mixed-model results mid-transition\\n\\n## Key Operational Concerns\\n\\n1. **Model Versioning:** Each batch must track which embedding model version generated the vectors. This is essential for reproducibility and debugging when model changes introduce drift.\\n\\n2. **Vector Drift Monitoring:** When transitioning between embedding models, significant differences in vector space can impact retrieval quality. Monitoring and measuring drift between old and new vectors helps catch quality regressions before production.\\n\\n3. **Staged Deployment:** The vector swap should be staged behind a [[blue-green-index-deployment|blue/green index]] strategy, allowing a quality regression to be rolled back atomically without re-embedding or serving degraded results to users.\\n\\n## Related Concepts\\n\\n- [[blue-green-index-deployment]] \\u2014 deployment pattern for safe index swaps\\n- [[embedding-model-versioning]] \\u2014 tracking embedding model versions per batch\\n- [[vector-retrieval]] \\u2014 the retrieval systems these embeddings support\\n\\n## Citations\\n\\n[^1]: Source reference: eval://convention-adherence/sample-06\\n\u0022}"
-        },
-        {
-          "tool_use_id": "toolu_012K15TFnL8vgFKUh3ftdqMS",
-          "tool_name": "write_file",
-          "input_json": "{\u0022path\u0022:\u0022pages/concepts/blue-green-index-deployment.md\u0022,\u0022content\u0022:\u0022---\\ntype: Concept\\ntitle: Blue-Green Index Deployment\\ndescription: A deployment pattern for swapping retrieval indexes atomically, enabling safe rollback of vector or index changes without serving mixed-model results.\\ntimestamp: 2026-07-14T00:00:00Z\\ntags:\\n  - pattern/Blue-Green-Deployment\\n  - concept/Index-Operations\\n  - concept/Risk-Mitigation\\nconfidence: medium\\nconfidence_reason: \\u0022Described as a key operational pattern for embedding refresh; general blue-green strategy is well-established but this application-specific instance needs corroboration.\\u0022\\n---\\n\\nBlue-green index deployment is a pattern for safely swapping [[vector-retrieval|retrieval indexes]] atomically, enabling rollback of quality regressions without re-embedding or serving degraded results to users.\\n\\n## Pattern Overview\\n\\nIn a blue-green index deployment:\\n\\n- **Blue Index:** The currently serving (live) index\\n- **Green Index:** The new index with updated embeddings or structure, prepared in parallel\\n- **Swap:** When the green index is validated and deemed safe, traffic is switched atomically\\n- **Rollback:** If quality issues are detected post-swap, traffic can be switched back to blue without re-processing\\n\\n## Application to Embedding Refresh\\n\\nWhen regenerating embeddings via [[offline-embedding-refresh|offline embedding refresh jobs]], the new vectors are built into a new \\u0022green\\u0022 index while the current index continues serving. Once validation confirms no quality regression, the switch is atomic, avoiding a window where the system would serve results from mixed embedding models or versions.\\n\\n## Key Benefits\\n\\n- **Atomic transitions:** No mixed-model serving period\\n- **Rapid rollback:** Quality regressions can be reverted without re-embedding\\n- **Parallel preparation:** New index can be built and tested without impacting production\\n\\n## Related Concepts\\n\\n- [[offline-embedding-refresh]] \\u2014 typical use case for blue-green index swaps\\n- [[vector-retrieval]] \\u2014 the retrieval systems affected by index swaps\\n\\n## Citations\\n\\n[^1]: Source reference: eval://convention-adherence/sample-06\\n\u0022}"
-        },
-        {
-          "tool_use_id": "toolu_012ULpTeBo4Saq2N3hp95Z7w",
-          "tool_name": "write_file",
-          "input_json": "{\u0022path\u0022:\u0022pages/concepts/embedding-model-versioning.md\u0022,\u0022content\u0022:\u0022---\\ntype: Concept\\ntitle: Embedding Model Versioning\\ndescription: Tracking and managing different versions of embedding models across batches to ensure reproducibility and facilitate drift detection.\\ntimestamp: 2026-07-14T00:00:00Z\\ntags:\\n  - concept/Embeddings\\n  - concept/Versioning\\n  - pattern/Observability\\nconfidence: medium\\nconfidence_reason: \\u0022Described as a key operational concern in embedding refresh; practice is common but this specific reference needs corroboration.\\u0022\\n---\\n\\nEmbedding model versioning is the practice of tracking which embedding model version generated each batch of vectors. This is a critical operational concern when managing [[offline-embedding-refresh|offline embedding refresh jobs]].\\n\\n## Why Versioning Matters\\n\\n- **Reproducibility:** Knowing the exact model that generated a set of embeddings is essential for debugging and understanding results\\n- **Drift Detection:** When comparing old and new embeddings, version metadata allows precise characterization of which model change caused vector drift\\n- **Transparency:** Audit trails on model versions help teams understand what changed and when\\n\\n## Operational Practice\\n\\nEach batch of embeddings produced by an offline refresh job should carry explicit metadata identifying:\\n\\n- The embedding model name and version\\n- The timestamp of when the batch was generated\\n- Any model configuration parameters that affect the embedding space\\n\\nThis metadata can then be used to:\\n- Monitor [[vector-drift]] between model versions\\n- Correlate retrieval quality changes with model updates\\n- Stage safe [[blue-green-index-deployment|blue-green deployments]]\\n\\n## Related Concepts\\n\\n- [[offline-embedding-refresh]] \\u2014 the batching process where versioning is applied\\n- [[vector-drift]] \\u2014 monitoring changes in embedding space between versions\\n- [[blue-green-index-deployment]] \\u2014 using version information for staged swaps\\n\\n## Citations\\n\\n[^1]: Source reference: eval://convention-adherence/sample-06\\n\u0022}"
-        },
-        {
-          "tool_use_id": "toolu_01ETH9GhsY1HrYTDg65uGW19",
-          "tool_name": "write_file",
-          "input_json": "{\u0022path\u0022:\u0022pages/concepts/vector-drift.md\u0022,\u0022content\u0022:\u0022---\\ntype: Concept\\ntitle: Vector Drift\\ndescription: Measurable changes in the embedding space when the underlying embedding model changes, monitored to detect retrieval quality regressions.\\ntimestamp: 2026-07-14T00:00:00Z\\ntags:\\n  - concept/Embeddings\\n  - concept/Observability\\n  - pattern/Quality-Assurance\\nconfidence: medium\\nconfidence_reason: \\u0022Described as a monitoring concern in embedding refresh workflows; general concept of drift is well-established but this specific application needs corroboration.\\u0022\\n---\\n\\nVector drift refers to measurable changes in the embedding space that occur when switching between different embedding model versions. It is a key monitoring concern during [[offline-embedding-refresh|offline embedding refresh jobs]].\\n\\n## Characteristics\\n\\nVector drift arises when:\\n- An embedding model is updated or replaced\\n- Model configuration or training data changes\\n- The vector space is modified (e.g., dimension reduction, normalization changes)\\n\\nThe resulting drift can cause retrieval quality to improve, degrade, or shift unpredictably depending on the nature of the change.\\n\\n## Monitoring and Mitigation\\n\\n- **Measurement:** Comparing vectors from the old model to vectors from the new model using distance metrics (e.g., cosine similarity, L2 distance) to quantify the magnitude of drift\\n- **Quality Testing:** Validating retrieval performance on benchmark queries before and after the model change to detect regressions\\n- **Staging:** Using [[blue-green-index-deployment|blue-green index deployments]] to serve results from both models temporarily and compare performance\\n- **Rollback:** If drift detection reveals a quality regression, switching back to the previous index (and model version) without re-embedding\\n\\n## Related Concepts\\n\\n- [[offline-embedding-refresh]] \\u2014 the process that induces drift\\n- [[embedding-model-versioning]] \\u2014 tracking which model versions caused specific drift\\n- [[blue-green-index-deployment]] \\u2014 safe deployment pattern for managing drift transitions\\n\\n## Citations\\n\\n[^1]: Source reference: eval://convention-adherence/sample-06\\n\u0022}"
-        },
-        {
-          "tool_use_id": "toolu_01H7ytFKqWCebigFW69p6FwK",
-          "tool_name": "write_file",
-          "input_json": "{\u0022path\u0022:\u0022pages/concepts/vector-retrieval.md\u0022,\u0022content\u0022:\u0022---\\ntype: Concept\\ntitle: Vector Retrieval\\ndescription: Information retrieval systems based on semantic similarity in a learned embedding space, where documents and queries are represented as dense vectors.\\ntimestamp: 2026-07-14T00:00:00Z\\ntags:\\n  - concept/Embeddings\\n  - concept/Information-Retrieval\\n  - pattern/Semantic-Search\\nconfidence: medium\\nconfidence_reason: \\u0022Established concept; this page introduces the retrieval context for embedding refresh and related operational concerns.\\u0022\\n---\\n\\nVector retrieval (also called semantic search or dense retrieval) is an information retrieval paradigm in which documents and queries are encoded as dense vectors (embeddings) in a learned representation space, and relevance is determined by semantic similarity (typically measured by cosine distance or dot product).\\n\\n## Core Idea\\n\\nRather than matching keywords or structured fields, vector retrieval systems:\\n1. Encode each document into a fixed-dimensional vector representation using an embedding model\\n2. Encode the query the same way\\n3. Find documents with the highest vector similarity to the query\\n4. Rank and return the most similar documents\\n\\n## Operational Concerns\\n\\nVector retrieval systems have unique operational challenges:\\n\\n- **Embedding Model Changes:** When the underlying embedding model changes or improves, all vectors may need to be regenerated. This is managed via [[offline-embedding-refresh|offline embedding refresh jobs]].\\n- **Vector Drift:** Changes to the embedding model or space can cause [[vector-drift|measurable drift]] in document representations, potentially affecting retrieval quality.\\n- **Index Atomicity:** Swapping embeddings without downtime or mixed-model serving requires careful deployment, typically using [[blue-green-index-deployment|blue-green index patterns]].\\n\\n## Related Concepts\\n\\n- [[offline-embedding-refresh]] \\u2014 regenerating embeddings in batch\\n- [[vector-drift]] \\u2014 monitoring changes in embedding space\\n- [[blue-green-index-deployment]] \\u2014 safe index swap patterns\\n- [[embedding-model-versioning]] \\u2014 tracking model versions across batches\\n\\n## Citations\\n\\n[^1]: Source reference: eval://convention-adherence/sample-06\\n\u0022}"
+          "tool_use_id": "toolu_01WmUAaArNcY6wffaGjdfzpQ",
+          "tool_name": "list_files",
+          "input_json": "{\u0022path\u0022:\u0022concepts\u0022}"
         }
       ],
-      "assistant_text": "The wiki is empty and the \u0060pages/\u0060 directory doesn\u0027t exist yet. I\u0027ll need to create the folder structure and add the appropriate pages for this source material.\n\nThe source describes **offline embedding refresh jobs**, a concept related to:\n1. **Embedding management** (core operational pattern)\n2. **Vector retrieval** (where embeddings are used)\n3. **Batch processing** (the execution model)\n4. **Index operations** (blue/green deployment strategy)\n\nThis is best served by creating:\n- A **Concept** page on \u0022offline-embedding-refresh\u0022 \u2014 the main topic\n- Related concept pages on supporting ideas (embedding versioning, blue/green deployment for indexes)\n\nLet me create the pages:",
-      "input_tokens": 5675,
-      "output_tokens": 2783
+      "assistant_text": "The wiki is empty, so this will be the first ingestion. The source describes a technical concept related to vector embeddings and batch processing. Let me create pages for:\n\n1. **Main concept**: \u0022Offline embedding refresh jobs\u0022 \u2014 this belongs in \u0060concepts/\u0060 since it\u0027s an abstract operational pattern\n2. **Related concept**: \u0022Embedding model versioning\u0022 \u2014 a specific concern mentioned\n3. **Related concept**: \u0022Blue-green indexing\u0022 \u2014 a deployment pattern mentioned\n\nHowever, I should keep scope reasonable. The source is a single short paragraph describing one operational pattern. I\u0027ll create one main concept page covering offline embedding refresh jobs, and cross-reference the related patterns within it without creating separate pages unless they\u0027re genuinely independent topics. Let me create:\n\n- **Main page**: \u0060concepts/offline-embedding-refresh.md\u0060 \u2014 covers the full pattern\n- **Cross-reference note**: Link to retrieval patterns and blue-green deployments (if they exist; if not, mention them as related without pages)\n\nLet me check if any related topics already exist:",
+      "input_tokens": 5993,
+      "output_tokens": 282
     },
     {
       "turn": 3,
-      "system_prompt_sha256": "sha256:ef45f3c3f71075acb05a350d81a004dfd1329b4c7de813f8b4ae08ce49c8aff3",
+      "system_prompt_sha256": "sha256:ace4c5930b7792d9159033ab5ff7a6075fab7d62bd7715fb123292e5290418ff",
       "conversation": [
         {
           "role": "user",
-          "content_sha256": "sha256:7b313099203e79e3861b9d2dd4c6dbcc546f1dd13017707916799d5fca6af3e6"
+          "content_sha256": "sha256:33d0390e2bb567cd06ab00a04519253a971adacfffc8a67df53026df74494068"
         },
         {
           "role": "assistant",
-          "content_sha256": "sha256:433451cc2d3c47a3a3799a928d5beeb311bd50ebebf926383a75cfc2e3fe9424"
+          "content_sha256": "sha256:a46d53ea799ed8d2d2ffd3b80d7d441928fd36ec9fe6c13b14e1887468c3880c"
         },
         {
           "role": "user",
-          "content_sha256": "sha256:186c0f5d09c9ce2f19c46e5eca0325affeeec45c582bc327ca3d48c598bcbc21"
+          "content_sha256": "sha256:f487e602dadaa90d78b04cabf8b9492145804f58159a60c6cd26951e1b092068"
         },
         {
           "role": "assistant",
-          "content_sha256": "sha256:0dc7b7850acaefcc486f278bb9f6fec638f2145438668cc2ccb9d3d5fbefd178"
+          "content_sha256": "sha256:dd4680e9597c67505c98141df666a5e231e9a5a464c129c4b6c80deea8e1ff53"
         },
         {
           "role": "user",
-          "content_sha256": "sha256:b2df40f0431bffa537c8291ffbb43be9ebb2c182e24254c59d177a8806fa1103"
+          "content_sha256": "sha256:57c7bb34468800b8fd89087b4c0b035bd2ff2876411d36e181851cb70c2e7386"
         }
       ],
       "tool_names": [
@@ -122,51 +102,46 @@
       "stop_reason": "tool_use",
       "tool_uses": [
         {
-          "tool_use_id": "toolu_01T5Joz6cwFwRLFDRzkSmFmB",
+          "tool_use_id": "toolu_01Lzw8sh1N9WgMY4cjEytmBA",
           "tool_name": "write_file",
-          "input_json": "{\u0022path\u0022:\u0022index.md\u0022,\u0022content\u0022:\u0022okf_version: \\u00220.1\\u0022\\n\\n# Wiki Index\\n\\n## Embedding \\u0026 Retrieval\\n\\n- [Offline Embedding Refresh](pages/concepts/offline-embedding-refresh.md) \\u2014 Scheduled batch processes that regenerate vector embeddings for a corpus when the embedding model changes or source documents update in bulk \\u2014 1 Quelle\\n- [Vector Retrieval](pages/concepts/vector-retrieval.md) \\u2014 Information retrieval systems based on semantic similarity in a learned embedding space \\u2014 1 Quelle\\n- [Vector Drift](pages/concepts/vector-drift.md) \\u2014 Measurable changes in the embedding space when the underlying embedding model changes, monitored to detect retrieval quality regressions \\u2014 1 Quelle\\n- [Embedding Model Versioning](pages/concepts/embedding-model-versioning.md) \\u2014 Tracking and managing different versions of embedding models across batches to ensure reproducibility and facilitate drift detection \\u2014 1 Quelle\\n- [Blue-Green Index Deployment](pages/concepts/blue-green-index-deployment.md) \\u2014 A deployment pattern for swapping retrieval indexes atomically, enabling safe rollback of vector or index changes \\u2014 1 Quelle\\n\u0022}"
-        },
-        {
-          "tool_use_id": "toolu_01R5jAhKthsfKGHwtyJwWQhA",
-          "tool_name": "write_file",
-          "input_json": "{\u0022path\u0022:\u0022log.md\u0022,\u0022content\u0022:\u0022# Ingest Log\\n\\n## [2026-07-14] ingest | offline embedding refresh cluster\\n\\nIntegrated source on offline embedding refresh jobs into five related concept pages. Created [[offline-embedding-refresh]] as the primary topic (covering operational model, versioning, drift monitoring, and blue-green deployment), and [[vector-retrieval]], [[vector-drift]], [[embedding-model-versioning]], and [[blue-green-index-deployment]] as supporting concept pages. All pages cross-reference each other to form a coherent cluster of related operational patterns. Task: [[tasks/capture-convention-adherence-06-29abc9fc755b499384aff9723d2e05b8.md]].\\n\u0022}"
+          "input_json": "{\u0022path\u0022:\u0022concepts/offline-embedding-refresh.md\u0022,\u0022content\u0022:\u0022---\\ntype: Concept\\ntitle: Offline Embedding Refresh Jobs\\ndescription: Batch processes that regenerate vector embeddings for a corpus when embedding models change or source documents update in bulk, staged behind blue-green indexing for atomic swaps.\\ntimestamp: 2025-01-14T00:00:00Z\\ntags:\\n  - concept/Embeddings\\n  - concept/Batch-Processing\\n  - pattern/Blue-Green-Deployment\\n  - concept/Vector-Search\\nconfidence: medium\\nconfidence_reason: \\u0022Single authoritative source describing an established operational pattern; corroboration would strengthen confidence.\\u0022\\n---\\n\\n## Overview\\n\\nOffline embedding refresh jobs are scheduled batch processes designed to regenerate vector embeddings for a corpus when the underlying embedding model changes or source documents update in bulk. Unlike on-demand re-embedding, these jobs run on a fixed cadence and process the full or incremental document set in a controlled batch operation.\\n\\n## Key Characteristics\\n\\n**Scheduled execution:** Jobs run on a fixed cadence rather than on demand, allowing predictable resource allocation and coordination with other operational processes.\\n\\n**Atomic index swap:** New vectors are swapped into the retrieval index atomically to avoid serving mixed-model results during the transition. This prevents the search index from returning documents embedded with different models simultaneously, which would degrade result quality and relevance.\\n\\n**Bulk document handling:** Capable of re-embedding either the full corpus or incremental updates when documents change in bulk, providing flexibility for different update patterns (full regeneration vs. incremental patches).\\n\\n## Operational Concerns\\n\\n**Model versioning:** Each batch of refreshed embeddings must be versioned to the embedding model used. This tracking enables:\\n- Clear audit trails showing which documents were embedded with which model versions\\n- Ability to identify when a model change occurred and which documents were affected\\n- Rollback capability if a new model performs poorly\\n\\n**Drift monitoring:** Observing divergence between old and new vector embeddings helps identify:\\n- Unexpected quality regressions when a new model is deployed\\n- Documents that moved significantly in embedding space, potentially indicating changed semantics or a model mismatch\\n- Anomalies that warrant investigation before the swap goes live\\n\\n**Blue-green indexing:** Staging the swap behind a blue-green index strategy allows:\\n- Running both old and new index versions in parallel before cutover\\n- Serving queries from the stable \\u0022blue\\u0022 index while the \\u0022green\\u0022 index is validated\\n- Rolling back to the old index if quality regression is detected in the new vectors\\n- A/B testing the new embeddings against live query traffic in a controlled way before full cutover\\n\\n## Related Concepts\\n\\n- **Vector embeddings and retrieval:** The underlying artifact being managed\\n- **Batch processing:** The execution model and operational pattern\\n- **Blue-green deployment:** The risk-mitigation strategy for atomic swaps\\n- **Model versioning:** Tracking and audit concerns\\n\\n---\\n\\n## Citations\\n\\n[^1]: Inline source content describing offline embedding refresh operations.\\n\u0022}"
         }
       ],
-      "assistant_text": "Now I\u0027ll create the index and log files:",
-      "input_tokens": 8661,
-      "output_tokens": 563
+      "assistant_text": "No \u0060concepts/\u0060 directory yet. I\u0027ll create the directory and the main concept page. Since this is a first ingestion into an empty wiki, I\u0027ll create a solid foundational page covering the operational pattern described.",
+      "input_tokens": 6300,
+      "output_tokens": 784
     },
     {
       "turn": 4,
-      "system_prompt_sha256": "sha256:ef45f3c3f71075acb05a350d81a004dfd1329b4c7de813f8b4ae08ce49c8aff3",
+      "system_prompt_sha256": "sha256:ace4c5930b7792d9159033ab5ff7a6075fab7d62bd7715fb123292e5290418ff",
       "conversation": [
         {
           "role": "user",
-          "content_sha256": "sha256:7b313099203e79e3861b9d2dd4c6dbcc546f1dd13017707916799d5fca6af3e6"
+          "content_sha256": "sha256:33d0390e2bb567cd06ab00a04519253a971adacfffc8a67df53026df74494068"
         },
         {
           "role": "assistant",
-          "content_sha256": "sha256:433451cc2d3c47a3a3799a928d5beeb311bd50ebebf926383a75cfc2e3fe9424"
+          "content_sha256": "sha256:a46d53ea799ed8d2d2ffd3b80d7d441928fd36ec9fe6c13b14e1887468c3880c"
         },
         {
           "role": "user",
-          "content_sha256": "sha256:186c0f5d09c9ce2f19c46e5eca0325affeeec45c582bc327ca3d48c598bcbc21"
+          "content_sha256": "sha256:f487e602dadaa90d78b04cabf8b9492145804f58159a60c6cd26951e1b092068"
         },
         {
           "role": "assistant",
-          "content_sha256": "sha256:0dc7b7850acaefcc486f278bb9f6fec638f2145438668cc2ccb9d3d5fbefd178"
+          "content_sha256": "sha256:dd4680e9597c67505c98141df666a5e231e9a5a464c129c4b6c80deea8e1ff53"
         },
         {
           "role": "user",
-          "content_sha256": "sha256:b2df40f0431bffa537c8291ffbb43be9ebb2c182e24254c59d177a8806fa1103"
+          "content_sha256": "sha256:57c7bb34468800b8fd89087b4c0b035bd2ff2876411d36e181851cb70c2e7386"
         },
         {
           "role": "assistant",
-          "content_sha256": "sha256:216ce3e8689adffba606c1d22f03bd9dd1bdc7444418dfb7831385c004d3bc37"
+          "content_sha256": "sha256:dfc7680dbaab6e609fdd5815d4cc191d9ce1914a7e55b9fef108353e6950f4bd"
         },
         {
           "role": "user",
-          "content_sha256": "sha256:f01da53272fbd94f636939aade293e77e99cc69a8bb12999b2b37253dd80d8d4"
+          "content_sha256": "sha256:564e43041322b45c2f1f06ff54902de9dafaa19dfa124a095acf6e08398959d3"
         }
       ],
       "tool_names": [
@@ -177,54 +152,54 @@
       "stop_reason": "tool_use",
       "tool_uses": [
         {
-          "tool_use_id": "toolu_015Z98paMTLJhbfXEDJeHo3E",
+          "tool_use_id": "toolu_016sQ98tc2hi4Jpg7NG6Y42H",
           "tool_name": "write_file",
-          "input_json": "{\u0022path\u0022:\u0022log.md\u0022,\u0022content\u0022:\u0022# Ingest Log\\n\\n## [2026-07-14] ingest | offline embedding refresh\\n\\nIntegrated source on offline embedding refresh jobs into five related concept pages. Created [[offline-embedding-refresh]] as the primary topic covering operational model, versioning, drift monitoring, and blue-green deployment, and [[vector-retrieval]], [[vector-drift]], [[embedding-model-versioning]], and [[blue-green-index-deployment]] as supporting concept pages. All pages cross-reference each other to form a coherent cluster of related operational patterns. Task: [[tasks/capture-convention-adherence-06-29abc9fc755b499384aff9723d2e05b8.md]].\\n\u0022}"
+          "input_json": "{\u0022path\u0022:\u0022index.md\u0022,\u0022content\u0022:\u0022---\\nokf_version: \\u00220.1\\u0022\\n---\\n\\n# Wiki Index\\n\\n## Concepts\\n\\n- [Offline Embedding Refresh Jobs](concepts/offline-embedding-refresh.md) \\u2014 Batch processes that regenerate vector embeddings for a corpus when embedding models change or source documents update in bulk, staged behind blue-green indexing \\u2014 1 Quelle\\n\u0022}"
         }
       ],
-      "assistant_text": "The log entry was rejected due to a malformed heading. Let me check the exact format required and fix it:",
-      "input_tokens": 9317,
-      "output_tokens": 249
+      "assistant_text": "Now I\u0027ll update the index to add this new page:",
+      "input_tokens": 7107,
+      "output_tokens": 166
     },
     {
       "turn": 5,
-      "system_prompt_sha256": "sha256:ef45f3c3f71075acb05a350d81a004dfd1329b4c7de813f8b4ae08ce49c8aff3",
+      "system_prompt_sha256": "sha256:ace4c5930b7792d9159033ab5ff7a6075fab7d62bd7715fb123292e5290418ff",
       "conversation": [
         {
           "role": "user",
-          "content_sha256": "sha256:7b313099203e79e3861b9d2dd4c6dbcc546f1dd13017707916799d5fca6af3e6"
+          "content_sha256": "sha256:33d0390e2bb567cd06ab00a04519253a971adacfffc8a67df53026df74494068"
         },
         {
           "role": "assistant",
-          "content_sha256": "sha256:433451cc2d3c47a3a3799a928d5beeb311bd50ebebf926383a75cfc2e3fe9424"
+          "content_sha256": "sha256:a46d53ea799ed8d2d2ffd3b80d7d441928fd36ec9fe6c13b14e1887468c3880c"
         },
         {
           "role": "user",
-          "content_sha256": "sha256:186c0f5d09c9ce2f19c46e5eca0325affeeec45c582bc327ca3d48c598bcbc21"
+          "content_sha256": "sha256:f487e602dadaa90d78b04cabf8b9492145804f58159a60c6cd26951e1b092068"
         },
         {
           "role": "assistant",
-          "content_sha256": "sha256:0dc7b7850acaefcc486f278bb9f6fec638f2145438668cc2ccb9d3d5fbefd178"
+          "content_sha256": "sha256:dd4680e9597c67505c98141df666a5e231e9a5a464c129c4b6c80deea8e1ff53"
         },
         {
           "role": "user",
-          "content_sha256": "sha256:b2df40f0431bffa537c8291ffbb43be9ebb2c182e24254c59d177a8806fa1103"
+          "content_sha256": "sha256:57c7bb34468800b8fd89087b4c0b035bd2ff2876411d36e181851cb70c2e7386"
         },
         {
           "role": "assistant",
-          "content_sha256": "sha256:216ce3e8689adffba606c1d22f03bd9dd1bdc7444418dfb7831385c004d3bc37"
+          "content_sha256": "sha256:dfc7680dbaab6e609fdd5815d4cc191d9ce1914a7e55b9fef108353e6950f4bd"
         },
         {
           "role": "user",
-          "content_sha256": "sha256:f01da53272fbd94f636939aade293e77e99cc69a8bb12999b2b37253dd80d8d4"
+          "content_sha256": "sha256:564e43041322b45c2f1f06ff54902de9dafaa19dfa124a095acf6e08398959d3"
         },
         {
           "role": "assistant",
-          "content_sha256": "sha256:a0dcd883ad4b8181d11439f0b217bab318bb6733063ead63a569bcab5b76d790"
+          "content_sha256": "sha256:5aa7b42ec200e3fa81eee1ba34c7850b05eeb3e2048daf16e9e48b8f0550e559"
         },
         {
           "role": "user",
-          "content_sha256": "sha256:06267d9353fb5073c1bb1c0c3875157982a78aa28f13a6dd47c05e0dc32448f9"
+          "content_sha256": "sha256:f85e4a6fb0933b62a903bcb6a500956cae0d621ed04ad19c4ab7e5ba2d8138cd"
         }
       ],
       "tool_names": [
@@ -235,218 +210,62 @@
       "stop_reason": "tool_use",
       "tool_uses": [
         {
-          "tool_use_id": "toolu_01MCR89a2Lxt8Z1rCEL2LsQa",
+          "tool_use_id": "toolu_01QMv5nfVFCHC8nEL8hpU5rp",
           "tool_name": "write_file",
-          "input_json": "{\u0022path\u0022:\u0022log.md\u0022,\u0022content\u0022:\u0022# Ingest Log\\n\\n## 2026-07-14 ingest offline embedding refresh\\n\\nIntegrated source on offline embedding refresh jobs into five related concept pages. Created [[offline-embedding-refresh]] as the primary topic covering operational model, versioning, drift monitoring, and blue-green deployment, along with [[vector-retrieval]], [[vector-drift]], [[embedding-model-versioning]], and [[blue-green-index-deployment]] as supporting concept pages. All pages cross-reference each other to form a coherent cluster of related operational patterns. Task: [[tasks/capture-convention-adherence-06-29abc9fc755b499384aff9723d2e05b8.md]].\\n\u0022}"
+          "input_json": "{\u0022path\u0022:\u0022log.md\u0022,\u0022content\u0022:\u0022## [2025-01-14] ingest | offline embedding refresh pattern\\n\\nCreated [[concepts/offline-embedding-refresh.md]] to document the operational pattern for batch regeneration of vector embeddings when embedding models change or source documents update in bulk. The page covers scheduling, atomic index swaps, model versioning, drift monitoring, and blue-green indexing strategy as key concerns. Task: [[tasks/capture-convention-adherence-06-edec8145554e402690f92d5245b1a441.md]].\\n\u0022}"
         }
       ],
-      "assistant_text": "Let me review the exact log entry format more carefully. The issue appears to be the heading format. Let me simplify:",
-      "input_tokens": 9611,
-      "output_tokens": 251
+      "assistant_text": "Now I\u0027ll add the ingest log entry:",
+      "input_tokens": 7290,
+      "output_tokens": 199
     },
     {
       "turn": 6,
-      "system_prompt_sha256": "sha256:ef45f3c3f71075acb05a350d81a004dfd1329b4c7de813f8b4ae08ce49c8aff3",
+      "system_prompt_sha256": "sha256:ace4c5930b7792d9159033ab5ff7a6075fab7d62bd7715fb123292e5290418ff",
       "conversation": [
         {
           "role": "user",
-          "content_sha256": "sha256:7b313099203e79e3861b9d2dd4c6dbcc546f1dd13017707916799d5fca6af3e6"
+          "content_sha256": "sha256:33d0390e2bb567cd06ab00a04519253a971adacfffc8a67df53026df74494068"
         },
         {
           "role": "assistant",
-          "content_sha256": "sha256:433451cc2d3c47a3a3799a928d5beeb311bd50ebebf926383a75cfc2e3fe9424"
+          "content_sha256": "sha256:a46d53ea799ed8d2d2ffd3b80d7d441928fd36ec9fe6c13b14e1887468c3880c"
         },
         {
           "role": "user",
-          "content_sha256": "sha256:186c0f5d09c9ce2f19c46e5eca0325affeeec45c582bc327ca3d48c598bcbc21"
+          "content_sha256": "sha256:f487e602dadaa90d78b04cabf8b9492145804f58159a60c6cd26951e1b092068"
         },
         {
           "role": "assistant",
-          "content_sha256": "sha256:0dc7b7850acaefcc486f278bb9f6fec638f2145438668cc2ccb9d3d5fbefd178"
+          "content_sha256": "sha256:dd4680e9597c67505c98141df666a5e231e9a5a464c129c4b6c80deea8e1ff53"
         },
         {
           "role": "user",
-          "content_sha256": "sha256:b2df40f0431bffa537c8291ffbb43be9ebb2c182e24254c59d177a8806fa1103"
+          "content_sha256": "sha256:57c7bb34468800b8fd89087b4c0b035bd2ff2876411d36e181851cb70c2e7386"
         },
         {
           "role": "assistant",
-          "content_sha256": "sha256:216ce3e8689adffba606c1d22f03bd9dd1bdc7444418dfb7831385c004d3bc37"
+          "content_sha256": "sha256:dfc7680dbaab6e609fdd5815d4cc191d9ce1914a7e55b9fef108353e6950f4bd"
         },
         {
           "role": "user",
-          "content_sha256": "sha256:f01da53272fbd94f636939aade293e77e99cc69a8bb12999b2b37253dd80d8d4"
+          "content_sha256": "sha256:564e43041322b45c2f1f06ff54902de9dafaa19dfa124a095acf6e08398959d3"
         },
         {
           "role": "assistant",
-          "content_sha256": "sha256:a0dcd883ad4b8181d11439f0b217bab318bb6733063ead63a569bcab5b76d790"
+          "content_sha256": "sha256:5aa7b42ec200e3fa81eee1ba34c7850b05eeb3e2048daf16e9e48b8f0550e559"
         },
         {
           "role": "user",
-          "content_sha256": "sha256:06267d9353fb5073c1bb1c0c3875157982a78aa28f13a6dd47c05e0dc32448f9"
+          "content_sha256": "sha256:f85e4a6fb0933b62a903bcb6a500956cae0d621ed04ad19c4ab7e5ba2d8138cd"
         },
         {
           "role": "assistant",
-          "content_sha256": "sha256:0aca1ca5489d94e7d866eaef1299b1647098af196dbed25c4f0182c66f01c59e"
+          "content_sha256": "sha256:20623da2cad0c4687d1dab0181eb4fecd08db619f5f73421a02cf76310fb67ec"
         },
         {
           "role": "user",
-          "content_sha256": "sha256:7a0af63dbf769b23f2777d7010ae65cd0e6027d18e4a2de5431a381cf869b88a"
-        }
-      ],
-      "tool_names": [
-        "list_files",
-        "read_file",
-        "write_file"
-      ],
-      "stop_reason": "tool_use",
-      "tool_uses": [
-        {
-          "tool_use_id": "toolu_01XWug4RWqRne46zMXL5knTN",
-          "tool_name": "list_files",
-          "input_json": "{\u0022path\u0022:\u0022pages/concepts\u0022}"
-        }
-      ],
-      "assistant_text": "The log entry creation encountered a policy constraint. However, the five content pages have been successfully created and the index has been updated. Let me verify the pages were written correctly:",
-      "input_tokens": 9907,
-      "output_tokens": 91
-    },
-    {
-      "turn": 7,
-      "system_prompt_sha256": "sha256:ef45f3c3f71075acb05a350d81a004dfd1329b4c7de813f8b4ae08ce49c8aff3",
-      "conversation": [
-        {
-          "role": "user",
-          "content_sha256": "sha256:7b313099203e79e3861b9d2dd4c6dbcc546f1dd13017707916799d5fca6af3e6"
-        },
-        {
-          "role": "assistant",
-          "content_sha256": "sha256:433451cc2d3c47a3a3799a928d5beeb311bd50ebebf926383a75cfc2e3fe9424"
-        },
-        {
-          "role": "user",
-          "content_sha256": "sha256:186c0f5d09c9ce2f19c46e5eca0325affeeec45c582bc327ca3d48c598bcbc21"
-        },
-        {
-          "role": "assistant",
-          "content_sha256": "sha256:0dc7b7850acaefcc486f278bb9f6fec638f2145438668cc2ccb9d3d5fbefd178"
-        },
-        {
-          "role": "user",
-          "content_sha256": "sha256:b2df40f0431bffa537c8291ffbb43be9ebb2c182e24254c59d177a8806fa1103"
-        },
-        {
-          "role": "assistant",
-          "content_sha256": "sha256:216ce3e8689adffba606c1d22f03bd9dd1bdc7444418dfb7831385c004d3bc37"
-        },
-        {
-          "role": "user",
-          "content_sha256": "sha256:f01da53272fbd94f636939aade293e77e99cc69a8bb12999b2b37253dd80d8d4"
-        },
-        {
-          "role": "assistant",
-          "content_sha256": "sha256:a0dcd883ad4b8181d11439f0b217bab318bb6733063ead63a569bcab5b76d790"
-        },
-        {
-          "role": "user",
-          "content_sha256": "sha256:06267d9353fb5073c1bb1c0c3875157982a78aa28f13a6dd47c05e0dc32448f9"
-        },
-        {
-          "role": "assistant",
-          "content_sha256": "sha256:0aca1ca5489d94e7d866eaef1299b1647098af196dbed25c4f0182c66f01c59e"
-        },
-        {
-          "role": "user",
-          "content_sha256": "sha256:7a0af63dbf769b23f2777d7010ae65cd0e6027d18e4a2de5431a381cf869b88a"
-        },
-        {
-          "role": "assistant",
-          "content_sha256": "sha256:ef7e60b271ce6367f78a351fc16c2dc18cf10cb45ecd40129c798fd53809b98b"
-        },
-        {
-          "role": "user",
-          "content_sha256": "sha256:79b3cf1374b16f3834b1d55f782d998d77565b1cd2fec9ce6f02cef5cef67f72"
-        }
-      ],
-      "tool_names": [
-        "list_files",
-        "read_file",
-        "write_file"
-      ],
-      "stop_reason": "tool_use",
-      "tool_uses": [
-        {
-          "tool_use_id": "toolu_0192VcpbJ3r1ZvZgWt1SBJF1",
-          "tool_name": "read_file",
-          "input_json": "{\u0022path\u0022:\u0022pages/concepts/offline-embedding-refresh.md\u0022}"
-        }
-      ],
-      "assistant_text": "Perfect. All pages were created successfully. Let me read one back to confirm the structure is correct:",
-      "input_tokens": 10069,
-      "output_tokens": 84
-    },
-    {
-      "turn": 8,
-      "system_prompt_sha256": "sha256:ef45f3c3f71075acb05a350d81a004dfd1329b4c7de813f8b4ae08ce49c8aff3",
-      "conversation": [
-        {
-          "role": "user",
-          "content_sha256": "sha256:7b313099203e79e3861b9d2dd4c6dbcc546f1dd13017707916799d5fca6af3e6"
-        },
-        {
-          "role": "assistant",
-          "content_sha256": "sha256:433451cc2d3c47a3a3799a928d5beeb311bd50ebebf926383a75cfc2e3fe9424"
-        },
-        {
-          "role": "user",
-          "content_sha256": "sha256:186c0f5d09c9ce2f19c46e5eca0325affeeec45c582bc327ca3d48c598bcbc21"
-        },
-        {
-          "role": "assistant",
-          "content_sha256": "sha256:0dc7b7850acaefcc486f278bb9f6fec638f2145438668cc2ccb9d3d5fbefd178"
-        },
-        {
-          "role": "user",
-          "content_sha256": "sha256:b2df40f0431bffa537c8291ffbb43be9ebb2c182e24254c59d177a8806fa1103"
-        },
-        {
-          "role": "assistant",
-          "content_sha256": "sha256:216ce3e8689adffba606c1d22f03bd9dd1bdc7444418dfb7831385c004d3bc37"
-        },
-        {
-          "role": "user",
-          "content_sha256": "sha256:f01da53272fbd94f636939aade293e77e99cc69a8bb12999b2b37253dd80d8d4"
-        },
-        {
-          "role": "assistant",
-          "content_sha256": "sha256:a0dcd883ad4b8181d11439f0b217bab318bb6733063ead63a569bcab5b76d790"
-        },
-        {
-          "role": "user",
-          "content_sha256": "sha256:06267d9353fb5073c1bb1c0c3875157982a78aa28f13a6dd47c05e0dc32448f9"
-        },
-        {
-          "role": "assistant",
-          "content_sha256": "sha256:0aca1ca5489d94e7d866eaef1299b1647098af196dbed25c4f0182c66f01c59e"
-        },
-        {
-          "role": "user",
-          "content_sha256": "sha256:7a0af63dbf769b23f2777d7010ae65cd0e6027d18e4a2de5431a381cf869b88a"
-        },
-        {
-          "role": "assistant",
-          "content_sha256": "sha256:ef7e60b271ce6367f78a351fc16c2dc18cf10cb45ecd40129c798fd53809b98b"
-        },
-        {
-          "role": "user",
-          "content_sha256": "sha256:79b3cf1374b16f3834b1d55f782d998d77565b1cd2fec9ce6f02cef5cef67f72"
-        },
-        {
-          "role": "assistant",
-          "content_sha256": "sha256:6f318cfdb5ef9e38259db86f947d878f46ea0c6f0e68958f3a5c57040444328e"
-        },
-        {
-          "role": "user",
-          "content_sha256": "sha256:7876e0a6a5caf83e7de77f979fc386edb6988a8ec3e18da25e6bf99627dabcf7"
+          "content_sha256": "sha256:f3356264c25a7fe5622ecdc085dc41a029c3f1b6a4d4bcb33e51ae23f4c36ad6"
         }
       ],
       "tool_names": [
@@ -456,9 +275,9 @@
       ],
       "stop_reason": "end_turn",
       "tool_uses": [],
-      "assistant_text": "Excellent. All pages are correctly structured with proper frontmatter, cross-references, and citations.\n\n## Summary\n\nI have successfully integrated the source material on offline embedding refresh jobs into the wiki:\n\n### Pages Created (5)\n\n1. **[[offline-embedding-refresh]]** (primary topic) \u2014 Describes the core operational pattern, execution model (fixed-cadence batch processing), atomic index swaps, and the three key operational concerns from the source: model versioning, vector drift monitoring, and blue-green deployment.\n\n2. **[[vector-retrieval]]** \u2014 Supporting concept page establishing the retrieval context where embedding refresh jobs are applied.\n\n3. **[[vector-drift]]** \u2014 Concept page detailing how to measure and monitor changes in embedding space when models change, with mitigation strategies.\n\n4. **[[embedding-model-versioning]]** \u2014 Concept page on tracking embedding model versions per batch for reproducibility and drift detection.\n\n5. **[[blue-green-index-deployment]]** \u2014 Concept page on the deployment pattern used to safely swap indexes without downtime or mixed-model serving.\n\n### Integration Decisions\n\n- **Created (not updated):** The wiki was empty, so all five pages were new creations.\n- **Scope:** The single source touched five related concepts that form a coherent operational cluster around embedding refresh workflows. Each page cross-references the others to enable navigation.\n- **Tagging:** Used \u0060concept/\u0060, \u0060pattern/\u0060, and content-specific tags to organize pages.\n- **Confidence:** Marked all as \u0060medium\u0060 confidence \u2014 the source directly describes the pattern, but without external corroboration or multiple independent sources.\n\n### Catalog \u0026 Log\n\n- \u2705 Updated \u0060index.md\u0060 with five new entries, grouped under \u0022Embedding \u0026 Retrieval\u0022, with descriptions and source counts.\n- \u26A0\uFE0F Log entry write was denied due to a heading format constraint; the guardrail prevented appending to \u0060log.md\u0060. The pages themselves are correctly created and indexed.\n\nAll five pages follow the OKF/Grimoire conventions: proper frontmatter, Obsidian-style wikilinks for internal references, markdown links for external citations, and appropriate tag taxonomy.",
-      "input_tokens": 10625,
-      "output_tokens": 489
+      "assistant_text": "## Summary\n\nI have successfully integrated the source into the wiki. Here\u0027s what was done:\n\n### Pages Created\n\n1. **\u0060concepts/offline-embedding-refresh.md\u0060** \u2014 A foundational concept page documenting offline embedding refresh jobs. The page covers:\n   - Overview of the pattern (scheduled batch re-embedding, atomic swaps, bulk handling)\n   - Key characteristics (scheduled execution, atomic index swap, bulk document handling)\n   - Operational concerns (model versioning, drift monitoring, blue-green indexing)\n   - Related concepts as cross-references\n\n### Reasoning\n\nThe source describes a single, well-defined operational pattern for managing vector embeddings at scale. A single concept page is the appropriate scope because:\n\n- The pattern is cohesive and self-contained; splitting it across multiple pages would fragment a unified idea\n- The related concerns (versioning, drift monitoring, blue-green deployment) are best explained within the context of the job pattern itself\n- The wiki is new (empty on arrival), so this establishes a strong foundational entry point\n\n### Confidence Assessment\n\n**Medium confidence** \u2014 The source is a single, well-written paragraph describing an established operational pattern. It contains specific technical terminology and concrete concerns that suggest real-world practice, but lacks corroboration from multiple sources or attribution to a published standard. Additional sources documenting similar patterns would strengthen confidence.\n\n### Updates to Wiki Metadata\n\n- Updated \u0060index.md\u0060 with the new page entry, including a 1-source status marker\n- Appended entry to \u0060log.md\u0060 with full task reference for traceability\n\nNo pages were superseded or updated (the wiki started empty).",
+      "input_tokens": 7506,
+      "output_tokens": 362
     }
   ],
   "outcome": {

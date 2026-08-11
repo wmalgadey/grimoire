@@ -74,7 +74,7 @@ public class StalenessTests : IDisposable
 
         // overlapping-topic is UpdateOverDuplicate's fixture; ConventionAdherence uses empty-topic.
         File.AppendAllText(
-            Path.Combine(_paths.FixtureWikiRoot("overlapping-topic"), "pages", "concepts", "retrieval-patterns.md"),
+            Path.Combine(_paths.FixtureWikiRoot("overlapping-topic"), "concepts", "retrieval-patterns.md"),
             "\ndrift probe\n");
 
         var affected = StalenessCheck.Evaluate(IngestScenarioDefinitions.UpdateOverDuplicate, _store, _paths);

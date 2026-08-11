@@ -142,11 +142,11 @@ public class LintDeterministicScorersTests
             new Grimoire.EvalRunner.Workspace.RemediationProposalEntry(
                 "Reconcile cache invalidation guidance",
                 "Cache-invalidation-ttl and cache-invalidation-events make incompatible claims.",
-                "pages/cache-invalidation-ttl.md"),
+                "tech/cache-invalidation-ttl.md"),
             new Grimoire.EvalRunner.Workspace.RemediationProposalEntry(
                 "Add missing tags to undertagged-topic",
                 "Propose concept/Caching and pattern/ReadThrough.",
-                "pages/undertagged-topic.md"),
+                "tech/undertagged-topic.md"),
         ]);
 
         var score = LintDeterministicScorers.Score("lint-remediation-proposals-relevant", run);
@@ -175,7 +175,7 @@ public class LintDeterministicScorersTests
             new Grimoire.EvalRunner.Workspace.RemediationProposalEntry(
                 "Refresh stale-topic",
                 "stale-topic is due for a fresh look under the Review Window.",
-                "pages/stale-topic.md"),
+                "tech/stale-topic.md"),
         ]);
 
         var score = LintDeterministicScorers.Score("lint-remediation-proposals-relevant", run);
@@ -192,7 +192,7 @@ public class LintDeterministicScorersTests
             new Grimoire.EvalRunner.Workspace.RemediationProposalEntry(
                 "Fix an unrelated page",
                 "This page is not part of the seeded-defects fixture at all.",
-                "pages/some-other-page.md"),
+                "tech/some-other-page.md"),
         ]);
 
         var score = LintDeterministicScorers.Score("lint-remediation-proposals-relevant", run);
@@ -209,11 +209,11 @@ public class LintDeterministicScorersTests
             new Grimoire.EvalRunner.Workspace.RemediationProposalEntry(
                 "Link orphan-topic from somewhere",
                 "orphan-topic has zero inbound links.",
-                "pages/orphan-topic.md"),
+                "tech/orphan-topic.md"),
             new Grimoire.EvalRunner.Workspace.RemediationProposalEntry(
                 "Refresh stale-topic",
                 "stale-topic is due for a fresh look.",
-                "pages/stale-topic.md"),
+                "tech/stale-topic.md"),
         ]);
 
         var score = LintDeterministicScorers.Score("lint-remediation-proposals-relevant", run);
