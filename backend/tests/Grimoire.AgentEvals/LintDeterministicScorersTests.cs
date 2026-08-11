@@ -80,9 +80,9 @@ public class LintDeterministicScorersTests
         var wikiRoot = CopyFixtureToTempDir();
         try
         {
-            SetInboundLinks(Path.Combine(wikiRoot, "pages", "hub-page.md"), 3);
-            SetInboundLinks(Path.Combine(wikiRoot, "pages", "spoke-a.md"), 2);
-            SetInboundLinks(Path.Combine(wikiRoot, "pages", "spoke-b.md"), 1);
+            SetInboundLinks(Path.Combine(wikiRoot, "concepts", "hub-page.md"), 3);
+            SetInboundLinks(Path.Combine(wikiRoot, "concepts", "spoke-a.md"), 2);
+            SetInboundLinks(Path.Combine(wikiRoot, "concepts", "spoke-b.md"), 1);
 
             var score = LintDeterministicScorers.Score(
                 "lint-inbound-links-refreshed", new LintSampleRunData(string.Empty, wikiRoot));
@@ -104,7 +104,7 @@ public class LintDeterministicScorersTests
         var wikiRoot = CopyFixtureToTempDir();
         try
         {
-            SetInboundLinks(Path.Combine(wikiRoot, "pages", "hub-page.md"), 3);
+            SetInboundLinks(Path.Combine(wikiRoot, "concepts", "hub-page.md"), 3);
             // spoke-a/spoke-b left stale.
 
             var score = LintDeterministicScorers.Score(

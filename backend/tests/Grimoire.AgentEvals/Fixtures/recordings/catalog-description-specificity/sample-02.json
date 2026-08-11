@@ -1,16 +1,16 @@
 {
   "schema_version": 1,
   "sample": 2,
-  "task_id": "capture-catalog-description-specificity-02-8ba1a1e1cf184bb285142d6bf490361a",
+  "task_id": "capture-catalog-description-specificity-02-0824f8dfdea2418dbffcc92d58e545f9",
   "model": "claude-haiku-4-5",
   "turns": [
     {
       "turn": 1,
-      "system_prompt_sha256": "sha256:ef45f3c3f71075acb05a350d81a004dfd1329b4c7de813f8b4ae08ce49c8aff3",
+      "system_prompt_sha256": "sha256:ace4c5930b7792d9159033ab5ff7a6075fab7d62bd7715fb123292e5290418ff",
       "conversation": [
         {
           "role": "user",
-          "content_sha256": "sha256:1fa394de7cade1044f16c2b6d3396f15dc59f1a55b1b2c0f5c7f92b1bd3ba783"
+          "content_sha256": "sha256:0bb2e7c8702089512d5e3bb3f8c50785baa231edfecd97200540ba55fb897f6a"
         }
       ],
       "tool_names": [
@@ -21,35 +21,35 @@
       "stop_reason": "tool_use",
       "tool_uses": [
         {
-          "tool_use_id": "toolu_01UHPDZtAjEnkdjEM1niwfkQ",
+          "tool_use_id": "toolu_01B65NpaT5mHZbCDBmFvoHvF",
           "tool_name": "read_file",
           "input_json": "{\u0022path\u0022:\u0022index.md\u0022}"
         },
         {
-          "tool_use_id": "toolu_015JBgSwGWX9BW8yqX4mZHQQ",
+          "tool_use_id": "toolu_01Rao4gmFJcEhgAjJvmZ3CuE",
           "tool_name": "list_files",
-          "input_json": "{\u0022path\u0022:\u0022pages\u0022}"
+          "input_json": "{\u0022path\u0022:\u0022.\u0022}"
         }
       ],
-      "assistant_text": "I\u0027ll start by exploring the wiki structure to understand what already exists and then integrate this source appropriately.",
-      "input_tokens": 5467,
-      "output_tokens": 113
+      "assistant_text": "I\u0027ll start by exploring the wiki to understand its current state, then integrate this source material appropriately.",
+      "input_tokens": 5784,
+      "output_tokens": 112
     },
     {
       "turn": 2,
-      "system_prompt_sha256": "sha256:ef45f3c3f71075acb05a350d81a004dfd1329b4c7de813f8b4ae08ce49c8aff3",
+      "system_prompt_sha256": "sha256:ace4c5930b7792d9159033ab5ff7a6075fab7d62bd7715fb123292e5290418ff",
       "conversation": [
         {
           "role": "user",
-          "content_sha256": "sha256:1fa394de7cade1044f16c2b6d3396f15dc59f1a55b1b2c0f5c7f92b1bd3ba783"
+          "content_sha256": "sha256:0bb2e7c8702089512d5e3bb3f8c50785baa231edfecd97200540ba55fb897f6a"
         },
         {
           "role": "assistant",
-          "content_sha256": "sha256:5f2865495c6f1c2cd4fadd5d9964ef6fff577ed4b5e9f36eabc44555a596dc73"
+          "content_sha256": "sha256:73295e2ac1ada36a9d0fbcd1c1aa4e844b3d1d7b8d143bd03f78985b54208197"
         },
         {
           "role": "user",
-          "content_sha256": "sha256:9bee9385ba0a9f9538a01eebe974c119658dc531e4f45f50b0886e43e3cfc5fc"
+          "content_sha256": "sha256:5fe58cfff5ea24c841c72463173a78fe5bc4c012065ab8859d01612d246397f5"
         }
       ],
       "tool_names": [
@@ -60,98 +60,48 @@
       "stop_reason": "tool_use",
       "tool_uses": [
         {
-          "tool_use_id": "toolu_018K8zTjc1vb3TYAbu55CWJ5",
-          "tool_name": "read_file",
-          "input_json": "{\u0022path\u0022:\u0022log.md\u0022}"
+          "tool_use_id": "toolu_01Jaf3Qs4pmUajqmyo3BvSXJ",
+          "tool_name": "write_file",
+          "input_json": "{\u0022path\u0022:\u0022concepts/backpressure.md\u0022,\u0022content\u0022:\u0022---\\ntype: Concept\\ntitle: Backpressure\\ndescription: Mechanism by which a slow downstream consumer signals an upstream producer to reduce emission rate, preventing unbounded buffer growth and memory exhaustion.\\ntimestamp: 2026-07-14T00:00:00Z\\ntags:\\n  - concept/Backpressure\\n  - concept/Streaming\\n  - pattern/ReactivePrograms\\nconfidence: medium\\nconfidence_reason: \\u0022Single source providing clear, focused definition; no independent corroboration yet.\\u0022\\n---\\n\\n## Overview\\n\\nBackpressure is a control mechanism in streaming pipelines that allows a slow downstream consumer to signal an upstream producer to reduce its emission rate. Without backpressure, an unbounded buffer between producer and consumer will grow indefinitely as the producer emits faster than the consumer can process, eventually exhausting available memory and crashing the system.\\n\\n## Problem\\n\\nIn a naive streaming architecture:\\n- A producer emits items into a buffer at rate P\\n- A consumer processes items from the buffer at rate C\\n- If P \\u003E C, the buffer grows without bound\\n- Memory eventually exhausts, causing system failure\\n\\nBackpressure solves this by making the producer aware of the consumer\\u0027s capacity and responsive to saturation signals.\\n\\n## Implementation Patterns\\n\\n### Bounded Queue (Blocking)\\n\\nThe simplest form: the buffer between producer and consumer has a fixed maximum size. Once full, the producer\\u0027s send operation blocks until the consumer drains items from the buffer. This naturally throttles the producer to the consumer\\u0027s pace.\\n\\n**Trade-off:** Coupling between producer and consumer; blocking threads reduce throughput but guarantee safety.\\n\\n### Credit-Based Flow Control\\n\\nThe consumer explicitly grants the producer permission to send N items (credits). The producer tracks available credits and waits for the consumer to grant more before exceeding its current allocation. This decouples producer and consumer timing and allows for fine-grained rate tuning.\\n\\n**Trade-off:** More complex; requires explicit messaging about available capacity.\\n\\n### Reactive-Pull Model\\n\\nRather than the producer pushing items and the consumer passively receiving them, the consumer pulls items on demand. The producer never sends more than the consumer explicitly requests. This is the model used by reactive frameworks (e.g., Project Reactor, RxJava).\\n\\n**Trade-off:** Requires producer to support pull-based semantics; inverts the typical producer-driven flow.\\n\\n## Related Concepts\\n\\n- [[streaming-pipeline]] \\u2014 context in which backpressure operates\\n- [[buffering]] \\u2014 the intermediate storage that backpressure protects from unbounded growth\\n- [[flow-control]] \\u2014 broader family of mechanisms for rate management\\n\\n## Citations\\n\\n[^1]: Streaming pipeline backpressure mechanisms (source: eval://catalog-description-specificity/sample-02)\\n\u0022}"
+        },
+        {
+          "tool_use_id": "toolu_011Y7dSVuC13634sHh2ibuft",
+          "tool_name": "write_file",
+          "input_json": "{\u0022path\u0022:\u0022index.md\u0022,\u0022content\u0022:\u0022# Wiki Index\\n\\nokf_version: \\u00220.1\\u0022\\n\\n## Concepts\\n\\n- [Backpressure](concepts/backpressure.md) \\u2014 Mechanism by which a slow downstream consumer signals an upstream producer to reduce emission rate, preventing unbounded buffer growth \\u2014 1 Quelle\\n\u0022}"
+        },
+        {
+          "tool_use_id": "toolu_01H4r9fT4qULHm9D7GABSbSF",
+          "tool_name": "write_file",
+          "input_json": "{\u0022path\u0022:\u0022log.md\u0022,\u0022content\u0022:\u0022## [2026-07-14] ingest | created backpressure concept page\\n\\nCreated [[backpressure]] concept page covering the definition of backpressure in streaming pipelines, the problem it solves (unbounded buffer growth and memory exhaustion), and three implementation patterns: bounded queues, credit-based flow control, and reactive-pull models. Task: [[tasks/capture-catalog-description-specificity-02-0824f8dfdea2418dbffcc92d58e545f9.md]].\\n\u0022}"
         }
       ],
-      "assistant_text": "The wiki is currently empty. Let me check if there\u0027s any log file:",
-      "input_tokens": 5657,
-      "output_tokens": 72
+      "assistant_text": "The wiki is empty (only \u0060index.md\u0060 and the harness \u0060tasks/\u0060 folder exist). This is a good opportunity to create a foundational page on backpressure. Let me assess what the source material covers:\n\n**Source analysis:**\n- Defines backpressure as a mechanism in streaming pipelines\n- Explains the problem it solves (unbounded buffer growth, memory exhaustion)\n- Describes three implementation patterns: bounded queues, credit-based flow control, reactive-pull models\n- Topic: abstract concept in distributed systems / reactive programming\n\nThis is a **Concept** page, as backpressure is an abstract principle/pattern used in streaming systems. I\u0027ll create a comprehensive page that captures this definition with appropriate detail.",
+      "input_tokens": 5974,
+      "output_tokens": 1147
     },
     {
       "turn": 3,
-      "system_prompt_sha256": "sha256:ef45f3c3f71075acb05a350d81a004dfd1329b4c7de813f8b4ae08ce49c8aff3",
+      "system_prompt_sha256": "sha256:ace4c5930b7792d9159033ab5ff7a6075fab7d62bd7715fb123292e5290418ff",
       "conversation": [
         {
           "role": "user",
-          "content_sha256": "sha256:1fa394de7cade1044f16c2b6d3396f15dc59f1a55b1b2c0f5c7f92b1bd3ba783"
+          "content_sha256": "sha256:0bb2e7c8702089512d5e3bb3f8c50785baa231edfecd97200540ba55fb897f6a"
         },
         {
           "role": "assistant",
-          "content_sha256": "sha256:5f2865495c6f1c2cd4fadd5d9964ef6fff577ed4b5e9f36eabc44555a596dc73"
+          "content_sha256": "sha256:73295e2ac1ada36a9d0fbcd1c1aa4e844b3d1d7b8d143bd03f78985b54208197"
         },
         {
           "role": "user",
-          "content_sha256": "sha256:9bee9385ba0a9f9538a01eebe974c119658dc531e4f45f50b0886e43e3cfc5fc"
+          "content_sha256": "sha256:5fe58cfff5ea24c841c72463173a78fe5bc4c012065ab8859d01612d246397f5"
         },
         {
           "role": "assistant",
-          "content_sha256": "sha256:37446010ee2b5aa965c62824658d22d7f8eb2b68ef1a5c0ddedcea69a20ad000"
+          "content_sha256": "sha256:e89764159c5816e3f09eaa0488d94ecd8b7ef6d0c949e409ffde032be9c5cae8"
         },
         {
           "role": "user",
-          "content_sha256": "sha256:2b08011e57399492e9034f91df413826dbf2ed77ac22894a5f508b5daa2d5ab8"
-        }
-      ],
-      "tool_names": [
-        "list_files",
-        "read_file",
-        "write_file"
-      ],
-      "stop_reason": "tool_use",
-      "tool_uses": [
-        {
-          "tool_use_id": "toolu_01EZ43fAGiCHVXgd36E3kKbp",
-          "tool_name": "write_file",
-          "input_json": "{\u0022path\u0022:\u0022pages/concepts/backpressure.md\u0022,\u0022content\u0022:\u0022---\\ntype: Concept\\ntitle: Backpressure\\ndescription: Mechanism by which a slow downstream consumer signals an upstream producer to reduce its emission rate in streaming systems.\\ntimestamp: 2026-07-14T00:00:00Z\\ntags:\\n  - concept/Backpressure\\n  - pattern/ReactiveStreams\\n  - tech/StreamProcessing\\nconfidence: medium\\nconfidence_reason: \\u0022Single authoritative source describing the concept clearly; no contradictions.\\u0022\\n---\\n\\n## Definition\\n\\nBackpressure is the mechanism by which a slow downstream consumer signals an upstream producer to reduce its emission rate, rather than letting an unbounded buffer grow until the process runs out of memory. It is a critical flow control mechanism in streaming pipelines and distributed systems where data flows asynchronously between components.\\n\\n## Implementation Strategies\\n\\n### Bounded Queues\\nThe producer pushes items into a queue with a fixed maximum size. Once the queue is full, the producer blocks (or waits) until the consumer drains sufficient items, freeing space in the queue. This approach is simple and prevents unbounded memory growth.\\n\\n### Credit-Based Flow Control\\nThe consumer explicitly grants the producer permission to send N more items (a \\u0022credit\\u0022 or \\u0022allowance\\u0022). As the consumer processes items, it sends feedback to the producer increasing its credit. The producer may only send when it has remaining credits. This is common in protocols like gRPC and Akka Streams.\\n\\n### Reactive-Pull Models\\nInstead of the producer pushing data to the consumer, the consumer actively requests items on its own schedule. This inverts the control flow\\u2014the consumer \\u0022pulls\\u0022 data rather than the producer \\u0022pushing\\u0022 it. The producer never sends unsolicited data and thus cannot overwhelm the consumer. This model is used in RxJava, Project Reactor, and other reactive streams implementations.\\n\\n## Importance\\n\\nWithout backpressure, fast producers can fill system memory with buffered items faster than slow consumers can drain them, leading to out-of-memory errors and system failure. Backpressure ensures that data flow rates adapt naturally to the slowest component in the pipeline.\\n\\n## Related Patterns\\n\\n- [[reactive-streams]] \\u2014 standard protocols for asynchronous stream processing with backpressure\\n- [[flow-control]] \\u2014 broader category of mechanisms to manage data rates\\n\\n## Citations\\n\\n[^1]: Task source: streaming pipeline backpressure mechanism (eval://catalog-description-specificity/sample-02)\\n\u0022}"
-        },
-        {
-          "tool_use_id": "toolu_01Rf29zZ35C7pFgNA8uxeuX6",
-          "tool_name": "write_file",
-          "input_json": "{\u0022path\u0022:\u0022index.md\u0022,\u0022content\u0022:\u0022---\\nokf_version: \\u00220.1\\u0022\\n---\\n\\n# Wiki Index\\n\\n## Core Concepts\\n\\n- [Backpressure](pages/concepts/backpressure.md) \\u2014 Mechanism by which a slow downstream consumer signals an upstream producer to reduce its emission rate in streaming systems \\u2014 1 Quelle\\n\u0022}"
-        },
-        {
-          "tool_use_id": "toolu_01B8pdDgSUSqDMhAUfw2iiZe",
-          "tool_name": "write_file",
-          "input_json": "{\u0022path\u0022:\u0022log.md\u0022,\u0022content\u0022:\u0022## [2026-07-14] ingest | created backpressure concept\\n\\nCreated [[backpressure]] concept page describing the mechanism by which slow downstream consumers signal upstream producers to reduce emission rates in streaming pipelines. Covered three common implementation strategies: bounded queues, credit-based flow control, and reactive-pull models. Task: [[tasks/capture-catalog-description-specificity-02-8ba1a1e1cf184bb285142d6bf490361a.md]].\\n\u0022}"
-        }
-      ],
-      "assistant_text": "This is a fresh wiki. The source describes **backpressure** \u2014 a foundational concept in streaming systems and distributed systems more broadly. This should be created as a \u0060Concept\u0060 page since it\u0027s an abstract principle/pattern.\n\nLet me create the appropriate page and supporting infrastructure:",
-      "input_tokens": 5756,
-      "output_tokens": 969
-    },
-    {
-      "turn": 4,
-      "system_prompt_sha256": "sha256:ef45f3c3f71075acb05a350d81a004dfd1329b4c7de813f8b4ae08ce49c8aff3",
-      "conversation": [
-        {
-          "role": "user",
-          "content_sha256": "sha256:1fa394de7cade1044f16c2b6d3396f15dc59f1a55b1b2c0f5c7f92b1bd3ba783"
-        },
-        {
-          "role": "assistant",
-          "content_sha256": "sha256:5f2865495c6f1c2cd4fadd5d9964ef6fff577ed4b5e9f36eabc44555a596dc73"
-        },
-        {
-          "role": "user",
-          "content_sha256": "sha256:9bee9385ba0a9f9538a01eebe974c119658dc531e4f45f50b0886e43e3cfc5fc"
-        },
-        {
-          "role": "assistant",
-          "content_sha256": "sha256:37446010ee2b5aa965c62824658d22d7f8eb2b68ef1a5c0ddedcea69a20ad000"
-        },
-        {
-          "role": "user",
-          "content_sha256": "sha256:2b08011e57399492e9034f91df413826dbf2ed77ac22894a5f508b5daa2d5ab8"
-        },
-        {
-          "role": "assistant",
-          "content_sha256": "sha256:9b5851fa9be7426d90b061d707acaa161c063877c4b9569fe3ff7fcf797c6007"
-        },
-        {
-          "role": "user",
-          "content_sha256": "sha256:7582352f17ebfee65f7a74cdb42a9d19e3a5a5c5f2f4c048d733ac2de296fd6a"
+          "content_sha256": "sha256:8d3bd7fffe537f8274c661bee6b933f7db47517eb27df7821c263b649999f69a"
         }
       ],
       "tool_names": [
@@ -161,16 +111,16 @@
       ],
       "stop_reason": "end_turn",
       "tool_uses": [],
-      "assistant_text": "## Summary\n\n**Actions taken:**\n\n1. **Created \u0060pages/concepts/backpressure.md\u0060** \u2014 A new Concept page defining backpressure and its three primary implementation strategies (bounded queues, credit-based flow control, and reactive-pull models). The page explains the importance of backpressure in preventing out-of-memory failures in streaming systems and references related patterns for future expansion.\n\n2. **Updated \u0060index.md\u0060** \u2014 Added entry for the new Backpressure concept page with a descriptive summary and source-status marker (\u00221 Quelle\u0022).\n\n3. **Created \u0060log.md\u0060** \u2014 Appended the ingest entry documenting the page creation.\n\n**Editorial reasoning:**\n\nThe source describes a foundational concept in streaming and distributed systems. There was no existing page to update or supersede, so creation was appropriate. The content is abstract and principle-based (not tied to a specific technology or tool), making \u0060Concept\u0060 the correct page type.\n\n**Confidence:** Medium \u2014 Single authoritative source with clear, non-contradictory explanations of the concept and its implementations. No corroboration from additional sources yet.\n\n**No uncertainties or review flags.** All actions within the allowed write scope.",
-      "input_tokens": 6835,
-      "output_tokens": 275
+      "assistant_text": "---\n\n## Summary\n\n**Pages created:**\n- \u0060concepts/backpressure.md\u0060 \u2014 A new Concept page defining backpressure as a control mechanism in streaming pipelines. The page expands on the source material by:\n  - Framing the problem backpressure solves (unbounded buffer growth and memory exhaustion)\n  - Detailing three implementation patterns from the source: bounded queues, credit-based flow control, and reactive-pull models\n  - Adding brief trade-off notes for each pattern to enhance understanding\n  - Reserving section stubs for related concepts (to be filled as the wiki grows)\n\n**Catalog and log updated:**\n- \u0060index.md\u0060 \u2014 Added entry for the new backpressure page with 1-source marker\n- \u0060log.md\u0060 \u2014 Appended ingest log entry with task reference\n\n**Confidence:** Medium. The source provides a clear, focused definition without contradictions, but a single source is insufficient for high confidence. As the wiki grows and other streaming/reactive pages are added, this page can be cross-referenced and potentially elevated to high confidence.\n\n**No issues or uncertainties:** The source content is straightforward technical definition with no contradictions or ambiguities.",
+      "input_tokens": 7229,
+      "output_tokens": 273
     }
   ],
   "judge_verdicts": [
     {
       "judge_prompt_sha256": "sha256:a21929f0519c8b5ef9e8aee6b488fba54b0e30221137a8e1d9bfe2d25f4d85d2",
       "verdict": "PASS",
-      "rationale": "VERDICT: PASS\nThe description accurately captures the core mechanism defined in the article\u2014flow control signaling from slow consumer to producer to reduce emission rate\u2014which is the specific technical problem backpressure solves, and this is substantiated by the article\u0027s definition and implementation strategies sections."
+      "rationale": "VERDICT: PASS\nThe description accurately captures the core mechanism and problem domain covered in the article (producer-consumer rate signaling, buffer growth prevention) with specific technical terminology rather than generic restatement."
     }
   ],
   "outcome": {
