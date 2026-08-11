@@ -47,5 +47,4 @@ ad hoc outside this workflow. The individual commands are available as auto-disc
 <!-- SPECKIT START -->
 For additional context about technologies to be used, project structure,
 shell commands, and other important information, read the current plan
-at specs/021-ingest-content-paths/plan.md
 <!-- SPECKIT END -->

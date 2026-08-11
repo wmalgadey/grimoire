@@ -1,6 +1,65 @@
 <!--
 SYNC IMPACT REPORT
 ==================
+Version change: 1.8.0 → 1.9.0 (2026-08-11)
+
+Principles modified:
+  - II. Pragmatic Testing Strategy (NEW sub-principle: "Test what we own". Tests
+    MUST assert product-owned contracts — outcomes Grimoire's own source decides
+    (exit codes, operator-facing messages, the stdout/stderr split, persisted
+    state, telemetry, dispatch/guardrail/lifecycle outcomes, our own validation
+    and state-transition rules) — and MUST NOT re-verify behavior owned and
+    already tested by a third-party library (argument parsing, help/usage
+    rendering, settings-validation ordering, DI resolution, serializer
+    round-trips, framework routing). Decisive ownership test: could the assertion
+    fail from a change to Grimoire's source alone? Residual framework dependence
+    is covered by at most one minimal, intent-named wire-up test proving our
+    registration reaches our code. Straddling tests are rewritten to keep and
+    sharpen the product-owned assertion, not deleted wholesale.)
+
+Principles added: none
+
+Sections modified:
+  - Definition of Done (NEW checkbox: every test added or modified by the feature
+    asserts a product-owned contract; no test re-verifies third-party library
+    behavior; residual framework dependency is covered by at most one minimal,
+    intent-named wire-up test)
+
+Sections removed: none
+
+Templates assessed (none modified — /speckit-constitution writes only the
+constitution; dependent templates read it at runtime):
+  - .specify/templates/plan-template.md ✅ no change required (its Test Strategy
+    table already maps success criteria — all product-owned by definition — to
+    test types; the new rule constrains which assertions may be written, not the
+    table's shape)
+  - .specify/templates/tasks-template.md ✅ no change required (test task
+    categories are stated in terms of the feature's own contracts)
+  - .specify/templates/spec-template.md ✅ no change required (specs stay
+    tech-agnostic and name no libraries)
+  - .specify/templates/checklist-template.md ✅ no change required
+
+Rationale for MINOR bump: Principle II gains a new enforceable rule with its own
+DoD gate rather than a clarification of an existing one, which the Governance
+versioning rule puts above PATCH. Not MAJOR: nothing previously required becomes
+forbidden — product-owned coverage is explicitly to be kept or strengthened —
+and no principle is removed or redefined.
+
+Trigger (2026-08-11, backend/tests/Grimoire.IntegrationTests/HubCliCommandTests.cs):
+  the file's exit-code/message/stream-split matrix against a real coordinator,
+  repository, and findings store is exactly the product-owned contract the suite
+  exists to protect, but alongside it sat assertions resting on Spectre.Console
+  calling Settings.Validate() before ExecuteAsync — a framework fact the tests
+  never exercised (they invoke ExecuteAsync directly) and could not falsify, so
+  the "no store was contacted" assertion was true by construction of the test
+  setup rather than of the production code.
+
+Deferred TODOs: none.
+
+--------------------------------------------------------------------------
+PREVIOUS AMENDMENTS
+--------------------------------------------------------------------------
+
 Version change: 1.6.0 → 1.8.0 (two amendments, same day)
 
 Principles modified:
@@ -233,6 +292,45 @@ thresholds (e.g., "≥ 90% of sampled ingests choose update over duplicate creat
 A 100% deterministic guarantee attached to an agent-judgment outcome is a spec defect:
 it structurally forces the implementation to replace the agent with deterministic code.
 
+**Test what we own.** Grimoire's test suite verifies Grimoire's contracts. Behavior owned
+by a third-party library is the library maintainer's test responsibility, not ours:
+
+- Tests MUST assert a **product-owned contract** — an outcome our own source code decides.
+  Exit codes, operator-facing message text, the stdout/stderr split we specified,
+  persisted state, emitted telemetry, dispatch/guardrail/lifecycle outcomes, and our own
+  validation and state-transition rules are all product-owned, and coverage of them SHOULD
+  be strengthened, not thinned, by applying this rule.
+- Tests MUST NOT re-verify **library-owned behavior**: that a CLI framework parses
+  arguments, renders help/usage, or calls settings validation before command execution;
+  that a DI container resolves a registered service; that a serializer round-trips; that a
+  web framework routes a mapped endpoint; that an assertion or database driver works.
+- **Ownership test** (decisive): *could this assertion fail from a change to Grimoire's own
+  source alone?* If only a dependency upgrade could turn it red, it is the dependency's
+  test and MUST NOT live here. If it asserts a fact that is true by construction of the
+  test's own setup rather than of the production code, it is not a test at all.
+- Where a library's behavior is genuinely load-bearing for us, the permitted coverage is
+  **one minimal wire-up test, named for that intent** (e.g. `..._IsRegisteredWith...`,
+  `..._ReachesOurHandler`). Its job is to prove *our* registration/configuration is present
+  and reaches *our* code — not that the library works. Wire-up tests MUST stay at that
+  scope; a wire-up test that grows into a behavior matrix for the library is a violation.
+- Straddling tests are **rewritten, not deleted**: where a test mixes a product-owned
+  assertion with library-owned ones, keep and sharpen the product-owned assertion and drop
+  the rest. Deletion without replacement is correct only when nothing product-owned
+  remains.
+- This rule binds new and modified tests. Pre-existing tests that only restate library
+  behavior are not a defect under the non-retroactivity clause in Governance; they SHOULD
+  be collapsed into a wire-up test the next time their file is touched for other reasons.
+
+Rationale: `HubCliCommandTests` is the worked example. Its exit-code/message/stream-split
+matrix against a real coordinator, repository, and findings store is exactly the
+product-owned contract this suite exists to protect. Alongside it sat assertions that hold
+because Spectre.Console calls `Settings.Validate()` before `ExecuteAsync` — a fact the
+tests never exercised (they invoked `ExecuteAsync` directly) and could not have falsified,
+so the "no store was contacted" assertion was true by construction of the test rather than
+of the production code. Such tests cost review attention and refactoring friction while
+carrying no failure mode, and they crowd out the argument-parsing coverage that only an
+out-of-process invocation through the real pipeline can actually provide.
+
 ### III. ADR-Driven & Test-Enforced Architecture
 
 Before generating any `plan.md`, the agent MUST read all ADRs in `docs/adr/`. The resulting
@@ -409,6 +507,7 @@ A feature increment is DONE when ALL of the following conditions hold:
 - [ ] Hexagonal boundary rules (Principle I) hold: external-system dependencies introduced or touched by the feature are consumed via ports with production adapter and test fake, and infrastructure packages appear only in their designated adapter namespaces (enforced by structural architecture tests)
 - [ ] Integration tests against real infrastructure cover all API boundaries introduced by the feature (Testcontainers only where a containerized dependency is genuinely involved)
 - [ ] Test style follows Principle II's classicist (Chicago-school) rules: assertions are state-based (no interaction verification), test doubles are hand-rolled fakes implementing existing port interfaces only, and no mocking framework is referenced by any test project
+- [ ] Every test added or modified by the feature asserts a product-owned contract (Principle II "Test what we own"): no test re-verifies third-party library behavior, and any residual framework dependency is covered by at most one minimal, intent-named wire-up test
 - [ ] CI/CD pipeline passes: architecture tests, integration tests, linting, build
 - [ ] No unapproved infrastructure was introduced
 
@@ -437,4 +536,4 @@ the amendment closes a live defect in the merged feature, not when it adds a new
 or ceremony. (Concretely: the final-phase completeness-audit task introduced in v1.5.0 is
 absent from specs 001–009, all authored earlier; that absence is not a violation.)
 
-**Version**: 1.8.0 | **Ratified**: 2026-06-23 | **Last Amended**: 2026-08-09
+**Version**: 1.9.0 | **Ratified**: 2026-06-23 | **Last Amended**: 2026-08-11
