@@ -149,10 +149,10 @@ public class QueryTurnSubmissionApiTests
         Assert.Empty(launcher.QueryRequests);
     }
 
-    // T013: a stale client still sending priorTurns is accepted; the extra field is
-    // ignored by JSON binding and the record stays authoritative (FR-006).
+    // T013: a stale client still sending priorTurns is accepted, and the persisted record —
+    // not the client's stale payload — stays authoritative (FR-006).
     [Fact]
-    public async Task PostTurn_StaleClientStillSendingPriorTurns_IsAccepted_AndTheFieldIsIgnored()
+    public async Task PostTurn_StaleClientStillSendingPriorTurns_IsAccepted_AndTheRecordStaysAuthoritative()
     {
         var launcher = new FakeAgentProcessLauncher(autoPlay: true, simulatedRunDuration: TimeSpan.FromSeconds(5));
         using var host = await BuildHostAsync(launcher, root: CreateTempRoot());

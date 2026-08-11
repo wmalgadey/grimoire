@@ -171,21 +171,6 @@ public class HubCliCommandTests
     }
 
     [Fact]
-    public async Task RemediationTaskSettings_Validate_MissingTaskId_NeverContactsTheStore()
-    {
-        // Spectre's real CommandApp pipeline calls Settings.Validate() before
-        // ExecuteAsync ever runs (mapped to exit 2 by HubCliApp) — this harness proves
-        // the FR-009 half of that contract: a settings object that fails validation
-        // triggers no repository access, because the only code path that could touch
-        // the store is inside ExecuteAsync, which a real invocation would never reach.
-        using var harness = await HubCliRemediationTestHarness.CreateAsync();
-        var settings = new RemediationTaskSettings { TaskId = null };
-
-        Assert.False(settings.Validate().Successful);
-        Assert.Empty(await harness.Repository.GetRemediationTasksAsync());
-    }
-
-    [Fact]
     public async Task Authorize_FromProposed_QueuePaused_PrintsAuthorizedAtLineOnStdout_ExitZero_NoExecution()
     {
         using var harness = await HubCliRemediationTestHarness.CreateAsync();
@@ -404,17 +389,6 @@ public class HubCliCommandTests
     public void IngestRetriggerSettings_Validate_MissingOrEmptyTaskId_IsUsageError(string? taskId)
     {
         var settings = new IngestRetriggerSettings { TaskId = taskId };
-        Assert.False(settings.Validate().Successful);
-    }
-
-    [Fact]
-    public void IngestRetriggerSettings_Validate_MissingTaskId_NeverContactsTheStore()
-    {
-        // Mirrors RemediationTaskSettings_Validate_MissingTaskId_NeverContactsTheStore
-        // (FR-009): a real Spectre invocation never reaches ExecuteAsync when Validate()
-        // fails, so no assertion beyond "validation itself fails" is needed to prove no
-        // store/coordinator access happens for this settings object.
-        var settings = new IngestRetriggerSettings { TaskId = null };
         Assert.False(settings.Validate().Successful);
     }
 

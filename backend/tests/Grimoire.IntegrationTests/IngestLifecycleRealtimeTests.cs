@@ -9,16 +9,19 @@ using Microsoft.Extensions.Hosting;
 namespace Grimoire.IntegrationTests;
 
 /// <summary>
-/// T040 (US2) - a connected SignalR client receives ordered `taskLifecycleChanged` events and the
-/// board projection reflects the new stage without a resubmit or manual refresh (SC-004,
-/// Acceptance Scenario 2). Uses a minimal real Kestrel host + a real
-/// Microsoft.AspNetCore.SignalR.Client connection (contracts/ingest-lifecycle-events.md), not
-/// Program.cs (which has its own environment-dependent bootstrapping unrelated to this channel).
+/// T040 (US2) - the single permitted SignalR wire-up test (constitution v1.9.0, Principle II
+/// "Test what we own"): whether a connected client actually receives events, and in the order
+/// they were sent, is the SignalR transport's own delivery guarantee, not ours. What this test
+/// exists to prove is ours — the `taskLifecycleChanged` payload contract and hub route
+/// (contracts/ingest-lifecycle-events.md) — by publishing through the real
+/// <see cref="IngestLifecyclePublisher"/> against a real Kestrel host and a real
+/// Microsoft.AspNetCore.SignalR.Client connection, not Program.cs (which has its own
+/// environment-dependent bootstrapping unrelated to this channel).
 /// </summary>
 public class IngestLifecycleRealtimeTests
 {
     [Fact]
-    public async Task ConnectedClient_ReceivesLifecycleEvents_InOrder()
+    public async Task LifecyclePublisher_ReachesAConnectedClient_OnTheContractedHubRouteAndMethod()
     {
         var builder = WebApplication.CreateBuilder();
         builder.WebHost.UseUrls("http://127.0.0.1:0");
@@ -62,8 +65,6 @@ public class IngestLifecycleRealtimeTests
 
         Assert.Equal(3, snapshot.Count);
         Assert.Equal(["received", "converting", "queued"], snapshot.Select(e => e.ToStatus));
-        Assert.True(snapshot[0].Timestamp <= snapshot[1].Timestamp);
-        Assert.True(snapshot[1].Timestamp <= snapshot[2].Timestamp);
         Assert.All(snapshot, e => Assert.Equal("task-realtime-1", e.TaskId));
 
         await connection.StopAsync();

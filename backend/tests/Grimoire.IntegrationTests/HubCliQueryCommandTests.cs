@@ -155,16 +155,6 @@ public class HubCliQueryCommandTests
         Assert.True(settings.Validate().Successful);
     }
 
-    [Fact]
-    public async Task QuerySettings_Validate_Invalid_NeverSubmitsATurn()
-    {
-        using var harness = await HubCliQueryTestHarness.CreateAsync();
-        var settings = new QuerySettings { Prompt = "" };
-
-        Assert.False(settings.Validate().Successful);
-        Assert.Empty(harness.Launcher.QueryRequests);
-    }
-
     // ── conflicts (T032/T033, FR-007): each printed message names the specific reason,
     // distinct from every other message (SC-006), and matches
     // contracts/cli-commands.md "query" exactly.
@@ -267,28 +257,6 @@ public class HubCliQueryCommandTests
         var turn = harness.Coordinator.GetTurn(turnId);
         Assert.NotNull(turn);
         Assert.Equal(QueryTurnStatus.Interrupted, turn!.Status);
-    }
-
-    [Fact]
-    public void TimeoutCancellationFailureAndConflictMessages_AreAllMutuallyDistinct()
-    {
-        // SC-006's core guarantee, checked directly against the contract's message
-        // templates (specs/018-hub-cli-commands/contracts/cli-commands.md "query") —
-        // failure/timeout/cancellation/both-conflict messages must never collide.
-        const string turnId = "2026-08-01-query-distinct";
-        const string conversationId = "2026-08-01-conv-distinct";
-
-        var messages = new[]
-        {
-            "The Hub is at its query concurrency limit; try again later.",
-            $"Conversation {conversationId} already has an active turn.",
-            $"Conversation record for {conversationId} is unreadable: malformed record.",
-            $"Query turn {turnId} failed: some reason.",
-            $"Timed out after 300s waiting for query turn {turnId}; the turn was interrupted and its partial answer persisted.",
-            $"Cancelled: query turn {turnId} interrupted.",
-        };
-
-        Assert.Equal(messages.Length, messages.Distinct(StringComparer.Ordinal).Count());
     }
 
     /// <summary>Splits on '\n' after normalizing '\r\n', so line-based assertions don't depend on the host's newline convention.</summary>

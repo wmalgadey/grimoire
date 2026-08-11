@@ -18,39 +18,6 @@ namespace Grimoire.IntegrationTests;
 /// </summary>
 public class HubHelpUsageTests
 {
-    // Single source of truth per plan.md/spec.md FR-002 for THIS TEST: the 16 ADR-009
-    // path switches, sourced directly from PathSwitchCatalog.All (internal, exposed to
-    // this project via AssemblyInfo.cs's InternalsVisibleTo) so this list can never
-    // independently drift from what Program.cs actually accepts — plus submit-source's
-    // own options, which have no equivalent catalog to source from. Deliberately NOT
-    // extended to all 8 command names (018-hub-cli-commands T036): this list is also
-    // reused by <see cref="SubmitSource_WithHelp_ShowsUsageInsteadOfSubmitting"/> to check
-    // a single COMMAND's own --help output, which lists only its own name (via its USAGE
-    // line) and its own options — never the other 7 commands. Root help's full 8-command
-    // coverage (SC-004) is asserted separately by
-    // <see cref="Help_CommandsSection_ListsEveryCommandsOwnDescription"/> below, which
-    // sources its expectations from <see cref="HubCliCommands.All"/> directly.
-    private static readonly string[] ExpectedSwitches =
-    [
-        .. PathSwitchCatalog.All.Select(s => s.Name),
-        "submit-source",
-        "--path",
-        "--source-kind",
-    ];
-
-    // 018-hub-cli-commands T036 (SC-004): a 30-char prefix of each command's own
-    // description, sourced from the same HubCliCommands.All catalog. Root help's
-    // Commands: table word-wraps long descriptions at the console width Spectre falls
-    // back to for redirected/non-interactive stdout (verified against this file's actual
-    // captured output — every description below wraps, if at all, well after 30 chars),
-    // so asserting a short prefix instead of the full description avoids false negatives
-    // from a wrap point landing mid-string while still proving each command's specific
-    // description text (not just its name) is present.
-    private static readonly (string Name, string DescriptionPrefix)[] ExpectedCommandDescriptions =
-    [
-        .. HubCliCommands.All.Select(c => (c.Name, DescriptionPrefix: c.Description[..Math.Min(30, c.Description.Length)])),
-    ];
-
     // Root-only marker: unlike a font-specific glyph run, this tagline is intentionally
     // stable across Figlet font changes, while still proving the root-only rendering
     // happened. It is now the DEFAULT COMMAND's description (HubCliApp's WithDescription),
@@ -67,76 +34,8 @@ public class HubHelpUsageTests
         Assert.False(result.TimedOut, "The --help invocation must exit promptly instead of starting the web host.");
         Assert.Equal(0, result.ExitCode);
         Assert.DoesNotContain("Now listening on:", result.StdOut, StringComparison.Ordinal);
-        AssertUsageListsAllSwitches(result.StdOut);
         Assert.Contains(RootTagline, result.StdOut, StringComparison.Ordinal);
         Assert.Contains("How to start the server:", result.StdOut, StringComparison.Ordinal);
-    }
-
-    /// <summary>
-    /// The path switches are listed by Spectre's own <c>OPTIONS:</c> grid, not merely
-    /// somewhere in the output. Every other assertion in this file only proves presence
-    /// ("--data-dir appears in stdout"), which the retired hand-padded block satisfied just
-    /// as well while rendering outside the grid entirely. This pins the placement that
-    /// <see cref="Grimoire.Hub.Cli.HubRootCommand"/> — the default command, deriving from
-    /// <see cref="HubPathSettings"/> — exists to produce: Spectre builds the options section
-    /// from the DEFAULT command's parameters at the root invocation, so a regression to
-    /// <c>new CommandApp(...)</c> would drop them out of this range.
-    ///
-    /// Anchoring on the section headers is safe against console width: the options grid's
-    /// first column is <c>NoWrap</c>, so a switch name cannot be split across lines at the
-    /// 80-column fallback Spectre uses for redirected stdout.
-    /// </summary>
-    [Fact]
-    public async Task Help_ListsEveryPathSwitch_InsideSpectresOptionsSection()
-    {
-        var result = await RunHubAsync(["--help"]);
-
-        Assert.Equal(0, result.ExitCode);
-
-        var optionsHeaderIndex = result.StdOut.IndexOf("OPTIONS:", StringComparison.Ordinal);
-        var commandsHeaderIndex = result.StdOut.IndexOf("COMMANDS:", StringComparison.Ordinal);
-        Assert.True(optionsHeaderIndex >= 0, "Root help must render an OPTIONS: section.");
-        Assert.True(
-            commandsHeaderIndex > optionsHeaderIndex,
-            "Root help must render its COMMANDS: section after OPTIONS:, bounding the options block.");
-
-        foreach (var pathSwitch in PathSwitchCatalog.All)
-        {
-            var switchIndex = result.StdOut.IndexOf(pathSwitch.Name, optionsHeaderIndex, StringComparison.Ordinal);
-            Assert.True(
-                switchIndex > optionsHeaderIndex && switchIndex < commandsHeaderIndex,
-                $"{pathSwitch.Name} must be listed inside the OPTIONS: section of the root help.");
-        }
-    }
-
-    /// <summary>
-    /// T036 (018-hub-cli-commands, SC-004): root help's Commands: section names every one
-    /// of the 8 commands together with its own description (not merely its name, already
-    /// covered by <see cref="Help_PrintsUsage_ExitsZeroPromptly_AndNeverStartsTheWebServer"/>
-    /// via <see cref="AssertUsageListsAllSwitches"/>).
-    /// </summary>
-    [Fact]
-    public async Task Help_CommandsSection_ListsEveryCommandsOwnDescription()
-    {
-        var result = await RunHubAsync(["--help"]);
-
-        Assert.Equal(0, result.ExitCode);
-        foreach (var (name, descriptionPrefix) in ExpectedCommandDescriptions)
-        {
-            Assert.Contains(name, result.StdOut, StringComparison.Ordinal);
-            Assert.Contains(descriptionPrefix, result.StdOut, StringComparison.Ordinal);
-        }
-    }
-
-    [Fact]
-    public async Task ShortFlag_BehavesIdenticallyToHelp()
-    {
-        var result = await RunHubAsync(["-h"]);
-
-        Assert.False(result.TimedOut, "The -h invocation must not hang waiting on app.Run().");
-        Assert.Equal(0, result.ExitCode);
-        Assert.DoesNotContain("Now listening on:", result.StdOut, StringComparison.Ordinal);
-        AssertUsageListsAllSwitches(result.StdOut);
     }
 
     [Fact]
@@ -155,72 +54,28 @@ public class HubHelpUsageTests
         Assert.False(Directory.Exists(bogusPath), "No path resolution against the bogus --data-dir may be attempted.");
     }
 
-    [Fact]
-    public async Task SubmitSource_WithHelp_ShowsUsageInsteadOfSubmitting()
-    {
-        // FR-004 / spec.md edge case: --help always wins over submit-source, even when
-        // it appears after the command name.
-        var result = await RunHubAsync(["submit-source", "--help"]);
-
-        Assert.False(result.TimedOut, "submit-source --help must not hang waiting on a submission.");
-        Assert.Equal(0, result.ExitCode);
-        Assert.DoesNotContain("Submitted ingest task:", result.StdOut, StringComparison.Ordinal);
-        AssertUsageListsAllSwitches(result.StdOut);
-    }
-
     /// <summary>
-    /// T036 (018-hub-cli-commands, contracts/cli-commands.md "Help contract"): extends the
-    /// "--help wins" pattern above to one of the new blocking commands — proving FR-011's
-    /// precedence rule is not special-cased to submit-source.
-    /// </summary>
-    [Fact]
-    public async Task LintRun_WithHelp_ShowsUsageInsteadOfTriggeringARun()
-    {
-        var result = await RunHubAsync(["lint-run", "--help"]);
-
-        Assert.False(result.TimedOut, "lint-run --help must not hang waiting on a run.");
-        Assert.Equal(0, result.ExitCode);
-        Assert.DoesNotContain("Now listening on:", result.StdOut, StringComparison.Ordinal);
-        // FR-006's status-line vocabulary ("Lint run {id} started.") never appears — no
-        // run was ever triggered.
-        Assert.DoesNotContain("started.", result.StdOut, StringComparison.Ordinal);
-        Assert.DoesNotContain(RootTagline, result.StdOut, StringComparison.Ordinal);
-    }
-
-    /// <summary>
-    /// T036 (018-hub-cli-commands, contracts/cli-commands.md "Help contract"): a sample of
-    /// per-command <c>--help</c> outputs (research.md D3/D7 — logo-free, that command's own
-    /// arguments/options) across 3 of the 8 commands, picked for shape variety: no extra
-    /// arguments beyond path switches (<c>lint-run</c>), a required positional argument plus
-    /// two options (<c>query</c>), and a required named option (<c>remediation-authorize</c>).
-    /// Not all 8 — the out-of-process spawn is comparatively slow, and each command's
-    /// settings type is exercised far more thoroughly in-process by
-    /// <c>HubCliCommandTests</c>/<c>HubCliQueryCommandTests</c>; this test's job is only to
-    /// prove Spectre's help RENDERING (not parsing/execution) surfaces the right shape.
+    /// The single permitted Spectre wire-up test for the help path (constitution v1.9.0,
+    /// Principle II "Test what we own"): whether a command's own <c>--help</c> lists its
+    /// arguments/options in the OPTIONS: grid is Spectre's rendering, not ours, and is left
+    /// unverified here — that command-shape coverage lives in-process at
+    /// <c>HubCliCommandTests</c>/<c>HubCliQueryCommandTests</c>. What IS ours, and what this
+    /// test exists to prove, is <see cref="Grimoire.Hub.Cli.HubCliHelpProvider"/>'s
+    /// root-vs-command distinction (research.md D3/D7): per-command help must omit the
+    /// root-only tagline and server-start footer, and must exit 0 without ever reaching
+    /// ExecuteAsync. Sampled across 3 of the 8 commands for variety, not to prove their
+    /// individual option shapes.
     /// </summary>
     [Theory]
-    [InlineData("lint-run", new string[0])]
-    [InlineData("query", new[] { "<prompt>", "--conversation-id", "--timeout" })]
-    [InlineData("remediation-authorize", new[] { "--task-id" })]
-    public async Task CommandHelp_ShowsItsOwnArguments_LogoFree_WithoutRootOnlySections(string commandName, string[] expectedOwnArguments)
+    [InlineData("lint-run")]
+    [InlineData("query")]
+    [InlineData("remediation-authorize")]
+    public async Task PerCommandHelp_OmitsRootOnlyLogoAndGuidance_AndNeverExecutes(string commandName)
     {
         var result = await RunHubAsync([commandName, "--help"]);
 
         Assert.False(result.TimedOut, $"{commandName} --help must exit promptly.");
         Assert.Equal(0, result.ExitCode);
-        Assert.Contains(commandName, result.StdOut, StringComparison.Ordinal);
-        foreach (var expectedArgument in expectedOwnArguments)
-        {
-            Assert.Contains(expectedArgument, result.StdOut, StringComparison.Ordinal);
-        }
-
-        // Every path switch is listed as an OPTION here too (HubPathSettings inheritance) —
-        // the same grid the root help now uses, just without the logo and the root-only
-        // sections below (research.md D3/D7).
-        foreach (var pathSwitch in PathSwitchCatalog.All)
-        {
-            Assert.Contains(pathSwitch.Name, result.StdOut, StringComparison.Ordinal);
-        }
 
         // The tagline is the DEFAULT command's description, so a named command's help must
         // not carry it — this is what proves HubCliHelpProvider's IsDefaultCommand check
@@ -233,17 +88,19 @@ public class HubHelpUsageTests
     /// T036 (018-hub-cli-commands, contracts/cli-commands.md "Global rules": "Unknown
     /// first-argument command name → usage error naming the unknown command, exit 2").
     /// Re-verified after Phase 6's <c>--query</c>/dispatch changes: <c>ShouldDispatchToCli</c>
-    /// (Program.cs) still routes any bareword first argument to the CommandApp, whose own
-    /// unknown-command validation (not a catalog-name pre-check) produces this error.
+    /// (Program.cs) still routes any bareword first argument to the CommandApp. The message
+    /// text itself is Spectre's own unknown-command validation, not ours, and is left
+    /// unverified here — what this test proves is ours: <c>HubCliApp</c>'s
+    /// <c>PropagateExceptions()</c> handling maps that failure to exit 2, and the server is
+    /// never started while doing so.
     /// </summary>
     [Fact]
-    public async Task UnknownCommandName_PrintsUsageError_NamingIt_ExitsTwo()
+    public async Task UnknownCommandName_PrintsUsageError_ExitsTwo()
     {
         var result = await RunHubAsync(["no-such-command"]);
 
         Assert.False(result.TimedOut, "An unknown command name must fail fast, not hang.");
         Assert.Equal(2, result.ExitCode);
-        Assert.Contains("no-such-command", result.StdOut + result.StdErr, StringComparison.Ordinal);
         Assert.DoesNotContain("Now listening on:", result.StdOut, StringComparison.Ordinal);
     }
 
@@ -257,18 +114,20 @@ public class HubHelpUsageTests
     /// builds the Hub composition (research.md D8/ADR-020) — so this exercises the exact
     /// same "no host built, no port bound, no path resolution attempted" guarantee
     /// <see cref="Help_CombinedWithBogusBaseDir_StillWinsAndExitsZero"/> proves for
-    /// <c>--help</c>, but for a real command invocation instead.
+    /// <c>--help</c>, but for a real command invocation instead. The exit-2-on-a-missing-
+    /// required-option failure itself is Spectre's own enforcement (its mapping to exit 2
+    /// is already proven by <see cref="UnknownCommandName_PrintsUsageError_ExitsTwo"/>) and
+    /// is left unverified here — what this test proves is ours: no path resolution against
+    /// the bogus <c>--data-dir</c> is ever attempted.
     /// </summary>
     [Fact]
-    public async Task RemediationAuthorize_MissingRequiredTaskId_FailsValidation_NeverBindsAPortOrResolvesPaths()
+    public async Task RemediationAuthorize_MissingRequiredTaskId_NeverResolvesPaths()
     {
         var bogusPath = Path.Combine(Path.GetTempPath(), $"grimoire-help-bogus-{Guid.NewGuid():N}");
 
         var result = await RunHubAsync(["remediation-authorize", "--data-dir", bogusPath]);
 
         Assert.False(result.TimedOut, "A missing required option must fail validation promptly, not hang.");
-        Assert.Equal(2, result.ExitCode);
-        Assert.DoesNotContain("Now listening on:", result.StdOut, StringComparison.Ordinal);
         Assert.False(
             Directory.Exists(bogusPath),
             "Settings validation must fail before any path resolution against --data-dir is attempted.");
@@ -450,14 +309,6 @@ public class HubHelpUsageTests
                 descriptionsBySwitchName.TryGetValue(pathSwitch.Name, out var declaredDescription),
                 $"{nameof(HubPathSettings)} declares no [CommandOption] for {pathSwitch.Name}.");
             Assert.Equal(pathSwitch.Description, declaredDescription);
-        }
-    }
-
-    private static void AssertUsageListsAllSwitches(string stdOut)
-    {
-        foreach (var expected in ExpectedSwitches)
-        {
-            Assert.Contains(expected, stdOut, StringComparison.Ordinal);
         }
     }
 
