@@ -1,6 +1,71 @@
 <!--
 SYNC IMPACT REPORT
 ==================
+Version change: 1.9.0 → 1.10.0 (2026-08-11)
+
+Principles modified:
+  - III. ADR-Driven & Test-Enforced Architecture (NEW subsection "ADR Status
+    Maintenance": Accepted ADRs are immutable in substance — a changed
+    decision is recorded by a new ADR that supersedes or amends the old one,
+    never by editing it in place; supersede/amend links MUST be bidirectional,
+    updating both the new ADR's and the old ADR's status header in the same
+    change; every ADR carries a status from exactly {Proposed, Accepted,
+    Deprecated, Superseded}, numbers are permanent and never merged or
+    renumbered; Accepted ADRs MUST be periodically reviewed for staleness —
+    at least every 90 days for ADRs governing an externally observable
+    surface, at least every 365 days for purely internal architecture ADRs;
+    and a central docs/adr/index.md MUST list every ADR's number, title,
+    current status, and supersede/amend chain, updated in the same change as
+    any ADR whose status or existence changes.)
+
+Principles added: none
+
+Sections modified:
+  - Definition of Done (NEW checkbox: any ADR touched by the feature that
+    supersedes or amends another ADR carries a bidirectional status-header
+    link on both sides, and docs/adr/index.md reflects the change)
+
+Sections removed: none
+
+Templates assessed (none modified — /speckit-constitution writes only the
+constitution; dependent templates read it at runtime):
+  - .specify/templates/plan-template.md ✅ no change required (the existing
+    "Agent MUST read all ADRs in docs/adr/" gate already satisfies this
+    amendment; citing docs/adr/index.md as a faster status lookup is a
+    possible future refinement, not mandated here)
+  - .specify/templates/tasks-template.md ✅ no change required (task
+    categories are unaffected by ADR status bookkeeping)
+  - .specify/templates/spec-template.md ✅ no change required (specs stay
+    tech-agnostic and name no ADRs)
+  - .specify/templates/checklist-template.md ✅ no change required
+
+Rationale for MINOR bump: Principle III gains a new enforceable rule with its
+own DoD gate rather than a clarification of an existing one, which the
+Governance versioning rule puts above PATCH. Not MAJOR: nothing previously
+required becomes forbidden and no principle is removed or redefined —
+existing ADRs keep governing exactly as before; only forward ADR changes must
+now carry status bookkeeping.
+
+Trigger (2026-08-11, user request): a review of docs/adr/ (23 Accepted ADRs)
+found that later ADRs already reach back and overwrite earlier ones in
+substance — e.g. ADR-022's "Superseded and amended decisions" table rewrites
+parts of ADR-009 — without the superseded ADR's own status header recording
+that fact, and without any single file listing which ADRs are currently
+authoritative. External research on ADR/MADR practice (the Nygard convention,
+adr.github.io, Microsoft's Well-Architected guidance) converged on the same
+fix: Accepted ADRs are immutable, supersession is a bidirectional link
+between old and new status headers, and an unreviewed ADR collection silently
+accumulates stale "Accepted" entries. This amendment makes that structurally
+required going forward. Per Governance's non-retroactivity clause, ADR-001
+through ADR-023 are NOT retroactively migrated by this amendment — that
+migration, if undertaken, is a separate follow-up.
+
+Deferred TODOs: none.
+
+--------------------------------------------------------------------------
+PREVIOUS AMENDMENTS
+--------------------------------------------------------------------------
+
 Version change: 1.8.0 → 1.9.0 (2026-08-11)
 
 Principles modified:
@@ -381,6 +446,48 @@ Order is non-negotiable: plan drafted → ADR accepted → Structural test verif
 An ADR without a corresponding automated structural enforcement test MUST NOT be
 referenced as an active architectural constraint.
 
+**ADR Status Maintenance.** ADR status headers are the source of truth for which
+decisions currently govern the codebase; keeping them accurate is as binding as the
+decision content itself.
+
+- **Immutability.** An Accepted ADR's decision content (Context, Decision, Consequences)
+  MUST NOT be edited after acceptance to change what was decided. A changed decision is
+  recorded by a new ADR that either **supersedes** the old one (replaces it entirely) or
+  **amends** it (adds or narrows detail while the original decision stands). Rewriting an
+  Accepted ADR's substance in place is a violation regardless of whether the new text is
+  more accurate.
+- **Bidirectional linking.** When ADR-B supersedes or amends ADR-A, both status headers
+  MUST be updated in the same change: ADR-B's header records `Supersedes ADR-A` or
+  `Amends ADR-A`, and ADR-A's header records `Superseded by ADR-B` or `Amended by ADR-B`.
+  A one-sided link — the new ADR pointing back without the old ADR pointing forward —
+  MUST NOT ship; a reader who opens ADR-A alone has no other way to learn it is no longer
+  current.
+- **Lifecycle minimum.** Every ADR carries a status from exactly {Proposed, Accepted,
+  Deprecated, Superseded}. ADR numbers are permanent: never reused, never renumbered, and
+  never merged into a single file to "consolidate" history — consolidation happens at the
+  status and index layer below, not by rewriting or collapsing files.
+- **Review cadence.** Accepted ADRs MUST be periodically checked for staleness rather
+  than assumed current indefinitely. ADRs governing an externally observable surface
+  (CLI command surface, credential/security boundaries, agent-facing tool contracts)
+  MUST be reviewed at least every 90 days; ADRs scoped to purely internal architecture
+  (module layering, internal packaging, persistence internals) MUST be reviewed at least
+  every 365 days. Each review MUST end in one of: no change, or a status update per the
+  two rules above, reflected in `docs/adr/index.md`.
+- **Central index.** `docs/adr/index.md` MUST list every ADR — number, title, current
+  status, and, for Superseded or Amended ADRs, the supersede/amend chain — and MUST be
+  updated in the same change as any ADR whose status or existence changes. The index is
+  the single place a reader determines, without opening every file, which ADRs currently
+  govern the codebase.
+
+Rationale: MADR/Nygard practice treats Accepted ADRs as immutable and supersession as a
+bidirectional pointer for exactly this reason — without it, the common failure mode is a
+new ADR that references the old one while the old one still reads as current, or a
+collection where nobody can tell which "Accepted" entries have actually been overtaken.
+This is not hypothetical here: ADR-022's own "Superseded and amended decisions" table
+already rewrites parts of ADR-009 without ADR-009's status header recording that fact.
+This rule makes that structurally impossible going forward. Per Governance's
+non-retroactivity clause, existing ADRs are not retroactively migrated by this amendment.
+
 ### IV. Behavioral & Observable Engineering
 
 Conventions not enforced by CI/CD do not exist. Every architectural or quality rule
@@ -510,6 +617,9 @@ A feature increment is DONE when ALL of the following conditions hold:
 - [ ] Every test added or modified by the feature asserts a product-owned contract (Principle II "Test what we own"): no test re-verifies third-party library behavior, and any residual framework dependency is covered by at most one minimal, intent-named wire-up test
 - [ ] CI/CD pipeline passes: architecture tests, integration tests, linting, build
 - [ ] No unapproved infrastructure was introduced
+- [ ] Any ADR touched by the feature that supersedes or amends another ADR carries a
+      bidirectional status-header link on both sides (Principle III "ADR Status
+      Maintenance"), and `docs/adr/index.md` reflects the change
 
 ## Governance
 
@@ -536,4 +646,4 @@ the amendment closes a live defect in the merged feature, not when it adds a new
 or ceremony. (Concretely: the final-phase completeness-audit task introduced in v1.5.0 is
 absent from specs 001–009, all authored earlier; that absence is not a violation.)
 
-**Version**: 1.9.0 | **Ratified**: 2026-06-23 | **Last Amended**: 2026-08-11
+**Version**: 1.10.0 | **Ratified**: 2026-06-23 | **Last Amended**: 2026-08-11
