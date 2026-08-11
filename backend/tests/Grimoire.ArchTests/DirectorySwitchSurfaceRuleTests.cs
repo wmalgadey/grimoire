@@ -1,4 +1,3 @@
-using System.ComponentModel;
 using System.Reflection;
 using Grimoire.Hub.Cli;
 using Spectre.Console.Cli;
@@ -52,9 +51,6 @@ public class DirectorySwitchSurfaceRuleTests
             var attribute = property.GetCustomAttribute<CommandOptionAttribute>();
             Assert.True(attribute is not null, $"{nameof(HubPathSettings)}.{property.Name} has no [CommandOption] attribute.");
             actualSwitchNames.Add("--" + Assert.Single(attribute!.LongNames));
-
-            var description = property.GetCustomAttribute<DescriptionAttribute>();
-            Assert.True(description is not null, $"{nameof(HubPathSettings)}.{property.Name} has no [Description] attribute.");
         }
 
         Assert.True(

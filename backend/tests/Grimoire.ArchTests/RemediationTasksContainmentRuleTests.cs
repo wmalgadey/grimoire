@@ -15,8 +15,10 @@ namespace Grimoire.ArchTests;
 /// At Phase 0 (015-lint-board-parity T001) the RemediationTasks namespace does not exist
 /// yet, so the namespace-scoped rule passes vacuously — proven live by a Red/Green probe
 /// (a temporary class in <c>Grimoire.Hub.RemediationTasks</c> importing
-/// <c>Microsoft.Data.Sqlite</c>, confirmed to fail both rules below, then deleted;
-/// result documented in the Phase 0 commit message).
+/// <c>Microsoft.Data.Sqlite</c>, confirmed to fail the rule below, then deleted;
+/// result documented in the Phase 0 commit message). C1 (SQLite confinement) is enforced
+/// assembly-wide by <see cref="HexagonalPortsAdapterRuleTests.Sqlite_MustOnlyBeReferencedFrom_OperationalState"/>
+/// rather than restated per-namespace here.
 /// </summary>
 public class RemediationTasksContainmentRuleTests
 {
@@ -52,24 +54,9 @@ public class RemediationTasksContainmentRuleTests
             string.Join(", ", result.FailingTypeNames ?? []));
     }
 
-    /// <summary>
-    /// Re-asserts C1 from this feature's perspective (T001 rule (b)): introducing the
-    /// remediation_tasks table must not tempt any namespace — RemediationTasks included —
-    /// into referencing SQLite outside the designated persistence adapter. Same rule as
-    /// <see cref="HexagonalPortsAdapterRuleTests.Sqlite_MustOnlyBeReferencedFrom_OperationalState"/>,
-    /// restated here so the T001 Red/Green probe fails self-contained within this class.
-    /// </summary>
-    [Fact]
-    public void Sqlite_StaysConfinedTo_OperationalState()
-    {
-        var result = Types.InAssembly(HubAssembly)
-            .That().HaveDependencyOn("Microsoft.Data.Sqlite")
-            .Should().ResideInNamespaceStartingWith("Grimoire.Hub.OperationalState")
-            .GetResult();
-
-        Assert.True(result.IsSuccessful,
-            "C1 (ADR-010): Microsoft.Data.Sqlite types must only be referenced from " +
-            "Grimoire.Hub.OperationalState (the designated persistence adapter namespace). " +
-            "Violations: " + string.Join(", ", result.FailingTypeNames ?? []));
-    }
+    // C1 (SQLite confined to Grimoire.Hub.OperationalState) is enforced assembly-wide by
+    // HexagonalPortsAdapterRuleTests.Sqlite_MustOnlyBeReferencedFrom_OperationalState — that
+    // whole-Hub-assembly rule already covers RemediationTasks, so a namespace-scoped
+    // restatement here would only ever fail after the wider rule already had (constitution
+    // v1.9.0 "Test what we own": redundant, non-additive probe).
 }

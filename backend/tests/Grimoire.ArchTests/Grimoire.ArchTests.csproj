@@ -5,6 +5,9 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <!-- Explicit, not just transitive via NetArchTest.Rules: 15 files in this project
+         import Mono.Cecil directly for IL call-site scanning (see ArchScan.cs). -->
+    <PackageReference Include="Mono.Cecil" />
     <PackageReference Include="NetArchTest.Rules" />
   </ItemGroup>
 

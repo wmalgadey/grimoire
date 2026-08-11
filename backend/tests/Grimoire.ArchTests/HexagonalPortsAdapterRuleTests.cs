@@ -18,19 +18,20 @@ namespace Grimoire.ArchTests;
 public class HexagonalPortsAdapterRuleTests
 {
     private static Assembly HubAssembly => typeof(Grimoire.Hub.HubMetrics).Assembly;
-    private static Assembly IngestAgentAssembly => typeof(Grimoire.IngestAgent.IngestCliOptions).Assembly;
     private static Assembly AgentEvalsAssembly => typeof(Grimoire.AgentEvals.EvalProviderResolverTests).Assembly;
 
-    // NOTE (ADR-011): IModelClient/AnthropicModelClient relocated from
-    // Grimoire.IngestAgent.AgentCore(.Adapters.Anthropic) to the shared
+    // NOTE (ADR-011, constitution v1.9.0 "Test what we own"): IModelClient/AnthropicModelClient
+    // relocated from Grimoire.IngestAgent.AgentCore(.Adapters.Anthropic) to the shared
     // Grimoire.AgentRuntime.Core(.Adapters.Anthropic) library. The two
-    // IngestAgentAssembly-scoped rules below (AnthropicSdk_MustOnlyBeReferencedFrom_...
-    // and AgentOrchestration_MustNotReferenceConcreteAnthropicModelClient) now pass
-    // vacuously — Grimoire.IngestAgent no longer depends on the Anthropic SDK or the
-    // concrete adapter type at all — and are superseded by
-    // AgentRuntimeAdapterBoundaryRuleTests' C6 rule, which asserts the real current
-    // containment. Kept here rather than deleted since a vacuous pass is still a true
-    // (if redundant) statement, not a stale assertion of a wrong location.
+    // rules this note used to describe (AnthropicSdk_MustOnlyBeReferencedFrom_...
+    // and AgentOrchestration_MustNotReferenceConcreteAnthropicModelClient, both scoped to
+    // Grimoire.IngestAgent) passed only
+    // vacuously after that move — Grimoire.IngestAgent no longer depends on the Anthropic
+    // SDK or the concrete adapter type at all, so neither rule could ever fail again. A
+    // vacuously-passing structural test enforces nothing (Principle III): the SDK-containment
+    // half is now covered live by AgentRuntimeAdapterBoundaryRuleTests' C6 rule, and the
+    // concrete-adapter-reference half was re-pointed there too, scoped to the assembly the
+    // type actually lives in now.
 
     // ---- C2 (007-eval-tests-nim-endpoint): the eval harness must reach the Anthropic
     // Messages API only through the ADR-010 IModelClient port (AnthropicModelClient),
@@ -66,22 +67,6 @@ public class HexagonalPortsAdapterRuleTests
         Assert.True(result.IsSuccessful,
             "C1 (ADR-010): Microsoft.Data.Sqlite types must only be referenced from " +
             "Grimoire.Hub.OperationalState (the designated persistence adapter namespace). " +
-            "Violations: " + string.Join(", ", result.FailingTypeNames ?? []));
-    }
-
-    // ---- C2: Anthropic SDK confined to the Anthropic adapter namespace ----
-
-    [Fact]
-    public void AnthropicSdk_MustOnlyBeReferencedFrom_AgentCoreAdaptersAnthropic()
-    {
-        var result = Types.InAssembly(IngestAgentAssembly)
-            .That().HaveDependencyOn("Anthropic")
-            .Should().ResideInNamespaceStartingWith("Grimoire.IngestAgent.AgentCore.Adapters.Anthropic")
-            .GetResult();
-
-        Assert.True(result.IsSuccessful,
-            "C2 (ADR-010): Anthropic SDK types must only be referenced from " +
-            "Grimoire.IngestAgent.AgentCore.Adapters.Anthropic. " +
             "Violations: " + string.Join(", ", result.FailingTypeNames ?? []));
     }
 
@@ -151,21 +136,6 @@ public class HexagonalPortsAdapterRuleTests
         Assert.True(result.IsSuccessful,
             "C5 (ADR-010): namespaces outside an .Adapters. segment must not reference " +
             "concrete Hub adapter types (composition root exempt). " +
-            "Violations: " + string.Join(", ", result.FailingTypeNames ?? []));
-    }
-
-    [Fact]
-    public void AgentOrchestration_MustNotReferenceConcreteAnthropicModelClient()
-    {
-        var result = Types.InAssembly(IngestAgentAssembly)
-            .That().ResideInNamespaceStartingWith("Grimoire.IngestAgent")
-            .And().DoNotResideInNamespaceContaining(".Adapters.")
-            .Should().NotHaveDependencyOn("Grimoire.IngestAgent.AgentCore.Adapters.Anthropic.AnthropicModelClient")
-            .GetResult();
-
-        Assert.True(result.IsSuccessful,
-            "C5 (ADR-010): namespaces outside an .Adapters. segment must not reference " +
-            "the concrete AnthropicModelClient (composition root exempt). " +
             "Violations: " + string.Join(", ", result.FailingTypeNames ?? []));
     }
 
