@@ -4,6 +4,15 @@ status: accepted
 
 # ADR-002: Ingest Agent Execution Model
 
+> **Amended by [ADR-008](ADR-008-agent-event-channel-run-supervision.md)**: run-outcome
+> reporting moves from an awaited child-process exit code to the event/queue supervision
+> model ADR-008 defines; the spawn model (child process, CLI args, file-based artifacts,
+> ADR-004 credential scoping) remains in force.
+
+> **Amended by [ADR-009](ADR-009-runtime-path-configuration.md)**: gains the `--wiki-root`
+> argument and a policy-prefix anchor from ADR-009's path configuration; the spawn model
+> itself is unchanged.
+
 > **Amended by [ADR-022](ADR-022-minimal-directory-configuration-surface.md)**: the Hub
 > now spawns every agent in a single launch mode — `dotnet <AgentDir>/<agent-id>/
 > Grimoire.<Type>Agent.dll` against the agent's build-published runtime — replacing the

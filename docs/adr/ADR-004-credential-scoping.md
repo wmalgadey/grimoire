@@ -4,6 +4,11 @@ status: accepted
 
 # ADR-004: Credential Scoping for the LLM API Key
 
+> **Amended by [ADR-009](ADR-009-runtime-path-configuration.md)**: the secrets file this
+> ADR scopes gets an explicit, centrally resolved path under ADR-009's runtime path
+> configuration; the credential-injection model and scoping decision themselves are
+> unchanged.
+
 ## Context and Problem Statement
 
 The Ingest agent calls the Anthropic Claude API, which requires an API key. A naive setup

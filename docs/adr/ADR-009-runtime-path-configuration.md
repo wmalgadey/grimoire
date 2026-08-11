@@ -4,6 +4,17 @@ status: accepted
 
 # ADR-009: Explicit Runtime Path Configuration and Consolidated Data Directory
 
+> **Supersedes in part [ADR-003](ADR-003-domain-operational-state-persistence.md); amends
+> [ADR-002](ADR-002-ingest-agent-execution-model.md),
+> [ADR-004](ADR-004-credential-scoping.md),
+> [ADR-006](ADR-006-agent-tool-loop-guarded-boundary.md),
+> [ADR-007](ADR-007-agent-instruction-surface.md), and
+> [ADR-008](ADR-008-agent-event-channel-run-supervision.md)**: replaces ADR-003's
+> illustrative `.grimoire/` runtime-directory naming with explicit path configuration
+> (substance retained and strengthened); adds the `--wiki-root` argument and a
+> policy-prefix anchor to the other five ADRs' contracts, each otherwise unchanged. See
+> "This ADR supersedes ADR-003's..." below for detail.
+
 > **Superseded in part by [ADR-022](ADR-022-minimal-directory-configuration-surface.md)**:
 > the one-composition-point/one-precedence-chain principle established here still holds,
 > but the switch surface it grew ("friendly switch mappings" read as "each new location

@@ -4,6 +4,16 @@ status: accepted
 
 # ADR-011: Shared Agent Runtime, Streaming, and Query Concurrency Model
 
+> **Amended by [ADR-013](ADR-013-unified-agent-platform-packaging-and-naming.md)**
+> (packaging / runtime-sharing aspects only): `Grimoire.AgentRuntime`'s scope is
+> extended and the Query no-write-guarantee rationale is restated; see "Shared runtime
+> library" below for the specific passages and what is left intact.
+>
+> **Partially superseded by [ADR-014](ADR-014-query-conversation-records.md)** (this
+> ADR's "Persistence and conversation context" section only) and by
+> **[ADR-015](ADR-015-query-write-scope-and-wiki-write-coordination.md)** (the "Query is
+> structurally write-free" framing only) — see those sections below for detail.
+
 ## Context and Problem Statement
 
 Feature 008 (query-agent) introduces the Query agent: a read-only agent that answers
@@ -112,6 +122,17 @@ Chosen option: **Option 1.**
   message scaffold (conversation history + current prompt + injection framing) still
   wraps it exactly as ADR-007 wraps ingest's effective prompt, so it stays
   non-agent-editable.
+
+> **Amended by [ADR-013](ADR-013-unified-agent-platform-packaging-and-naming.md)**
+> (010-unified-agent-platform), packaging / runtime-sharing aspects only:
+> `Grimoire.AgentRuntime`'s scope above is extended to also own telemetry bootstrap,
+> tracing scaffold, model-client composition, error sanitization, CLI scaffold, and the
+> host startup template (`Telemetry`/`Composition`/`Host` namespaces) as a
+> near-identical thin host per agent. The "write_file is not compiled into the process
+> at all" rationale above is superseded by ADR-013's profile-declared tool-registry
+> formulation (the no-write guarantee itself is unchanged). Everything else in this
+> subsection — the separate-process model, spawn/CLI/credential contracts, streaming,
+> concurrency, and persistence — remains in force.
 
 ### Hub dispatch, concurrency, and interruption
 

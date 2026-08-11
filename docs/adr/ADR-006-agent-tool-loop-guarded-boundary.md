@@ -4,6 +4,11 @@ status: accepted
 
 # ADR-006: Agent Tool-Use Loop and Guarded Tool Boundary
 
+> **Amended by [ADR-009](ADR-009-runtime-path-configuration.md)**: the policy file this
+> ADR's guarded tool boundary reads becomes content-root-relative under ADR-009's path
+> configuration (portable `policy.json` prefixes); the guarded tool-use loop and
+> deny-by-default policy model themselves are unchanged.
+
 ## Context and Problem Statement
 
 Constitution v1.1.0 (Principle V) requires that all wiki-content judgment be exercised by
