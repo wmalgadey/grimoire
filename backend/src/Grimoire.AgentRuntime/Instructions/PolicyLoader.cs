@@ -26,8 +26,8 @@ public sealed class PolicyLoader
 
     /// <param name="wikiRoot">
     /// The Hub-resolved wiki content root (contracts/agent-launch.md <c>--wiki-root</c>).
-    /// Policy path prefixes (<c>pages/</c>, <c>tasks/</c>, <c>index.md</c>, <c>log.md</c>)
-    /// are anchored here — never against a discovered repository root (ADR-009).
+    /// Policy path prefixes (<c>.</c>, <c>index.md</c>, <c>log.md</c>) are anchored
+    /// here — never against a discovered repository root (ADR-009).
     /// </param>
     public PolicyLoader(string wikiRoot)
     {

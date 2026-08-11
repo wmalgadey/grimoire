@@ -7,7 +7,7 @@ namespace Grimoire.QueryAgent;
 /// ADR-015 (012-query-synthesis-writes) — <c>write_file</c>. The read-only structural
 /// guarantee this file's comment used to describe (no write-tool reference at all) is
 /// superseded: Query's write capability is now scoped entirely by policy
-/// (<c>data/agents/query/policy.json</c>'s create-only <c>pages/</c> rule plus
+/// (<c>data/agents/query/policy.json</c>'s create-only <c>.</c> rule plus
 /// <c>index.md</c>/<c>log.md</c>) and by the cross-process coordination guard inside
 /// <see cref="Grimoire.AgentRuntime.Guardrails.GuardedToolExecutor"/> — never by this
 /// registry omitting the tool. <see cref="Grimoire.AgentRuntime.Guardrails.ToolRegistry.Supports"/>
