@@ -6,7 +6,7 @@ namespace Grimoire.IntegrationTests.PathConfiguration;
 
 /// <summary>
 /// US4 AS1/AS2/AS3 — pointing <c>--agent-dir</c> (simulated via the same
-/// <c>Grimoire:Paths:AgentDir</c> configuration key <see cref="PathSwitchCatalog"/> binds
+/// <c>Grimoire:Paths:Agent:Dir</c> configuration key <see cref="PathSwitchCatalog"/> binds
 /// that switch to) at an independently-built agent runtime resolves every agent's runtime
 /// paths under it; the same missing/empty-directory failure modes
 /// <see cref="EmptyAgentDirectoryTests"/> covers for the default location apply identically
@@ -35,7 +35,7 @@ public class CustomAgentDirEndToEndTests
             // Mirrors exactly what a real `--agent-dir <path>` invocation binds through
             // AddCommandLine + PathSwitchCatalog.
             var configRoot = new ConfigurationBuilder()
-                .AddInMemoryCollection([new("Grimoire:Paths:AgentDir", customAgentDir)])
+                .AddInMemoryCollection([new("Grimoire:Paths:Agent:Dir", customAgentDir)])
                 .Build();
             configRoot.GetSection(GrimoirePathOptions.SectionName).Bind(options);
 
@@ -84,7 +84,7 @@ public class CustomAgentDirEndToEndTests
 
             var options = PathConfigurationTestHelpers.SeedRequiredInputsForZeroConfig(cwd);
             var configRoot = new ConfigurationBuilder()
-                .AddInMemoryCollection([new("Grimoire:Paths:AgentDir", customAgentDir)])
+                .AddInMemoryCollection([new("Grimoire:Paths:Agent:Dir", customAgentDir)])
                 .Build();
             configRoot.GetSection(GrimoirePathOptions.SectionName).Bind(options);
 
@@ -123,7 +123,7 @@ public class CustomAgentDirEndToEndTests
             var options = PathConfigurationTestHelpers.SeedRequiredInputsForZeroConfig(cwd);
             PathConfigurationTestHelpers.SeedAgentRuntimeAt(customAgentDir);
             var configRoot = new ConfigurationBuilder()
-                .AddInMemoryCollection([new("Grimoire:Paths:AgentDir", customAgentDir)])
+                .AddInMemoryCollection([new("Grimoire:Paths:Agent:Dir", customAgentDir)])
                 .Build();
             configRoot.GetSection(GrimoirePathOptions.SectionName).Bind(options);
 

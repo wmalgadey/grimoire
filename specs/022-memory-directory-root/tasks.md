@@ -199,33 +199,33 @@ folder, unaffected.
 produce all four record kinds plus an ingest that writes wiki content, and confirm the
 split.
 
-- [ ] T016 [P] [US1] Invert `backend/tests/Grimoire.IntegrationTests/PathConfiguration/WikiDirIsolationTests.cs`:
+- [x] T016 [P] [US1] Invert `backend/tests/Grimoire.IntegrationTests/PathConfiguration/WikiDirIsolationTests.cs`:
   assert all four bookkeeping kinds resolve under `MemoryDir` and that **none** of
   `tasks/`, `conversations/`, `findings/`, `remediation-tasks/` exist under `WikiDir`
   (the test previously asserted the opposite — all four *under* `WikiDir`). (SC-001)
 
-- [ ] T017 [P] [US1] Re-point `backend/tests/Grimoire.IntegrationTests/PathConfiguration/FindingsPathTests.cs`
+- [x] T017 [P] [US1] Re-point `backend/tests/Grimoire.IntegrationTests/PathConfiguration/FindingsPathTests.cs`
   to resolve `FindingsDir` under `MemoryDir` via the nested `Grimoire:Paths:Memory:FindingsDir` key. (SC-001)
 
-- [ ] T018 [P] [US1] Re-point `backend/tests/Grimoire.IntegrationTests/PathConfiguration/RemediationTasksPathTests.cs`
+- [x] T018 [P] [US1] Re-point `backend/tests/Grimoire.IntegrationTests/PathConfiguration/RemediationTasksPathTests.cs`
   to resolve `RemediationTasksDir` under `MemoryDir` via the nested
   `Grimoire:Paths:Memory:RemediationTasksDir` key. (SC-001)
 
-- [ ] T019 [P] [US1] Re-point `backend/tests/Grimoire.IntegrationTests/PathConfiguration/QueryRuntimePathsTests.cs`
+- [x] T019 [P] [US1] Re-point `backend/tests/Grimoire.IntegrationTests/PathConfiguration/QueryRuntimePathsTests.cs`
   to resolve `ConversationsDir` under `MemoryDir` via the nested
   `Grimoire:Paths:Memory:ConversationsDir` key. (SC-001)
 
-- [ ] T020 [P] [US1] Re-point `backend/tests/Grimoire.IntegrationTests/PathConfiguration/LintWikiDirEndToEndContentTests.cs`
+- [x] T020 [P] [US1] Re-point `backend/tests/Grimoire.IntegrationTests/PathConfiguration/LintWikiDirEndToEndContentTests.cs`
   to resolve `TasksDir`/`FindingsDir` under `MemoryDir` and assert wiki content still
   writes only under `WikiDir`. (SC-001)
 
-- [ ] T021 [US1] Add `backend/tests/Grimoire.IntegrationTests/PathConfiguration/PreExistingRecordsUntouchedTests.cs`
+- [x] T021 [US1] Add `backend/tests/Grimoire.IntegrationTests/PathConfiguration/PreExistingRecordsUntouchedTests.cs`
   (new file, SC-007): seed legacy files under `<WikiDir>/tasks/…` and
   `<WikiDir>/conversations/…`, run a full resolve + start, and assert every seeded file
   is still byte-identical at its original path afterward and that `MemoryDir` contains
   none of them — the hub must neither detect nor migrate them (FR-011). (FR-011, SC-007)
 
-- [ ] T022 [US1] Verify User Story 1 independently:
+- [x] T022 [US1] Verify User Story 1 independently:
   `dotnet test backend/tests/Grimoire.IntegrationTests --filter "FullyQualifiedName~PathConfiguration"`
   green, covering T016–T021.
 

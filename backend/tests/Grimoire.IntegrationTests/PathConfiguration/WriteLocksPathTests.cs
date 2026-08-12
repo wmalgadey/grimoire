@@ -75,7 +75,7 @@ public class WriteLocksPathTests
     [Fact]
     public void EnvironmentVariableOverride_ForWriteLocksDir_WinsOverDefault_AndSourceReportsEnvironment()
     {
-        const string envVarName = "Grimoire__Paths__WriteLocksDir";
+        const string envVarName = "Grimoire__Paths__Data__WriteLocksDir";
         var root = Path.Combine(Path.GetTempPath(), $"grimoire-write-locks-env-{Guid.NewGuid():N}");
         var overrideDir = Path.Combine(Path.GetTempPath(), $"grimoire-write-locks-override-{Guid.NewGuid():N}");
         Directory.CreateDirectory(root);

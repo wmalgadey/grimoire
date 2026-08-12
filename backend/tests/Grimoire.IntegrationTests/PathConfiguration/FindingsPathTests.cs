@@ -5,17 +5,18 @@ using Microsoft.Extensions.Logging.Abstractions;
 namespace Grimoire.IntegrationTests.PathConfiguration;
 
 /// <summary>
-/// FR-007 (clarification 2026-08-06) — the Findings Report storage directory resolves
-/// correctly under the default layout (agent output, anchored at the wiki directory) and
-/// under an explicit env-var override, mirroring <see cref="WriteLocksPathTests"/>'s
-/// cases for <c>write_locks_dir</c> (single composition point, no ambient discovery). No
-/// CLI switch exists for this sub-path (FR-015, rule R1).
+/// FR-002/SC-001 (022-memory-directory-root) — the Findings Report storage directory
+/// resolves correctly under the default layout (agent output, anchored at the memory
+/// directory, not the wiki directory) and under an explicit env-var override, mirroring
+/// <see cref="WriteLocksPathTests"/>'s cases for <c>write_locks_dir</c> (single
+/// composition point, no ambient discovery). No CLI switch exists for this sub-path
+/// (ADR-024 rule M1).
 /// </summary>
 [Collection("CurrentDirectoryMutation")]
 public class FindingsPathTests
 {
     [Fact]
-    public void ZeroFlags_ResolvesFindingsDir_BeneathWikiDir_AndAutoCreatesIt()
+    public void ZeroFlags_ResolvesFindingsDir_BeneathMemoryDir_AndAutoCreatesIt()
     {
         var cwd = Path.Combine(Path.GetTempPath(), $"grimoire-findings-default-{Guid.NewGuid():N}");
         Directory.CreateDirectory(cwd);
@@ -31,7 +32,7 @@ public class FindingsPathTests
 
             var resolved = GrimoirePathResolver.Resolve(options, configRoot, NullLogger.Instance);
 
-            Assert.Equal(Path.GetFullPath(Path.Combine(cwd, "llm-wiki", "findings")), resolved.FindingsDir);
+            Assert.Equal(Path.GetFullPath(Path.Combine(cwd, "memory", "findings")), resolved.FindingsDir);
             Assert.True(Directory.Exists(resolved.FindingsDir));
 
             var location = resolved.Locations.Single(l => l.Name == "findings_dir");
@@ -49,9 +50,9 @@ public class FindingsPathTests
     }
 
     [Fact]
-    public void ExplicitWikiDirOverride_ResolvesFindingsDir_BeneathTheOverriddenWikiDir()
+    public void ExplicitMemoryDirOverride_ResolvesFindingsDir_BeneathTheOverriddenMemoryDir()
     {
-        var root = Path.Combine(Path.GetTempPath(), $"grimoire-findings-wikidir-{Guid.NewGuid():N}");
+        var root = Path.Combine(Path.GetTempPath(), $"grimoire-findings-memorydir-{Guid.NewGuid():N}");
         Directory.CreateDirectory(root);
 
         try
@@ -61,7 +62,7 @@ public class FindingsPathTests
 
             var resolved = GrimoirePathResolver.Resolve(options, configRoot, NullLogger.Instance);
 
-            Assert.Equal(Path.GetFullPath(Path.Combine(root, "wiki-dir", "findings")), resolved.FindingsDir);
+            Assert.Equal(Path.GetFullPath(Path.Combine(root, "memory-dir", "findings")), resolved.FindingsDir);
         }
         finally
         {
@@ -72,10 +73,42 @@ public class FindingsPathTests
         }
     }
 
+    /// <summary>SC-002: relocating WikiDir alone must leave FindingsDir resolving under the (unrelocated) MemoryDir.</summary>
+    [Fact]
+    public void ExplicitWikiDirOverride_LeavesFindingsDir_UnderTheDefaultMemoryDir()
+    {
+        var root = Path.Combine(Path.GetTempPath(), $"grimoire-findings-wikidir-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(root);
+        var customWikiDir = Path.Combine(Path.GetTempPath(), $"grimoire-findings-wikidir-custom-{Guid.NewGuid():N}");
+
+        try
+        {
+            var options = PathConfigurationTestHelpers.SeedRequiredInputs(root);
+            options.Wiki.Dir = customWikiDir;
+            var configRoot = new ConfigurationBuilder().Build();
+
+            var resolved = GrimoirePathResolver.Resolve(options, configRoot, NullLogger.Instance);
+
+            Assert.Equal(Path.GetFullPath(Path.Combine(root, "memory-dir", "findings")), resolved.FindingsDir);
+            Assert.Equal(Path.GetFullPath(customWikiDir), resolved.WikiDir);
+        }
+        finally
+        {
+            if (Directory.Exists(root))
+            {
+                Directory.Delete(root, recursive: true);
+            }
+            if (Directory.Exists(customWikiDir))
+            {
+                Directory.Delete(customWikiDir, recursive: true);
+            }
+        }
+    }
+
     [Fact]
     public void EnvironmentVariableOverride_ForFindingsDir_WinsOverDefault_AndSourceReportsEnvironment()
     {
-        const string envVarName = "Grimoire__Paths__FindingsDir";
+        const string envVarName = "Grimoire__Paths__Memory__FindingsDir";
         var root = Path.Combine(Path.GetTempPath(), $"grimoire-findings-env-{Guid.NewGuid():N}");
         var overrideDir = Path.Combine(Path.GetTempPath(), $"grimoire-findings-override-{Guid.NewGuid():N}");
         Directory.CreateDirectory(root);

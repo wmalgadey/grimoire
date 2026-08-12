@@ -5,19 +5,20 @@ using Microsoft.Extensions.Logging.Abstractions;
 namespace Grimoire.IntegrationTests.PathConfiguration;
 
 /// <summary>
-/// ADR-018/FR-007 (clarification 2026-08-06) — the Remediation Task Record storage
+/// ADR-018/FR-002 (022-memory-directory-root) — the Remediation Task Record storage
 /// directory resolves correctly under the default layout (a sibling of <c>tasks/</c> and
-/// <c>conversations/</c>, anchored at the wiki directory as agent output) and under an
-/// explicit env-var override, mirroring <see cref="FindingsPathTests"/>'s cases (single
-/// composition point, no ambient discovery). No CLI switch exists for this sub-path
-/// (FR-015, rule R1) — only <c>Grimoire:Paths:RemediationTasksDir</c> in the config file
-/// or its environment-variable equivalent.
+/// <c>conversations/</c>, anchored at the memory directory as agent output, not the wiki
+/// directory) and under an explicit env-var override, mirroring
+/// <see cref="FindingsPathTests"/>'s cases (single composition point, no ambient
+/// discovery). No CLI switch exists for this sub-path (ADR-024 rule M1) — only
+/// <c>Grimoire:Paths:Memory:RemediationTasksDir</c> in the config file or its
+/// environment-variable equivalent.
 /// </summary>
 [Collection("CurrentDirectoryMutation")]
 public class RemediationTasksPathTests
 {
     [Fact]
-    public void ZeroFlags_ResolvesRemediationTasksDir_BeneathWikiDir_AndAutoCreatesIt()
+    public void ZeroFlags_ResolvesRemediationTasksDir_BeneathMemoryDir_AndAutoCreatesIt()
     {
         var cwd = Path.Combine(Path.GetTempPath(), $"grimoire-remtasks-default-{Guid.NewGuid():N}");
         Directory.CreateDirectory(cwd);
@@ -33,9 +34,9 @@ public class RemediationTasksPathTests
 
             var resolved = GrimoirePathResolver.Resolve(options, configRoot, NullLogger.Instance);
 
-            // Sibling of tasks/ and conversations/, directly under the wiki directory —
-            // agent output, not the data directory.
-            Assert.Equal(Path.GetFullPath(Path.Combine(cwd, "llm-wiki", "remediation-tasks")), resolved.RemediationTasksDir);
+            // Sibling of tasks/ and conversations/, directly under the memory directory —
+            // agent output, not the wiki or data directory.
+            Assert.Equal(Path.GetFullPath(Path.Combine(cwd, "memory", "remediation-tasks")), resolved.RemediationTasksDir);
             Assert.Equal(Path.GetDirectoryName(resolved.TasksDir), Path.GetDirectoryName(resolved.RemediationTasksDir));
             Assert.Equal(Path.GetDirectoryName(resolved.ConversationsDir), Path.GetDirectoryName(resolved.RemediationTasksDir));
             Assert.True(Directory.Exists(resolved.RemediationTasksDir));
@@ -55,9 +56,9 @@ public class RemediationTasksPathTests
     }
 
     [Fact]
-    public void ExplicitWikiDirOverride_ResolvesRemediationTasksDir_BeneathTheOverriddenWikiDir()
+    public void ExplicitMemoryDirOverride_ResolvesRemediationTasksDir_BeneathTheOverriddenMemoryDir()
     {
-        var root = Path.Combine(Path.GetTempPath(), $"grimoire-remtasks-wikidir-{Guid.NewGuid():N}");
+        var root = Path.Combine(Path.GetTempPath(), $"grimoire-remtasks-memorydir-{Guid.NewGuid():N}");
         Directory.CreateDirectory(root);
 
         try
@@ -67,7 +68,7 @@ public class RemediationTasksPathTests
 
             var resolved = GrimoirePathResolver.Resolve(options, configRoot, NullLogger.Instance);
 
-            Assert.Equal(Path.GetFullPath(Path.Combine(root, "wiki-dir", "remediation-tasks")), resolved.RemediationTasksDir);
+            Assert.Equal(Path.GetFullPath(Path.Combine(root, "memory-dir", "remediation-tasks")), resolved.RemediationTasksDir);
         }
         finally
         {
@@ -81,7 +82,7 @@ public class RemediationTasksPathTests
     [Fact]
     public void EnvironmentVariableOverride_ForRemediationTasksDir_WinsOverDefault_AndSourceReportsEnvironment()
     {
-        const string envVarName = "Grimoire__Paths__RemediationTasksDir";
+        const string envVarName = "Grimoire__Paths__Memory__RemediationTasksDir";
         var root = Path.Combine(Path.GetTempPath(), $"grimoire-remtasks-env-{Guid.NewGuid():N}");
         var overrideDir = Path.Combine(Path.GetTempPath(), $"grimoire-remtasks-override-{Guid.NewGuid():N}");
         Directory.CreateDirectory(root);
