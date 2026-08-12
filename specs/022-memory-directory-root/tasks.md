@@ -447,7 +447,7 @@ Trusted and at-threshold on the finished prompt text.
 
 ## Phase 7: Polish & Cross-Cutting Concerns (mandatory completeness audits)
 
-- [ ] T051 Observability completeness audit (MANDATORY — Constitution Principle III/IV):
+- [x] T051 Observability completeness audit (MANDATORY — Constitution Principle III/IV):
   cross-reference every row of `plan.md ## Observability` — the one new signal
   (`paths_configuration_superseded`) and every widened row (`paths_resolved`,
   `paths_location_created`, `paths_configuration_missing`, the
@@ -455,25 +455,25 @@ Trusted and at-threshold on the finished prompt text.
   implementing task (T009, T011) and passing deterministic test (T030, T031, T032,
   T035). File any gap found as a new task before declaring the DoD met.
 
-- [ ] T052 Logging contract CI enforcement (MANDATORY — Constitution Principle IV):
+- [x] T052 Logging contract CI enforcement (MANDATORY — Constitution Principle IV):
   confirm T033 and T036 both actually ran green in the standard PR pipeline (not just
   locally) — re-check the latest CI run for this branch.
 
-- [ ] T053 Trace contract CI enforcement (MANDATORY — Constitution Principle IV): confirm
+- [x] T053 Trace contract CI enforcement (MANDATORY — Constitution Principle IV): confirm
   T033's `PathTracingContractTests` coverage ran green in the standard PR pipeline.
 
-- [ ] T054 Agent-behavior evaluation completeness audit (MANDATORY for features with
+- [x] T054 Agent-behavior evaluation completeness audit (MANDATORY for features with
   agentic behavior — Constitution Principles II & V): confirm the FR-002/FR-012
   regression check (T050, all 22 scenarios `Trusted` and at-threshold) is the complete
   set of agent-judgment success criteria for this feature — spec.md states explicitly
   that no other evaluation-threshold criterion applies, since the feature adds no new
   agent judgment. File a gap task if any scenario in T050 is below threshold.
 
-- [ ] T055 [P] Run quickstart.md Scenarios 1–8 end to end against a locally built hub in
+- [x] T055 [P] Run quickstart.md Scenarios 1–8 end to end against a locally built hub in
   a scratch working directory, including Scenario 8's `PathGroupingInvariantTests` check
   and Scenario 7's instruction-file grep.
 
-- [ ] T056 Confirm ADR-024 remains `Accepted` and that its "Superseded and amended
+- [x] T056 Confirm ADR-024 remains `Accepted` and that its "Superseded and amended
   decisions" table (ADR-022, ADR-014, ADR-018, ADR-003, ADR-007, ADR-020) accurately
   reflects the merged code — spot-check each named ADR's cross-reference still holds.
 

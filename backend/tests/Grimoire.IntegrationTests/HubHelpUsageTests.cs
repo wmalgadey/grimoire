@@ -236,6 +236,77 @@ public class HubHelpUsageTests
     }
 
     /// <summary>
+    /// 022-memory-directory-root FR-014/SC-010, real out-of-process regression coverage:
+    /// a superseded flat configuration key supplied through the environment must reach
+    /// the operator as <see cref="Grimoire.Hub.Runtime.Paths.GrimoirePathConfigurationSupersededException"/>'s
+    /// own actionable message — naming the key and its replacement — not Spectre's
+    /// generic "Could not resolve type" wrapping. Regression: <c>HubCliApp</c>'s
+    /// <c>UnwrapPathResolutionFailure</c> originally unwrapped only
+    /// <c>GrimoirePathValidationException</c>/<c>GrimoirePathConfigurationMissingException</c>,
+    /// silently swallowing the newer superseded-key exception behind the CLI's lazy
+    /// Spectre type-resolution path (found by manual quickstart validation, not by any
+    /// in-process test, since in-process command construction bypasses Spectre's
+    /// resolver entirely).
+    /// </summary>
+    [Fact]
+    public async Task RemediationDismiss_RealOutOfProcessInvocation_SupersededMemoryDirKey_ReportsTheRealMessage_NotSpectresGenericResolutionFailure()
+    {
+        var scratchDir = CreateScratchDataDirectory();
+        var repoRoot = EvalPaths.Discover().RepoRoot;
+        var agentDir = Path.Combine(repoRoot, ".grimoire", "agents");
+        const string legacyEnvVar = "Grimoire__Paths__MemoryDir";
+
+        try
+        {
+            // Set only on the spawned child's environment (via ProcessStartInfo below),
+            // never on this test process's own — Environment.SetEnvironmentVariable here
+            // would be process-wide and race with any other test reading Grimoire__Paths__*
+            // concurrently (xUnit's default cross-class parallelism), exactly the failure
+            // mode PathPrecedenceTests/SupersededConfigurationKeyTests guard against for
+            // their own env var mutations.
+            var startInfo = new ProcessStartInfo
+            {
+                FileName = "dotnet",
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                UseShellExecute = false,
+                WorkingDirectory = scratchDir,
+            };
+            startInfo.ArgumentList.Add(ResolveHubDllPath(repoRoot));
+            foreach (var arg in new[]
+            {
+                "remediation-dismiss",
+                "--data-dir", Path.Combine(scratchDir, "data"),
+                "--wiki-dir", Path.Combine(scratchDir, "wiki"),
+                "--agent-dir", agentDir,
+                "--task-id", "does-not-exist",
+            })
+            {
+                startInfo.ArgumentList.Add(arg);
+            }
+            startInfo.EnvironmentVariables[legacyEnvVar] = "/does/not/matter";
+
+            using var process = Process.Start(startInfo)
+                ?? throw new InvalidOperationException("Failed to start the Grimoire.Hub process.");
+            var stdOutTask = process.StandardOutput.ReadToEndAsync();
+            var stdErrTask = process.StandardError.ReadToEndAsync();
+            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+            await process.WaitForExitAsync(cts.Token);
+            var stdErr = await stdErrTask;
+            _ = await stdOutTask;
+
+            Assert.Equal((int)CliExitCode.OperationFailed, process.ExitCode);
+            Assert.DoesNotContain("Could not resolve type", stdErr, StringComparison.Ordinal);
+            Assert.Contains("Grimoire:Paths:MemoryDir", stdErr, StringComparison.Ordinal);
+            Assert.Contains("Grimoire:Paths:Memory:Dir", stdErr, StringComparison.Ordinal);
+        }
+        finally
+        {
+            Directory.Delete(scratchDir, recursive: true);
+        }
+    }
+
+    /// <summary>
     /// A scratch directory containing only the one thing ADR-022 anchors at the process
     /// working directory rather than any of the three roots: the secrets file
     /// (FR-019 — <c>GrimoirePathResolver.Resolve</c> only checks it EXISTS, never reads
