@@ -340,7 +340,7 @@ observability signal) and the visible-configuration-layout requirement that the
 regrouping itself is meant to deliver. Not scoped to a single user story — spans all four
 roots and all eleven renamed keys.
 
-- [ ] T035 Add `backend/tests/Grimoire.IntegrationTests/PathConfiguration/SupersededConfigurationKeyTests.cs`
+- [x] T035 Add `backend/tests/Grimoire.IntegrationTests/PathConfiguration/SupersededConfigurationKeyTests.cs`
   (new file, table-driven over all eleven superseded keys from
   [data-model.md §2](./data-model.md), each supplied via both the configuration file and
   its environment-variable form): assert startup aborts with
@@ -352,15 +352,15 @@ roots and all eleven renamed keys.
   `Grimoire:Paths:MemoryDir` key must be reported as *superseded*, not *missing*.
   (FR-014, SC-010; Observability: `paths_configuration_superseded` — deterministic test row)
 
-- [ ] T036 Confirm `SupersededConfigurationKeyTests` (T035) executes in the standard PR
+- [x] T036 Confirm `SupersededConfigurationKeyTests` (T035) executes in the standard PR
   pipeline via the existing `Grimoire.IntegrationTests` CI job. (Observability CI
   enforcement — `paths_configuration_superseded` row)
 
-- [ ] T037 [P] Update `docs/operations/runtime-configuration.md`: "three roots" → four
+- [x] T037 [P] Update `docs/operations/runtime-configuration.md`: "three roots" → four
   throughout, and every flat configuration-key/environment-variable example → its nested
   form. (FR-013)
 
-- [ ] T038 [P] Update `.gitignore`: add a `memory/` entry; correct the stale `llm-wiki/`
+- [x] T038 [P] Update `.gitignore`: add a `memory/` entry; correct the stale `llm-wiki/`
   comment that describes the pre-feature bookkeeping placement. (FR-002 consequence)
 
 **Checkpoint**: the configuration-file regrouping is complete, tested, and documented.
