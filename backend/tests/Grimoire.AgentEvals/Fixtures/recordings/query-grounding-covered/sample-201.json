@@ -1,12 +1,12 @@
 {
   "schema_version": 1,
   "sample": 201,
-  "task_id": "capture-query-grounding-covered-02-t1-6563aa2dc19b4c50a591973fb0dfc3ef",
+  "task_id": "capture-query-grounding-covered-02-t1-f72e682eacf441a6bbc01f29573e3f65",
   "model": "claude-haiku-4-5",
   "turns": [
     {
       "turn": 1,
-      "system_prompt_sha256": "sha256:8a56b11a0aa0f3fb82785b0151042ec0234f4560bba2b468546146c6a7b5848b",
+      "system_prompt_sha256": "sha256:fa11f0baadd35259a99ef4ff3650d1e658b46b7c85ca4306cbac546e2342b63b",
       "conversation": [
         {
           "role": "user",
@@ -21,18 +21,23 @@
       "stop_reason": "tool_use",
       "tool_uses": [
         {
-          "tool_use_id": "toolu_01CAqMvqwLXa4ZSocnz1kU1t",
+          "tool_use_id": "toolu_013zVFRc9Vk6ZEjhxs7De4XR",
+          "tool_name": "list_files",
+          "input_json": "{\u0022path\u0022: \u0022.\u0022}"
+        },
+        {
+          "tool_use_id": "toolu_015dDkS74ijpK5qEXodi9DTF",
           "tool_name": "read_file",
           "input_json": "{\u0022path\u0022: \u0022index.md\u0022}"
         }
       ],
-      "assistant_text": "I\u0027ll help you find information about how the Hub protects the Anthropic API key from its own process environment. Let me start by exploring the wiki.",
-      "input_tokens": 4581,
-      "output_tokens": 88
+      "assistant_text": "I\u0027ll help you find how the Hub keeps the Anthropic API key out of its own process environment. Let me start by exploring the wiki structure.",
+      "input_tokens": 4544,
+      "output_tokens": 122
     },
     {
       "turn": 2,
-      "system_prompt_sha256": "sha256:8a56b11a0aa0f3fb82785b0151042ec0234f4560bba2b468546146c6a7b5848b",
+      "system_prompt_sha256": "sha256:fa11f0baadd35259a99ef4ff3650d1e658b46b7c85ca4306cbac546e2342b63b",
       "conversation": [
         {
           "role": "user",
@@ -40,11 +45,11 @@
         },
         {
           "role": "assistant",
-          "content_sha256": "sha256:2f4fb63c3917fa328e7f4c7a6a27f388d92d2c75d4a409f46ddb344f9458a79c"
+          "content_sha256": "sha256:4d5102ad7107eff3f77bb5ad94c29c0d2aa2621b21bd99bae0f9f32e9e9cafb3"
         },
         {
           "role": "user",
-          "content_sha256": "sha256:65fadf77c85d1f8bf72987a487d1a7b801cf08e696a580a2327ec0118f5c4c05"
+          "content_sha256": "sha256:0c6936ff29f5c434f02cf856cf0ee525ecf995fed12fc363a9ad90e6e470a5a7"
         }
       ],
       "tool_names": [
@@ -55,109 +60,18 @@
       "stop_reason": "tool_use",
       "tool_uses": [
         {
-          "tool_use_id": "toolu_01FAy3Ldqind88hv1iTGj3ph",
-          "tool_name": "read_file",
-          "input_json": "{\u0022path\u0022: \u0022credential-scoping.md\u0022}"
-        }
-      ],
-      "assistant_text": "Now let me read the \u0060credential-scoping\u0060 page, which appears to be directly relevant to your question:",
-      "input_tokens": 4763,
-      "output_tokens": 82
-    },
-    {
-      "turn": 3,
-      "system_prompt_sha256": "sha256:8a56b11a0aa0f3fb82785b0151042ec0234f4560bba2b468546146c6a7b5848b",
-      "conversation": [
-        {
-          "role": "user",
-          "content_sha256": "sha256:1f682c8faf9186252447d3e7b219354380da0ce97fc22d67be77b11b6d1e071c"
-        },
-        {
-          "role": "assistant",
-          "content_sha256": "sha256:2f4fb63c3917fa328e7f4c7a6a27f388d92d2c75d4a409f46ddb344f9458a79c"
-        },
-        {
-          "role": "user",
-          "content_sha256": "sha256:65fadf77c85d1f8bf72987a487d1a7b801cf08e696a580a2327ec0118f5c4c05"
-        },
-        {
-          "role": "assistant",
-          "content_sha256": "sha256:c854a1756d167c7f8f1812e5b92f4975d79754a7719abd19ef7c4db59dc4dfd1"
-        },
-        {
-          "role": "user",
-          "content_sha256": "sha256:a0e95aa8e2e644deed29798fea696829e60cd6d1623e48ae59d51c8931730bb3"
-        }
-      ],
-      "tool_names": [
-        "list_files",
-        "read_file",
-        "write_file"
-      ],
-      "stop_reason": "tool_use",
-      "tool_uses": [
-        {
-          "tool_use_id": "toolu_01Dvy3CAkkUszNtyH3U8rM2B",
-          "tool_name": "list_files",
-          "input_json": "{\u0022path\u0022: \u0022.\u0022}"
-        }
-      ],
-      "assistant_text": "Let me explore the topic folders to find where this page is located:",
-      "input_tokens": 4875,
-      "output_tokens": 67
-    },
-    {
-      "turn": 4,
-      "system_prompt_sha256": "sha256:8a56b11a0aa0f3fb82785b0151042ec0234f4560bba2b468546146c6a7b5848b",
-      "conversation": [
-        {
-          "role": "user",
-          "content_sha256": "sha256:1f682c8faf9186252447d3e7b219354380da0ce97fc22d67be77b11b6d1e071c"
-        },
-        {
-          "role": "assistant",
-          "content_sha256": "sha256:2f4fb63c3917fa328e7f4c7a6a27f388d92d2c75d4a409f46ddb344f9458a79c"
-        },
-        {
-          "role": "user",
-          "content_sha256": "sha256:65fadf77c85d1f8bf72987a487d1a7b801cf08e696a580a2327ec0118f5c4c05"
-        },
-        {
-          "role": "assistant",
-          "content_sha256": "sha256:c854a1756d167c7f8f1812e5b92f4975d79754a7719abd19ef7c4db59dc4dfd1"
-        },
-        {
-          "role": "user",
-          "content_sha256": "sha256:a0e95aa8e2e644deed29798fea696829e60cd6d1623e48ae59d51c8931730bb3"
-        },
-        {
-          "role": "assistant",
-          "content_sha256": "sha256:c152c07d527c05b3277c1412368d43c67b5478c50796d9a8773d2f88bef5ab51"
-        },
-        {
-          "role": "user",
-          "content_sha256": "sha256:249c84fafa5fb4d459070ae4916e662f4ca26e8e8572aca78a459e078d2f8950"
-        }
-      ],
-      "tool_names": [
-        "list_files",
-        "read_file",
-        "write_file"
-      ],
-      "stop_reason": "tool_use",
-      "tool_uses": [
-        {
-          "tool_use_id": "toolu_01F6CnQsJfdczgjRHGTku7P9",
+          "tool_use_id": "toolu_01F6EQfJTeVayvvM9x9koV3Z",
           "tool_name": "list_files",
           "input_json": "{\u0022path\u0022: \u0022concepts\u0022}"
         }
       ],
-      "input_tokens": 4960,
-      "output_tokens": 53
+      "assistant_text": "Now let me explore the concepts folder and read the relevant pages:",
+      "input_tokens": 4817,
+      "output_tokens": 67
     },
     {
-      "turn": 5,
-      "system_prompt_sha256": "sha256:8a56b11a0aa0f3fb82785b0151042ec0234f4560bba2b468546146c6a7b5848b",
+      "turn": 3,
+      "system_prompt_sha256": "sha256:fa11f0baadd35259a99ef4ff3650d1e658b46b7c85ca4306cbac546e2342b63b",
       "conversation": [
         {
           "role": "user",
@@ -165,35 +79,19 @@
         },
         {
           "role": "assistant",
-          "content_sha256": "sha256:2f4fb63c3917fa328e7f4c7a6a27f388d92d2c75d4a409f46ddb344f9458a79c"
+          "content_sha256": "sha256:4d5102ad7107eff3f77bb5ad94c29c0d2aa2621b21bd99bae0f9f32e9e9cafb3"
         },
         {
           "role": "user",
-          "content_sha256": "sha256:65fadf77c85d1f8bf72987a487d1a7b801cf08e696a580a2327ec0118f5c4c05"
+          "content_sha256": "sha256:0c6936ff29f5c434f02cf856cf0ee525ecf995fed12fc363a9ad90e6e470a5a7"
         },
         {
           "role": "assistant",
-          "content_sha256": "sha256:c854a1756d167c7f8f1812e5b92f4975d79754a7719abd19ef7c4db59dc4dfd1"
+          "content_sha256": "sha256:be4016a1408b4a62c53ae93aa4bda8eda0e67738e3786366f6b264a3343872cd"
         },
         {
           "role": "user",
-          "content_sha256": "sha256:a0e95aa8e2e644deed29798fea696829e60cd6d1623e48ae59d51c8931730bb3"
-        },
-        {
-          "role": "assistant",
-          "content_sha256": "sha256:c152c07d527c05b3277c1412368d43c67b5478c50796d9a8773d2f88bef5ab51"
-        },
-        {
-          "role": "user",
-          "content_sha256": "sha256:249c84fafa5fb4d459070ae4916e662f4ca26e8e8572aca78a459e078d2f8950"
-        },
-        {
-          "role": "assistant",
-          "content_sha256": "sha256:4d636840d7dd6da3f6c7773a09c8cf76efad368515be92a6c9cf4da0ac1c51e4"
-        },
-        {
-          "role": "user",
-          "content_sha256": "sha256:0382a15ff2e7978de7666efd8e3926774772d70cb8d5d54223da7395285e189d"
+          "content_sha256": "sha256:865efee1499da8e8109e45ae4668011dbab0bb59a8147f368ebfd8a120c13a3c"
         }
       ],
       "tool_names": [
@@ -204,17 +102,22 @@
       "stop_reason": "tool_use",
       "tool_uses": [
         {
-          "tool_use_id": "toolu_01V7WehmND3oi1Ek7LRhKX6o",
+          "tool_use_id": "toolu_0129Ta3vq4tVUvkP15bmsSjm",
           "tool_name": "read_file",
           "input_json": "{\u0022path\u0022: \u0022concepts/credential-scoping.md\u0022}"
+        },
+        {
+          "tool_use_id": "toolu_017EVXC89jjyyafdDQpUJe9d",
+          "tool_name": "read_file",
+          "input_json": "{\u0022path\u0022: \u0022concepts/runtime-paths.md\u0022}"
         }
       ],
-      "input_tokens": 5049,
-      "output_tokens": 60
+      "input_tokens": 4920,
+      "output_tokens": 102
     },
     {
-      "turn": 6,
-      "system_prompt_sha256": "sha256:8a56b11a0aa0f3fb82785b0151042ec0234f4560bba2b468546146c6a7b5848b",
+      "turn": 4,
+      "system_prompt_sha256": "sha256:fa11f0baadd35259a99ef4ff3650d1e658b46b7c85ca4306cbac546e2342b63b",
       "conversation": [
         {
           "role": "user",
@@ -222,43 +125,27 @@
         },
         {
           "role": "assistant",
-          "content_sha256": "sha256:2f4fb63c3917fa328e7f4c7a6a27f388d92d2c75d4a409f46ddb344f9458a79c"
+          "content_sha256": "sha256:4d5102ad7107eff3f77bb5ad94c29c0d2aa2621b21bd99bae0f9f32e9e9cafb3"
         },
         {
           "role": "user",
-          "content_sha256": "sha256:65fadf77c85d1f8bf72987a487d1a7b801cf08e696a580a2327ec0118f5c4c05"
+          "content_sha256": "sha256:0c6936ff29f5c434f02cf856cf0ee525ecf995fed12fc363a9ad90e6e470a5a7"
         },
         {
           "role": "assistant",
-          "content_sha256": "sha256:c854a1756d167c7f8f1812e5b92f4975d79754a7719abd19ef7c4db59dc4dfd1"
+          "content_sha256": "sha256:be4016a1408b4a62c53ae93aa4bda8eda0e67738e3786366f6b264a3343872cd"
         },
         {
           "role": "user",
-          "content_sha256": "sha256:a0e95aa8e2e644deed29798fea696829e60cd6d1623e48ae59d51c8931730bb3"
+          "content_sha256": "sha256:865efee1499da8e8109e45ae4668011dbab0bb59a8147f368ebfd8a120c13a3c"
         },
         {
           "role": "assistant",
-          "content_sha256": "sha256:c152c07d527c05b3277c1412368d43c67b5478c50796d9a8773d2f88bef5ab51"
+          "content_sha256": "sha256:dfbc88f3144de9071e2ff6fda4a180c1c41610b5188a6c1d5dd2b44e4f80e549"
         },
         {
           "role": "user",
-          "content_sha256": "sha256:249c84fafa5fb4d459070ae4916e662f4ca26e8e8572aca78a459e078d2f8950"
-        },
-        {
-          "role": "assistant",
-          "content_sha256": "sha256:4d636840d7dd6da3f6c7773a09c8cf76efad368515be92a6c9cf4da0ac1c51e4"
-        },
-        {
-          "role": "user",
-          "content_sha256": "sha256:0382a15ff2e7978de7666efd8e3926774772d70cb8d5d54223da7395285e189d"
-        },
-        {
-          "role": "assistant",
-          "content_sha256": "sha256:577785495456343471b7b9be2fffcecfb96dc40eb42e7c1e3b209b342892310c"
-        },
-        {
-          "role": "user",
-          "content_sha256": "sha256:9b6adb3b860504969441b31b824849f101d68e203706a9ee227de72c7036df1a"
+          "content_sha256": "sha256:f5e73308002ba0d4f0ba0fc98f67175774159e5cae60ea70cee641f025b01478"
         }
       ],
       "tool_names": [
@@ -268,9 +155,9 @@
       ],
       "stop_reason": "end_turn",
       "tool_uses": [],
-      "assistant_text": "Based on [[credential-scoping]], here\u0027s how the Hub protects the Anthropic API key:\n\n**The Hub never holds the key in its own process environment at all.** Instead, a local secrets loader reads the API key from a git-ignored \u0060.env\u0060 file at startup and injects it directly into the environment of the spawned Ingest agent child process, immediately before that process starts. The Hub\u0027s own process environment is never mutated with the credential.\n\nThis design means a compromised or misbehaving Hub process cannot leak the credential simply by inspecting its own environment variables \u2014 the key exists only inside the short-lived child process that actually calls the Anthropic API. The Query agent uses the same scoping model: it receives the credential injected into its own environment at spawn time, never inherited from or stored in the Hub\u0027s process environment.",
-      "input_tokens": 5372,
-      "output_tokens": 185
+      "assistant_text": "Perfect! I found the answer. According to [[credential-scoping]]:\n\n**The Hub keeps the Anthropic API key out of its own process environment through credential scoping.** A local secrets loader reads the key from a git-ignored \u0060.env\u0060 file at startup and injects it **only into the environment of the spawned Ingest agent child process**, immediately before that process starts. The Hub\u0027s own process environment is never mutated.\n\nThis design means:\n\n1. **The Hub never holds the credential** \u2014 even if the Hub process is compromised or misbehaves, it cannot leak the Anthropic API key by inspecting its own environment variables, because the key doesn\u0027t exist there.\n\n2. **The key lives only in the child process** \u2014 it\u0027s scoped to the short-lived Ingest agent process that actually calls the Anthropic API.\n\n3. **The same model applies to the Query agent** \u2014 it also receives the credential injected into its own environment at spawn time, not inherited from the Hub.",
+      "input_tokens": 5608,
+      "output_tokens": 225
     }
   ],
   "outcome": {

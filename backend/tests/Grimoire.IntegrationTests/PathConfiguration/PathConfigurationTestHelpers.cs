@@ -8,6 +8,7 @@ internal sealed record SeededRequiredInputs(
     string DataDir,
     string WikiDir,
     string AgentDir,
+    string MemoryDir,
     string IngestDir,
     string SystemPromptPath,
     string DefaultUserPromptPath,
@@ -43,9 +44,10 @@ internal static class PathConfigurationTestHelpers
 
     /// <summary>
     /// Seeds the secrets file and a complete agent directory (all three agent types) under
-    /// <paramref name="root"/>, and returns options with <c>DataDir</c>, <c>WikiDir</c> and
-    /// <c>AgentDir</c> all set to sibling locations under <paramref name="root"/> — the
-    /// three roots are mandatory (FR-005); there is no code-level fallback to omit them.
+    /// <paramref name="root"/>, and returns options with <c>Data.Dir</c>, <c>Wiki.Dir</c>,
+    /// <c>Agent.Dir</c> and <c>Memory.Dir</c> all set to sibling locations under
+    /// <paramref name="root"/> — the four roots are mandatory (FR-006); there is no
+    /// code-level fallback to omit them.
     /// </summary>
     public static GrimoirePathOptions SeedRequiredInputs(string root) =>
         SeedRequiredInputsWithPaths(root).Options;
@@ -56,28 +58,37 @@ internal static class PathConfigurationTestHelpers
         var dataDir = Path.Combine(root, "data-dir");
         var wikiDir = Path.Combine(root, "wiki-dir");
         var agentDir = Path.Combine(root, "agent-dir");
-        // SecretsFile anchors at the process working directory, never at any of the three
+        var memoryDir = Path.Combine(root, "memory-dir");
+        // SecretsFile anchors at the process working directory, never at any of the four
         // roots (FR-019) — an explicit absolute value here keeps this helper hermetic and
-        // independent of the real test-runner cwd, matching how DataDir/WikiDir/AgentDir
-        // are already explicit absolute overrides rather than relying on ambient defaults.
+        // independent of the real test-runner cwd, matching how Data/Wiki/Agent/Memory's
+        // Dir values are already explicit absolute overrides rather than relying on
+        // ambient defaults.
         var secretsFile = Path.Combine(root, ".env");
-        var seeded = SeedRequiredInputFiles(dataDir, wikiDir, agentDir, secretsFile);
-        // Sub-path keys mirror contracts/appsettings-paths.md's shipped relative values —
-        // ADR-022 rule R2 means the resolver has no code-level default to fall back to, so
-        // this helper (simulating the shipped appsettings.json) must supply every key
-        // itself, not just the three roots.
+        var seeded = SeedRequiredInputFiles(dataDir, wikiDir, agentDir, memoryDir, secretsFile);
+        // Sub-path keys mirror contracts/directory-options.md's shipped relative values —
+        // ADR-022 rule R2 / ADR-024 rule M2 mean the resolver has no code-level default to
+        // fall back to, so this helper (simulating the shipped appsettings.json) must
+        // supply every key itself, not just the four roots.
         var options = new GrimoirePathOptions
         {
-            DataDir = dataDir,
-            WikiDir = wikiDir,
-            AgentDir = agentDir,
-            RawDir = "raw",
-            StateDb = "state/operational-state.db",
-            WriteLocksDir = "write-locks",
-            TasksDir = "tasks",
-            ConversationsDir = "conversations",
-            FindingsDir = "findings",
-            RemediationTasksDir = "remediation-tasks",
+            Data = new DataPathOptions
+            {
+                Dir = dataDir,
+                RawDir = "raw",
+                StateDb = "state/operational-state.db",
+                WriteLocksDir = "write-locks",
+            },
+            Wiki = new WikiPathOptions { Dir = wikiDir },
+            Agent = new AgentPathOptions { Dir = agentDir },
+            Memory = new MemoryPathOptions
+            {
+                Dir = memoryDir,
+                TasksDir = "tasks",
+                ConversationsDir = "conversations",
+                FindingsDir = "findings",
+                RemediationTasksDir = "remediation-tasks",
+            },
             SecretsFile = secretsFile,
         };
         return seeded with { Options = options };
@@ -100,33 +111,41 @@ internal static class PathConfigurationTestHelpers
         var dataDir = Path.Combine(cwd, ".grimoire");
         var wikiDir = Path.Combine(cwd, "llm-wiki");
         var agentDir = Path.Combine(dataDir, "agents");
+        var memoryDir = Path.Combine(cwd, "memory");
         var secretsFile = Path.Combine(cwd, ".env");
-        SeedRequiredInputFiles(dataDir, wikiDir, agentDir, secretsFile);
+        SeedRequiredInputFiles(dataDir, wikiDir, agentDir, memoryDir, secretsFile);
 
-        // Mirrors contracts/appsettings-paths.md's shipped content exactly — ADR-022 rule
-        // R2 means the resolver has NO code-level default for any of these (including the
-        // sub-paths), so a helper simulating "zero CLI/env flags" must supply every key
-        // itself, exactly as the real appsettings.json does, rather than leaving fields
-        // null and relying on a fallback that no longer exists.
+        // Mirrors contracts/directory-options.md's shipped content exactly — ADR-022 rule
+        // R2 / ADR-024 rule M2 mean the resolver has NO code-level default for any of
+        // these (including the sub-paths), so a helper simulating "zero CLI/env flags"
+        // must supply every key itself, exactly as the real appsettings.json does, rather
+        // than leaving fields null and relying on a fallback that no longer exists.
         return new GrimoirePathOptions
         {
-            DataDir = ".grimoire",
-            WikiDir = "llm-wiki",
-            // Anchored at cwd (independent of DataDir) — the value is spelled out in full
-            // rather than a bare "agents" now that there is no implicit DataDir-nesting.
-            AgentDir = ".grimoire/agents",
-            RawDir = "raw",
-            StateDb = "state/operational-state.db",
-            WriteLocksDir = "write-locks",
-            TasksDir = "tasks",
-            ConversationsDir = "conversations",
-            FindingsDir = "findings",
-            RemediationTasksDir = "remediation-tasks",
+            Data = new DataPathOptions
+            {
+                Dir = ".grimoire",
+                RawDir = "raw",
+                StateDb = "state/operational-state.db",
+                WriteLocksDir = "write-locks",
+            },
+            Wiki = new WikiPathOptions { Dir = "llm-wiki" },
+            // Anchored at cwd (independent of Data) — the value is spelled out in full
+            // rather than a bare "agents" now that there is no implicit Data-nesting.
+            Agent = new AgentPathOptions { Dir = ".grimoire/agents" },
+            Memory = new MemoryPathOptions
+            {
+                Dir = "memory",
+                TasksDir = "tasks",
+                ConversationsDir = "conversations",
+                FindingsDir = "findings",
+                RemediationTasksDir = "remediation-tasks",
+            },
             SecretsFile = ".env",
         };
     }
 
-    private static SeededRequiredInputs SeedRequiredInputFiles(string dataDir, string wikiDir, string agentDir, string secretsFile)
+    private static SeededRequiredInputs SeedRequiredInputFiles(string dataDir, string wikiDir, string agentDir, string memoryDir, string secretsFile)
     {
         var (ingestDir, systemPromptPath, defaultUserPromptPath, policyPath, agentWorker) =
             SeedAgentType(agentDir, "ingest", GrimoirePathOptions.DefaultAgentWorkerFileName, includeDefaultUserPrompt: true);
@@ -147,6 +166,7 @@ internal static class PathConfigurationTestHelpers
             DataDir: dataDir,
             WikiDir: wikiDir,
             AgentDir: agentDir,
+            MemoryDir: memoryDir,
             IngestDir: ingestDir,
             SystemPromptPath: systemPromptPath,
             DefaultUserPromptPath: defaultUserPromptPath,

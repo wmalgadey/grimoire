@@ -24,16 +24,17 @@ public class EvalIndependenceFromHubConfigurationTests
 {
     private static readonly string[] GrimoirePathsEnvVars =
     [
-        "Grimoire__Paths__DataDir",
-        "Grimoire__Paths__WikiDir",
-        "Grimoire__Paths__AgentDir",
-        "Grimoire__Paths__RawDir",
-        "Grimoire__Paths__StateDb",
-        "Grimoire__Paths__WriteLocksDir",
-        "Grimoire__Paths__TasksDir",
-        "Grimoire__Paths__ConversationsDir",
-        "Grimoire__Paths__FindingsDir",
-        "Grimoire__Paths__RemediationTasksDir",
+        "Grimoire__Paths__Data__Dir",
+        "Grimoire__Paths__Wiki__Dir",
+        "Grimoire__Paths__Agent__Dir",
+        "Grimoire__Paths__Memory__Dir",
+        "Grimoire__Paths__Data__RawDir",
+        "Grimoire__Paths__Data__StateDb",
+        "Grimoire__Paths__Data__WriteLocksDir",
+        "Grimoire__Paths__Memory__TasksDir",
+        "Grimoire__Paths__Memory__ConversationsDir",
+        "Grimoire__Paths__Memory__FindingsDir",
+        "Grimoire__Paths__Memory__RemediationTasksDir",
         "Grimoire__Paths__SecretsFile",
     ];
 

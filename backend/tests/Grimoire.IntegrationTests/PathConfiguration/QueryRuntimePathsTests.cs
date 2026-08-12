@@ -8,14 +8,15 @@ namespace Grimoire.IntegrationTests.PathConfiguration;
 /// The Query runtime locations (<c>&lt;AgentDir&gt;/query/Instructions/system-prompt.md</c>,
 /// <c>&lt;AgentDir&gt;/query/Instructions/policy.json</c>, <c>conversations/</c>) resolve
 /// correctly under the default layout and under explicit overrides (ADR-022: single
-/// composition point, no ambient discovery). <c>ConversationsDir</c> anchors at the wiki
-/// directory (FR-007, clarification 2026-08-06: agent output), not the data directory.
+/// composition point, no ambient discovery). <c>ConversationsDir</c> anchors at the memory
+/// directory (022-memory-directory-root, FR-002: agent output), not the wiki or data
+/// directory.
 /// </summary>
 [Collection("CurrentDirectoryMutation")]
 public class QueryRuntimePathsTests
 {
     [Fact]
-    public void ZeroFlags_ResolvesQueryInstructionsBeneathAgentDir_AndConversationsDirBeneathWikiDir()
+    public void ZeroFlags_ResolvesQueryInstructionsBeneathAgentDir_AndConversationsDirBeneathMemoryDir()
     {
         var cwd = Path.Combine(Path.GetTempPath(), $"grimoire-query-paths-default-{Guid.NewGuid():N}");
         Directory.CreateDirectory(cwd);
@@ -35,9 +36,10 @@ public class QueryRuntimePathsTests
             Assert.Equal(Path.GetFullPath(Path.Combine(cwd, ".grimoire", "agents", "query", "Instructions", "system-prompt.md")), resolved.Query.SystemPromptPath);
             Assert.Equal(Path.GetFullPath(Path.Combine(cwd, ".grimoire", "agents", "query", "Instructions", "policy.json")), resolved.Query.PolicyPath);
 
-            // Agent output — the Conversation Record location resolves as a wiki-directory
-            // sibling (not nested under .grimoire/) and is auto-created as writable data.
-            Assert.Equal(Path.GetFullPath(Path.Combine(cwd, "llm-wiki", "conversations")), resolved.ConversationsDir);
+            // Agent output — the Conversation Record location resolves as a memory-directory
+            // sibling of tasks/ (not nested under .grimoire/ or llm-wiki/) and is
+            // auto-created as writable data.
+            Assert.Equal(Path.GetFullPath(Path.Combine(cwd, "memory", "conversations")), resolved.ConversationsDir);
             Assert.True(Directory.Exists(resolved.ConversationsDir));
             var conversationsLocation = resolved.Locations.Single(l => l.Name == "conversations_dir");
             Assert.Equal("config-file", conversationsLocation.Source);
@@ -73,7 +75,8 @@ public class QueryRuntimePathsTests
             var resolved = GrimoirePathResolver.Resolve(options, configRoot, NullLogger.Instance);
 
             Assert.Equal(Path.GetFullPath(Path.Combine(root, "agent-dir", "query", "Instructions")), resolved.Query.InstructionsDir);
-            Assert.Equal(Path.GetFullPath(Path.Combine(root, "wiki-dir", "conversations")), resolved.ConversationsDir);
+            // ConversationsDir anchors at MemoryDir, unaffected by AgentDir's location (SC-002).
+            Assert.Equal(Path.GetFullPath(Path.Combine(root, "memory-dir", "conversations")), resolved.ConversationsDir);
         }
         finally
         {
@@ -87,7 +90,7 @@ public class QueryRuntimePathsTests
     [Fact]
     public void EnvironmentVariableOverride_ForConversationsDir_WinsOverDefault_AndSourceReportsEnvironment()
     {
-        const string envVarName = "Grimoire__Paths__ConversationsDir";
+        const string envVarName = "Grimoire__Paths__Memory__ConversationsDir";
         var root = Path.Combine(Path.GetTempPath(), $"grimoire-conversations-paths-env-{Guid.NewGuid():N}");
         var overrideDir = Path.Combine(Path.GetTempPath(), $"grimoire-conversations-override-{Guid.NewGuid():N}");
         Directory.CreateDirectory(root);

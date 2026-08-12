@@ -36,12 +36,18 @@ Thumbs.db
 # agent-project sources (backend/src/Grimoire.*Agent/Instructions/), tracked there instead.
 .grimoire/
 
-# Default wiki directory (ADR-022) — a sibling of .grimoire/, holding wiki content and
-# agent output (index.md, log.md, tasks/, conversations/, findings/, remediation-tasks/).
-# Git-ignored by default in this repository (a dev/example checkout, not one that ships
-# tracked wiki content); an operator who wants their own wiki version-controlled points
-# --wiki-dir at a location outside this ignore rule or adds their own tracked repo there.
+# Default wiki directory (ADR-022) — a sibling of .grimoire/, holding wiki content only
+# (index.md, log.md, topical article subfolders). Git-ignored by default in this
+# repository (a dev/example checkout, not one that ships tracked wiki content); an
+# operator who wants their own wiki version-controlled points --wiki-dir at a location
+# outside this ignore rule or adds their own tracked repo there.
 llm-wiki/
+
+# Default memory directory (022-memory-directory-root, ADR-024) — a sibling of
+# .grimoire/ and llm-wiki/, holding agent process bookkeeping (tasks/, conversations/,
+# findings/, remediation-tasks/) apart from the wiki content. Git-ignored for the same
+# reason as llm-wiki/ above.
+memory/
 
 # dotnet test output (results.trx etc.), not build artifacts (bin/obj already covered above)
 TestResults/

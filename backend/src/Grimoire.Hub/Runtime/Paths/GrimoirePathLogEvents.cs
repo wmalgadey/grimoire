@@ -22,6 +22,7 @@ public static class GrimoirePathLogEvents
         span?.SetTag("data_dir", paths.DataDir);
         span?.SetTag("wiki_dir", paths.WikiDir);
         span?.SetTag("agent_dir", paths.AgentDir);
+        span?.SetTag("memory_dir", paths.MemoryDir);
         span?.SetTag("secrets_file", paths.SecretsFilePath);
         span?.SetTag("state_db", paths.StateDbPath);
         span?.SetTag("raw_dir", paths.RawOriginalsDir);
@@ -31,8 +32,8 @@ public static class GrimoirePathLogEvents
 
         logger.LogInformation(PathsResolvedEvent,
             "Runtime paths resolved. data_dir={data_dir} wiki_dir={wiki_dir} agent_dir={agent_dir} " +
-            "secrets_file={secrets_file} state_db={state_db} raw_dir={raw_dir} sources={sources}",
-            paths.DataDir, paths.WikiDir, paths.AgentDir, paths.SecretsFilePath, paths.StateDbPath,
+            "memory_dir={memory_dir} secrets_file={secrets_file} state_db={state_db} raw_dir={raw_dir} sources={sources}",
+            paths.DataDir, paths.WikiDir, paths.AgentDir, paths.MemoryDir, paths.SecretsFilePath, paths.StateDbPath,
             paths.RawOriginalsDir, sources);
     }
 

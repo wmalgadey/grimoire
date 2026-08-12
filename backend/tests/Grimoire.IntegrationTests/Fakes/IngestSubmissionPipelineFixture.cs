@@ -86,8 +86,9 @@ public sealed class IngestSubmissionPipelineFixture : IDisposable
         {
             var agentDir = Path.Combine(Root, "agents");
             var contentRoot = Path.Combine(Root, "wiki");
+            var memoryDir = Path.Combine(Root, "memory");
             var instructionsDir = Path.Combine(Root, "agents", "ingest");
-            var tasksDir = Path.Combine(contentRoot, "tasks");
+            var tasksDir = Path.Combine(memoryDir, "tasks");
             var indexPath = Path.Combine(contentRoot, "index.md");
             var logPath = Path.Combine(contentRoot, "log.md");
             var systemPromptPath = Path.Combine(instructionsDir, "system-prompt.md");
@@ -107,15 +108,16 @@ public sealed class IngestSubmissionPipelineFixture : IDisposable
                 DataDir: Root,
                 WikiDir: contentRoot,
                 AgentDir: agentDir,
+                MemoryDir: memoryDir,
                 RawOriginalsDir: RawPaths.OriginalsDir,
                 RawSourcesDir: RawPaths.SourcesDir,
                 StateDbPath: Path.Combine(Root, "operational-state.db"),
                 WriteLocksDir: writeLocksDir,
                 LintPidPath: Path.Combine(Root, "lint.pid"),
                 TasksDir: tasksDir,
-                ConversationsDir: Path.Combine(contentRoot, "conversations"),
-                FindingsDir: Path.Combine(contentRoot, "findings"),
-                RemediationTasksDir: Path.Combine(contentRoot, "remediation-tasks"),
+                ConversationsDir: Path.Combine(memoryDir, "conversations"),
+                FindingsDir: Path.Combine(memoryDir, "findings"),
+                RemediationTasksDir: Path.Combine(memoryDir, "remediation-tasks"),
                 IndexPath: indexPath,
                 LogPath: logPath,
                 SecretsFilePath: Path.Combine(Root, ".env"),

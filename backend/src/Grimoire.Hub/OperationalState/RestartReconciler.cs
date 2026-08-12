@@ -127,7 +127,7 @@ public sealed class RestartReconciler
     {
         var date = DateTime.UtcNow.ToString("yyyy-MM-dd");
         var paragraph =
-            $"Harness backstop entry: task {taskId} was still running when the Hub restarted, so it was reconciled as failed on startup. Task: [[tasks/{taskId}.md]].";
+            $"Harness backstop entry: this task was still running when the Hub restarted, so it was reconciled as failed on startup. Task: {taskId}.";
         var line = $"## [{date}] ingest | failed (reconciled on startup){Environment.NewLine}{Environment.NewLine}{paragraph}{Environment.NewLine}";
         await File.AppendAllTextAsync(logPath, line, cancellationToken);
     }

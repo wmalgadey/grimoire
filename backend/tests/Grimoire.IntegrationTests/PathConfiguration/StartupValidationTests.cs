@@ -161,7 +161,7 @@ public class StartupValidationTests
             Assert.Equal(
                 new HashSet<string>
                 {
-                    "data_dir", "wiki_dir", "agent_dir", "raw_dir", "state_db", "write_locks_dir",
+                    "data_dir", "wiki_dir", "agent_dir", "memory_dir", "raw_dir", "state_db", "write_locks_dir",
                     "tasks_dir", "conversations_dir", "findings_dir", "remediation_tasks_dir", "secrets_file",
                 },
                 reportedNames);
@@ -177,12 +177,13 @@ public class StartupValidationTests
     }
 
     /// <summary>
-    /// SC-006: no configuration at all — an empty options instance, mirroring what a
-    /// fully-empty <c>appsettings.json</c> (or a section missing all three roots) would
-    /// bind to.
+    /// SC-004: no configuration at all — an empty options instance, mirroring what a
+    /// fully-empty <c>appsettings.json</c> (or a section missing all four roots) would
+    /// bind to. Missing keys are reported as full key paths (ADR-024 research R8), not
+    /// bare field names.
     /// </summary>
     [Fact]
-    public void EmptyConfiguration_ThrowsConfigurationMissing_NamingAllThreeRoots_BeforeTouchingAnyDirectory()
+    public void EmptyConfiguration_ThrowsConfigurationMissing_NamingAllFourRoots_BeforeTouchingAnyDirectory()
     {
         // No temp root is created anywhere in this test — the options carry no path that
         // could be turned into a directory. A resolve call that created anything before
@@ -195,36 +196,98 @@ public class StartupValidationTests
             () => GrimoirePathResolver.Resolve(options, configRoot, NullLogger.Instance));
 
         Assert.Equal("appsettings.json", exception.ConfigurationFile);
-        Assert.Contains("DataDir", exception.MissingKeys);
-        Assert.Contains("WikiDir", exception.MissingKeys);
-        Assert.Contains("AgentDir", exception.MissingKeys);
+        Assert.Contains("Grimoire:Paths:Data:Dir", exception.MissingKeys);
+        Assert.Contains("Grimoire:Paths:Wiki:Dir", exception.MissingKeys);
+        Assert.Contains("Grimoire:Paths:Agent:Dir", exception.MissingKeys);
+        Assert.Contains("Grimoire:Paths:Memory:Dir", exception.MissingKeys);
     }
 
-    /// <summary>SC-006: a section missing exactly one of the three roots names only that one.</summary>
+    /// <summary>SC-004: a section missing exactly one of the four roots names only that one, as a full key path.</summary>
     [Fact]
     public void ConfigurationMissingOneRoot_ThrowsConfigurationMissing_NamingOnlyThatRoot()
     {
-        var options = new GrimoirePathOptions { DataDir = "/tmp/data", WikiDir = "/tmp/wiki" };
+        var options = new GrimoirePathOptions
+        {
+            Data = new DataPathOptions { Dir = "/tmp/data" },
+            Wiki = new WikiPathOptions { Dir = "/tmp/wiki" },
+            Agent = new AgentPathOptions { Dir = "/tmp/agents" },
+        };
         var configRoot = new ConfigurationBuilder().Build();
 
         var exception = Assert.Throws<GrimoirePathConfigurationMissingException>(
             () => GrimoirePathResolver.Resolve(options, configRoot, NullLogger.Instance));
 
         Assert.Equal("appsettings.json", exception.ConfigurationFile);
-        Assert.Equal(["AgentDir"], exception.MissingKeys);
+        Assert.Equal(["Grimoire:Paths:Memory:Dir"], exception.MissingKeys);
     }
 
-    /// <summary>SC-006: a whitespace-only root is treated as absent, not as a literal path value.</summary>
+    /// <summary>SC-004: a whitespace-only root is treated as absent, not as a literal path value.</summary>
     [Fact]
     public void WhitespaceOnlyRoot_ThrowsConfigurationMissing_NamingIt()
     {
-        var options = new GrimoirePathOptions { DataDir = "   ", WikiDir = "/tmp/wiki", AgentDir = "/tmp/agents" };
+        var options = new GrimoirePathOptions
+        {
+            Data = new DataPathOptions { Dir = "   " },
+            Wiki = new WikiPathOptions { Dir = "/tmp/wiki" },
+            Agent = new AgentPathOptions { Dir = "/tmp/agents" },
+            Memory = new MemoryPathOptions { Dir = "/tmp/memory" },
+        };
         var configRoot = new ConfigurationBuilder().Build();
 
         var exception = Assert.Throws<GrimoirePathConfigurationMissingException>(
             () => GrimoirePathResolver.Resolve(options, configRoot, NullLogger.Instance));
 
-        Assert.Equal(["DataDir"], exception.MissingKeys);
+        Assert.Equal(["Grimoire:Paths:Data:Dir"], exception.MissingKeys);
+    }
+
+    /// <summary>
+    /// 022-memory-directory-root SC-004 (T028 case a): Memory:Dir omitted but the rest of
+    /// the Memory group is present — a distinct case from the whole-group-omitted case
+    /// below because the group-property initializer routes them through different code
+    /// paths.
+    /// </summary>
+    [Fact]
+    public void MemoryDirKeyOmitted_RestOfGroupPresent_ThrowsConfigurationMissing_NamingFullKeyPath()
+    {
+        var options = new GrimoirePathOptions
+        {
+            Data = new DataPathOptions { Dir = "/tmp/data" },
+            Wiki = new WikiPathOptions { Dir = "/tmp/wiki" },
+            Agent = new AgentPathOptions { Dir = "/tmp/agents" },
+            Memory = new MemoryPathOptions { TasksDir = "tasks", ConversationsDir = "conversations" },
+        };
+        var configRoot = new ConfigurationBuilder().Build();
+
+        var exception = Assert.Throws<GrimoirePathConfigurationMissingException>(
+            () => GrimoirePathResolver.Resolve(options, configRoot, NullLogger.Instance));
+
+        Assert.Equal("appsettings.json", exception.ConfigurationFile);
+        Assert.Equal(["Grimoire:Paths:Memory:Dir"], exception.MissingKeys);
+    }
+
+    /// <summary>
+    /// 022-memory-directory-root SC-004 (T028 case b): the entire Memory group absent —
+    /// must reach the same named failure as case (a), not a NullReferenceException. The
+    /// group property's <c>= new()</c> initializer is what routes an absent JSON group
+    /// into an empty group rather than null.
+    /// </summary>
+    [Fact]
+    public void EntireMemoryGroupOmitted_ThrowsConfigurationMissing_NotNullReferenceException()
+    {
+        var options = new GrimoirePathOptions
+        {
+            Data = new DataPathOptions { Dir = "/tmp/data" },
+            Wiki = new WikiPathOptions { Dir = "/tmp/wiki" },
+            Agent = new AgentPathOptions { Dir = "/tmp/agents" },
+            // Memory left at its default `= new()` — mirrors an entirely absent JSON group.
+        };
+        var configRoot = new ConfigurationBuilder().Build();
+
+        var exception = Assert.Throws<GrimoirePathConfigurationMissingException>(
+            () => GrimoirePathResolver.Resolve(options, configRoot, NullLogger.Instance));
+
+        Assert.Equal("appsettings.json", exception.ConfigurationFile);
+        Assert.Equal(["Grimoire:Paths:Memory:Dir"], exception.MissingKeys);
     }
 
     private static void RunFailureCase(Action<SeededRequiredInputs> corrupt, string expectedLocation, Action<GrimoirePathValidationException>? assertAdditional = null)

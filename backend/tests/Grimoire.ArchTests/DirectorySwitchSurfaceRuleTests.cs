@@ -5,12 +5,15 @@ using Spectre.Console.Cli;
 namespace Grimoire.ArchTests;
 
 /// <summary>
-/// Structural boundary rule R1 for ADR-022: the hub's directory-option surface is
-/// structurally capped at exactly three command-line switches (<c>--data-dir</c>,
-/// <c>--agent-dir</c>, <c>--wiki-dir</c>), and <see cref="HubPathSettings"/> declares
-/// exactly one <c>[CommandOption]</c> per catalog entry. Without this cap, the surface
-/// can regrow exactly as it did under ADR-009's un-capped "single source of truth" rule
-/// (which prevented drift, not growth) — SC-002 requires the count itself be enforced.
+/// Structural boundary rule R1 for ADR-022, amended by ADR-024 rule M1: the hub's
+/// directory-option surface is structurally capped at exactly four command-line switches
+/// (<c>--data-dir</c>, <c>--agent-dir</c>, <c>--wiki-dir</c>, <c>--memory-dir</c>), and
+/// <see cref="HubPathSettings"/> declares exactly one <c>[CommandOption]</c> per catalog
+/// entry. Without this cap, the surface can regrow exactly as it did under ADR-009's
+/// un-capped "single source of truth" rule (which prevented drift, not growth) — SC-002
+/// requires the count itself be enforced. The cap remains an exact named enumeration, not
+/// a count: growing from three to four entries is itself the ADR-024 amendment: adding a
+/// fifth would fail the build the same way.
 ///
 /// <c>PathSwitchCatalog</c> is internal (visible only to Grimoire.IntegrationTests), so
 /// this rule reaches it via reflection rather than a direct reference — deliberately: a
@@ -19,18 +22,18 @@ namespace Grimoire.ArchTests;
 /// </summary>
 public class DirectorySwitchSurfaceRuleTests
 {
-    private static readonly string[] ExpectedSwitchNames = ["--data-dir", "--agent-dir", "--wiki-dir"];
+    private static readonly string[] ExpectedSwitchNames = ["--data-dir", "--agent-dir", "--wiki-dir", "--memory-dir"];
 
     [Fact]
-    public void PathSwitchCatalog_ContainsExactlyTheThreeRootSwitches()
+    public void PathSwitchCatalog_ContainsExactlyTheFourRootSwitches()
     {
         var actualNames = CatalogSwitchNames();
 
         Assert.True(
             actualNames.Count == ExpectedSwitchNames.Length &&
             actualNames.OrderBy(n => n, StringComparer.Ordinal).SequenceEqual(ExpectedSwitchNames.OrderBy(n => n, StringComparer.Ordinal)),
-            "ADR-022 rule R1: PathSwitchCatalog.All must contain exactly the three root " +
-            "switches --data-dir, --agent-dir, --wiki-dir — no other path switch may exist. " +
+            "ADR-024 rule M1: PathSwitchCatalog.All must contain exactly the four root " +
+            "switches --data-dir, --agent-dir, --wiki-dir, --memory-dir — no other path switch may exist. " +
             $"Found: {string.Join(", ", actualNames)}");
     }
 
@@ -54,8 +57,8 @@ public class DirectorySwitchSurfaceRuleTests
         }
 
         Assert.True(
-            declaredProperties.Length == 3,
-            $"ADR-022 rule R1: HubPathSettings must declare exactly 3 properties (was {declaredProperties.Length}).");
+            declaredProperties.Length == 4,
+            $"ADR-024 rule M1: HubPathSettings must declare exactly 4 properties (was {declaredProperties.Length}).");
         Assert.Equal(expectedSwitchNames, actualSwitchNames.OrderBy(name => name, StringComparer.Ordinal).ToArray());
     }
 

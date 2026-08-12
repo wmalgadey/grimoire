@@ -47,6 +47,7 @@ public class PathTracingContractTests
             Assert.Equal(resolved.DataDir, span.Tags.Single(t => t.Key == "data_dir").Value);
             Assert.Equal(resolved.WikiDir, span.Tags.Single(t => t.Key == "wiki_dir").Value);
             Assert.Equal(resolved.AgentDir, span.Tags.Single(t => t.Key == "agent_dir").Value);
+            Assert.Equal(resolved.MemoryDir, span.Tags.Single(t => t.Key == "memory_dir").Value);
             Assert.Equal(resolved.SecretsFilePath, span.Tags.Single(t => t.Key == "secrets_file").Value);
             Assert.Equal(resolved.StateDbPath, span.Tags.Single(t => t.Key == "state_db").Value);
             Assert.Equal(resolved.RawOriginalsDir, span.Tags.Single(t => t.Key == "raw_dir").Value);
@@ -73,7 +74,11 @@ public class PathTracingContractTests
         };
         ActivitySource.AddActivityListener(listener);
 
-        var options = new GrimoirePathOptions { DataDir = "  ", WikiDir = "llm-wiki" };
+        var options = new GrimoirePathOptions
+        {
+            Data = new DataPathOptions { Dir = "  " },
+            Wiki = new WikiPathOptions { Dir = "llm-wiki" },
+        };
         var configRoot = new ConfigurationBuilder().Build();
 
         Assert.Throws<GrimoirePathConfigurationMissingException>(
@@ -85,8 +90,9 @@ public class PathTracingContractTests
         Assert.Equal("paths_configuration_missing", span.Tags.Single(t => t.Key == "event_name").Value);
         Assert.Equal("Error", span.Tags.Single(t => t.Key == "level").Value);
         Assert.Equal("appsettings.json", span.Tags.Single(t => t.Key == "configuration_file").Value);
-        Assert.Contains("DataDir", span.Tags.Single(t => t.Key == "missing_keys").Value);
-        Assert.Contains("AgentDir", span.Tags.Single(t => t.Key == "missing_keys").Value);
+        Assert.Contains("Grimoire:Paths:Data:Dir", span.Tags.Single(t => t.Key == "missing_keys").Value);
+        Assert.Contains("Grimoire:Paths:Agent:Dir", span.Tags.Single(t => t.Key == "missing_keys").Value);
+        Assert.Contains("Grimoire:Paths:Memory:Dir", span.Tags.Single(t => t.Key == "missing_keys").Value);
     }
 
     [Fact]

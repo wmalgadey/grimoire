@@ -9,19 +9,21 @@ using Microsoft.Extensions.Logging.Abstractions;
 namespace Grimoire.IntegrationTests.PathConfiguration;
 
 /// <summary>
-/// SC-004/US2 AS1 end-to-end: with only <c>--wiki-dir</c> supplied (simulated here via the
-/// same <c>Grimoire:Paths:WikiDir</c> configuration key <see cref="PathSwitchCatalog"/>
-/// binds that switch to — AddCommandLine and AddInMemoryCollection populate
-/// <see cref="IConfiguration"/> identically), a real agent-produced artifact (a Findings
-/// Report, via <see cref="LintRunCoordinator"/>/<see cref="FindingsReportStore"/>) is
-/// written to disk under the custom wiki directory, while <c>DataDir</c>/<c>AgentDir</c>
-/// stay at their unset, cwd-anchored defaults.
+/// SC-001/SC-002 end-to-end (022-memory-directory-root): with only <c>--wiki-dir</c>
+/// supplied (simulated here via the same <c>Grimoire:Paths:Wiki:Dir</c> configuration key
+/// <see cref="PathSwitchCatalog"/> binds that switch to — AddCommandLine and
+/// AddInMemoryCollection populate <see cref="IConfiguration"/> identically), a real
+/// agent-produced artifact (a Findings Report, via
+/// <see cref="LintRunCoordinator"/>/<see cref="FindingsReportStore"/>) is written to disk
+/// under the default memory directory — NOT the custom wiki directory, since bookkeeping
+/// anchors at <c>MemoryDir</c> — while <c>DataDir</c>/<c>AgentDir</c>/<c>MemoryDir</c> stay
+/// at their unset, cwd-anchored defaults.
 /// </summary>
 [Collection("CurrentDirectoryMutation")]
 public class LintWikiDirEndToEndContentTests
 {
     [Fact]
-    public async Task OnlyWikiDirFlagSet_LintRunFindingsReport_LandsUnderCustomWikiDir_DataAndAgentDirsStayDefault()
+    public async Task OnlyWikiDirFlagSet_LintRunFindingsReport_LandsUnderDefaultMemoryDir_NotTheCustomWikiDir()
     {
         var cwd = Path.Combine(Path.GetTempPath(), $"grimoire-wiki-e2e-{Guid.NewGuid():N}");
         Directory.CreateDirectory(cwd);
@@ -36,10 +38,10 @@ public class LintWikiDirEndToEndContentTests
             var options = PathConfigurationTestHelpers.SeedRequiredInputsForZeroConfig(cwd);
 
             // Mirrors exactly what a real `--wiki-dir <path>` invocation binds through
-            // AddCommandLine + PathSwitchCatalog: only Grimoire:Paths:WikiDir is set, no
+            // AddCommandLine + PathSwitchCatalog: only Grimoire:Paths:Wiki:Dir is set, no
             // other switch.
             var configRoot = new ConfigurationBuilder()
-                .AddInMemoryCollection([new("Grimoire:Paths:WikiDir", customWikiDir)])
+                .AddInMemoryCollection([new("Grimoire:Paths:Wiki:Dir", customWikiDir)])
                 .Build();
             configRoot.GetSection(GrimoirePathOptions.SectionName).Bind(options);
 
@@ -48,6 +50,7 @@ public class LintWikiDirEndToEndContentTests
             Assert.Equal(Path.GetFullPath(customWikiDir), resolved.WikiDir);
             Assert.Equal(Path.GetFullPath(Path.Combine(cwd, ".grimoire")), resolved.DataDir);
             Assert.Equal(Path.GetFullPath(Path.Combine(cwd, ".grimoire", "agents")), resolved.AgentDir);
+            Assert.Equal(Path.GetFullPath(Path.Combine(cwd, "memory")), resolved.MemoryDir);
 
             var repository = new OperationalStateRepository(resolved.StateDbPath);
             await repository.InitializeAsync();
@@ -76,7 +79,8 @@ public class LintWikiDirEndToEndContentTests
                 TimeSpan.FromSeconds(5),
                 $"Expected a findings report at {reportPath}.");
 
-            Assert.StartsWith(resolved.WikiDir, reportPath, StringComparison.Ordinal);
+            Assert.StartsWith(resolved.MemoryDir, reportPath, StringComparison.Ordinal);
+            Assert.DoesNotContain(resolved.WikiDir, reportPath, StringComparison.Ordinal);
             Assert.DoesNotContain(resolved.DataDir, reportPath, StringComparison.Ordinal);
         }
         finally

@@ -173,7 +173,8 @@ public static class HubCliApp
     {
         for (var current = exception; current is not null; current = current.InnerException)
         {
-            if (current is Runtime.Paths.GrimoirePathValidationException or Runtime.Paths.GrimoirePathConfigurationMissingException)
+            if (current is Runtime.Paths.GrimoirePathValidationException
+                or Runtime.Paths.GrimoirePathConfigurationMissingException)
             {
                 return current;
             }

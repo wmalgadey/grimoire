@@ -5,33 +5,49 @@ using Microsoft.Extensions.Logging.Abstractions;
 namespace Grimoire.IntegrationTests.PathConfiguration;
 
 /// <summary>
-/// SC-005 (ADR-022): each of the three root options (<c>DataDir</c>/<c>WikiDir</c>/
-/// <c>AgentDir</c>) resolves per the documented precedence — command line > environment
-/// > appsettings.json (config file) — evaluated independently per option, not as an
-/// all-or-nothing group. There is no fourth ("code default") tier: a root absent from
-/// every configured tier is a startup failure, covered separately by
-/// <see cref="StartupValidationTests"/>/<see cref="PathLoggingContractTests"/>.
-/// <see cref="PathLocation.Source"/> reports whichever channel actually won.
+/// SC-003 (ADR-022, amended by ADR-024): each of the four root options (<c>Data:Dir</c>/
+/// <c>Wiki:Dir</c>/<c>Agent:Dir</c>/<c>Memory:Dir</c>) resolves per the documented
+/// precedence — command line > environment > appsettings.json (config file) — evaluated
+/// independently per option, not as an all-or-nothing group. There is no fourth ("code
+/// default") tier: a root absent from every configured tier is a startup failure, covered
+/// separately by <see cref="StartupValidationTests"/>/<see cref="PathLoggingContractTests"/>.
+/// <see cref="PathLocation.Source"/> reports whichever channel actually won. Environment
+/// variable names are the **nested** form (<c>Grimoire__Paths__Memory__Dir</c>, not
+/// <c>Grimoire__Paths__MemoryDir</c>) — the flat form is a superseded key that the hub does
+/// not detect (spec.md Edge Cases) and silently ignores, falling back to the default.
 /// </summary>
+[Collection("CurrentDirectoryMutation")]
 public class PathPrecedenceTests
 {
-    private const string DataDirEnvVarName = "Grimoire__Paths__DataDir";
-    private const string WikiDirEnvVarName = "Grimoire__Paths__WikiDir";
+    private const string DataDirEnvVarName = "Grimoire__Paths__Data__Dir";
+    private const string WikiDirEnvVarName = "Grimoire__Paths__Wiki__Dir";
 
     [Fact]
     public void DataDir_ResolvesPerChannelPrecedence_AndSourceReportsTheWinningChannel()
     {
         RunPrecedenceMatrix(
-            "DataDir", "data_dir", "--data-dir", DataDirEnvVarName,
-            (options, value) => options.DataDir = value);
+            "Data:Dir", "data_dir", "--data-dir", DataDirEnvVarName,
+            (options, value) => options.Data.Dir = value);
     }
 
     [Fact]
     public void WikiDir_ResolvesPerChannelPrecedence_AndSourceReportsTheWinningChannel()
     {
         RunPrecedenceMatrix(
-            "WikiDir", "wiki_dir", "--wiki-dir", WikiDirEnvVarName,
-            (options, value) => options.WikiDir = value);
+            "Wiki:Dir", "wiki_dir", "--wiki-dir", WikiDirEnvVarName,
+            (options, value) => options.Wiki.Dir = value);
+    }
+
+    /// <summary>
+    /// 022-memory-directory-root (SC-003): the memory root resolves per the same
+    /// three-tier precedence as the other three roots, independently.
+    /// </summary>
+    [Fact]
+    public void MemoryDir_ResolvesPerChannelPrecedence_AndSourceReportsTheWinningChannel()
+    {
+        RunPrecedenceMatrix(
+            "Memory:Dir", "memory_dir", "--memory-dir", "Grimoire__Paths__Memory__Dir",
+            (options, value) => options.Memory.Dir = value);
     }
 
     /// <summary>
@@ -42,7 +58,7 @@ public class PathPrecedenceTests
     [Fact]
     public void AgentDir_ResolvesPerChannelPrecedence_AndSourceReportsTheWinningChannel()
     {
-        const string envVarName = "Grimoire__Paths__AgentDir";
+        const string envVarName = "Grimoire__Paths__Agent__Dir";
         var root = Path.Combine(Path.GetTempPath(), $"grimoire-precedence-agentdir-{Guid.NewGuid():N}");
         Directory.CreateDirectory(root);
         var jsonConfigPath = Path.Combine(root, "appsettings.test.json");
@@ -56,23 +72,19 @@ public class PathPrecedenceTests
         Environment.SetEnvironmentVariable(envVarName, null);
         try
         {
-            File.WriteAllText(jsonConfigPath, $$"""
-                {
-                  "Grimoire": { "Paths": { "AgentDir": "{{JsonEscape(configAgentDir)}}" } }
-                }
-                """);
+            File.WriteAllText(jsonConfigPath, BuildNestedPathsJson("Agent:Dir", configAgentDir));
 
             Environment.SetEnvironmentVariable(envVarName, envAgentDir);
-            var winningLocation = ResolveLocation(root, "agent_dir", "AgentDir", "--agent-dir", jsonConfigPath, ["--agent-dir", cliAgentDir], (_, _) => { });
+            var winningLocation = ResolveLocation(root, "agent_dir", "Agent:Dir", "--agent-dir", jsonConfigPath, ["--agent-dir", cliAgentDir], (_, _) => { });
             Assert.Equal(Path.GetFullPath(cliAgentDir), winningLocation.ResolvedPath);
             Assert.Equal("command-line", winningLocation.Source);
 
-            winningLocation = ResolveLocation(root, "agent_dir", "AgentDir", "--agent-dir", jsonConfigPath, cliArgs: null, (_, _) => { });
+            winningLocation = ResolveLocation(root, "agent_dir", "Agent:Dir", "--agent-dir", jsonConfigPath, cliArgs: null, (_, _) => { });
             Assert.Equal(Path.GetFullPath(envAgentDir), winningLocation.ResolvedPath);
             Assert.Equal("environment", winningLocation.Source);
 
             Environment.SetEnvironmentVariable(envVarName, null);
-            winningLocation = ResolveLocation(root, "agent_dir", "AgentDir", "--agent-dir", jsonConfigPath, cliArgs: null, (_, _) => { });
+            winningLocation = ResolveLocation(root, "agent_dir", "Agent:Dir", "--agent-dir", jsonConfigPath, cliArgs: null, (_, _) => { });
             Assert.Equal(Path.GetFullPath(configAgentDir), winningLocation.ResolvedPath);
             Assert.Equal("config-file", winningLocation.Source);
         }
@@ -90,7 +102,7 @@ public class PathPrecedenceTests
     }
 
     /// <summary>
-    /// SC-005 mixed case (contracts/directory-options.md §2 worked example): one option
+    /// SC-003 mixed case (contracts/directory-options.md §2 worked example): one option
     /// set from the command line, a different option set from the environment, a third
     /// left at the config-file tier — each resolves its own winning channel independently.
     /// </summary>
@@ -113,7 +125,7 @@ public class PathPrecedenceTests
                 .AddEnvironmentVariables()
                 .AddCommandLine(
                     ["--data-dir", cliDataDir],
-                    new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase) { ["--data-dir"] = "Grimoire:Paths:DataDir" })
+                    new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase) { ["--data-dir"] = "Grimoire:Paths:Data:Dir" })
                 .Build();
             configRoot.GetSection(GrimoirePathOptions.SectionName).Bind(options);
 
@@ -162,11 +174,7 @@ public class PathPrecedenceTests
         Environment.SetEnvironmentVariable(envVarName, null);
         try
         {
-            File.WriteAllText(jsonConfigPath, $$"""
-                {
-                  "Grimoire": { "Paths": { "{{configKeySuffix}}": "{{JsonEscape(configValue)}}" } }
-                }
-                """);
+            File.WriteAllText(jsonConfigPath, BuildNestedPathsJson(configKeySuffix, configValue));
 
             // All three channels available; command line must win.
             Environment.SetEnvironmentVariable(envVarName, envValue);
@@ -224,6 +232,22 @@ public class PathPrecedenceTests
         configRoot.GetSection(GrimoirePathOptions.SectionName).Bind(options);
         var resolved = GrimoirePathResolver.Resolve(options, configRoot, NullLogger.Instance);
         return resolved.Locations.Single(l => l.Name == locationName);
+    }
+
+    /// <summary>
+    /// Builds a minimal <c>Grimoire:Paths</c> JSON document with a single nested key set
+    /// (e.g. <c>configKeySuffix</c> = <c>"Memory:Dir"</c> → <c>{"Grimoire":{"Paths":{"Memory":{"Dir":"value"}}}}</c>)
+    /// — the grouped shape ADR-024 requires (research R8).
+    /// </summary>
+    private static string BuildNestedPathsJson(string configKeySuffix, string value)
+    {
+        var json = "\"" + JsonEscape(value) + "\"";
+        var parts = configKeySuffix.Split(':');
+        for (var i = parts.Length - 1; i >= 0; i--)
+        {
+            json = "{ \"" + parts[i] + "\": " + json + " }";
+        }
+        return "{ \"Grimoire\": { \"Paths\": " + json + " } }";
     }
 
     private static string JsonEscape(string value) => value.Replace("\\", "\\\\");
