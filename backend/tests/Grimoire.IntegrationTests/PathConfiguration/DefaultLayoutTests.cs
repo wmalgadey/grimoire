@@ -5,11 +5,12 @@ using Microsoft.Extensions.Logging.Abstractions;
 namespace Grimoire.IntegrationTests.PathConfiguration;
 
 /// <summary>
-/// ADR-022 (US1/SC-001, US5) — with the three roots supplied only by the configuration-
-/// file tier (simulating the shipped <c>appsettings.json</c>), the wiki resolves to
-/// <c>&lt;cwd&gt;/llm-wiki</c> and every internal data location beneath
-/// <c>&lt;cwd&gt;/.grimoire</c>; overriding a single sub-path leaves every other default
-/// intact (US5 acceptance scenario 1).
+/// ADR-022, amended by ADR-024 (US3/SC-005) — with the four roots supplied only by the
+/// configuration-file tier (simulating the shipped <c>appsettings.json</c>), the wiki
+/// resolves to <c>&lt;cwd&gt;/llm-wiki</c>, the memory root resolves to
+/// <c>&lt;cwd&gt;/memory</c> as a sibling of the other three defaults (FR-009), and every
+/// internal data location beneath <c>&lt;cwd&gt;/.grimoire</c>; overriding a single
+/// sub-path leaves every other default intact (US5 acceptance scenario 1).
 /// </summary>
 [Collection("CurrentDirectoryMutation")]
 public class DefaultLayoutTests
@@ -38,17 +39,22 @@ public class DefaultLayoutTests
             Assert.Equal(Path.GetFullPath(Path.Combine(cwd, "llm-wiki")), resolved.WikiDir);
             Assert.Equal(Path.GetFullPath(Path.Combine(cwd, ".grimoire")), resolved.DataDir);
             Assert.Equal(Path.GetFullPath(Path.Combine(cwd, ".grimoire", "agents")), resolved.AgentDir);
+            Assert.Equal(Path.GetFullPath(Path.Combine(cwd, "memory")), resolved.MemoryDir);
             Assert.Equal(Path.GetFullPath(Path.Combine(cwd, ".grimoire", "raw", "originals")), resolved.RawOriginalsDir);
             Assert.Equal(Path.GetFullPath(Path.Combine(cwd, ".grimoire", "raw", "sources")), resolved.RawSourcesDir);
             Assert.Equal(Path.GetFullPath(Path.Combine(cwd, ".grimoire", "state", "operational-state.db")), resolved.StateDbPath);
             Assert.Equal(Path.GetFullPath(Path.Combine(cwd, ".env")), resolved.SecretsFilePath);
             Assert.Equal(Path.GetFullPath(Path.Combine(cwd, ".grimoire", "agents", "ingest")), resolved.Ingest.Dir);
 
-            // The wiki and the consolidated data directory never nest inside one another
-            // (research R1/plan.md): the wiki can be its own independent git repository,
-            // and relocating one never drags the other (US3 AS2).
+            // The four roots never nest inside one another (research R1/plan.md, ADR-024):
+            // the wiki can be its own independent git repository, and relocating one never
+            // drags another (US2 AS1-AS3).
             Assert.DoesNotContain(resolved.DataDir, resolved.WikiDir, StringComparison.Ordinal);
             Assert.DoesNotContain(resolved.WikiDir, resolved.DataDir, StringComparison.Ordinal);
+            Assert.DoesNotContain(resolved.DataDir, resolved.MemoryDir, StringComparison.Ordinal);
+            Assert.DoesNotContain(resolved.WikiDir, resolved.MemoryDir, StringComparison.Ordinal);
+            Assert.DoesNotContain(resolved.MemoryDir, resolved.WikiDir, StringComparison.Ordinal);
+            Assert.DoesNotContain(resolved.MemoryDir, resolved.DataDir, StringComparison.Ordinal);
 
             // There is no third "code default" source tier any more (ADR-022): every
             // location traces to the config-file tier when no CLI/env override applies.
@@ -89,7 +95,7 @@ public class DefaultLayoutTests
             // own Bind() call would (US5: internal sub-path customization via the config
             // file only — no CLI switch exists for StateDb, FR-015).
             var configRoot = new ConfigurationBuilder()
-                .AddInMemoryCollection([new("Grimoire:Paths:StateDb", externalStateDb)])
+                .AddInMemoryCollection([new("Grimoire:Paths:Data:StateDb", externalStateDb)])
                 .Build();
             configRoot.GetSection(GrimoirePathOptions.SectionName).Bind(options);
 
@@ -125,13 +131,13 @@ public class DefaultLayoutTests
     }
 
     /// <summary>
-    /// Agent output (tasks/conversations) resolves as true siblings under the wiki
-    /// directory, not nested under <c>.grimoire/</c> (FR-007, clarification 2026-08-06:
-    /// findings/remediation-tasks/conversations/tasks are agent output, re-anchored from
-    /// the data directory to the wiki directory).
+    /// Agent output (tasks/conversations) resolves as true siblings under the memory
+    /// directory, not nested under <c>.grimoire/</c> or <c>llm-wiki/</c>
+    /// (022-memory-directory-root FR-002: findings/remediation-tasks/conversations/tasks
+    /// are agent output, re-anchored from the wiki directory to the memory directory).
     /// </summary>
     [Fact]
-    public void ZeroFlags_ResolvesTasksAndConversationsDirs_AsWikiDirSiblings()
+    public void ZeroFlags_ResolvesTasksAndConversationsDirs_AsMemoryDirSiblings()
     {
         var cwd = Path.Combine(Path.GetTempPath(), $"grimoire-default-layout-siblings-{Guid.NewGuid():N}");
         Directory.CreateDirectory(cwd);
@@ -147,15 +153,17 @@ public class DefaultLayoutTests
 
             var resolved = GrimoirePathResolver.Resolve(options, configRoot, NullLogger.Instance);
 
-            Assert.Equal(Path.GetFullPath(Path.Combine(cwd, "llm-wiki", "tasks")), resolved.TasksDir);
-            Assert.Equal(Path.GetFullPath(Path.Combine(cwd, "llm-wiki", "conversations")), resolved.ConversationsDir);
+            Assert.Equal(Path.GetFullPath(Path.Combine(cwd, "memory", "tasks")), resolved.TasksDir);
+            Assert.Equal(Path.GetFullPath(Path.Combine(cwd, "memory", "conversations")), resolved.ConversationsDir);
 
-            // Both are nested under the wiki directory (not the data directory) — the
-            // reversal from ADR-003/ADR-009's git-ignored placement (ADR-022 consequence).
-            Assert.StartsWith(resolved.WikiDir, resolved.TasksDir, StringComparison.Ordinal);
-            Assert.StartsWith(resolved.WikiDir, resolved.ConversationsDir, StringComparison.Ordinal);
+            // Both are nested under the memory directory (not the wiki or data directory) —
+            // the ADR-024 re-anchoring away from ADR-022's WikiDir placement.
+            Assert.StartsWith(resolved.MemoryDir, resolved.TasksDir, StringComparison.Ordinal);
+            Assert.StartsWith(resolved.MemoryDir, resolved.ConversationsDir, StringComparison.Ordinal);
             Assert.DoesNotContain(resolved.DataDir, resolved.TasksDir, StringComparison.Ordinal);
             Assert.DoesNotContain(resolved.DataDir, resolved.ConversationsDir, StringComparison.Ordinal);
+            Assert.DoesNotContain(resolved.WikiDir, resolved.TasksDir, StringComparison.Ordinal);
+            Assert.DoesNotContain(resolved.WikiDir, resolved.ConversationsDir, StringComparison.Ordinal);
 
             Assert.True(Directory.Exists(resolved.TasksDir));
             Assert.True(Directory.Exists(resolved.ConversationsDir));
@@ -175,9 +183,9 @@ public class DefaultLayoutTests
 
     /// <summary>
     /// <c>TasksDir</c> and <c>ConversationsDir</c> are independently overridable via
-    /// <c>Grimoire:Paths:TasksDir</c>/<c>Grimoire:Paths:ConversationsDir</c> in the
-    /// configuration file, each leaving the other at its own default (no CLI switch
-    /// exists for either, FR-015).
+    /// <c>Grimoire:Paths:Memory:TasksDir</c>/<c>Grimoire:Paths:Memory:ConversationsDir</c>
+    /// in the configuration file, each leaving the other at its own default (no CLI switch
+    /// exists for either, ADR-024 rule M1).
     /// </summary>
     [Fact]
     public void OverridingTasksDirAndConversationsDir_AreIndependentlyConfigurable()
@@ -195,7 +203,7 @@ public class DefaultLayoutTests
             var options = PathConfigurationTestHelpers.SeedRequiredInputsForZeroConfig(cwd);
 
             var configRoot = new ConfigurationBuilder()
-                .AddInMemoryCollection([new("Grimoire:Paths:TasksDir", externalTasksDir)])
+                .AddInMemoryCollection([new("Grimoire:Paths:Memory:TasksDir", externalTasksDir)])
                 .Build();
             configRoot.GetSection(GrimoirePathOptions.SectionName).Bind(options);
 
@@ -204,8 +212,8 @@ public class DefaultLayoutTests
             // TasksDir took the override...
             Assert.Equal(Path.GetFullPath(externalTasksDir), resolved.TasksDir);
 
-            // ...while ConversationsDir stays at its own default beneath the wiki directory.
-            Assert.Equal(Path.GetFullPath(Path.Combine(cwd, "llm-wiki", "conversations")), resolved.ConversationsDir);
+            // ...while ConversationsDir stays at its own default beneath the memory directory.
+            Assert.Equal(Path.GetFullPath(Path.Combine(cwd, "memory", "conversations")), resolved.ConversationsDir);
 
             var tasksDirLocation = resolved.Locations.Single(l => l.Name == "tasks_dir");
             Assert.Equal(Path.GetFullPath(externalTasksDir), tasksDirLocation.ResolvedPath);

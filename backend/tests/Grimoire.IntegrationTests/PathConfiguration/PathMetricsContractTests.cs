@@ -42,6 +42,31 @@ public class PathMetricsContractTests
         }
     }
 
+    /// <summary>022-memory-directory-root SC-004: a start missing only the memory root fires the same reason.</summary>
+    [Fact]
+    public void MissingMemoryRoot_Increments_PathResolutionFailuresTotal_WithConfigurationMissingReason()
+    {
+        var measurements = new List<(long Value, KeyValuePair<string, object?>[] Tags)>();
+        using var listener = ListenTo("grimoire.hub.path_resolution_failures_total", measurements);
+
+        var options = new GrimoirePathOptions
+        {
+            Data = new DataPathOptions { Dir = "/tmp/data" },
+            Wiki = new WikiPathOptions { Dir = "/tmp/wiki" },
+            Agent = new AgentPathOptions { Dir = "/tmp/agents" },
+            // Memory left at its default `= new()` — Memory.Dir is unset.
+        };
+        var configRoot = new ConfigurationBuilder().Build();
+
+        Assert.Throws<GrimoirePathConfigurationMissingException>(
+            () => GrimoirePathResolver.Resolve(options, configRoot, NullLogger.Instance));
+
+        lock (measurements)
+        {
+            Assert.Contains(measurements, m => m.Value == 1L && TagValue(m, "reason") == "configuration_missing");
+        }
+    }
+
     [Fact]
     public void MissingRequiredInput_Increments_PathResolutionFailuresTotal_WithLocationInvalidReason()
     {

@@ -8,19 +8,21 @@ using Microsoft.Extensions.Logging.Abstractions;
 namespace Grimoire.IntegrationTests;
 
 /// <summary>
-/// ADR-022 (US1/US2) — against a fresh checkout, a real task-artifact write
-/// (<see cref="TaskArtifactStore"/>) and a real Conversation Record append
-/// (<see cref="ConversationRecordStore"/>) both land under wiki-directory siblings —
-/// agent output (FR-007, clarification 2026-08-06) — never nested inside the internal
-/// data directory; the data directory's own locations (raw intake, operational state,
-/// agent runtime, write-locks) stay anchored exactly where the resolver puts them, and
-/// the secrets file stays anchored at the process working directory regardless of either
-/// root (FR-019).
+/// ADR-022, amended by ADR-024 (US1/US2) — against a fresh checkout, a real task-artifact
+/// write (<see cref="TaskArtifactStore"/>) and a real Conversation Record append
+/// (<see cref="ConversationRecordStore"/>) both land under memory-directory siblings —
+/// agent output (022-memory-directory-root FR-002) — never nested inside the wiki or
+/// internal data directory; the data directory's own locations (raw intake, operational
+/// state, agent runtime, write-locks) stay anchored exactly where the resolver puts them,
+/// and the secrets file stays anchored at the process working directory regardless of any
+/// root (FR-019). The reflection-driven <see cref="PathGroupingInvariantTests"/> (ADR-024
+/// rule M5) covers the general relocation-matrix invariant; this file keeps the
+/// byte-on-disk, real-store-write coverage that a pure reflection test cannot provide.
 /// </summary>
 public class SiblingDirectoryLayoutTests
 {
     [Fact]
-    public async Task TaskAndConversationCreation_LandUnderWikiDirSiblings_NotNestedInDataDir()
+    public async Task TaskAndConversationCreation_LandUnderMemoryDirSiblings_NotNestedInWikiOrDataDir()
     {
         var baseDir = Path.Combine(Path.GetTempPath(), $"grimoire-sibling-layout-{Guid.NewGuid():N}");
         Directory.CreateDirectory(baseDir);
@@ -83,15 +85,17 @@ public class SiblingDirectoryLayoutTests
             Assert.True(File.Exists(taskArtifactPath));
             Assert.True(File.Exists(conversationRecordPath));
 
-            // ...directly under wiki-directory sibling directories (agent output, FR-007)...
-            Assert.Equal(Path.GetFullPath(Path.Combine(resolved.WikiDir, "tasks", $"{taskId}.md")), taskArtifactPath);
-            Assert.Equal(Path.GetFullPath(Path.Combine(resolved.WikiDir, "conversations", $"{conversationId}.md")), conversationRecordPath);
+            // ...directly under memory-directory sibling directories (agent output, FR-002)...
+            Assert.Equal(Path.GetFullPath(Path.Combine(resolved.MemoryDir, "tasks", $"{taskId}.md")), taskArtifactPath);
+            Assert.Equal(Path.GetFullPath(Path.Combine(resolved.MemoryDir, "conversations", $"{conversationId}.md")), conversationRecordPath);
 
-            // ...nested inside the wiki directory...
-            Assert.StartsWith(resolved.WikiDir, taskArtifactPath, StringComparison.Ordinal);
-            Assert.StartsWith(resolved.WikiDir, conversationRecordPath, StringComparison.Ordinal);
+            // ...nested inside the memory directory...
+            Assert.StartsWith(resolved.MemoryDir, taskArtifactPath, StringComparison.Ordinal);
+            Assert.StartsWith(resolved.MemoryDir, conversationRecordPath, StringComparison.Ordinal);
 
-            // ...never inside the internal data directory.
+            // ...never inside the wiki or the internal data directory.
+            Assert.DoesNotContain(resolved.WikiDir, taskArtifactPath, StringComparison.Ordinal);
+            Assert.DoesNotContain(resolved.WikiDir, conversationRecordPath, StringComparison.Ordinal);
             Assert.DoesNotContain(resolved.DataDir, taskArtifactPath, StringComparison.Ordinal);
             Assert.DoesNotContain(resolved.DataDir, conversationRecordPath, StringComparison.Ordinal);
         }
@@ -105,7 +109,7 @@ public class SiblingDirectoryLayoutTests
     }
 
     /// <summary>
-    /// This feature's re-anchoring (FR-007, clarification 2026-08-06) touches only
+    /// The 022-memory-directory-root re-anchoring (FR-002) touches only
     /// TasksDir/ConversationsDir/FindingsDir/RemediationTasksDir — every genuine runtime-
     /// only data location (raw intake, operational state, agent runtime, write-locks)
     /// still resolves beneath <see cref="ResolvedGrimoirePaths.DataDir"/>, and the secrets
@@ -140,12 +144,14 @@ public class SiblingDirectoryLayoutTests
             Assert.StartsWith(resolved.AgentDir, resolved.Query.InstructionsDir, StringComparison.Ordinal);
             Assert.StartsWith(resolved.AgentDir, resolved.Lint.InstructionsDir, StringComparison.Ordinal);
 
-            // The two agent-output relocations (FR-007) live under WikiDir, not DataDir.
+            // The four agent-output relocations (FR-002) live under MemoryDir, not
+            // DataDir or WikiDir.
             Assert.DoesNotContain(resolved.DataDir, resolved.TasksDir, StringComparison.Ordinal);
             Assert.DoesNotContain(resolved.DataDir, resolved.ConversationsDir, StringComparison.Ordinal);
             Assert.DoesNotContain(resolved.DataDir, resolved.FindingsDir, StringComparison.Ordinal);
             Assert.DoesNotContain(resolved.DataDir, resolved.RemediationTasksDir, StringComparison.Ordinal);
-            Assert.StartsWith(resolved.WikiDir, resolved.FindingsDir, StringComparison.Ordinal);
+            Assert.DoesNotContain(resolved.WikiDir, resolved.FindingsDir, StringComparison.Ordinal);
+            Assert.StartsWith(resolved.MemoryDir, resolved.FindingsDir, StringComparison.Ordinal);
 
             // The secrets file is anchored at the process working directory, independent
             // of DataDir/WikiDir/AgentDir alike (FR-019) — this fixture sets it explicitly

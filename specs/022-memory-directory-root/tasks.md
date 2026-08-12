@@ -242,7 +242,7 @@ independent — relocating any one leaves the other three exactly where they wer
 default (and vice versa), run hub operations touching both, and confirm each root's
 contents resolve only under its own configured location.
 
-- [ ] T023 [US2] Add `backend/tests/Grimoire.IntegrationTests/PathConfiguration/PathGroupingInvariantTests.cs`
+- [x] T023 [US2] Add `backend/tests/Grimoire.IntegrationTests/PathConfiguration/PathGroupingInvariantTests.cs`
   (ADR-024 rule M5, new file): reflection-driven over the options graph — for each of the
   four groups (`Data`, `Wiki`, `Agent`, `Memory`), relocating that group's `Dir` alone
   moves every resolved location derived from a sub-path property of that group and moves
@@ -253,11 +253,11 @@ contents resolve only under its own configured location.
   `dataDir` instead of `memoryDir` in `GrimoirePathResolver`, confirm the test fails,
   revert. (FR-003, FR-004, SC-002, SC-009)
 
-- [ ] T024 [US2] Delete `backend/tests/Grimoire.IntegrationTests/SiblingDirectoryLayoutTests.cs`
+- [x] T024 [US2] Delete `backend/tests/Grimoire.IntegrationTests/SiblingDirectoryLayoutTests.cs`
   — its 3×3 relocation matrix is superseded by T023's reflection-driven 4-group version,
   per plan.md's Project Structure. (SC-002)
 
-- [ ] T025 [US2] Verify User Story 2 independently:
+- [x] T025 [US2] Verify User Story 2 independently:
   `dotnet test backend/tests/Grimoire.IntegrationTests --filter "FullyQualifiedName~PathGroupingInvariantTests"`
   green.
 
@@ -274,15 +274,15 @@ default, auto-created, and reported at startup alongside the other three roots.
 versioned configuration file, and confirm the memory folder and its contents are created
 automatically at the shipped default location and appear in the startup report.
 
-- [ ] T026 [P] [US3] Extend `backend/tests/Grimoire.IntegrationTests/PathConfiguration/DefaultLayoutTests.cs`:
+- [x] T026 [P] [US3] Extend `backend/tests/Grimoire.IntegrationTests/PathConfiguration/DefaultLayoutTests.cs`:
   assert `MemoryDir` defaults to `<cwd>/memory`, a sibling of the other three default
   locations, using the new nested configuration key names. (FR-009, SC-005)
 
-- [ ] T027 [P] [US3] Extend `backend/tests/Grimoire.IntegrationTests/PathConfiguration/ZeroConfigStartupTests.cs`:
+- [x] T027 [P] [US3] Extend `backend/tests/Grimoire.IntegrationTests/PathConfiguration/ZeroConfigStartupTests.cs`:
   assert `memory/` is created automatically on a cold start with no `--memory-dir` and
   no environment override set. (FR-007, SC-005)
 
-- [ ] T028 [P] [US3] Extend `backend/tests/Grimoire.IntegrationTests/PathConfiguration/StartupValidationTests.cs`
+- [x] T028 [P] [US3] Extend `backend/tests/Grimoire.IntegrationTests/PathConfiguration/StartupValidationTests.cs`
   with two SC-004 cases: (a) `Grimoire:Paths:Memory:Dir` omitted but the rest of the
   `Memory` group present; (b) the entire `Grimoire:Paths:Memory` group omitted. Both must
   throw `GrimoirePathConfigurationMissingException` whose `MissingKeys` contains
@@ -290,14 +290,14 @@ automatically at the shipped default location and appear in the startup report.
   **not** throw `NullReferenceException` (the group-property initializer routes it to the
   same named failure). (FR-006, SC-004)
 
-- [ ] T029 [US3] Extend `backend/tests/Grimoire.IntegrationTests/PathConfiguration/PathPrecedenceTests.cs`:
+- [x] T029 [US3] Extend `backend/tests/Grimoire.IntegrationTests/PathConfiguration/PathPrecedenceTests.cs`:
   add the memory-root precedence case (command-line `--memory-dir` > environment
   `Grimoire__Paths__Memory__Dir` > `appsettings.json`), asserting `PathLocation.Source`
   reports `command-line`/`environment`/`config-file` correctly for `memory_dir`. Uses the
   **nested** environment-variable form — the flat form must NOT take effect (that
   negative case belongs to T035). (FR-005, SC-003)
 
-- [ ] T030 [US3] Extend `backend/tests/Grimoire.IntegrationTests/PathConfiguration/PathLoggingContractTests.cs`:
+- [x] T030 [US3] Extend `backend/tests/Grimoire.IntegrationTests/PathConfiguration/PathLoggingContractTests.cs`:
   assert `paths_resolved` carries the `memory_dir` field with the expected resolved
   value and that its `sources` string contains a `memory_dir=` pair; assert
   `paths_location_created` fires with `location=memory_dir` on a cold start; assert
@@ -307,24 +307,24 @@ automatically at the shipped default location and appear in the startup report.
   test-only provider. (FR-008, SC-004, SC-005, SC-006; Observability: `paths_resolved`,
   `paths_location_created`, `paths_configuration_missing` — deterministic test row)
 
-- [ ] T031 [US3] Extend `backend/tests/Grimoire.IntegrationTests/PathConfiguration/PathTracingContractTests.cs`:
+- [x] T031 [US3] Extend `backend/tests/Grimoire.IntegrationTests/PathConfiguration/PathTracingContractTests.cs`:
   assert the `paths_resolved` span is a root span in this composition (not the child of
   an unsampled parent — the Principle IV failure mode) and carries the `memory_dir`
   attribute with the expected value, set inside the same span scope as the log call.
   (SC-006; Observability: `paths_resolved` span — deterministic test row)
 
-- [ ] T032 [US3] Extend `backend/tests/Grimoire.IntegrationTests/PathConfiguration/PathMetricsContractTests.cs`:
+- [x] T032 [US3] Extend `backend/tests/Grimoire.IntegrationTests/PathConfiguration/PathMetricsContractTests.cs`:
   assert `grimoire.hub.path_resolution_failures_total{reason="configuration_missing"}`
   increments once on a start missing the memory root. (SC-004; Observability: metric
   widened — deterministic test row)
 
-- [ ] T033 [US3] Confirm `PathLoggingContractTests`, `PathTracingContractTests`, and
+- [x] T033 [US3] Confirm `PathLoggingContractTests`, `PathTracingContractTests`, and
   `PathMetricsContractTests` (T030–T032) execute in `.github/workflows/ci.yml`'s standard
   PR pipeline via the existing `Grimoire.IntegrationTests` job — no workflow edit is
   expected; if the confirmation fails, file a workflow-edit task rather than waiving it.
   (Observability CI enforcement — `paths_resolved`/`paths_location_created`/`paths_configuration_missing` rows)
 
-- [ ] T034 [US3] Verify User Story 3 independently: run quickstart.md Scenarios 1, 4, and
+- [x] T034 [US3] Verify User Story 3 independently: run quickstart.md Scenarios 1, 4, and
   5 against a locally built hub in a scratch working directory (or the equivalent
   `dotnet test --filter "FullyQualifiedName~PathConfiguration"` subset), confirming
   zero-config startup, precedence, and the missing-key failure all behave as specified.
