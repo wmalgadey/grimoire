@@ -61,10 +61,11 @@ public class QueryConversationLogEventTests
 
         // Rig the store to throw on append: a directory occupies the record file path,
         // so the file write inside AppendTurnAsync fails. ConversationsDir is agent
-        // output, anchored at the wiki directory (FR-007) — a TestResolvedGrimoirePathsFactory
-        // sibling of DataDir, not DataDir itself — so the blocking directory must go under
-        // the same "wiki" subfolder the resolved paths actually use.
-        Directory.CreateDirectory(Path.Combine(root, "wiki", "conversations", "c-appendfail.md"));
+        // output, anchored at the memory directory (022-memory-directory-root FR-002) —
+        // a TestResolvedGrimoirePathsFactory sibling of DataDir/WikiDir, not either of
+        // them — so the blocking directory must go under the same "memory" subfolder the
+        // resolved paths actually use.
+        Directory.CreateDirectory(Path.Combine(root, "memory", "conversations", "c-appendfail.md"));
 
         using var host = await QueryTurnSubmissionApiTests.BuildHostAsync(
             launcher, root, coordinatorLogger: coordinatorLogger);

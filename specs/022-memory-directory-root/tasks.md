@@ -374,51 +374,51 @@ phase stays green against the *existing* eval recordings, and the mandatory re-c
 happens once against finished prompt text rather than repeatedly. This phase is a hard PR
 merge gate — `.github/workflows/ci.yml` runs `Grimoire.AgentEvals` unfiltered.
 
-- [ ] T039 Edit `backend/src/Grimoire.IngestAgent/Instructions/system-prompt.md`: remove
+- [x] T039 Edit `backend/src/Grimoire.IngestAgent/Instructions/system-prompt.md`: remove
   the "skip the reserved harness folders" guidance step, remove the four
   `harness-owned` lines and the trailing paragraph from the Wiki Folder Structure
   diagram, and replace both `Task: [[tasks/<task_id>.md]]` citations in the `log.md`
   template with a bare `Task: <task_id>` reference. (FR-012, SC-008)
 
-- [ ] T040 [P] Edit `backend/src/Grimoire.QueryAgent/Instructions/system-prompt.md`:
+- [x] T040 [P] Edit `backend/src/Grimoire.QueryAgent/Instructions/system-prompt.md`:
   remove the reserved-harness-folder guidance describing `tasks/`, `conversations/`,
   `findings/`, `remediation-tasks/` as folders reachable within the wiki tree. (FR-012, SC-008)
 
-- [ ] T041 [P] Edit `backend/src/Grimoire.LintAgent/Instructions/system-prompt.md`: same
+- [x] T041 [P] Edit `backend/src/Grimoire.LintAgent/Instructions/system-prompt.md`: same
   removal as T040. (FR-012, SC-008)
 
-- [ ] T042 Edit `backend/src/Grimoire.Hub/OperationalState/RestartReconciler.cs`
+- [x] T042 Edit `backend/src/Grimoire.Hub/OperationalState/RestartReconciler.cs`
   (`AppendReconciliationLogAsync`, ~line 130): replace
   `` Task: [[tasks/{taskId}.md]]. `` with `` Task: {taskId}. `` — the bare id still
   satisfies `WikiLogAppender`'s ordinal-substring dedup check byte-for-byte (research
   R3). This turns ADR-024 rule M3 (`NoWikiRelativeHarnessRecordLinkRuleTests`, T004)
   Green. (FR-012, ADR-024 M3)
 
-- [ ] T043 Add a new Fast-tier content-assertion test (e.g.
+- [x] T043 Add a new Fast-tier content-assertion test (e.g.
   `backend/tests/Grimoire.AgentEvals/InstructionFilesWikiScopeTests.cs`) reading the
   three real `Instructions/system-prompt.md` files from `backend/src/` and asserting none
   of `tasks/`, `conversations/`, `findings/`, `remediation-tasks/`, `[[tasks/` appears in
   any of them. (SC-008)
 
-- [ ] T044 Edit `backend/src/Grimoire.EvalRunner/Workspace/EvalWorkspace.cs`: change
+- [x] T044 Edit `backend/src/Grimoire.EvalRunner/Workspace/EvalWorkspace.cs`: change
   `TasksDir` from `Path.Combine(WikiRoot, "tasks")` to a sibling of `WikiRoot` (mirroring
   production's `MemoryDir`-vs-`WikiDir` split); delete the now-unreachable
   tasks-exclusion filter in `PageFiles()`. No eval fingerprint is affected by this change
   alone (research R7). (research R7)
 
-- [ ] T045 Verify `backend/src/Grimoire.Hub/ContentRoot/IngestContentPaths.cs` needs no
+- [x] T045 Verify `backend/src/Grimoire.Hub/ContentRoot/IngestContentPaths.cs` needs no
   edit: `FromResolved` already projects `resolved.TasksDir` verbatim, so it continues to
   compile and behave correctly once `ResolvedGrimoirePaths.TasksDir` resolves under
   `MemoryDir` (T009/T010). Verification-only task — no diff expected. (FR-002)
 
-- [ ] T046 Update `backend/tests/Grimoire.AgentEvals/EvalIndependenceFromHubConfigurationTests.cs`:
+- [x] T046 Update `backend/tests/Grimoire.AgentEvals/EvalIndependenceFromHubConfigurationTests.cs`:
   change the eleven-entry environment-variable array to the nested key names. (FR-013)
 
-- [ ] T047 Update `backend/tests/Grimoire.IntegrationTests/HubHelpUsageTests.cs`: assert
+- [x] T047 Update `backend/tests/Grimoire.IntegrationTests/HubHelpUsageTests.cs`: assert
   `--help`'s "Server options" section lists all four switches including `--memory-dir`,
   with 1:1 parity against `PathSwitchCatalog.All` (now four entries). (ADR-020, FR-001)
 
-- [ ] T048 Run `./scripts/test-fast.sh` and
+- [x] T048 Run `./scripts/test-fast.sh` and
   `dotnet test backend/tests/Grimoire.IntegrationTests` fully green — confirms M3 (T004)
   is now Green and every test re-pointed in Phases 2–5 passes together.
 

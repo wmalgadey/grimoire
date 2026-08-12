@@ -17,7 +17,11 @@ public sealed class EvalWorkspace : IDisposable
 
     public string WikiRoot => Path.Combine(Root, "wiki");
 
-    public string TasksDir => Path.Combine(WikiRoot, "tasks");
+    // A sibling of WikiRoot, not nested inside it (022-memory-directory-root, ADR-024):
+    // mirrors production's MemoryDir/WikiDir split, so the eval workspace reproduces the
+    // same tree the production agent sees rather than one where tasks/ is still reachable
+    // while browsing the wiki.
+    public string TasksDir => Path.Combine(Root, "tasks");
 
     public string IndexPath => Path.Combine(WikiRoot, "index.md");
 
@@ -78,8 +82,7 @@ public sealed class EvalWorkspace : IDisposable
         => !Directory.Exists(WikiRoot)
             ? []
             : Directory.GetFiles(WikiRoot, "*.md", SearchOption.AllDirectories)
-                .Where(path => !path.StartsWith(TasksDir + Path.DirectorySeparatorChar, StringComparison.Ordinal)
-                    && !string.Equals(path, IndexPath, StringComparison.Ordinal)
+                .Where(path => !string.Equals(path, IndexPath, StringComparison.Ordinal)
                     && !string.Equals(path, LogPath, StringComparison.Ordinal))
                 .OrderBy(static p => p, StringComparer.Ordinal)
                 .ToArray();

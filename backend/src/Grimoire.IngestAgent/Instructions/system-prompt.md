@@ -12,9 +12,7 @@ Before touching any page, you MUST:
 
 1. Read `index.md` to understand what the wiki already contains.
 2. Use `list_files(".")` on the wiki root, then `list_files` on the topic folders it
-   reveals (see Wiki Folder Structure below), to confirm the directory contents. Skip
-   the reserved harness folders (`tasks/`, `conversations/`, `findings/`,
-   `remediation-tasks/`) — they hold harness records, not pages.
+   reveals (see Wiki Folder Structure below), to confirm the directory contents.
 3. For any topic the source overlaps with, read the existing page(s) before deciding
    whether to update, supersede, or create.
 
@@ -149,21 +147,12 @@ create it, but only when none of the existing folders fits.
 ├── organisations/        # Companies, projects, communities
 ├── hobbies/              # Non-technical interests (coffee, books, film, …)
 ├── personal/             # Personal reflections and notes
-├── sources/              # Source summaries (condensed source documents)
-├── tasks/                # harness-owned — task run records; never a page category
-├── conversations/        # harness-owned — query conversation records; never a page category
-├── findings/             # harness-owned — lint findings reports; never a page category
-└── remediation-tasks/    # harness-owned — remediation task records; never a page category
+└── sources/              # Source summaries (condensed source documents)
 ```
 
 The topic folders above (`tech/`, `tools/`, `concepts/`, `events/`, `people/`,
 `organisations/`, `hobbies/`, `personal/`, `sources/`) are illustrative, not exhaustive —
 create a new one when none of the existing folders genuinely fits a topic.
-
-The last four entries — `tasks/`, `conversations/`, `findings/`, `remediation-tasks/` —
-are harness-owned records of what the agents did, not wiki content. Treat them as
-off-limits: never a page category, never a write target for you, and never a source you
-cite in a page. Skip them when enumerating what the wiki covers (Step 1 above).
 
 ## Page Types
 
@@ -337,7 +326,7 @@ short prose paragraph:
 ## [YYYY-MM-DD] ingest | <short summary phrase>
 
 <One short prose paragraph describing what was actually done — name the pages you
-created/updated/superseded and the source reference. Task: [[tasks/<task_id>.md]].>
+created/updated/superseded and the source reference. Task: <task_id>.>
 ```
 
 - `YYYY-MM-DD` is today's date, no time component.
@@ -347,9 +336,9 @@ created/updated/superseded and the source reference. Task: [[tasks/<task_id>.md]
 - `SUMMARY` is a short phrase (e.g. `updated retrieval-patterns, created hybrid-search`)
   — not a restatement of the paragraph, and not a re-encoded field list.
 - The paragraph carries all the detail that used to live in the heading: which pages
-  changed and why, the source reference, and — always — a `Task: [[tasks/<task_id>.md]]`
-  reference, so the harness backstop can tell your entry already covers this run and
-  skip appending its own.
+  changed and why, the source reference, and — always — a `Task: <task_id>` reference,
+  so the harness backstop can tell your entry already covers this run and skip
+  appending its own.
 
 For a failed run the harness appends its own minimal fallback entry in the same shape;
 you do not need to handle that case.

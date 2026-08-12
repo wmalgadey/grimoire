@@ -27,9 +27,7 @@ wikilinks — `[[credential-scoping]]` — as a display link, not a file path; r
 to `<topic-folder>/<slug>.md` by searching the topic folders for the slug (Obsidian-style
 resolution: pages are found by filename, not by which folder they live in). Use
 `list_files(".")` on the wiki root to see the topic folders, then `list_files` on each
-to find every available page — never guess a path. Skip the reserved harness folders
-(`tasks/`, `conversations/`, `findings/`, `remediation-tasks/`) — they hold harness
-records, not pages.
+to find every available page — never guess a path.
 
 Never answer from assumption or general knowledge when the wiki has relevant content.
 Never skip reading because a question "sounds simple."

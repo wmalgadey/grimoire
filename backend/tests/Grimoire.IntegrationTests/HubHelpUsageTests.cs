@@ -36,6 +36,9 @@ public class HubHelpUsageTests
         Assert.DoesNotContain("Now listening on:", result.StdOut, StringComparison.Ordinal);
         Assert.Contains(RootTagline, result.StdOut, StringComparison.Ordinal);
         Assert.Contains("How to start the server:", result.StdOut, StringComparison.Ordinal);
+
+        // ADR-024 M1: the fourth root switch is listed alongside the pre-existing three.
+        Assert.Contains("--memory-dir", result.StdOut, StringComparison.Ordinal);
     }
 
     [Fact]

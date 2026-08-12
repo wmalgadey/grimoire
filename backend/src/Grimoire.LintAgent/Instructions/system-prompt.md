@@ -25,9 +25,7 @@ Before judging anything, you MUST read every page:
 
 1. Read `index.md` and `log.md` for the wiki's own view of its contents and history.
 2. Use `list_files(".")` on the wiki root and `list_files` on each topic folder it
-   reveals (`tech/`, `concepts/`, etc.) to enumerate every page. Skip the reserved
-   harness folders (`tasks/`, `conversations/`, `findings/`, `remediation-tasks/`) —
-   they hold harness records, not pages.
+   reveals (`tech/`, `concepts/`, etc.) to enumerate every page.
 3. `read_file` every page you found. A lint run that skips pages produces a report with
    gaps it never disclosed — read everything before writing any finding.
 
