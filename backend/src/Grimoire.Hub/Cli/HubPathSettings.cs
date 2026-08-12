@@ -20,11 +20,12 @@ namespace Grimoire.Hub.Cli;
 /// values — deliberately avoided.
 ///
 /// One property per <see cref="PathSwitchCatalog.All"/> entry — structurally capped at
-/// exactly three by <c>Grimoire.ArchTests.DirectorySwitchSurfaceRuleTests</c> (rule R1);
-/// a parity test (<c>HubHelpUsageTests</c>) asserts the 1:1 mapping so the two can never
-/// independently drift. The <see cref="DescriptionAttribute"/> text below mirrors
-/// <see cref="PathSwitchCatalog.All"/>'s descriptions so `&lt;command&gt; --help` shows
-/// the same wording as the root help's "Options:" section.
+/// exactly four by <c>Grimoire.ArchTests.DirectorySwitchSurfaceRuleTests</c> (ADR-022
+/// rule R1, amended by ADR-024 rule M1); a parity test (<c>HubHelpUsageTests</c>)
+/// asserts the 1:1 mapping so the two can never independently drift. The
+/// <see cref="DescriptionAttribute"/> text below mirrors <see cref="PathSwitchCatalog.All"/>'s
+/// descriptions so `&lt;command&gt; --help` shows the same wording as the root help's
+/// "Options:" section.
 /// </summary>
 public class HubPathSettings : CommandSettings
 {
@@ -37,6 +38,10 @@ public class HubPathSettings : CommandSettings
     public string? AgentDir { get; set; }
 
     [CommandOption("--wiki-dir <PATH>")]
-    [Description("Root for all agent-produced results (wiki pages, index.md, log.md, tasks, conversations, findings, remediation tasks).")]
+    [Description("Root for the wiki content itself — index.md, log.md, and topical article folders.")]
     public string? WikiDir { get; set; }
+
+    [CommandOption("--memory-dir <PATH>")]
+    [Description("Root for agent process bookkeeping — task artifacts, conversation records, lint findings reports, remediation task records.")]
+    public string? MemoryDir { get; set; }
 }

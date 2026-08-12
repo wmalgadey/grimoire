@@ -26,7 +26,11 @@ public class PathMetricsContractTests
         var measurements = new List<(long Value, KeyValuePair<string, object?>[] Tags)>();
         using var listener = ListenTo("grimoire.hub.path_resolution_failures_total", measurements);
 
-        var options = new GrimoirePathOptions { DataDir = "  ", WikiDir = "llm-wiki" };
+        var options = new GrimoirePathOptions
+        {
+            Data = new DataPathOptions { Dir = "  " },
+            Wiki = new WikiPathOptions { Dir = "llm-wiki" },
+        };
         var configRoot = new ConfigurationBuilder().Build();
 
         Assert.Throws<GrimoirePathConfigurationMissingException>(

@@ -33,7 +33,7 @@ public class DataDirRelocationTests
             // Seeds a complete agent runtime at the cwd-anchored default (.grimoire/agents)
             // — AgentDir is left unset here (its own default, unaffected by DataDir).
             var options = PathConfigurationTestHelpers.SeedRequiredInputsForZeroConfig(cwd);
-            options.DataDir = customDataDir;
+            options.Data.Dir = customDataDir;
 
             var configRoot = new ConfigurationBuilder().Build();
             var resolved = GrimoirePathResolver.Resolve(options, configRoot, NullLogger.Instance);

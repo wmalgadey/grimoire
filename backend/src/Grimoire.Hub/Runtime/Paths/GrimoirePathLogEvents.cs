@@ -14,6 +14,7 @@ public static class GrimoirePathLogEvents
     private static readonly EventId PathsLocationCreatedEvent = new(41, "paths_location_created");
     private static readonly EventId PathsValidationFailedEvent = new(42, "paths_validation_failed");
     private static readonly EventId PathsConfigurationMissingEvent = new(43, "paths_configuration_missing");
+    private static readonly EventId PathsConfigurationSupersededEvent = new(44, "paths_configuration_superseded");
 
     /// <summary>Once per successful startup, after validation/creation, before serving.</summary>
     public static void LogPathsResolved(ILogger logger, ResolvedGrimoirePaths paths)
@@ -22,6 +23,7 @@ public static class GrimoirePathLogEvents
         span?.SetTag("data_dir", paths.DataDir);
         span?.SetTag("wiki_dir", paths.WikiDir);
         span?.SetTag("agent_dir", paths.AgentDir);
+        span?.SetTag("memory_dir", paths.MemoryDir);
         span?.SetTag("secrets_file", paths.SecretsFilePath);
         span?.SetTag("state_db", paths.StateDbPath);
         span?.SetTag("raw_dir", paths.RawOriginalsDir);
@@ -31,8 +33,8 @@ public static class GrimoirePathLogEvents
 
         logger.LogInformation(PathsResolvedEvent,
             "Runtime paths resolved. data_dir={data_dir} wiki_dir={wiki_dir} agent_dir={agent_dir} " +
-            "secrets_file={secrets_file} state_db={state_db} raw_dir={raw_dir} sources={sources}",
-            paths.DataDir, paths.WikiDir, paths.AgentDir, paths.SecretsFilePath, paths.StateDbPath,
+            "memory_dir={memory_dir} secrets_file={secrets_file} state_db={state_db} raw_dir={raw_dir} sources={sources}",
+            paths.DataDir, paths.WikiDir, paths.AgentDir, paths.MemoryDir, paths.SecretsFilePath, paths.StateDbPath,
             paths.RawOriginalsDir, sources);
     }
 
@@ -78,6 +80,25 @@ public static class GrimoirePathLogEvents
         logger.LogError(PathsConfigurationMissingEvent,
             "Runtime path configuration missing. configuration_file={configuration_file} missing_keys={missing_keys}",
             configurationFile, missingKeysDisplay);
+    }
+
+    /// <summary>
+    /// The bound configuration supplies one or more configuration keys superseded by
+    /// ADR-024's <c>Grimoire:Paths</c> regrouping, immediately before non-zero exit
+    /// (FR-014/SC-010) — the rename would otherwise fail silently, since an unrecognized
+    /// configuration key is normally just ignored.
+    /// </summary>
+    public static void LogConfigurationSuperseded(ILogger logger, IReadOnlyList<string> supersededKeys, IReadOnlyList<string> replacements)
+    {
+        using var span = StartLogEventSpan("paths_configuration_superseded", "Error");
+        var supersededKeysDisplay = string.Join(", ", supersededKeys);
+        var replacementsDisplay = string.Join(", ", replacements);
+        span?.SetTag("superseded_keys", supersededKeysDisplay);
+        span?.SetTag("replacements", replacementsDisplay);
+
+        logger.LogError(PathsConfigurationSupersededEvent,
+            "Runtime path configuration superseded. superseded_keys={superseded_keys} replacements={replacements}",
+            supersededKeysDisplay, replacementsDisplay);
     }
 
     private static Activity? StartLogEventSpan(string eventName, string level)

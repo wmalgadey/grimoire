@@ -16,20 +16,22 @@ internal static class TestResolvedGrimoirePathsFactory
     {
         var wikiDir = Path.Combine(root, "wiki");
         var agentDir = Path.Combine(root, "agents");
+        var memoryDir = Path.Combine(root, "memory");
 
         return new ResolvedGrimoirePaths(
             DataDir: root,
             WikiDir: wikiDir,
             AgentDir: agentDir,
+            MemoryDir: memoryDir,
             RawOriginalsDir: Path.Combine(root, "raw", "originals"),
             RawSourcesDir: Path.Combine(root, "raw", "sources"),
             StateDbPath: Path.Combine(root, "operational-state.db"),
             WriteLocksDir: Path.Combine(root, "write-locks"),
             LintPidPath: Path.Combine(root, "lint.pid"),
-            TasksDir: Path.Combine(wikiDir, "tasks"),
-            ConversationsDir: Path.Combine(wikiDir, "conversations"),
-            FindingsDir: Path.Combine(wikiDir, "findings"),
-            RemediationTasksDir: Path.Combine(wikiDir, "remediation-tasks"),
+            TasksDir: Path.Combine(memoryDir, "tasks"),
+            ConversationsDir: Path.Combine(memoryDir, "conversations"),
+            FindingsDir: Path.Combine(memoryDir, "findings"),
+            RemediationTasksDir: Path.Combine(memoryDir, "remediation-tasks"),
             IndexPath: Path.Combine(wikiDir, "index.md"),
             LogPath: Path.Combine(wikiDir, "log.md"),
             SecretsFilePath: Path.Combine(root, ".env"),

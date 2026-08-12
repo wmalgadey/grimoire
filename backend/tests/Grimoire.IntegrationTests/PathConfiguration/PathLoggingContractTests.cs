@@ -34,7 +34,7 @@ public class PathLoggingContractTests
 
             foreach (var field in new[]
             {
-                "data_dir", "wiki_dir", "agent_dir", "secrets_file", "state_db", "raw_dir", "sources",
+                "data_dir", "wiki_dir", "agent_dir", "memory_dir", "secrets_file", "state_db", "raw_dir", "sources",
             })
             {
                 Assert.True(entry.Fields.ContainsKey(field), $"Missing mandatory field '{field}' on paths_resolved.");
@@ -43,9 +43,11 @@ public class PathLoggingContractTests
             Assert.Equal(resolved.DataDir, entry.Fields["data_dir"]?.ToString());
             Assert.Equal(resolved.WikiDir, entry.Fields["wiki_dir"]?.ToString());
             Assert.Equal(resolved.AgentDir, entry.Fields["agent_dir"]?.ToString());
+            Assert.Equal(resolved.MemoryDir, entry.Fields["memory_dir"]?.ToString());
             Assert.Equal(resolved.SecretsFilePath, entry.Fields["secrets_file"]?.ToString());
             Assert.Equal(resolved.StateDbPath, entry.Fields["state_db"]?.ToString());
             Assert.Equal(resolved.RawOriginalsDir, entry.Fields["raw_dir"]?.ToString());
+            Assert.Contains("memory_dir=", entry.Fields["sources"]?.ToString(), StringComparison.Ordinal);
         }
         finally
         {
@@ -81,6 +83,42 @@ public class PathLoggingContractTests
             Assert.True(entry.Fields.ContainsKey("location"));
             Assert.True(entry.Fields.ContainsKey("resolved_path"));
             Assert.Equal(resolved.WikiDir, entry.Fields["resolved_path"]?.ToString());
+        }
+        finally
+        {
+            if (Directory.Exists(baseDir))
+            {
+                Directory.Delete(baseDir, recursive: true);
+            }
+        }
+    }
+
+    /// <summary>
+    /// 022-memory-directory-root (FR-007/SC-005): a cold start with no <c>memory/</c> on
+    /// disk auto-creates it and reports the creation with <c>location=memory_dir</c>.
+    /// </summary>
+    [Fact]
+    public void AutoCreatingMemoryDir_Emits_PathsLocationCreated_WithMemoryDirLocation()
+    {
+        var baseDir = Path.Combine(Path.GetTempPath(), $"grimoire-log-contract-memory-created-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(baseDir);
+
+        try
+        {
+            var options = PathConfigurationTestHelpers.SeedRequiredInputs(baseDir);
+            var configRoot = new ConfigurationBuilder().Build();
+            var logger = new CaptureLogger<PathLoggingContractTests>();
+
+            var memoryDir = Path.Combine(baseDir, "memory-dir");
+            Assert.False(Directory.Exists(memoryDir));
+
+            var resolved = GrimoirePathResolver.Resolve(options, configRoot, logger);
+
+            var entry = Assert.Single(logger.Entries.Where(
+                e => e.EventName == "paths_location_created" && e.Fields["location"]?.ToString() == "memory_dir"));
+            Assert.Equal(LogLevel.Information, entry.Level);
+            Assert.Equal(resolved.MemoryDir, entry.Fields["resolved_path"]?.ToString());
+            Assert.True(Directory.Exists(resolved.MemoryDir));
         }
         finally
         {
@@ -168,9 +206,13 @@ public class PathLoggingContractTests
     /// every missing key, before any location is touched.
     /// </summary>
     [Fact]
-    public void MissingRoot_Emits_PathsConfigurationMissing_NamingConfigurationFileAndMissingKeys()
+    public void MissingRoot_Emits_PathsConfigurationMissing_NamingConfigurationFileAndFullKeyPaths()
     {
-        var options = new GrimoirePathOptions { DataDir = "  ", WikiDir = "llm-wiki" };
+        var options = new GrimoirePathOptions
+        {
+            Data = new DataPathOptions { Dir = "  " },
+            Wiki = new WikiPathOptions { Dir = "llm-wiki" },
+        };
         var configRoot = new ConfigurationBuilder().Build();
         var logger = new CaptureLogger<PathLoggingContractTests>();
 
@@ -182,10 +224,12 @@ public class PathLoggingContractTests
         Assert.True(entry.Fields.ContainsKey("configuration_file"));
         Assert.True(entry.Fields.ContainsKey("missing_keys"));
         Assert.Equal("appsettings.json", entry.Fields["configuration_file"]?.ToString());
-        Assert.Contains("DataDir", entry.Fields["missing_keys"]?.ToString(), StringComparison.Ordinal);
-        Assert.Contains("AgentDir", entry.Fields["missing_keys"]?.ToString(), StringComparison.Ordinal);
-        Assert.Contains("DataDir", ex.MissingKeys);
-        Assert.Contains("AgentDir", ex.MissingKeys);
-        Assert.DoesNotContain("WikiDir", ex.MissingKeys);
+        Assert.Contains("Grimoire:Paths:Data:Dir", entry.Fields["missing_keys"]?.ToString(), StringComparison.Ordinal);
+        Assert.Contains("Grimoire:Paths:Agent:Dir", entry.Fields["missing_keys"]?.ToString(), StringComparison.Ordinal);
+        Assert.Contains("Grimoire:Paths:Memory:Dir", entry.Fields["missing_keys"]?.ToString(), StringComparison.Ordinal);
+        Assert.Contains("Grimoire:Paths:Data:Dir", ex.MissingKeys);
+        Assert.Contains("Grimoire:Paths:Agent:Dir", ex.MissingKeys);
+        Assert.Contains("Grimoire:Paths:Memory:Dir", ex.MissingKeys);
+        Assert.DoesNotContain("Grimoire:Paths:Wiki:Dir", ex.MissingKeys);
     }
 }

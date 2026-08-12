@@ -21,12 +21,13 @@ public sealed class GrimoirePathValidationException(string location, string conf
 }
 
 /// <summary>
-/// Startup failure when one of the three mandatory roots (<c>DataDir</c>, <c>WikiDir</c>,
-/// <c>AgentDir</c>) is absent from every configuration tier (ADR-022 FR-005/SC-006). The
-/// versioned <c>appsettings.json</c> is the sole source of default paths — there is no
-/// code-level fallback — so this is a distinct, named failure from
-/// <see cref="GrimoirePathValidationException"/> rather than a location that merely fails
-/// to resolve.
+/// Startup failure when one of the four mandatory roots (<c>Data:Dir</c>, <c>Wiki:Dir</c>,
+/// <c>Agent:Dir</c>, <c>Memory:Dir</c>) is absent from every configuration tier (ADR-022
+/// FR-006/SC-004, amended by ADR-024). The versioned <c>appsettings.json</c> is the sole
+/// source of default paths — there is no code-level fallback — so this is a distinct,
+/// named failure from <see cref="GrimoirePathValidationException"/> rather than a
+/// location that merely fails to resolve. <paramref name="missingKeys"/> carries full key
+/// paths (e.g. <c>Grimoire:Paths:Memory:Dir</c>), not bare field names.
 /// </summary>
 public sealed class GrimoirePathConfigurationMissingException(string configurationFile, IReadOnlyList<string> missingKeys)
     : Exception($"{configurationFile}: missing required configuration key(s) {string.Join(", ", missingKeys)}.")
@@ -36,10 +37,28 @@ public sealed class GrimoirePathConfigurationMissingException(string configurati
 }
 
 /// <summary>
-/// The single composition point for every runtime location (ADR-022): resolves
-/// <see cref="GrimoirePathOptions"/> against their documented anchors, records each
-/// location's effective configuration source, validates required inputs (fail-fast),
-/// auto-creates writable data locations, and reports the result via
+/// Startup failure when the bound configuration still supplies one or more of the
+/// eleven flat configuration keys superseded by ADR-024's regrouping of
+/// <c>Grimoire:Paths</c> into anchor groups (FR-014/SC-010, research R8). This is
+/// deliberately not a fallback or an alias: the old key never takes effect. Checked
+/// before <see cref="GrimoirePathConfigurationMissingException"/>'s mandatory-root gate,
+/// so a configuration that supplies only a legacy key is reported as superseded, not
+/// missing.
+/// </summary>
+public sealed class GrimoirePathConfigurationSupersededException(IReadOnlyList<string> supersededKeys, IReadOnlyList<string> replacements)
+    : Exception(
+        "appsettings.json / environment: superseded configuration key(s). " +
+        string.Join(", ", supersededKeys.Zip(replacements, (old, @new) => $"{old} → {@new}")))
+{
+    public IReadOnlyList<string> SupersededKeys { get; } = supersededKeys;
+    public IReadOnlyList<string> Replacements { get; } = replacements;
+}
+
+/// <summary>
+/// The single composition point for every runtime location (ADR-022, amended by
+/// ADR-024): resolves <see cref="GrimoirePathOptions"/> against their documented
+/// anchors, records each location's effective configuration source, validates required
+/// inputs (fail-fast), auto-creates writable data locations, and reports the result via
 /// <see cref="GrimoirePathLogEvents"/>. No other production type may read the process's
 /// ambient working directory or install directory (enforced by
 /// RuntimePathsBoundaryRuleTests).
@@ -63,6 +82,26 @@ public static class GrimoirePathResolver
     /// </summary>
     public static string ProcessBaseDirectory => AppContext.BaseDirectory;
 
+    /// <summary>
+    /// ADR-024: the eleven configuration keys superseded by the <c>Grimoire:Paths</c>
+    /// regrouping, each paired with its nested replacement (data-model.md §2). Scoped to
+    /// this one rename — deleted, not extended, if the layout ever changes again.
+    /// </summary>
+    private static readonly IReadOnlyList<(string Legacy, string Replacement)> SupersededKeyMap =
+    [
+        ("Grimoire:Paths:DataDir", "Grimoire:Paths:Data:Dir"),
+        ("Grimoire:Paths:WikiDir", "Grimoire:Paths:Wiki:Dir"),
+        ("Grimoire:Paths:AgentDir", "Grimoire:Paths:Agent:Dir"),
+        ("Grimoire:Paths:MemoryDir", "Grimoire:Paths:Memory:Dir"),
+        ("Grimoire:Paths:RawDir", "Grimoire:Paths:Data:RawDir"),
+        ("Grimoire:Paths:StateDb", "Grimoire:Paths:Data:StateDb"),
+        ("Grimoire:Paths:WriteLocksDir", "Grimoire:Paths:Data:WriteLocksDir"),
+        ("Grimoire:Paths:TasksDir", "Grimoire:Paths:Memory:TasksDir"),
+        ("Grimoire:Paths:ConversationsDir", "Grimoire:Paths:Memory:ConversationsDir"),
+        ("Grimoire:Paths:FindingsDir", "Grimoire:Paths:Memory:FindingsDir"),
+        ("Grimoire:Paths:RemediationTasksDir", "Grimoire:Paths:Memory:RemediationTasksDir"),
+    ];
+
     public static ResolvedGrimoirePaths Resolve(GrimoirePathOptions options, IConfiguration configuration, ILogger logger)
     {
         var configRoot = configuration as IConfigurationRoot
@@ -70,13 +109,36 @@ public static class GrimoirePathResolver
                 "Configuration must be an IConfigurationRoot to determine each location's effective source.",
                 nameof(configuration));
 
-        // Mandatory-configuration gate (FR-005/SC-006): the three roots must each carry a
+        // Superseded-key probe (FR-014/SC-010): runs BEFORE the mandatory-root gate, so a
+        // configuration supplying only a legacy key is reported as superseded rather than
+        // missing — "missing" would send the operator looking for a key they already set.
+        var supersededKeys = new List<string>();
+        var replacements = new List<string>();
+        foreach (var (legacy, replacement) in SupersededKeyMap)
+        {
+            if (!string.IsNullOrEmpty(configRoot[legacy]))
+            {
+                supersededKeys.Add(legacy);
+                replacements.Add(replacement);
+            }
+        }
+        if (supersededKeys.Count > 0)
+        {
+            HubMetrics.RecordPathResolutionFailure("configuration_superseded");
+            GrimoirePathLogEvents.LogConfigurationSuperseded(logger, supersededKeys, replacements);
+            throw new GrimoirePathConfigurationSupersededException(supersededKeys, replacements);
+        }
+
+        // Mandatory-configuration gate (FR-006/SC-004): the four roots must each carry a
         // non-empty value before anything is resolved or touched on disk. appsettings.json
         // is the sole source of default paths — there is no code-level fallback tier.
+        // Reported as full key paths (Grimoire:Paths:Memory:Dir), not bare field names, so
+        // the message names something an operator can grep for verbatim in the file.
         var missingRootKeys = new List<string>();
-        if (string.IsNullOrWhiteSpace(options.DataDir)) missingRootKeys.Add("DataDir");
-        if (string.IsNullOrWhiteSpace(options.WikiDir)) missingRootKeys.Add("WikiDir");
-        if (string.IsNullOrWhiteSpace(options.AgentDir)) missingRootKeys.Add("AgentDir");
+        if (string.IsNullOrWhiteSpace(options.Data.Dir)) missingRootKeys.Add("Grimoire:Paths:Data:Dir");
+        if (string.IsNullOrWhiteSpace(options.Wiki.Dir)) missingRootKeys.Add("Grimoire:Paths:Wiki:Dir");
+        if (string.IsNullOrWhiteSpace(options.Agent.Dir)) missingRootKeys.Add("Grimoire:Paths:Agent:Dir");
+        if (string.IsNullOrWhiteSpace(options.Memory.Dir)) missingRootKeys.Add("Grimoire:Paths:Memory:Dir");
         if (missingRootKeys.Count > 0)
         {
             HubMetrics.RecordPathResolutionFailure("configuration_missing");
@@ -84,22 +146,29 @@ public static class GrimoirePathResolver
             throw new GrimoirePathConfigurationMissingException("appsettings.json", missingRootKeys);
         }
 
-        var dataDir = ResolveAgainst(options.DataDir, CurrentWorkingDirectory);
-        var wikiDir = ResolveAgainst(options.WikiDir, CurrentWorkingDirectory);
+        var dataDir = ResolveAgainst(options.Data.Dir, CurrentWorkingDirectory);
+        var wikiDir = ResolveAgainst(options.Wiki.Dir, CurrentWorkingDirectory);
         // Anchored at cwd, same as DataDir/WikiDir — NOT at the resolved DataDir (reviewer
         // confirmation, PR #55): relocating --data-dir must never silently drag the agent
         // runtime along with it. The default literal value (".grimoire/agents" in
         // appsettings.json) spells the nesting out explicitly instead of relying on an
         // anchor-level special case.
-        var agentDir = ResolveAgainst(options.AgentDir, CurrentWorkingDirectory);
+        var agentDir = ResolveAgainst(options.Agent.Dir, CurrentWorkingDirectory);
+        // Anchored at cwd, independent of the other three roots (022-memory-directory-root,
+        // ADR-024) — never nested beneath DataDir/WikiDir/AgentDir unless an operator
+        // explicitly configures it that way.
+        var memoryDir = ResolveAgainst(options.Memory.Dir, CurrentWorkingDirectory);
 
-        var rawDir = ResolveAgainst(options.RawDir, dataDir);
-        var stateDbPath = ResolveAgainst(options.StateDb, dataDir);
-        var writeLocksDir = ResolveAgainst(options.WriteLocksDir, dataDir);
-        var tasksDir = ResolveAgainst(options.TasksDir, wikiDir);
-        var conversationsDir = ResolveAgainst(options.ConversationsDir, wikiDir);
-        var findingsDir = ResolveAgainst(options.FindingsDir, wikiDir);
-        var remediationTasksDir = ResolveAgainst(options.RemediationTasksDir, wikiDir);
+        var rawDir = ResolveAgainst(options.Data.RawDir, dataDir);
+        var stateDbPath = ResolveAgainst(options.Data.StateDb, dataDir);
+        var writeLocksDir = ResolveAgainst(options.Data.WriteLocksDir, dataDir);
+        // The four bookkeeping sub-paths anchor at MemoryDir, not WikiDir, as of
+        // 022-memory-directory-root (ADR-024 N-A) — only their anchor moved; their
+        // configured values and internal per-record layout are unchanged (FR-010).
+        var tasksDir = ResolveAgainst(options.Memory.TasksDir, memoryDir);
+        var conversationsDir = ResolveAgainst(options.Memory.ConversationsDir, memoryDir);
+        var findingsDir = ResolveAgainst(options.Memory.FindingsDir, memoryDir);
+        var remediationTasksDir = ResolveAgainst(options.Memory.RemediationTasksDir, memoryDir);
         var secretsFilePath = ResolveAgainst(options.SecretsFile, CurrentWorkingDirectory);
 
         var indexPath = Path.Combine(wikiDir, "index.md");
@@ -118,47 +187,50 @@ public static class GrimoirePathResolver
 
         var locations = new List<PathLocation>
         {
-            BuildLocation("data_dir", "DataDir", options.DataDir, dataDir, PathLocationKind.WritableData, configRoot),
-            BuildLocation("wiki_dir", "WikiDir", options.WikiDir, wikiDir, PathLocationKind.WritableData, configRoot),
-            BuildLocation("agent_dir", "AgentDir", options.AgentDir, agentDir, PathLocationKind.RequiredInput, configRoot),
-            BuildLocation("raw_dir", "RawDir", options.RawDir, rawDir, PathLocationKind.WritableData, configRoot),
-            BuildLocation("state_db", "StateDb", options.StateDb, stateDbPath, PathLocationKind.WritableData, configRoot),
-            BuildLocation("write_locks_dir", "WriteLocksDir", options.WriteLocksDir, writeLocksDir, PathLocationKind.WritableData, configRoot),
-            BuildLocation("tasks_dir", "TasksDir", options.TasksDir, tasksDir, PathLocationKind.WritableData, configRoot),
-            BuildLocation("conversations_dir", "ConversationsDir", options.ConversationsDir, conversationsDir, PathLocationKind.WritableData, configRoot),
-            BuildLocation("findings_dir", "FindingsDir", options.FindingsDir, findingsDir, PathLocationKind.WritableData, configRoot),
-            BuildLocation("remediation_tasks_dir", "RemediationTasksDir", options.RemediationTasksDir, remediationTasksDir, PathLocationKind.WritableData, configRoot),
+            BuildLocation("data_dir", "Data:Dir", options.Data.Dir, dataDir, PathLocationKind.WritableData, configRoot),
+            BuildLocation("wiki_dir", "Wiki:Dir", options.Wiki.Dir, wikiDir, PathLocationKind.WritableData, configRoot),
+            BuildLocation("agent_dir", "Agent:Dir", options.Agent.Dir, agentDir, PathLocationKind.RequiredInput, configRoot),
+            BuildLocation("memory_dir", "Memory:Dir", options.Memory.Dir, memoryDir, PathLocationKind.WritableData, configRoot),
+            BuildLocation("raw_dir", "Data:RawDir", options.Data.RawDir, rawDir, PathLocationKind.WritableData, configRoot),
+            BuildLocation("state_db", "Data:StateDb", options.Data.StateDb, stateDbPath, PathLocationKind.WritableData, configRoot),
+            BuildLocation("write_locks_dir", "Data:WriteLocksDir", options.Data.WriteLocksDir, writeLocksDir, PathLocationKind.WritableData, configRoot),
+            BuildLocation("tasks_dir", "Memory:TasksDir", options.Memory.TasksDir, tasksDir, PathLocationKind.WritableData, configRoot),
+            BuildLocation("conversations_dir", "Memory:ConversationsDir", options.Memory.ConversationsDir, conversationsDir, PathLocationKind.WritableData, configRoot),
+            BuildLocation("findings_dir", "Memory:FindingsDir", options.Memory.FindingsDir, findingsDir, PathLocationKind.WritableData, configRoot),
+            BuildLocation("remediation_tasks_dir", "Memory:RemediationTasksDir", options.Memory.RemediationTasksDir, remediationTasksDir, PathLocationKind.WritableData, configRoot),
             BuildLocation("secrets_file", "SecretsFile", options.SecretsFile, secretsFilePath, PathLocationKind.RequiredInput, configRoot),
         };
 
         // Validate required inputs — fail fast, before any writable location is touched.
-        ValidateAgentDirectory(logger, options.AgentDir, agentDir);
+        ValidateAgentDirectory(logger, options.Agent.Dir, agentDir);
         ValidateAgentRuntime(logger, "ingest", ingest);
         ValidateAgentRuntime(logger, "query", query);
         ValidateAgentRuntime(logger, "lint", lint);
         ValidateRequiredFile(logger, "secrets_file", options.SecretsFile, secretsFilePath);
 
         // Auto-create writable data locations.
-        CreateDirectoryIfMissing(logger, "data_dir", options.DataDir, dataDir);
-        CreateDirectoryIfMissing(logger, "wiki_dir", options.WikiDir, wikiDir);
-        CreateDirectoryIfMissing(logger, "raw_dir", options.RawDir, rawDir);
-        CreateDirectoryIfMissing(logger, "raw_originals_dir", options.RawDir, rawOriginalsDir);
-        CreateDirectoryIfMissing(logger, "raw_sources_dir", options.RawDir, rawSourcesDir);
-        CreateDirectoryIfMissing(logger, "write_locks_dir", options.WriteLocksDir, writeLocksDir);
-        CreateDirectoryIfMissing(logger, "tasks_dir", options.TasksDir, tasksDir);
-        CreateDirectoryIfMissing(logger, "conversations_dir", options.ConversationsDir, conversationsDir);
-        CreateDirectoryIfMissing(logger, "findings_dir", options.FindingsDir, findingsDir);
-        CreateDirectoryIfMissing(logger, "remediation_tasks_dir", options.RemediationTasksDir, remediationTasksDir);
+        CreateDirectoryIfMissing(logger, "data_dir", options.Data.Dir, dataDir);
+        CreateDirectoryIfMissing(logger, "wiki_dir", options.Wiki.Dir, wikiDir);
+        CreateDirectoryIfMissing(logger, "memory_dir", options.Memory.Dir, memoryDir);
+        CreateDirectoryIfMissing(logger, "raw_dir", options.Data.RawDir, rawDir);
+        CreateDirectoryIfMissing(logger, "raw_originals_dir", options.Data.RawDir, rawOriginalsDir);
+        CreateDirectoryIfMissing(logger, "raw_sources_dir", options.Data.RawDir, rawSourcesDir);
+        CreateDirectoryIfMissing(logger, "write_locks_dir", options.Data.WriteLocksDir, writeLocksDir);
+        CreateDirectoryIfMissing(logger, "tasks_dir", options.Memory.TasksDir, tasksDir);
+        CreateDirectoryIfMissing(logger, "conversations_dir", options.Memory.ConversationsDir, conversationsDir);
+        CreateDirectoryIfMissing(logger, "findings_dir", options.Memory.FindingsDir, findingsDir);
+        CreateDirectoryIfMissing(logger, "remediation_tasks_dir", options.Memory.RemediationTasksDir, remediationTasksDir);
         var stateDbDir = Path.GetDirectoryName(stateDbPath);
         if (!string.IsNullOrEmpty(stateDbDir))
         {
-            CreateDirectoryIfMissing(logger, "state_db_dir", options.StateDb, stateDbDir);
+            CreateDirectoryIfMissing(logger, "state_db_dir", options.Data.StateDb, stateDbDir);
         }
 
         var resolved = new ResolvedGrimoirePaths(
             DataDir: dataDir,
             WikiDir: wikiDir,
             AgentDir: agentDir,
+            MemoryDir: memoryDir,
             RawOriginalsDir: rawOriginalsDir,
             RawSourcesDir: rawSourcesDir,
             StateDbPath: stateDbPath,
@@ -238,7 +310,7 @@ public static class GrimoirePathResolver
         }
 
         // Unreachable in practice: the mandatory-configuration gate above already fails
-        // fast before this point for any of the three roots, and every other configured
+        // fast before this point for any of the four roots, and every other configured
         // key ships a non-empty value in the versioned appsettings.json.
         return "config-file";
     }

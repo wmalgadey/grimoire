@@ -31,7 +31,7 @@ Backend service: `backend/src/Grimoire.Hub/`, `backend/src/Grimoire.EvalRunner/`
 changes. **⚠️ NON-NEGOTIABLE**: no feature implementation begins until this phase is
 complete.
 
-- [ ] T001 [P] Add the namespace-scoped `memory` literal case (ADR-024 rule M2) to
+- [x] T001 [P] Add the namespace-scoped `memory` literal case (ADR-024 rule M2) to
   `backend/tests/Grimoire.ArchTests/NoCodeLevelPathDefaultsRuleTests.cs`: assert no type
   in `Grimoire.Hub.Runtime.Paths` contains the IL string literal `memory` (scoped, not
   the assembly-wide `_forbiddenDefaultLiterals` array — `memory` is already a legitimate
@@ -40,7 +40,7 @@ complete.
   "memory";` to `GrimoirePathOptions`, run the test, confirm it fails, remove the
   constant, confirm it passes. (ADR-024 M2)
 
-- [ ] T002 [P] Update `backend/tests/Grimoire.ArchTests/DirectorySwitchSurfaceRuleTests.cs`
+- [x] T002 [P] Update `backend/tests/Grimoire.ArchTests/DirectorySwitchSurfaceRuleTests.cs`
   (ADR-024 rule M1) to assert `PathSwitchCatalog.All` contains exactly **four** named
   entries (`--data-dir`, `--agent-dir`, `--wiki-dir`, `--memory-dir`) and
   `HubPathSettings` declares exactly one `[CommandOption]` with a `[Description]` per
@@ -50,7 +50,7 @@ complete.
   add a fifth fake entry to a scratch copy of the assertion input, confirm a fifth switch
   fails the count check, revert. (ADR-024 M1)
 
-- [ ] T003 [P] Add `backend/tests/Grimoire.ArchTests/PathOptionsGroupingRuleTests.cs`
+- [x] T003 [P] Add `backend/tests/Grimoire.ArchTests/PathOptionsGroupingRuleTests.cs`
   (ADR-024 rule M4, new file): reflection over `GrimoirePathOptions` asserting exactly
   four group properties (`Data`, `Wiki`, `Agent`, `Memory`), each of a group type
   declaring a `Dir` string property plus zero or more sub-path string properties, and
@@ -61,7 +61,7 @@ complete.
   T015. Additionally probe with a synthetic loose `TasksDir` string property added
   directly to a scratch subclass/test fixture, confirm detection, remove. (ADR-024 M4)
 
-- [ ] T004 Add `backend/tests/Grimoire.ArchTests/NoWikiRelativeHarnessRecordLinkRuleTests.cs`
+- [x] T004 Add `backend/tests/Grimoire.ArchTests/NoWikiRelativeHarnessRecordLinkRuleTests.cs`
   (ADR-024 rule M3, new file): IL literal scan across all production assemblies for any
   string literal beginning with `[[tasks/`, `[[conversations/`, `[[findings/`, or
   `[[remediation-tasks/`.
@@ -84,7 +84,7 @@ grouped options graph, the resolver's fourth root and superseded-key detection, 
 shared test fixtures. **⚠️ CRITICAL**: no user-story work can begin until this phase is
 complete and the solution builds.
 
-- [ ] T005 Rewrite `backend/src/Grimoire.Hub/Runtime/Paths/GrimoirePathOptions.cs` from a
+- [x] T005 Rewrite `backend/src/Grimoire.Hub/Runtime/Paths/GrimoirePathOptions.cs` from a
   flat field bag into a graph of four anchor groups plus one ungrouped property, per
   [data-model.md §2](./data-model.md): `DataPathOptions { Dir, RawDir, StateDb,
   WriteLocksDir }`, `WikiPathOptions { Dir }`, `AgentPathOptions { Dir }`,
@@ -95,7 +95,7 @@ complete and the solution builds.
   not a default (ADR-022 R2 / ADR-024 M2 must stay untouched). (FR-001, FR-002, FR-010,
   FR-013)
 
-- [ ] T006 Regroup `backend/src/Grimoire.Hub/appsettings.json`'s `Grimoire:Paths` section
+- [x] T006 Regroup `backend/src/Grimoire.Hub/appsettings.json`'s `Grimoire:Paths` section
   into the four-group shape from
   [contracts/directory-options.md §5](./contracts/directory-options.md): `Data` (`Dir`,
   `RawDir`, `StateDb`, `WriteLocksDir`), `Wiki` (`Dir`), `Agent` (`Dir`), `Memory` (`Dir`
@@ -103,7 +103,7 @@ complete and the solution builds.
   ungrouped `SecretsFile`. Update the section's leading comment block to describe the
   grouped anchoring graph instead of the flat one. (FR-001, FR-009, FR-013)
 
-- [ ] T007 Update `backend/src/Grimoire.Hub/Runtime/Paths/PathSwitchCatalog.cs`: add a
+- [x] T007 Update `backend/src/Grimoire.Hub/Runtime/Paths/PathSwitchCatalog.cs`: add a
   fourth entry `new("--memory-dir", "Grimoire:Paths:Memory:Dir", "Root for agent process
   bookkeeping — task artifacts, conversation records, lint findings reports, remediation
   task records.")`; change the three existing entries' `ConfigKey` values to their nested
@@ -112,12 +112,12 @@ complete and the solution builds.
   content itself — index.md, log.md, and topical article folders." (switch names and
   `PathLocation` names are unchanged). (FR-001, FR-005)
 
-- [ ] T008 Update `backend/src/Grimoire.Hub/Cli/HubPathSettings.cs`: add
+- [x] T008 Update `backend/src/Grimoire.Hub/Cli/HubPathSettings.cs`: add
   `[CommandOption("--memory-dir <PATH>")]` / `[Description(...)]` /
   `public string? MemoryDir { get; set; }` mirroring `PathSwitchCatalog`'s new entry;
   narrow the existing `--wiki-dir` `[Description]` to match T007. (FR-001)
 
-- [ ] T009 Rewrite `backend/src/Grimoire.Hub/Runtime/Paths/GrimoirePathResolver.cs`:
+- [x] T009 Rewrite `backend/src/Grimoire.Hub/Runtime/Paths/GrimoirePathResolver.cs`:
   - Add a **superseded-flat-key probe** that runs *before* the mandatory-root gate:
     check the bound configuration for each of the eleven legacy flat keys listed in
     [data-model.md §2](./data-model.md) (via `configRoot["Grimoire:Paths:DataDir"]` etc.
@@ -148,12 +148,12 @@ complete and the solution builds.
   - Construct the returned `ResolvedGrimoirePaths` with the new `MemoryDir` member (T010).
   (FR-001, FR-002, FR-003, FR-004, FR-005, FR-006, FR-007, FR-013, FR-014)
 
-- [ ] T010 Add a `MemoryDir` member to
+- [x] T010 Add a `MemoryDir` member to
   `backend/src/Grimoire.Hub/Runtime/Paths/ResolvedGrimoirePaths.cs` (stays flat per
   [data-model.md §3](./data-model.md) — the four `*PathFor` helpers keep their existing
   signatures and now simply compose against a directory that resolves elsewhere). (FR-001)
 
-- [ ] T011 Update `backend/src/Grimoire.Hub/Runtime/Paths/GrimoirePathLogEvents.cs`:
+- [x] T011 Update `backend/src/Grimoire.Hub/Runtime/Paths/GrimoirePathLogEvents.cs`:
   - `LogPathsResolved`: add `span?.SetTag("memory_dir", paths.MemoryDir)` and extend the
     message template/args with `memory_dir={memory_dir}` in root order (data, wiki,
     agent, memory), placed before `secrets_file` to match
@@ -165,19 +165,19 @@ complete and the solution builds.
     `paths_*` events.
   (FR-008, FR-014; Observability: `paths_resolved` widened, `paths_configuration_superseded` new)
 
-- [ ] T012 [P] Update `backend/tests/Grimoire.IntegrationTests/Fakes/TestResolvedGrimoirePathsFactory.cs`
+- [x] T012 [P] Update `backend/tests/Grimoire.IntegrationTests/Fakes/TestResolvedGrimoirePathsFactory.cs`
   to produce a `MemoryDir` and re-anchor the four bookkeeping sub-paths beneath it
   instead of beneath `WikiDir`. (Foundational — every downstream test depends on this fake)
 
-- [ ] T013 [P] Update `backend/tests/Grimoire.IntegrationTests/Fakes/IngestSubmissionPipelineFixture.cs`
+- [x] T013 [P] Update `backend/tests/Grimoire.IntegrationTests/Fakes/IngestSubmissionPipelineFixture.cs`
   the same way as T012. (Foundational)
 
-- [ ] T014 [P] Update `backend/tests/Grimoire.IntegrationTests/PathConfiguration/PathConfigurationTestHelpers.cs`
+- [x] T014 [P] Update `backend/tests/Grimoire.IntegrationTests/PathConfiguration/PathConfigurationTestHelpers.cs`
   (`SeedRequiredInputs` and any config-key string builders) to seed the grouped
   configuration shape (`Grimoire:Paths:Data:Dir`, `Grimoire:Paths:Memory:Dir`, …) instead
   of the flat one. (Foundational)
 
-- [ ] T015 Run `dotnet build backend/Grimoire.slnx` and fix every compile error the
+- [x] T015 Run `dotnet build backend/Grimoire.slnx` and fix every compile error the
   options-graph rename surfaces at remaining call sites (e.g. `HubHostComposition`'s
   `AddCommandLine` switch-mapping construction, any other direct
   `GrimoirePathOptions.TasksDir`-style read) until the solution builds clean. Then run

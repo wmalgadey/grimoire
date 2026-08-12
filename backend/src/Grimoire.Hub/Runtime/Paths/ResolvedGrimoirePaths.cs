@@ -43,6 +43,7 @@ public sealed record ResolvedGrimoirePaths(
     string DataDir,
     string WikiDir,
     string AgentDir,
+    string MemoryDir,
     string RawOriginalsDir,
     string RawSourcesDir,
     string StateDbPath,
