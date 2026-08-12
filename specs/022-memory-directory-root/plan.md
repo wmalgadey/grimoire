@@ -1,8 +1,8 @@
 # Implementation Plan: Independent Memory Directory Root
 
-**Branch**: `023-memory-directory-root` | **Date**: 2026-08-11 | **Spec**: [spec.md](./spec.md)
+**Branch**: `022-memory-directory-root` | **Date**: 2026-08-11 | **Spec**: [spec.md](./spec.md)
 
-**Input**: Feature specification from `/specs/023-memory-directory-root/spec.md`
+**Input**: Feature specification from `/specs/022-memory-directory-root/spec.md`
 
 ## Summary
 
@@ -16,7 +16,7 @@ an operator one location to name in a backup, retention, or exclusion rule.
 The change is deliberately narrow in the resolver — one new options field, one new switch,
 four changed anchor arguments — but it has three consequences that dominate the work:
 ADR-022's structural three-switch cap must be amended by ADR
-([ADR-023](../../docs/adr/ADR-023-memory-directory-fourth-root.md)); the wiki-relative
+([ADR-024](../../docs/adr/ADR-024-memory-directory-root.md)); the wiki-relative
 `Task: [[tasks/<task_id>.md]]` link written into `log.md` becomes dangling and must be
 replaced with a bare task-id reference that keeps the harness log-dedup working; and the
 three agent system prompts must stop describing folders the agent can no longer reach,
@@ -31,14 +31,14 @@ configuration file's tree *is* the anchoring graph. Research is in
 
 ### Scope note — author directive, now specified
 
-The configuration-file regrouping (research R8, ADR-023 option C-A) arrived as an author
+The configuration-file regrouping (research R8, ADR-024 option C-A) arrived as an author
 directive **after** `/speckit-clarify` ran. `spec.md` has been amended to carry it, so the
 plan no longer holds scope that no requirement covers:
 
 - **FR-013** — the configuration file must express each location's anchoring root through
   its own structure, readable without consulting code. Verified by **SC-009** (100% of
   sub-paths resolve against the root they are grouped with), which is precisely what
-  ADR-023 rule M5 tests.
+  ADR-024 rule M5 tests.
 - **FR-014** — superseded configuration keys must fail at startup naming their
   replacements, rather than being silently ignored. Verified by **SC-010**.
 
@@ -48,7 +48,7 @@ error, but an unrecognized configuration key is ignored — so an operator still
 `Grimoire__Paths__DataDir` would get the default with no signal. For a feature whose point
 is deliberate placement of bookkeeping, quietly discarding a placement instruction is the
 worst available failure, and the guard costs a fixed eleven-entry table checked once at
-startup. Both the spec's provenance note and ADR-023 record it as a deliberate departure
+startup. Both the spec's provenance note and ADR-024 record it as a deliberate departure
 from ADR-022's "no detection for removed switches" stance, on the grounds that switches
 already fail loudly and configuration keys do not.
 
@@ -110,13 +110,13 @@ the 2026-08-09 amendment, so v1.8.0 binds in full).
 | Gate | Status | Evidence |
 | --- | --- | --- |
 | **I — DDD & hexagonal boundaries** | PASS | No new external system, so no new port is required. The four record stores (`ConversationRecordStore`, `FindingsReportStore`, `RemediationTaskRecordStore`, `KanbanBoardProjectionStore`) are persistence/local-filesystem adapters under the Principle I exemption and stay concrete classes — they change only which resolved path they are handed. Path composition stays confined to `Grimoire.Hub.Runtime.Paths` (ADR-009 rule, `RuntimePathsBoundaryRuleTests`). No infrastructure package moves namespace. |
-| **I — new boundary via ADR** | PASS | A fourth root is a change to a structurally-enforced surface, so [ADR-023](../../docs/adr/ADR-023-memory-directory-fourth-root.md) is drafted as part of this plan and MUST reach Accepted before `/speckit-tasks`. |
+| **I — new boundary via ADR** | PASS | A fourth root is a change to a structurally-enforced surface, so [ADR-024](../../docs/adr/ADR-024-memory-directory-root.md) is drafted as part of this plan and MUST reach Accepted before `/speckit-tasks`. |
 | **II — real infrastructure, no mocks** | PASS | Every criterion is verified against the real filesystem in per-test temp directories and the real configuration binder. No containerized dependency is involved, so no Testcontainers (2026-08-09 amendment). No mocking framework is referenced by any test project and none is added. |
 | **II — classicist / state-based** | PASS | All assertions are state-based: resolved path values, files present on disk under the configured root, emitted log fields, thrown exception contents. No interaction verification. The only doubles in play are the existing hand-rolled port fakes (`FakeModelClient`, `FakeAgentProcess`) whose use is unchanged. |
 | **II — harness vs. agent split** | PASS | Path resolution, anchoring, validation, auto-creation and reporting are harness contracts, tested deterministically and hermetically with no live LLM calls. The one agentic surface (FR-012 instruction edits) is verified by the existing evaluation tier, not by hermetic tests — see Test Strategy. |
 | **II — success-criteria split** | PASS | The spec states all eight criteria as deterministic 100%/0% guarantees and explains why no evaluation threshold applies: the feature adds no agent judgment. FR-012 *removes* instruction text rather than adding judgment; the existing scenario thresholds serve as the regression check that the removal was harmless. No 100% guarantee is attached to an agent-judgment outcome. |
 | **III — ADRs read before plan** | PASS | All 22 ADRs in `docs/adr/` were read. Constraining ADRs are listed below. |
-| **III — new ADR drafted** | PASS (action required) | ADR-023 drafted at `docs/adr/ADR-023-memory-directory-fourth-root.md`, status `proposed`. **Blocks `/speckit-tasks` until Accepted.** |
+| **III — new ADR drafted** | PASS (action required) | ADR-024 drafted at `docs/adr/ADR-024-memory-directory-root.md`, status `proposed`. **Blocks `/speckit-tasks` until Accepted.** |
 | **III — Phase 0 structural test first** | PASS | Three structural rules (M1, M2, M3) with Red/Green probes, all in `Grimoire.ArchTests`, ordered first in the task list. |
 | **IV — CI gate for every rule** | PASS | `Grimoire.ArchTests` and `Grimoire.IntegrationTests` both already run in the standard PR pipeline (`.github/workflows/ci.yml`); the new and updated rules inherit that gate with no workflow change. The observability contract tests likewise run there today. |
 | **IV — Observability section** | PASS | Enumerated below. This feature adds no new signal; it widens the mandatory-field set of one existing log event and one existing span, and widens the trigger set of two more. Each widened row carries implementation, deterministic-test, and CI rows. |
@@ -168,10 +168,10 @@ three observations the design surfaced:
 
 | ADR | Title | Constraint on this feature |
 | --- | --- | --- |
-| ADR-022 | Minimal Directory Configuration Surface | **The binding constraint.** Rule R1 caps `PathSwitchCatalog.All` at exactly three named entries with 1:1 `HubPathSettings` parity; a fourth switch fails the build. Rule R2 bans code-level root defaults as IL literals. Its root/sub-path table anchors all four bookkeeping sub-paths at `WikiDir`, and its consequences record that placement as deliberate. All three must be amended — done by ADR-023, which additionally regroups the `Grimoire:Paths` key layout and so renames every configuration key and environment variable (switch names unaffected). Everything else it decided (mandatory config file, per-option precedence, no code defaults, one composition point, agent-build distribution, single launch mode) is preserved verbatim; "one options record" is read as one options graph bound from one section at one composition point. |
-| ADR-023 | The Memory Directory — A Fourth Independent Root | **Drafted by this plan; must be Accepted before `/speckit-tasks`.** Establishes `MemoryDir` as the fourth root, re-anchors the four sub-paths, amends R1 three→four, adds namespace-scoped rule M2 and wikilink tripwire M3, retires the wiki-relative task link, and — per the 2026-08-11 author directive — regroups `Grimoire:Paths` by anchoring root with rules M4 (options-graph shape) and M5 (grouping-is-anchoring invariant). |
+| ADR-022 | Minimal Directory Configuration Surface | **The binding constraint.** Rule R1 caps `PathSwitchCatalog.All` at exactly three named entries with 1:1 `HubPathSettings` parity; a fourth switch fails the build. Rule R2 bans code-level root defaults as IL literals. Its root/sub-path table anchors all four bookkeeping sub-paths at `WikiDir`, and its consequences record that placement as deliberate. All three must be amended — done by ADR-024, which additionally regroups the `Grimoire:Paths` key layout and so renames every configuration key and environment variable (switch names unaffected). Everything else it decided (mandatory config file, per-option precedence, no code defaults, one composition point, agent-build distribution, single launch mode) is preserved verbatim; "one options record" is read as one options graph bound from one section at one composition point. |
+| ADR-024 | Memory Directory — A Fourth Independent Root | **Drafted by this plan; must be Accepted before `/speckit-tasks`.** Establishes `MemoryDir` as the fourth root, re-anchors the four sub-paths, amends R1 three→four, adds namespace-scoped rule M2 and wikilink tripwire M3, retires the wiki-relative task link, and — per the 2026-08-11 author directive — regroups `Grimoire:Paths` by anchoring root with rules M4 (options-graph shape) and M5 (grouping-is-anchoring invariant). |
 | ADR-009 | Explicit Runtime Path Configuration | One composition point (`GrimoirePathOptions` + `GrimoirePathResolver`), no ambient process-context reads outside `Grimoire.Hub.Runtime.Paths`, fail-fast validation naming logical location + configured value + resolved path, auto-creation of writable locations, one startup report of every resolved location. The new root must be added through this composition point and nowhere else. |
-| ADR-014 | Query Conversation Records | Owns the Conversation Record's on-disk home (`ConversationsDir`) and its `grimoire-conversation/1` format. The home is re-anchored by ADR-023; the format, the append-only lifecycle, the fail-closed read and the conversation-id charset rule are frozen (FR-010). |
+| ADR-014 | Query Conversation Records | Owns the Conversation Record's on-disk home (`ConversationsDir`) and its `grimoire-conversation/1` format. The home is re-anchored by ADR-024; the format, the append-only lifecycle, the fail-closed read and the conversation-id charset rule are frozen (FR-010). |
 | ADR-018 | Remediation Action Authorization and Execution | Introduced `RemediationTasksDir` and the record it holds. Same treatment: root moves, record format and state machine frozen. |
 | ADR-003 | Domain vs. Operational State Persistence | Domain state is plain markdown; operational state is the embedded SQLite file. This feature does not reclassify anything — it restores ADR-003's *placement* intent (bookkeeping outside the knowledge base) that ADR-022 had reversed. The SQLite store stays under `DataDir`. |
 | ADR-020 | Hub CLI Command Surface | Every CLI command accepts the path switches via a shared `HubPathSettings` base, parity-tested 1:1 against `PathSwitchCatalog.All`, and the root help's "Server options" section is generated from the catalog. The parity requirement is unchanged; the catalog and the help section each gain one entry, so `HubHelpUsageTests` must be updated. |
@@ -183,7 +183,7 @@ three observations the design surfaced:
 | ADR-010 | Hexagonal Ports and Adapter Namespaces | Persistence and local-filesystem stores are port-exempt but containment-bound. The four record stores stay concrete classes in their existing namespaces. |
 | ADR-017 | Log and Catalog Entry Format Enforcement | Constrains the `log.md` heading shape and the `index.md` catalog line shape only. Confirmed non-binding on the task-reference change (research R3): no regex requires a wikilink. |
 
-**New ADR required?**: **Yes — drafted.** `docs/adr/ADR-023-memory-directory-fourth-root.md`
+**New ADR required?**: **Yes — drafted.** `docs/adr/ADR-024-memory-directory-root.md`
 (status `proposed`). Per Constitution Principle III it MUST reach **Accepted** before
 `/speckit-tasks` is invoked.
 
@@ -224,7 +224,7 @@ directory built by `PathConfigurationTestHelpers.SeedRequiredInputs`.
 | **SC-006** — memory folder appears in 100% of startup path-resolution reports | Deterministic guarantee | Hermetic observability contract test | Real telemetry registration from the production composition root (Principle IV: no test-only provider) | In-memory log/activity capture attached to the real pipeline | Extends `PathLoggingContractTests` (mandatory field `memory_dir`, level Information) and `PathTracingContractTests` (span tag `memory_dir`). |
 | **SC-007** — 0% of pre-existing on-disk records moved automatically | Deterministic guarantee | Hermetic integration test | Real filesystem | Temp dir pre-seeded with records under `<WikiDir>/tasks`, `<WikiDir>/conversations`, … | Asserts, after a full resolve + start, that every pre-seeded file is still byte-identical at its original path and that the memory root contains none of them. This is a negative guarantee, so it needs its own test rather than being implied. |
 | **SC-008** — 0% of the three instruction files reference these folders as wiki-reachable | Deterministic guarantee | Hermetic content assertion over the instruction sources (Fast tier) | None — reads the real `Instructions/system-prompt.md` files from `backend/src/` | The three real prompt files | A lexical assertion: none of `tasks/`, `conversations/`, `findings/`, `remediation-tasks/`, `[[tasks/` appears in any of the three prompts. Note that **no such content test exists today** (`QueryInstructionLoadTests` asserts only byte-identical load + SHA-256), so this is a new test, not an extension. Backed structurally by rule M3 on the production side. |
-| **SC-009** — 100% of sub-paths resolve against the root they are grouped with, 0% against another | Deterministic guarantee | Hermetic integration test, reflection-driven | Real filesystem, real binder | Per-group relocation over the options graph | `PathGroupingInvariantTests` (ADR-023 rule M5). Reflection over `GrimoirePathOptions` means a sub-path added later is covered without editing the test — the point is to keep the grouping true, not to snapshot today's key list. Also delivers SC-002. |
+| **SC-009** — 100% of sub-paths resolve against the root they are grouped with, 0% against another | Deterministic guarantee | Hermetic integration test, reflection-driven | Real filesystem, real binder | Per-group relocation over the options graph | `PathGroupingInvariantTests` (ADR-024 rule M5). Reflection over `GrimoirePathOptions` means a sub-path added later is covered without editing the test — the point is to keep the grouping true, not to snapshot today's key list. Also delivers SC-002. |
 | **SC-010** — 100% of starts supplying a superseded key fail naming it and its replacement; 0% fall back to a default | Deterministic guarantee | Hermetic integration test, table-driven | Real filesystem, real binder | The eleven superseded keys, each supplied via the file **and** via its environment-variable form | Asserts the startup abort, the `paths_configuration_superseded` ERROR event with `superseded_keys`/`replacements`, and one `reason=configuration_superseded` metric increment. The env-var form matters most: it is the tier where the silent fallback would actually bite. |
 | **FR-002 / FR-012 behavioral regression** — removing the reserved-folder guidance does not degrade agent behavior | Agent-judgment threshold | Evaluation with threshold (existing SlowEval tier, re-captured) | Recorded LLM responses via `ReplayModelClient`; capture needs a live provider | All 22 scenarios, 230 samples, re-captured | **Not a new criterion** — the spec correctly declares no new agent-judgment outcome. Listed because the existing scenario thresholds are the only evidence that FR-012's deletions were harmless, and because re-capture is a gating step (research R5). Ingest `convention-adherence` and `log-paragraph-specificity` are the two scenarios most exposed to the task-reference change. |
 
@@ -233,11 +233,11 @@ Constitution Principle III:
 
 | Rule | Test | Probe |
 | --- | --- | --- |
-| ADR-023 M1 | `Grimoire.ArchTests/DirectorySwitchSurfaceRuleTests` (updated: three → four named entries, `HubPathSettings` declares exactly 4) | Add a fifth catalog entry; verify red; remove |
-| ADR-023 M2 | `Grimoire.ArchTests/NoCodeLevelPathDefaultsRuleTests` (new namespace-scoped case for `memory` in `Grimoire.Hub.Runtime.Paths`) | Add `const string DefaultMemoryDirName = "memory"` to `GrimoirePathOptions`; verify red; remove |
-| ADR-023 M3 | `Grimoire.ArchTests/NoWikiRelativeHarnessRecordLinkRuleTests` (new; IL literal scan for `[[tasks/`, `[[conversations/`, `[[findings/`, `[[remediation-tasks/`) | Restore `RestartReconciler`'s `Task: [[tasks/{taskId}.md]]`; verify red; remove |
-| ADR-023 M4 | `Grimoire.ArchTests/PathOptionsGroupingRuleTests` (new; reflection over `GrimoirePathOptions` — exactly four group properties each declaring `Dir`, plus `SecretsFile`, and no loose path property) | Add a loose `TasksDir` string property directly to `GrimoirePathOptions`; verify red; remove |
-| ADR-023 M5 | `Grimoire.IntegrationTests/PathConfiguration/PathGroupingInvariantTests` (new; **Integration tier** — needs the real resolver and filesystem, so it is not a Phase 0 test) | Anchor a `Memory` group sub-path at `dataDir` in `GrimoirePathResolver`; verify red; revert |
+| ADR-024 M1 | `Grimoire.ArchTests/DirectorySwitchSurfaceRuleTests` (updated: three → four named entries, `HubPathSettings` declares exactly 4) | Add a fifth catalog entry; verify red; remove |
+| ADR-024 M2 | `Grimoire.ArchTests/NoCodeLevelPathDefaultsRuleTests` (new namespace-scoped case for `memory` in `Grimoire.Hub.Runtime.Paths`) | Add `const string DefaultMemoryDirName = "memory"` to `GrimoirePathOptions`; verify red; remove |
+| ADR-024 M3 | `Grimoire.ArchTests/NoWikiRelativeHarnessRecordLinkRuleTests` (new; IL literal scan for `[[tasks/`, `[[conversations/`, `[[findings/`, `[[remediation-tasks/`) | Restore `RestartReconciler`'s `Task: [[tasks/{taskId}.md]]`; verify red; remove |
+| ADR-024 M4 | `Grimoire.ArchTests/PathOptionsGroupingRuleTests` (new; reflection over `GrimoirePathOptions` — exactly four group properties each declaring `Dir`, plus `SecretsFile`, and no loose path property) | Add a loose `TasksDir` string property directly to `GrimoirePathOptions`; verify red; remove |
+| ADR-024 M5 | `Grimoire.IntegrationTests/PathConfiguration/PathGroupingInvariantTests` (new; **Integration tier** — needs the real resolver and filesystem, so it is not a Phase 0 test) | Anchor a `Memory` group sub-path at `dataDir` in `GrimoirePathResolver`; verify red; revert |
 
 M5 is the one rule that cannot be a Phase 0 structural test: it asserts resolver *behavior*,
 which requires the resolver to run. It lands with the resolver work in the US1 phase, and
@@ -331,7 +331,7 @@ test-only provider.
 ### Documentation (this feature)
 
 ```text
-specs/023-memory-directory-root/
+specs/022-memory-directory-root/
 ├── plan.md              # This file (/speckit-plan command output)
 ├── spec.md              # Feature specification
 ├── research.md          # Phase 0 output — R1..R7 decisions
@@ -343,7 +343,7 @@ specs/023-memory-directory-root/
 └── tasks.md             # Phase 2 output (/speckit-tasks — NOT created by /speckit-plan)
 
 docs/adr/
-└── ADR-023-memory-directory-fourth-root.md   # Drafted by this plan; must be Accepted
+└── ADR-024-memory-directory-root.md   # Drafted by this plan; must be Accepted
 ```
 
 ### Source Code (repository root)
@@ -428,8 +428,8 @@ the third from the fourth.
 
 No Constitution Check violations. Table intentionally empty.
 
-The one deliberate narrowing — ADR-023 rule M2 scanning a single namespace where ADR-022
+The one deliberate narrowing — ADR-024 rule M2 scanning a single namespace where ADR-022
 rule R2 scans every production assembly — is not a constitutional violation (the rule
 exists, is structural, has a Red/Green probe and a CI gate) but is recorded as an accepted
-trade-off in ADR-023's Consequences and in [research.md R2](./research.md), together with
+trade-off in ADR-024's Consequences and in [research.md R2](./research.md), together with
 the behavioral backstop that covers the gap.

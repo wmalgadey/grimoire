@@ -1,6 +1,6 @@
 # Feature Specification: Independent Memory Directory Root
 
-**Feature Branch**: `023-memory-directory-root`
+**Feature Branch**: `022-memory-directory-root`
 
 **Created**: 2026-08-11
 

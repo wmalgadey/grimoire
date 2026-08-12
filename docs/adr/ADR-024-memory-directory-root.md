@@ -1,8 +1,8 @@
 ---
-status: proposed
+status: Accepted
 ---
 
-# ADR-023: The Memory Directory — A Fourth Independent Root for Agent Process Bookkeeping
+# ADR-024: Memory Directory — A Fourth Independent Root for Agent Process Bookkeeping
 
 ## Context and Problem Statement
 
@@ -25,8 +25,8 @@ different things in one tree: the maintained knowledge base (the product) and ha
 record-keeping of what the agents did (process exhaust). An operator who wants to back
 up, retain, or exclude one but not the other has no single location to point at — they
 must enumerate four sub-paths, and the `.gitignore` remedy only covers the git case, not
-backup jobs, retention policies, or storage placement. Feature 023
-(`specs/023-memory-directory-root/spec.md`) asks for one directory that holds all four.
+backup jobs, retention policies, or storage placement. Feature 022
+(`specs/022-memory-directory-root/spec.md`) asks for one directory that holds all four.
 
 Three things make this an ADR rather than a decision inside the feature:
 

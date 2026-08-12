@@ -1,12 +1,12 @@
 # Contract: Hub Directory Options (four roots)
 
-**Feature**: `023-memory-directory-root` | **Governs**: FR-001, FR-002, FR-003, FR-004,
+**Feature**: `022-memory-directory-root` | **Governs**: FR-001, FR-002, FR-003, FR-004,
 FR-005, FR-006, FR-007, FR-009, FR-010 | **Verified by**: SC-001, SC-002, SC-003, SC-004,
 SC-005, SC-007
 
 Supersedes [`specs/020-simplify-hub-config/contracts/directory-options.md`](../../020-simplify-hub-config/contracts/directory-options.md).
 The hub's complete path-configuration surface. Anything not listed in §1 is not
-configurable from the command line — by ADR-023 rule M1 it cannot become configurable
+configurable from the command line — by ADR-024 rule M1 it cannot become configurable
 without amending that ADR.
 
 ---
@@ -209,7 +209,7 @@ at one composition point (ADR-009's rule, preserved in substance). Each group pr
 initialized (`= new()`) so an absent JSON group binds to an empty group rather than null.
 
 **Those initializers are not path defaults.** Every leaf path property remains `string?`
-with no initializer, so ADR-022 R2 and ADR-023 M2 stand: no production assembly may contain
+with no initializer, so ADR-022 R2 and ADR-024 M2 stand: no production assembly may contain
 `.grimoire` or `llm-wiki` as an IL string literal anywhere, nor `memory` within
 `Grimoire.Hub.Runtime.Paths`.
 
@@ -217,7 +217,7 @@ with no initializer, so ADR-022 R2 and ADR-023 M2 stand: no production assembly 
 
 For each group, relocating that group's `Dir` moves every sub-path declared in the group
 and nothing declared in another group. Asserted by
-`Grimoire.IntegrationTests/PathConfiguration/PathGroupingInvariantTests` (ADR-023 rule M5),
+`Grimoire.IntegrationTests/PathConfiguration/PathGroupingInvariantTests` (ADR-024 rule M5),
 driven by reflection over the options graph so a newly added sub-path is covered without
 editing the test. Declaring a key in one group while anchoring it at another root in the
 resolver fails the build.
@@ -228,13 +228,13 @@ resolver fails the build.
 
 `PathSwitchCatalog.All` contains exactly the four entries in §1, and `HubPathSettings`
 declares exactly one `[CommandOption]` with a `[Description]` per entry — asserted by
-`Grimoire.ArchTests/DirectorySwitchSurfaceRuleTests` (ADR-023 M1). The rule remains an
+`Grimoire.ArchTests/DirectorySwitchSurfaceRuleTests` (ADR-024 M1). The rule remains an
 exact named enumeration, not a count: adding a fifth switch, or renaming one, fails the
 build.
 
 Adding a new **sub-path** means adding a property to the relevant group option type and a
 key inside that group in `appsettings.json` — never a switch (ADR-022, unchanged), and
-never as a loose property on `GrimoirePathOptions` (ADR-023 rule M4). Adding a new **root**
+never as a loose property on `GrimoirePathOptions` (ADR-024 rule M4). Adding a new **root**
 means a new group and remains an ADR-level decision.
 
 ---

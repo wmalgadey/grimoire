@@ -1,6 +1,6 @@
 # Contract: Path-Resolution Observability
 
-**Feature**: `023-memory-directory-root` | **Governs**: FR-006, FR-007, FR-008 |
+**Feature**: `022-memory-directory-root` | **Governs**: FR-006, FR-007, FR-008 |
 **Verified by**: SC-004, SC-005, SC-006
 
 This feature adds no new signal. It widens the mandatory-field set of one existing log
@@ -95,7 +95,7 @@ message naming `appsettings.json`. Case (b) exists because the group-property in
 makes it a distinct code path — without it the binder would produce a null group and an
 NRE rather than this event. (SC-004, FR-006)
 
-This test is also the behavioral backstop for ADR-023 rule M2: a code-level default for
+This test is also the behavioral backstop for ADR-024 rule M2: a code-level default for
 the memory root anywhere in the solution would make it fail, regardless of the namespace
 the literal lives in.
 

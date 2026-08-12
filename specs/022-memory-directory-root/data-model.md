@@ -1,6 +1,6 @@
 # Data Model: Independent Memory Directory Root
 
-**Feature**: `023-memory-directory-root` | **Date**: 2026-08-11 |
+**Feature**: `022-memory-directory-root` | **Date**: 2026-08-11 |
 **Plan**: [plan.md](./plan.md) | **Contracts**: [directory-options.md](./contracts/directory-options.md)
 
 This feature adds no persisted entity, no database table and no file format. Its "data
@@ -41,7 +41,7 @@ longer covers them. The "these are not pages" contract stops being prompt-only.
 
 Bound from configuration section `Grimoire:Paths` in one call at one composition point.
 The type is no longer a flat bag: it is a **graph of four anchor groups plus one ungrouped
-property**, mirroring the JSON tree (research R8, ADR-023 C-A).
+property**, mirroring the JSON tree (research R8, ADR-024 C-A).
 
 ```text
 GrimoirePathOptions                                    ← bound from "Grimoire:Paths"
@@ -81,15 +81,15 @@ GrimoirePathOptions                                    ← bound from "Grimoire:
 **Initializers vs. defaults.** Each *group* property is initialized (`= new()`) so an
 absent JSON group binds to an empty group rather than null. Each *leaf* path property is
 `string?` with no initializer — a code-level path default remains forbidden (ADR-022 R2,
-ADR-023 M2). The distinction matters and is easy to misread: `= new()` is a null guard, not
+ADR-024 M2). The distinction matters and is easy to misread: `= new()` is a null guard, not
 a default.
 
-**Shape rule (ADR-023 M4)**: exactly four group properties, each declaring a `Dir`, plus
+**Shape rule (ADR-024 M4)**: exactly four group properties, each declaring a `Dir`, plus
 exactly one ungrouped property (`SecretsFile`). No path-valued property may sit directly on
 `GrimoirePathOptions` otherwise. This keeps the type and the JSON the same shape so the file
 cannot drift back toward flatness one property at a time.
 
-**Grouping invariant (ADR-023 M5)**: relocating a group's `Dir` moves every sub-path
+**Grouping invariant (ADR-024 M5)**: relocating a group's `Dir` moves every sub-path
 declared in that group and nothing declared in another. The grouping is enforced, not
 documentary.
 
@@ -256,4 +256,4 @@ moved or deleted (FR-011/SC-007). They simply stop being resolved against.
 - Configuration surface and precedence: [contracts/directory-options.md](./contracts/directory-options.md)
 - Log event and span field contracts: [contracts/paths-observability.md](./contracts/paths-observability.md)
 - Why the four sub-paths move together, and why the wikilink goes: [research.md](./research.md) R1, R3
-- Structural rules M1/M2/M3: [ADR-023](../../docs/adr/ADR-023-memory-directory-fourth-root.md)
+- Structural rules M1/M2/M3: [ADR-024](../../docs/adr/ADR-024-memory-directory-root.md)

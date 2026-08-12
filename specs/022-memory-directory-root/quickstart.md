@@ -1,6 +1,6 @@
 # Quickstart: Validating the Independent Memory Directory Root
 
-**Feature**: `023-memory-directory-root` | **Plan**: [plan.md](./plan.md) |
+**Feature**: `022-memory-directory-root` | **Plan**: [plan.md](./plan.md) |
 **Contracts**: [directory-options.md](./contracts/directory-options.md),
 [paths-observability.md](./contracts/paths-observability.md)
 
@@ -239,7 +239,7 @@ dotnet test backend/tests/Grimoire.IntegrationTests \
   --filter "FullyQualifiedName~PathGroupingInvariantTests"
 ```
 
-**Expected**: green. This is ADR-023 rule M5 — for each group, relocating that group's
+**Expected**: green. This is ADR-024 rule M5 — for each group, relocating that group's
 `Dir` moves every sub-path declared in it and nothing declared elsewhere. Declaring a key
 under `Memory` while anchoring it at `dataDir` in the resolver fails here, which is what
 makes the grouping load-bearing rather than decorative.
@@ -249,7 +249,7 @@ makes the grouping load-bearing rather than decorative.
 ## Test suites
 
 ```bash
-# Fast tier — includes the three structural rules (ADR-023 M1/M2/M3).
+# Fast tier — includes the three structural rules (ADR-024 M1/M2/M3).
 ./scripts/test-fast.sh
 
 # Integration tier — the path-configuration contract suite.

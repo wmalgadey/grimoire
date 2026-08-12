@@ -1,6 +1,6 @@
 # Phase 0 Research: Independent Memory Directory Root
 
-**Feature**: `023-memory-directory-root` | **Date**: 2026-08-11 |
+**Feature**: `022-memory-directory-root` | **Date**: 2026-08-11 |
 **Spec**: [spec.md](./spec.md) | **Plan**: [plan.md](./plan.md)
 
 The Technical Context in `plan.md` carries no `NEEDS CLARIFICATION` markers: the language,
@@ -21,7 +21,7 @@ in a functional requirement — see the scope note in [plan.md](./plan.md).
 `Grimoire:Paths:Memory:Dir` as a fourth root at the same tier as the existing three, and
 amend ADR-022 rule R1 from an exact enumeration of three switches to an exact enumeration
 of four. Recorded in
-[ADR-023](../../docs/adr/ADR-023-memory-directory-fourth-root.md). (The nested key form
+[ADR-024](../../docs/adr/ADR-024-memory-directory-root.md). (The nested key form
 comes from R8 below; the switch name is unaffected by it.)
 
 **Rationale**: Spec FR-001 puts the memory folder "at the same configuration tier as" the
@@ -47,7 +47,7 @@ switch" sentence continues to bind unchanged.
 - *Nest the memory root under `DataDir`*. Reintroduces the shared-parent coupling ADR-022
   removed with `BaseDir`; relocating runtime data would drag bookkeeping along, violating
   FR-003. Rejected.
-- *Amend ADR-022 in place rather than writing ADR-023*. Rejected for consistency with the
+- *Amend ADR-022 in place rather than writing ADR-024*. Rejected for consistency with the
   house pattern: ADR-022 itself amended ADR-002/007/009/012/019/020 through a new document
   with a "Superseded and amended decisions" table, which keeps the reasoning for each change
   dated and attributable.
@@ -59,7 +59,7 @@ switch" sentence continues to bind unchanged.
 **Decision**: Do **not** add `memory` to `NoCodeLevelPathDefaultsRuleTests`'
 assembly-wide `_forbiddenDefaultLiterals` array. Add a separate, namespace-scoped case
 asserting no type in `Grimoire.Hub.Runtime.Paths` contains the IL literal `memory`
-(ADR-023 rule M2).
+(ADR-024 rule M2).
 
 **Rationale**: ADR-022 R2's global scan works for `.grimoire` and `llm-wiki` because those
 are path-shaped tokens that appear nowhere else in the solution. `memory` is not. It is
@@ -95,7 +95,7 @@ default, and namespace-scoped IL scanning is an idiom the same test project alre
   fallback for the memory root exactly as for the other three, and R2's whole purpose is to
   make that verifiable rather than reviewed.
 
-**Residual risk, accepted and documented in ADR-023**: the memory root's no-code-default
+**Residual risk, accepted and documented in ADR-024**: the memory root's no-code-default
 guarantee is narrower than `.grimoire`'s and `llm-wiki`'s. It is backstopped behaviorally
 by the FR-006/SC-004 integration test, which asserts the resolver throws
 `GrimoirePathConfigurationMissingException` naming `Grimoire:Paths:Memory:Dir` when the key
@@ -109,7 +109,7 @@ namespace.
 **Decision**: Replace `Task: [[tasks/<task_id>.md]]` with `Task: <task_id>` in both the
 Ingest system prompt and
 [RestartReconciler.cs:130](../../backend/src/Grimoire.Hub/OperationalState/RestartReconciler.cs#L130).
-Enforce the removal with a new IL tripwire (ADR-023 rule M3) covering `[[tasks/`,
+Enforce the removal with a new IL tripwire (ADR-024 rule M3) covering `[[tasks/`,
 `[[conversations/`, `[[findings/` and `[[remediation-tasks/`.
 
 **Rationale**: A wikilink resolves within the wiki tree by definition; once `tasks/`
@@ -302,7 +302,7 @@ via hub configuration.
 into four anchor groups (`Data`, `Wiki`, `Agent`, `Memory`) plus the ungrouped
 `SecretsFile`. Each group's own root is the key `Dir`; every sibling key in the group is a
 sub-path anchored at that group's resolved `Dir`. `GrimoirePathOptions` mirrors the tree.
-Recorded in [ADR-023](../../docs/adr/ADR-023-memory-directory-fourth-root.md) as option
+Recorded in [ADR-024](../../docs/adr/ADR-024-memory-directory-root.md) as option
 C-A, with structural rules M4 and M5.
 
 **Rationale**: Author directive of 2026-08-11 — the configuration file should reflect the
@@ -379,7 +379,7 @@ and work unchanged with `Data:Dir`-style suffixes.
 4. **Group properties are initialized, leaf values are not.**
    `public DataPathOptions Data { get; set; } = new();` prevents a
    `NullReferenceException` when a JSON group is absent entirely. Every leaf path property
-   stays `string?` with no initializer, so ADR-022 R2 and ADR-023 M2 are untouched — worth
+   stays `string?` with no initializer, so ADR-022 R2 and ADR-024 M2 are untouched — worth
    stating explicitly, because `= new()` reads like a default at a glance and is not one.
 5. **The missing-key error improves.** The mandatory-root gate reports full key paths
    (`Grimoire:Paths:Memory:Dir`) instead of bare field names (`MemoryDir`), so the message
