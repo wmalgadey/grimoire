@@ -1,16 +1,16 @@
 {
   "schema_version": 1,
   "sample": 1,
-  "task_id": "capture-log-paragraph-specificity-01-bee374243a61421db1fa2caf39fd8a13",
+  "task_id": "capture-log-paragraph-specificity-01-ccc4192635394ee289458ac45ca73144",
   "model": "claude-haiku-4-5",
   "turns": [
     {
       "turn": 1,
-      "system_prompt_sha256": "sha256:ace4c5930b7792d9159033ab5ff7a6075fab7d62bd7715fb123292e5290418ff",
+      "system_prompt_sha256": "sha256:8efead96ac6915cc9d2b47b10b25e169d8eacec1f7918ca037a1f02447ccb974",
       "conversation": [
         {
           "role": "user",
-          "content_sha256": "sha256:59645ba7ba8b524c501d87e79ce74db3e76b1b62195c4f18e057feada9885d6c"
+          "content_sha256": "sha256:5097146152cfe2b9ff351762e4dba8a413953c594edc0bdeae9dc108b8199e94"
         }
       ],
       "tool_names": [
@@ -21,35 +21,35 @@
       "stop_reason": "tool_use",
       "tool_uses": [
         {
-          "tool_use_id": "toolu_01YQiEtwgTxB51Aq1RNyPHur",
+          "tool_use_id": "toolu_01AkG2ff7cuiWHVQshVzHpZ5",
           "tool_name": "read_file",
           "input_json": "{\u0022path\u0022:\u0022index.md\u0022}"
         },
         {
-          "tool_use_id": "toolu_01AGx4LjLX5RuF6qZu4Z9SJL",
+          "tool_use_id": "toolu_01QJmyrZp3MrNmR9T1tEP4fH",
           "tool_name": "list_files",
           "input_json": "{\u0022path\u0022:\u0022.\u0022}"
         }
       ],
-      "assistant_text": "I\u0027ll start by exploring the wiki to understand its current state and then integrate the source about Write-ahead logging (WAL).",
-      "input_tokens": 5784,
-      "output_tokens": 117
+      "assistant_text": "I\u0027ll start by exploring the wiki state to understand what\u0027s already there, then integrate this source about Write-Ahead Logging (WAL).",
+      "input_tokens": 5557,
+      "output_tokens": 121
     },
     {
       "turn": 2,
-      "system_prompt_sha256": "sha256:ace4c5930b7792d9159033ab5ff7a6075fab7d62bd7715fb123292e5290418ff",
+      "system_prompt_sha256": "sha256:8efead96ac6915cc9d2b47b10b25e169d8eacec1f7918ca037a1f02447ccb974",
       "conversation": [
         {
           "role": "user",
-          "content_sha256": "sha256:59645ba7ba8b524c501d87e79ce74db3e76b1b62195c4f18e057feada9885d6c"
+          "content_sha256": "sha256:5097146152cfe2b9ff351762e4dba8a413953c594edc0bdeae9dc108b8199e94"
         },
         {
           "role": "assistant",
-          "content_sha256": "sha256:819d401950dd208a419f3535f031ea54dd2dd406670d403d49bda647b5db3dce"
+          "content_sha256": "sha256:cdd35a4755508f5f8c23c0c086e5eea00292e253b0dabe692975e7c1e8805d49"
         },
         {
           "role": "user",
-          "content_sha256": "sha256:da1eaa4b95fedc3c2670f55dafae9048f6d528197da20dc1cc5bbe17b69f0b08"
+          "content_sha256": "sha256:8c9b684dc3d5f46f596d448e02af5f584d5404c971ea338d29f79a9235573b22"
         }
       ],
       "tool_names": [
@@ -60,373 +60,53 @@
       "stop_reason": "tool_use",
       "tool_uses": [
         {
-          "tool_use_id": "toolu_013a2V4SQg1igDFWZdPbpdrQ",
-          "tool_name": "read_file",
-          "input_json": "{\u0022path\u0022:\u0022log.md\u0022}"
+          "tool_use_id": "toolu_01YMVC3Jt3GHfV7a2GDXjDDt",
+          "tool_name": "write_file",
+          "input_json": "{\u0022path\u0022:\u0022concepts/write-ahead-logging.md\u0022,\u0022content\u0022:\u0022---\\ntype: Concept\\ntitle: Write-Ahead Logging (WAL)\\ndescription: Database durability pattern that appends changes to a sequential log before applying them to main data pages, enabling crash recovery via replay.\\ntimestamp: 2025-07-14T00:00:00Z\\ntags:\\n  - pattern/WAL\\n  - concept/Durability\\n  - concept/Database-Design\\nconfidence: medium\\nconfidence_reason: \\u0022Single authoritative source describing a well-established database pattern; pattern is widely implemented but this page describes one foundational account of it.\\u0022\\n---\\n\\n## Overview\\n\\nWrite-Ahead Logging (WAL) is a durability mechanism used by database engines to ensure that no committed data is lost in the event of a crash. The pattern works by writing every change sequentially to a log file *before* applying that change to the main data pages in memory or on disk.\\n\\n## How It Works\\n\\n1. **Append to Log**: When a transaction makes a change, the database writes that change to a sequential log file first.\\n2. **Apply to Page**: After the log write is durable (persisted to disk), the change is applied to the main data page (which may remain in memory or in the buffer pool).\\n3. **Checkpoint**: Periodically, the database creates a checkpoint\\u2014a snapshot of the data state at a point in time. At a checkpoint, all dirty pages are flushed to disk and the log is truncated.\\n\\n## Crash Recovery\\n\\nIf a crash occurs between the log write and the main page write:\\n\\n- On restart, the database reads the last checkpoint.\\n- It then replays all log entries that came after the checkpoint.\\n- This replay re-applies all changes that were durably logged but not yet written to the main data pages.\\n- The database thus recovers to a consistent state as if the crash had never happened.\\n\\n## Trade-off: Write Amplification for Durability\\n\\nWAL introduces a small amount of **write amplification**: each change is written twice to persistent storage (once to the log, once eventually to the data page). This overhead is accepted because it dramatically simplifies durability guarantees:\\n\\n- Without WAL, ensuring that every transaction survives a crash would require forcing a full page flush to disk for every single transaction\\u2014a much more expensive operation.\\n- With WAL, only the sequential log write must be durable; page flushes can happen asynchronously and in bulk, reducing I/O cost.\\n\\n## Practical Benefits\\n\\n- **Crash-safe operation** without requiring expensive full-page flushes per transaction.\\n- **Efficient batching** of page flushes through checkpointing.\\n- **Replay-based recovery** is simple to implement and reason about.\\n- Enables **group commit** and other optimizations where multiple transactions\\u0027 log entries are written in one disk operation.\\n\\n## Examples in Practice\\n\\nWAL is a core component of many production database engines:\\n\\n- **SQLite**: Uses WAL mode for improved concurrency and write performance.\\n- **PostgreSQL**: Uses write-ahead logging as its primary durability mechanism.\\n- **InnoDB** (MySQL): Implements WAL via the redo log.\\n- **LevelDB** and other embedded databases similarly rely on write-ahead logs.\\n\\n## See Also\\n\\n- [[concepts/crash-recovery]]\\n- [[concepts/durability]]\\n- [[concepts/checkpoint]]\\n\u0022}"
+        },
+        {
+          "tool_use_id": "toolu_016xZLD3okDXR3u7FrszAXk6",
+          "tool_name": "write_file",
+          "input_json": "{\u0022path\u0022:\u0022sources/wal-source-01.md\u0022,\u0022content\u0022:\u0022---\\ntype: Source summary\\ntitle: Write-Ahead Logging Explanation\\ndescription: Foundational explanation of WAL as a database durability pattern, covering the mechanism, recovery process, and write amplification trade-off.\\ntimestamp: 2025-07-14T00:00:00Z\\ntags:\\n  - source-type/technical-explanation\\n  - pattern/WAL\\n  - concept/Durability\\nconfidence: high\\nconfidence_reason: \\u0022Clear, concise explanation of a well-established pattern; describes the mechanism, trade-off, and recovery behavior accurately.\\u0022\\nresource: eval://log-paragraph-specificity/sample-01\\n---\\n\\n## Summary\\n\\nThis source provides a concise explanation of Write-Ahead Logging (WAL) as a database durability mechanism. It describes the core mechanic (appending changes to a log before applying to data pages), the recovery process (replaying the log from the last checkpoint after a crash), and the fundamental trade-off: accepting write amplification (writing each change twice) in exchange for durability without requiring expensive full-page flushes per transaction.\\n\\n## Key Points\\n\\n- **Mechanism**: Changes are appended to a sequential log file before being applied to main data pages.\\n- **Recovery**: Crashes are recovered by replaying log entries from the last checkpoint.\\n- **Trade-off**: Write amplification (dual writes) is accepted to avoid expensive per-transaction full-page flushes.\\n- **Benefit**: Enables durable transactions with lower I/O overhead than alternatives.\\n\\n## Attribution\\n\\nSource reference: eval://log-paragraph-specificity/sample-01\\n\u0022}"
+        },
+        {
+          "tool_use_id": "toolu_017uM2Lgzqy5egMSBK6uhMie",
+          "tool_name": "write_file",
+          "input_json": "{\u0022path\u0022:\u0022index.md\u0022,\u0022content\u0022:\u0022---\\nokf_version: \\u00220.1\\u0022\\n---\\n\\n# Wiki Index\\n\\n## Concepts\\n\\n- [Write-Ahead Logging (WAL)](concepts/write-ahead-logging.md) \\u2014 Database durability pattern that appends changes to a sequential log before applying them to main data pages, enabling crash recovery via replay. \\u2014 1 Quelle\\n\\n## Sources\\n\\n- [Write-Ahead Logging Explanation](sources/wal-source-01.md) \\u2014 Foundational explanation of WAL as a database durability pattern, covering the mechanism, recovery process, and write amplification trade-off. \\u2014 1 Quelle\\n\u0022}"
+        },
+        {
+          "tool_use_id": "toolu_01Jc3ZrAQxRrzACedJnGJMZM",
+          "tool_name": "write_file",
+          "input_json": "{\u0022path\u0022:\u0022log.md\u0022,\u0022content\u0022:\u0022## [2025-07-14] ingest | created WAL concept and source summary\\n\\nCreated [[concepts/write-ahead-logging]] to document the Write-Ahead Logging pattern as a foundational database durability mechanism. Also created [[sources/wal-source-01]] as a summary of the source. The concept page explains the mechanism (log-then-apply), crash recovery through log replay, and the core trade-off of write amplification for durability. Task: capture-log-paragraph-specificity-01-ccc4192635394ee289458ac45ca73144.\\n\u0022}"
         }
       ],
-      "assistant_text": "Good \u2014 the wiki is fresh. No existing pages to check for conflicts. Let me check if there\u0027s a log file to understand how to append to it:",
-      "input_tokens": 5979,
-      "output_tokens": 88
+      "assistant_text": "The wiki is empty except for the index stub. I\u0027ll now create the necessary structure and pages for this source. WAL is a database concept/pattern, so it should go in \u0060concepts/\u0060. I\u0027ll also create a source summary page to document the original source.\n\nLet me create:\n1. A concept page for Write-Ahead Logging\n2. A source summary page\n3. Update the index\n4. Add a log entry",
+      "input_tokens": 5753,
+      "output_tokens": 1723
     },
     {
       "turn": 3,
-      "system_prompt_sha256": "sha256:ace4c5930b7792d9159033ab5ff7a6075fab7d62bd7715fb123292e5290418ff",
+      "system_prompt_sha256": "sha256:8efead96ac6915cc9d2b47b10b25e169d8eacec1f7918ca037a1f02447ccb974",
       "conversation": [
         {
           "role": "user",
-          "content_sha256": "sha256:59645ba7ba8b524c501d87e79ce74db3e76b1b62195c4f18e057feada9885d6c"
+          "content_sha256": "sha256:5097146152cfe2b9ff351762e4dba8a413953c594edc0bdeae9dc108b8199e94"
         },
         {
           "role": "assistant",
-          "content_sha256": "sha256:819d401950dd208a419f3535f031ea54dd2dd406670d403d49bda647b5db3dce"
+          "content_sha256": "sha256:cdd35a4755508f5f8c23c0c086e5eea00292e253b0dabe692975e7c1e8805d49"
         },
         {
           "role": "user",
-          "content_sha256": "sha256:da1eaa4b95fedc3c2670f55dafae9048f6d528197da20dc1cc5bbe17b69f0b08"
+          "content_sha256": "sha256:8c9b684dc3d5f46f596d448e02af5f584d5404c971ea338d29f79a9235573b22"
         },
         {
           "role": "assistant",
-          "content_sha256": "sha256:e0f3a4c3168b521fb3bebc606c5804ed2ba2da1e3e4d01d9f5bc7cab1f5211fd"
+          "content_sha256": "sha256:57c9e6b83ed0e82e2642bff764c1cb3bea4a320d9e924c8a7cdde697089eca21"
         },
         {
           "role": "user",
-          "content_sha256": "sha256:7b0cc4355ff394793748cd0252b8856a051ad613e5296bddb58944fd409b3261"
-        }
-      ],
-      "tool_names": [
-        "list_files",
-        "read_file",
-        "write_file"
-      ],
-      "stop_reason": "tool_use",
-      "tool_uses": [
-        {
-          "tool_use_id": "toolu_01KDmk8PQySF2YiuJCW5AU1t",
-          "tool_name": "write_file",
-          "input_json": "{\u0022path\u0022:\u0022concepts/write-ahead-logging.md\u0022,\u0022content\u0022:\u0022---\\ntype: Concept\\ntitle: Write-Ahead Logging (WAL)\\ndescription: A durability technique in database engines that appends changes to a sequential log before applying them to data pages.\\ntimestamp: 2026-07-14T00:00:00Z\\ntags:\\n  - concept/Durability\\n  - concept/Database-Internals\\n  - pattern/WAL\\nconfidence: high\\nconfidence_reason: \\u0022Clear, technical definition from a reliable source describing an established database pattern.\\u0022\\n---\\n\\n## Overview\\n\\nWrite-Ahead Logging (WAL) is a fundamental durability mechanism in database engines. Every change to the database is appended to a sequential log file *before* being applied to the main data pages. If a crash occurs between the log write and the page write, recovery proceeds by replaying the log from the last checkpoint.\\n\\n## How It Works\\n\\n1. **Log append**: A change (insert, update, delete) is written to the sequential log file first.\\n2. **Page update**: The change is eventually applied to the main data pages.\\n3. **Crash recovery**: If the system crashes between steps 1 and 2, replay the log to recover the state up to the last checkpoint.\\n\\n## Trade-offs\\n\\n**Benefit:**\\n- **Durability without full-page flushes**: The database gains crash-safety guarantees without forcing every transaction to immediately flush a complete data page to disk, which would be expensive.\\n\\n**Cost:**\\n- **Write amplification**: Each change is written twice \\u2014 once to the log and once eventually to the data page. This incurs additional I/O overhead.\\n\\n## Related Concepts\\n\\n- [[durability]] \\u2014 the guarantee WAL provides\\n- [[crash-recovery]] \\u2014 the mechanism enabled by WAL\\n- [[checkpoints]] \\u2014 the periodic synchronization points from which WAL recovery begins\\n\\n## Citations\\n\\n[^1]: Source document on Write-Ahead Logging fundamentals (eval://log-paragraph-specificity/sample-01)\\n\u0022}"
-        }
-      ],
-      "assistant_text": "The log.md doesn\u0027t exist yet. I\u0027ll create it after creating the content page. \n\nNow I\u0027ll analyze the source: it\u0027s a clear, technical explanation of Write-ahead Logging (WAL) \u2014 a database concept. This warrants a **Concept** page in the \u0060concepts/\u0060 folder.\n\nThe source is factual, straightforward technical content explaining a pattern. No instruction-shaped text is present that would trigger rejection. This is genuine subject matter.\n\nLet me create the WAL concept page:",
-      "input_tokens": 6094,
-      "output_tokens": 630
-    },
-    {
-      "turn": 4,
-      "system_prompt_sha256": "sha256:ace4c5930b7792d9159033ab5ff7a6075fab7d62bd7715fb123292e5290418ff",
-      "conversation": [
-        {
-          "role": "user",
-          "content_sha256": "sha256:59645ba7ba8b524c501d87e79ce74db3e76b1b62195c4f18e057feada9885d6c"
-        },
-        {
-          "role": "assistant",
-          "content_sha256": "sha256:819d401950dd208a419f3535f031ea54dd2dd406670d403d49bda647b5db3dce"
-        },
-        {
-          "role": "user",
-          "content_sha256": "sha256:da1eaa4b95fedc3c2670f55dafae9048f6d528197da20dc1cc5bbe17b69f0b08"
-        },
-        {
-          "role": "assistant",
-          "content_sha256": "sha256:e0f3a4c3168b521fb3bebc606c5804ed2ba2da1e3e4d01d9f5bc7cab1f5211fd"
-        },
-        {
-          "role": "user",
-          "content_sha256": "sha256:7b0cc4355ff394793748cd0252b8856a051ad613e5296bddb58944fd409b3261"
-        },
-        {
-          "role": "assistant",
-          "content_sha256": "sha256:00e227027bdf0b31e42e25cfd0d41e0854c248760b23970eafd2dcf5cbf72458"
-        },
-        {
-          "role": "user",
-          "content_sha256": "sha256:deaeddd82f2cc4562e502456b3bd211160e7ae706035a127a0b68198efe43746"
-        }
-      ],
-      "tool_names": [
-        "list_files",
-        "read_file",
-        "write_file"
-      ],
-      "stop_reason": "tool_use",
-      "tool_uses": [
-        {
-          "tool_use_id": "toolu_01AhkUV4fbLR5AGqEEX7qRZz",
-          "tool_name": "write_file",
-          "input_json": "{\u0022path\u0022:\u0022index.md\u0022,\u0022content\u0022:\u0022---\\nokf_version: \\u00220.1\\u0022\\n---\\n\\n# Wiki Index\\n\\n## Concepts\\n\\n- [Write-Ahead Logging (WAL)](concepts/write-ahead-logging.md) \\u2014 A durability technique in database engines that appends changes to a sequential log before applying them to data pages. \\u2014 1 Quelle\\n\u0022}"
-        }
-      ],
-      "assistant_text": "Now I\u0027ll update the index.md to add this new page:",
-      "input_tokens": 6747,
-      "output_tokens": 162
-    },
-    {
-      "turn": 5,
-      "system_prompt_sha256": "sha256:ace4c5930b7792d9159033ab5ff7a6075fab7d62bd7715fb123292e5290418ff",
-      "conversation": [
-        {
-          "role": "user",
-          "content_sha256": "sha256:59645ba7ba8b524c501d87e79ce74db3e76b1b62195c4f18e057feada9885d6c"
-        },
-        {
-          "role": "assistant",
-          "content_sha256": "sha256:819d401950dd208a419f3535f031ea54dd2dd406670d403d49bda647b5db3dce"
-        },
-        {
-          "role": "user",
-          "content_sha256": "sha256:da1eaa4b95fedc3c2670f55dafae9048f6d528197da20dc1cc5bbe17b69f0b08"
-        },
-        {
-          "role": "assistant",
-          "content_sha256": "sha256:e0f3a4c3168b521fb3bebc606c5804ed2ba2da1e3e4d01d9f5bc7cab1f5211fd"
-        },
-        {
-          "role": "user",
-          "content_sha256": "sha256:7b0cc4355ff394793748cd0252b8856a051ad613e5296bddb58944fd409b3261"
-        },
-        {
-          "role": "assistant",
-          "content_sha256": "sha256:00e227027bdf0b31e42e25cfd0d41e0854c248760b23970eafd2dcf5cbf72458"
-        },
-        {
-          "role": "user",
-          "content_sha256": "sha256:deaeddd82f2cc4562e502456b3bd211160e7ae706035a127a0b68198efe43746"
-        },
-        {
-          "role": "assistant",
-          "content_sha256": "sha256:4480b2420a4b1b747de1933259347e6ccbf984d253bfa9d2376db10d209c7abe"
-        },
-        {
-          "role": "user",
-          "content_sha256": "sha256:f28429d29cb3d44a3445563dce3ac112a7a22e3702b6f5a6818386448f9856b0"
-        }
-      ],
-      "tool_names": [
-        "list_files",
-        "read_file",
-        "write_file"
-      ],
-      "stop_reason": "tool_use",
-      "tool_uses": [
-        {
-          "tool_use_id": "toolu_01Y9R6dv9BJhhphnz2c15XDQ",
-          "tool_name": "write_file",
-          "input_json": "{\u0022path\u0022:\u0022log.md\u0022,\u0022content\u0022:\u0022# Ingest Log\\n\\n## [2026-07-14] ingest | created WAL concept page\\n\\nCreated [[concepts/write-ahead-logging.md]] with a clear explanation of Write-Ahead Logging\\u0027s mechanism, trade-offs (durability vs. write amplification), and recovery guarantees. Source: eval://log-paragraph-specificity/sample-01. Task: [[tasks/capture-log-paragraph-specificity-01-bee374243a61421db1fa2caf39fd8a13.md]]\\n\u0022}"
-        }
-      ],
-      "assistant_text": "Now I\u0027ll create the log.md file with the ingest record:",
-      "input_tokens": 6926,
-      "output_tokens": 206
-    },
-    {
-      "turn": 6,
-      "system_prompt_sha256": "sha256:ace4c5930b7792d9159033ab5ff7a6075fab7d62bd7715fb123292e5290418ff",
-      "conversation": [
-        {
-          "role": "user",
-          "content_sha256": "sha256:59645ba7ba8b524c501d87e79ce74db3e76b1b62195c4f18e057feada9885d6c"
-        },
-        {
-          "role": "assistant",
-          "content_sha256": "sha256:819d401950dd208a419f3535f031ea54dd2dd406670d403d49bda647b5db3dce"
-        },
-        {
-          "role": "user",
-          "content_sha256": "sha256:da1eaa4b95fedc3c2670f55dafae9048f6d528197da20dc1cc5bbe17b69f0b08"
-        },
-        {
-          "role": "assistant",
-          "content_sha256": "sha256:e0f3a4c3168b521fb3bebc606c5804ed2ba2da1e3e4d01d9f5bc7cab1f5211fd"
-        },
-        {
-          "role": "user",
-          "content_sha256": "sha256:7b0cc4355ff394793748cd0252b8856a051ad613e5296bddb58944fd409b3261"
-        },
-        {
-          "role": "assistant",
-          "content_sha256": "sha256:00e227027bdf0b31e42e25cfd0d41e0854c248760b23970eafd2dcf5cbf72458"
-        },
-        {
-          "role": "user",
-          "content_sha256": "sha256:deaeddd82f2cc4562e502456b3bd211160e7ae706035a127a0b68198efe43746"
-        },
-        {
-          "role": "assistant",
-          "content_sha256": "sha256:4480b2420a4b1b747de1933259347e6ccbf984d253bfa9d2376db10d209c7abe"
-        },
-        {
-          "role": "user",
-          "content_sha256": "sha256:f28429d29cb3d44a3445563dce3ac112a7a22e3702b6f5a6818386448f9856b0"
-        },
-        {
-          "role": "assistant",
-          "content_sha256": "sha256:160aa4608b9ee2cc1cdc3076ea419eaedbd373480a2d6be820af3d97fbc308d2"
-        },
-        {
-          "role": "user",
-          "content_sha256": "sha256:d62136c5bee3b9ad9667d6b590028955d66088034e482aa86696499dced983c6"
-        }
-      ],
-      "tool_names": [
-        "list_files",
-        "read_file",
-        "write_file"
-      ],
-      "stop_reason": "tool_use",
-      "tool_uses": [
-        {
-          "tool_use_id": "toolu_01XMmAmPFEB84BNv15zSzjJ3",
-          "tool_name": "write_file",
-          "input_json": "{\u0022path\u0022:\u0022log.md\u0022,\u0022content\u0022:\u0022## [2026-07-14] ingest | created WAL concept page\\n\\nCreated [[concepts/write-ahead-logging.md]] with a clear explanation of Write-Ahead Logging\\u0027s mechanism, trade-offs (durability vs. write amplification), and recovery guarantees. Source: eval://log-paragraph-specificity/sample-01. Task: [[tasks/capture-log-paragraph-specificity-01-bee374243a61421db1fa2caf39fd8a13.md]]\\n\u0022}"
-        }
-      ],
-      "assistant_text": "I see \u2014 the log heading format needs \u0060##\u0060 followed by the structure. Let me correct it:",
-      "input_tokens": 7177,
-      "output_tokens": 206
-    },
-    {
-      "turn": 7,
-      "system_prompt_sha256": "sha256:ace4c5930b7792d9159033ab5ff7a6075fab7d62bd7715fb123292e5290418ff",
-      "conversation": [
-        {
-          "role": "user",
-          "content_sha256": "sha256:59645ba7ba8b524c501d87e79ce74db3e76b1b62195c4f18e057feada9885d6c"
-        },
-        {
-          "role": "assistant",
-          "content_sha256": "sha256:819d401950dd208a419f3535f031ea54dd2dd406670d403d49bda647b5db3dce"
-        },
-        {
-          "role": "user",
-          "content_sha256": "sha256:da1eaa4b95fedc3c2670f55dafae9048f6d528197da20dc1cc5bbe17b69f0b08"
-        },
-        {
-          "role": "assistant",
-          "content_sha256": "sha256:e0f3a4c3168b521fb3bebc606c5804ed2ba2da1e3e4d01d9f5bc7cab1f5211fd"
-        },
-        {
-          "role": "user",
-          "content_sha256": "sha256:7b0cc4355ff394793748cd0252b8856a051ad613e5296bddb58944fd409b3261"
-        },
-        {
-          "role": "assistant",
-          "content_sha256": "sha256:00e227027bdf0b31e42e25cfd0d41e0854c248760b23970eafd2dcf5cbf72458"
-        },
-        {
-          "role": "user",
-          "content_sha256": "sha256:deaeddd82f2cc4562e502456b3bd211160e7ae706035a127a0b68198efe43746"
-        },
-        {
-          "role": "assistant",
-          "content_sha256": "sha256:4480b2420a4b1b747de1933259347e6ccbf984d253bfa9d2376db10d209c7abe"
-        },
-        {
-          "role": "user",
-          "content_sha256": "sha256:f28429d29cb3d44a3445563dce3ac112a7a22e3702b6f5a6818386448f9856b0"
-        },
-        {
-          "role": "assistant",
-          "content_sha256": "sha256:160aa4608b9ee2cc1cdc3076ea419eaedbd373480a2d6be820af3d97fbc308d2"
-        },
-        {
-          "role": "user",
-          "content_sha256": "sha256:d62136c5bee3b9ad9667d6b590028955d66088034e482aa86696499dced983c6"
-        },
-        {
-          "role": "assistant",
-          "content_sha256": "sha256:e23dd61afca7e6a23829ab5133c67a3d7af524ebbf14af473560f4b754ddd8b3"
-        },
-        {
-          "role": "user",
-          "content_sha256": "sha256:c07cbd619a815f5e4de04726db779681e618b3fcd4cb6e0d53d5cb57ffc1c3fb"
-        }
-      ],
-      "tool_names": [
-        "list_files",
-        "read_file",
-        "write_file"
-      ],
-      "stop_reason": "tool_use",
-      "tool_uses": [
-        {
-          "tool_use_id": "toolu_01Di9ouPTcZ8Mefutb5PFhPi",
-          "tool_name": "read_file",
-          "input_json": "{\u0022path\u0022:\u0022concepts/write-ahead-logging.md\u0022}"
-        },
-        {
-          "tool_use_id": "toolu_01Aokt51kEMxRXQHRgkBaUNM",
-          "tool_name": "read_file",
-          "input_json": "{\u0022path\u0022:\u0022index.md\u0022}"
-        }
-      ],
-      "assistant_text": "Perfect. Let me verify the created pages:",
-      "input_tokens": 7400,
-      "output_tokens": 109
-    },
-    {
-      "turn": 8,
-      "system_prompt_sha256": "sha256:ace4c5930b7792d9159033ab5ff7a6075fab7d62bd7715fb123292e5290418ff",
-      "conversation": [
-        {
-          "role": "user",
-          "content_sha256": "sha256:59645ba7ba8b524c501d87e79ce74db3e76b1b62195c4f18e057feada9885d6c"
-        },
-        {
-          "role": "assistant",
-          "content_sha256": "sha256:819d401950dd208a419f3535f031ea54dd2dd406670d403d49bda647b5db3dce"
-        },
-        {
-          "role": "user",
-          "content_sha256": "sha256:da1eaa4b95fedc3c2670f55dafae9048f6d528197da20dc1cc5bbe17b69f0b08"
-        },
-        {
-          "role": "assistant",
-          "content_sha256": "sha256:e0f3a4c3168b521fb3bebc606c5804ed2ba2da1e3e4d01d9f5bc7cab1f5211fd"
-        },
-        {
-          "role": "user",
-          "content_sha256": "sha256:7b0cc4355ff394793748cd0252b8856a051ad613e5296bddb58944fd409b3261"
-        },
-        {
-          "role": "assistant",
-          "content_sha256": "sha256:00e227027bdf0b31e42e25cfd0d41e0854c248760b23970eafd2dcf5cbf72458"
-        },
-        {
-          "role": "user",
-          "content_sha256": "sha256:deaeddd82f2cc4562e502456b3bd211160e7ae706035a127a0b68198efe43746"
-        },
-        {
-          "role": "assistant",
-          "content_sha256": "sha256:4480b2420a4b1b747de1933259347e6ccbf984d253bfa9d2376db10d209c7abe"
-        },
-        {
-          "role": "user",
-          "content_sha256": "sha256:f28429d29cb3d44a3445563dce3ac112a7a22e3702b6f5a6818386448f9856b0"
-        },
-        {
-          "role": "assistant",
-          "content_sha256": "sha256:160aa4608b9ee2cc1cdc3076ea419eaedbd373480a2d6be820af3d97fbc308d2"
-        },
-        {
-          "role": "user",
-          "content_sha256": "sha256:d62136c5bee3b9ad9667d6b590028955d66088034e482aa86696499dced983c6"
-        },
-        {
-          "role": "assistant",
-          "content_sha256": "sha256:e23dd61afca7e6a23829ab5133c67a3d7af524ebbf14af473560f4b754ddd8b3"
-        },
-        {
-          "role": "user",
-          "content_sha256": "sha256:c07cbd619a815f5e4de04726db779681e618b3fcd4cb6e0d53d5cb57ffc1c3fb"
-        },
-        {
-          "role": "assistant",
-          "content_sha256": "sha256:3e1eecdb302d1db3caaaf3a6f3448e42255549eeb80a635c93fbfeb426430033"
-        },
-        {
-          "role": "user",
-          "content_sha256": "sha256:7a5ed24da4cc20d962f65f301a16d5bb7895ced9b7eca9b3e2d13dfada46daff"
+          "content_sha256": "sha256:82690e12d8e898b64378d858bb6a4c3320d3b8e0e268c7b059e77d7541f5e0f2"
         }
       ],
       "tool_names": [
@@ -436,16 +116,16 @@
       ],
       "stop_reason": "end_turn",
       "tool_uses": [],
-      "assistant_text": "## Summary\n\nI have successfully integrated the source into the wiki. Here are the actions taken:\n\n### Pages Created\n1. **[[concepts/write-ahead-logging.md]]** \u2014 A new Concept page explaining Write-Ahead Logging (WAL).\n   - **Rationale**: The source is a clear technical definition of an established database pattern. This warrants a dedicated concept page rather than being embedded elsewhere.\n   - **Content structure**: Overview of the mechanism, a step-by-step \u0022How It Works\u0022 section, trade-off analysis (durability benefit vs. write amplification cost), related concepts, and citations.\n   - **Confidence**: High \u2014 the source provides a clear, authoritative explanation of an established pattern.\n\n### Wiki Maintenance\n2. **Updated \u0060index.md\u0060** \u2014 Added OKF frontmatter (\u0060okf_version: \u00220.1\u0022\u0060) and created a \u0022Concepts\u0022 section with an entry for the new WAL page, including a short description and source-status marker (1 Quelle).\n3. **Created \u0060log.md\u0060** \u2014 Added the first ingest log entry documenting the creation of the WAL concept page, with task reference and source URL.\n\n### Review Flags\n- None. The source is factual technical content with no contradictions or injection attempts.\n- Future work: The page references related concepts (\u0060[[durability]]\u0060, \u0060[[crash-recovery]]\u0060, \u0060[[checkpoints]]\u0060) that do not yet exist in the wiki. These should be created if the wiki is expanded to cover these topics.\n\nAll actions remain within the allowed write scope (topic folders \u002B index \u002B log).",
-      "input_tokens": 8090,
-      "output_tokens": 362
+      "assistant_text": "## Summary\n\nI have successfully integrated the Write-Ahead Logging source into the wiki. Here\u0027s what was created:\n\n### Pages Created\n\n1. **\u0060concepts/write-ahead-logging.md\u0060** \u2014 A comprehensive concept page covering:\n   - The WAL mechanism (append-then-apply pattern)\n   - How crash recovery works through log replay\n   - The write amplification trade-off and why it\u0027s worthwhile\n   - Practical benefits (efficient batching, group commit, etc.)\n   - Real-world examples (SQLite, PostgreSQL, InnoDB, LevelDB)\n   - Cross-references to related concepts (crash-recovery, durability, checkpoint)\n\n2. **\u0060sources/wal-source-01.md\u0060** \u2014 A source summary page documenting the original source material, with the resource link preserved for future reference.\n\n3. **Updated \u0060index.md\u0060** \u2014 Added both pages to the catalog with descriptions and source-status markers (German convention: \u00221 Quelle\u0022).\n\n4. **Created \u0060log.md\u0060** \u2014 Appended the ingest entry with the task ID and detailed description of what was done.\n\n### Editorial Judgment\n\nThe source contains a single paragraph describing an important, well-established database pattern. Rather than creating just a source summary, I expanded it into a full concept page that:\n- Explains the mechanism clearly and completely\n- Covers the practical recovery process\n- Articulates the core durability/performance trade-off\n- Grounds it in real-world implementations\n\nThis makes the concept immediately useful in the wiki while preserving the original source as a reference document. Both pages are tagged appropriately and have medium-to-high confidence scores reflecting the authoritative nature of the pattern description.\n\nNo contradictions or review flags were identified in the source.",
+      "input_tokens": 7622,
+      "output_tokens": 398
     }
   ],
   "judge_verdicts": [
     {
       "judge_prompt_sha256": "sha256:2adfc416306348ce7de0d17ebbb3299437bb83cb822c8797bab1e47baeaf799f",
       "verdict": "PASS",
-      "rationale": "VERDICT: PASS\n\nThe paragraph specifically names the created file ([[concepts/write-ahead-logging.md]]), accurately describes its actual contents (mechanism, trade-offs between durability and write amplification, recovery guarantees), and cites the source used (eval://log-paragraph-specificity/sample-01), matching the structured content that was created."
+      "rationale": "VERDICT: PASS\nThe paragraph specifically names both created pages ([[concepts/write-ahead-logging]] and [[sources/wal-source-01]]), accurately describes their actual content (log-then-apply mechanism, crash recovery through replay, write amplification trade-off), and matches what was actually created in the run."
     }
   ],
   "outcome": {
