@@ -1,6 +1,90 @@
 <!--
 SYNC IMPACT REPORT
 ==================
+Version change: 1.10.0 → 1.11.0 (2026-08-11)
+
+Principles modified:
+  - II. Pragmatic Testing Strategy (NEW bullet under "Test what we own": the
+    Ownership Test is now an explicit precondition on Principle III's Phase 0
+    structural tests and Feature-Scoped Invariant tests, not just standalone
+    guidance next to them)
+  - III. ADR-Driven & Test-Enforced Architecture (Structural boundary tests are
+    now scoped to a NEW category, "Dependency & Layering Boundary Rules" —
+    durable dependency-direction rules in Principle I/V's family. A second NEW
+    category, "Feature-Scoped Invariants," is split out for ADR/plan rules that
+    protect one feature's current surface shape (option counts, forbidden
+    literals, options-graph shape) rather than a dependency direction: these
+    MUST NOT get a Phase 0 reflection/IL-based structural test, MUST be tagged
+    as such in the ADR's Decision Outcome, and MUST be covered by a classicist
+    behavioral test instead. "The first task MUST be a structural boundary
+    test" and "an ADR without an enforcement test MUST NOT be referenced as an
+    active constraint" are both re-scoped to Boundary Rules only.)
+  - V. Agentic Core & Deterministic Harness (NEW carve-out: a deterministic
+    test verifies only an instruction file's load mechanism — existence,
+    byte-exact loading, fail-closed behavior, hash recording — never the
+    wording or substance of its content; content correctness is exclusively
+    Principle II's agent-behavior evaluation tests' job)
+
+Principles added: none
+
+Sections modified:
+  - Definition of Done (the Phase 0 checkbox now names Dependency & Layering
+    Boundary Rules specifically and adds that Feature-Scoped Invariants use
+    classicist tests instead; NEW checkbox that no deterministic test asserts
+    instruction-file content)
+
+Sections removed: none
+
+Templates updated:
+  - .specify/templates/tasks-template.md ✅ (Phase 0 section: ACTION REQUIRED
+    block now instructs classifying each ADR rule as a Boundary Rule or a
+    Feature-Scoped Invariant before writing T000; Feature-Scoped Invariants are
+    pointed at their normal implementation phase, not Phase 0)
+  - .specify/templates/plan-template.md ✅ no change required (its
+    "Architectural Constraints & ADRs" section already just lists which ADRs
+    constrain the feature and how; the classification happens inside the ADR
+    itself, per the Principle III rule, not in this section's shape)
+  - .specify/templates/spec-template.md ✅ no change required (specs stay
+    tech-agnostic and name no ADR rules)
+  - .specify/templates/checklist-template.md ✅ no change required
+
+Rationale for MINOR bump: this narrows which ADR rules receive a mandatory,
+permanent, reflection/IL-based structural test — a materially new constraint
+on how Principle III is satisfied, not a wording clarification — while
+strengthening (not weakening) the underlying guarantee: Boundary Rules keep
+their Red/Green-probed enforcement verbatim, and Feature-Scoped Invariants
+trade a brittle structural proxy for a classicist test of the actual protected
+behavior. Not MAJOR: no principle is removed or redefined, and nothing that
+was previously forbidden becomes permitted — mocking, interaction-based
+verification, and library-behavior testing remain banned exactly as before.
+
+Trigger (2026-08-11, PR #70 / 022-memory-directory-root, review
+https://github.com/wmalgadey/grimoire/pull/70#pullrequestreview-4909924868):
+implementing ADR-024's four named rules (M1-M4) under the prior, undifferentiated
+wording of Principle III produced four reflection/IL-based ArchTests
+(`DirectorySwitchSurfaceRuleTests` pinning "exactly 4 switches",
+`NoCodeLevelPathDefaultsRuleTests` IL-scanning for two literal strings,
+`PathOptionsGroupingRuleTests` pinning the exact options-graph shape) plus one
+lexical content test of the real `system-prompt.md` files
+(`InstructionFilesWikiScopeTests`) that duplicates coverage the project's own
+agent evals already provide. The PR author's review comments on all four files
+converged independently on the same diagnosis before this amendment was
+drafted: these are feature-scoped facts expected to change as the feature
+grows, not durable architectural boundaries, and Principle III's blanket
+per-ADR-rule mandate — with no ownership-test gate and no distinction from
+Principle I's dependency-direction family — was what generated them.
+
+Deferred TODOs: PR #70 (unmerged as of this amendment) still carries the four
+now-recategorized tests; they are not grandfathered by the non-retroactivity
+clause (the PR has not merged), so the PR SHOULD be updated to reclassify
+ADR-024's M1-M4 rules and replace the reflection/IL tests with classicist
+behavioral tests before merge. Not performed as part of this amendment because
+PR #70 is a separate, in-flight change on another branch.
+
+--------------------------------------------------------------------------
+PREVIOUS AMENDMENTS
+--------------------------------------------------------------------------
+
 Version change: 1.9.0 → 1.10.0 (2026-08-11)
 
 Principles modified:
@@ -389,6 +473,12 @@ by a third-party library is the library maintainer's test responsibility, not ou
 - This rule binds new and modified tests. Pre-existing tests that only restate library
   behavior are not a defect under the non-retroactivity clause in Governance; they SHOULD
   be collapsed into a wire-up test the next time their file is touched for other reasons.
+- **Precondition for Principle III structural tests.** This Ownership Test MUST be applied
+  before writing any Phase 0 structural boundary test or Feature-Scoped Invariant test
+  (Principle III) — it is a precondition on those tests, not general guidance alongside
+  them. A rule whose only observable failure mode is a configuration binder, CLI-parsing
+  library, or serializer behaving as documented MUST NOT receive a dedicated structural or
+  reflection-based test; cover it, if at all, via the one minimal wire-up test above.
 
 Rationale: `HubCliCommandTests` is the worked example. Its exit-code/message/stream-split
 matrix against a real coordinator, repository, and findings store is exactly the
@@ -411,9 +501,16 @@ concern not covered by existing ADRs, the agent MUST draft a new ADR in MADR for
 `docs/adr/` as part of the `/speckit-plan` output. The drafted ADR MUST reach **Accepted**
 status (via review or explicit author sign-off) before `/speckit-tasks` is invoked.
 
-Three distinct categories of tests enforce architectural rules, with different preconditions:
+Four distinct categories of tests enforce architectural rules, with different preconditions:
 
-**Structural boundary tests** (Phase 0 — before feature code):
+**Structural boundary tests** (Phase 0 — before feature code) apply to **Dependency &
+Layering Boundary Rules** only: rules about which package, namespace, or layer may
+depend on, import, or construct which other (Principle I's domain-purity and
+adapter-containment family; Principle V's guarded-write boundary). These describe a
+durable dependency *direction* that holds regardless of how any one feature's surface
+grows — the reason a permanent, reflection/IL-level, Red/Green-probed test is
+low-maintenance by construction for this category and only this category.
+
 Tools: ArchUnit, NetArchTest.Rules, Roslyn Analyzers, import-linter, or equivalent.
 These rules are static: "domain layer MUST NOT import infrastructure." On a greenfield
 codebase they pass vacuously (no code = no violations). To confirm the rule actually
@@ -421,6 +518,36 @@ detects violations, the Phase 0 task MUST: write the rule, introduce a deliberat
 bad class that violates it, verify the test fails, then delete the bad class. This
 controlled Red/Green proves the guard is live. Feature code written afterward is
 protected by the rule without any further action.
+
+**Feature-Scoped Invariants** are a distinct category and MUST NOT default to a Phase 0
+structural test. These are ADR/plan rules that protect one feature's *current surface
+shape* rather than a dependency direction — e.g. "the CLI exposes exactly N named path
+switches," "no code-level literal duplicates a config default," "the options graph
+mirrors the config file's grouping." Unlike Boundary Rules, the fact they assert is
+expected to change the next time the feature area itself grows (a new switch, a renamed
+group), so pinning it with reflection/IL-inspection turns an ordinary feature change into
+a broken test rather than a caught regression. Instead:
+
+- The ADR MUST tag each rule it enumerates as either a **Boundary Rule** or a
+  **Feature-Scoped Invariant** in its Decision Outcome — a classification made once by
+  design, not inferred later from how a test happens to be written.
+- A Feature-Scoped Invariant MUST be covered by a classicist, state-based integration test
+  (Principle II) exercising the real observable behavior the rule protects — e.g. start
+  the Hub with a superseded key and assert the documented failure message; start without
+  an option and assert the documented default — never by reflecting over a type's shape,
+  an assembly's IL, or an internal catalog, unless `plan.md` explicitly justifies why no
+  runtime-observable behavior can catch the violation before merge.
+- A Feature-Scoped Invariant test MUST NOT assert a bare cardinality or literal
+  enumeration ("exactly 4 switches," "exactly these 2 literals") as an end in itself. If
+  the ADR's real concern is unbounded, silent regrowth of a surface — not the enumeration
+  being correct today — the test MUST assert that concern directly, and the ADR must say
+  that growing the surface is a recognized, single-file amendment, not an incidentally
+  broken test.
+- Both categories remain subject to Principle II's Ownership Test: neither licenses
+  testing library-owned behavior (configuration binding, CLI-framework parsing,
+  serialization).
+- Content of instruction files (`system-prompt.md`, `default-user-prompt.md` — Principle
+  V) is never a Feature-Scoped Invariant: see Principle V's own carve-out below.
 
 **Observability/instrumentation tests** (Phase N — after implementation):
 These verify that business metrics, structured log events, and trace spans are emitted
@@ -438,17 +565,23 @@ observability tests, they MAY be co-located with the triggering user story's own
 rather than deferred to the final phase, provided the final-phase completeness audit
 below covers the criterion.
 
-The first task in every `tasks.md` MUST be a structural boundary test for the ADR(s)
-referenced in `plan.md ## Architectural Constraints & ADRs`. The final phase of every
-`tasks.md` MUST include a named completeness-audit task that cross-references every row
-of `plan.md ## Observability` and every agent-judgment success criterion in the spec
-against its implementing task and passing test — regardless of which phase implements
-them — and files any gap found as a new task before the DoD is declared met.
+The first task in every `tasks.md` MUST cover every Boundary Rule referenced in
+`plan.md ## Architectural Constraints & ADRs` with a Phase 0 structural test.
+Feature-Scoped Invariants are covered in their normal implementation phase per the rule
+above, not in Phase 0. Where an ADR names no Boundary Rule at all, Phase 0 MUST say so
+explicitly ("no Boundary Rule introduced by this feature") rather than being silently
+omitted. The final phase of every `tasks.md` MUST include a named completeness-audit task
+that cross-references every row of `plan.md ## Observability` and every agent-judgment
+success criterion in the spec against its implementing task and passing test — regardless
+of which phase implements them — and files any gap found as a new task before the DoD is
+declared met.
 
-Order is non-negotiable: plan drafted → ADR accepted → Structural test verified (Red/Green probe) → Feature code → Observability and evaluation tests pass → DoD met.
+Order is non-negotiable: plan drafted → ADR accepted → Structural test verified (Red/Green probe) for any Boundary Rule → Feature code (with Feature-Scoped Invariant tests alongside it) → Observability and evaluation tests pass → DoD met.
 
-An ADR without a corresponding automated structural enforcement test MUST NOT be
-referenced as an active architectural constraint.
+A Boundary Rule named in an Accepted ADR, without a corresponding automated structural
+enforcement test, MUST NOT be referenced as an active architectural constraint. A
+Feature-Scoped Invariant is active once its classicist behavioral test (above) passes —
+it does not require, and MUST NOT be given, a reflection/IL-based structural test to count.
 
 **ADR Status Maintenance.** ADR status headers are the source of truth for which
 decisions currently govern the codebase; keeping them accurate is as binding as the
@@ -578,6 +711,13 @@ actually loaded into the agent's working context at runtime. Loading, hashing, o
 instruction files without them governing the agent's context does NOT satisfy this
 requirement. Reimplementing such judgment as deterministic backend code (string matching,
 rule tables, classifiers, templating of page content) is an architectural violation.
+Conversely, a deterministic/harness test MUST verify only the load *mechanism* of an
+instruction file (it exists, is loaded byte-exact, fails closed when missing or empty, and
+its hash is recorded) — never the wording or substance of what it says. What an
+instruction file's content causes the agent to do is exclusively the domain of Principle
+II's agent-behavior evaluation tests; a deterministic test that string-matches required or
+forbidden content in a real `system-prompt.md` or `default-user-prompt.md` duplicates that
+coverage with a brittle proxy and MUST NOT be added.
 
 **Deterministic harness.** Backend code owns only the harness: request dispatch and agent
 lifecycle, credential scoping, guardrail enforcement at the agent's tool boundary,
@@ -616,7 +756,12 @@ The Spec-Kit command workflow enforces this constitution through a strict sequen
 A feature increment is DONE when ALL of the following conditions hold:
 
 - [ ] All ADRs referenced in `plan.md` exist in `docs/adr/` and are in Accepted status
-- [ ] Structural boundary tests (Phase 0) pass in CI with no active violations
+- [ ] Structural boundary tests (Phase 0) for Dependency & Layering Boundary Rules pass in
+      CI with no active violations; Feature-Scoped Invariants (Principle III) are verified
+      by classicist behavioral tests, never by reflection/IL-based structural tests
+- [ ] No deterministic/harness test asserts the wording or substance of an instruction
+      file's content (Principle V) — only its load mechanism; content-level correctness is
+      covered exclusively by agent-behavior evaluation tests
 - [ ] Observability tests pass — implemented and tested either co-located with their triggering user-story phase or in the final phase — and a named final-phase completeness-audit task confirms every metric, log event, and trace span from `plan.md ## Observability` is emitted
 - [ ] Logging contract is complete for every row in `plan.md ## Observability > Structured Log Events`: implementation tasks define stable event names and mandatory fields, deterministic integration tests validate event name/level/mandatory fields, and these logging tests run in the standard PR CI pipeline
 - [ ] Trace contract is complete for every row in `plan.md ## Observability > Distributed Trace Spans`: implementation tasks define span names, parent/child relationships, and required attributes; deterministic integration tests validate span names, parent/child relationships, and correlation attributes (including shared IDs such as `task_id`); and these trace tests run in the standard PR CI pipeline
@@ -657,4 +802,4 @@ the amendment closes a live defect in the merged feature, not when it adds a new
 or ceremony. (Concretely: the final-phase completeness-audit task introduced in v1.5.0 is
 absent from specs 001–009, all authored earlier; that absence is not a violation.)
 
-**Version**: 1.10.0 | **Ratified**: 2026-06-23 | **Last Amended**: 2026-08-11
+**Version**: 1.11.0 | **Ratified**: 2026-06-23 | **Last Amended**: 2026-08-11
