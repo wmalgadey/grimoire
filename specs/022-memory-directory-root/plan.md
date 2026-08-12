@@ -107,6 +107,22 @@ also reference configuration keys by string), and 252 eval recording files to re
 Constitution v1.8.0 (in force at authoring time; the feature's `/speckit-plan` runs after
 the 2026-08-09 amendment, so v1.8.0 binds in full).
 
+**Correction (2026-08-12, convergence task T068)**: the version reference above was
+stale even at authoring time. Commit `196f723` amended the constitution to **v1.11.0**
+(Feature-Scoped Invariants vs. Boundary Rules; the Principle V instruction-content
+carve-out) at 2026-08-11T20:09:43Z — before this plan's `/speckit-plan` run
+(`a0f6e23`/`ec59a79`, 2026-08-12T06:05:57Z). Per Governance's non-retroactivity clause
+("An amendment binds every feature whose `/speckit-plan` runs after the amendment
+date"), v1.11.0 binds this feature in full, including the two gates below that were
+missing from the original table. The "III — new ADR drafted" and "III — Phase 0
+structural test first" rows below were written against v1.8.0's undivided
+structural-test category and did not evaluate the v1.11.0 classification requirement —
+see the two added rows and the Structural Enforcement section of
+[ADR-024](../../docs/adr/ADR-024-memory-directory-root.md) (the classification was
+originally drafted as an amending ADR-026, then merged into ADR-024 itself — see that
+document's history note — since both were authored and superseded entirely within this
+same unmerged branch).
+
 | Gate | Status | Evidence |
 | --- | --- | --- |
 | **I — DDD & hexagonal boundaries** | PASS | No new external system, so no new port is required. The four record stores (`ConversationRecordStore`, `FindingsReportStore`, `RemediationTaskRecordStore`, `KanbanBoardProjectionStore`) are persistence/local-filesystem adapters under the Principle I exemption and stay concrete classes — they change only which resolved path they are handed. Path composition stays confined to `Grimoire.Hub.Runtime.Paths` (ADR-009 rule, `RuntimePathsBoundaryRuleTests`). No infrastructure package moves namespace. |
@@ -118,6 +134,8 @@ the 2026-08-09 amendment, so v1.8.0 binds in full).
 | **III — ADRs read before plan** | PASS | All 22 ADRs in `docs/adr/` were read. Constraining ADRs are listed below. |
 | **III — new ADR drafted** | PASS (action required) | ADR-024 drafted at `docs/adr/ADR-024-memory-directory-root.md`, status `proposed`. **Blocks `/speckit-tasks` until Accepted.** |
 | **III — Phase 0 structural test first** | PASS | Three structural rules (M1, M2, M3) with Red/Green probes, all in `Grimoire.ArchTests`, ordered first in the task list. |
+| **III — Boundary Rule / Feature-Scoped Invariant classification** *(v1.11.0; added 2026-08-12, T068)* | PASS (post-hoc) | ADR-024's rules were not classified at authoring time — a standing gap closed in [ADR-024](../../docs/adr/ADR-024-memory-directory-root.md)'s Structural Enforcement section: M1/M2/M4 are Feature-Scoped Invariants with a recorded justification (Test Strategy section, above) for staying reflection-based; M3 is a Boundary Rule; M5 is a Feature-Scoped Invariant already covered by a classicist behavioral test. |
+| **V — instruction-file content is eval-only, never deterministic** *(v1.11.0; added 2026-08-12, T068)* | PASS (post-hoc) | `InstructionFilesWikiScopeTests` — a deterministic test string-matching forbidden content in real `system-prompt.md` files — violated this gate and has been removed (T066). SC-008's guarantee is now corroborated only by ADR-024 rule M3 (wikilink form) and the FR-002/FR-012 evaluation thresholds; see spec.md's Assumptions section. |
 | **IV — CI gate for every rule** | PASS | `Grimoire.ArchTests` and `Grimoire.IntegrationTests` both already run in the standard PR pipeline (`.github/workflows/ci.yml`); the new and updated rules inherit that gate with no workflow change. The observability contract tests likewise run there today. |
 | **IV — Observability section** | PASS | Enumerated below. This feature adds no new signal; it widens the mandatory-field set of one existing log event and one existing span, and widens the trigger set of two more. Each widened row carries implementation, deterministic-test, and CI rows. |
 | **IV — no unapproved infrastructure** | PASS | No cloud resource, broker, store or cache. One new local directory, which is what the feature *is*. |
@@ -145,10 +163,13 @@ three observations the design surfaced:
   each widened field auditable by name.
 - **Principle II's success-criteria split survived contact with the design.** The one place
   it was tempting to violate is SC-008: it would be easy to satisfy a lexical prompt check
-  while silently degrading agent behavior. The design keeps SC-008 lexical (correctly — it
-  *is* a deterministic guarantee about file content) and puts the behavioral question where
-  it belongs, on the existing evaluation thresholds after re-capture. No deterministic code
-  was introduced to replace an agent judgment.
+  while silently degrading agent behavior. The original design kept SC-008 lexical and put
+  the behavioral question where it belongs, on the existing evaluation thresholds after
+  re-capture — no deterministic code was introduced to replace an agent judgment. **Revised
+  2026-08-12 (T066)**: the lexical half of that design was itself later found to violate
+  Constitution v1.11.0 Principle V, which reserves instruction-file *content* correctness
+  exclusively for the evaluation tier — the dedicated lexical test has been removed; see
+  spec.md's Assumptions section and the Test Strategy table's SC-008 row.
 - **The configuration regrouping is a Principle IV improvement, with one accepted gap.**
   Turning the anchoring graph into the JSON tree and enforcing it with rule M5 converts a
   comment into a checked invariant, which is what "conventions not enforced by CI do not
@@ -224,7 +245,7 @@ directory built by `PathConfigurationTestHelpers.SeedRequiredInputs`.
 | **SC-005** — 100% of starts create the memory folder when absent | Deterministic guarantee | Hermetic integration test | Real filesystem | Temp dir with no `memory/` present | Asserts the directory exists after `Resolve` and that `paths_location_created` was emitted for `memory_dir`. Extends `ZeroConfigStartupTests` / `DefaultLayoutTests`. |
 | **SC-006** — memory folder appears in 100% of startup path-resolution reports | Deterministic guarantee | Hermetic observability contract test | Real telemetry registration from the production composition root (Principle IV: no test-only provider) | In-memory log/activity capture attached to the real pipeline | Extends `PathLoggingContractTests` (mandatory field `memory_dir`, level Information) and `PathTracingContractTests` (span tag `memory_dir`). |
 | **SC-007** — 0% of pre-existing on-disk records moved automatically | Deterministic guarantee | Hermetic integration test | Real filesystem | Temp dir pre-seeded with records under `<WikiDir>/tasks`, `<WikiDir>/conversations`, … | Asserts, after a full resolve + start, that every pre-seeded file is still byte-identical at its original path and that the memory root contains none of them. This is a negative guarantee, so it needs its own test rather than being implied. |
-| **SC-008** — 0% of the three instruction files reference these folders as wiki-reachable | Deterministic guarantee | Hermetic content assertion over the instruction sources (Fast tier) | None — reads the real `Instructions/system-prompt.md` files from `backend/src/` | The three real prompt files | A lexical assertion: none of `tasks/`, `conversations/`, `findings/`, `remediation-tasks/`, `[[tasks/` appears in any of the three prompts. Note that **no such content test exists today** (`QueryInstructionLoadTests` asserts only byte-identical load + SHA-256), so this is a new test, not an extension. Backed structurally by rule M3 on the production side. |
+| **SC-008** — 0% of the three instruction files reference these folders as wiki-reachable | Deterministic guarantee, narrowed (see below) | ~~Hermetic content assertion over the instruction sources (Fast tier)~~ **Revised 2026-08-12 (T066)**: no dedicated test — Constitution v1.11.0 Principle V bans a deterministic test that string-matches instruction-file content. Corroborated only by ADR-024 rule M3 (wikilink form only) and the FR-002/FR-012 evaluation row below. | None — reads the real `Instructions/system-prompt.md` files from `backend/src/` (at authoring time only; no longer at test time) | The three real prompt files | The original design added `InstructionFilesWikiScopeTests`, a lexical assertion that none of `tasks/`, `conversations/`, `findings/`, `remediation-tasks/`, `[[tasks/` appears in any of the three prompts. That test has been removed (T066): it is exactly the pattern Principle V's carve-out — added in the same constitution amendment this PR's own review triggered — now prohibits. See spec.md's Assumptions section for the accepted, narrower guarantee. |
 | **SC-009** — 100% of sub-paths resolve against the root they are grouped with, 0% against another | Deterministic guarantee | Hermetic integration test, reflection-driven | Real filesystem, real binder | Per-group relocation over the options graph | `PathGroupingInvariantTests` (ADR-024 rule M5). Reflection over `GrimoirePathOptions` means a sub-path added later is covered without editing the test — the point is to keep the grouping true, not to snapshot today's key list. Also delivers SC-002. |
 | **FR-002 / FR-012 behavioral regression** — removing the reserved-folder guidance does not degrade agent behavior | Agent-judgment threshold | Evaluation with threshold (existing SlowEval tier, re-captured) | Recorded LLM responses via `ReplayModelClient`; capture needs a live provider | All 22 scenarios, 230 samples, re-captured | **Not a new criterion** — the spec correctly declares no new agent-judgment outcome. Listed because the existing scenario thresholds are the only evidence that FR-012's deletions were harmless, and because re-capture is a gating step (research R5). Ingest `convention-adherence` and `log-paragraph-specificity` are the two scenarios most exposed to the task-reference change. |
 
@@ -251,6 +272,50 @@ the **final** implementation phase. Every prior phase then stays green against t
 recordings, and the re-capture happens once against the finished prompt text rather than
 repeatedly. `scripts/test-fast.sh` will not surface the staleness failure — only the full
 `dotnet test backend/tests/Grimoire.AgentEvals` will.
+
+**Constitution III classification and the Feature-Scoped-Invariant escape valve** (added
+2026-08-12, convergence task T067 — Constitution v1.11.0 landed before this plan was first
+authored and binds it in full, but this classification was originally omitted): per
+[ADR-024](../../docs/adr/ADR-024-memory-directory-root.md)'s Structural Enforcement
+section (the classification was briefly recorded in an amending ADR-026, then merged back
+into ADR-024 itself before this branch merged to `main` — see that document's history
+note),
+M1, M2, and M4 above are each a **Feature-Scoped Invariant** — they match Principle III's
+own worked examples ("the CLI exposes exactly N named path switches," "no code-level
+literal duplicates a config default," "the options graph mirrors the config file's
+grouping") verbatim. Principle III's default for a Feature-Scoped Invariant is a
+classicist, state-based behavioral test, not the Phase 0 reflection/IL form — *unless*
+this plan explicitly justifies why no runtime-observable behavior can catch the violation
+before merge. That justification, per rule:
+
+- **M1** (exact four-switch CLI surface): a behavioral equivalent exists —
+  `HubHelpUsageTests` (T047) asserts `--help`'s "Server options" section lists exactly the
+  four switches with 1:1 `PathSwitchCatalog.All` parity, out-of-process, against the real
+  CLI. That test alone would catch a fifth switch added *and* wired into the help output.
+  It would **not** catch a fifth `[CommandOption]` added to `HubPathSettings` without a
+  matching catalog entry, or a sixth path-shaped field added elsewhere that never reaches
+  `--help` at all — `DirectorySwitchSurfaceRuleTests`' IL scan is exhaustive over every
+  production assembly, not just the one path a manual test author thought to enumerate.
+  Kept as a reflection test for that exhaustiveness; `HubHelpUsageTests` stays as the
+  behavioral corroboration, not a replacement.
+- **M2** (no code-level `memory` literal in `Grimoire.Hub.Runtime.Paths`): `SC-004`'s
+  `StartupValidationTests`/`PathLoggingContractTests` are the behavioral backstop for the
+  *scenario* this rule guards against (research R2) — a missing `Memory:Dir` key fails
+  loudly instead of silently defaulting to `memory`. They do not catch a hardcoded
+  `?? "memory"` fallback added on some other, untested code path within the namespace;
+  only an exhaustive IL scan does. Kept as a reflection test for the same reason as M1.
+- **M4** (options-graph shape — four groups plus one ungrouped `SecretsFile`): no
+  behavioral test can distinguish "the graph has this shape" from "the graph has some
+  other shape that happens to resolve the same four roots correctly today" — a stray
+  ungrouped path property added alongside the groups would not necessarily fail M5's
+  relocation-behavior assertions (M5 only exercises the groups that already exist; an
+  unrelated loose property is simply never touched by it, so it can regress silently). No
+  runtime-observable behavior catches that regression before merge. Kept as a reflection
+  test; this is the one rule in this list with no partial behavioral corroboration at all.
+
+No test, statement, or probe changes as a result of this classification — it records why
+the existing Phase 0 tests for M1/M2/M4 remain, per Principle III's escape valve, rather
+than being replaced or supplemented.
 
 ## Observability
 

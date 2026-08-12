@@ -12,11 +12,6 @@ status: Accepted
 > (M2) rather than a new global literal. Everything else ADR-022 decided — three-tier
 > precedence, mandatory configuration file, no code defaults, agent-build distribution,
 > one launch mode — is unchanged.
->
-> **Amended by [ADR-025](ADR-025-drop-superseded-configuration-key-detection.md)**: rule
-> M6 below (superseded-configuration-key detection) is withdrawn — an unrecognized legacy
-> configuration key is left to silently resolve to its default instead. Every other rule,
-> consequence, and the R1/R2 amendments above are unchanged.
 
 ## Context and Problem Statement
 
@@ -42,7 +37,7 @@ must enumerate four sub-paths, and the `.gitignore` remedy only covers the git c
 backup jobs, retention policies, or storage placement. Feature 022
 (`specs/022-memory-directory-root/spec.md`) asks for one directory that holds all four.
 
-Three things make this an ADR rather than a decision inside the feature:
+Four things make this an ADR rather than a decision inside the feature:
 
 1. **The switch cap is structural.** ADR-022 rule R1 asserts `PathSwitchCatalog.All`
    contains *exactly three* named entries and `HubPathSettings` declares one
@@ -85,8 +80,10 @@ Three things make this an ADR rather than a decision inside the feature:
 - ADR-022's anti-regrowth intent must survive: the cap is what stops sub-paths from
   leaking back into the switch surface, and it must remain an exact enumeration rather
   than becoming a count nobody defends.
-- Constitution Principles III/IV: every rule needs a structural test with a Red/Green
-  probe and a CI gate. Principle V: which folders an agent treats as reachable is
+- Constitution Principles III/IV: every structural rule needs a Red/Green-probed test, a
+  CI gate, and — per Constitution v1.11.0 — a classification as a Boundary Rule or a
+  Feature-Scoped Invariant in this document's Decision Outcome (see Structural
+  Enforcement below). Principle V: which folders an agent treats as reachable is
   instruction content, so the correction lands in instruction files, not in backend code.
 - Author directive (2026-08-11): the configuration file must reflect the directory
   structure. It is currently a flat list, but in reality the folders are grouped and
@@ -94,6 +91,9 @@ Three things make this an ADR rather than a decision inside the feature:
 - ADR-022's own stated goal for the configuration file — "the full effective layout is
   readable in one versioned file" — is the standard the shape is measured against, and a
   flat list stops meeting it once there are four roots and seven anchored sub-paths.
+- Pre-1.0 (alpha) posture: Grimoire has no external installation carrying a
+  pre-regrouping configuration-key name, which bears on the superseded-configuration-key
+  option below.
 
 ## Considered Options
 
@@ -166,9 +166,28 @@ Three things make this an ADR rather than a decision inside the feature:
   encodes hierarchy in a naming convention that nothing enforces, and yields worse
   environment-variable names than real nesting does.
 
+### Superseded configuration key detection
+
+- **S-A: Detect every superseded flat configuration key at startup and fail naming its
+  replacement.** Considered: the key rename would otherwise fail silently — an
+  unrecognized configuration key is simply ignored by the configuration binder, unlike an
+  unrecognized command-line switch (a parser error) — so an operator still exporting
+  `Grimoire__Paths__DataDir` would get the shipped default with no signal. For a feature
+  whose entire purpose is letting an operator place bookkeeping deliberately, quietly
+  discarding a placement instruction is a real failure mode.
+- **S-B: Accept the silent-fallback failure mode.** Chosen. Grimoire is pre-1.0 (alpha):
+  there is no external installation carrying a pre-regrouping key name for a detector to
+  protect. S-A would put a fixed eleven-entry legacy-key table into production code —
+  permanent compatibility ballast enumerating dead key names, maintained against a
+  scenario the project's own maturity stage rules out. An operator who still exports an
+  old key name gets the same ordinary silent-ignore treatment configuration systems give
+  any unrecognized key, discoverable by comparing the resolved location against their
+  expectation rather than through a named startup failure — the same bounded, pre-1.0
+  breaking-change treatment ADR-022 already gave its own layout change.
+
 ## Decision Outcome
 
-**Chosen: M-A + N-A + L-A + C-A.**
+**Chosen: M-A + N-A + L-A + C-A + S-B.**
 
 ### Four roots
 
@@ -259,38 +278,15 @@ sub-path anchored at that group's resolved `Dir`.
   error names something an operator can search for verbatim in the file. The
   `paths_configuration_missing` event's `missing_keys` field carries the same full paths.
 
-### Superseded configuration keys are detected, not ignored
+### Superseded configuration keys are not detected
 
-The rename would otherwise fail silently: an unrecognized command-line switch is a parser
-error, but an unrecognized configuration key is simply ignored, so an operator still
-exporting `Grimoire__Paths__DataDir` would get the shipped default with no signal. For a
-feature whose entire purpose is letting an operator place bookkeeping deliberately, quietly
-discarding a placement instruction is the worst failure available — worse than the
-breaking change itself.
-
-Before the mandatory-root gate runs, the resolver therefore probes the bound configuration
-for each of the eleven superseded flat keys and fails naming every one it finds together
-with its replacement:
-
-```text
-appsettings.json / environment: superseded configuration key(s).
-  Grimoire:Paths:DataDir  → Grimoire:Paths:Data:Dir
-  Grimoire:Paths:TasksDir → Grimoire:Paths:Memory:TasksDir
-```
-
-- Emitted as a new `paths_configuration_superseded` event at ERROR and a new
-  `configuration_superseded` value on the existing
-  `grimoire.hub.path_resolution_failures_total{reason}` counter.
-- This is **not** an alias or a deprecation window — the old key does not work, it is
-  merely reported. ADR-022's "no aliases, no detection, no replacement guidance" stance for
-  *removed switches* is preserved in intent rather than contradicted: that stance rests on
-  switches already failing loudly by themselves, which configuration keys do not.
-- The legacy key list is a fixed, code-level table of *key names*. ADR-022 R2 and rule M2
-  ban code-level *default values*, not key names, which already appear in code via
-  `PathSwitchCatalog` and `BuildLocation`. No conflict.
-- The table is deliberately terminal: it names this one rename and is deleted rather than
-  extended if a future restructuring occurs, so it cannot grow into a permanent
-  compatibility layer.
+An unrecognized configuration key — file-based or environment-variable-based — is
+silently ignored by the configuration binder, exactly as any other unrecognized key
+would be (S-B above). No `paths_configuration_superseded` log/span event or
+`configuration_superseded` metric label exists;
+`grimoire.hub.path_resolution_failures_total{reason}`'s label set is `configuration_missing`,
+`agent_directory_empty`, `location_invalid`. The legacy key list considered under S-A is
+not implemented anywhere in production code.
 
 ### The switch cap grows by one root and stays an exact enumeration
 
@@ -351,20 +347,18 @@ overlap rather than breaking a path.
   notice. Rule M5 below turns the grouping into an enforced invariant — a sub-path declared
   in the `Memory` group that the resolver anchors anywhere else fails the build. The
   grouping is load-bearing, not decorative.
+- Good: no compatibility-ballast code — no fixed eleven-entry legacy-key table, no
+  dedicated exception type, no dedicated log event — for a case the project's own pre-1.0
+  status rules out (S-B).
 - **Bad**: the configuration-key rename is a second breaking change on top of the root
   move, and it hits all four roots rather than only the new one. Every
   `Grimoire__Paths__DataDir`-style environment variable becomes
   `Grimoire__Paths__Data__Dir`. Accepted on ADR-022's pre-1.0 clean-break precedent, and
-  bounded three ways: the CLI switches — the surface ADR-022 established as the
-  operator-facing one — do not change at all; operators who never set an environment
-  variable see nothing; and the superseded-key detection above converts what would have
-  been a silent fallback into a named startup failure. Without that detection this would be
-  the only quiet breakage in the feature, which is why it is part of the decision rather
-  than a nicety.
-- **Bad / accepted**: that detection puts a fixed list of eleven dead key names into
-  production code — the kind of compatibility ballast this project otherwise avoids. It is
-  scoped to this one rename and is to be deleted, not extended, if the layout ever changes
-  again.
+  bounded two ways: the CLI switches — the surface ADR-022 established as the
+  operator-facing one — do not change at all, and operators who never set an environment
+  variable see nothing. An operator who does still export an old-form environment
+  variable gets the ordinary silent-ignore treatment (S-B), discoverable only by comparing
+  the resolved location against their expectation, not a named startup failure.
 - **Bad**: a breaking configuration change with no migration (FR-011). An operator with
   existing records under the wiki directory relocates them by hand. This is the same
   treatment ADR-022 gave its own layout change, and the same treatment the runtime data,
@@ -411,17 +405,38 @@ overlap rather than breaking a path.
 ## Structural Enforcement (Constitution III)
 
 Each rule ships with a Red/Green probe (deliberate violation → verified failure →
-removal) before feature code, and runs in the standard PR pipeline.
+removal) before feature code, and runs in the standard PR pipeline. Per Constitution
+v1.11.0, each rule below is classified as a **Boundary Rule** (a durable
+dependency-direction guarantee; mandatory reflection/IL test) or a **Feature-Scoped
+Invariant** (protects this feature's current surface shape; defaults to a classicist
+behavioral test, unless justified otherwise — see below).
 
-| Rule | Statement | Test |
-| --- | --- | --- |
-| **M1** | `PathSwitchCatalog.All` contains exactly four entries — `--data-dir`, `--agent-dir`, `--wiki-dir`, `--memory-dir` — and `HubPathSettings` declares exactly one `[CommandOption]` per entry, each with a `[Description]`. Adding a fifth path switch fails the build. Amends ADR-022 R1 in place. | `Grimoire.ArchTests/DirectorySwitchSurfaceRuleTests` (updated; probe: add a fifth catalog entry) |
-| **M2** | No type in namespace `Grimoire.Hub.Runtime.Paths` contains an IL string literal equal to `memory` — the memory root's default value exists only in `appsettings.json`. Namespace-scoped rather than assembly-wide, because `memory` is a legitimate production literal elsewhere (see the R2 consequence above); the scoping idiom is ADR-009's, already used by `RuntimePathsBoundaryRuleTests`. | `Grimoire.ArchTests/NoCodeLevelPathDefaultsRuleTests` (new namespace-scoped case; probe: add a `DefaultMemoryDirName = "memory"` constant to `GrimoirePathOptions`) |
-| **M3** | No production assembly contains an IL string literal beginning with `[[tasks/`, `[[conversations/`, `[[findings/`, or `[[remediation-tasks/` — a wiki-relative link into a harness-record folder is dangling by construction once those folders anchor outside the wiki tree. Tripwire idiom, same as ADR-009's `rev-parse` scan. | `Grimoire.ArchTests/NoWikiRelativeHarnessRecordLinkRuleTests` (new; probe: restore `RestartReconciler`'s `Task: [[tasks/{taskId}.md]]` paragraph) |
-| **M4** | `GrimoirePathOptions` declares exactly four root-group properties (`Data`, `Wiki`, `Agent`, `Memory`), each of a group type declaring a `Dir` string property plus zero or more sub-path string properties, and exactly one ungrouped property (`SecretsFile`). No path-valued property may sit directly on `GrimoirePathOptions` besides `SecretsFile`. This keeps the options graph and the JSON tree the same shape, so the file cannot silently drift back toward flatness. | `Grimoire.ArchTests/PathOptionsGroupingRuleTests` (new; probe: add a loose `TasksDir` string property directly to `GrimoirePathOptions`) |
-| **M5** | **The grouping is the anchoring.** For each root group `G`, resolving a configuration in which only `G:Dir` is relocated moves every resolved location derived from a sub-path property of `G`, and moves no location derived from any other group. Driven by reflection over the options graph, so a newly added sub-path is covered without touching the test. Integration tier (it must run the real resolver against the real filesystem), and it subsumes the 4×4 root-independence matrix rather than sitting beside it. | `Grimoire.IntegrationTests/PathConfiguration/PathGroupingInvariantTests` (new; probe: anchor a `Memory` group sub-path at `dataDir` in `GrimoirePathResolver`) |
-| **M6** *(withdrawn — see [ADR-025](ADR-025-drop-superseded-configuration-key-detection.md))* | ~~Every superseded flat configuration key is detected and reported at startup with its replacement; none is silently ignored. The legacy-key table and the replacement map must stay in sync — each entry names a key that no longer binds and a key that does.~~ | ~~`Grimoire.IntegrationTests/PathConfiguration/SupersededConfigurationKeyTests`~~ — deleted by ADR-025; no replacement rule enforces the absence, per that ADR's Structural Enforcement note. |
-| ADR-022 R2 (existing) | No production assembly contains an IL string literal equal to `.grimoire` or `llm-wiki`. | existing `NoCodeLevelPathDefaultsRuleTests`, unchanged |
-| ADR-022 R3/R4 (existing) | Instruction-authorship boundary; no runtime build invocation. | existing rules, unchanged |
-| ADR-009 (existing) | Ambient process-context reads confined to `Grimoire.Hub.Runtime.Paths`; no `rev-parse` / `--show-toplevel` literals. | existing `RuntimePathsBoundaryRuleTests`, unchanged |
-| ADR-010 C1 (existing) | Persistence/local-filesystem stores stay concrete and namespace-contained. `ConversationRecordStore`, `FindingsReportStore`, `RemediationTaskRecordStore` and `KanbanBoardProjectionStore` change only which resolved path they are handed. | existing `HexagonalPortsAdapterRuleTests`, unchanged scope |
+| Rule | Classification | Statement | Test |
+| --- | --- | --- | --- |
+| **M1** | Feature-Scoped Invariant | `PathSwitchCatalog.All` contains exactly four entries — `--data-dir`, `--agent-dir`, `--wiki-dir`, `--memory-dir` — and `HubPathSettings` declares exactly one `[CommandOption]` per entry, each with a `[Description]`. Adding a fifth path switch fails the build. Amends ADR-022 R1 in place. | `Grimoire.ArchTests/DirectorySwitchSurfaceRuleTests` (updated; probe: add a fifth catalog entry) |
+| **M2** | Feature-Scoped Invariant | No type in namespace `Grimoire.Hub.Runtime.Paths` contains an IL string literal equal to `memory` — the memory root's default value exists only in `appsettings.json`. Namespace-scoped rather than assembly-wide, because `memory` is a legitimate production literal elsewhere (see the R2 consequence above); the scoping idiom is ADR-009's, already used by `RuntimePathsBoundaryRuleTests`. | `Grimoire.ArchTests/NoCodeLevelPathDefaultsRuleTests` (new namespace-scoped case; probe: add a `DefaultMemoryDirName = "memory"` constant to `GrimoirePathOptions`) |
+| **M3** | Boundary Rule | No production assembly contains an IL string literal beginning with `[[tasks/`, `[[conversations/`, `[[findings/`, or `[[remediation-tasks/` — a wiki-relative link into a harness-record folder is dangling by construction once those folders anchor outside the wiki tree. Tripwire idiom, same as ADR-009's `rev-parse` scan. | `Grimoire.ArchTests/NoWikiRelativeHarnessRecordLinkRuleTests` (new; probe: restore `RestartReconciler`'s `Task: [[tasks/{taskId}.md]]` paragraph) |
+| **M4** | Feature-Scoped Invariant | `GrimoirePathOptions` declares exactly four root-group properties (`Data`, `Wiki`, `Agent`, `Memory`), each of a group type declaring a `Dir` string property plus zero or more sub-path string properties, and exactly one ungrouped property (`SecretsFile`). No path-valued property may sit directly on `GrimoirePathOptions` besides `SecretsFile`. This keeps the options graph and the JSON tree the same shape, so the file cannot silently drift back toward flatness. | `Grimoire.ArchTests/PathOptionsGroupingRuleTests` (new; probe: add a loose `TasksDir` string property directly to `GrimoirePathOptions`) |
+| **M5** | Feature-Scoped Invariant (already a classicist behavioral test — no further action needed) | **The grouping is the anchoring.** For each root group `G`, resolving a configuration in which only `G:Dir` is relocated moves every resolved location derived from a sub-path property of `G`, and moves no location derived from any other group. Driven by reflection over the options graph, so a newly added sub-path is covered without touching the test. Integration tier (it must run the real resolver against the real filesystem), and it subsumes the 4×4 root-independence matrix rather than sitting beside it. | `Grimoire.IntegrationTests/PathConfiguration/PathGroupingInvariantTests` (new; probe: anchor a `Memory` group sub-path at `dataDir` in `GrimoirePathResolver`) |
+| ADR-022 R2 (existing) | — (governed by ADR-022, not classified here) | No production assembly contains an IL string literal equal to `.grimoire` or `llm-wiki`. | existing `NoCodeLevelPathDefaultsRuleTests`, unchanged |
+| ADR-022 R3/R4 (existing) | — (governed by ADR-022, not classified here) | Instruction-authorship boundary; no runtime build invocation. | existing rules, unchanged |
+| ADR-009 (existing) | — (governed by ADR-009, not classified here) | Ambient process-context reads confined to `Grimoire.Hub.Runtime.Paths`; no `rev-parse` / `--show-toplevel` literals. | existing `RuntimePathsBoundaryRuleTests`, unchanged |
+| ADR-010 C1 (existing) | — (governed by ADR-010, not classified here) | Persistence/local-filesystem stores stay concrete and namespace-contained. `ConversationRecordStore`, `FindingsReportStore`, `RemediationTaskRecordStore` and `KanbanBoardProjectionStore` change only which resolved path they are handed. | existing `HexagonalPortsAdapterRuleTests`, unchanged scope |
+
+**Classification rationale**: M1 and M4 match Constitution Principle III's own worked
+examples of a Feature-Scoped Invariant verbatim ("the CLI exposes exactly N named path
+switches," "the options graph mirrors the config file's grouping"); M2 matches "no
+code-level literal duplicates a config default." None of the three is a durable
+dependency-direction rule — each pins one feature's current surface shape, expected to
+change again if a future ADR adds a fifth root. M3, by contrast, is not tied to a count or
+shape that grows with the feature: it is a durable guarantee that no production code
+embeds a reference into a location structurally outside the wiki tree, the same idiom and
+category as the existing Boundary Rule `RuntimePathsBoundaryRuleTests` (ADR-009). M5 is a
+Feature-Scoped Invariant already covered by exactly the classicist, state-based behavioral
+test Principle III requires — no further action needed.
+
+M1, M2, and M4 keep their reflection/IL Phase 0 tests under Principle III's escape valve
+(a Feature-Scoped Invariant may stay reflection-enforced where this plan explicitly
+justifies why no runtime-observable behavior can catch the violation before merge); that
+per-rule justification is recorded in `specs/022-memory-directory-root/plan.md`'s Test
+Strategy section, not repeated here.

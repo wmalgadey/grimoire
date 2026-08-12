@@ -663,3 +663,68 @@ text.
   the amended spec.md edge case: an unrecognized legacy key is silently ignored and
   the location resolves to its default; the hub does not detect or reject it
   (pre-1.0, no installations to protect). (spec.md Edge Cases, contradicts)
+
+---
+
+## Phase 10: Convergence
+
+- [X] T065 Draft a new ADR amending `docs/adr/ADR-024-memory-directory-root.md`
+  (Accepted, so its Decision Outcome cannot be edited in place per Constitution
+  Principle III's immutability rule — follow the same amending-ADR pattern
+  `docs/adr/ADR-025-drop-superseded-configuration-key-detection.md` already used for
+  rule M6) that tags each of rules M1–M5 in the Structural Enforcement table as
+  either a **Boundary Rule** or a **Feature-Scoped Invariant**. Constitution v1.11.0
+  (commit `196f723`, landed *before* this feature's `/speckit-plan` authoring per
+  Governance's non-retroactivity clause) mandates this tag be present in the ADR's
+  Decision Outcome and states it is "a classification made once by design, not
+  inferred later from how a test happens to be written" — no rule in ADR-024
+  currently carries one. Update `docs/adr/index.md`'s ADR-024 row with the new
+  amending ADR's bidirectional link. (Constitution III, missing)
+
+  **Follow-up (2026-08-12, author direction)**: this was first done as an amending
+  ADR-025 (M6 withdrawal, drafted in an earlier session) and ADR-026 (this
+  classification). Since all three ADRs were authored and superseded entirely within
+  this same unmerged PR branch — never referenced by anything outside it — the author
+  explicitly requested they be merged into a single compound ADR-024, as a one-time
+  exception to Principle III's "never merged into a single file" rule. ADR-025 and
+  ADR-026 have been deleted; their content lives in ADR-024 (M6 as a rejected
+  Considered Option "S-A," never implemented; the classification inline in the
+  Structural Enforcement table). Both numbers are retired per `docs/adr/index.md`.
+
+- [X] T066 Reconcile `backend/tests/Grimoire.AgentEvals/InstructionFilesWikiScopeTests.cs`
+  (T043) and spec.md's SC-008 with Constitution v1.11.0 Principle V's carve-out:
+  "a deterministic test that string-matches required or forbidden content in a real
+  `system-prompt.md` or `default-user-prompt.md` duplicates that coverage with a
+  brittle proxy and MUST NOT be added." The amendment's own commit message names
+  this test (as "a lexical system-prompt.md content test") among the items whose
+  PR #70 review pushback motivated the rule — the review thread resolving it "kept
+  as-is" argues from the pre-amendment success-criteria-split framing of SC-008,
+  which the later, more specific, controlling carve-out overrides. Either remove the
+  test and amend SC-008 to rely on the existing eval-scenario thresholds (per
+  Principle V, content correctness is eval-only), or record why this instance is
+  exempt. (Constitution V, contradicts)
+
+- [X] T067 For rules M1 (`Grimoire.ArchTests/DirectorySwitchSurfaceRuleTests`), M2
+  (`Grimoire.ArchTests/NoCodeLevelPathDefaultsRuleTests`), and M4
+  (`Grimoire.ArchTests/PathOptionsGroupingRuleTests`): each matches one of
+  Constitution v1.11.0 Principle III's own named Feature-Scoped-Invariant examples
+  verbatim ("the CLI exposes exactly N named path switches," "no code-level literal
+  duplicates a config default," "the options graph mirrors the config file's
+  grouping"), yet ships only as a Phase 0 reflection/IL structural test. Principle
+  III requires a Feature-Scoped Invariant to be "covered by a classicist,
+  state-based integration test... never by reflecting over a type's shape... unless
+  `plan.md` explicitly justifies why no runtime-observable behavior can catch the
+  violation before merge" — neither ADR-024 nor plan.md contains that
+  justification. Depending on T065's classification outcome, either add the missing
+  plan.md justification for keeping the reflection-based test, or add the required
+  classicist behavioral test and demote/retire the reflection-based one.
+  (Constitution III, missing)
+
+- [X] T068 Update `specs/022-memory-directory-root/plan.md`'s `## Constitution Check`
+  section: it records "Constitution v1.8.0 (in force at authoring time...)," but
+  v1.11.0 (commit `196f723`) landed before this plan was authored (`a0f6e23`/
+  `ec59a79`) and therefore binds in full per Governance's non-retroactivity clause.
+  Correct the version reference and add gate rows for the Principle III
+  Boundary-Rule/Feature-Scoped-Invariant classification requirement and the
+  Principle V instruction-content-test carve-out, both absent from the current
+  table. (Constitution III, partial)
