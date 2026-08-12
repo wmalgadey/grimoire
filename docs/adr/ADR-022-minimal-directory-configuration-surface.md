@@ -13,6 +13,13 @@ status: accepted
 > truth for directory/path configuration and the build-distributed agent-artifact
 > layout. See the "Superseded and amended decisions" table below for the specific
 > change to each, and each linked ADR's own status note for the reverse pointer.
+>
+> **Amended by [ADR-024](ADR-024-memory-directory-root.md)**: rule R1's switch cap grows
+> from three named entries to four (`--memory-dir` added); the root/sub-path table gains
+> `MemoryDir` and re-anchors `TasksDir`/`ConversationsDir`/`FindingsDir`/
+> `RemediationTasksDir` from `WikiDir` to `MemoryDir`, reversing the placement this ADR
+> recorded as deliberate. Rule R2 gains a namespace-scoped companion rather than a new
+> global literal. Everything else this ADR decided is unchanged.
 
 ## Context and Problem Statement
 
