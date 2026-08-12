@@ -37,24 +37,6 @@ public sealed class GrimoirePathConfigurationMissingException(string configurati
 }
 
 /// <summary>
-/// Startup failure when the bound configuration still supplies one or more of the
-/// eleven flat configuration keys superseded by ADR-024's regrouping of
-/// <c>Grimoire:Paths</c> into anchor groups (FR-014/SC-010, research R8). This is
-/// deliberately not a fallback or an alias: the old key never takes effect. Checked
-/// before <see cref="GrimoirePathConfigurationMissingException"/>'s mandatory-root gate,
-/// so a configuration that supplies only a legacy key is reported as superseded, not
-/// missing.
-/// </summary>
-public sealed class GrimoirePathConfigurationSupersededException(IReadOnlyList<string> supersededKeys, IReadOnlyList<string> replacements)
-    : Exception(
-        "appsettings.json / environment: superseded configuration key(s). " +
-        string.Join(", ", supersededKeys.Zip(replacements, (old, @new) => $"{old} → {@new}")))
-{
-    public IReadOnlyList<string> SupersededKeys { get; } = supersededKeys;
-    public IReadOnlyList<string> Replacements { get; } = replacements;
-}
-
-/// <summary>
 /// The single composition point for every runtime location (ADR-022, amended by
 /// ADR-024): resolves <see cref="GrimoirePathOptions"/> against their documented
 /// anchors, records each location's effective configuration source, validates required
@@ -82,52 +64,12 @@ public static class GrimoirePathResolver
     /// </summary>
     public static string ProcessBaseDirectory => AppContext.BaseDirectory;
 
-    /// <summary>
-    /// ADR-024: the eleven configuration keys superseded by the <c>Grimoire:Paths</c>
-    /// regrouping, each paired with its nested replacement (data-model.md §2). Scoped to
-    /// this one rename — deleted, not extended, if the layout ever changes again.
-    /// </summary>
-    private static readonly IReadOnlyList<(string Legacy, string Replacement)> SupersededKeyMap =
-    [
-        ("Grimoire:Paths:DataDir", "Grimoire:Paths:Data:Dir"),
-        ("Grimoire:Paths:WikiDir", "Grimoire:Paths:Wiki:Dir"),
-        ("Grimoire:Paths:AgentDir", "Grimoire:Paths:Agent:Dir"),
-        ("Grimoire:Paths:MemoryDir", "Grimoire:Paths:Memory:Dir"),
-        ("Grimoire:Paths:RawDir", "Grimoire:Paths:Data:RawDir"),
-        ("Grimoire:Paths:StateDb", "Grimoire:Paths:Data:StateDb"),
-        ("Grimoire:Paths:WriteLocksDir", "Grimoire:Paths:Data:WriteLocksDir"),
-        ("Grimoire:Paths:TasksDir", "Grimoire:Paths:Memory:TasksDir"),
-        ("Grimoire:Paths:ConversationsDir", "Grimoire:Paths:Memory:ConversationsDir"),
-        ("Grimoire:Paths:FindingsDir", "Grimoire:Paths:Memory:FindingsDir"),
-        ("Grimoire:Paths:RemediationTasksDir", "Grimoire:Paths:Memory:RemediationTasksDir"),
-    ];
-
     public static ResolvedGrimoirePaths Resolve(GrimoirePathOptions options, IConfiguration configuration, ILogger logger)
     {
         var configRoot = configuration as IConfigurationRoot
             ?? throw new ArgumentException(
                 "Configuration must be an IConfigurationRoot to determine each location's effective source.",
                 nameof(configuration));
-
-        // Superseded-key probe (FR-014/SC-010): runs BEFORE the mandatory-root gate, so a
-        // configuration supplying only a legacy key is reported as superseded rather than
-        // missing — "missing" would send the operator looking for a key they already set.
-        var supersededKeys = new List<string>();
-        var replacements = new List<string>();
-        foreach (var (legacy, replacement) in SupersededKeyMap)
-        {
-            if (!string.IsNullOrEmpty(configRoot[legacy]))
-            {
-                supersededKeys.Add(legacy);
-                replacements.Add(replacement);
-            }
-        }
-        if (supersededKeys.Count > 0)
-        {
-            HubMetrics.RecordPathResolutionFailure("configuration_superseded");
-            GrimoirePathLogEvents.LogConfigurationSuperseded(logger, supersededKeys, replacements);
-            throw new GrimoirePathConfigurationSupersededException(supersededKeys, replacements);
-        }
 
         // Mandatory-configuration gate (FR-006/SC-004): the four roots must each carry a
         // non-empty value before anything is resolved or touched on disk. appsettings.json

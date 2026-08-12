@@ -161,23 +161,20 @@ public static class HubCliApp
 
     /// <summary>
     /// Walks <paramref name="exception"/>'s <see cref="Exception.InnerException"/> chain
-    /// for a <see cref="Runtime.Paths.GrimoirePathValidationException"/>,
-    /// <see cref="Runtime.Paths.GrimoirePathConfigurationMissingException"/>, or
-    /// <see cref="Runtime.Paths.GrimoirePathConfigurationSupersededException"/> — the
-    /// three exception types <see cref="Runtime.Paths.GrimoirePathResolver.Resolve"/>
-    /// throws (022-memory-directory-root/FR-014 added the third). Spectre's
-    /// type-resolution machinery is the only place these can end up wrapped (see the call
-    /// site above); the exception's own message already names the location/configuration
-    /// file/superseded key and is otherwise unrelated to Spectre's usage-error vocabulary,
-    /// so it is surfaced verbatim rather than folded into a usage error.
+    /// for a <see cref="Runtime.Paths.GrimoirePathValidationException"/> or
+    /// <see cref="Runtime.Paths.GrimoirePathConfigurationMissingException"/> — the two
+    /// exception types <see cref="Runtime.Paths.GrimoirePathResolver.Resolve"/> throws.
+    /// Spectre's type-resolution machinery is the only place these can end up wrapped
+    /// (see the call site above); the exception's own message already names the
+    /// location/configuration file and is otherwise unrelated to Spectre's usage-error
+    /// vocabulary, so it is surfaced verbatim rather than folded into a usage error.
     /// </summary>
     private static Exception? UnwrapPathResolutionFailure(Exception exception)
     {
         for (var current = exception; current is not null; current = current.InnerException)
         {
             if (current is Runtime.Paths.GrimoirePathValidationException
-                or Runtime.Paths.GrimoirePathConfigurationMissingException
-                or Runtime.Paths.GrimoirePathConfigurationSupersededException)
+                or Runtime.Paths.GrimoirePathConfigurationMissingException)
             {
                 return current;
             }

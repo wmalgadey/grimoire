@@ -13,9 +13,10 @@ namespace Grimoire.IntegrationTests.PathConfiguration;
 /// separately by <see cref="StartupValidationTests"/>/<see cref="PathLoggingContractTests"/>.
 /// <see cref="PathLocation.Source"/> reports whichever channel actually won. Environment
 /// variable names are the **nested** form (<c>Grimoire__Paths__Memory__Dir</c>, not
-/// <c>Grimoire__Paths__MemoryDir</c>) — the flat form is a superseded key, covered by
-/// <c>SupersededConfigurationKeyTests</c>.
+/// <c>Grimoire__Paths__MemoryDir</c>) — the flat form is a superseded key that the hub does
+/// not detect (spec.md Edge Cases) and silently ignores, falling back to the default.
 /// </summary>
+[Collection("CurrentDirectoryMutation")]
 public class PathPrecedenceTests
 {
     private const string DataDirEnvVarName = "Grimoire__Paths__Data__Dir";

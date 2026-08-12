@@ -59,11 +59,11 @@ group's resolved `Dir`. Environment variables nest the same way with a second `_
 
 | Location | CLI switch | Environment variable | Shipped default | Resolves against | Kind |
 | --- | --- | --- | --- | --- | --- |
-| Data directory | `--data-dir` | `Grimoire__Paths__Data__Dir` | `.grimoire` | process working directory | required input (must exist) |
+| Data directory | `--data-dir` | `Grimoire__Paths__Data__Dir` | `.grimoire` | process working directory | writable (auto-created) |
 | Wiki directory | `--wiki-dir` | `Grimoire__Paths__Wiki__Dir` | `llm-wiki` | process working directory | writable (auto-created) |
 | Agent directory | `--agent-dir` | `Grimoire__Paths__Agent__Dir` | `.grimoire/agents` | process working directory | required input (must hold a complete agent runtime) |
 | Memory directory | `--memory-dir` | `Grimoire__Paths__Memory__Dir` | `memory` | process working directory | writable (auto-created) |
-| Secrets file | — | — | `.env` | process working directory | required input |
+| Secrets file | — | `Grimoire__Paths__SecretsFile` | `.env` | process working directory | required input |
 
 ### Sub-paths (`appsettings.json`-only, no CLI switch)
 
@@ -87,9 +87,11 @@ The four-root regrouping (022-memory-directory-root) renamed every configuration
 and environment variable — `Grimoire__Paths__DataDir` became
 `Grimoire__Paths__Data__Dir`, and correspondingly for all eleven pre-existing keys. CLI
 switch names are unchanged. An operator still exporting an old flat-form environment
-variable or `appsettings.json` key gets a startup failure naming the superseded key and
-its replacement, rather than a silent fallback to the default — this is not an alias or
-a deprecation window; the old key simply does not work.
+variable or `appsettings.json` key gets the ordinary silent-ignore treatment
+configuration systems give any unrecognized key: the old key simply does not work, and
+the location quietly resolves to its default. The hub does not detect or reject
+superseded keys — the project is pre-1.0 (alpha) with no external installations
+carrying old key names, so there is nothing to guard against.
 
 Required-input locations that are missing, or of the wrong kind (a file where a
 directory is expected, or vice versa), abort startup immediately with a message naming
