@@ -99,28 +99,14 @@ non-empty value. A missing one produces `GrimoirePathConfigurationMissingExcepti
 *not* in this check — an empty sub-path value falls back to its anchor, the pre-existing
 `ResolveAgainst` behavior, unchanged.
 
-**Superseded-key rule (FR-014)**: *before* the validation rule above, the resolver probes
-the bound configuration for the eleven superseded flat keys and fails naming each one found
-together with its replacement. The order matters — a configuration supplying only
-`Grimoire:Paths:MemoryDir` must be reported as *superseded*, not as *missing*, because
-"missing" would send the operator looking for a key they already set.
-
-| Legacy key | Replacement |
-| --- | --- |
-| `Grimoire:Paths:DataDir` | `Grimoire:Paths:Data:Dir` |
-| `Grimoire:Paths:WikiDir` | `Grimoire:Paths:Wiki:Dir` |
-| `Grimoire:Paths:AgentDir` | `Grimoire:Paths:Agent:Dir` |
-| `Grimoire:Paths:MemoryDir` | `Grimoire:Paths:Memory:Dir` *(never shipped; included because the first draft of this feature specified it)* |
-| `Grimoire:Paths:RawDir` | `Grimoire:Paths:Data:RawDir` |
-| `Grimoire:Paths:StateDb` | `Grimoire:Paths:Data:StateDb` |
-| `Grimoire:Paths:WriteLocksDir` | `Grimoire:Paths:Data:WriteLocksDir` |
-| `Grimoire:Paths:TasksDir` | `Grimoire:Paths:Memory:TasksDir` |
-| `Grimoire:Paths:ConversationsDir` | `Grimoire:Paths:Memory:ConversationsDir` |
-| `Grimoire:Paths:FindingsDir` | `Grimoire:Paths:Memory:FindingsDir` |
-| `Grimoire:Paths:RemediationTasksDir` | `Grimoire:Paths:Memory:RemediationTasksDir` |
-
-`Grimoire:Paths:SecretsFile` is absent from the table: it is ungrouped and its key is
-unchanged.
+**Superseded keys are not detected.** An earlier draft of this feature added a rule here —
+before the validation rule above, the resolver would probe the bound configuration for
+eleven superseded flat keys and fail naming each one found together with its replacement.
+That rule (FR-014) was withdrawn on 2026-08-11: the project is pre-1.0 (alpha) with no
+external installations carrying old key names, so there is no superseded configuration to
+detect. An operator still exporting a pre-regrouping key such as `Grimoire:Paths:DataDir`
+or `Grimoire:Paths:MemoryDir` gets the ordinary silent-ignore treatment configuration
+systems give any unrecognized key — the resolver never inspects the flat key names at all.
 
 **Anchoring rule (unchanged mechanism)**: an absolute configured value is used verbatim; a
 relative value combines with its anchor; an empty value resolves to the anchor itself.

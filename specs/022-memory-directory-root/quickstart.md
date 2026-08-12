@@ -119,27 +119,21 @@ Grimoire__Paths__Memory__Dir=/tmp/from-env $HUB lint status --memory-dir /tmp/fr
 **Expected**: command line beats environment beats configuration file, evaluated for this
 option independently of the other three.
 
-**Negative check — the old flat name must fail loudly** (SC-010, FR-014):
+**Negative check — the old flat name is silently ignored** (accepted pre-1.0 behavior,
+spec.md Edge Cases):
 
 ```bash
-Grimoire__Paths__MemoryDir=/tmp/old-name $HUB lint status; echo "exit=$?"
+Grimoire__Paths__MemoryDir=/tmp/old-name $HUB lint status 2>&1 | grep -o 'memory_dir=[^ ]*'
+# → memory_dir=<WORK>/memory
 ```
 
-**Expected**: startup aborts naming the superseded key and its replacement
-(`Grimoire:Paths:MemoryDir → Grimoire:Paths:Memory:Dir`), with a
-`paths_configuration_superseded` event at Error and one
-`grimoire.hub.path_resolution_failures_total{reason="configuration_superseded"}`
-increment. It must **not** silently resolve to `<WORK>/memory` — that silent fallback is
-exactly what FR-014 exists to prevent.
-
-Repeat for the three pre-existing roots, whose keys this feature also renames
+**Expected**: the hub does not recognize the pre-regrouping flat key name — it resolves the
+memory root to its shipped default (`<WORK>/memory`), silently ignoring the stale override.
+No startup failure and no detection is implemented for this case: the project is pre-1.0
+(alpha) with no external installations carrying old key names, so there is nothing to
+protect. Repeat for the three pre-existing roots, whose keys this feature also renames
 (`Grimoire__Paths__DataDir`, `Grimoire__Paths__WikiDir`, `Grimoire__Paths__AgentDir`), and
-for the seven sub-path keys. The automated equivalent covers all eleven:
-
-```bash
-dotnet test backend/tests/Grimoire.IntegrationTests \
-  --filter "FullyQualifiedName~SupersededConfigurationKeyTests"
-```
+for the seven sub-path keys — every one silently falls back to its default the same way.
 
 ---
 

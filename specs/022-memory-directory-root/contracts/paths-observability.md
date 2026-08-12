@@ -99,26 +99,13 @@ This test is also the behavioral backstop for ADR-024 rule M2: a code-level defa
 the memory root anywhere in the solution would make it fail, regardless of the namespace
 the literal lives in.
 
-### 1.4 `paths_configuration_superseded` — **new**, level `Error`
-
-Emitted when the bound configuration supplies one or more superseded flat keys, before the
-mandatory-root gate runs, immediately preceding the thrown exception (FR-014/SC-010).
-
-| Field | Value |
-| --- | --- |
-| `superseded_keys` | comma-joined old key paths found in the configuration |
-| `replacements` | comma-joined `old → new` pairs, in the same order |
-
-This is the **one genuinely new signal** in the feature; everything else in this contract is
-a widening. Its implementation, deterministic test and CI rows are therefore required in
-full rather than as extensions.
-
-**Test obligations**: for each of the eleven superseded keys, supply it (via both the
-configuration file and the environment-variable form) and assert the event is emitted at
-`LogLevel.Error` with the key in `superseded_keys` and the correct replacement in
-`replacements`; assert startup aborts rather than resolving the location to a default; and
-assert `grimoire.hub.path_resolution_failures_total{reason="configuration_superseded"}` is
-incremented once. A table-driven test over the key list keeps this proportionate.
+> An earlier draft of this feature added a `paths_configuration_superseded` event here
+> (FR-014/SC-010): the bound configuration would be probed for superseded flat keys before
+> the mandatory-root gate, and the event emitted immediately before the thrown exception.
+> That requirement was withdrawn on 2026-08-11 — the project is pre-1.0 (alpha) with no
+> external installations carrying old key names, so there is no superseded configuration to
+> detect or report. No such signal exists; a superseded key is silently ignored like any
+> other unrecognized configuration key.
 
 ---
 
@@ -154,16 +141,16 @@ Tests: `backend/tests/Grimoire.IntegrationTests/PathConfiguration/PathMetricsCon
 
 | Metric | Type | Labels | Change |
 | --- | --- | --- | --- |
-| `grimoire.hub.path_resolution_failures_total` | Counter | `reason` ∈ `configuration_missing`, `agent_directory_empty`, `location_invalid`, **`configuration_superseded`** (new) | **Widened trigger** plus **one new label value.** `reason=configuration_missing` now also fires for a missing memory root; `reason=location_invalid` fires if the resolved memory path is occupied by a file; `reason=configuration_superseded` is new and fires when a superseded flat key is supplied (FR-014). |
+| `grimoire.hub.path_resolution_failures_total` | Counter | `reason` ∈ `configuration_missing`, `agent_directory_empty`, `location_invalid` | **Widened trigger.** `reason=configuration_missing` now also fires for a missing memory root; `reason=location_invalid` fires if the resolved memory path is occupied by a file. |
 
-No new *metric* is introduced. The memory root is one more location inside an existing
-resolution step; a dedicated `grimoire.hub.memory_dir_*` counter would answer no operator
-question that the existing counter and its `reason` label do not already answer. The new
-label value is the minimum needed to distinguish a genuinely different failure cause.
+No new *metric* and no new label value is introduced. The memory root is one more location
+inside an existing resolution step; a dedicated `grimoire.hub.memory_dir_*` counter would
+answer no operator question that the existing counter and its `reason` label do not already
+answer. (An earlier draft added a `configuration_superseded` label value for FR-014;
+withdrawn 2026-08-11 along with the requirement — see the note after §1.3.)
 
 **Test obligations**: assert one increment with `reason=configuration_missing` on a start
-missing the memory root, and one with `reason=configuration_superseded` on a start
-supplying a superseded key.
+missing the memory root.
 
 ---
 

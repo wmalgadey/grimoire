@@ -37,25 +37,19 @@ independently. Absolute values are used verbatim.
   `PathSwitchCatalog` and `HubPathSettings` must be updated to match — they are the text an
   operator reads in `--help`.
 
-### Migration: the key rename is detected, not silent
+### Migration: the key rename is silent
 
-An unrecognized **switch** is a parser error. An unrecognized **configuration key** would
-normally be ignored — so without a guard, an operator still exporting
-`Grimoire__Paths__DataDir` would get the shipped default with no warning of any kind. The
-hub therefore probes for every superseded key and **fails at startup** naming each one it
-finds and its replacement (FR-014):
+An unrecognized **switch** is a parser error. An unrecognized **configuration key** is
+simply ignored — so an operator still exporting `Grimoire__Paths__DataDir` gets the
+shipped default with no warning of any kind. The hub does not probe for or detect
+superseded keys: the project is pre-1.0 (alpha) with no external installations carrying
+old key names, so there is no superseded configuration to guard against. An earlier draft
+of this feature added startup detection (FR-014); that requirement was withdrawn on
+2026-08-11 as unwarranted compatibility machinery for a case that cannot occur.
 
-```text
-appsettings.json / environment: superseded configuration key(s).
-  Grimoire:Paths:DataDir  → Grimoire:Paths:Data:Dir
-  Grimoire:Paths:TasksDir → Grimoire:Paths:Memory:TasksDir
-```
-
-This is **not** an alias and **not** a deprecation window — the old key does not work. It
-is reported so the failure is loud rather than quiet. Operators who configure only through
-CLI switches are unaffected; those using `appsettings.json` or environment variables are
-told exactly what to change. The detection table is scoped to this one rename and is to be
-deleted, not extended, if the layout changes again.
+Operators who configure only through CLI switches are unaffected — switch names do not
+change. Those using `appsettings.json` or environment variables must update to the new key
+names themselves; nothing at startup tells them if they miss one.
 
 | Old environment variable | New |
 | --- | --- |

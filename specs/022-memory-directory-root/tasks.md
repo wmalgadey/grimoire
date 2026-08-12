@@ -594,3 +594,72 @@ text.
 - T049 (eval re-capture) is the one task in this list that cannot be completed
   hermetically by an implementer without live LLM provider credentials and
   repository-write access — flag it explicitly rather than silently skipping it.
+
+---
+
+## Phase 8: Convergence
+
+- [ ] T057 Correct `docs/operations/runtime-configuration.md`'s configuration table:
+  change the Data directory row's "Kind" from "required input (must exist)" to
+  "writable (auto-created)" (it is resolved as `PathLocationKind.WritableData` and
+  auto-created via `CreateDirectoryIfMissing`, identically to the wiki and memory
+  directories — the "required input" treatment actually belongs to Agent:Dir), and
+  change the Secrets file row's "Environment variable" column from "—" to
+  `Grimoire__Paths__SecretsFile` (it binds under `Grimoire:Paths:SecretsFile` and
+  `GrimoirePathResolver`'s `DetermineSource` explicitly checks the environment-variables
+  configuration provider for that key). (FR-013, contradicts)
+
+- [ ] T058 Add `[Collection("CurrentDirectoryMutation")]` to
+  `backend/tests/Grimoire.IntegrationTests/PathConfiguration/PathPrecedenceTests.cs`,
+  matching every sibling file in the same folder that mutates process-wide environment
+  variables via `Environment.SetEnvironmentVariable` (`QueryRuntimePathsTests`,
+  `SupersededConfigurationKeyTests`, `FindingsPathTests`, `RemediationTasksPathTests`,
+  `WriteLocksPathTests`). Without it, this test class can race with others under
+  xUnit's default parallel test-collection execution and leak env-var values across
+  concurrent resolves. (SC-003, partial)
+
+---
+
+## Phase 9: Convergence
+
+- [ ] T059 Remove the superseded-key detection machinery from
+  `backend/src/Grimoire.Hub/Runtime/Paths/GrimoirePathResolver.cs`: the
+  `GrimoirePathConfigurationSupersededException` class (lines 39-55), the
+  `SupersededKeyMap` static field (lines 85-103), and the probe block in `Resolve()`
+  that runs before the mandatory-root gate (lines 112-130). spec.md's Edge Cases
+  section (amended 2026-08-11) now states the hub does not detect or reject
+  superseded configuration keys. (spec.md Edge Cases, contradicts)
+
+- [ ] T060 Remove `PathsConfigurationSupersededEvent` (EventId 44,
+  `paths_configuration_superseded`) and the `LogConfigurationSuperseded` method from
+  `backend/src/Grimoire.Hub/Runtime/Paths/GrimoirePathLogEvents.cs` — this signal has
+  no trigger once T059 removes the code path that calls it. (spec.md Edge Cases,
+  contradicts)
+
+- [ ] T061 In `backend/src/Grimoire.Hub/Cli/HubCliApp.cs`'s
+  `UnwrapPathResolutionFailure` (lines 162-187), remove the
+  `or Runtime.Paths.GrimoirePathConfigurationSupersededException` pattern arm and
+  update the method's doc comment, which currently cites "the three exception types"
+  and FR-014 — it reverts to unwrapping the two remaining path-resolution exception
+  types. (spec.md Edge Cases, contradicts)
+
+- [ ] T062 Delete
+  `backend/tests/Grimoire.IntegrationTests/PathConfiguration/SupersededConfigurationKeyTests.cs`
+  — its table-driven assertions (startup abort naming a superseded key and its
+  replacement) test behavior the amended spec explicitly says does not exist.
+  (spec.md Edge Cases, contradicts)
+
+- [ ] T063 Remove
+  `HubHelpUsageTests.cs`'s
+  `RemediationDismiss_RealOutOfProcessInvocation_SupersededMemoryDirKey_ReportsTheRealMessage_NotSpectresGenericResolutionFailure`
+  test method (lines 238-299) and its doc comment, added as real out-of-process
+  regression coverage for the CLI unwrap behavior T061 removes. Also fix
+  `PathPrecedenceTests.cs`'s doc comment (lines 16-17), which cross-references
+  `SupersededConfigurationKeyTests` — deleted by T062 — as covering the flat
+  environment-variable form. (spec.md Edge Cases, contradicts)
+
+- [ ] T064 Remove the "Superseded configuration keys" section (lines 84-102) from
+  `docs/operations/runtime-configuration.md` and replace it with wording matching
+  the amended spec.md edge case: an unrecognized legacy key is silently ignored and
+  the location resolves to its default; the hub does not detect or reject it
+  (pre-1.0, no installations to protect). (spec.md Edge Cases, contradicts)

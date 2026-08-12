@@ -39,18 +39,18 @@ plan no longer holds scope that no requirement covers:
   its own structure, readable without consulting code. Verified by **SC-009** (100% of
   sub-paths resolve against the root they are grouped with), which is precisely what
   ADR-024 rule M5 tests.
-- **FR-014** — superseded configuration keys must fail at startup naming their
-  replacements, rather than being silently ignored. Verified by **SC-010**.
 
-FR-014 was not part of the directive; it follows from FR-013 and closes the one silent
-failure the regrouping would otherwise introduce. An unrecognized CLI switch is a parser
-error, but an unrecognized configuration key is ignored — so an operator still exporting
-`Grimoire__Paths__DataDir` would get the default with no signal. For a feature whose point
-is deliberate placement of bookkeeping, quietly discarding a placement instruction is the
-worst available failure, and the guard costs a fixed eleven-entry table checked once at
-startup. Both the spec's provenance note and ADR-024 record it as a deliberate departure
-from ADR-022's "no detection for removed switches" stance, on the grounds that switches
-already fail loudly and configuration keys do not.
+An earlier draft paired FR-013 with a companion requirement (FR-014/SC-010) mandating
+startup detection of superseded configuration keys, on the reasoning that an unrecognized
+CLI switch is a parser error while an unrecognized configuration key is simply ignored —
+so an operator still exporting `Grimoire__Paths__DataDir` would get the default with no
+signal. That companion requirement was withdrawn on 2026-08-11 (author directive): the
+project is pre-1.0 with no external installations carrying old key names, so there is no
+superseded configuration to detect, and the guard's fixed eleven-entry table would be
+compatibility ballast with nothing to protect. An operator still exporting a pre-regrouping
+key name gets the ordinary silent-ignore treatment configuration systems give any
+unrecognized key — accepted as a pre-1.0 breaking-change consequence, the same treatment
+ADR-022 gave its own layout change.
 
 The regrouping is materially in scope for this feature rather than a follow-up: it touches
 the same file, the same options type, the same resolver and the same ~8 test files as the
@@ -135,12 +135,12 @@ three observations the design surfaced:
   and no assembly — one options field, one resolver argument change per sub-path, one
   member on `ResolvedGrimoirePaths`. The four record stores keep their constructors' shape;
   only the resolved path they receive differs. Nothing in the design pushes toward a port.
-- **Principle IV, one honest caveat.** Apart from `paths_configuration_superseded`, every
-  observability row is a *widening* of an existing contract rather than a new signal. That
-  is the right call (a dedicated memory-root counter would answer no operator question),
-  but it means the DoD's completeness audit must check the widened rows explicitly — a
-  reviewer scanning for "new signals added by this feature" would find one and could wrongly
-  conclude the rest of the section is vacuous. The contract in
+- **Principle IV, one honest caveat.** This feature introduces no new observability signal
+  at all — every row is a *widening* of an existing contract. That is the right call (a
+  dedicated memory-root counter would answer no operator question), but it means the DoD's
+  completeness audit must check the widened rows explicitly — a reviewer scanning for "new
+  signals added by this feature" would find none and could wrongly conclude the section is
+  vacuous. The contract in
   [contracts/paths-observability.md](./contracts/paths-observability.md) exists to make
   each widened field auditable by name.
 - **Principle II's success-criteria split survived contact with the design.** The one place
@@ -149,18 +149,19 @@ three observations the design surfaced:
   *is* a deterministic guarantee about file content) and puts the behavioral question where
   it belongs, on the existing evaluation thresholds after re-capture. No deterministic code
   was introduced to replace an agent judgment.
-- **The configuration regrouping is a Principle IV improvement, and its gap is now closed.**
+- **The configuration regrouping is a Principle IV improvement, with one accepted gap.**
   Turning the anchoring graph into the JSON tree and enforcing it with rule M5 converts a
   comment into a checked invariant, which is what "conventions not enforced by CI do not
-  exist" asks for. The gap the first pass left open — that the resulting key rename fails
-  *silently* for environment-variable users — is closed by FR-014's superseded-key
-  detection. That guard costs one fixed table checked once at startup and turns the
-  feature's only quiet breakage into a named startup failure with a metric and a log event
-  behind it, which is the treatment Principle IV expects of a failure worth knowing about.
-- **Scope and spec are now aligned.** The regrouping is covered by FR-013/SC-009 and
-  FR-014/SC-010 after the 2026-08-11 spec amendment, so `/speckit-analyze` should find no
-  uncovered plan scope. The spec's own "other three roots out of scope" assumption carries
-  an explicit, bounded exception for the key rename rather than being silently contradicted.
+  exist" asks for. The resulting key rename still fails *silently* for an operator who
+  keeps exporting a pre-regrouping environment variable — an earlier draft closed that gap
+  with superseded-key detection (FR-014), but that requirement was withdrawn on 2026-08-11
+  as unwarranted machinery for a pre-1.0 project with no installations carrying old key
+  names. The silent fallback is accepted as a bounded, pre-1.0 breaking-change consequence
+  rather than guarded against.
+- **Scope and spec are now aligned.** The regrouping is covered by FR-013/SC-009 after the
+  2026-08-11 spec amendment, so `/speckit-analyze` should find no uncovered plan scope. The
+  spec's own "other three roots out of scope" assumption carries an explicit, bounded
+  exception for the key rename rather than being silently contradicted.
 
 ## Architectural Constraints & ADRs
 
@@ -225,7 +226,6 @@ directory built by `PathConfigurationTestHelpers.SeedRequiredInputs`.
 | **SC-007** — 0% of pre-existing on-disk records moved automatically | Deterministic guarantee | Hermetic integration test | Real filesystem | Temp dir pre-seeded with records under `<WikiDir>/tasks`, `<WikiDir>/conversations`, … | Asserts, after a full resolve + start, that every pre-seeded file is still byte-identical at its original path and that the memory root contains none of them. This is a negative guarantee, so it needs its own test rather than being implied. |
 | **SC-008** — 0% of the three instruction files reference these folders as wiki-reachable | Deterministic guarantee | Hermetic content assertion over the instruction sources (Fast tier) | None — reads the real `Instructions/system-prompt.md` files from `backend/src/` | The three real prompt files | A lexical assertion: none of `tasks/`, `conversations/`, `findings/`, `remediation-tasks/`, `[[tasks/` appears in any of the three prompts. Note that **no such content test exists today** (`QueryInstructionLoadTests` asserts only byte-identical load + SHA-256), so this is a new test, not an extension. Backed structurally by rule M3 on the production side. |
 | **SC-009** — 100% of sub-paths resolve against the root they are grouped with, 0% against another | Deterministic guarantee | Hermetic integration test, reflection-driven | Real filesystem, real binder | Per-group relocation over the options graph | `PathGroupingInvariantTests` (ADR-024 rule M5). Reflection over `GrimoirePathOptions` means a sub-path added later is covered without editing the test — the point is to keep the grouping true, not to snapshot today's key list. Also delivers SC-002. |
-| **SC-010** — 100% of starts supplying a superseded key fail naming it and its replacement; 0% fall back to a default | Deterministic guarantee | Hermetic integration test, table-driven | Real filesystem, real binder | The eleven superseded keys, each supplied via the file **and** via its environment-variable form | Asserts the startup abort, the `paths_configuration_superseded` ERROR event with `superseded_keys`/`replacements`, and one `reason=configuration_superseded` metric increment. The env-var form matters most: it is the tier where the silent fallback would actually bite. |
 | **FR-002 / FR-012 behavioral regression** — removing the reserved-folder guidance does not degrade agent behavior | Agent-judgment threshold | Evaluation with threshold (existing SlowEval tier, re-captured) | Recorded LLM responses via `ReplayModelClient`; capture needs a live provider | All 22 scenarios, 230 samples, re-captured | **Not a new criterion** — the spec correctly declares no new agent-judgment outcome. Listed because the existing scenario thresholds are the only evidence that FR-012's deletions were harmless, and because re-capture is a gating step (research R5). Ingest `convention-adherence` and `log-paragraph-specificity` are the two scenarios most exposed to the task-reference change. |
 
 **Structural tests (Phase 0, before feature code)** — each with a Red/Green probe per
@@ -256,23 +256,20 @@ repeatedly. `scripts/test-fast.sh` will not surface the staleness failure — on
 
 *MANDATORY: Code without this instrumentation fails the Definition of Done.*
 
-This feature introduces **one new signal** — the `paths_configuration_superseded` event
-required by FR-014 — plus one new label value on an existing counter. Everything else is a
-*widening*: the mandatory-field set of one existing log event and one existing span, and
-the trigger surface of three more existing signals. Every widened row below is treated as a
-contract change and carries implementation, deterministic-test and CI obligations exactly
-as a new row would.
+This feature introduces **no new signal**. Everything is a *widening*: the mandatory-field
+set of one existing log event and one existing span, and the trigger surface of two more
+existing signals. Every widened row below is treated as a contract change and carries
+implementation, deterministic-test and CI obligations exactly as a new row would.
 
 ### Business Metrics (OpenTelemetry Counters / Gauges)
 
 | Metric name | Type | Description | Labels |
 | --- | --- | --- | --- |
-| `grimoire.hub.path_resolution_failures_total` | Counter (existing, `HubMetrics.RecordPathResolutionFailure`) | Incremented once when path resolution aborts. **Widened trigger**: `reason=configuration_missing` now also fires when `Grimoire:Paths:Memory:Dir` is absent from every configuration tier (or its whole group is). **One new label value**: `reason=configuration_superseded` for FR-014. | `reason` ∈ `configuration_missing`, `agent_directory_empty`, `location_invalid`, **`configuration_superseded`** |
+| `grimoire.hub.path_resolution_failures_total` | Counter (existing, `HubMetrics.RecordPathResolutionFailure`) | Incremented once when path resolution aborts. **Widened trigger**: `reason=configuration_missing` now also fires when `Grimoire:Paths:Memory:Dir` is absent from every configuration tier (or its whole group is). | `reason` ∈ `configuration_missing`, `agent_directory_empty`, `location_invalid` |
 
 No new metric is warranted: the memory root is one more location in an existing resolution
 step, and inventing `grimoire.hub.memory_dir_*` would create a counter with no operator
-question behind it. The new `reason` value is the minimum needed to distinguish a genuinely
-different failure cause from a missing one.
+question behind it.
 
 ### Structured Log Events
 
@@ -281,7 +278,6 @@ different failure cause from a missing one.
 | `paths_resolved` (existing, EventId 40) | INFO | Once per successful path resolution at process start | `data_dir`, `wiki_dir`, `agent_dir`, **`memory_dir`** *(new mandatory field — FR-008/SC-006)*, `secrets_file`, `state_db`, `raw_dir`, `sources` (the `sources` list gains a `memory_dir=<source>` pair) |
 | `paths_location_created` (existing, EventId 41) | INFO | Each writable location auto-created because it was absent. **Widened trigger**: now fires for `memory_dir` and for the four bookkeeping sub-paths at their new anchor | `location`, `resolved_path` (unchanged) |
 | `paths_configuration_missing` (existing, EventId 43) | ERROR | Configuration binding produced an empty value for one or more roots. **Widened trigger**: the memory root joins the checked set, and an entirely absent group reaches this gate too | `configuration_file`, `missing_keys` — **values become full key paths** (`Grimoire:Paths:Memory:Dir`) instead of bare field names |
-| **`paths_configuration_superseded`** (**new**) | ERROR | The bound configuration supplies one or more superseded flat keys; checked before the mandatory-root gate (FR-014/SC-010) | `superseded_keys`, `replacements` |
 
 **Derivation rule (MANDATORY)**: Every row above MUST map to concrete work in `tasks.md`
 covering all three categories:

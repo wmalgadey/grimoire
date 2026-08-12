@@ -352,24 +352,16 @@ and work unchanged with `Data:Dir`-style suffixes.
    `Grimoire__Paths__DataDir` → `Grimoire__Paths__Data__Dir`, and so on for all eleven. CLI
    switch names, `PathLocation` names and `paths_resolved` log fields are **unchanged** —
    `Memory:Dir` ↔ `--memory-dir` ↔ `memory_dir` stays consistent across all three surfaces.
-2. **The rename would fail quietly, so it is detected instead (FR-014, added
-   2026-08-11).** An unrecognized CLI switch is a parser error; an unrecognized
-   configuration key is simply ignored. Left alone, an operator script still exporting
-   `Grimoire__Paths__DataDir` would get the default with no warning — and for a feature
-   whose purpose is deliberate placement of bookkeeping, quietly discarding a placement
-   instruction is the worst available failure. The resolver therefore probes the bound
-   configuration for all eleven superseded keys before the mandatory-root gate and fails
-   naming each one with its replacement, emitting a new `paths_configuration_superseded`
-   ERROR event and a new `reason=configuration_superseded` value on the existing failure
-   counter.
-
-   This does *not* contradict ADR-022's "no aliases, no detection, no replacement guidance"
-   stance for removed switches. That stance rests on switches already failing loudly by
-   themselves; configuration keys do not, so the same intent — the operator finds out
-   immediately — requires the opposite mechanism. The old keys still do not work; they are
-   merely reported. The legacy table holds key *names*, not default *values*, so ADR-022 R2
-   and rule M2 are untouched, and it is scoped to this one rename — to be deleted rather
-   than extended if the layout changes again.
+2. **The rename fails quietly, and that is accepted.** An unrecognized CLI switch is a
+   parser error; an unrecognized configuration key is simply ignored. An operator script
+   still exporting `Grimoire__Paths__DataDir` gets the default with no warning. An earlier
+   draft (FR-014, added 2026-08-11) closed this gap with a startup probe over all eleven
+   superseded keys, failing naming each one with its replacement. That requirement was
+   withdrawn on 2026-08-11: the project is pre-1.0 (alpha) with no external installations
+   carrying old key names, so there is no superseded configuration to detect, and the
+   eleven-entry legacy table would be permanent compatibility ballast against a case that
+   cannot occur. The silent fallback is accepted as a bounded, pre-1.0 breaking-change
+   consequence — the same treatment ADR-022 gave its own layout change.
 3. **Live references to update** (historical spec documents are records and stay as they
    are): `PathSwitchCatalog.cs` (3 `ConfigKey` values, plus the new 4th),
    `EvalIndependenceFromHubConfigurationTests.cs:25-38` (an 11-entry env-var array),
