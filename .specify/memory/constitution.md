@@ -535,8 +535,7 @@ a broken test rather than a caught regression. Instead:
   (Principle II) exercising the real observable behavior the rule protects — e.g. start
   the Hub with a superseded key and assert the documented failure message; start without
   an option and assert the documented default — never by reflecting over a type's shape,
-  an assembly's IL, or an internal catalog, unless `plan.md` explicitly justifies why no
-  runtime-observable behavior can catch the violation before merge.
+  an assembly's IL, or an internal catalog.
 - A Feature-Scoped Invariant test MUST NOT assert a bare cardinality or literal
   enumeration ("exactly 4 switches," "exactly these 2 literals") as an end in itself. If
   the ADR's real concern is unbounded, silent regrowth of a surface — not the enumeration

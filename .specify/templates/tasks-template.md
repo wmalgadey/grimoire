@@ -76,8 +76,9 @@ rule an ADR happens to name.
 **⚠️ NON-NEGOTIABLE**: No feature implementation can begin until Phase 0 is complete.
 
 <!--
-  ACTION REQUIRED, before writing T000: classify every rule named by the ADR(s) referenced
-  in plan.md § Architectural Constraints & ADRs as exactly one of:
+  ACTION REQUIRED, before writing T000: ensure the ADR(s) referenced
+  in plan.md § Architectural Constraints & ADRs tag every enumerated rule in the ADR's 
+  Decision Outcome as exactly one of::
 
   - Boundary Rule: a dependency-direction / layering / containment rule (Constitution
     Principle I's domain-purity and adapter-containment family, or Principle V's
