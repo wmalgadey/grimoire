@@ -6,7 +6,13 @@
 
 **Status**: Draft
 
-**Input**: User description: "Introduce a single "memory" directory as a fourth independent root in the Hub's path configuration surface, alongside the existing DataDir, WikiDir, and AgentDir (ADR-022). Today, agent-produced bookkeeping — TasksDir, ConversationsDir, FindingsDir (lint results), and RemediationTasksDir — are four separate sub-paths anchored under WikiDir. This mixes wiki content (the actual maintained knowledge base under WikiDir) with agent process bookkeeping (conversations, tasks, findings, remediation) in the same directory tree, and there is no single place an operator can point at, back up, retain, or exclude independently of the wiki content itself. Goal: consolidate all four of these into one new \"memory\" directory (default name \"memory\") that is a peer of DataDir/WikiDir/AgentDir — not nested inside any of them."
+**Input**: User description: "Introduce a single 'memory' directory as a fourth independent root in the Hub's path configuration surface, alongside the existing DataDir, WikiDir, and AgentDir (ADR-022). Today, agent-produced bookkeeping — TasksDir, ConversationsDir, FindingsDir (lint results), and RemediationTasksDir — are four separate sub-paths anchored under WikiDir. This mixes wiki content (the actual maintained knowledge base under WikiDir) with agent process bookkeeping (conversations, tasks, findings, remediation) in the same directory tree, and there is no single place an operator can point at, back up, retain, or exclude independently of the wiki content itself. Goal: consolidate all four of these into one new 'memory' directory (default name 'memory') that is a peer of DataDir/WikiDir/AgentDir — not nested inside any of them."
+
+## Clarifications
+
+### Session 2026-08-11
+
+- Q: Which files count as the "other files" whose bookkeeping-subdir references must be removed/updated, alongside the three agents' system-prompt.md? → A: Agent instruction files only (system-prompt.md for Ingest/Query/Lint, plus default-user-prompt.md/policy.json if they mention these folders). ADR narrative text describing the current WikiDir-anchored layout is updated separately via the ADR-amendment step already flagged as a planning dependency for this feature, not as a spec functional requirement here.
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -63,6 +69,7 @@ An operator who has never heard of the new memory folder runs hub commands exact
 - What happens when the memory folder is explicitly configured to be the same as, or nested inside, the wiki, runtime data, or agent folder? The hub MUST accept it as a valid explicit choice, even though it departs from the default sibling relationship, without treating it as an error.
 - What happens to tasks, conversations, findings, and remediation task records that already exist on disk under the wiki folder from before this feature? They are not moved or migrated automatically; the hub simply resolves new activity against the newly configured memory folder location. Relocating pre-existing records is a manual operator step.
 - What happens to the internal sub-path names and structure of tasks, conversations, findings, and remediation tasks (file naming, per-record layout)? They are unchanged — only the parent root they anchor under moves, not their internal shape.
+- What happens to the Ingest, Query, and Lint agent instruction files, which currently tell the agent to skip `tasks/`, `conversations/`, `findings/`, and `remediation-tasks/` as reserved folders when browsing the wiki tree, list them in the wiki's directory-tree diagram, and (Ingest only) cite `[[tasks/<task_id>.md]]` as a wiki-relative link when logging a run? Once these folders anchor under the memory folder instead of the wiki folder, they are no longer reachable within the wiki tree at all, so this guidance is stale and must be updated to match: removed where it describes folders the agent would otherwise encounter while browsing the wiki, and corrected where it cites one of these folders as if it were a wiki-relative path.
 
 ## Requirements *(mandatory)*
 
@@ -79,6 +86,7 @@ An operator who has never heard of the new memory folder runs hub commands exact
 - **FR-009**: The shipped configuration file MUST default the memory folder to a folder named `memory`, as a sibling of the default runtime data, wiki, and agent folder locations under the process's current working directory.
 - **FR-010**: The internal sub-path structure of tasks, conversations, findings, and remediation task records MUST remain unchanged; only their anchoring root moves from the wiki folder to the memory folder.
 - **FR-011**: The hub MUST NOT automatically detect or migrate existing on-disk tasks, conversations, findings, or remediation task records from their previous location under the wiki folder to the memory folder; relocating pre-existing records is a manual operator step.
+- **FR-012**: The Ingest, Query, and Lint agents' instruction files (`system-prompt.md`, and any other instruction document such as `default-user-prompt.md` or `policy.json` that references these folders) MUST NOT describe tasks, conversations, findings, or remediation tasks as folders reachable within the wiki tree — including wiki-browsing guidance, directory-tree diagrams, and wiki-relative link citations naming these folders — since they no longer live there.
 
 ### Key Entities
 
@@ -102,6 +110,7 @@ An operator who has never heard of the new memory folder runs hub commands exact
 - **SC-005**: 100% of hub starts create the memory folder automatically when it is absent from disk.
 - **SC-006**: The memory folder's resolved location appears in 100% of startup path-resolution reports.
 - **SC-007**: 0% of pre-existing on-disk tasks, conversations, findings, or remediation task records are moved automatically by the hub.
+- **SC-008**: 0% of the Ingest, Query, and Lint agents' instruction files contain a reference to `tasks/`, `conversations/`, `findings/`, or `remediation-tasks/` as a folder reachable within the wiki tree.
 
 ## Assumptions
 
@@ -111,3 +120,4 @@ An operator who has never heard of the new memory folder runs hub commands exact
 - No migration of existing on-disk data is in scope. Tasks, conversations, findings, and remediation task records already present under the wiki folder from before this feature are left in place; an operator who wants them under the new memory folder relocates them manually, consistent with the precedent set for the runtime data, wiki, and agent roots.
 - The internal sub-path structure within tasks, conversations, findings, and remediation tasks (file naming, per-record layout) is out of scope for this feature — only the parent root each anchors under changes.
 - Changing anything about the runtime data, wiki, or agent folders themselves (beyond wiki content narrowing to exclude bookkeeping) is out of scope.
+- Updating stale bookkeeping-folder references is scoped to agent instruction files only (the `Instructions/` documents for Ingest, Query, and Lint that are actually loaded into an agent's working context — Constitution Principle V). Repository documentation that separately describes today's WikiDir-anchored layout (e.g. ADR-022's own root/sub-path table) is corrected through the ADR-amendment step already flagged as a planning dependency, not through this spec's functional requirements.

@@ -38,3 +38,9 @@
   is recorded in the spec's Assumptions section as a required planning-time ADR-review
   step, per Constitution Principle III — it is a dependency for `/speckit-plan`, not a
   business-facing ambiguity for this spec to resolve.
+- Clarification session 2026-08-11 resolved a scope question raised while integrating the
+  requirement to remove stale bookkeeping-folder references from agent instruction files:
+  scope is agent instruction files only (system-prompt.md/default-user-prompt.md/policy.json
+  for Ingest, Query, Lint), not repository documentation such as ADR narrative text. All
+  checklist items re-validated and still pass after integrating FR-012, SC-008, and the new
+  edge case.
