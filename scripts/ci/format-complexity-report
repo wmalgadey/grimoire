@@ -1,0 +1,120 @@
+#!/usr/bin/env python3
+"""
+Converts `lizard --csv` output into the markdown complexity report used by
+`.github/workflows/complexity.yml` — both as the PR-comment body (created once per PR and
+updated in place on every subsequent push) and the `$GITHUB_STEP_SUMMARY` job summary.
+
+Expected CSV columns (lizard 1.x, no header row):
+    nloc, ccn, token_count, param_count, length, location, file, name, long_name,
+    start_line, end_line
+"""
+
+import argparse
+import csv
+import sys
+
+COMMENT_MARKER = "<!-- grimoire-complexity-report -->"
+
+
+def _escape_cell(text):
+    return text.replace("|", "\\|").replace("`", "\\`")
+
+
+def _parse_rows(csv_path):
+    rows = []
+    with open(csv_path, newline="", encoding="utf-8") as handle:
+        for record in csv.reader(handle):
+            if len(record) < 11:
+                continue
+            try:
+                rows.append(
+                    {
+                        "nloc": int(record[0]),
+                        "complexity": int(record[1]),
+                        "params": int(record[3]),
+                        "file": record[6],
+                        "func": record[7],
+                        "start_line": int(record[9]),
+                    }
+                )
+            except ValueError:
+                # Header row or other non-numeric record (varies across lizard
+                # versions) — skip it rather than failing the whole report.
+                continue
+    return rows
+
+
+def format_report(csv_path, top, threshold, commit, gate_path=None):
+    rows = _parse_rows(csv_path)
+
+    lines = [COMMENT_MARKER, "## Code Complexity Report", ""]
+
+    if not rows:
+        lines.append("No functions were analyzed — the lizard scan produced no results.")
+    else:
+        total = len(rows)
+        average = sum(row["complexity"] for row in rows) / total
+        over_threshold = sum(1 for row in rows if row["complexity"] > threshold)
+        lines.append(
+            f"**{total:,}** functions analyzed · average CCN **{average:.1f}** · "
+            f"**{over_threshold}** above the warning threshold (CCN > {threshold})"
+        )
+        lines.append("")
+        lines.append(f"### Top {min(top, total)} most complex functions")
+        lines.append("")
+        lines.append("| # | CCN | NLOC | Params | Function | Location |")
+        lines.append("|--:|--:|--:|--:|---|---|")
+
+        ranked = sorted(rows, key=lambda row: (-row["complexity"], -row["nloc"], row["file"]))
+        for rank, row in enumerate(ranked[:top], start=1):
+            complexity_cell = (
+                f"⚠️ **{row['complexity']}**"
+                if row["complexity"] > threshold
+                else str(row["complexity"])
+            )
+            func = _escape_cell(row["func"])
+            file_line = _escape_cell(f"{row['file']}:{row['start_line']}")
+            lines.append(
+                f"| {rank} | {complexity_cell} | {row['nloc']} | {row['params']} "
+                f"| `{func}` | `{file_line}` |"
+            )
+
+    if gate_path:
+        with open(gate_path, encoding="utf-8") as handle:
+            gate_section = handle.read().strip()
+        if gate_section:
+            lines.append("")
+            lines.append(gate_section)
+
+    lines.append("")
+    commit_note = f" for commit `{commit}`" if commit else ""
+    lines.append(
+        f"_Cyclomatic complexity measured by [lizard](https://github.com/terryyin/lizard)"
+        f"{commit_note}. This comment is updated in place on every push._"
+    )
+    return "\n".join(lines) + "\n"
+
+
+def main(argv):
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("csv_path", help="Path to the `lizard --csv` output file")
+    parser.add_argument("--top", type=int, default=10, help="Number of findings to list")
+    parser.add_argument(
+        "--threshold", type=int, default=15, help="CCN warning threshold for the summary"
+    )
+    parser.add_argument("--commit", default="", help="Commit SHA to reference in the footer")
+    parser.add_argument(
+        "--gate-file",
+        default=None,
+        help="Optional markdown file (from check-complexity-delta) inserted before the footer",
+    )
+    args = parser.parse_args(argv)
+
+    sys.stdout.write(
+        format_report(args.csv_path, args.top, args.threshold, args.commit, args.gate_file)
+    )
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv[1:]))
