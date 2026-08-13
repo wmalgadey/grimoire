@@ -1,0 +1,104 @@
+#!/usr/bin/env python3
+"""
+Compares two `lizard --csv` outputs — the PR's base branch vs the PR head — and renders
+the "Complexity gate" markdown section consumed by `.github/workflows/complexity.yml`
+(inserted into the maintained PR comment via format-complexity-report --gate-file).
+
+The gate fails (exit code 1) when the PR makes complexity worse at the function level:
+  * a function that does not exist on the base branch has CCN above the threshold, or
+  * a function already above the threshold has a higher CCN than on the base branch.
+Functions that were already above the threshold on the base branch and are unchanged
+(or improved) never fail the gate — pre-existing complexity is reported, not gated.
+
+Functions are keyed by (file, function name); overloads sharing a name collapse to the
+highest CCN among them, so an overload set only violates when its worst member regresses.
+
+Expected CSV columns (lizard 1.x, no header row):
+    nloc, ccn, token_count, param_count, length, location, file, name, long_name,
+    start_line, end_line
+"""
+
+import argparse
+import csv
+import sys
+
+
+def _escape_cell(text):
+    return text.replace("|", "\\|").replace("`", "\\`")
+
+
+def _max_ccn_by_function(csv_path):
+    functions = {}
+    with open(csv_path, newline="", encoding="utf-8") as handle:
+        for record in csv.reader(handle):
+            if len(record) < 11:
+                continue
+            key = (record[6], record[7])
+            ccn = int(record[1])
+            start_line = int(record[9])
+            if key not in functions or ccn > functions[key]["ccn"]:
+                functions[key] = {"ccn": ccn, "start_line": start_line}
+    return functions
+
+
+def find_violations(base_csv, head_csv, threshold):
+    base = _max_ccn_by_function(base_csv)
+    head = _max_ccn_by_function(head_csv)
+
+    violations = []
+    for key in sorted(head):
+        head_ccn = head[key]["ccn"]
+        if head_ccn <= threshold:
+            continue
+        base_entry = base.get(key)
+        if base_entry is None:
+            violations.append((key, None, head[key]))
+        elif head_ccn > base_entry["ccn"]:
+            violations.append((key, base_entry["ccn"], head[key]))
+    return violations
+
+
+def format_gate(violations, threshold):
+    lines = ["### Complexity gate", ""]
+
+    if not violations:
+        lines.append(
+            f"✅ **Passed** — no function was added above the CCN threshold "
+            f"({threshold}) or worsened while above it."
+        )
+    else:
+        lines.append(
+            f"❌ **Failed** — this PR adds or worsens {len(violations)} function(s) "
+            f"above the CCN threshold ({threshold}). Pre-existing complexity is not "
+            f"gated; only regressions introduced by this PR fail the check."
+        )
+        lines.append("")
+        lines.append("| Function | Location | Base CCN | PR CCN |")
+        lines.append("|---|---|--:|--:|")
+        for (file_path, func), base_ccn, head_entry in violations:
+            base_cell = "– (new)" if base_ccn is None else str(base_ccn)
+            file_line = _escape_cell("{}:{}".format(file_path, head_entry["start_line"]))
+            lines.append(
+                f"| `{_escape_cell(func)}` | `{file_line}` "
+                f"| {base_cell} | **{head_entry['ccn']}** |"
+            )
+
+    return "\n".join(lines) + "\n"
+
+
+def main(argv):
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("base_csv", help="`lizard --csv` output for the PR base branch")
+    parser.add_argument("head_csv", help="`lizard --csv` output for the PR head")
+    parser.add_argument(
+        "--threshold", type=int, default=15, help="CCN threshold the gate enforces"
+    )
+    args = parser.parse_args(argv)
+
+    violations = find_violations(args.base_csv, args.head_csv, args.threshold)
+    sys.stdout.write(format_gate(violations, args.threshold))
+    return 1 if violations else 0
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv[1:]))

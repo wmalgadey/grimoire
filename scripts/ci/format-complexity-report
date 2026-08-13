@@ -39,7 +39,7 @@ def _parse_rows(csv_path):
     return rows
 
 
-def format_report(csv_path, top, threshold, commit):
+def format_report(csv_path, top, threshold, commit, gate_path=None):
     rows = _parse_rows(csv_path)
 
     lines = [COMMENT_MARKER, "## Code Complexity Report", ""]
@@ -70,6 +70,13 @@ def format_report(csv_path, top, threshold, commit):
                 f"| `{func}` | `{file_line}` |"
             )
 
+    if gate_path:
+        with open(gate_path, encoding="utf-8") as handle:
+            gate_section = handle.read().strip()
+        if gate_section:
+            lines.append("")
+            lines.append(gate_section)
+
     lines.append("")
     commit_note = f" for commit `{commit}`" if commit else ""
     lines.append(
@@ -87,9 +94,16 @@ def main(argv):
         "--threshold", type=int, default=15, help="CCN warning threshold for the summary"
     )
     parser.add_argument("--commit", default="", help="Commit SHA to reference in the footer")
+    parser.add_argument(
+        "--gate-file",
+        default=None,
+        help="Optional markdown file (from check-complexity-delta) inserted before the footer",
+    )
     args = parser.parse_args(argv)
 
-    sys.stdout.write(format_report(args.csv_path, args.top, args.threshold, args.commit))
+    sys.stdout.write(
+        format_report(args.csv_path, args.top, args.threshold, args.commit, args.gate_file)
+    )
     return 0
 
 

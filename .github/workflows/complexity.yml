@@ -4,6 +4,11 @@ name: Code Complexity
 # sources with lizard, and maintains a single structured PR comment with the top
 # findings — the first run creates the comment, every later run updates it in place
 # (located via the stable marker emitted by scripts/ci/format-complexity-report).
+#
+# The job also gates complexity regressions: it analyzes the PR's base branch, and
+# scripts/ci/check-complexity-delta fails the job when the PR adds a function above
+# the CCN threshold or worsens one that is already above it. Pre-existing complexity
+# is reported but never fails the check.
 
 on:
   pull_request:
@@ -19,6 +24,8 @@ concurrency:
 env:
   TOP_FINDINGS: "10"
   CCN_THRESHOLD: "15"
+  SOURCE_DIRS: backend/src frontend/src
+  LIZARD_LANGS: -l csharp -l typescript -l javascript
 
 jobs:
   complexity:
@@ -29,19 +36,44 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Self-test report formatter
-        run: scripts/ci/format-complexity-report.test.sh
+      - name: Self-test report scripts
+        run: |
+          scripts/ci/format-complexity-report.test.sh
+          scripts/ci/check-complexity-delta.test.sh
 
       - name: Install lizard
         run: pip install --break-system-packages lizard
 
-      - name: Analyze cyclomatic complexity
+      - name: Analyze PR head
         # --csv exits 0 even when functions exceed the threshold; -i -1 additionally
-        # ignores the warning count so this job stays report-only and never gates the PR.
+        # ignores the warning count. Gating happens in the delta step, not here.
         run: |
-          python3 -m lizard backend/src frontend/src \
-            -l csharp -l typescript -l javascript \
+          python3 -m lizard $SOURCE_DIRS $LIZARD_LANGS \
             -C "$CCN_THRESHOLD" -i -1 --csv > complexity.csv
+
+      - name: Analyze base branch
+        # Fetch the base commit into a detached worktree and run lizard from inside it
+        # so file paths in both CSVs are repo-relative and comparable. Falls back to
+        # the base ref tip if the exact base SHA is no longer reachable (force-push).
+        run: |
+          git fetch --depth=1 origin "${{ github.event.pull_request.base.sha }}" \
+            || git fetch --depth=1 origin "${{ github.event.pull_request.base.ref }}"
+          git worktree add --detach "$RUNNER_TEMP/base" FETCH_HEAD
+          cd "$RUNNER_TEMP/base"
+          dirs=""
+          for d in $SOURCE_DIRS; do
+            [ -d "$d" ] && dirs="$dirs $d"
+          done
+          python3 -m lizard $dirs $LIZARD_LANGS \
+            -C "$CCN_THRESHOLD" -i -1 --csv > "$GITHUB_WORKSPACE/base-complexity.csv"
+
+      - name: Evaluate complexity gate
+        id: gate
+        continue-on-error: true
+        run: |
+          scripts/ci/check-complexity-delta base-complexity.csv complexity.csv \
+            --threshold "$CCN_THRESHOLD" > gate.md
+          cat gate.md
 
       - name: Format report
         run: |
@@ -49,6 +81,7 @@ jobs:
             --top "$TOP_FINDINGS" \
             --threshold "$CCN_THRESHOLD" \
             --commit "${{ github.event.pull_request.head.sha }}" \
+            --gate-file gate.md \
             > complexity-report.md
           cat complexity-report.md >> "$GITHUB_STEP_SUMMARY"
 
@@ -88,3 +121,9 @@ jobs:
               });
               core.info('Created complexity comment.');
             }
+
+      - name: Enforce complexity gate
+        if: steps.gate.outcome == 'failure'
+        run: |
+          echo "::error::Complexity gate failed — this PR adds or worsens functions above CCN $CCN_THRESHOLD. See the PR comment for details."
+          exit 1
