@@ -49,22 +49,22 @@ def _parse_rows(csv_path):
             if len(record) < 11:
                 continue
             try:
-                rows.append({"nloc": int(record[0]), "ccn": int(record[1])})
+                rows.append({"nloc": int(record[0]), "complexity": int(record[1])})
             except ValueError:
                 # Header row or other non-numeric record (varies across lizard versions).
                 continue
     return rows
 
 
-def _rating(avg_ccn):
+def _rating(avg_complexity):
     for ceiling, label, color in RATING_BANDS:
-        if avg_ccn <= ceiling:
+        if avg_complexity <= ceiling:
             return label, color
     return VERY_HIGH_RATING
 
 
-def _complexity_factor(avg_ccn):
-    factor = avg_ccn / LOW_COMPLEXITY_CEILING
+def _complexity_factor(avg_complexity):
+    factor = avg_complexity / LOW_COMPLEXITY_CEILING
     return max(1.0, min(COMPLEXITY_FACTOR_CAP, factor))
 
 
@@ -87,16 +87,16 @@ def compute_metrics(csv_path):
 
     function_count = len(rows)
     total_nloc = sum(row["nloc"] for row in rows)
-    avg_ccn = sum(row["ccn"] for row in rows) / function_count
+    avg_complexity = sum(row["complexity"] for row in rows) / function_count
 
-    rating, color = _rating(avg_ccn)
-    factor = _complexity_factor(avg_ccn)
+    rating, color = _rating(avg_complexity)
+    factor = _complexity_factor(avg_complexity)
     hours = (total_nloc / READING_RATE_NLOC_PER_HOUR) * factor
 
     return {
         "function_count": function_count,
         "total_nloc": total_nloc,
-        "avg_ccn": avg_ccn,
+        "avg_complexity": avg_complexity,
         "rating": rating,
         "rating_color": color,
         "hours": hours,
@@ -121,7 +121,7 @@ def main(argv):
     _write_badge(
         f"{args.out_dir}/complexity-badge.json",
         "code complexity",
-        f"{metrics['rating']} (avg CCN {metrics['avg_ccn']:.1f})",
+        f"{metrics['rating']} (avg CCN {metrics['avg_complexity']:.1f})",
         metrics["rating_color"],
     )
     _write_badge(
@@ -133,7 +133,7 @@ def main(argv):
 
     sys.stdout.write(
         f"{metrics['function_count']:,} functions · {metrics['total_nloc']:,} NLOC · "
-        f"avg CCN {metrics['avg_ccn']:.2f} ({metrics['rating']}) · "
+        f"avg CCN {metrics['avg_complexity']:.2f} ({metrics['rating']}) · "
         f"estimated understanding time: {metrics['duration']}\n"
     )
     return 0
