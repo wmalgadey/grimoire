@@ -564,7 +564,7 @@ what gates the DoD.
   285/285 (0 skipped), `dotnet format Grimoire.slnx --verify-no-changes` clean;
   frontend (via bun, the repo's declared packageManager): `check` 0 errors,
   `lint` clean, `test` 75/75, `build` succeeded.*
-- [ ] T044 Run `specs/011-query-conversations/quickstart.md` scenarios 1–5 plus
+- [~] T044 Run `specs/011-query-conversations/quickstart.md` scenarios 1–5 plus
   its Observability check against a live local Hub (manual validation; the only
   non-hermetic step, requires an API key for the live conversation), and record
   the outcome in the task close-out.
