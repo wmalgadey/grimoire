@@ -29,7 +29,7 @@ def _parse_rows(csv_path):
             rows.append(
                 {
                     "nloc": int(record[0]),
-                    "ccn": int(record[1]),
+                    "complexity": int(record[1]),
                     "params": int(record[3]),
                     "file": record[6],
                     "func": record[7],
@@ -48,8 +48,8 @@ def format_report(csv_path, top, threshold, commit, gate_path=None):
         lines.append("No functions were analyzed — the lizard scan produced no results.")
     else:
         total = len(rows)
-        average = sum(row["ccn"] for row in rows) / total
-        over_threshold = sum(1 for row in rows if row["ccn"] > threshold)
+        average = sum(row["complexity"] for row in rows) / total
+        over_threshold = sum(1 for row in rows if row["complexity"] > threshold)
         lines.append(
             f"**{total:,}** functions analyzed · average CCN **{average:.1f}** · "
             f"**{over_threshold}** above the warning threshold (CCN > {threshold})"
@@ -60,13 +60,17 @@ def format_report(csv_path, top, threshold, commit, gate_path=None):
         lines.append("| # | CCN | NLOC | Params | Function | Location |")
         lines.append("|--:|--:|--:|--:|---|---|")
 
-        ranked = sorted(rows, key=lambda row: (-row["ccn"], -row["nloc"], row["file"]))
+        ranked = sorted(rows, key=lambda row: (-row["complexity"], -row["nloc"], row["file"]))
         for rank, row in enumerate(ranked[:top], start=1):
-            ccn = f"⚠️ **{row['ccn']}**" if row["ccn"] > threshold else str(row["ccn"])
+            complexity_cell = (
+                f"⚠️ **{row['complexity']}**"
+                if row["complexity"] > threshold
+                else str(row["complexity"])
+            )
             func = _escape_cell(row["func"])
             file_line = _escape_cell(f"{row['file']}:{row['start_line']}")
             lines.append(
-                f"| {rank} | {ccn} | {row['nloc']} | {row['params']} "
+                f"| {rank} | {complexity_cell} | {row['nloc']} | {row['params']} "
                 f"| `{func}` | `{file_line}` |"
             )
 

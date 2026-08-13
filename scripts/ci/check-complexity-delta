@@ -27,34 +27,34 @@ def _escape_cell(text):
     return text.replace("|", "\\|").replace("`", "\\`")
 
 
-def _max_ccn_by_function(csv_path):
+def _max_complexity_by_function(csv_path):
     functions = {}
     with open(csv_path, newline="", encoding="utf-8") as handle:
         for record in csv.reader(handle):
             if len(record) < 11:
                 continue
             key = (record[6], record[7])
-            ccn = int(record[1])
+            complexity = int(record[1])
             start_line = int(record[9])
-            if key not in functions or ccn > functions[key]["ccn"]:
-                functions[key] = {"ccn": ccn, "start_line": start_line}
+            if key not in functions or complexity > functions[key]["complexity"]:
+                functions[key] = {"complexity": complexity, "start_line": start_line}
     return functions
 
 
 def find_violations(base_csv, head_csv, threshold):
-    base = _max_ccn_by_function(base_csv)
-    head = _max_ccn_by_function(head_csv)
+    base = _max_complexity_by_function(base_csv)
+    head = _max_complexity_by_function(head_csv)
 
     violations = []
     for key in sorted(head):
-        head_ccn = head[key]["ccn"]
-        if head_ccn <= threshold:
+        head_complexity = head[key]["complexity"]
+        if head_complexity <= threshold:
             continue
         base_entry = base.get(key)
         if base_entry is None:
             violations.append((key, None, head[key]))
-        elif head_ccn > base_entry["ccn"]:
-            violations.append((key, base_entry["ccn"], head[key]))
+        elif head_complexity > base_entry["complexity"]:
+            violations.append((key, base_entry["complexity"], head[key]))
     return violations
 
 
@@ -75,12 +75,12 @@ def format_gate(violations, threshold):
         lines.append("")
         lines.append("| Function | Location | Base CCN | PR CCN |")
         lines.append("|---|---|--:|--:|")
-        for (file_path, func), base_ccn, head_entry in violations:
-            base_cell = "– (new)" if base_ccn is None else str(base_ccn)
+        for (file_path, func), base_complexity, head_entry in violations:
+            base_cell = "– (new)" if base_complexity is None else str(base_complexity)
             file_line = _escape_cell("{}:{}".format(file_path, head_entry["start_line"]))
             lines.append(
                 f"| `{_escape_cell(func)}` | `{file_line}` "
-                f"| {base_cell} | **{head_entry['ccn']}** |"
+                f"| {base_cell} | **{head_entry['complexity']}** |"
             )
 
     return "\n".join(lines) + "\n"
