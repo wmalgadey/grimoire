@@ -32,7 +32,7 @@ def _parse_rows(csv_path):
                     "ccn": int(record[1]),
                     "params": int(record[3]),
                     "file": record[6],
-                    "name": record[7],
+                    "func": record[7],
                     "start_line": int(record[9]),
                 }
             )
@@ -63,11 +63,11 @@ def format_report(csv_path, top, threshold, commit):
         ranked = sorted(rows, key=lambda row: (-row["ccn"], -row["nloc"], row["file"]))
         for rank, row in enumerate(ranked[:top], start=1):
             ccn = f"⚠️ **{row['ccn']}**" if row["ccn"] > threshold else str(row["ccn"])
-            name = _escape_cell(row["name"])
-            location = _escape_cell(f"{row['file']}:{row['start_line']}")
+            func = _escape_cell(row["func"])
+            file_line = _escape_cell(f"{row['file']}:{row['start_line']}")
             lines.append(
                 f"| {rank} | {ccn} | {row['nloc']} | {row['params']} "
-                f"| `{name}` | `{location}` |"
+                f"| `{func}` | `{file_line}` |"
             )
 
     lines.append("")
