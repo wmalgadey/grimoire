@@ -39,7 +39,8 @@
 				data-status={entry.status}
 				data-current={index === entries.length - 1 ? 'true' : 'false'}
 			>
-				<span data-testid="status-history-entry-status">{labels[entry.status] ?? entry.status}</span>
+				<span data-testid="status-history-entry-status">{labels[entry.status] ?? entry.status}</span
+				>
 				<time class="text-xs text-slate-500" datetime={entry.enteredAt}
 					>{formatTimestamp(entry.enteredAt)}</time
 				>

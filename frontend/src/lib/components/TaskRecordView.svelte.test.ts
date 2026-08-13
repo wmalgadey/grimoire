@@ -144,7 +144,11 @@ test('renders the source as a clickable link, opening in a new tab, for a URL so
 test('renders the source as a clickable link to the serve endpoint for a file source', async () => {
 	const screen = await render(TaskRecordView, {
 		record: record(),
-		source: { kind: 'file', href: '/api/ingest-submissions/task-1/source/original', available: true }
+		source: {
+			kind: 'file',
+			href: '/api/ingest-submissions/task-1/source/original',
+			available: true
+		}
 	});
 
 	await expect

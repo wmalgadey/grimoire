@@ -63,6 +63,9 @@
 					<dt class="text-slate-400">Source</dt>
 					<dd class="truncate">
 						{#if source.available && source.href}
+							<!-- source.href is either an external URL or the Hub's own file-streaming
+							     endpoint (023 FR-001) — not a SvelteKit page route, so resolve() doesn't apply. -->
+							<!-- eslint-disable svelte/no-navigation-without-resolve -->
 							<a
 								href={source.href}
 								target="_blank"
@@ -72,6 +75,7 @@
 							>
 								{source.kind === 'url' ? source.href : 'View original'}
 							</a>
+							<!-- eslint-enable svelte/no-navigation-without-resolve -->
 						{:else}
 							<span class="text-slate-400" data-testid="task-source-unavailable">
 								Source unavailable

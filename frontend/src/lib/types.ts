@@ -67,11 +67,7 @@ export interface RunActivity {
 // persisted history is a superset of the board's columns. The three history-only statuses
 // are rendered in the detail view's path and are deliberately never board columns
 // (clarification 2026-08-13) — board consumers ignore them for column placement.
-export type HistoryStatus =
-	| LifecycleStage
-	| 'liveness_interrupted'
-	| 'reactivated'
-	| 'restarted';
+export type HistoryStatus = LifecycleStage | 'liveness_interrupted' | 'reactivated' | 'restarted';
 
 export interface StatusHistoryEntry {
 	status: HistoryStatus;

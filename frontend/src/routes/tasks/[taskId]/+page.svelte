@@ -186,7 +186,10 @@
 			>
 				{detail?.title ?? data.taskId}
 			</h1>
-			<p class="truncate font-mono text-xs text-slate-400 select-all" data-testid="task-detail-task-id">
+			<p
+				class="truncate font-mono text-xs text-slate-400 select-all"
+				data-testid="task-detail-task-id"
+			>
 				{data.taskId}
 			</p>
 		</div>
