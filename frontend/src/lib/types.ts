@@ -82,6 +82,8 @@ export interface StatusHistoryEntry {
 export interface TaskDetail {
 	taskId: string;
 	status: LifecycleStage;
+	// 023 FR-003: human-readable label from the server-side fallback chain; never empty.
+	title?: string;
 	failureReason: string | null;
 	sourceRef: string | null;
 	originalRef: string | null;

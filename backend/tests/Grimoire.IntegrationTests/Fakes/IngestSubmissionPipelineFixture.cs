@@ -26,7 +26,7 @@ public sealed class IngestSubmissionPipelineFixture : IDisposable
     public RawStoragePaths RawPaths { get; }
     public ResolvedGrimoirePaths ResolvedPaths { get; }
     public SourceArtifactStore SourceArtifactStore { get; }
-    public KanbanBoardProjectionStore BoardStore { get; } = new();
+    public KanbanBoardProjectionStore BoardStore { get; }
     public FakeAgentProcessLauncher Launcher { get; }
     public OperationalStateRepository Repository { get; }
     public IngestRunCoordinator Coordinator { get; }
@@ -68,6 +68,8 @@ public sealed class IngestSubmissionPipelineFixture : IDisposable
             OriginalsDir: Path.Combine(Root, "raw", "originals"),
             SourcesDir: Path.Combine(Root, "raw", "sources"));
         SourceArtifactStore = new SourceArtifactStore(RawPaths);
+        // 023 T021: the board label is resolved from the manifest, exactly as in production.
+        BoardStore = new KanbanBoardProjectionStore(SourceArtifactStore);
 
         if (resolvedPaths is not null)
         {

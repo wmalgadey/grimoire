@@ -122,6 +122,14 @@ public sealed class IngestSubmissionPipeline
             var conversionStarted = Stopwatch.GetTimestamp();
             var markItDownEnabled = ApplyConvertConfig(context, ConvertStepRegistry.MarkItDown);
 
+            // 023 T020 (FR-003/FR-001): what the operator actually submitted. The uploaded
+            // filename was previously discarded after extension sniffing and the URL was
+            // never persisted at all — both are recorded in the manifest so the label chain
+            // and the source link have something to fall back to.
+            var submission = input.Kind == IngestSubmissionKind.Url
+                ? new SourceSubmissionMetadata(SourceUrl: input.Url)
+                : new SourceSubmissionMetadata(OriginalFileName: input.FileName);
+
             string originalPath;
             string originalContentType;
             long originalSize;
@@ -160,13 +168,13 @@ public sealed class IngestSubmissionPipeline
                     {
                         return;
                     }
-                    artifactSet = await PersistNormalizedAsync(taskId, originalPath, originalContentType, originalSize, conversion, cancellationToken);
+                    artifactSet = await PersistNormalizedAsync(taskId, originalPath, originalContentType, originalSize, conversion, cancellationToken, submission);
                 }
                 else
                 {
                     // Convert step disabled (FR-012): store the fetched content exactly as
                     // received — byte-identical, checksum over the unmodified bytes (SC-004).
-                    artifactSet = await PersistNormalizedBytesAsync(taskId, originalPath, originalContentType, originalSize, fetchResult.Content!, cancellationToken);
+                    artifactSet = await PersistNormalizedBytesAsync(taskId, originalPath, originalContentType, originalSize, fetchResult.Content!, cancellationToken, submission);
                 }
             }
             else if (input.Kind == IngestSubmissionKind.MarkdownFile)
@@ -177,7 +185,7 @@ public sealed class IngestSubmissionPipeline
                 originalSize = input.FileBytes!.LongLength;
                 // Markdown is already the canonical format: pass through byte-identical,
                 // never routed through MarkItDown (FR-004; 004 FR-015).
-                artifactSet = await PersistNormalizedBytesAsync(taskId, originalPath, originalContentType, originalSize, input.FileBytes!, cancellationToken);
+                artifactSet = await PersistNormalizedBytesAsync(taskId, originalPath, originalContentType, originalSize, input.FileBytes!, cancellationToken, submission);
             }
             else
             {
@@ -193,7 +201,7 @@ public sealed class IngestSubmissionPipeline
                 {
                     return;
                 }
-                artifactSet = await PersistNormalizedAsync(taskId, originalPath, originalContentType, originalSize, conversion, cancellationToken);
+                artifactSet = await PersistNormalizedAsync(taskId, originalPath, originalContentType, originalSize, conversion, cancellationToken, submission);
             }
 
             HubMetrics.RecordIngestSubmissionArtifactPersisted("normalized_markdown");
@@ -250,25 +258,27 @@ public sealed class IngestSubmissionPipeline
     }
 
     private async Task<SourceArtifactSet> PersistNormalizedAsync(
-        string taskId, string originalPath, string originalContentType, long originalSize, string normalizedMarkdown, CancellationToken cancellationToken)
+        string taskId, string originalPath, string originalContentType, long originalSize, string normalizedMarkdown,
+        CancellationToken cancellationToken, SourceSubmissionMetadata submission)
     {
         using var storeNormalizedSpan = HubTracing.ActivitySource.StartActivity("hub.ingest_submission.store_normalized");
         storeNormalizedSpan?.SetTag("task_id", taskId);
 
         var artifactSet = await _sourceArtifactStore.PersistNormalizedAsync(
-            taskId, originalPath, originalContentType, originalSize, normalizedMarkdown, cancellationToken);
+            taskId, originalPath, originalContentType, originalSize, normalizedMarkdown, cancellationToken, submission);
         storeNormalizedSpan?.SetTag("normalized_path", artifactSet.NormalizedMarkdownPath);
         return artifactSet;
     }
 
     private async Task<SourceArtifactSet> PersistNormalizedBytesAsync(
-        string taskId, string originalPath, string originalContentType, long originalSize, byte[] normalizedBytes, CancellationToken cancellationToken)
+        string taskId, string originalPath, string originalContentType, long originalSize, byte[] normalizedBytes,
+        CancellationToken cancellationToken, SourceSubmissionMetadata submission)
     {
         using var storeNormalizedSpan = HubTracing.ActivitySource.StartActivity("hub.ingest_submission.store_normalized");
         storeNormalizedSpan?.SetTag("task_id", taskId);
 
         var artifactSet = await _sourceArtifactStore.PersistNormalizedBytesAsync(
-            taskId, originalPath, originalContentType, originalSize, normalizedBytes, cancellationToken);
+            taskId, originalPath, originalContentType, originalSize, normalizedBytes, cancellationToken, submission);
         storeNormalizedSpan?.SetTag("normalized_path", artifactSet.NormalizedMarkdownPath);
         return artifactSet;
     }

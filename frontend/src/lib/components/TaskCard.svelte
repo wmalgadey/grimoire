@@ -1,7 +1,6 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
 	import type { BoardTask, RunActivity } from '$lib/types';
-	import StatusBadge from './StatusBadge.svelte';
 
 	interface Props {
 		task: BoardTask;
@@ -16,11 +15,17 @@
 	data-testid="task-card"
 	data-task-id={task.taskId}
 >
-	<div class="flex items-start justify-between gap-2">
-		<h3 class="truncate text-sm font-medium text-slate-900" title={task.title}>
+	<!-- 023 FR-003/FR-004: the human-readable label is the card's primary text; the raw task
+	     id stays visible underneath, muted, for the cases where the exact id is needed. -->
+	<div class="flex flex-col gap-0.5">
+		<h3
+			class="truncate text-sm font-medium text-slate-900"
+			title={task.title}
+			data-testid="task-card-title"
+		>
 			{task.title}
 		</h3>
-		<StatusBadge status={task.status} />
+		<p class="truncate text-xs text-slate-400" data-testid="task-card-task-id">{task.taskId}</p>
 	</div>
 
 	{#if task.status === 'queued' && task.queuePosition != null}

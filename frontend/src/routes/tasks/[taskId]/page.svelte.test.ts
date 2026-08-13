@@ -125,6 +125,7 @@ function detail(overrides: Partial<TaskDetail> = {}): TaskDetail {
 	return {
 		taskId: 'task-1',
 		status: 'completed',
+		title: 'Getting Started',
 		failureReason: null,
 		sourceRef: 'raw/sources/task-1.md',
 		originalRef: null,
@@ -146,9 +147,21 @@ test('reads taskId from route params and renders the fetched record', async () =
 
 	const screen = await render(Page, { data: { taskId: 'task-1' }, params: { taskId: 'task-1' } });
 
-	await expect.element(screen.getByTestId('task-record-page-title')).toHaveTextContent('task-1');
 	await expect.element(screen.getByTestId('task-record-view')).toBeVisible();
 	expect(getTaskRecordMock).toHaveBeenCalledWith('task-1');
+});
+
+// ── 023 T022 (US3, FR-003/FR-004, SC-003) ─────────────────────────────────────────
+
+test('heads the page with the human-readable label, keeping the raw id beneath it', async () => {
+	getTaskRecordMock.mockResolvedValue({ status: 'ok', record: record() });
+
+	const screen = await render(Page, { data: { taskId: 'task-1' }, params: { taskId: 'task-1' } });
+
+	await expect
+		.element(screen.getByTestId('task-record-page-title'))
+		.toHaveTextContent('Getting Started');
+	await expect.element(screen.getByTestId('task-detail-task-id')).toHaveTextContent('task-1');
 });
 
 test('renders the placeholder when the record is unavailable', async () => {

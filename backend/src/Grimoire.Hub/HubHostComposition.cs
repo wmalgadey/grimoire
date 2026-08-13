@@ -71,7 +71,10 @@ internal static class HubHostComposition
         builder.Services.AddSingleton(sp => MarkItDownOptions.FromConfiguration(sp.GetRequiredService<IConfiguration>()));
         builder.Services.AddSingleton<IMarkdownConverter, MarkItDownConverter>();
         builder.Services.AddSingleton<HubTaskArtifactWriter>();
-        builder.Services.AddSingleton<KanbanBoardProjectionStore>();
+        // 023 T021: the board's human-readable label comes from the source-artifact manifest,
+        // so the projection store is constructed with it (registered further down, once the
+        // resolved paths exist).
+        builder.Services.AddSingleton(sp => new KanbanBoardProjectionStore(sp.GetRequiredService<SourceArtifactStore>()));
 
         // ADR-022: every runtime location is composed in exactly one place, resolved before
         // the host is built (no repository/project-structure discovery, FR-002/FR-003). The

@@ -310,6 +310,9 @@ public static class IngestSubmissionEndpoints
         {
             taskId = projection.TaskId,
             status = projection.Column,
+            // 023 T021 (FR-003/FR-004): the human-readable label, resolved by the same chain
+            // the board uses so the two can never disagree. The raw id stays right beside it.
+            title = projection.Title,
             failureReason = projection.FailureReason,
             statusHistory = statusHistory.Select(entry => new
             {

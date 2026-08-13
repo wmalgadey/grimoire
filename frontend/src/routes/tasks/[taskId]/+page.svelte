@@ -148,10 +148,20 @@
 </svelte:head>
 
 <main class="mx-auto flex min-h-screen max-w-3xl flex-col gap-4 bg-white p-6">
-	<header class="flex items-center justify-between gap-2">
-		<h1 class="truncate text-lg font-semibold text-slate-900" data-testid="task-record-page-title">
-			Task {data.taskId}
-		</h1>
+	<header class="flex items-start justify-between gap-2">
+		<!-- 023 FR-003/FR-004: the label heads the page, the raw id stays beneath it —
+		     selectable as plain text, for when the exact identifier is what you need. -->
+		<div class="flex min-w-0 flex-col">
+			<h1
+				class="truncate text-lg font-semibold text-slate-900"
+				data-testid="task-record-page-title"
+			>
+				{detail?.title ?? data.taskId}
+			</h1>
+			<p class="truncate font-mono text-xs text-slate-400 select-all" data-testid="task-detail-task-id">
+				{data.taskId}
+			</p>
+		</div>
 		<div class="flex shrink-0 items-center gap-3">
 			<ConnectionStatusIndicator state={connectionState} />
 			<a href={resolve('/')} class="text-sm text-slate-500 underline hover:no-underline"

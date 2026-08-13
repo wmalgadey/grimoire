@@ -92,13 +92,13 @@
 
 ### Tests for User Story 3
 
-- [ ] T019 [P] [US3] Integration test (fail first): file submission whose normalized markdown starts with `# Getting Started` yields `title == "Getting Started"` on board row and detail; no-H1 file falls back to the uploaded filename; URL submission falls back to the URL when no H1; task with pre-feature manifest (no `Title`/`OriginalFileName`) falls back to `taskId`; titles capped at 120 chars; in backend/tests/Grimoire.IntegrationTests/IngestTaskTitleTests.cs (FR-003, SC-003)
+- [X] T019 [P] [US3] Integration test (fail first): file submission whose normalized markdown starts with `# Getting Started` yields `title == "Getting Started"` on board row and detail; no-H1 file falls back to the uploaded filename; URL submission falls back to the URL when no H1; task with pre-feature manifest (no `Title`/`OriginalFileName`) falls back to `taskId`; titles capped at 120 chars; in backend/tests/Grimoire.IntegrationTests/IngestTaskTitleTests.cs (FR-003, SC-003)
 
 ### Implementation for User Story 3
 
-- [ ] T020 [US3] Persist `OriginalFileName` (from the uploaded `file.FileName`, today discarded) and extract the first ATX `# ` heading of the normalized markdown (trimmed, ≤ 120 chars) into the manifest fields per data-model.md §3, in backend/src/Grimoire.Hub/IngestSubmission/IngestSubmissionPipeline.cs and the manifest type in backend/src/Grimoire.Hub/Conversion/SourceArtifactStore.cs (FR-003)
-- [ ] T021 [US3] Apply the read-time fallback chain (`Title` → `OriginalFileName` → http/https `sourceRef` → `taskId`) for the board `title` in backend/src/Grimoire.Hub/IngestSubmission/KanbanBoardProjectionStore.cs and add `title` to the detail response in backend/src/Grimoire.Hub/IngestSubmission/IngestSubmissionEndpoints.cs (FR-003, SC-003)
-- [ ] T022 [US3] Frontend: render the title as the card's primary label with the task id as muted secondary text in frontend/src/lib/components/TaskCard.svelte, and as the detail heading with the id shown beneath (copyable) in frontend/src/routes/tasks/[taskId]/+page.svelte; extend colocated component/page tests (FR-003, FR-004, SC-003)
+- [X] T020 [US3] Persist `OriginalFileName` (from the uploaded `file.FileName`, today discarded) and extract the first ATX `# ` heading of the normalized markdown (trimmed, ≤ 120 chars) into the manifest fields per data-model.md §3, in backend/src/Grimoire.Hub/IngestSubmission/IngestSubmissionPipeline.cs and the manifest type in backend/src/Grimoire.Hub/Conversion/SourceArtifactStore.cs (FR-003)
+- [X] T021 [US3] Apply the read-time fallback chain (`Title` → `OriginalFileName` → http/https `sourceRef` → `taskId`) for the board `title` in backend/src/Grimoire.Hub/IngestSubmission/KanbanBoardProjectionStore.cs and add `title` to the detail response in backend/src/Grimoire.Hub/IngestSubmission/IngestSubmissionEndpoints.cs (FR-003, SC-003)
+- [X] T022 [US3] Frontend: render the title as the card's primary label with the task id as muted secondary text in frontend/src/lib/components/TaskCard.svelte, and as the detail heading with the id shown beneath (copyable) in frontend/src/routes/tasks/[taskId]/+page.svelte; extend colocated component/page tests (FR-003, FR-004, SC-003)
 
 **Checkpoint**: Tasks are recognizable without opening them; UID remains available.
 
@@ -155,11 +155,11 @@
 
 ### Tests for User Story 6
 
-- [ ] T034 [P] [US6] Component tests (fail first): `TaskCard` renders no `StatusBadge`/status text, `KanbanColumn` header still names its stage; in frontend/src/lib/components/TaskCard.svelte.test.ts and frontend/src/lib/components/KanbanColumn.svelte.test.ts (FR-009, SC-006)
+- [X] T034 [P] [US6] Component tests (fail first): `TaskCard` renders no `StatusBadge`/status text, `KanbanColumn` header still names its stage; in frontend/src/lib/components/TaskCard.svelte.test.ts and frontend/src/lib/components/KanbanColumn.svelte.test.ts (FR-009, SC-006)
 
 ### Implementation for User Story 6
 
-- [ ] T035 [US6] Remove the `StatusBadge` usage (and its import) from frontend/src/lib/components/TaskCard.svelte, leaving the `StatusBadge` component itself in place for its other call sites (FR-009, SC-006)
+- [X] T035 [US6] Remove the `StatusBadge` usage (and its import) from frontend/src/lib/components/TaskCard.svelte, leaving the `StatusBadge` component itself in place for its other call sites (FR-009, SC-006)
 
 **Checkpoint**: All six stories independently functional.
 
