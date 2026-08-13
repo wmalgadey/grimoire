@@ -36,7 +36,7 @@ Expected: green, including the new history/reactivation/restart/source/title tes
 
 1. Open the detail of the completed task from Scenario 1.
 2. `statusHistory` renders as an ordered path `received → converting → queued → running → completed` with timestamps; current/last entry highlighted.
-3. For any pre-feature task: detail still renders (single-entry fallback from current status).
+3. A task with no recorded history (none exist post-launch; alpha state carries no pre-feature tasks) renders the detail view with an empty path — no synthesized entry.
 
 ## Scenario 3 — Liveness interruption, reactivation, exhaustion (US2 / SC-005)
 

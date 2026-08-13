@@ -167,12 +167,12 @@
 
 ## Phase 9: Polish & Cross-Cutting Concerns
 
-- [ ] T036 Observability completeness audit (MANDATORY — Constitution Principle III/IV): cross-reference every row of plan.md ## Observability (3 metrics, 6 log events, 3 spans) against its implementing task (T015/T017/T025/T031) and passing test (T016/T018/T026/T032), and file any gap as a new task before declaring the DoD met (phase goal — audits FR/SC coverage globally)
-- [ ] T037 Logging contract CI enforcement (MANDATORY — Constitution Principle IV): verify the standard PR pipeline runs `Grimoire.IntegrationTests` including the new logging tests (T016, T026, T032) with no filter excluding them, in .github/workflows/ (or the repo's CI config) (plan.md ## Observability logging contract)
-- [ ] T038 Trace contract CI enforcement (MANDATORY — Constitution Principle IV): same verification for the trace tests in T018, T026, T032 (plan.md ## Observability trace contract)
-- [ ] T039 Frontend test CI enforcement: verify the PR pipeline runs `npm test` (vitest) covering T010/T011/T014/T022/T027/T033/T034 (phase goal — CI coverage for SC-003, SC-004, SC-006, SC-007)
-- [ ] T040 Agent-behavior evaluation completeness audit (MANDATORY — Constitution Principles II & V): confirm and record in the audit that spec.md defines no agent-judgment success criterion (all SC-001…SC-008 are deterministic guarantees), so no evaluation test is owed by this feature (phase goal)
-- [ ] T041 Run all quickstart.md validation scenarios (1–5) against a locally running Hub + frontend and record outcomes (SC-001, SC-002, SC-003, SC-004, SC-005, SC-006, SC-007, SC-008)
+- [X] T036 Observability completeness audit (MANDATORY — Constitution Principle III/IV): cross-reference every row of plan.md ## Observability (3 metrics, 6 log events, 3 spans) against its implementing task (T015/T017/T025/T031) and passing test (T016/T018/T026/T032), and file any gap as a new task before declaring the DoD met (phase goal — audits FR/SC coverage globally)
+- [X] T037 Logging contract CI enforcement (MANDATORY — Constitution Principle IV): verify the standard PR pipeline runs `Grimoire.IntegrationTests` including the new logging tests (T016, T026, T032) with no filter excluding them, in .github/workflows/ (or the repo's CI config) (plan.md ## Observability logging contract)
+- [X] T038 Trace contract CI enforcement (MANDATORY — Constitution Principle IV): same verification for the trace tests in T018, T026, T032 (plan.md ## Observability trace contract)
+- [X] T039 Frontend test CI enforcement: verify the PR pipeline runs `npm test` (vitest) covering T010/T011/T014/T022/T027/T033/T034 (phase goal — CI coverage for SC-003, SC-004, SC-006, SC-007)
+- [X] T040 Agent-behavior evaluation completeness audit (MANDATORY — Constitution Principles II & V): confirm and record in the audit that spec.md defines no agent-judgment success criterion (all SC-001…SC-008 are deterministic guarantees), so no evaluation test is owed by this feature (phase goal)
+- [X] T041 Run all quickstart.md validation scenarios (1–5) against a locally running Hub + frontend and record outcomes (SC-001, SC-002, SC-003, SC-004, SC-005, SC-006, SC-007, SC-008)
 
 ---
 
