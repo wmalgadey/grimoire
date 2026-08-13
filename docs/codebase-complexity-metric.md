@@ -21,7 +21,7 @@ generated from static JSON files at `docs/metrics/complexity-badge.json` and
   unfamiliar with the codebase, would need to read through it once at a careful,
   comprehension-level pace.
 
-Both are computed by `scripts/ci/compute-codebase-metrics` from a
+Both are computed by `scripts/ci/compute_codebase_metrics.py` from a
 [lizard](https://github.com/terryyin/lizard) CSV export — the same tool and CSV format
 already used by the PR complexity report (`scripts/ci/format-complexity-report`) and the
 complexity regression gate (`scripts/ci/check-complexity-delta`).
@@ -95,7 +95,7 @@ Run after a significant change to `backend/src` or `frontend/src`, from the repo
 pip install lizard
 python3 -m lizard backend/src frontend/src -l csharp -l typescript -l javascript \
   -C 15 -i -1 --csv > /tmp/codebase-complexity.csv
-scripts/ci/compute-codebase-metrics /tmp/codebase-complexity.csv --out-dir docs/metrics
+scripts/ci/compute_codebase_metrics.py /tmp/codebase-complexity.csv --out-dir docs/metrics
 ```
 
 Commit the two updated files under `docs/metrics/`. The badges are not regenerated

@@ -72,7 +72,7 @@ def _format_duration(hours):
     days = hours / 8.0
     if days < 1:
         return "< 1 working day"
-    if days < 10:
+    if days <= 10:
         n = max(1, round(days))
         return f"~{n} working day" + ("s" if n != 1 else "")
     weeks = days / 5.0
