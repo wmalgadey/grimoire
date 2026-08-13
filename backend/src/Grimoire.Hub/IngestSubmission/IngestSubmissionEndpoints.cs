@@ -30,6 +30,7 @@ public static class IngestSubmissionEndpoints
         group.MapGet("/{taskId}/task-record", GetTaskRecordAsync);
         group.MapGet("/{taskId}/source/original", GetSourceOriginalAsync);
         group.MapPost("/{taskId}/retrigger", PostRetriggerAsync);
+        group.MapPost("/{taskId}/restart", PostRestartAsync);
         return group;
     }
 
@@ -485,6 +486,73 @@ public static class IngestSubmissionEndpoints
         return retriggered
             ? Results.Ok(new { taskId, retriggered = true })
             : Results.Conflict(new { message = $"Task '{taskId}' is not in the queue ({projection.Column})." });
+    }
+
+    /// <summary>
+    /// Manual restart of a finally-failed task (023 T030, FR-010..FR-013, SC-007/SC-008).
+    /// Thin wrapper over the coordinator method, preserving the shared-coordinator parity
+    /// pattern (ADR-020) — <c>ingest-retrigger</c> keeps its own, distinct meaning.
+    /// </summary>
+    private static async Task<IResult> PostRestartAsync(
+        string taskId,
+        IngestRunCoordinator coordinator,
+        KanbanBoardProjectionStore store,
+        Conversion.SourceArtifactStore sourceArtifactStore,
+        IngestContentPaths contentPaths,
+        ILoggerFactory loggerFactory,
+        CancellationToken cancellationToken)
+    {
+        var logger = loggerFactory.CreateLogger(typeof(IngestSubmissionEndpoints));
+
+        using var span = HubTracing.ActivitySource.StartActivity("hub.ingest_task.restart");
+        span?.SetTag("task_id", taskId);
+
+        var projection = await store.GetByTaskIdAsync(contentPaths.TasksDir, taskId, cancellationToken);
+        if (projection is null)
+        {
+            span?.SetTag("outcome", "not_found");
+            return Results.NotFound(new { message = $"Task '{taskId}' was not found." });
+        }
+
+        if (projection.Column != "failed")
+        {
+            return Reject(span, logger, taskId, projection.Column,
+                $"Task '{taskId}' is not in a failed state (currently {projection.Column}).");
+        }
+
+        var manifest = await sourceArtifactStore.TryReadMetadataAsync(taskId, cancellationToken);
+        if (manifest is null || !File.Exists(manifest.NormalizedMarkdownPath))
+        {
+            return Reject(span, logger, taskId, projection.Column,
+                $"Normalized source for '{taskId}' is missing; cannot restart.");
+        }
+
+        var artifactPath = Path.Combine(contentPaths.TasksDir, $"{taskId}.md");
+        string? userPrompt = File.Exists(artifactPath)
+            ? TaskArtifactFrontmatter.TryExtractUserPrompt(await File.ReadAllTextAsync(artifactPath, cancellationToken))
+            : null;
+
+        var accepted = await coordinator.RestartFailedAsync(taskId, manifest.NormalizedMarkdownPath, userPrompt, cancellationToken);
+        if (!accepted)
+        {
+            return Reject(span, logger, taskId, projection.Column,
+                $"Task '{taskId}' is already restarting.");
+        }
+
+        span?.SetTag("outcome", "accepted");
+        HubMetrics.RecordRestart("accepted");
+        IngestSubmissionLogEvents.LogTaskRestarted(logger, taskId);
+
+        return Results.Accepted(value: new { taskId, status = "queued" });
+    }
+
+    private static IResult Reject(
+        System.Diagnostics.Activity? span, ILogger logger, string taskId, string currentStatus, string reason)
+    {
+        span?.SetTag("outcome", "rejected");
+        HubMetrics.RecordRestart("rejected");
+        IngestSubmissionLogEvents.LogTaskRestartRejected(logger, taskId, currentStatus);
+        return Results.Conflict(new { reason });
     }
 
     /// <summary>Resumes automatic queue processing after a Hub restart (004 FR-021); idempotent.</summary>

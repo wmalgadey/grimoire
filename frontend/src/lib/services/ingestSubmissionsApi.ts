@@ -26,6 +26,8 @@ async function parseErrorMessage(response: Response): Promise<string> {
 	try {
 		const body = await response.json();
 		if (typeof body?.message === 'string') return body.message;
+		// 023: restart's 409 body is `{ reason }` (contracts/http-api.md), not `{ message }`.
+		if (typeof body?.reason === 'string') return body.reason;
 	} catch {
 		// fall through to a generic message below
 	}
@@ -168,4 +170,24 @@ export async function resumeQueue(fetchImpl: typeof fetch = fetch): Promise<void
 	if (!response.ok) {
 		throw new IngestSubmissionApiError(await parseErrorMessage(response), response.status);
 	}
+}
+
+/** 023 FR-010..FR-013: restarts a finally-failed task under the same id. */
+export interface RestartTaskResponse {
+	taskId: string;
+	status: 'queued';
+}
+
+export async function restartTask(
+	taskId: string,
+	fetchImpl: typeof fetch = fetch
+): Promise<RestartTaskResponse> {
+	const response = await fetchImpl(`${BASE_PATH}/${encodeURIComponent(taskId)}/restart`, {
+		method: 'POST'
+	});
+	if (!response.ok) {
+		throw new IngestSubmissionApiError(await parseErrorMessage(response), response.status);
+	}
+
+	return response.json();
 }

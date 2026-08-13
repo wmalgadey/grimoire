@@ -6,7 +6,12 @@
 	import TaskMessageThread from '$lib/components/TaskMessageThread.svelte';
 	import TaskRecordView from '$lib/components/TaskRecordView.svelte';
 	import { createIngestLifecycleClient } from '$lib/services/ingestLifecycleClient';
-	import { getTaskDetail, getTaskRecord } from '$lib/services/ingestSubmissionsApi';
+	import {
+		getTaskDetail,
+		getTaskRecord,
+		IngestSubmissionApiError,
+		restartTask
+	} from '$lib/services/ingestSubmissionsApi';
 	import { fetchRemediationTaskMessages, getRemediationTask } from '$lib/services/remediationApi';
 	import { createRemediationLifecycleClient } from '$lib/services/remediationLifecycleClient';
 	import type {
@@ -53,6 +58,29 @@
 			// A task with no detail (unknown id, or removed while the page was open) simply
 			// renders without the history panel — the record view already reports absence.
 			detail = null;
+		}
+	}
+
+	// 023 T033 (US5, FR-010..FR-012): restart is a button shown only for a failed task,
+	// disabled while the request is in flight; a 409 (someone else won the race, or the
+	// task moved on) re-fetches the true current state instead of trusting the click.
+	let restarting = $state(false);
+	let restartError: string | null = $state(null);
+
+	async function handleRestart() {
+		restarting = true;
+		restartError = null;
+		try {
+			await restartTask(data.taskId);
+		} catch (err) {
+			if (err instanceof IngestSubmissionApiError && err.status === 409) {
+				restartError = err.message;
+			} else {
+				throw err;
+			}
+		} finally {
+			restarting = false;
+			await refreshDetail();
 		}
 	}
 
@@ -192,6 +220,22 @@
 	{:else if loaded}
 		{#if detail}
 			<StatusHistoryPath entries={detail.statusHistory ?? []} />
+		{/if}
+		{#if detail?.status === 'failed'}
+			<div class="flex items-center gap-2">
+				<button
+					type="button"
+					class="rounded-md bg-slate-900 px-3 py-1.5 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-50"
+					data-testid="task-restart-button"
+					disabled={restarting}
+					onclick={handleRestart}
+				>
+					{restarting ? 'Restarting…' : 'Restart'}
+				</button>
+				{#if restartError}
+					<p class="text-xs text-stage-failed" data-testid="task-restart-error">{restartError}</p>
+				{/if}
+			</div>
 		{/if}
 		<TaskRecordView {record} source={detail?.source} />
 	{/if}

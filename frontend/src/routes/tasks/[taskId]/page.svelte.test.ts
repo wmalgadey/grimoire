@@ -19,14 +19,29 @@ import type {
 // 023 T011 (US1, FR-006/SC-004): the ordered status history renders on the detail page and
 // is re-fetched whenever a taskLifecycleChanged event arrives for this route's own task.
 
-const { getTaskRecordMock, getTaskDetailMock } = vi.hoisted(() => ({
-	getTaskRecordMock: vi.fn(),
-	getTaskDetailMock: vi.fn()
-}));
+const { getTaskRecordMock, getTaskDetailMock, restartTaskMock, FakeIngestSubmissionApiError } =
+	vi.hoisted(() => {
+		class FakeIngestSubmissionApiError extends Error {
+			status: number;
+			constructor(message: string, status: number) {
+				super(message);
+				this.status = status;
+			}
+		}
+
+		return {
+			getTaskRecordMock: vi.fn(),
+			getTaskDetailMock: vi.fn(),
+			restartTaskMock: vi.fn(),
+			FakeIngestSubmissionApiError
+		};
+	});
 
 vi.mock('$lib/services/ingestSubmissionsApi', () => ({
 	getTaskRecord: getTaskRecordMock,
-	getTaskDetail: getTaskDetailMock
+	getTaskDetail: getTaskDetailMock,
+	restartTask: restartTaskMock,
+	IngestSubmissionApiError: FakeIngestSubmissionApiError
 }));
 
 interface FakeLifecycleClient {
@@ -140,6 +155,8 @@ function detail(overrides: Partial<TaskDetail> = {}): TaskDetail {
 beforeEach(() => {
 	getTaskDetailMock.mockReset();
 	getTaskDetailMock.mockResolvedValue(detail());
+	restartTaskMock.mockReset();
+	restartTaskMock.mockResolvedValue({ taskId: 'task-1', status: 'queued' });
 });
 
 test('reads taskId from route params and renders the fetched record', async () => {
@@ -307,4 +324,64 @@ test('renders the history panel with no entries when the task recorded none', as
 
 	await expect.element(screen.getByTestId('status-history-path')).toBeVisible();
 	expect(screen.getByTestId('status-history-entry').elements()).toHaveLength(0);
+});
+
+// ── 023 T033 (US5, FR-010..FR-012, SC-007) ─────────────────────────────────────────
+
+test('shows a Restart button only when the task is failed', async () => {
+	getTaskRecordMock.mockResolvedValue({ status: 'ok', record: record() });
+	getTaskDetailMock.mockResolvedValue(detail({ status: 'failed' }));
+
+	const screen = await render(Page, { data: { taskId: 'task-1' }, params: { taskId: 'task-1' } });
+
+	await expect.element(screen.getByTestId('task-restart-button')).toBeVisible();
+});
+
+test('shows no Restart button for a non-failed task', async () => {
+	getTaskRecordMock.mockResolvedValue({ status: 'ok', record: record() });
+	getTaskDetailMock.mockResolvedValue(detail({ status: 'completed' }));
+
+	const screen = await render(Page, { data: { taskId: 'task-1' }, params: { taskId: 'task-1' } });
+	await vi.waitFor(() => expect(getTaskDetailMock).toHaveBeenCalled());
+
+	await expect.element(screen.getByTestId('task-restart-button')).not.toBeInTheDocument();
+});
+
+test('clicking Restart calls the API, disables the button while in flight, and refetches after', async () => {
+	getTaskRecordMock.mockResolvedValue({ status: 'ok', record: record() });
+	getTaskDetailMock.mockResolvedValue(detail({ status: 'failed' }));
+	let resolveRestart: (() => void) | undefined;
+	restartTaskMock.mockReturnValue(
+		new Promise((resolve) => {
+			resolveRestart = () => resolve({ taskId: 'task-1', status: 'queued' });
+		})
+	);
+
+	const screen = await render(Page, { data: { taskId: 'task-1' }, params: { taskId: 'task-1' } });
+	const button = screen.getByTestId('task-restart-button');
+	await button.click();
+
+	await expect.element(button).toBeDisabled();
+	expect(restartTaskMock).toHaveBeenCalledWith('task-1');
+
+	getTaskDetailMock.mockResolvedValue(detail({ status: 'queued' }));
+	resolveRestart?.();
+
+	await vi.waitFor(() => expect(getTaskDetailMock).toHaveBeenCalledTimes(2));
+});
+
+test('a 409 conflict on restart shows the reason and re-fetches the true state', async () => {
+	getTaskRecordMock.mockResolvedValue({ status: 'ok', record: record() });
+	getTaskDetailMock.mockResolvedValue(detail({ status: 'failed' }));
+	restartTaskMock.mockRejectedValue(
+		new FakeIngestSubmissionApiError('Task is already restarting.', 409)
+	);
+
+	const screen = await render(Page, { data: { taskId: 'task-1' }, params: { taskId: 'task-1' } });
+	await screen.getByTestId('task-restart-button').click();
+
+	await expect
+		.element(screen.getByTestId('task-restart-error'))
+		.toHaveTextContent('Task is already restarting.');
+	await vi.waitFor(() => expect(getTaskDetailMock).toHaveBeenCalledTimes(2));
 });

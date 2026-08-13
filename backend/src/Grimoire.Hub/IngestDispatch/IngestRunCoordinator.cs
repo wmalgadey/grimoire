@@ -165,6 +165,67 @@ public sealed class IngestRunCoordinator
         return true;
     }
 
+    /// <summary>
+    /// 023-task-ui-improvements T029 (US5, FR-010..FR-013, SC-007/SC-008, research.md R3):
+    /// manually re-enters a finally-failed task into the queue under the same task id.
+    /// Race-safe by construction: a failed task holds no <c>operational_task_state</c> row
+    /// (deleted by <see cref="FinishRunAsync"/>), so an <c>INSERT ... ON CONFLICT DO
+    /// NOTHING</c> claim is the CAS arbiter for concurrent duplicate requests (ADR-018's
+    /// withdrawal-race idiom) — the first caller to insert wins, every other caller's
+    /// insert affects zero rows and this method returns <see langword="false"/> for them.
+    /// The endpoint is responsible for the failed-status precondition (FR-011) and the
+    /// normalized-source-exists precondition before calling this.
+    /// </summary>
+    public async Task<bool> RestartFailedAsync(
+        string taskId, string normalizedSourceRef, string? userPrompt, CancellationToken cancellationToken = default)
+    {
+        var claimed = await _repository.TryClaimTaskStateAsync(
+            new OperationalTaskState(taskId, "restarting", null, _timeProvider.GetUtcNow(), Attempt: 0), cancellationToken);
+        if (!claimed)
+        {
+            return false;
+        }
+
+        // The publisher is the Hub's single history-recording choke point (T004) — it
+        // appends the `restarted` row itself as part of publishing the transition, so
+        // there is nothing further to write here.
+        await _publisher.PublishAsync(taskId, "failed", IngestHistoryStatuses.Restarted, cancellationToken: cancellationToken);
+
+        // Board reads the artifact frontmatter, not the history table — this is the write
+        // that actually moves the task off the failed column (data-model.md §1: the
+        // `restarted` entry precedes `queued`, mirroring every other stage transition).
+        await WriteRestartArtifactAsync(taskId, userPrompt, cancellationToken);
+        await _publisher.PublishAsync(taskId, IngestHistoryStatuses.Restarted, "queued", cancellationToken: cancellationToken);
+
+        await EnqueueAsync(taskId, normalizedSourceRef, userPrompt, cancellationToken);
+        return true;
+    }
+
+    private async Task WriteRestartArtifactAsync(string taskId, string? userPrompt, CancellationToken cancellationToken)
+    {
+        var artifactPath = Path.Combine(_contentPaths.TasksDir, $"{taskId}.md");
+        TaskArtifactFrontmatter? existing = null;
+        if (File.Exists(artifactPath))
+        {
+            existing = TaskArtifactFrontmatter.TryParse(await File.ReadAllTextAsync(artifactPath, cancellationToken));
+        }
+
+        var document = new HubTaskArtifactDocument(
+            TaskId: taskId,
+            Status: "queued",
+            StartedAt: existing?.StartedAt ?? _timeProvider.GetUtcNow(),
+            CompletedAt: null,
+            SourceRef: existing?.SourceRef,
+            OriginalRef: existing?.OriginalRef,
+            FailureReason: null,
+            Narrative: "Task restarted; queued for ingest.",
+            UserPromptSource: existing?.UserPromptSource,
+            UserPrompt: userPrompt,
+            ConvertSteps: existing?.ConvertSteps);
+
+        await _taskArtifactWriter.WriteAsync(artifactPath, document, cancellationToken);
+    }
+
     /// <summary>Starts the next queued task iff the slot is free and the queue is not paused (FIFO).</summary>
     public async Task TryStartNextAsync(CancellationToken cancellationToken = default)
     {
