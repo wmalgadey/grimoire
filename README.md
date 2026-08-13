@@ -1,9 +1,19 @@
 # Grimoire
 
+![Code complexity](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/wmalgadey/grimoire/main/docs/metrics/complexity-badge.json)
+![Estimated time to understand](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/wmalgadey/grimoire/main/docs/metrics/understanding-time-badge.json)
+
 Grimoire is an LLM harness for a **Compound LLM-Wiki**: a personal knowledge base maintained
 by LLM agents rather than by hand. Agents (Ingest, Query, and more to come) read raw sources,
 maintain a structured markdown wiki, and answer questions over it — while a deterministic
 backend harness owns dispatch, credential scoping, guardrails, and observability around them.
+
+The two badges above give a rough, order-of-magnitude read on the codebase: average
+cyclomatic complexity per function (`backend/src` + `frontend/src`, rated Low/Moderate/High/
+Very High), and a heuristic estimate of how long a single engineer would need to read
+through it once at a careful pace. See
+[`docs/codebase-complexity-metric.md`](docs/codebase-complexity-metric.md) for the exact
+formulas, thresholds, and sources.
 
 ## Stack
 
