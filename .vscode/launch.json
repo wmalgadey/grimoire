@@ -42,11 +42,11 @@
       "cwd": "${workspaceFolder}",
       "args": [
         "--wiki-dir",
-        "${input:wikiDir}",
+        "${input:prodBaseDir}/llm-wiki",
         "--memory-dir",
-        "${input:memoryDir}",
+        "${input:prodBaseDir}/memory",
         "--data-dir",
-        "${input:dataDir}"
+        "${input:prodBaseDir}/.grimoire"
       ],
       "env": {
         "ASPNETCORE_ENVIRONMENT": "Production",
@@ -59,22 +59,10 @@
   ],
   "inputs": [
     {
-      "id": "wikiDir",
+      "id": "prodBaseDir",
       "type": "promptString",
-      "description": "Absolute path to the llm-wiki folder this profile writes into (VS Code remembers previous entries)",
-      "default": "${workspaceFolder}/llm-wiki"
-    },
-    {
-      "id": "memoryDir",
-      "type": "promptString",
-      "description": "Absolute path to the llm-memory folder this profile writes into (VS Code remembers previous entries)",
-      "default": "${workspaceFolder}/llm-memory"
-    },
-    {
-      "id": "dataDir",
-      "type": "promptString",
-      "description": "Absolute path to the llm-data folder this profile writes into (VS Code remembers previous entries)",
-      "default": "${workspaceFolder}/llm-data"
+      "description": "Absolute path to the base folder for production data (VS Code remembers previous entries)",
+      "default": "${workspaceFolder}/prod"
     }
   ]
 }
