@@ -24,6 +24,26 @@ jeder neue Eintrag wird oben angefügt, ältere Einträge rücken nach unten.
 
 ## Timeline
 
+### [2026-08-13] Incident | CodeQL hält "ccn" für eine Kreditkartennummer
+
+CodeQL hat heute gleich dreimal in `scripts/ci/*` rumgezickt, weil die
+clear-text-logging Query `ccn` (für cyclomatic complexity number) offenbar für eine
+Kreditkartennummer hält und deswegen jede Stelle anmeckert, an der der
+durchschnittliche CCN-Wert nach stdout geschrieben wird. Vorher schon mal mit `name`
+und `location` passiert — die Query hält die für private Daten.
+
+Der Fix ist jedes Mal banal: einfach die Identifier umbenennen (`ccn` → `complexity`,
+`name` → `func`, `location` → `file_line`). Am ausgegebenen Report-Text ändert sich
+nichts, weil die Heuristik nur auf Variablen-/Dict-Key-Namen schaut, nicht auf den
+tatsächlich gedruckten Text.
+
+Nervig, weil man das vorher nicht sehen kann — kommt erst als High-Severity
+Security-Alert im PR-Review, nicht beim lokalen Testen. Für nächste Scripts in dem
+Bereich merke ich mir: Variablennamen wie `ccn`, `ssn`, `pwd`, `secret`, `token`
+grundsätzlich meiden, auch wenn sie inhaltlich nichts mit Sensitive Data zu tun haben.
+
+---
+
 ### [2026-07-30] Process | Offene Ideen als GitHub Issues statt in Docs
 
 - Offene Fragen aus `docs/decision-context-overview.md` (§2, §10, §11) und liegengebliebene `tasks.md`-Reste lagen bisher einfach nur in Dokumenten rum, ohne dass die je wer konsequent abgearbeitet oder geschlossen hat.
