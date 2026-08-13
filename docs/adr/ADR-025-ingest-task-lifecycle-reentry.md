@@ -1,5 +1,5 @@
 ---
-status: proposed
+status: accepted
 ---
 
 # ADR-025: Ingest Task Lifecycle Re-Entry — Liveness Reactivation, Manual Restart, and Status History
