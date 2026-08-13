@@ -79,6 +79,14 @@ export interface StatusHistoryEntry {
 	detail: string | null;
 }
 
+// 023 (FR-001/FR-002, data-model.md §4): the source-link object the detail view renders as
+// an anchor when available, or a non-link "unavailable" indicator otherwise.
+export interface TaskSourceLink {
+	kind: 'url' | 'file';
+	href: string | null; // null when unavailable
+	available: boolean;
+}
+
 export interface TaskDetail {
 	taskId: string;
 	status: LifecycleStage;
@@ -91,8 +99,9 @@ export interface TaskDetail {
 	userPrompt?: string | null;
 	convertSteps?: ConvertStepConfig | null;
 	runActivity?: RunActivity | null;
-	// Ordered by the server; empty for tasks that predate the feature (contracts/http-api.md).
+	// Ordered by the server; empty for a task with no recorded transitions.
 	statusHistory?: StatusHistoryEntry[];
+	source?: TaskSourceLink;
 }
 
 // 023 (contracts/signalr-events.md): the same event now also carries the three history-only

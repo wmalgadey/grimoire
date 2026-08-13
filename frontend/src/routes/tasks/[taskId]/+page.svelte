@@ -193,6 +193,6 @@
 		{#if detail}
 			<StatusHistoryPath entries={detail.statusHistory ?? []} />
 		{/if}
-		<TaskRecordView {record} />
+		<TaskRecordView {record} source={detail?.source} />
 	{/if}
 </main>

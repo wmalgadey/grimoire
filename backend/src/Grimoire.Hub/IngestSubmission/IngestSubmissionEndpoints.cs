@@ -28,6 +28,7 @@ public static class IngestSubmissionEndpoints
         group.MapGet("/defaults", GetDefaultsAsync);
         group.MapGet("/{taskId}", GetTaskDetailAsync);
         group.MapGet("/{taskId}/task-record", GetTaskRecordAsync);
+        group.MapGet("/{taskId}/source/original", GetSourceOriginalAsync);
         group.MapPost("/{taskId}/retrigger", PostRetriggerAsync);
         return group;
     }
@@ -301,10 +302,14 @@ public static class IngestSubmissionEndpoints
 
         var activity = coordinator.GetActivity(taskId);
 
-        // 023 T008 (FR-006/SC-004): the ordered status "path". Empty for tasks that predate
-        // the feature — the detail view renders the current status as a single-entry
-        // fallback rather than treating the absence as an error (contracts/http-api.md).
+        // 023 T008 (FR-006/SC-004): the ordered status "path". Empty for a task with no
+        // recorded transitions.
         var statusHistory = await stateRepository.GetStatusHistoryAsync(taskId, cancellationToken);
+
+        // 023 T024 (FR-001/FR-002, SC-001/SC-002): derived server-side so the URL-vs-file
+        // split and the availability check live in exactly one tested place — the client
+        // never has to guess from sourceRef.
+        var source = ResolveSourceLink(taskId, artifactSet);
 
         return Results.Ok(new
         {
@@ -320,6 +325,7 @@ public static class IngestSubmissionEndpoints
                 enteredAt = entry.EnteredAt,
                 detail = entry.Detail,
             }),
+            source,
             sourceRef = artifactSet?.NormalizedMarkdownPath,
             originalRef = artifactSet?.OriginalPath,
             userPromptSource = frontmatter?.UserPromptSource,
@@ -334,6 +340,80 @@ public static class IngestSubmissionEndpoints
                 lastEventAt = activity.LastEventAt,
             },
         });
+    }
+
+    /// <summary>
+    /// The URL-vs-file split and availability check (023 T024, data-model.md §4). A URL
+    /// submission links directly to what was submitted; a file submission links to the
+    /// serve endpoint below — but only when the manifest AND the persisted original both
+    /// still exist, so <c>available:false</c> is exactly the condition FR-002 needs the
+    /// client to render as "unavailable" instead of a link that 404s when clicked.
+    /// </summary>
+    private static object ResolveSourceLink(string taskId, Conversion.SourceArtifactSet? artifactSet)
+    {
+        if (artifactSet?.SourceUrl is { Length: > 0 } url)
+        {
+            return new { kind = "url", href = url, available = true };
+        }
+
+        var available = artifactSet is not null && File.Exists(artifactSet.OriginalPath);
+        return new
+        {
+            kind = "file",
+            href = available ? $"/api/ingest-submissions/{taskId}/source/original" : null,
+            available,
+        };
+    }
+
+    /// <summary>
+    /// Read-only stream of the persisted original (023 T024, FR-001/FR-002, SC-001/SC-002).
+    /// The path is composed exclusively from the validated route <c>taskId</c> — via the
+    /// manifest the Hub itself wrote, itself keyed only by <c>taskId</c> — so this endpoint
+    /// accepts no other path input and has no traversal surface to guard.
+    /// </summary>
+    private static async Task<IResult> GetSourceOriginalAsync(
+        string taskId,
+        Conversion.SourceArtifactStore sourceArtifactStore,
+        ILoggerFactory loggerFactory,
+        CancellationToken cancellationToken)
+    {
+        var logger = loggerFactory.CreateLogger(typeof(IngestSubmissionEndpoints));
+
+        using var span = HubTracing.ActivitySource.StartActivity("hub.ingest_source.serve");
+        span?.SetTag("task_id", taskId);
+
+        var manifest = await sourceArtifactStore.TryReadMetadataAsync(taskId, cancellationToken);
+        if (manifest is null || !File.Exists(manifest.OriginalPath))
+        {
+            span?.SetTag("result", "not_found");
+            HubMetrics.RecordSourceContentRead("not_found");
+            return Results.NotFound(new { message = $"Source content for '{taskId}' was not found." });
+        }
+
+        span?.SetTag("result", "served");
+        HubMetrics.RecordSourceContentRead("served");
+        IngestSubmissionLogEvents.LogSourceServed(logger, taskId, manifest.OriginalContentType);
+
+        // Results.File's FileDownloadName always writes `Content-Disposition: attachment`;
+        // FR-001 wants the original to open in the browser, so the header is set explicitly.
+        return new InlineFileResult(manifest.OriginalPath, manifest.OriginalContentType);
+    }
+
+    /// <summary>
+    /// <c>Content-Disposition: inline</c> file result (023 T024) — the one shape
+    /// <see cref="Results.File(string, string?, bool)"/> cannot produce, since its
+    /// download-name parameter always writes <c>attachment</c>.
+    /// </summary>
+    private sealed class InlineFileResult(string path, string contentType) : IResult
+    {
+        public async Task ExecuteAsync(HttpContext httpContext)
+        {
+            httpContext.Response.ContentType = contentType;
+            httpContext.Response.Headers.ContentDisposition = "inline";
+            await using var stream = File.OpenRead(path);
+            httpContext.Response.ContentLength = stream.Length;
+            await stream.CopyToAsync(httpContext.Response.Body, httpContext.RequestAborted);
+        }
     }
 
     /// <summary>
