@@ -131,6 +131,19 @@ public sealed class FakeAgentProcessLauncher : IAgentProcessLauncher
     public List<(DateTimeOffset Started, DateTimeOffset Finished)> RunWindows { get; } = [];
     public List<ScriptedAgentProcessHandle> Handles { get; } = [];
 
+    private int _ingestLaunchCount;
+
+    /// <summary>
+    /// 023-task-ui-improvements T002 (US2, FR-007/SC-005): go-silent mode. The first
+    /// <see cref="GoSilentIngestLaunches"/> ingest launches write the `running` artifact and
+    /// emit `started` — exactly what a real agent does — and then fall silent: no further
+    /// events, no terminal event, pipe left open. That is precisely the liveness-window
+    /// trigger the coordinator's reactivation path recovers from. Launches beyond the count
+    /// behave per <c>autoPlay</c>, so a test can script "silent for N attempts, then a
+    /// normal run" as well as "silent forever" (<c>int.MaxValue</c>).
+    /// </summary>
+    public int GoSilentIngestLaunches { get; set; }
+
     /// <summary>Every <see cref="QueryAgentRequest"/> received via the Query-shaped StartAsync overload.</summary>
     public List<QueryAgentRequest> QueryRequests { get; } = [];
 
@@ -164,9 +177,19 @@ public sealed class FakeAgentProcessLauncher : IAgentProcessLauncher
         }
 
         var handle = new ScriptedAgentProcessHandle();
+        int launchIndex;
         lock (Handles)
         {
             Handles.Add(handle);
+            launchIndex = ++_ingestLaunchCount;
+        }
+
+        if (launchIndex <= GoSilentIngestLaunches)
+        {
+            // Go silent (T002): the run visibly starts and then stops emitting anything.
+            await WriteArtifactAsync(Path.Combine(request.TasksDir, $"{request.TaskId}.md"), request, "running", null);
+            handle.EmitEvent("started", request.TaskId);
+            return handle;
         }
 
         if (_autoPlay)

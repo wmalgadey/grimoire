@@ -108,12 +108,25 @@ internal static class HubHostComposition
             builder.Services.AddSingleton(rawStoragePaths);
             builder.Services.AddSingleton<SourceArtifactStore>();
             builder.Services.AddSingleton<TaskRecordReadModel>();
-            builder.Services.AddSingleton<IngestLifecyclePublisher>();
             builder.Services.AddHostedService<TaskRecordWatcher>();
 
             var repository = new OperationalStateRepository(resolvedPaths.StateDbPath);
             await repository.InitializeAsync();
             builder.Services.AddSingleton(repository);
+
+            // 023-task-ui-improvements T005 (ADR-025, ADR-021): the one place the Hub binds
+            // a clock. Production gets the system clock; deterministic tests construct the
+            // coordinator with a FakeTimeProvider so the reactivation backoff schedule runs
+            // on virtual time instead of wall-clock waits. Registered explicitly (rather
+            // than left to an optional-parameter default) so both consumers below — history
+            // timestamps in the publisher, backoff scheduling in the coordinator — provably
+            // share one clock.
+            builder.Services.AddSingleton(TimeProvider.System);
+            builder.Services.AddSingleton<IngestLifecyclePublisher>(sp => new IngestLifecyclePublisher(
+                sp.GetRequiredService<IHubContext<IngestLifecycleHub>>(),
+                sp.GetRequiredService<ILogger<IngestLifecyclePublisher>>(),
+                sp.GetRequiredService<OperationalStateRepository>(),
+                sp.GetRequiredService<TimeProvider>()));
             builder.Services.AddSingleton(contentPaths);
             builder.Services.AddSingleton(new LocalSecretsLoader(resolvedPaths.SecretsFilePath));
             builder.Services.AddSingleton<AgentProcessHost>(sp => new AgentProcessHost(
@@ -127,6 +140,7 @@ internal static class HubHostComposition
                 sp.GetRequiredService<HubTaskArtifactWriter>(),
                 sp.GetRequiredService<IngestContentPaths>(),
                 sp.GetRequiredService<ResolvedGrimoirePaths>(),
+                sp.GetRequiredService<TimeProvider>(),
                 logger: sp.GetRequiredService<ILogger<IngestRunCoordinator>>()));
             builder.Services.AddSingleton<IngestSubmissionValidator>();
             builder.Services.AddSingleton<IngestSubmissionPipeline>();

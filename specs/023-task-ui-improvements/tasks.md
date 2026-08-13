@@ -20,8 +20,8 @@
 
 **Purpose**: Test doubles and packages the story phases need (phase goal; no single FR).
 
-- [ ] T001 [P] Add `Microsoft.Extensions.Time.Testing` (FakeTimeProvider — concrete fake, not a mocking framework) to backend/tests/Grimoire.IntegrationTests/Grimoire.IntegrationTests.csproj (serves US2 backoff tests; phase goal, no single FR)
-- [ ] T002 [P] Extend the existing hand-rolled port fake with a configurable go-silent mode (emit initial events, then silence) in backend/tests/Grimoire.IntegrationTests/Fakes/FakeAgentProcessLauncher.cs (serves US2 liveness tests verifying FR-007/SC-005)
+- [X] T001 [P] Add `Microsoft.Extensions.Time.Testing` (FakeTimeProvider — concrete fake, not a mocking framework) to backend/tests/Grimoire.IntegrationTests/Grimoire.IntegrationTests.csproj (serves US2 backoff tests; phase goal, no single FR)
+- [X] T002 [P] Extend the existing hand-rolled port fake with a configurable go-silent mode (emit initial events, then silence) in backend/tests/Grimoire.IntegrationTests/Fakes/FakeAgentProcessLauncher.cs (serves US2 liveness tests verifying FR-007/SC-005)
 
 ---
 
@@ -31,10 +31,10 @@
 
 **⚠️ CRITICAL**: No user story work can begin until this phase is complete.
 
-- [ ] T003 Create append-only `ingest_status_history` table (`task_id`, `seq` PK pair, `status`, `entered_at`, `detail` per data-model.md §1) plus `attempt` column on `operational_task_state` (data-model.md §2), with append + ordered-read methods, in backend/src/Grimoire.Hub/OperationalState/OperationalStateRepository.cs (FR-005)
-- [ ] T004 Record every published board-stage transition as a history row at the lifecycle choke point in backend/src/Grimoire.Hub/Realtime/IngestLifecyclePublisher.cs (single writer; agents never touch the table) (FR-005)
-- [ ] T005 [P] Inject `TimeProvider` into `IngestRunCoordinator` (production: `TimeProvider.System`) via backend/src/Grimoire.Hub/HubHostComposition.cs, using it for history timestamps and (in US2) backoff scheduling (prerequisite for FR-008; phase goal)
-- [ ] T006 Deterministic integration test: a full lifecycle (received→converting→queued→running→completed, and the failed path) appends ordered, gapless-per-task history rows that survive `FinishRunAsync` and Hub restart, in backend/tests/Grimoire.IntegrationTests/IngestStatusHistoryTests.cs (FR-005)
+- [X] T003 Create append-only `ingest_status_history` table (`task_id`, `seq` PK pair, `status`, `entered_at`, `detail` per data-model.md §1) plus `attempt` column on `operational_task_state` (data-model.md §2), with append + ordered-read methods, in backend/src/Grimoire.Hub/OperationalState/OperationalStateRepository.cs (FR-005)
+- [X] T004 Record every published board-stage transition as a history row at the lifecycle choke point in backend/src/Grimoire.Hub/Realtime/IngestLifecyclePublisher.cs (single writer; agents never touch the table) (FR-005)
+- [X] T005 [P] Inject `TimeProvider` into `IngestRunCoordinator` (production: `TimeProvider.System`) via backend/src/Grimoire.Hub/HubHostComposition.cs, using it for history timestamps and (in US2) backoff scheduling (prerequisite for FR-008; phase goal)
+- [X] T006 Deterministic integration test: a full lifecycle (received→converting→queued→running→completed, and the failed path) appends ordered, gapless-per-task history rows that survive `FinishRunAsync` and Hub restart, in backend/tests/Grimoire.IntegrationTests/IngestStatusHistoryTests.cs (FR-005)
 
 **Checkpoint**: History is durably recorded for every transition — story phases can now build on it.
 
@@ -48,14 +48,14 @@
 
 ### Tests for User Story 1
 
-- [ ] T007 [P] [US1] Integration test (fail first): `GET /api/ingest-submissions/{taskId}` returns `statusHistory` ordered by `seq` with `status`/`enteredAt`/`detail` per contracts/http-api.md, and returns an empty array for a pre-feature task without history rows, in backend/tests/Grimoire.IntegrationTests/IngestTaskDetailHistoryTests.cs (FR-006, SC-004)
+- [X] T007 [P] [US1] Integration test (fail first): `GET /api/ingest-submissions/{taskId}` returns `statusHistory` ordered by `seq` with `status`/`enteredAt`/`detail` per contracts/http-api.md, and returns an empty array for a pre-feature task without history rows, in backend/tests/Grimoire.IntegrationTests/IngestTaskDetailHistoryTests.cs (FR-006, SC-004)
 
 ### Implementation for User Story 1
 
-- [ ] T008 [US1] Extend `GetTaskDetailAsync` with the `statusHistory` field read from `OperationalStateRepository` in backend/src/Grimoire.Hub/IngestSubmission/IngestSubmissionEndpoints.cs (FR-006, SC-004)
-- [ ] T009 [P] [US1] Add `HistoryStatus`, `StatusHistoryEntry`, and `TaskDetail.statusHistory` types per data-model.md §5 in frontend/src/lib/types.ts (FR-006)
-- [ ] T010 [US1] Create `StatusHistoryPath.svelte` (ordered path with timestamps and detail, current/last entry highlighted, single-entry fallback from current status when history is empty) plus colocated frontend/src/lib/components/StatusHistoryPath.svelte.test.ts (FR-006, SC-004)
-- [ ] T011 [US1] Render the history path in the detail page and re-fetch history on `taskLifecycleChanged` for the shown task (contracts/signalr-events.md), in frontend/src/routes/tasks/[taskId]/+page.svelte with page test coverage in frontend/src/routes/tasks/[taskId]/page.test.ts (FR-006, SC-004)
+- [X] T008 [US1] Extend `GetTaskDetailAsync` with the `statusHistory` field read from `OperationalStateRepository` in backend/src/Grimoire.Hub/IngestSubmission/IngestSubmissionEndpoints.cs (FR-006, SC-004)
+- [X] T009 [P] [US1] Add `HistoryStatus`, `StatusHistoryEntry`, and `TaskDetail.statusHistory` types per data-model.md §5 in frontend/src/lib/types.ts (FR-006)
+- [X] T010 [US1] Create `StatusHistoryPath.svelte` (ordered path with timestamps and detail, current/last entry highlighted, single-entry fallback from current status when history is empty) plus colocated frontend/src/lib/components/StatusHistoryPath.svelte.test.ts (FR-006, SC-004)
+- [X] T011 [US1] Render the history path in the detail page and re-fetch history on `taskLifecycleChanged` for the shown task (contracts/signalr-events.md), in frontend/src/routes/tasks/[taskId]/+page.svelte with page test coverage in frontend/src/routes/tasks/[taskId]/page.test.ts (FR-006, SC-004)
 
 **Checkpoint**: US1 fully functional — history visible for in-progress, completed, and failed tasks.
 

@@ -9,6 +9,11 @@
     <PackageVersion Include="Microsoft.AspNetCore.TestHost" Version="10.0.10" />
     <PackageVersion Include="Microsoft.Data.Sqlite" Version="10.0.10" />
     <PackageVersion Include="Microsoft.Extensions.Logging.Console" Version="10.0.10" />
+    <!-- 023-task-ui-improvements T001: FakeTimeProvider — a concrete, hand-rolled fake for
+         the BCL TimeProvider abstraction (NOT a mocking framework, Principle II), so the
+         reactivation backoff schedule is driven by virtual time instead of wall-clock
+         waits (ADR-021's deterministic-wait rule). -->
+    <PackageVersion Include="Microsoft.Extensions.TimeProvider.Testing" Version="9.10.0" />
     <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="18.8.1" />
     <!-- Mono.Cecil pins the version NetArchTest.Rules 1.3.2 pulls transitively. ArchTests
          imports it directly for IL call-site scanning (ArchScan.cs) — an explicit

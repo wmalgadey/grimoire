@@ -154,7 +154,11 @@ public sealed class IngestSubmissionPipelineFixture : IDisposable
         Launcher = launcher ?? new FakeAgentProcessLauncher();
 
         var hubContext = new RecordingHubContext(PublishedEvents, PublishedActivity);
-        var publisher = new IngestLifecyclePublisher(hubContext);
+        // 023 T004: the publisher is the Hub's status-history writer, so it gets the same
+        // repository and clock the coordinator uses — history rows are real rows in the
+        // fixture's real SQLite file, asserted state-based like every other outcome.
+        var publisher = new IngestLifecyclePublisher(
+            hubContext, logger: null, stateRepository: Repository, timeProvider: timeProvider);
         Publisher = publisher;
 
         Coordinator = new IngestRunCoordinator(

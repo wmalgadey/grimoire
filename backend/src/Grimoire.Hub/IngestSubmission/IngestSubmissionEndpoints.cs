@@ -274,6 +274,7 @@ public static class IngestSubmissionEndpoints
         Conversion.SourceArtifactStore sourceArtifactStore,
         IngestContentPaths contentPaths,
         IngestRunCoordinator coordinator,
+        OperationalState.OperationalStateRepository stateRepository,
         CancellationToken cancellationToken)
     {
         var projection = await store.GetByTaskIdAsync(contentPaths.TasksDir, taskId, cancellationToken);
@@ -298,11 +299,22 @@ public static class IngestSubmissionEndpoints
 
         var activity = coordinator.GetActivity(taskId);
 
+        // 023 T008 (FR-006/SC-004): the ordered status "path". Empty for tasks that predate
+        // the feature — the detail view renders the current status as a single-entry
+        // fallback rather than treating the absence as an error (contracts/http-api.md).
+        var statusHistory = await stateRepository.GetStatusHistoryAsync(taskId, cancellationToken);
+
         return Results.Ok(new
         {
             taskId = projection.TaskId,
             status = projection.Column,
             failureReason = projection.FailureReason,
+            statusHistory = statusHistory.Select(entry => new
+            {
+                status = entry.Status,
+                enteredAt = entry.EnteredAt,
+                detail = entry.Detail,
+            }),
             sourceRef = artifactSet?.NormalizedMarkdownPath,
             originalRef = artifactSet?.OriginalPath,
             userPromptSource = frontmatter?.UserPromptSource,

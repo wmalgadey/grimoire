@@ -63,6 +63,22 @@ export interface RunActivity {
 	lastEventAt?: string;
 }
 
+// 023-task-ui-improvements (data-model.md §5, FR-005/FR-006): the status vocabulary of the
+// persisted history is a superset of the board's columns. The three history-only statuses
+// are rendered in the detail view's path and are deliberately never board columns
+// (clarification 2026-08-13) — board consumers ignore them for column placement.
+export type HistoryStatus =
+	| LifecycleStage
+	| 'liveness_interrupted'
+	| 'reactivated'
+	| 'restarted';
+
+export interface StatusHistoryEntry {
+	status: HistoryStatus;
+	enteredAt: string; // UTC ISO-8601
+	detail: string | null;
+}
+
 export interface TaskDetail {
 	taskId: string;
 	status: LifecycleStage;
@@ -73,6 +89,8 @@ export interface TaskDetail {
 	userPrompt?: string | null;
 	convertSteps?: ConvertStepConfig | null;
 	runActivity?: RunActivity | null;
+	// Ordered by the server; empty for tasks that predate the feature (contracts/http-api.md).
+	statusHistory?: StatusHistoryEntry[];
 }
 
 export interface LifecycleEvent {

@@ -67,7 +67,16 @@ public sealed class OperationalStateRepository
                 task_id TEXT PRIMARY KEY,
                 status TEXT NOT NULL,
                 process_id INTEGER NULL,
-                updated_at TEXT NOT NULL
+                updated_at TEXT NOT NULL,
+                attempt INTEGER NOT NULL DEFAULT 0
+            );
+            CREATE TABLE IF NOT EXISTS ingest_status_history (
+                task_id TEXT NOT NULL,
+                seq INTEGER NOT NULL,
+                status TEXT NOT NULL,
+                entered_at TEXT NOT NULL,
+                detail TEXT NULL,
+                PRIMARY KEY (task_id, seq)
             );
             CREATE TABLE IF NOT EXISTS ingest_queue (
                 task_id TEXT PRIMARY KEY,
@@ -94,6 +103,100 @@ public sealed class OperationalStateRepository
             """;
 
         await command.ExecuteNonQueryAsync(cancellationToken);
+
+        // 023-task-ui-improvements T003: `attempt` is new on a table that predates it, so a
+        // database created before this feature has the four original columns only and the
+        // CREATE above (IF NOT EXISTS) leaves it untouched. SQLite has no
+        // ADD COLUMN IF NOT EXISTS, so check the actual shape and add it when absent —
+        // ADD COLUMN with a NOT NULL DEFAULT backfills existing rows with 0, which is
+        // exactly the "no reactivation attempts spent" meaning we want for them.
+        var columnCommand = connection.CreateCommand();
+        columnCommand.CommandText = "PRAGMA table_info(operational_task_state);";
+        var hasAttemptColumn = false;
+        await using (var columnReader = await columnCommand.ExecuteReaderAsync(cancellationToken))
+        {
+            while (await columnReader.ReadAsync(cancellationToken))
+            {
+                if (string.Equals(columnReader.GetString(1), "attempt", StringComparison.Ordinal))
+                {
+                    hasAttemptColumn = true;
+                }
+            }
+        }
+
+        if (!hasAttemptColumn)
+        {
+            var alterCommand = connection.CreateCommand();
+            alterCommand.CommandText = "ALTER TABLE operational_task_state ADD COLUMN attempt INTEGER NOT NULL DEFAULT 0;";
+            await alterCommand.ExecuteNonQueryAsync(cancellationToken);
+        }
+    }
+
+    // ── Status history (023-task-ui-improvements, ADR-025, data-model.md §1) ──────
+
+    /// <summary>
+    /// Appends one transition to a task's append-only history (FR-005). <c>seq</c> is
+    /// derived inside the INSERT from the task's own current maximum, so two concurrent
+    /// appends cannot compute the same number and silently overwrite one another: the
+    /// composite primary key rejects a duplicate outright rather than clobbering a row.
+    /// Returns the assigned sequence number.
+    /// </summary>
+    public async Task<long> AppendStatusHistoryAsync(
+        string taskId, string status, DateTimeOffset enteredAt, string? detail = null, CancellationToken cancellationToken = default)
+    {
+        await using var connection = await OpenConnectionAsync(cancellationToken);
+
+        var command = connection.CreateCommand();
+        command.CommandText =
+            """
+            INSERT INTO ingest_status_history(task_id, seq, status, entered_at, detail)
+            SELECT $task_id,
+                   COALESCE((SELECT MAX(seq) FROM ingest_status_history WHERE task_id = $task_id), 0) + 1,
+                   $status, $entered_at, $detail
+            RETURNING seq;
+            """;
+        command.Parameters.AddWithValue("$task_id", taskId);
+        command.Parameters.AddWithValue("$status", status);
+        command.Parameters.AddWithValue("$entered_at", enteredAt.ToUniversalTime().ToString("O"));
+        command.Parameters.AddWithValue("$detail", (object?)detail ?? DBNull.Value);
+
+        var seq = await command.ExecuteScalarAsync(cancellationToken);
+        return Convert.ToInt64(seq);
+    }
+
+    /// <summary>
+    /// A task's full history in <c>seq</c> order (FR-006). Empty for a task that predates
+    /// this feature — the detail view falls back to rendering its current status as a
+    /// single entry rather than treating the absence as an error.
+    /// </summary>
+    public async Task<IReadOnlyList<IngestStatusHistoryEntry>> GetStatusHistoryAsync(
+        string taskId, CancellationToken cancellationToken = default)
+    {
+        await using var connection = await OpenConnectionAsync(cancellationToken);
+
+        var command = connection.CreateCommand();
+        command.CommandText =
+            """
+            SELECT task_id, seq, status, entered_at, detail
+            FROM ingest_status_history
+            WHERE task_id = $task_id
+            ORDER BY seq ASC;
+            """;
+        command.Parameters.AddWithValue("$task_id", taskId);
+
+        var results = new List<IngestStatusHistoryEntry>();
+        await using var reader = await command.ExecuteReaderAsync(cancellationToken);
+        while (await reader.ReadAsync(cancellationToken))
+        {
+            results.Add(new IngestStatusHistoryEntry(
+                reader.GetString(0),
+                reader.GetInt64(1),
+                reader.GetString(2),
+                DateTimeOffset.Parse(reader.GetString(3)),
+                reader.IsDBNull(4) ? null : reader.GetString(4)));
+        }
+
+        return results;
     }
 
     // ── Run Queue (ADR-008: persistent FIFO, ordered by acceptance time) ──────────
@@ -314,19 +417,50 @@ public sealed class OperationalStateRepository
         var command = connection.CreateCommand();
         command.CommandText =
             """
-            INSERT INTO operational_task_state(task_id, status, process_id, updated_at)
-            VALUES ($task_id, $status, $process_id, $updated_at)
+            INSERT INTO operational_task_state(task_id, status, process_id, updated_at, attempt)
+            VALUES ($task_id, $status, $process_id, $updated_at, $attempt)
             ON CONFLICT(task_id) DO UPDATE SET
                 status = excluded.status,
                 process_id = excluded.process_id,
-                updated_at = excluded.updated_at;
+                updated_at = excluded.updated_at,
+                attempt = excluded.attempt;
             """;
         command.Parameters.AddWithValue("$task_id", state.TaskId);
         command.Parameters.AddWithValue("$status", state.Status);
         command.Parameters.AddWithValue("$process_id", (object?)state.ProcessId ?? DBNull.Value);
         command.Parameters.AddWithValue("$updated_at", state.UpdatedAt.ToString("O"));
+        command.Parameters.AddWithValue("$attempt", state.Attempt);
 
         await command.ExecuteNonQueryAsync(cancellationToken);
+    }
+
+    /// <summary>
+    /// 023-task-ui-improvements T029 (FR-012/SC-008): the restart race's deterministic
+    /// arbiter. An <c>INSERT … ON CONFLICT DO NOTHING</c> either creates the task's
+    /// operational row (this caller won the restart) or affects nothing (another restart
+    /// already claimed it, or the task is queued/running and was never eligible). Same
+    /// first-commit-wins CAS idiom as
+    /// <see cref="TryTransitionRemediationTaskAsync"/> (ADR-018), applied to a row whose
+    /// absence — not a state value — is what marks a task as restartable.
+    /// </summary>
+    public async Task<bool> TryClaimTaskStateAsync(OperationalTaskState state, CancellationToken cancellationToken = default)
+    {
+        await using var connection = await OpenConnectionAsync(cancellationToken);
+
+        var command = connection.CreateCommand();
+        command.CommandText =
+            """
+            INSERT INTO operational_task_state(task_id, status, process_id, updated_at, attempt)
+            VALUES ($task_id, $status, $process_id, $updated_at, $attempt)
+            ON CONFLICT(task_id) DO NOTHING;
+            """;
+        command.Parameters.AddWithValue("$task_id", state.TaskId);
+        command.Parameters.AddWithValue("$status", state.Status);
+        command.Parameters.AddWithValue("$process_id", (object?)state.ProcessId ?? DBNull.Value);
+        command.Parameters.AddWithValue("$updated_at", state.UpdatedAt.ToString("O"));
+        command.Parameters.AddWithValue("$attempt", state.Attempt);
+
+        return await command.ExecuteNonQueryAsync(cancellationToken) == 1;
     }
 
     public async Task<IReadOnlyList<OperationalTaskState>> GetByStatusAsync(string status, CancellationToken cancellationToken = default)
@@ -336,7 +470,7 @@ public sealed class OperationalStateRepository
         var command = connection.CreateCommand();
         command.CommandText =
             """
-            SELECT task_id, status, process_id, updated_at
+            SELECT task_id, status, process_id, updated_at, attempt
             FROM operational_task_state
             WHERE status = $status;
             """;
@@ -346,15 +480,36 @@ public sealed class OperationalStateRepository
         await using var reader = await command.ExecuteReaderAsync(cancellationToken);
         while (await reader.ReadAsync(cancellationToken))
         {
-            results.Add(new OperationalTaskState(
-                reader.GetString(0),
-                reader.GetString(1),
-                reader.IsDBNull(2) ? null : reader.GetInt32(2),
-                DateTimeOffset.Parse(reader.GetString(3))));
+            results.Add(ReadTaskState(reader));
         }
 
         return results;
     }
+
+    /// <summary>One task's operational row, or null when it holds no run slot right now.</summary>
+    public async Task<OperationalTaskState?> GetByTaskIdAsync(string taskId, CancellationToken cancellationToken = default)
+    {
+        await using var connection = await OpenConnectionAsync(cancellationToken);
+
+        var command = connection.CreateCommand();
+        command.CommandText =
+            """
+            SELECT task_id, status, process_id, updated_at, attempt
+            FROM operational_task_state
+            WHERE task_id = $task_id;
+            """;
+        command.Parameters.AddWithValue("$task_id", taskId);
+
+        await using var reader = await command.ExecuteReaderAsync(cancellationToken);
+        return await reader.ReadAsync(cancellationToken) ? ReadTaskState(reader) : null;
+    }
+
+    private static OperationalTaskState ReadTaskState(System.Data.Common.DbDataReader reader) =>
+        new(reader.GetString(0),
+            reader.GetString(1),
+            reader.IsDBNull(2) ? null : reader.GetInt32(2),
+            DateTimeOffset.Parse(reader.GetString(3)),
+            reader.IsDBNull(4) ? 0 : reader.GetInt32(4));
 
     public async Task DeleteAsync(string taskId, CancellationToken cancellationToken = default)
     {
