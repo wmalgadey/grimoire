@@ -1,0 +1,81 @@
+name: "Architecture Decision (ADR proposal)"
+description: Flag a structural boundary, cross-cutting concern, or standard adoption that needs an ADR before implementation (Constitution Principle III).
+title: "ADR: <decision to make>"
+labels: ["spec-candidate", "adr"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Use this when a decision needs to be made and recorded **before** any
+        `/speckit-plan` can reference it — not for the ADR document itself. The actual ADR
+        still gets drafted in MADR format under `docs/adr/` (status `proposed`, then
+        `accepted` per Governance) as part of `/speckit-plan` output or a standalone
+        proposal.
+
+  - type: textarea
+    id: decision
+    attributes:
+      label: Decision to Make
+      description: The question this ADR needs to answer, stated as a decision, not a problem.
+      placeholder: "Should Lint gain body-edit capability for remediation execution, or should content fixes route elsewhere?"
+    validations:
+      required: true
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem Statement / Why Now
+    validations:
+      required: true
+
+  - type: textarea
+    id: options
+    attributes:
+      label: Options Considered
+      description: Sketch the realistic options and their tradeoffs, even roughly.
+      placeholder: |
+        1. ... — pro / con
+        2. ... — pro / con
+    validations:
+      required: false
+
+  - type: textarea
+    id: touches
+    attributes:
+      label: Constitution Principles / Existing ADRs Touched
+      description: Which principle(s) this bears on, and whether an existing Accepted ADR would need to be superseded or amended (bidirectional link required per Principle III).
+      placeholder: |
+        - Principle I (hexagonal boundaries)
+        - Supersedes/Amends: ADR-016
+    validations:
+      required: false
+
+  - type: dropdown
+    id: rule-classification
+    attributes:
+      label: "Boundary Rule or Feature-Scoped Invariant? (Principle III)"
+      description: |
+        Boundary Rule = durable dependency-direction rule, gets a Phase 0 structural test.
+        Feature-Scoped Invariant = a feature's current surface shape, gets a classicist
+        behavioral test instead. Pick "not yet known" if this needs discussion first.
+      options:
+        - Boundary Rule
+        - Feature-Scoped Invariant
+        - Not yet known / needs discussion
+        - Not applicable (no new test-enforced rule)
+    validations:
+      required: true
+
+  - type: textarea
+    id: scope
+    attributes:
+      label: Suggested Scope for the ADR
+    validations:
+      required: false
+
+  - type: markdown
+    attributes:
+      value: |
+        **Next step**: draft the ADR under `docs/adr/` (MADR format, `status: proposed`),
+        update `docs/adr/index.md`, and move it to `accepted` before `/speckit-tasks` runs
+        against any plan that depends on it.

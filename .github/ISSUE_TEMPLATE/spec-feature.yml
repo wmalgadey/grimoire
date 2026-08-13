@@ -1,0 +1,112 @@
+name: "Feature / Spec Candidate (SDD)"
+description: Propose a new feature or capability as seed input for the /speckit-specify workflow.
+title: "Spec: <short title> (<slug>)"
+labels: ["spec-candidate"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        This issue is **seed input** for `/speckit-specify` — it is not the spec itself.
+        Fill in as much as you know; leave the rest for `/speckit-clarify` to resolve. Keep
+        the User Story / Acceptance Scenario shape close to
+        [`.specify/templates/spec-template.md`](../../.specify/templates/spec-template.md)
+        so it can be pasted almost directly into the generated spec.
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Context / Source
+      description: What triggered this — a conversation, an observed gap, a related issue or ADR?
+      placeholder: "Source: session comparing ... (2026-08-13)."
+    validations:
+      required: false
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem Statement
+      description: What's missing or broken today, in plain language, without solutioning.
+    validations:
+      required: true
+
+  - type: textarea
+    id: primary-story
+    attributes:
+      label: "Primary User Story (P1)"
+      description: |
+        As a <role>, I want <capability>, so that <value>.
+        Include an Independent Test and Given/When/Then acceptance scenarios if you have them.
+      placeholder: |
+        As a ..., I want ..., so that ...
+
+        **Independent Test**: ...
+
+        **Acceptance Scenarios**:
+        1. **Given** ..., **When** ..., **Then** ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: additional-stories
+    attributes:
+      label: Additional User Stories (optional)
+      description: Any P2/P3 stories worth capturing now — same Given/When/Then shape.
+    validations:
+      required: false
+
+  - type: textarea
+    id: edge-cases
+    attributes:
+      label: Edge Cases
+      description: Boundary conditions, error scenarios, concurrent-access cases.
+    validations:
+      required: false
+
+  - type: textarea
+    id: requirements
+    attributes:
+      label: Functional Requirements (seed)
+      description: "One requirement per line, `FR-001` style. It's fine to mark unknowns with `[NEEDS CLARIFICATION: ...]`."
+      placeholder: |
+        - FR-001: System MUST ...
+        - FR-002: System MUST ...
+    validations:
+      required: false
+
+  - type: textarea
+    id: success-criteria
+    attributes:
+      label: Success Criteria (seed)
+      description: |
+        Constitution Principle II mandates a split: harness/system outcomes (dispatch,
+        artifacts, guardrails, persistence) are deterministic — "100%" is appropriate.
+        Agent-judgment outcomes (content decisions made by an LLM under instructions) MUST
+        be evaluation thresholds (e.g. "≥ 90% of sampled runs..."), never 100%.
+      placeholder: |
+        - SC-001: 100% of ... (deterministic harness guarantee)
+        - SC-002: ≥ 90% of sampled ... (agent-judgment threshold)
+    validations:
+      required: false
+
+  - type: textarea
+    id: out-of-scope
+    attributes:
+      label: Out of Scope
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: sdd-readiness
+    attributes:
+      label: Before filing
+      options:
+        - label: I checked `specs/` and open `spec-candidate` issues for overlap
+          required: false
+        - label: This may introduce a new structural boundary or cross-cutting concern and could need a new/amended ADR (Constitution Principle III)
+          required: false
+
+  - type: markdown
+    attributes:
+      value: |
+        **Next step**: run `/speckit-specify` using this issue as input, then `/speckit-clarify`
+        to resolve ambiguities before `/speckit-plan`.
