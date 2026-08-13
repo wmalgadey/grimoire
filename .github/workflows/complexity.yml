@@ -125,5 +125,5 @@ jobs:
       - name: Enforce complexity gate
         if: steps.gate.outcome == 'failure'
         run: |
-          echo "::error::Complexity gate failed — this PR adds or worsens functions above CCN $CCN_THRESHOLD. See the PR comment for details."
+          echo "::error::Complexity gate failed — this PR adds or worsens functions above CCN $CCN_THRESHOLD. Details are in the job summary, and on same-repo PRs also in the maintained PR comment."
           exit 1

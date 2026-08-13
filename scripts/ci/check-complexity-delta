@@ -33,9 +33,14 @@ def _max_complexity_by_function(csv_path):
         for record in csv.reader(handle):
             if len(record) < 11:
                 continue
+            try:
+                complexity = int(record[1])
+                start_line = int(record[9])
+            except ValueError:
+                # Header row or other non-numeric record (varies across lizard
+                # versions) — skip it rather than failing the gate.
+                continue
             key = (record[6], record[7])
-            complexity = int(record[1])
-            start_line = int(record[9])
             if key not in functions or complexity > functions[key]["complexity"]:
                 functions[key] = {"complexity": complexity, "start_line": start_line}
     return functions

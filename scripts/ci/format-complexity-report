@@ -26,16 +26,21 @@ def _parse_rows(csv_path):
         for record in csv.reader(handle):
             if len(record) < 11:
                 continue
-            rows.append(
-                {
-                    "nloc": int(record[0]),
-                    "complexity": int(record[1]),
-                    "params": int(record[3]),
-                    "file": record[6],
-                    "func": record[7],
-                    "start_line": int(record[9]),
-                }
-            )
+            try:
+                rows.append(
+                    {
+                        "nloc": int(record[0]),
+                        "complexity": int(record[1]),
+                        "params": int(record[3]),
+                        "file": record[6],
+                        "func": record[7],
+                        "start_line": int(record[9]),
+                    }
+                )
+            except ValueError:
+                # Header row or other non-numeric record (varies across lizard
+                # versions) — skip it rather than failing the whole report.
+                continue
     return rows
 
 
