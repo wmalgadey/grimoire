@@ -176,6 +176,12 @@
 
 ---
 
+## Phase 10: Convergence
+
+- [X] T042 Correct the stale "single-entry fallback from current status" claim for `statusHistory` in specs/023-task-ui-improvements/contracts/http-api.md — the fallback was deliberately not implemented (alpha state, no pre-feature tasks to support); describe the actual behavior instead (an empty `statusHistory` array renders as an empty path, no synthesized entry), matching StatusHistoryPath.svelte and its test per FR-006/SC-004 (contradicts)
+
+---
+
 ## Dependencies & Execution Order
 
 ### Phase Dependencies

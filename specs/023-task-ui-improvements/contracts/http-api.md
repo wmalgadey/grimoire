@@ -33,7 +33,7 @@ Response gains three fields:
 
 Rules:
 
-- `statusHistory` is ordered by `seq` ascending; never empty for tasks created after this feature; MAY be empty for pre-feature tasks (frontend renders current status as a single-entry fallback).
+- `statusHistory` is ordered by `seq` ascending; never empty for tasks created after this feature. A task with no recorded history renders an empty path in the frontend — no synthesized entry from current status.
 - `status` values: the six board stages plus `liveness_interrupted` | `reactivated` | `restarted` (see [data-model.md §1](../data-model.md)).
 - `source.kind` = `"url"` → `href` is the submitted absolute http/https URL. `source.kind` = `"file"` → `href` is the source endpoint below. `available: false` ⇒ `href` is `null`; frontend MUST render a non-link "unavailable" indicator (FR-002).
 - `title` follows the fallback chain and is never null/empty (FR-003).
