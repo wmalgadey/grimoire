@@ -130,6 +130,14 @@ to a document, check its role in the Document Map in [`CLAUDE.md`](CLAUDE.md) â€
 example, `docs/decision-context-overview.md` is background/vision material, not a binding
 requirement source; only the constitution and Accepted ADRs are binding.
 
+## Codebase complexity badges
+
+README.md shows a "code complexity" and "est. time to understand" badge, backed by JSON
+files under `docs/metrics/`. They aren't regenerated automatically â€” after a significant
+change to `backend/src` or `frontend/src`, refresh them per
+[`docs/codebase-complexity-metric.md`](docs/codebase-complexity-metric.md#regenerating-the-badges)
+and include the updated files in your PR.
+
 ## Pull requests
 
 - One feature branch per Spec Kit feature (`NNN-feature-name`), matching its `specs/NNN-feature-name/` directory

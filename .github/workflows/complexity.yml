@@ -41,8 +41,11 @@ jobs:
           scripts/ci/format-complexity-report.test.sh
           scripts/ci/check-complexity-delta.test.sh
 
-      - name: Install lizard
-        run: pip install --break-system-packages lizard
+      - name: Install lizard and pytest
+        run: pip install --break-system-packages lizard pytest
+
+      - name: Self-test compute_codebase_metrics.py (pytest)
+        run: python3 -m pytest scripts/ci/test_compute_codebase_metrics.py -v
 
       - name: Analyze PR head
         # --csv exits 0 even when functions exceed the threshold; -i -1 additionally
