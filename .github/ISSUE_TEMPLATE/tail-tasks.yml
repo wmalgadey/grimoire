@@ -1,0 +1,47 @@
+name: "Spec Tail Tasks"
+description: Track remaining/incomplete tasks.md items for an already-implemented Spec Kit feature (e.g. found by /speckit-converge).
+title: "<NNN-feature-name>: <short description of remaining task(s)>"
+labels: ["tail-tasks"]
+body:
+  - type: input
+    id: spec-dir
+    attributes:
+      label: Spec Directory
+      placeholder: "specs/011-query-conversations"
+    validations:
+      required: true
+
+  - type: textarea
+    id: summary
+    attributes:
+      label: Summary
+      description: What's left in `tasks.md` and why it wasn't finished in the original PR.
+    validations:
+      required: true
+
+  - type: textarea
+    id: remaining-tasks
+    attributes:
+      label: Remaining Task(s)
+      description: List the task IDs and descriptions straight from `tasks.md`.
+      placeholder: |
+        - **T044** — Run `specs/011-query-conversations/quickstart.md` scenarios 1-5 end-to-end against a real local Hub.
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: found-via
+    attributes:
+      label: How This Was Found
+      options:
+        - label: Found via `/speckit-converge`
+          required: false
+        - label: Found via manual review of `tasks.md`
+          required: false
+
+  - type: textarea
+    id: next-step
+    attributes:
+      label: Suggested Next Step
+    validations:
+      required: false

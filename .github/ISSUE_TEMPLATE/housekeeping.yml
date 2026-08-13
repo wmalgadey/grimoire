@@ -1,0 +1,48 @@
+name: "Housekeeping"
+description: Non-feature cleanup — dead code, stale branches, drift, doc upkeep, dependency bumps.
+title: "Housekeeping: <short description>"
+labels: ["housekeeping"]
+body:
+  - type: textarea
+    id: summary
+    attributes:
+      label: Summary
+      description: What needs cleaning up, in one or two sentences.
+    validations:
+      required: true
+
+  - type: textarea
+    id: why
+    attributes:
+      label: Why This Is Worth Doing
+      description: What it costs to leave as-is (review friction, drift risk, dead weight), not just "it's untidy."
+    validations:
+      required: false
+
+  - type: textarea
+    id: relevant-files
+    attributes:
+      label: Relevant Files / Code
+      placeholder: |
+        - `path/to/file.cs`
+        - `.vscode/launch.json`
+    validations:
+      required: false
+
+  - type: dropdown
+    id: verification-status
+    attributes:
+      label: Verification Status
+      description: Has this actually been confirmed, or filed on code reading alone?
+      options:
+        - Verified / reproduced
+        - Not yet verified — filed on code reading alone
+    validations:
+      required: true
+
+  - type: textarea
+    id: next-step
+    attributes:
+      label: Suggested Next Step
+    validations:
+      required: false

@@ -1,0 +1,83 @@
+name: "Bug Report"
+description: Report a defect in Grimoire's harness, agents, frontend, or tooling.
+title: "Bug: <short description>"
+labels: ["bug"]
+body:
+  - type: textarea
+    id: summary
+    attributes:
+      label: Summary
+      description: What's wrong, in one or two sentences.
+    validations:
+      required: true
+
+  - type: dropdown
+    id: component
+    attributes:
+      label: Affected Component
+      options:
+        - Grimoire.Domain
+        - Grimoire.Hub
+        - Grimoire.AgentRuntime
+        - Grimoire.IngestAgent
+        - Grimoire.QueryAgent
+        - Grimoire.LintAgent
+        - Grimoire.EvalRunner
+        - Frontend
+        - CI / build tooling
+        - Devcontainer / local setup
+        - Other / not sure
+    validations:
+      required: true
+
+  - type: textarea
+    id: detail
+    attributes:
+      label: Detail
+      description: |
+        Steps to reproduce, or the code path that's wrong. File:line references and short
+        code excerpts are welcome.
+      placeholder: |
+        `backend/src/Grimoire.Hub/.../SomeFile.cs:123`
+
+        ```csharp
+        // relevant snippet
+        ```
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected-actual
+    attributes:
+      label: Expected vs. Actual Behavior
+    validations:
+      required: false
+
+  - type: dropdown
+    id: repro-status
+    attributes:
+      label: Reproduction Status
+      description: Be honest here — "found by reading code" is a completely valid status.
+      options:
+        - Reproduced locally
+        - Reproduced in CI
+        - Not yet reproduced — found via code reading
+        - Intermittent / flaky
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant Logs / Output
+      render: shell
+    validations:
+      required: false
+
+  - type: textarea
+    id: suggested-direction
+    attributes:
+      label: Suggested Direction (optional)
+      description: A fix idea if you have one — not required.
+    validations:
+      required: false
