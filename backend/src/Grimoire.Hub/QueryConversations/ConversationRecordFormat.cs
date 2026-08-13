@@ -172,37 +172,9 @@ public static class ConversationRecordFormat
         var pos = 0;
 
         // Rule 1: frontmatter with the exact record_format handshake.
-        if (!TryReadLine(content, ref pos, out var line) || line != "---")
+        if (!TryParseFrontmatter(content, ref pos, out var frontmatterError))
         {
-            return new ConversationRecordParseResult.Unreadable("missing frontmatter opening '---'");
-        }
-
-        var frontmatter = new Dictionary<string, string>(StringComparer.Ordinal);
-        while (true)
-        {
-            if (!TryReadLine(content, ref pos, out line))
-            {
-                return new ConversationRecordParseResult.Unreadable("truncated frontmatter (no closing '---')");
-            }
-
-            if (line == "---")
-            {
-                break;
-            }
-
-            var colon = line.IndexOf(':', StringComparison.Ordinal);
-            if (colon <= 0)
-            {
-                return new ConversationRecordParseResult.Unreadable($"malformed frontmatter line: '{line}'");
-            }
-
-            frontmatter[line[..colon].Trim()] = line[(colon + 1)..].Trim();
-        }
-
-        if (!frontmatter.TryGetValue("record_format", out var format) || format != RecordFormatVersion)
-        {
-            return new ConversationRecordParseResult.Unreadable(
-                $"unsupported record_format '{frontmatter.GetValueOrDefault("record_format", "(missing)")}'");
+            return new ConversationRecordParseResult.Unreadable(frontmatterError);
         }
 
         // Rule 2: scan for turn sentinels strictly outside body ranges — bodies below are
@@ -220,22 +192,13 @@ public static class ConversationRecordFormat
             }
 
             pos = sentinelPos;
-            TryReadLine(content, ref pos, out _); // consume the sentinel line itself
-
-            var bookkeepingLines = new List<string>();
-            var closed = false;
-            while (TryReadLine(content, ref pos, out line))
+            var block = ParseTurnBlock(content, ref pos);
+            if (block is TurnBlockResult.Unreadable unreadable)
             {
-                if (line == CommentClose)
-                {
-                    closed = true;
-                    break;
-                }
-
-                bookkeepingLines.Add(line);
+                return new ConversationRecordParseResult.Unreadable(unreadable.Reason);
             }
 
-            if (!closed)
+            if (block is not TurnBlockResult.Parsed parsedBlock)
             {
                 // Rule 4: trailing incomplete block (crash mid-append) — drop the
                 // fragment; the recorded prefix is exactly the fully recorded turns.
@@ -243,79 +206,181 @@ public static class ConversationRecordFormat
                 break;
             }
 
-            if (!TryParseBookkeeping(bookkeepingLines, out var bookkeeping, out var bookkeepingError))
-            {
-                return new ConversationRecordParseResult.Unreadable($"malformed turn bookkeeping: {bookkeepingError}");
-            }
-
-            // Structural lines between the comment and the length-delimited bodies.
-            if (!TryExpectLine(content, ref pos, string.Empty))
-            {
-                return new ConversationRecordParseResult.Unreadable("expected blank line after bookkeeping comment");
-            }
-
-            var expectedHeading = $"## Turn {bookkeeping.Position} — {bookkeeping.State}";
-            if (!TryReadLine(content, ref pos, out line) || line != expectedHeading)
-            {
-                return new ConversationRecordParseResult.Unreadable(
-                    $"missing or mismatched turn heading (expected '{expectedHeading}')");
-            }
-
-            if (!TryExpectLine(content, ref pos, string.Empty) ||
-                !TryExpectLine(content, ref pos, "### Prompt") ||
-                !TryExpectLine(content, ref pos, string.Empty))
-            {
-                return new ConversationRecordParseResult.Unreadable("malformed prompt section structure");
-            }
-
-            if (!TrySliceBody(content, ref pos, bookkeeping.PromptChars, out var prompt))
-            {
-                return new ConversationRecordParseResult.Unreadable(
-                    "prompt body shorter than declared prompt_chars length");
-            }
-
-            if (!TryExpectLine(content, ref pos, string.Empty) ||
-                !TryExpectLine(content, ref pos, "### Answer") ||
-                !TryExpectLine(content, ref pos, string.Empty))
-            {
-                return new ConversationRecordParseResult.Unreadable("malformed answer section structure");
-            }
-
-            if (!TrySliceBody(content, ref pos, bookkeeping.AnswerChars, out var answer))
-            {
-                return new ConversationRecordParseResult.Unreadable(
-                    "answer body shorter than declared answer_chars length");
-            }
-
-            if (!TryExpectLine(content, ref pos, string.Empty))
-            {
-                return new ConversationRecordParseResult.Unreadable("expected blank line after answer body");
-            }
-
-            turns.Add(new RecordedTurn(
-                TurnId: bookkeeping.TurnId!,
-                Position: bookkeeping.Position,
-                State: bookkeeping.State!,
-                FailureReason: bookkeeping.FailureReason,
-                StartedAt: bookkeeping.StartedAt,
-                CompletedAt: bookkeeping.CompletedAt,
-                Model: bookkeeping.Model,
-                TurnsUsed: bookkeeping.TurnsUsed,
-                InstructionFilePath: bookkeeping.InstructionFilePath,
-                InstructionFileSha256: bookkeeping.InstructionFileSha256,
-                PolicyPath: bookkeeping.PolicyPath,
-                PolicyVersion: bookkeeping.PolicyVersion,
-                PolicySha256: bookkeeping.PolicySha256,
-                DeniedActions: bookkeeping.DeniedActions,
-                Prompt: prompt,
-                Answer: answer,
-                CreatedPages: bookkeeping.CreatedPages));
+            turns.Add(parsedBlock.Turn);
         }
 
         return new ConversationRecordParseResult.Parsed(turns, droppedTrailingFragment);
     }
 
     // ------------------------------------------------------------ parser internals
+
+    /// <summary>
+    /// Outcome of reading a single turn block: a complete turn, a crash-truncated tail that
+    /// is dropped and flagged (Parsing rule 4), or a structural violation carrying the
+    /// contract reason that makes the whole record unreadable (Parsing rule 5).
+    /// </summary>
+    private abstract record TurnBlockResult
+    {
+        public sealed record Parsed(RecordedTurn Turn) : TurnBlockResult { }
+
+        public sealed record TrailingFragment : TurnBlockResult { }
+
+        public sealed record Unreadable(string Reason) : TurnBlockResult { }
+    }
+
+    /// <summary>
+    /// Rule 1: the frontmatter block and its exact <c>record_format</c> handshake. On
+    /// failure <paramref name="error"/> carries the contract's unreadable reason.
+    /// </summary>
+    private static bool TryParseFrontmatter(string content, ref int pos, out string error)
+    {
+        error = string.Empty;
+
+        if (!TryReadLine(content, ref pos, out var line) || line != "---")
+        {
+            error = "missing frontmatter opening '---'";
+            return false;
+        }
+
+        var frontmatter = new Dictionary<string, string>(StringComparer.Ordinal);
+        while (true)
+        {
+            if (!TryReadLine(content, ref pos, out line))
+            {
+                error = "truncated frontmatter (no closing '---')";
+                return false;
+            }
+
+            if (line == "---")
+            {
+                break;
+            }
+
+            var colon = line.IndexOf(':', StringComparison.Ordinal);
+            if (colon <= 0)
+            {
+                error = $"malformed frontmatter line: '{line}'";
+                return false;
+            }
+
+            frontmatter[line[..colon].Trim()] = line[(colon + 1)..].Trim();
+        }
+
+        if (!frontmatter.TryGetValue("record_format", out var format) || format != RecordFormatVersion)
+        {
+            error = $"unsupported record_format '{frontmatter.GetValueOrDefault("record_format", "(missing)")}'";
+            return false;
+        }
+
+        return true;
+    }
+
+    /// <summary>
+    /// Reads the one turn block whose sentinel line starts at <paramref name="pos"/>: the
+    /// bookkeeping comment, the structural lines, and the two length-delimited bodies.
+    /// <paramref name="pos"/> is left after the block's trailing blank line, from where
+    /// sentinel scanning safely resumes.
+    /// </summary>
+    private static TurnBlockResult ParseTurnBlock(string content, ref int pos)
+    {
+        if (!TryReadBookkeepingComment(content, ref pos, out var bookkeepingLines))
+        {
+            return new TurnBlockResult.TrailingFragment();
+        }
+
+        if (!TryParseBookkeeping(bookkeepingLines, out var bookkeeping, out var bookkeepingError))
+        {
+            return new TurnBlockResult.Unreadable($"malformed turn bookkeeping: {bookkeepingError}");
+        }
+
+        // Structural lines between the comment and the length-delimited bodies.
+        if (!TryExpectLine(content, ref pos, string.Empty))
+        {
+            return new TurnBlockResult.Unreadable("expected blank line after bookkeeping comment");
+        }
+
+        var expectedHeading = $"## Turn {bookkeeping.Position} — {bookkeeping.State}";
+        if (!TryReadLine(content, ref pos, out var heading) || heading != expectedHeading)
+        {
+            return new TurnBlockResult.Unreadable(
+                $"missing or mismatched turn heading (expected '{expectedHeading}')");
+        }
+
+        if (!TryExpectSection(content, ref pos, "### Prompt"))
+        {
+            return new TurnBlockResult.Unreadable("malformed prompt section structure");
+        }
+
+        if (!TrySliceBody(content, ref pos, bookkeeping.PromptChars, out var prompt))
+        {
+            return new TurnBlockResult.Unreadable(
+                "prompt body shorter than declared prompt_chars length");
+        }
+
+        if (!TryExpectSection(content, ref pos, "### Answer"))
+        {
+            return new TurnBlockResult.Unreadable("malformed answer section structure");
+        }
+
+        if (!TrySliceBody(content, ref pos, bookkeeping.AnswerChars, out var answer))
+        {
+            return new TurnBlockResult.Unreadable(
+                "answer body shorter than declared answer_chars length");
+        }
+
+        if (!TryExpectLine(content, ref pos, string.Empty))
+        {
+            return new TurnBlockResult.Unreadable("expected blank line after answer body");
+        }
+
+        return new TurnBlockResult.Parsed(new RecordedTurn(
+            TurnId: bookkeeping.TurnId!,
+            Position: bookkeeping.Position,
+            State: bookkeeping.State!,
+            FailureReason: bookkeeping.FailureReason,
+            StartedAt: bookkeeping.StartedAt,
+            CompletedAt: bookkeeping.CompletedAt,
+            Model: bookkeeping.Model,
+            TurnsUsed: bookkeeping.TurnsUsed,
+            InstructionFilePath: bookkeeping.InstructionFilePath,
+            InstructionFileSha256: bookkeeping.InstructionFileSha256,
+            PolicyPath: bookkeeping.PolicyPath,
+            PolicyVersion: bookkeeping.PolicyVersion,
+            PolicySha256: bookkeeping.PolicySha256,
+            DeniedActions: bookkeeping.DeniedActions,
+            Prompt: prompt,
+            Answer: answer,
+            CreatedPages: bookkeeping.CreatedPages));
+    }
+
+    /// <summary>
+    /// Consumes the sentinel line and the bookkeeping comment body up to its closing
+    /// <c>--&gt;</c>. Returns false when the comment is never closed — the crash-truncated
+    /// trailing block of Parsing rule 4.
+    /// </summary>
+    private static bool TryReadBookkeepingComment(string content, ref int pos, out List<string> lines)
+    {
+        TryReadLine(content, ref pos, out _); // consume the sentinel line itself
+
+        lines = [];
+        while (TryReadLine(content, ref pos, out var line))
+        {
+            if (line == CommentClose)
+            {
+                return true;
+            }
+
+            lines.Add(line);
+        }
+
+        return false;
+    }
+
+    /// <summary>Blank line, section heading, blank line — the preamble of a body section.</summary>
+    private static bool TryExpectSection(string content, ref int pos, string heading)
+        => TryExpectLine(content, ref pos, string.Empty)
+            && TryExpectLine(content, ref pos, heading)
+            && TryExpectLine(content, ref pos, string.Empty);
 
     private sealed class ParsedBookkeeping
     {
@@ -336,260 +401,265 @@ public static class ConversationRecordFormat
         public List<RecordedDeniedAction> DeniedActions = [];
         // ADR-015 (012-query-synthesis-writes): absent on records predating this feature —
         // stays the default empty list (forward-compat, ADR-014), tolerated by the
-        // "unknown key" default case below for old records that omit the key entirely.
+        // "unknown key" dictionary-miss path below for old records that omit the key entirely.
         public List<string> CreatedPages = [];
         public int PromptChars = -1;
         public int AnswerChars = -1;
     }
 
+    /// <summary>
+    /// Scan position within one turn's bookkeeping lines, plus the failure reason recorded
+    /// by the field parsers. Nested mappings and block lists consume their own continuation
+    /// lines, so the position is shared between the key loop and the field parsers.
+    /// </summary>
+    private sealed class BookkeepingCursor(List<string> lines)
+    {
+        public List<string> Lines { get; } = lines;
+
+        public int Index { get; set; }
+
+        public string Error { get; private set; } = string.Empty;
+
+        /// <summary>Records <paramref name="reason"/> and returns false, so a failing parser can <c>return cursor.Fail(...)</c>.</summary>
+        public bool Fail(string reason)
+        {
+            Error = reason;
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// Parses the value of one bookkeeping key into <paramref name="result"/>.
+    /// <paramref name="raw"/> is the trimmed scalar after the colon; parsers of nested
+    /// mappings and block lists additionally consume their continuation lines from
+    /// <paramref name="cursor"/>, and every parser reports failure through it.
+    /// </summary>
+    private delegate bool BookkeepingFieldParser(ParsedBookkeeping result, string raw, BookkeepingCursor cursor);
+
+    /// <summary>
+    /// The recognized bookkeeping keys, in write order (<see cref="BuildTurnBlock"/>). A key
+    /// that is missing here is an unknown key — tolerated for forward compatibility, never
+    /// an error (feature-012, ADR-014).
+    /// </summary>
+    private static readonly Dictionary<string, BookkeepingFieldParser> _bookkeepingFields =
+        new(StringComparer.Ordinal)
+        {
+            ["turn_id"] = ParseTurnId,
+            ["position"] = ParsePosition,
+            ["state"] = ParseState,
+            ["failure_reason"] = ParseFailureReason,
+            ["started_at"] = ParseStartedAt,
+            ["completed_at"] = ParseCompletedAt,
+            ["model"] = ParseModel,
+            ["turns_used"] = ParseTurnsUsed,
+            ["instruction_file"] = ParseInstructionFile,
+            ["policy"] = ParsePolicy,
+            ["denied_actions"] = ParseDeniedActions,
+            ["created_pages"] = ParseCreatedPages,
+            ["prompt_chars"] = ParsePromptChars,
+            ["answer_chars"] = ParseAnswerChars,
+        };
+
     private static bool TryParseBookkeeping(List<string> lines, out ParsedBookkeeping result, out string error)
     {
         result = new ParsedBookkeeping();
-        error = string.Empty;
+        var cursor = new BookkeepingCursor(lines);
 
-        var i = 0;
-        while (i < lines.Count)
+        var parsed = TryParseBookkeepingFields(result, cursor) && HasRequiredFields(result, cursor);
+
+        error = cursor.Error;
+        return parsed;
+    }
+
+    /// <summary>Key loop: one line per key, each dispatched to its field parser.</summary>
+    private static bool TryParseBookkeepingFields(ParsedBookkeeping result, BookkeepingCursor cursor)
+    {
+        while (cursor.Index < cursor.Lines.Count)
         {
-            var line = lines[i];
+            var line = cursor.Lines[cursor.Index];
             if (line.Length == 0)
             {
-                i++;
+                cursor.Index++;
                 continue;
             }
 
             if (line.StartsWith(' '))
             {
-                error = $"unexpected indented line outside a nested mapping: '{line}'";
-                return false;
+                return cursor.Fail($"unexpected indented line outside a nested mapping: '{line}'");
             }
 
             var colon = line.IndexOf(':', StringComparison.Ordinal);
             if (colon <= 0)
             {
-                error = $"malformed bookkeeping line: '{line}'";
-                return false;
+                return cursor.Fail($"malformed bookkeeping line: '{line}'");
             }
 
             var key = line[..colon];
             var raw = line[(colon + 1)..].Trim();
-            i++;
+            cursor.Index++;
 
-            switch (key)
+            if (!_bookkeepingFields.TryGetValue(key, out var parseField))
             {
-                case "turn_id":
-                    result.TurnId = raw;
-                    break;
-                case "position":
-                    if (!int.TryParse(raw, NumberStyles.None, CultureInfo.InvariantCulture, out result.Position))
-                    {
-                        error = $"position is not a non-negative integer: '{raw}'";
-                        return false;
-                    }
-                    break;
-                case "state":
-                    result.State = raw;
-                    break;
-                case "failure_reason":
-                    if (!TryParseNullableString(raw, out result.FailureReason, ref error)) return false;
-                    break;
-                case "started_at":
-                    if (!DateTimeOffset.TryParse(raw, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind, out result.StartedAt))
-                    {
-                        error = $"started_at is not a valid timestamp: '{raw}'";
-                        return false;
-                    }
-                    result.HasStartedAt = true;
-                    break;
-                case "completed_at":
-                    if (raw == "null")
-                    {
-                        result.CompletedAt = null;
-                    }
-                    else if (DateTimeOffset.TryParse(raw, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind, out var completedAt))
-                    {
-                        result.CompletedAt = completedAt;
-                    }
-                    else
-                    {
-                        error = $"completed_at is not a valid timestamp: '{raw}'";
-                        return false;
-                    }
-                    break;
-                case "model":
-                    if (!TryParseNullableString(raw, out result.Model, ref error)) return false;
-                    break;
-                case "turns_used":
-                    if (raw == "null")
-                    {
-                        result.TurnsUsed = null;
-                    }
-                    else if (int.TryParse(raw, NumberStyles.None, CultureInfo.InvariantCulture, out var turnsUsed))
-                    {
-                        result.TurnsUsed = turnsUsed;
-                    }
-                    else
-                    {
-                        error = $"turns_used is not an integer: '{raw}'";
-                        return false;
-                    }
-                    break;
-                case "prompt_chars":
-                    if (!int.TryParse(raw, NumberStyles.None, CultureInfo.InvariantCulture, out result.PromptChars))
-                    {
-                        error = $"prompt_chars is not a non-negative integer: '{raw}'";
-                        return false;
-                    }
-                    break;
-                case "answer_chars":
-                    if (!int.TryParse(raw, NumberStyles.None, CultureInfo.InvariantCulture, out result.AnswerChars))
-                    {
-                        error = $"answer_chars is not a non-negative integer: '{raw}'";
-                        return false;
-                    }
-                    break;
-                case "instruction_file":
-                    {
-                        if (!TryParseNestedMapping(lines, ref i, out var nested, ref error)) return false;
-                        if (!TryGetNullableString(nested, "path", out result.InstructionFilePath, ref error)) return false;
-                        if (!TryGetNullableString(nested, "sha256", out result.InstructionFileSha256, ref error)) return false;
-                        break;
-                    }
-                case "policy":
-                    {
-                        if (!TryParseNestedMapping(lines, ref i, out var nested, ref error)) return false;
-                        if (!TryGetNullableString(nested, "path", out result.PolicyPath, ref error)) return false;
-                        if (!TryGetNullableString(nested, "sha256", out result.PolicySha256, ref error)) return false;
-                        if (nested.TryGetValue("version", out var versionRaw))
-                        {
-                            if (versionRaw == "null")
-                            {
-                                result.PolicyVersion = null;
-                            }
-                            else if (int.TryParse(versionRaw, NumberStyles.None, CultureInfo.InvariantCulture, out var version))
-                            {
-                                result.PolicyVersion = version;
-                            }
-                            else
-                            {
-                                error = $"policy version is not an integer: '{versionRaw}'";
-                                return false;
-                            }
-                        }
-                        break;
-                    }
-                case "denied_actions":
-                    {
-                        if (raw == "[]")
-                        {
-                            break;
-                        }
+                // Unknown key — tolerated (forward compatibility, e.g. feature 012's
+                // created_pages). Skip any nested/indented continuation lines.
+                SkipUnknownKeyContinuation(cursor);
+                continue;
+            }
 
-                        if (raw.Length != 0)
-                        {
-                            error = $"denied_actions must be '[]' or a block list, got: '{raw}'";
-                            return false;
-                        }
-
-                        if (!TryParseDeniedActions(lines, ref i, result.DeniedActions, ref error)) return false;
-                        break;
-                    }
-                case "created_pages":
-                    {
-                        // ADR-015 (012-query-synthesis-writes): '[]' or a flat block list of
-                        // JSON-escaped strings — same grammar shape as denied_actions, but
-                        // each entry is a bare string rather than a nested mapping.
-                        if (raw == "[]")
-                        {
-                            break;
-                        }
-
-                        if (raw.Length != 0)
-                        {
-                            error = $"created_pages must be '[]' or a block list, got: '{raw}'";
-                            return false;
-                        }
-
-                        if (!TryParseStringList(lines, ref i, result.CreatedPages, ref error)) return false;
-                        break;
-                    }
-                default:
-                    // Unknown key — tolerated (forward compatibility, e.g. feature 012's
-                    // created_pages). Skip any nested/indented continuation lines.
-                    while (i < lines.Count && (lines[i].Length == 0 || lines[i].StartsWith(' ')))
-                    {
-                        i++;
-                    }
-                    break;
+            if (!parseField(result, raw, cursor))
+            {
+                return false;
             }
         }
 
-        if (result.TurnId is null || result.State is null || !result.HasStartedAt ||
-            result.Position < 0 || result.PromptChars < 0 || result.AnswerChars < 0)
+        return true;
+    }
+
+    private static void SkipUnknownKeyContinuation(BookkeepingCursor cursor)
+    {
+        while (cursor.Index < cursor.Lines.Count &&
+               (cursor.Lines[cursor.Index].Length == 0 || cursor.Lines[cursor.Index].StartsWith(' ')))
         {
-            error = "missing required bookkeeping field (turn_id, position, state, started_at, prompt_chars, answer_chars)";
+            cursor.Index++;
+        }
+    }
+
+    private static bool HasRequiredFields(ParsedBookkeeping result, BookkeepingCursor cursor)
+        => (result.TurnId is not null && result.State is not null && result.HasStartedAt &&
+            result.Position >= 0 && result.PromptChars >= 0 && result.AnswerChars >= 0)
+            || cursor.Fail(
+                "missing required bookkeeping field (turn_id, position, state, started_at, prompt_chars, answer_chars)");
+
+    // -------------------------------------------------------- bookkeeping field parsers
+
+    private static bool ParseTurnId(ParsedBookkeeping result, string raw, BookkeepingCursor cursor)
+    {
+        result.TurnId = raw;
+        return true;
+    }
+
+    private static bool ParsePosition(ParsedBookkeeping result, string raw, BookkeepingCursor cursor)
+        => TryParseInt(raw, out result.Position, cursor, "position is not a non-negative integer");
+
+    private static bool ParseState(ParsedBookkeeping result, string raw, BookkeepingCursor cursor)
+    {
+        result.State = raw;
+        return true;
+    }
+
+    private static bool ParseFailureReason(ParsedBookkeeping result, string raw, BookkeepingCursor cursor)
+        => TryParseNullableString(raw, out result.FailureReason, cursor);
+
+    private static bool ParseStartedAt(ParsedBookkeeping result, string raw, BookkeepingCursor cursor)
+    {
+        if (!TryParseTimestamp(raw, out result.StartedAt, cursor, "started_at is not a valid timestamp"))
+        {
             return false;
         }
 
+        result.HasStartedAt = true;
         return true;
     }
 
-    private static bool TryParseNestedMapping(
-        List<string> lines, ref int i, out Dictionary<string, string> nested, ref string error)
+    private static bool ParseCompletedAt(ParsedBookkeeping result, string raw, BookkeepingCursor cursor)
+        => TryParseNullableTimestamp(raw, out result.CompletedAt, cursor, "completed_at is not a valid timestamp");
+
+    private static bool ParseModel(ParsedBookkeeping result, string raw, BookkeepingCursor cursor)
+        => TryParseNullableString(raw, out result.Model, cursor);
+
+    private static bool ParseTurnsUsed(ParsedBookkeeping result, string raw, BookkeepingCursor cursor)
+        => TryParseNullableInt(raw, out result.TurnsUsed, cursor, "turns_used is not an integer");
+
+    private static bool ParsePromptChars(ParsedBookkeeping result, string raw, BookkeepingCursor cursor)
+        => TryParseInt(raw, out result.PromptChars, cursor, "prompt_chars is not a non-negative integer");
+
+    private static bool ParseAnswerChars(ParsedBookkeeping result, string raw, BookkeepingCursor cursor)
+        => TryParseInt(raw, out result.AnswerChars, cursor, "answer_chars is not a non-negative integer");
+
+    private static bool ParseInstructionFile(ParsedBookkeeping result, string raw, BookkeepingCursor cursor)
+        => TryParseNestedMapping(cursor, out var nested)
+            && TryGetNullableString(nested, "path", out result.InstructionFilePath, cursor)
+            && TryGetNullableString(nested, "sha256", out result.InstructionFileSha256, cursor);
+
+    private static bool ParsePolicy(ParsedBookkeeping result, string raw, BookkeepingCursor cursor)
+        => TryParseNestedMapping(cursor, out var nested)
+            && TryGetNullableString(nested, "path", out result.PolicyPath, cursor)
+            && TryGetNullableString(nested, "sha256", out result.PolicySha256, cursor)
+            && TryGetNullableInt(nested, "version", out result.PolicyVersion, cursor, "policy version is not an integer");
+
+    private static bool ParseDeniedActions(ParsedBookkeeping result, string raw, BookkeepingCursor cursor)
+        => TryReadBlockListHeader(raw, "denied_actions", cursor, out var hasEntries)
+            && (!hasEntries || TryParseDeniedActionEntries(cursor, result.DeniedActions));
+
+    /// <summary>
+    /// ADR-015 (012-query-synthesis-writes): '[]' or a flat block list of JSON-escaped
+    /// strings — the same grammar shape as denied_actions, but each entry is a bare string
+    /// rather than a nested mapping.
+    /// </summary>
+    private static bool ParseCreatedPages(ParsedBookkeeping result, string raw, BookkeepingCursor cursor)
+        => TryReadBlockListHeader(raw, "created_pages", cursor, out var hasEntries)
+            && (!hasEntries || TryParseStringList(cursor, result.CreatedPages));
+
+    // ------------------------------------------------- shared bookkeeping value parsers
+
+    /// <summary>
+    /// The scalar of a list-valued key: <c>[]</c> for the empty inline form, or an empty
+    /// scalar introducing a block list — in which case <paramref name="hasEntries"/> is true
+    /// and the caller consumes the entry lines that follow.
+    /// </summary>
+    private static bool TryReadBlockListHeader(
+        string raw, string key, BookkeepingCursor cursor, out bool hasEntries)
+    {
+        hasEntries = false;
+        if (raw == "[]")
+        {
+            return true;
+        }
+
+        if (raw.Length != 0)
+        {
+            return cursor.Fail($"{key} must be '[]' or a block list, got: '{raw}'");
+        }
+
+        hasEntries = true;
+        return true;
+    }
+
+    private static bool TryParseNestedMapping(BookkeepingCursor cursor, out Dictionary<string, string> nested)
     {
         nested = new Dictionary<string, string>(StringComparer.Ordinal);
-        while (i < lines.Count && lines[i].StartsWith("  ", StringComparison.Ordinal))
+        while (cursor.Index < cursor.Lines.Count &&
+               cursor.Lines[cursor.Index].StartsWith("  ", StringComparison.Ordinal))
         {
-            var line = lines[i].TrimStart();
+            var line = cursor.Lines[cursor.Index].TrimStart();
             var colon = line.IndexOf(':', StringComparison.Ordinal);
             if (colon <= 0)
             {
-                error = $"malformed nested mapping line: '{lines[i]}'";
-                return false;
+                return cursor.Fail($"malformed nested mapping line: '{cursor.Lines[cursor.Index]}'");
             }
 
             nested[line[..colon]] = line[(colon + 1)..].Trim();
-            i++;
+            cursor.Index++;
         }
 
         return true;
     }
 
-    private static bool TryParseDeniedActions(
-        List<string> lines, ref int i, List<RecordedDeniedAction> deniedActions, ref string error)
+    private static bool TryParseDeniedActionEntries(
+        BookkeepingCursor cursor, List<RecordedDeniedAction> deniedActions)
     {
-        while (i < lines.Count && lines[i].StartsWith("  - ", StringComparison.Ordinal))
+        while (cursor.Index < cursor.Lines.Count &&
+               cursor.Lines[cursor.Index].StartsWith("  - ", StringComparison.Ordinal))
         {
-            var entry = new Dictionary<string, string>(StringComparer.Ordinal);
-
-            var firstLine = lines[i][4..];
-            var colon = firstLine.IndexOf(':', StringComparison.Ordinal);
-            if (colon <= 0)
+            if (!TryParseDeniedActionEntry(cursor, out var entry))
             {
-                error = $"malformed denied_actions entry line: '{lines[i]}'";
                 return false;
             }
 
-            entry[firstLine[..colon]] = firstLine[(colon + 1)..].Trim();
-            i++;
-
-            while (i < lines.Count && lines[i].StartsWith("    ", StringComparison.Ordinal))
-            {
-                var line = lines[i][4..];
-                colon = line.IndexOf(':', StringComparison.Ordinal);
-                if (colon <= 0)
-                {
-                    error = $"malformed denied_actions field line: '{lines[i]}'";
-                    return false;
-                }
-
-                entry[line[..colon]] = line[(colon + 1)..].Trim();
-                i++;
-            }
-
-            if (!TryGetNullableString(entry, "action", out var action, ref error) ||
-                !TryGetNullableString(entry, "requested_target", out var requestedTarget, ref error) ||
-                !TryGetNullableString(entry, "canonical_target", out var canonicalTarget, ref error) ||
-                !TryGetNullableString(entry, "reason", out var reason, ref error))
+            if (!TryGetNullableString(entry, "action", out var action, cursor) ||
+                !TryGetNullableString(entry, "requested_target", out var requestedTarget, cursor) ||
+                !TryGetNullableString(entry, "canonical_target", out var canonicalTarget, cursor) ||
+                !TryGetNullableString(entry, "reason", out var reason, cursor))
             {
                 return false;
             }
@@ -597,8 +667,7 @@ public static class ConversationRecordFormat
             if (!entry.TryGetValue("turn", out var turnRaw) ||
                 !int.TryParse(turnRaw, NumberStyles.None, CultureInfo.InvariantCulture, out var turn))
             {
-                error = "denied_actions entry is missing a valid 'turn' field";
-                return false;
+                return cursor.Fail("denied_actions entry is missing a valid 'turn' field");
             }
 
             deniedActions.Add(new RecordedDeniedAction(
@@ -612,26 +681,58 @@ public static class ConversationRecordFormat
         return true;
     }
 
-    /// <summary>Parses a flat `  - "value"` block list (created_pages) into <paramref name="target"/>.</summary>
-    private static bool TryParseStringList(List<string> lines, ref int i, List<string> target, ref string error)
+    /// <summary>One <c>  - key: value</c> entry plus its <c>    key: value</c> continuation lines.</summary>
+    private static bool TryParseDeniedActionEntry(BookkeepingCursor cursor, out Dictionary<string, string> entry)
     {
-        while (i < lines.Count && lines[i].StartsWith("  - ", StringComparison.Ordinal))
+        entry = new Dictionary<string, string>(StringComparer.Ordinal);
+
+        var firstLine = cursor.Lines[cursor.Index][4..];
+        var colon = firstLine.IndexOf(':', StringComparison.Ordinal);
+        if (colon <= 0)
         {
-            var raw = lines[i][4..];
-            if (!TryParseNullableString(raw, out var value, ref error))
+            return cursor.Fail($"malformed denied_actions entry line: '{cursor.Lines[cursor.Index]}'");
+        }
+
+        entry[firstLine[..colon]] = firstLine[(colon + 1)..].Trim();
+        cursor.Index++;
+
+        while (cursor.Index < cursor.Lines.Count &&
+               cursor.Lines[cursor.Index].StartsWith("    ", StringComparison.Ordinal))
+        {
+            var line = cursor.Lines[cursor.Index][4..];
+            colon = line.IndexOf(':', StringComparison.Ordinal);
+            if (colon <= 0)
+            {
+                return cursor.Fail($"malformed denied_actions field line: '{cursor.Lines[cursor.Index]}'");
+            }
+
+            entry[line[..colon]] = line[(colon + 1)..].Trim();
+            cursor.Index++;
+        }
+
+        return true;
+    }
+
+    /// <summary>Parses a flat `  - "value"` block list (created_pages) into <paramref name="target"/>.</summary>
+    private static bool TryParseStringList(BookkeepingCursor cursor, List<string> target)
+    {
+        while (cursor.Index < cursor.Lines.Count &&
+               cursor.Lines[cursor.Index].StartsWith("  - ", StringComparison.Ordinal))
+        {
+            if (!TryParseNullableString(cursor.Lines[cursor.Index][4..], out var value, cursor))
             {
                 return false;
             }
 
             target.Add(value ?? string.Empty);
-            i++;
+            cursor.Index++;
         }
 
         return true;
     }
 
     private static bool TryGetNullableString(
-        Dictionary<string, string> mapping, string key, out string? value, ref string error)
+        Dictionary<string, string> mapping, string key, out string? value, BookkeepingCursor cursor)
     {
         value = null;
         if (!mapping.TryGetValue(key, out var raw))
@@ -639,10 +740,22 @@ public static class ConversationRecordFormat
             return true;
         }
 
-        return TryParseNullableString(raw, out value, ref error);
+        return TryParseNullableString(raw, out value, cursor);
     }
 
-    private static bool TryParseNullableString(string raw, out string? value, ref string error)
+    private static bool TryGetNullableInt(
+        Dictionary<string, string> mapping, string key, out int? value, BookkeepingCursor cursor, string expectation)
+    {
+        value = null;
+        if (!mapping.TryGetValue(key, out var raw))
+        {
+            return true;
+        }
+
+        return TryParseNullableInt(raw, out value, cursor, expectation);
+    }
+
+    private static bool TryParseNullableString(string raw, out string? value, BookkeepingCursor cursor)
     {
         if (raw == "null")
         {
@@ -659,15 +772,67 @@ public static class ConversationRecordFormat
             }
             catch (JsonException)
             {
-                error = $"malformed JSON string scalar: '{raw}'";
                 value = null;
-                return false;
+                return cursor.Fail($"malformed JSON string scalar: '{raw}'");
             }
         }
 
         value = raw;
         return true;
     }
+
+    /// <summary>
+    /// Non-negative integer scalar. On failure the recorded reason is
+    /// "<paramref name="expectation"/>: '&lt;raw&gt;'".
+    /// </summary>
+    private static bool TryParseInt(string raw, out int value, BookkeepingCursor cursor, string expectation)
+        => int.TryParse(raw, NumberStyles.None, CultureInfo.InvariantCulture, out value)
+            || cursor.Fail($"{expectation}: '{raw}'");
+
+    /// <summary>Integer scalar, or the literal <c>null</c>.</summary>
+    private static bool TryParseNullableInt(string raw, out int? value, BookkeepingCursor cursor, string expectation)
+    {
+        value = null;
+        if (raw == "null")
+        {
+            return true;
+        }
+
+        if (!int.TryParse(raw, NumberStyles.None, CultureInfo.InvariantCulture, out var parsed))
+        {
+            return cursor.Fail($"{expectation}: '{raw}'");
+        }
+
+        value = parsed;
+        return true;
+    }
+
+    /// <summary>Round-trip ("O") timestamp scalar.</summary>
+    private static bool TryParseTimestamp(
+        string raw, out DateTimeOffset value, BookkeepingCursor cursor, string expectation)
+        => DateTimeOffset.TryParse(raw, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind, out value)
+            || cursor.Fail($"{expectation}: '{raw}'");
+
+    /// <summary>Round-trip ("O") timestamp scalar, or the literal <c>null</c>.</summary>
+    private static bool TryParseNullableTimestamp(
+        string raw, out DateTimeOffset? value, BookkeepingCursor cursor, string expectation)
+    {
+        value = null;
+        if (raw == "null")
+        {
+            return true;
+        }
+
+        if (!TryParseTimestamp(raw, out var parsed, cursor, expectation))
+        {
+            return false;
+        }
+
+        value = parsed;
+        return true;
+    }
+
+    // ------------------------------------------------------------------ text scanning
 
     /// <summary>Finds the offset of the next line that is exactly the turn sentinel, at or after <paramref name="from"/>.</summary>
     private static int FindSentinelLineStart(string content, int from)
