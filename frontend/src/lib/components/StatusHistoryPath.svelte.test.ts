@@ -21,10 +21,7 @@ const failedPath: StatusHistoryEntry[] = [
 ];
 
 test('renders every recorded entry in order', async () => {
-	const screen = await render(StatusHistoryPath, {
-		entries: failedPath,
-		currentStatus: 'failed'
-	});
+	const screen = await render(StatusHistoryPath, { entries: failedPath });
 
 	const entries = screen.getByTestId('status-history-entry').elements();
 	expect(entries.map((el) => el.getAttribute('data-status'))).toEqual([
@@ -38,10 +35,7 @@ test('renders every recorded entry in order', async () => {
 });
 
 test('highlights the last entry as the current one — the stopping point of a failure', async () => {
-	const screen = await render(StatusHistoryPath, {
-		entries: failedPath,
-		currentStatus: 'failed'
-	});
+	const screen = await render(StatusHistoryPath, { entries: failedPath });
 
 	const entries = screen.getByTestId('status-history-entry').elements();
 	expect(entries.map((el) => el.getAttribute('data-current'))).toEqual([
@@ -56,10 +50,7 @@ test('highlights the last entry as the current one — the stopping point of a f
 });
 
 test('renders the detail text of an entry that carries one', async () => {
-	const screen = await render(StatusHistoryPath, {
-		entries: failedPath,
-		currentStatus: 'failed'
-	});
+	const screen = await render(StatusHistoryPath, { entries: failedPath });
 
 	await expect
 		.element(screen.getByTestId('status-history-entry-detail').first())
@@ -67,10 +58,7 @@ test('renders the detail text of an entry that carries one', async () => {
 });
 
 test('renders a timestamp for each entry', async () => {
-	const screen = await render(StatusHistoryPath, {
-		entries: failedPath,
-		currentStatus: 'failed'
-	});
+	const screen = await render(StatusHistoryPath, { entries: failedPath });
 
 	const times = screen.getByTestId('status-history-entry').elements();
 	for (const entry of times) {
@@ -78,23 +66,9 @@ test('renders a timestamp for each entry', async () => {
 	}
 });
 
-test('falls back to the current status as a single entry when no history exists', async () => {
-	const screen = await render(StatusHistoryPath, {
-		entries: [],
-		currentStatus: 'completed'
-	});
+test('renders an empty path — no synthesized entries — when nothing was recorded', async () => {
+	const screen = await render(StatusHistoryPath, { entries: [] });
 
-	const entries = screen.getByTestId('status-history-entry').elements();
-	expect(entries).toHaveLength(1);
-	expect(entries[0].getAttribute('data-status')).toBe('completed');
-	await expect.element(screen.getByTestId('status-history-fallback-note')).toBeVisible();
-});
-
-test('does not show the fallback note when real history exists', async () => {
-	const screen = await render(StatusHistoryPath, {
-		entries: failedPath,
-		currentStatus: 'failed'
-	});
-
-	await expect.element(screen.getByTestId('status-history-fallback-note')).not.toBeInTheDocument();
+	await expect.element(screen.getByTestId('status-history-path')).toBeVisible();
+	expect(screen.getByTestId('status-history-entry').elements()).toHaveLength(0);
 });

@@ -98,6 +98,8 @@ public class HubRequestTracingTests
                     services.AddSingleton(fixture.ContentPaths);
                     services.AddSingleton(fixture.SourceArtifactStore);
                     services.AddSingleton(fixture.Coordinator);
+                    // 023: the detail endpoint reads the task's status history from the operational store.
+                    services.AddSingleton(fixture.Repository);
                     services.AddSingleton(new TaskRecordReadModel(fixture.ResolvedPaths));
                 });
                 webHost.Configure(app =>

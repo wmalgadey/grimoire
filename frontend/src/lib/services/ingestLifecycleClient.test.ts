@@ -314,3 +314,86 @@ test('onConnectionStateChanged emits disconnected when start() rejects', async (
 	await expect(client.start()).rejects.toThrow('boom');
 	expect(states).toEqual(['connecting', 'disconnected']);
 });
+
+// ── 023 T014 (US2, contracts/signalr-events.md) ────────────────────────────────────
+// The lifecycle channel now also carries the three history-only statuses so the detail
+// view can refresh live. Board consumers must ignore them for column placement: the task
+// stays in `running` across an interruption/reactivation cycle (FR-007, SC-006).
+
+test('applyLifecycleEvent leaves the column unchanged for a liveness_interrupted event', () => {
+	const seen = new Set<string>();
+	const tasks = [task({ status: 'running', updatedAt: '2026-08-13T07:00:06Z' })];
+
+	const result = applyLifecycleEvent(
+		tasks,
+		event({
+			eventId: 'evt-interrupt',
+			fromStatus: 'running',
+			toStatus: 'liveness_interrupted',
+			timestamp: '2026-08-13T07:01:06Z'
+		}),
+		seen
+	);
+
+	expect(result[0].status).toBe('running');
+	expect(result[0].updatedAt).toBe('2026-08-13T07:00:06Z');
+});
+
+test('applyLifecycleEvent leaves the column unchanged for a reactivated event', () => {
+	const seen = new Set<string>();
+	const tasks = [task({ status: 'running', updatedAt: '2026-08-13T07:00:06Z' })];
+
+	const result = applyLifecycleEvent(
+		tasks,
+		event({
+			eventId: 'evt-reactivated',
+			fromStatus: 'liveness_interrupted',
+			toStatus: 'reactivated',
+			timestamp: '2026-08-13T07:01:16Z'
+		}),
+		seen
+	);
+
+	expect(result[0].status).toBe('running');
+});
+
+test('applyLifecycleEvent leaves the column unchanged for a restarted event, and moves it on the following queued', () => {
+	const seen = new Set<string>();
+	const tasks = [task({ status: 'failed', updatedAt: '2026-08-13T07:05:00Z' })];
+
+	const afterRestarted = applyLifecycleEvent(
+		tasks,
+		event({
+			eventId: 'evt-restarted',
+			fromStatus: 'failed',
+			toStatus: 'restarted',
+			timestamp: '2026-08-13T07:10:00Z'
+		}),
+		seen
+	);
+	expect(afterRestarted[0].status).toBe('failed');
+
+	const afterQueued = applyLifecycleEvent(
+		afterRestarted,
+		event({
+			eventId: 'evt-requeued',
+			fromStatus: 'restarted',
+			toStatus: 'queued',
+			timestamp: '2026-08-13T07:10:01Z'
+		}),
+		seen
+	);
+	expect(afterQueued[0].status).toBe('queued');
+});
+
+test('applyLifecycleEvent does not add a board card for a history-only event about an unknown task', () => {
+	const seen = new Set<string>();
+
+	const result = applyLifecycleEvent(
+		[],
+		event({ taskId: 'task-unknown', toStatus: 'liveness_interrupted' }),
+		seen
+	);
+
+	expect(result).toEqual([]);
+});

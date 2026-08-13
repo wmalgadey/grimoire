@@ -24,6 +24,15 @@ public sealed class ScriptedAgentProcessHandle : IAgentProcessHandle
 
     public bool Terminated { get; private set; }
 
+    /// <summary>
+    /// 023-task-ui-improvements T012: true once supervision has attached to this handle's
+    /// stdout. Tests that drive virtual time wait on it — the coordinator arms its liveness
+    /// watchdog immediately before starting the read loop, so an attached read loop proves
+    /// the watchdog timer is registered and a <c>FakeTimeProvider.Advance</c> can no longer
+    /// land before it exists (which would silently arm nothing and hang the test).
+    /// </summary>
+    public bool ReadLoopAttached { get; private set; }
+
     public void EmitLine(string line) => _lines.Writer.TryWrite(line);
 
     public void EmitEvent(string type, string taskId, object? extra = null)
@@ -94,6 +103,7 @@ public sealed class ScriptedAgentProcessHandle : IAgentProcessHandle
     public async IAsyncEnumerable<string> ReadStdoutLinesAsync(
         [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken cancellationToken)
     {
+        ReadLoopAttached = true;
         await foreach (var line in _lines.Reader.ReadAllAsync(cancellationToken))
         {
             yield return line;

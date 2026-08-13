@@ -286,14 +286,12 @@ test('ignores a taskLifecycleChanged event for a different task', async () => {
 	expect(getTaskDetailMock).toHaveBeenCalledTimes(1);
 });
 
-test('falls back to the current status when the task has no recorded history', async () => {
+test('renders the history panel with no entries when the task recorded none', async () => {
 	getTaskRecordMock.mockResolvedValue({ status: 'ok', record: record() });
 	getTaskDetailMock.mockResolvedValue(detail({ statusHistory: [], status: 'failed' }));
 
 	const screen = await render(Page, { data: { taskId: 'task-1' }, params: { taskId: 'task-1' } });
 
-	await vi.waitFor(() => {
-		const entries = screen.getByTestId('status-history-entry').elements();
-		expect(entries.map((el) => el.getAttribute('data-status'))).toEqual(['failed']);
-	});
+	await expect.element(screen.getByTestId('status-history-path')).toBeVisible();
+	expect(screen.getByTestId('status-history-entry').elements()).toHaveLength(0);
 });

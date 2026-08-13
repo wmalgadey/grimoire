@@ -181,7 +181,7 @@
 		{/if}
 	{:else if loaded}
 		{#if detail}
-			<StatusHistoryPath entries={detail.statusHistory ?? []} currentStatus={detail.status} />
+			<StatusHistoryPath entries={detail.statusHistory ?? []} />
 		{/if}
 		<TaskRecordView {record} />
 	{/if}

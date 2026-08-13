@@ -40,11 +40,26 @@ public sealed class IngestRunCoordinator
     private readonly ResolvedGrimoirePaths _resolvedPaths;
     private readonly TimeProvider _timeProvider;
     private readonly TimeSpan _livenessWindow;
+    private readonly IReadOnlyList<TimeSpan> _reactivationDelays;
     private readonly ILogger<IngestRunCoordinator> _logger;
 
     private readonly SemaphoreSlim _slotLock = new(1, 1);
     private readonly ConcurrentDictionary<string, RunActivitySnapshot> _activity = new();
     private string? _runningTaskId;
+
+    /// <summary>
+    /// 023-task-ui-improvements (ADR-025, research.md R2): the bounded automatic
+    /// reactivation schedule. Three attempts spaced by an increasing wait — operational
+    /// tuning values, so they live here as constructor defaults beside
+    /// <c>livenessWindow</c> rather than widening ADR-022's deliberately minimal,
+    /// path-scoped configuration surface.
+    /// </summary>
+    public static readonly IReadOnlyList<TimeSpan> DefaultReactivationDelays =
+    [
+        TimeSpan.FromSeconds(10),
+        TimeSpan.FromSeconds(30),
+        TimeSpan.FromSeconds(90),
+    ];
 
     public IngestRunCoordinator(
         OperationalStateRepository repository,
@@ -55,7 +70,8 @@ public sealed class IngestRunCoordinator
         ResolvedGrimoirePaths resolvedPaths,
         TimeProvider? timeProvider = null,
         TimeSpan? livenessWindow = null,
-        ILogger<IngestRunCoordinator>? logger = null)
+        ILogger<IngestRunCoordinator>? logger = null,
+        IReadOnlyList<TimeSpan>? reactivationDelays = null)
     {
         _repository = repository;
         _launcher = launcher;
@@ -65,6 +81,7 @@ public sealed class IngestRunCoordinator
         _resolvedPaths = resolvedPaths;
         _timeProvider = timeProvider ?? TimeProvider.System;
         _livenessWindow = livenessWindow ?? TimeSpan.FromSeconds(60);
+        _reactivationDelays = reactivationDelays ?? DefaultReactivationDelays;
         _logger = logger ?? NullLogger<IngestRunCoordinator>.Instance;
     }
 
@@ -198,10 +215,22 @@ public sealed class IngestRunCoordinator
         HubMetrics.RecordIngestSubmissionQueueWait(run.TaskId, queuedDurationMs / 1000.0);
         IngestSubmissionLogEvents.LogRunTriggered(_logger, run.TaskId, queuedDurationMs);
 
+        // A fresh run occupancy starts with no reactivation attempts spent (data-model.md §2).
         await _repository.UpsertAsync(
-            new OperationalTaskState(run.TaskId, "running", null, _timeProvider.GetUtcNow()), cancellationToken);
+            new OperationalTaskState(run.TaskId, "running", null, _timeProvider.GetUtcNow(), Attempt: 0), cancellationToken);
         await _publisher.PublishAsync(run.TaskId, "queued", "running", cancellationToken: cancellationToken);
 
+        await LaunchAgentAsync(run, attempt: 0, cancellationToken);
+    }
+
+    /// <summary>
+    /// Starts the agent process for <paramref name="run"/> and hands it to supervision.
+    /// Shared by the first start and by every reactivation (023 T013), so a re-launch is
+    /// byte-for-byte the same request through the same <see cref="IAgentProcessLauncher"/>
+    /// port — the only difference is the attempt number carried into supervision.
+    /// </summary>
+    private async Task LaunchAgentAsync(QueuedIngestRun run, int attempt, CancellationToken cancellationToken)
+    {
         var request = new IngestAgentRequest(
             TaskId: run.TaskId,
             SourceRef: run.SourceRef,
@@ -231,11 +260,12 @@ public sealed class IngestRunCoordinator
         }
 
         // Fire-and-forget supervision; the coordinator is re-entered via events.
-        _ = Task.Run(() => SuperviseAsync(run.TaskId, handle, CancellationToken.None), CancellationToken.None);
+        _ = Task.Run(() => SuperviseAsync(run, handle, attempt, CancellationToken.None), CancellationToken.None);
     }
 
-    private async Task SuperviseAsync(string taskId, IAgentProcessHandle handle, CancellationToken cancellationToken)
+    private async Task SuperviseAsync(QueuedIngestRun run, IAgentProcessHandle handle, int attempt, CancellationToken cancellationToken)
     {
+        var taskId = run.TaskId;
         using var supervisionSpan = HubTracing.ActivitySource.StartActivity("ingest_hub.run_supervision");
         supervisionSpan?.SetTag("task_id", taskId);
 
@@ -292,25 +322,120 @@ public sealed class IngestRunCoordinator
 
         if (terminalEvent is null)
         {
-            // Liveness window expired (FR-020): fail, terminate leftovers, advance.
+            // Liveness silence remains the detection authority (ADR-008) — 023/ADR-025 only
+            // changes its consequence from "immediately terminal" to "bounded re-entry".
             var silentSeconds = TimeSpan.FromTicks(_timeProvider.GetUtcNow().UtcTicks - Interlocked.Read(ref lastEventTicks)).TotalSeconds;
+            handle.Terminate();
+            await handle.DisposeAsync();
+
+            if (attempt < _reactivationDelays.Count)
+            {
+                supervisionSpan?.SetTag("outcome", "liveness_interrupted");
+                await ScheduleReactivationAsync(run, attempt + 1, CancellationToken.None);
+                _ = readLoop;
+                return;
+            }
+
+            // Attempts exhausted: the pre-existing final-failure path, unchanged — except
+            // that this interruption is recorded too. SC-005 asks for *every* liveness
+            // interruption to be a distinct history entry "rather than an unexplained jump
+            // to a final failed state", and the last one is exactly the jump that would
+            // otherwise be unexplained.
             supervisionSpan?.SetTag("outcome", "liveness_failed");
             HubMetrics.RecordLivenessFailure();
+            HubMetrics.RecordReactivation("exhausted");
             IngestSubmissionLogEvents.LogRunLivenessFailed(_logger, taskId, (long)silentSeconds, (long)_livenessWindow.TotalSeconds);
+            IngestSubmissionLogEvents.LogReactivationExhausted(_logger, taskId, _reactivationDelays.Count);
 
-            handle.Terminate();
-            var reason = $"Agent run showed no liveness for {(long)_livenessWindow.TotalSeconds} seconds and was terminated.";
+            await _publisher.PublishAsync(
+                taskId, "running", IngestHistoryStatuses.LivenessInterrupted,
+                cancellationToken: CancellationToken.None,
+                historyDetail: $"no attempts remaining after {_reactivationDelays.Count} reactivations");
+
+            var reason = _reactivationDelays.Count == 0
+                ? $"Agent run showed no liveness for {(long)_livenessWindow.TotalSeconds} seconds and was terminated."
+                : $"Agent run showed no liveness for {(long)_livenessWindow.TotalSeconds} seconds after "
+                  + $"{_reactivationDelays.Count} automatic reactivation attempts and was terminated.";
             await FinishRunAsync(taskId, "failed", reason, writeFailureArtifact: true, CancellationToken.None);
+            _ = readLoop;
+            return;
         }
-        else
-        {
-            var status = terminalEvent.Type == AgentRunEvent.TypeCompleted ? "completed" : "failed";
-            supervisionSpan?.SetTag("outcome", status);
-            await FinishRunAsync(taskId, status, terminalEvent.Reason, writeFailureArtifact: false, CancellationToken.None);
-        }
+
+        var status = terminalEvent.Type == AgentRunEvent.TypeCompleted ? "completed" : "failed";
+        supervisionSpan?.SetTag("outcome", status);
+        await FinishRunAsync(taskId, status, terminalEvent.Reason, writeFailureArtifact: false, CancellationToken.None);
 
         await handle.DisposeAsync();
         _ = readLoop; // read loop ends with the pipe; nothing to await after termination
+    }
+
+    /// <summary>
+    /// Records the interruption and arms the backoff timer for the next attempt
+    /// (023 T013, FR-007/FR-008). The run slot is deliberately NOT released: holding it
+    /// keeps the FIFO single-slot model intact, so the queue neither advances nor reorders
+    /// while a reactivation is pending (research.md R2).
+    /// </summary>
+    private async Task ScheduleReactivationAsync(QueuedIngestRun run, int attempt, CancellationToken cancellationToken)
+    {
+        var delay = _reactivationDelays[attempt - 1];
+
+        IngestSubmissionLogEvents.LogRunLivenessInterrupted(_logger, run.TaskId, attempt, (long)delay.TotalSeconds);
+        await _repository.UpsertAsync(
+            new OperationalTaskState(run.TaskId, "running", null, _timeProvider.GetUtcNow(), Attempt: attempt),
+            cancellationToken);
+        await _publisher.PublishAsync(
+            run.TaskId, "running", IngestHistoryStatuses.LivenessInterrupted,
+            cancellationToken: cancellationToken,
+            historyDetail: $"attempt {attempt}; next retry in {(long)delay.TotalSeconds}s");
+
+        // Scheduled on the injected clock, so tests drive the schedule with virtual time
+        // instead of waiting for it (ADR-021). The timer roots itself via its own closure
+        // and disposes on the single fire.
+        ITimer? timer = null;
+        timer = _timeProvider.CreateTimer(
+            _ =>
+            {
+                timer?.Dispose();
+                _ = Task.Run(() => ReactivateAsync(run, attempt), CancellationToken.None);
+            },
+            state: null,
+            dueTime: delay,
+            period: Timeout.InfiniteTimeSpan);
+    }
+
+    private async Task ReactivateAsync(QueuedIngestRun run, int attempt)
+    {
+        // The backoff window is wide open: a manual restart or a Hub-level failure may have
+        // moved on in the meantime. Re-launching then would run a task nobody is waiting for.
+        if (_runningTaskId != run.TaskId)
+        {
+            return;
+        }
+
+        // Root span (plan.md ## Observability): this runs on a timer callback, not inside a
+        // request or the original supervision scope, so an explicit default parent context
+        // keeps it a root rather than silently inheriting whatever Activity happens to flow
+        // here — correlation to the logs/metrics below is via task_id.
+        using var span = HubTracing.ActivitySource.StartActivity(
+            "ingest_hub.reactivation", ActivityKind.Internal, parentContext: default);
+        span?.SetTag("task_id", run.TaskId);
+        span?.SetTag("attempt", attempt);
+        span?.SetTag("delay_seconds", (long)_reactivationDelays[attempt - 1].TotalSeconds);
+
+        HubMetrics.RecordReactivation("attempted");
+        IngestSubmissionLogEvents.LogRunReactivated(_logger, run.TaskId, attempt);
+
+        // Loop activity belongs to the process that produced it; the re-launched run starts
+        // its own count (contracts/signalr-events.md: "activity resets on re-launch").
+        _activity.TryRemove(run.TaskId, out _);
+
+        await _publisher.PublishAsync(
+            run.TaskId, IngestHistoryStatuses.LivenessInterrupted, IngestHistoryStatuses.Reactivated,
+            cancellationToken: CancellationToken.None, historyDetail: $"attempt {attempt}");
+        await _publisher.PublishAsync(
+            run.TaskId, IngestHistoryStatuses.Reactivated, "running", cancellationToken: CancellationToken.None);
+
+        await LaunchAgentAsync(run, attempt, CancellationToken.None);
     }
 
     private async Task HandleEventAsync(string taskId, AgentRunEvent runEvent, CancellationToken cancellationToken)

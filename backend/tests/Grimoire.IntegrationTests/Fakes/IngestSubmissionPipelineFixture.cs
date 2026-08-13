@@ -58,7 +58,8 @@ public sealed class IngestSubmissionPipelineFixture : IDisposable
         RawStoragePaths? rawPaths = null,
         string? root = null,
         IMarkdownConverter? converter = null,
-        IUrlContentFetcher? urlFetcher = null)
+        IUrlContentFetcher? urlFetcher = null,
+        IReadOnlyList<TimeSpan>? reactivationDelays = null)
     {
         Root = root ?? Path.Combine(Path.GetTempPath(), $"grimoire-ingest-submission-{Guid.NewGuid():N}");
         Directory.CreateDirectory(Root);
@@ -170,7 +171,8 @@ public sealed class IngestSubmissionPipelineFixture : IDisposable
             ResolvedPaths,
             timeProvider,
             livenessWindow ?? TimeSpan.FromSeconds(60),
-            CoordinatorLogger);
+            CoordinatorLogger,
+            reactivationDelays);
         Coordinator.InitializeAsync().GetAwaiter().GetResult();
 
         var httpClient = new HttpClient(urlFetchHandler ?? new NotFoundHandler());

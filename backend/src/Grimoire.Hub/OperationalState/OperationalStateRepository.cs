@@ -103,33 +103,6 @@ public sealed class OperationalStateRepository
             """;
 
         await command.ExecuteNonQueryAsync(cancellationToken);
-
-        // 023-task-ui-improvements T003: `attempt` is new on a table that predates it, so a
-        // database created before this feature has the four original columns only and the
-        // CREATE above (IF NOT EXISTS) leaves it untouched. SQLite has no
-        // ADD COLUMN IF NOT EXISTS, so check the actual shape and add it when absent —
-        // ADD COLUMN with a NOT NULL DEFAULT backfills existing rows with 0, which is
-        // exactly the "no reactivation attempts spent" meaning we want for them.
-        var columnCommand = connection.CreateCommand();
-        columnCommand.CommandText = "PRAGMA table_info(operational_task_state);";
-        var hasAttemptColumn = false;
-        await using (var columnReader = await columnCommand.ExecuteReaderAsync(cancellationToken))
-        {
-            while (await columnReader.ReadAsync(cancellationToken))
-            {
-                if (string.Equals(columnReader.GetString(1), "attempt", StringComparison.Ordinal))
-                {
-                    hasAttemptColumn = true;
-                }
-            }
-        }
-
-        if (!hasAttemptColumn)
-        {
-            var alterCommand = connection.CreateCommand();
-            alterCommand.CommandText = "ALTER TABLE operational_task_state ADD COLUMN attempt INTEGER NOT NULL DEFAULT 0;";
-            await alterCommand.ExecuteNonQueryAsync(cancellationToken);
-        }
     }
 
     // ── Status history (023-task-ui-improvements, ADR-025, data-model.md §1) ──────

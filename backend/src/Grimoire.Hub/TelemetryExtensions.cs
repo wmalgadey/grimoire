@@ -31,9 +31,15 @@ public static class TelemetryExtensions
     /// tests attach an additional exporter (e.g. <c>AddInMemoryExporter</c>) to the same
     /// <see cref="TracerProviderBuilder"/> the app uses, so tests observe span export decisions made
     /// under the real sampler/instrumentation instead of a test-only always-record listener.
+    /// <paramref name="configureMetrics"/> is the same hook for the metrics pipeline
+    /// (023-task-ui-improvements T018): a metric contract test then proves the instrument
+    /// actually reaches an observer through the production <c>AddMeter</c> registration,
+    /// not merely that the recording line of code ran.
     /// </summary>
     public static IServiceCollection AddHubTelemetry(
-        this IServiceCollection services, Action<TracerProviderBuilder>? configureTracing = null)
+        this IServiceCollection services,
+        Action<TracerProviderBuilder>? configureTracing = null,
+        Action<MeterProviderBuilder>? configureMetrics = null)
     {
         var resource = CreateResource();
 
@@ -56,9 +62,13 @@ public static class TelemetryExtensions
                     .AddOtlpExporter();
                 configureTracing?.Invoke(builder);
             })
-            .WithMetrics(builder => builder
-                .AddMeter("Grimoire.Hub")
-                .AddOtlpExporter());
+            .WithMetrics(builder =>
+            {
+                builder
+                    .AddMeter("Grimoire.Hub")
+                    .AddOtlpExporter();
+                configureMetrics?.Invoke(builder);
+            });
 
         return services;
     }

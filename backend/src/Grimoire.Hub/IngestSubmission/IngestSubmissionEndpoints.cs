@@ -274,7 +274,9 @@ public static class IngestSubmissionEndpoints
         Conversion.SourceArtifactStore sourceArtifactStore,
         IngestContentPaths contentPaths,
         IngestRunCoordinator coordinator,
-        OperationalState.OperationalStateRepository stateRepository,
+        // Explicit: without it Minimal APIs infer a complex type as the request body, which
+        // fails endpoint construction for a GET (and would bind from the wire, not DI).
+        [FromServices] OperationalState.OperationalStateRepository stateRepository,
         CancellationToken cancellationToken)
     {
         var projection = await store.GetByTaskIdAsync(contentPaths.TasksDir, taskId, cancellationToken);

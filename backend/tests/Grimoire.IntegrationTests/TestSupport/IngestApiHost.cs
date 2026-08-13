@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using OpenTelemetry.Metrics;
 using OpenTelemetry.Trace;
 
 namespace Grimoire.IntegrationTests.TestSupport;
@@ -27,7 +28,9 @@ public static class IngestApiHost
         => BuildAsync(fixture, exportedActivities: null);
 
     public static async Task<IHost> BuildAsync(
-        IngestSubmissionPipelineFixture fixture, ICollection<Activity>? exportedActivities)
+        IngestSubmissionPipelineFixture fixture,
+        ICollection<Activity>? exportedActivities,
+        List<Metric>? exportedMetrics = null)
     {
         var hostBuilder = new HostBuilder()
             .ConfigureWebHost(webHost =>
@@ -37,9 +40,23 @@ public static class IngestApiHost
                 {
                     services.AddRouting();
                     services.AddLogging();
-                    if (exportedActivities is not null)
+                    if (exportedActivities is not null || exportedMetrics is not null)
                     {
-                        services.AddHubTelemetry(tracing => tracing.AddInMemoryExporter(exportedActivities));
+                        services.AddHubTelemetry(
+                            tracing =>
+                            {
+                                if (exportedActivities is not null)
+                                {
+                                    tracing.AddInMemoryExporter(exportedActivities);
+                                }
+                            },
+                            metrics =>
+                            {
+                                if (exportedMetrics is not null)
+                                {
+                                    metrics.AddInMemoryExporter(exportedMetrics);
+                                }
+                            });
                     }
 
                     services.AddSingleton(fixture.Validator);

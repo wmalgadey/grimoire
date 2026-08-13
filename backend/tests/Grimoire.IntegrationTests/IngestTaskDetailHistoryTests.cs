@@ -9,7 +9,7 @@ namespace Grimoire.IntegrationTests;
 /// <summary>
 /// T007 (023-task-ui-improvements, US1 / FR-006, SC-004): the task detail endpoint serves the
 /// full ordered status history so a failed task's stopping point is identifiable, and answers
-/// with an empty array — never an error — for a task that predates the feature.
+/// with an empty array — never an error — for a task with no recorded transitions.
 /// Contract: contracts/http-api.md "Changed: GET /api/ingest-submissions/{taskId}".
 /// </summary>
 public class IngestTaskDetailHistoryTests
@@ -51,14 +51,19 @@ public class IngestTaskDetailHistoryTests
         Assert.Equal("failed", history[^1].GetProperty("status").GetString());
     }
 
+    /// <summary>
+    /// A task with no recorded transitions answers with an empty array rather than an error:
+    /// the field is always present, so the client renders an empty path instead of branching
+    /// on its absence. (Not a legacy path — the alpha carries no pre-feature tasks.)
+    /// </summary>
     [Fact]
-    public async Task GetTaskDetail_ForPreFeatureTaskWithoutHistoryRows_ReturnsEmptyArray()
+    public async Task GetTaskDetail_ForTaskWithoutHistoryRows_ReturnsEmptyArray()
     {
         using var fixture = new IngestSubmissionPipelineFixture();
         using var host = await IngestApiHost.BuildAsync(fixture);
         var client = host.GetTestClient();
 
-        var taskId = "2026-06-01-ingest-prefeature";
+        var taskId = "2026-08-13-ingest-nohistory";
         await WriteTaskArtifactAsync(fixture, taskId, "completed");
 
         var detail = await client.GetFromJsonAsync<JsonElement>($"/api/ingest-submissions/{taskId}");

@@ -341,6 +341,38 @@ public static class HubMetrics
     public static void RecordRemediationMessageTurn(string outcome)
         => _remediationMessageTurnsTotal.Add(1, new KeyValuePair<string, object?>("outcome", outcome));
 
+    // --- 023-task-ui-improvements (plan.md ## Observability > Business Metrics) ---
+
+    /// <summary>
+    /// T017 (US2): one increment per automatic reactivation after a liveness interruption
+    /// (<c>attempted</c>) and one when the bounded attempts run out (<c>exhausted</c>).
+    /// The declared label set is exactly those two values — nothing else is ever passed.
+    /// </summary>
+    private static readonly Counter<long> _reactivationsTotal =
+        Meter.CreateCounter<long>("wiki.ingest.reactivations_total",
+            description: "Automatic reactivation attempts after liveness interruption");
+
+    public static void RecordReactivation(string outcome)
+        => _reactivationsTotal.Add(1, new KeyValuePair<string, object?>("outcome", outcome));
+
+    /// <summary>T031 (US5): manual restart requests for finally-failed tasks, by whether the
+    /// request was accepted or rejected (not failed / concurrent duplicate / missing source).</summary>
+    private static readonly Counter<long> _restartsTotal =
+        Meter.CreateCounter<long>("wiki.ingest.restarts_total",
+            description: "Manual restart requests for finally-failed tasks");
+
+    public static void RecordRestart(string outcome)
+        => _restartsTotal.Add(1, new KeyValuePair<string, object?>("outcome", outcome));
+
+    /// <summary>T025 (US4): reads of the source-content endpoint over the persisted raw copy,
+    /// by whether the original was <c>served</c> or <c>not_found</c>.</summary>
+    private static readonly Counter<long> _sourceContentReadsTotal =
+        Meter.CreateCounter<long>("hub.source_content_reads_total",
+            description: "Source-content endpoint serves of the persisted raw copy");
+
+    public static void RecordSourceContentRead(string result)
+        => _sourceContentReadsTotal.Add(1, new KeyValuePair<string, object?>("result", result));
+
     // --- 020-simplify-hub-config (plan.md ## Observability > Business Metrics) ---
 
     /// <summary>
