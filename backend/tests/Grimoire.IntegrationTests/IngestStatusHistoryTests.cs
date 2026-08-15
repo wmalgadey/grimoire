@@ -110,6 +110,53 @@ public class IngestStatusHistoryTests
         Assert.Equal([1L], (await fixture.Repository.GetStatusHistoryAsync("task-b")).Select(h => h.Seq));
     }
 
+    /// <summary>
+    /// Concurrent appends for the same task must all survive. <c>seq</c> is derived from the
+    /// task's own current maximum, so writers that read that maximum before either of them
+    /// inserts would compute the same number and the loser would be rejected by the
+    /// <c>(task_id, seq)</c> primary key — silently losing a row, because callers treat the
+    /// append as best-effort and continue publishing. <c>AppendStatusHistoryAsync</c> closes
+    /// that window by deriving <c>seq</c> inside the INSERT statement itself; this test is
+    /// what keeps a later refactor from splitting it back into a SELECT and an INSERT. Probed
+    /// Red/Green: making that split fails here with <c>UNIQUE constraint failed</c>.
+    /// State-based per Principle II — the assertions read the rows back out of the real
+    /// SQLite file the production code wrote them to.
+    /// </summary>
+    [Fact]
+    public async Task ConcurrentAppends_ForOneTask_AllPersist_WithDistinctSequentialSeq()
+    {
+        // Own database, no pipeline fixture: the contract under test is the repository's.
+        // The writers run on dedicated threads (LongRunning), not pool threads — a writer
+        // waiting out `busy_timeout` blocks where it stands, and borrowing pool threads for
+        // that starves the liveness-sensitive tests running in parallel with this one.
+        const int writers = 4;
+        var root = Path.Combine(Path.GetTempPath(), $"grimoire-history-concurrent-{Guid.NewGuid():N}");
+        try
+        {
+            var repository = new OperationalStateRepository(Path.Combine(root, "operational-state.db"));
+            await repository.InitializeAsync();
+
+            var assigned = await Task.WhenAll(Enumerable.Range(0, writers).Select(i =>
+                Task.Factory.StartNew(
+                    () => repository.AppendStatusHistoryAsync(
+                        "task-concurrent", $"stage-{i}", DateTimeOffset.UtcNow, $"writer {i}"),
+                    CancellationToken.None,
+                    TaskCreationOptions.LongRunning,
+                    TaskScheduler.Default).Unwrap()));
+
+            var history = await repository.GetStatusHistoryAsync("task-concurrent");
+
+            Assert.Equal(writers, history.Count);
+            Assert.Equal(Enumerable.Range(1, writers).Select(i => (long)i), history.Select(h => h.Seq));
+            Assert.Equal(history.Select(h => h.Seq).Order(), assigned.Order());
+            Assert.Equal(writers, history.Select(h => h.Status).Distinct().Count());
+        }
+        finally
+        {
+            try { Directory.Delete(root, recursive: true); } catch { /* best-effort cleanup */ }
+        }
+    }
+
     [Fact]
     public async Task History_ForAnUnknownTask_IsEmpty_NotAnError()
     {

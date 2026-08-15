@@ -108,10 +108,15 @@ public sealed class OperationalStateRepository
     // ── Status history (023-task-ui-improvements, ADR-025, data-model.md §1) ──────
 
     /// <summary>
-    /// Appends one transition to a task's append-only history (FR-005). <c>seq</c> is
-    /// derived inside the INSERT from the task's own current maximum, so two concurrent
-    /// appends cannot compute the same number and silently overwrite one another: the
-    /// composite primary key rejects a duplicate outright rather than clobbering a row.
+    /// Appends one transition to a task's append-only history (FR-005). <c>seq</c> is derived
+    /// from the task's own current maximum <em>inside the INSERT statement</em>, which is what
+    /// makes concurrent appends safe: SQLite runs that one statement under the write lock, so
+    /// the <c>MAX(seq)</c> read and the row that depends on it cannot interleave with another
+    /// writer's append. Splitting this into a separate SELECT followed by an INSERT — even
+    /// within a transaction — reopens that window, and since callers treat a failed append as
+    /// best-effort and continue publishing, the loser's rejection by the <c>(task_id, seq)</c>
+    /// primary key would silently drop a history row the feature requires to be durable.
+    /// <c>ConcurrentAppends_ForOneTask_AllPersist_WithDistinctSequentialSeq</c> pins this.
     /// Returns the assigned sequence number.
     /// </summary>
     public async Task<long> AppendStatusHistoryAsync(
