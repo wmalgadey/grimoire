@@ -159,9 +159,13 @@ distinguishably, with retry offered only where retrying could plausibly succeed.
    **Then** it is presented as a declined request carrying that reason.
 3. **Given** the Hub fails internally, **When** the error is displayed, **Then** it is presented as
    a system fault, stated as not the user's fault, and offers a retry.
-4. **Given** an HTTP failure whose body is not a recognizable error structure, **When** the error is
-   displayed, **Then** it is presented as an unexpected response with a generic readable message,
-   and no raw body content is shown as the primary message.
+4. **Given** an HTTP failure the system declined but whose body is not a recognizable error
+   structure, **When** the error is displayed, **Then** it is presented as an unexpected response
+   with a generic readable message, and no raw body content is shown as the primary message.
+5. **Given** a system fault whose body is not a recognizable error structure either, **When** the
+   error is displayed, **Then** it is still presented as a system fault and still offers a retry —
+   an unreadable body changes what can be *said* about the failure, not whether retrying it can
+   succeed.
 
 ---
 
@@ -193,8 +197,11 @@ affordance.
 ### Edge Cases
 
 - **Body is not the expected structure**: a gateway or proxy answers with HTML, or the body is
-  empty. Presented as an unexpected response (User Story 4, scenario 4); the received content
-  appears only as a bounded excerpt inside the technical detail, never as the primary message.
+  empty. The category still follows what happened to the request — a faulting gateway is a system
+  fault and stays retryable (User Story 4, scenario 5); only a declined request with an
+  unrecognizable body becomes an unexpected response (scenario 4). In both cases the received
+  content appears solely as a bounded excerpt inside the technical detail, never as the primary
+  message.
 - **Very long underlying text**: a rejected model request can carry a description hundreds of
   characters long. The primary message is shortened; the full text stays in the technical detail
   (User Story 2, scenario 4).
@@ -236,8 +243,11 @@ affordance.
   response was unrecognizable, a bounded excerpt of what was received — without that detail
   occupying the primary message area when unopened.
 - **FR-007**: The UI MUST classify every request failure into exactly one of four categories —
-  system unreachable, request declined, system fault, unexpected response — and MUST present the
-  category distinguishably.
+  system unreachable, request declined, system fault, unexpected response. Classification MUST be
+  driven by *what happened to the request* (no response at all; the system declined it; the system
+  faulted), not by whether the response body could be parsed. Whether the body was recognizable
+  determines only how much can be *said* about the failure, and is reflected in the technical
+  detail. The category MUST be presented distinguishably.
 - **FR-008**: The UI MUST offer a retry affordance for the categories where retrying can plausibly
   succeed (system unreachable, system fault) and MUST NOT offer one where the request was declined
   for a reason the user must first resolve.

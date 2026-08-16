@@ -56,6 +56,19 @@ Three items were re-checked after the first pass and required spec edits:
    "surface API errors clearly" and would have crept in. Now stated twice — in the Clarifications
    decision record and in Out of Scope — so the plan cannot silently absorb it.
 
+A fourth issue surfaced during `/speckit-plan` and was corrected in the spec rather than worked
+around in the plan:
+
+4. **Category and retryability contradicted each other.** As first written, FR-007 classified a
+   failure by whether its body parsed, while FR-008/SC-004 made exactly two categories retryable.
+   Those rules disagree on the common case of a gateway answering a 502 with an HTML page: body-
+   driven classification calls it "unexpected" and therefore non-retryable, which is wrong — a
+   faulting gateway is precisely the case worth retrying. FR-007 now classifies by *what happened to
+   the request*, and body recognizability determines only how much can be said about it. User Story
+   4 gained a fifth scenario pinning the corrected behaviour, and the edge case was rewritten to
+   match. Caught before any task was written; no implementation consequence beyond the corrected
+   rule.
+
 Two deliberate departures from the template worth flagging for review:
 
 - **The Clarifications section records decisions, not answered questions.** The operator asked for
