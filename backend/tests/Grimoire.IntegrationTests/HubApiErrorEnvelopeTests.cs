@@ -84,6 +84,46 @@ public class HubApiErrorEnvelopeTests
         Assert.Equal(ApiErrorCatalogue.RestartTaskNotFailed, body.GetProperty("code").GetString());
     }
 
+    /// <summary>
+    /// A second endpoint family, on a different agent's surface, answering in the same shape. That
+    /// is the whole claim of FR-004 — one envelope, not one per family — and it cannot be
+    /// demonstrated from ingest alone.
+    /// </summary>
+    [Fact]
+    public async Task LintTriggerConflict_AnswersWithTheSameEnvelope_AndKeepsItsExtensionData()
+    {
+        using var harness = await LintTriggerHostHarness.CreateAsync(
+            new FakeAgentProcessLauncher(simulatedRunDuration: TimeSpan.FromSeconds(10)));
+        var client = harness.Host.GetTestClient();
+
+        (await client.PostAsync("/api/lint-runs/", content: null)).EnsureSuccessStatusCode();
+        var conflict = await client.PostAsync("/api/lint-runs/", content: null);
+
+        var body = await AssertEnvelopeAsync(conflict, HttpStatusCode.Conflict);
+        Assert.Equal(ApiErrorCatalogue.LintRunActive, body.GetProperty("code").GetString());
+    }
+
+    /// <summary>
+    /// RFC 7807 extension members ride alongside the five core ones rather than replacing them, so
+    /// a failure that carries structured data the board consumes keeps it without any family
+    /// needing a shape of its own.
+    /// </summary>
+    [Fact]
+    public async Task LintBlockedTrigger_KeepsItsStructuredData_AlongsideTheCoreMembers()
+    {
+        using var harness = await LintTriggerHostHarness.CreateAsync();
+        await harness.InsertRemediationTaskAsync("2026-08-16-remediation-blocking", "proposed");
+
+        var client = harness.Host.GetTestClient();
+        var blocked = await client.PostAsync("/api/lint-runs/", content: null);
+
+        var body = await AssertEnvelopeAsync(blocked, HttpStatusCode.Conflict);
+        Assert.Equal(ApiErrorCatalogue.UnresolvedRemediationTasks, body.GetProperty("code").GetString());
+
+        var ids = body.GetProperty("unresolvedTaskIds").EnumerateArray().Select(e => e.GetString()).ToList();
+        Assert.Contains("2026-08-16-remediation-blocking", ids);
+    }
+
     // -----------------------------------------------------------------------
     // T025 — catalogue completeness (FSI1). Classicist: over the real catalogue and real
     // responses, never reflecting over a type's shape.

@@ -5,6 +5,8 @@
 	import ConnectionStatusIndicator from '$lib/components/ConnectionStatusIndicator.svelte';
 	import QueryConversation from '$lib/components/QueryConversation.svelte';
 	import QueryPromptForm from '$lib/components/QueryPromptForm.svelte';
+	import ApiErrorAlert from '$lib/components/ApiErrorAlert.svelte';
+	import { toPresentedError, type PresentedError } from '$lib/services/apiError';
 	import {
 		applyAnswerChunk,
 		applyTurnChanged,
@@ -27,7 +29,9 @@
 	let turns: QueryTurn[] = $state([]);
 	let activeTurnId: string | null = $state(null);
 	let connectionState: ConnectionState = $state('connecting');
-	let submissionError: string | null = $state(null);
+	let submissionError: PresentedError | null = $state(null);
+	// Kept so the retry affordance can re-run exactly what failed (FR-008).
+	let lastSubmittedPrompt: string | null = $state(null);
 
 	let client: QueryLifecycleClient | undefined;
 	const seenTurnChangedKeys = new SvelteSet<string>();
@@ -39,6 +43,7 @@
 
 	async function handleSubmit(prompt: string) {
 		submissionError = null;
+		lastSubmittedPrompt = prompt;
 
 		// ADR-014 (011-query-conversations): the submission carries only the prompt —
 		// the Hub sources follow-up context from its Conversation Record. The client-side
@@ -57,9 +62,12 @@
 			activeTurnId = accepted.turnId;
 			lastAppliedSequenceByTurnId.set(accepted.turnId, 0);
 		} catch (error) {
-			submissionError =
-				error instanceof Error ? error.message : 'Failed to submit the question unexpectedly.';
+			submissionError = toPresentedError(error);
 		}
+	}
+
+	function retrySubmit() {
+		if (lastSubmittedPrompt !== null) void handleSubmit(lastSubmittedPrompt);
 	}
 
 	async function handleInterrupt(turnId: string) {
@@ -202,6 +210,11 @@
 	<QueryPromptForm disabled={activeTurnId !== null} onSubmit={handleSubmit} />
 
 	{#if submissionError}
-		<p class="text-sm text-stage-failed" data-testid="query-submission-error">{submissionError}</p>
+		<ApiErrorAlert
+			error={submissionError}
+			testId="query-submission-error"
+			onRetry={retrySubmit}
+			onDismiss={() => (submissionError = null)}
+		/>
 	{/if}
 </main>

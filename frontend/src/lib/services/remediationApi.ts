@@ -1,3 +1,4 @@
+import { presentResponseError, type PresentedError } from './apiError';
 import type {
 	RemediationAttachContextResponse,
 	RemediationSendMessageResponse,
@@ -19,45 +20,28 @@ export class RemediationApiError extends Error {
 	constructor(
 		message: string,
 		public readonly status: number,
-		public readonly reason?: string
+		public readonly reason?: string,
+		/** The shared presentation of this failure; every surface renders this, not `message`. */
+		public readonly presented?: PresentedError
 	) {
 		super(message);
 		this.name = 'RemediationApiError';
 	}
 }
 
-// T037 (FR-009/FR-010/FR-016): every 409 reason the authorize/dismiss/withdraw endpoints
-// can return (contracts/remediation-task-api.md), turned into a human-readable message —
-// mirrors lintApi.ts's REASON_MESSAGES pattern (never show the raw snake_case reason).
-const REASON_MESSAGES: Record<string, string> = {
-	task_not_proposed:
-		'This task is no longer in the proposed state — someone else already acted on it.',
-	task_not_authorized:
-		'This task is no longer authorized — its authorization may already have been withdrawn.',
-	execution_already_started:
-		'The agent already began executing this task; it will run to a terminal outcome and can no longer be cancelled.',
-	message_turn_active:
-		'A message turn is already running for this task; wait for it to finish before sending another.'
-};
-
-async function parseErrorMessage(
-	response: Response
-): Promise<{ message: string; reason?: string }> {
-	try {
-		const body = await response.json();
-		if (typeof body?.reason === 'string') {
-			return {
-				message: body.message ?? REASON_MESSAGES[body.reason] ?? body.reason,
-				reason: body.reason
-			};
-		}
-		if (typeof body?.message === 'string') {
-			return { message: body.message, reason: body.reason };
-		}
-	} catch {
-		// fall through to a generic message below
-	}
-	return { message: `Request failed with status ${response.status}` };
+/**
+ * 024 (ADR-026): the Hub sends the readable sentence. The snake_case→prose table that used to sit
+ * here is gone — ADR-018 requires the caller to see the actual outcome, and the Hub's catalogue
+ * now keeps a distinct message per conflict, which is what this table was approximating.
+ */
+async function toApiError(response: Response): Promise<RemediationApiError> {
+	const presented = await presentResponseError(response);
+	return new RemediationApiError(
+		presented.message,
+		response.status,
+		presented.code ?? undefined,
+		presented
+	);
 }
 
 /** GET /api/remediation-tasks — all tasks, optionally restricted to one originating lint run. */
@@ -68,8 +52,7 @@ export async function fetchRemediationTasks(
 	const query = runId ? `?runId=${encodeURIComponent(runId)}` : '';
 	const response = await fetchImpl(`${BASE_PATH}${query}`);
 	if (!response.ok) {
-		const { message, reason } = await parseErrorMessage(response);
-		throw new RemediationApiError(message, response.status, reason);
+		throw await toApiError(response);
 	}
 
 	const body: RemediationTaskListResponse = await response.json();
@@ -83,8 +66,7 @@ export async function getRemediationTask(
 ): Promise<RemediationTaskDetail> {
 	const response = await fetchImpl(`${BASE_PATH}/${encodeURIComponent(taskId)}`);
 	if (!response.ok) {
-		const { message, reason } = await parseErrorMessage(response);
-		throw new RemediationApiError(message, response.status, reason);
+		throw await toApiError(response);
 	}
 
 	return response.json();
@@ -121,8 +103,7 @@ export async function authorizeRemediationTask(
 		method: 'POST'
 	});
 	if (!response.ok) {
-		const { message, reason } = await parseErrorMessage(response);
-		throw new RemediationApiError(message, response.status, reason);
+		throw await toApiError(response);
 	}
 
 	return response.json();
@@ -140,8 +121,7 @@ export async function dismissRemediationTask(
 		method: 'POST'
 	});
 	if (!response.ok) {
-		const { message, reason } = await parseErrorMessage(response);
-		throw new RemediationApiError(message, response.status, reason);
+		throw await toApiError(response);
 	}
 
 	return response.json();
@@ -162,8 +142,7 @@ export async function withdrawRemediationTaskAuthorization(
 		{ method: 'POST' }
 	);
 	if (!response.ok) {
-		const { message, reason } = await parseErrorMessage(response);
-		throw new RemediationApiError(message, response.status, reason);
+		throw await toApiError(response);
 	}
 
 	return response.json();
@@ -185,8 +164,7 @@ export async function attachRemediationTaskContext(
 		body: JSON.stringify({ content })
 	});
 	if (!response.ok) {
-		const { message, reason } = await parseErrorMessage(response);
-		throw new RemediationApiError(message, response.status, reason);
+		throw await toApiError(response);
 	}
 
 	return response.json();
@@ -211,8 +189,7 @@ export async function sendRemediationTaskMessage(
 		body: JSON.stringify({ content })
 	});
 	if (!response.ok) {
-		const { message, reason } = await parseErrorMessage(response);
-		throw new RemediationApiError(message, response.status, reason);
+		throw await toApiError(response);
 	}
 
 	return response.json();
@@ -229,8 +206,7 @@ export async function fetchRemediationTaskMessages(
 ): Promise<RemediationTaskMessagesResponse> {
 	const response = await fetchImpl(`${BASE_PATH}/${encodeURIComponent(taskId)}/messages`);
 	if (!response.ok) {
-		const { message, reason } = await parseErrorMessage(response);
-		throw new RemediationApiError(message, response.status, reason);
+		throw await toApiError(response);
 	}
 
 	return response.json();

@@ -383,5 +383,7 @@ test('a 409 conflict on restart shows the reason and re-fetches the true state',
 	await expect
 		.element(screen.getByTestId('task-restart-error'))
 		.toHaveTextContent('Task is already restarting.');
+	// 024 SC-005 (FSI2): the shared presentation, with its technical detail one step away.
+	await expect.element(screen.getByTestId('task-restart-error-details-toggle')).toBeInTheDocument();
 	await vi.waitFor(() => expect(getTaskDetailMock).toHaveBeenCalledTimes(2));
 });

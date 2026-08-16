@@ -8,7 +8,7 @@ import type {
 	TaskDetail,
 	TaskRecord
 } from '$lib/types';
-import { parseHttpErrorMessage } from './httpErrorMessage';
+import { presentResponseError, type PresentedError } from './apiError';
 
 const BASE_PATH = '/api/ingest-submissions';
 const QUEUE_BASE_PATH = '/api/ingest-queue';
@@ -16,18 +16,31 @@ const QUEUE_BASE_PATH = '/api/ingest-queue';
 export class IngestSubmissionApiError extends Error {
 	constructor(
 		message: string,
-		public readonly status: number
+		public readonly status: number,
+		public readonly code?: string,
+		/** The shared presentation of this failure; every surface renders this, not `message`. */
+		public readonly presented?: PresentedError
 	) {
 		super(message);
 		this.name = 'IngestSubmissionApiError';
 	}
 }
 
-// 023 T052: extracted to httpErrorMessage.ts so the lint and remediation board clients read
-// the Hub's JSON reason the same way instead of discarding it. Behavior is unchanged —
-// `{ message }` first, then restart's `{ reason }` 409 shape (contracts/http-api.md), then
-// the status fallback.
-const parseErrorMessage = parseHttpErrorMessage;
+/**
+ * 024 (ADR-026): replaces httpErrorMessage.ts, whose fallback branch displayed the Hub's raw
+ * machine identifier to the user when a response carried no prose — the literal defect issue #85
+ * reported. There is no such branch any more: the Hub always sends a sentence, and where it cannot
+ * be read the category supplies one.
+ */
+async function toApiError(response: Response): Promise<IngestSubmissionApiError> {
+	const presented = await presentResponseError(response);
+	return new IngestSubmissionApiError(
+		presented.message,
+		response.status,
+		presented.code ?? undefined,
+		presented
+	);
+}
 
 // 004: optional per-submission steering prompt and convert-step overrides (FR-006, FR-011).
 // Both stay optional so a caller that doesn't touch either reproduces feature 003 exactly.
@@ -54,7 +67,7 @@ export async function submitUrl(
 	});
 
 	if (!response.ok) {
-		throw new IngestSubmissionApiError(await parseErrorMessage(response), response.status);
+		throw await toApiError(response);
 	}
 
 	return response.json();
@@ -75,7 +88,7 @@ export async function submitFile(
 	const response = await fetchImpl(BASE_PATH, { method: 'POST', body: formData });
 
 	if (!response.ok) {
-		throw new IngestSubmissionApiError(await parseErrorMessage(response), response.status);
+		throw await toApiError(response);
 	}
 
 	return response.json();
@@ -84,7 +97,7 @@ export async function submitFile(
 export async function listBoard(fetchImpl: typeof fetch = fetch): Promise<BoardTask[]> {
 	const response = await fetchImpl(BASE_PATH);
 	if (!response.ok) {
-		throw new IngestSubmissionApiError(await parseErrorMessage(response), response.status);
+		throw await toApiError(response);
 	}
 
 	const body: BoardResponse = await response.json();
@@ -95,7 +108,7 @@ export async function listBoard(fetchImpl: typeof fetch = fetch): Promise<BoardT
 export async function getBoard(fetchImpl: typeof fetch = fetch): Promise<BoardResponse> {
 	const response = await fetchImpl(BASE_PATH);
 	if (!response.ok) {
-		throw new IngestSubmissionApiError(await parseErrorMessage(response), response.status);
+		throw await toApiError(response);
 	}
 
 	return response.json();
@@ -107,7 +120,7 @@ export async function getTaskDetail(
 ): Promise<TaskDetail> {
 	const response = await fetchImpl(`${BASE_PATH}/${encodeURIComponent(taskId)}`);
 	if (!response.ok) {
-		throw new IngestSubmissionApiError(await parseErrorMessage(response), response.status);
+		throw await toApiError(response);
 	}
 
 	return response.json();
@@ -127,7 +140,7 @@ export async function getTaskRecord(
 		return { status: 'unavailable' };
 	}
 	if (!response.ok) {
-		throw new IngestSubmissionApiError(await parseErrorMessage(response), response.status);
+		throw await toApiError(response);
 	}
 
 	const record: TaskRecord = await response.json();
@@ -140,7 +153,7 @@ export async function getSubmissionDefaults(
 ): Promise<IngestSubmissionDefaults> {
 	const response = await fetchImpl(`${BASE_PATH}/defaults`);
 	if (!response.ok) {
-		throw new IngestSubmissionApiError(await parseErrorMessage(response), response.status);
+		throw await toApiError(response);
 	}
 
 	return response.json();
@@ -155,7 +168,7 @@ export async function retriggerTask(
 		method: 'POST'
 	});
 	if (!response.ok) {
-		throw new IngestSubmissionApiError(await parseErrorMessage(response), response.status);
+		throw await toApiError(response);
 	}
 }
 
@@ -163,7 +176,7 @@ export async function retriggerTask(
 export async function resumeQueue(fetchImpl: typeof fetch = fetch): Promise<void> {
 	const response = await fetchImpl(`${QUEUE_BASE_PATH}/resume`, { method: 'POST' });
 	if (!response.ok) {
-		throw new IngestSubmissionApiError(await parseErrorMessage(response), response.status);
+		throw await toApiError(response);
 	}
 }
 
@@ -181,7 +194,7 @@ export async function restartTask(
 		method: 'POST'
 	});
 	if (!response.ok) {
-		throw new IngestSubmissionApiError(await parseErrorMessage(response), response.status);
+		throw await toApiError(response);
 	}
 
 	return response.json();

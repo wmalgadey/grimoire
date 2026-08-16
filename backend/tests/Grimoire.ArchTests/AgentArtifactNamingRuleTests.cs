@@ -112,6 +112,12 @@ public class AgentArtifactNamingRuleTests
         "HubCliCommandTests",
         "HubCliConcurrencyTests",
         "HubCliParityTests",
+        // 024-api-error-presentation (ADR-026): the Hub-wide HTTP failure envelope and its
+        // observability contract. Cross-agent by construction — the envelope has no owning agent —
+        // but reference detection sees only ingest-owned namespaces, because the lint cases reach
+        // that surface through LintTriggerHostHarness instead of importing a lint namespace.
+        "HubApiErrorEnvelopeTests",
+        "HubApiErrorObservabilityTests",
     ];
 
     // Shared fixture namespaces: everything under *.Fakes is cross-agent by definition

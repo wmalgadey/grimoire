@@ -148,23 +148,33 @@ test('applyRemediationTaskLifecycleEvent signals unknownTask for a task the clie
 });
 
 // 023 T052: same rule as the lint client — the Hub's own reason is shown when it sent one.
-test('fetchRemediationTasksFromBoard surfaces the Hub JSON message when the body carries one', async () => {
+// 024 (ADR-026): the board read answers in the shared envelope. Discarding its sentence and
+// showing only the status turned an actionable message into "failed with status 409".
+test('fetchRemediationTasksFromBoard surfaces the Hub sentence from the envelope', async () => {
 	const fetchImpl = vi.fn().mockResolvedValue(
-		new Response(JSON.stringify({ message: 'Board is unavailable during reconciliation.' }), {
-			status: 503,
-			headers: { 'Content-Type': 'application/json' }
-		})
+		new Response(
+			JSON.stringify({
+				status: 409,
+				title: 'Declined',
+				detail: 'This board read was declined for a stated reason.',
+				code: 'board_read_declined'
+			}),
+			{ status: 409, headers: { 'Content-Type': 'application/problem+json' } }
+		)
 	);
 
 	await expect(
 		fetchRemediationTasksFromBoard(fetchImpl as unknown as typeof fetch)
-	).rejects.toThrow('Board is unavailable during reconciliation.');
+	).rejects.toThrow('This board read was declined for a stated reason.');
 });
 
-test('fetchRemediationTasksFromBoard falls back to the status when the body is absent or unparseable', async () => {
-	const fetchImpl = vi.fn().mockResolvedValue(new Response('', { status: 500 }));
+test('fetchRemediationTasksFromBoard still reads as a sentence when the body is not an envelope', async () => {
+	const fetchImpl = vi
+		.fn()
+		.mockResolvedValue(new Response('<html>Bad Gateway</html>', { status: 502 }));
 
+	// Never "Request failed with status 502" — a status line tells a user nothing they can act on.
 	await expect(
 		fetchRemediationTasksFromBoard(fetchImpl as unknown as typeof fetch)
-	).rejects.toThrow('Request failed with status 500');
+	).rejects.toThrow(/wiki ran into a problem/);
 });

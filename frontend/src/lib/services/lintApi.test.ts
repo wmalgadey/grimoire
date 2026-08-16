@@ -14,6 +14,14 @@ function jsonResponse(status: number, body: unknown): Response {
 	});
 }
 
+/** 024 (ADR-026): the Hub answers every failure as application/problem+json. */
+function problemResponse(status: number, code: string, detail: string): Response {
+	return new Response(JSON.stringify({ status, title: 'Declined', detail, code }), {
+		status,
+		headers: { 'Content-Type': 'application/problem+json' }
+	});
+}
+
 test('triggerLintRun POSTs with no request body and returns the accepted response', async () => {
 	let capturedMethod: string | undefined;
 	let capturedBody: BodyInit | null | undefined;
@@ -35,32 +43,39 @@ test('triggerLintRun POSTs with no request body and returns the accepted respons
 	expect(accepted.status).toBe('running');
 });
 
-test('triggerLintRun maps a 409 busy rejection to a human-readable message', async () => {
+test('triggerLintRun surfaces the Hub sentence and keeps the code for machines', async () => {
 	const fetchImpl = async () =>
-		jsonResponse(409, {
-			reason: 'lint_run_active',
-			message: 'A Lint Run is already active. Wait for it to finish before triggering another.'
-		});
+		problemResponse(
+			409,
+			'lint_run_active',
+			'A lint run is already active. Wait for it to finish before starting another.'
+		);
 
 	const error = await triggerLintRun(fetchImpl as typeof fetch).catch((e) => e);
 
 	expect(error).toBeInstanceOf(LintApiError);
 	expect((error as LintApiError).reason).toBe('lint_run_active');
-	expect((error as LintApiError).message).toBe(
-		'A Lint Run is already active. Wait for it to finish before triggering another.'
+	expect((error as LintApiError).presented?.category).toBe('declined');
+	expect((error as LintApiError).presented?.message).toBe(
+		'A lint run is already active. Wait for it to finish before starting another.'
 	);
+	// The identifier stays out of what the user reads — the point of the feature.
+	expect((error as LintApiError).presented?.message).not.toContain('lint_run_active');
 });
 
-test('triggerLintRun falls back to the REASON_MESSAGES map when the Hub sends no message', async () => {
-	const fetchImpl = async () => jsonResponse(409, { reason: 'lint_run_active' });
+test('a rejection with no readable body still reads as a sentence, never as a status line', async () => {
+	// The old client displayed the Hub's raw machine identifier here, which is the defect
+	// issue #85 reported. There is no such branch any more.
+	const fetchImpl = async () => new Response('<html>gateway</html>', { status: 409 });
 
 	const error = await triggerLintRun(fetchImpl as typeof fetch).catch((e) => e);
 
-	expect((error as LintApiError).message).toBe(
-		'A lint run is already in progress — wait for it to finish before triggering another.'
-	);
+	const presented = (error as LintApiError).presented!;
+	expect(presented.category).toBe('unexpected');
+	expect(presented.message).not.toMatch(/^Request failed with status/);
+	expect(presented.message.length).toBeGreaterThan(20);
+	expect(presented.bodyExcerpt).toContain('gateway');
 });
-
 test('getLintRun returns the parsed run status', async () => {
 	const fetchImpl = async () =>
 		jsonResponse(200, {

@@ -1,6 +1,12 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
-	import { restartTask, IngestSubmissionApiError } from '$lib/services/ingestSubmissionsApi';
+	import { restartTask } from '$lib/services/ingestSubmissionsApi';
+	import {
+		presentRecordedFailure,
+		toPresentedError,
+		type PresentedError
+	} from '$lib/services/apiError';
+	import ApiErrorAlert from './ApiErrorAlert.svelte';
 	import type { BoardTask, RunActivity } from '$lib/types';
 
 	interface Props {
@@ -23,7 +29,7 @@
 	// (`failed` → `queued` under the same task id), so a drag gesture would imply arbitrary
 	// column moves the harness rejects. Shape follows RemediationTaskCard's card actions.
 	let restarting = $state(false);
-	let restartError: string | null = $state(null);
+	let restartError: PresentedError | null = $state(null);
 
 	async function handleRestart() {
 		restarting = true;
@@ -31,10 +37,7 @@
 		try {
 			await restartTask(task.taskId);
 		} catch (err) {
-			restartError =
-				err instanceof IngestSubmissionApiError
-					? err.message
-					: 'The restart request failed unexpectedly. Please try again.';
+			restartError = toPresentedError(err);
 		} finally {
 			restarting = false;
 			onRefreshRequested?.();
@@ -73,9 +76,11 @@
 	{/if}
 
 	{#if task.status === 'failed' && task.failureReason}
-		<p class="text-sm text-stage-failed" data-testid="task-card-failure-reason">
-			{task.failureReason}
-		</p>
+		<!-- 024 FR-012: presentation only — what the harness recorded is untouched. -->
+		<ApiErrorAlert
+			error={presentRecordedFailure(task.failureReason)}
+			testId="task-card-failure-reason"
+		/>
 	{/if}
 
 	{#if task.status === 'failed'}
@@ -93,10 +98,14 @@
 			</button>
 		</div>
 		{#if restartError}
-			<!-- FR-012: a rejection (lost race, task already moved on) is shown, never silent. -->
-			<p class="text-xs text-stage-failed" data-testid="task-card-restart-error">
-				{restartError}
-			</p>
+			<!-- FR-012: a rejection (lost race, task already moved on) is shown, never silent.
+			     ADR-025 lets a task re-enter `running` repeatedly, so the error is cleared by the
+			     next attempt rather than latched to a transition count (024 FR-011). -->
+			<ApiErrorAlert
+				error={restartError}
+				testId="task-card-restart-error"
+				onDismiss={() => (restartError = null)}
+			/>
 		{/if}
 	{/if}
 

@@ -11,6 +11,8 @@
 	import { triggerLintRun } from '$lib/services/lintApi';
 	import { createLintRunStream } from '$lib/services/lintLifecycleClient';
 	import { createRemediationTaskStream } from '$lib/services/remediationLifecycleClient';
+	import { toPresentedError, type PresentedError } from '$lib/services/apiError';
+	import ApiErrorAlert from '$lib/components/ApiErrorAlert.svelte';
 	import type {
 		BoardTask,
 		ConnectionState,
@@ -45,7 +47,7 @@
 	// 015-lint-board-parity T018 (FR-002/SC-003): trigger a lint run in one action from
 	// the board itself; blocked triggers surface their reason — never silent (SC-004).
 	let triggeringLint = $state(false);
-	let lintTriggerError: string | null = $state(null);
+	let lintTriggerError: PresentedError | null = $state(null);
 
 	async function handleLintTrigger() {
 		triggeringLint = true;
@@ -62,10 +64,9 @@
 				hasFindingsReport: false
 			};
 		} catch (err) {
-			// LintApiError.message carries the Hub's human-readable reason for both 409
-			// shapes (lint_run_active, unresolved_remediation_tasks) — SC-004.
-			lintTriggerError =
-				err instanceof Error ? err.message : 'The lint run could not be triggered.';
+			// The Hub's own sentence for both 409 shapes (lint_run_active,
+			// unresolved_remediation_tasks) arrives in the presentation — SC-004.
+			lintTriggerError = toPresentedError(err);
 		} finally {
 			triggeringLint = false;
 		}
@@ -231,12 +232,12 @@
 			</button>
 		</div>
 		{#if lintTriggerError}
-			<p
-				class="rounded border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-800"
-				data-testid="lint-trigger-error"
-			>
-				{lintTriggerError}
-			</p>
+			<ApiErrorAlert
+				error={lintTriggerError}
+				testId="lint-trigger-error"
+				onRetry={handleLintTrigger}
+				onDismiss={() => (lintTriggerError = null)}
+			/>
 		{/if}
 		<LintRunCard run={lintRun} />
 

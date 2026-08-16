@@ -1,3 +1,4 @@
+import { presentResponseError, type PresentedError } from './apiError';
 import type { QueryTurn, QueryTurnAcceptedResponse } from '$lib/types';
 
 const CONVERSATIONS_BASE_PATH = '/api/query-conversations';
@@ -7,34 +8,28 @@ export class QuerySubmissionApiError extends Error {
 	constructor(
 		message: string,
 		public readonly status: number,
-		public readonly reason?: string
+		public readonly reason?: string,
+		/** The shared presentation of this failure; every surface renders this, not `message`. */
+		public readonly presented?: PresentedError
 	) {
 		super(message);
 		this.name = 'QuerySubmissionApiError';
 	}
 }
 
-// spec.md Edge Cases / Assumptions: rejections beyond the concurrency limit or an
-// already-active conversation turn must show a clear, human-readable "busy" message —
-// not the raw snake_case machine reason code the Hub returns.
-const REASON_MESSAGES: Record<string, string> = {
-	query_concurrency_limit_reached: 'The wiki is busy right now — please try again in a moment.',
-	conversation_already_active: 'This conversation already has a question in progress.'
-};
-
-async function parseErrorMessage(
-	response: Response
-): Promise<{ message: string; reason?: string }> {
-	try {
-		const body = await response.json();
-		if (typeof body?.message === 'string') return { message: body.message };
-		if (typeof body?.reason === 'string') {
-			return { message: REASON_MESSAGES[body.reason] ?? body.reason, reason: body.reason };
-		}
-	} catch {
-		// fall through to a generic message below
-	}
-	return { message: `Request failed with status ${response.status}` };
+/**
+ * 024 (ADR-026): the Hub sends the readable sentence; the snake_case→prose table that used to sit
+ * here is gone, along with this client's private disagreement with the other two about whether
+ * `message` or `reason` won.
+ */
+async function toApiError(response: Response): Promise<QuerySubmissionApiError> {
+	const presented = await presentResponseError(response);
+	return new QuerySubmissionApiError(
+		presented.message,
+		response.status,
+		presented.code ?? undefined,
+		presented
+	);
 }
 
 /**
@@ -57,8 +52,7 @@ export async function submitQueryTurn(
 	);
 
 	if (!response.ok) {
-		const { message, reason } = await parseErrorMessage(response);
-		throw new QuerySubmissionApiError(message, response.status, reason);
+		throw await toApiError(response);
 	}
 
 	return response.json();
@@ -71,8 +65,7 @@ export async function getQueryTurn(
 ): Promise<QueryTurn> {
 	const response = await fetchImpl(`${TURNS_BASE_PATH}/${encodeURIComponent(turnId)}`);
 	if (!response.ok) {
-		const { message } = await parseErrorMessage(response);
-		throw new QuerySubmissionApiError(message, response.status);
+		throw await toApiError(response);
 	}
 
 	return response.json();
@@ -87,8 +80,7 @@ export async function interruptQueryTurn(
 		method: 'POST'
 	});
 	if (!response.ok) {
-		const { message } = await parseErrorMessage(response);
-		throw new QuerySubmissionApiError(message, response.status);
+		throw await toApiError(response);
 	}
 
 	return response.json();

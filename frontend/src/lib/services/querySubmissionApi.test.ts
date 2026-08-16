@@ -5,6 +5,14 @@ import { QuerySubmissionApiError, interruptQueryTurn, submitQueryTurn } from './
 // the concurrency limit or against an already-active conversation must show a clear,
 // human-readable "busy" message — not the raw snake_case reason code the Hub returns.
 
+/** 024 (ADR-026): the Hub answers every failure as application/problem+json. */
+function problemResponse(status: number, code: string, detail: string): Response {
+	return new Response(JSON.stringify({ status, title: 'Declined', detail, code }), {
+		status,
+		headers: { 'Content-Type': 'application/problem+json' }
+	});
+}
+
 function jsonResponse(status: number, body: unknown): Response {
 	return new Response(JSON.stringify(body), {
 		status,
@@ -36,44 +44,63 @@ test('submitQueryTurn sends a body containing exactly the prompt and no priorTur
 	expect(Object.keys(parsed)).toEqual(['prompt']);
 });
 
-test('submitQueryTurn maps a 503 concurrency-limit rejection to a human-readable message', async () => {
-	const fetchImpl = async () => jsonResponse(503, { reason: 'query_concurrency_limit_reached' });
+test('submitQueryTurn surfaces the Hub sentence for a 503 and keeps the code', async () => {
+	const fetchImpl = async () =>
+		problemResponse(
+			503,
+			'query_concurrency_limit_reached',
+			'The wiki is answering as many questions as it can handle right now. Wait a moment and ask again.'
+		);
 
 	const error = await submitQueryTurn('c-1', 'What does the wiki say?', fetchImpl).catch((e) => e);
 
 	expect(error).toBeInstanceOf(QuerySubmissionApiError);
 	expect((error as QuerySubmissionApiError).reason).toBe('query_concurrency_limit_reached');
-	expect((error as QuerySubmissionApiError).message).toBe(
-		'The wiki is busy right now — please try again in a moment.'
-	);
+	// A 5xx is a fault, and a fault is retryable — the user has nothing to fix.
+	expect((error as QuerySubmissionApiError).presented?.category).toBe('fault');
+	expect((error as QuerySubmissionApiError).presented?.retryable).toBe(true);
+	expect((error as QuerySubmissionApiError).presented?.message).toContain('Wait a moment');
 });
 
-test('submitQueryTurn maps a 409 conversation-already-active rejection to a human-readable message', async () => {
-	const fetchImpl = async () => jsonResponse(409, { reason: 'conversation_already_active' });
+test('submitQueryTurn presents a 409 as declined, with no retry offered', async () => {
+	const fetchImpl = async () =>
+		problemResponse(
+			409,
+			'conversation_already_active',
+			'This conversation is still working on the previous question. Wait for the answer, then ask again.'
+		);
 
 	const error = await submitQueryTurn('c-1', 'What does the wiki say?', fetchImpl).catch((e) => e);
 
-	expect(error).toBeInstanceOf(QuerySubmissionApiError);
 	expect((error as QuerySubmissionApiError).reason).toBe('conversation_already_active');
-	expect((error as QuerySubmissionApiError).message).toBe(
-		'This conversation already has a question in progress.'
+	expect((error as QuerySubmissionApiError).presented?.category).toBe('declined');
+	// Retrying a declined request cannot help until the user resolves what caused it (FR-008).
+	expect((error as QuerySubmissionApiError).presented?.retryable).toBe(false);
+	expect((error as QuerySubmissionApiError).presented?.message).not.toContain(
+		'conversation_already_active'
 	);
 });
 
-test('an unrecognized reason code falls back to the raw code rather than throwing', async () => {
-	const fetchImpl = async () => jsonResponse(400, { reason: 'some_future_reason_code' });
+test('a code this client has never heard of still reads as a sentence', async () => {
+	// Previously this displayed the raw identifier, because the browser held the only
+	// code→prose table and could not have an entry for a code it did not know about.
+	const fetchImpl = async () =>
+		problemResponse(400, 'some_future_code', 'Something specific the Hub wanted to say.');
 
 	const error = await submitQueryTurn('c-1', 'What does the wiki say?', fetchImpl).catch((e) => e);
 
-	expect((error as QuerySubmissionApiError).message).toBe('some_future_reason_code');
+	expect((error as QuerySubmissionApiError).presented?.message).toBe(
+		'Something specific the Hub wanted to say.'
+	);
 });
 
-test('interruptQueryTurn also maps rejection reason codes to human-readable messages', async () => {
-	const fetchImpl = async () => jsonResponse(503, { reason: 'query_concurrency_limit_reached' });
+test('interruptQueryTurn presents rejections the same way', async () => {
+	const fetchImpl = async () =>
+		problemResponse(503, 'query_concurrency_limit_reached', 'Wait a moment and try again.');
 
 	const error = await interruptQueryTurn('t-1', fetchImpl).catch((e) => e);
 
-	expect((error as QuerySubmissionApiError).message).toBe(
-		'The wiki is busy right now — please try again in a moment.'
+	expect((error as QuerySubmissionApiError).presented?.message).toBe(
+		'Wait a moment and try again.'
 	);
 });

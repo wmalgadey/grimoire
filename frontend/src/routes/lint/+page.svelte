@@ -7,9 +7,14 @@
 		getLatestLintRun,
 		getLintFindings,
 		getLintRun,
-		LintApiError,
 		triggerLintRun
 	} from '$lib/services/lintApi';
+	import {
+		presentRecordedFailure,
+		toPresentedError,
+		type PresentedError
+	} from '$lib/services/apiError';
+	import ApiErrorAlert from '$lib/components/ApiErrorAlert.svelte';
 	import type { LintRun } from '$lib/types';
 
 	// data-model.md "Lint Run": at most one run ever active, no per-run task board — the
@@ -17,7 +22,7 @@
 	// Unlike Query, Lint has no streaming channel at all: the client polls for status.
 	let run: LintRun | null = $state(null);
 	let findingsContent: string | null = $state(null);
-	let triggerError: string | null = $state(null);
+	let triggerError: PresentedError | null = $state(null);
 	let pollHandle: ReturnType<typeof setInterval> | undefined;
 
 	const statusLabels: Record<LintRun['status'], string> = {
@@ -87,10 +92,7 @@
 			findingsContent = null;
 			startPolling();
 		} catch (error) {
-			triggerError =
-				error instanceof LintApiError
-					? error.message
-					: 'Failed to trigger the lint run unexpectedly.';
+			triggerError = toPresentedError(error);
 		}
 	}
 
@@ -155,7 +157,12 @@
 	</button>
 
 	{#if triggerError}
-		<p class="text-sm text-stage-failed" data-testid="lint-trigger-error">{triggerError}</p>
+		<ApiErrorAlert
+			error={triggerError}
+			testId="lint-trigger-error"
+			onRetry={handleTrigger}
+			onDismiss={() => (triggerError = null)}
+		/>
 	{/if}
 
 	{#if run}
@@ -175,9 +182,13 @@
 			</div>
 
 			{#if run.status === 'failed' && run.failureReason}
-				<p class="text-xs text-red-600" data-testid="lint-run-failure-reason">
-					{run.failureReason}
-				</p>
+				<!-- 024 FR-012: the recorded reason is unchanged; only its presentation is. A
+				     provider rejection's "Model API error 400 (...)" framing moves into the
+				     technical detail so the provider's own sentence is what reads first. -->
+				<ApiErrorAlert
+					error={presentRecordedFailure(run.failureReason)}
+					testId="lint-run-failure-reason"
+				/>
 			{/if}
 		</section>
 	{/if}

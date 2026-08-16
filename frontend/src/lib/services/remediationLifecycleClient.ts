@@ -6,7 +6,7 @@ import type {
 	RemediationTaskBoardEntry,
 	RemediationTaskLifecycleEvent
 } from '$lib/types';
-import { parseHttpErrorMessage } from './httpErrorMessage';
+import { presentResponseError } from './apiError';
 
 const HUB_PATH = '/hubs/remediation-lifecycle';
 const BOARD_PATH = '/api/board';
@@ -99,7 +99,7 @@ export async function fetchRemediationTasksFromBoard(
 	const response = await fetchImpl(BOARD_PATH);
 	if (!response.ok) {
 		// 023 T052: the Hub's own reason, when it sent one — the bare status is the fallback.
-		throw new Error(await parseHttpErrorMessage(response));
+		throw new Error((await presentResponseError(response)).message);
 	}
 
 	const board: CompositeBoardResponse = await response.json();

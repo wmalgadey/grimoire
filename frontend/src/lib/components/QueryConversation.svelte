@@ -1,4 +1,6 @@
 <script lang="ts">
+	import { presentRecordedFailure } from '$lib/services/apiError';
+	import ApiErrorAlert from './ApiErrorAlert.svelte';
 	import DOMPurify from 'dompurify';
 	import { marked } from 'marked';
 	import type { QueryTurn } from '$lib/types';
@@ -86,9 +88,10 @@
 			</div>
 
 			{#if turn.state === 'failed' && turn.failureReason}
-				<p class="text-xs text-red-600" data-testid="query-turn-failure-reason">
-					{turn.failureReason}
-				</p>
+				<ApiErrorAlert
+					error={presentRecordedFailure(turn.failureReason)}
+					testId="query-turn-failure-reason"
+				/>
 			{/if}
 		</article>
 	{/each}

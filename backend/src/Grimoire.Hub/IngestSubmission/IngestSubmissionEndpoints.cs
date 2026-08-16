@@ -221,13 +221,13 @@ public static class IngestSubmissionEndpoints
 
         if (!File.Exists(defaultUserPromptPath))
         {
-return ApiErrorResults.Problem(ApiErrorCatalogue.DefaultUserPromptMissing);
+            return ApiErrorResults.Problem(ApiErrorCatalogue.DefaultUserPromptMissing);
         }
 
         var defaultUserPrompt = await File.ReadAllTextAsync(defaultUserPromptPath, cancellationToken);
         if (string.IsNullOrWhiteSpace(defaultUserPrompt))
         {
-return ApiErrorResults.Problem(ApiErrorCatalogue.DefaultUserPromptEmpty);
+            return ApiErrorResults.Problem(ApiErrorCatalogue.DefaultUserPromptEmpty);
         }
 
         return Results.Ok(new

@@ -45,7 +45,7 @@ Read-only stream of the persisted original from `<DataDir>/raw/originals/`. The 
 | Status | Body | Condition |
 | --- | --- | --- |
 | 200 | File stream; `Content-Type` from manifest `OriginalContentType`; `Content-Disposition: inline` | Manifest and original file exist |
-| 404 | empty | Unknown task, missing manifest, or missing original file |
+| 404 | error envelope | Unknown task, missing manifest, or missing original file |
 
 ## New: `POST /api/ingest-submissions/{taskId}/restart`
 
@@ -54,10 +54,19 @@ Manual restart of a finally-failed task (FR-010…FR-013). No request body.
 | Status | Body | Condition |
 | --- | --- | --- |
 | 202 | `{ "taskId": "...", "status": "queued" }` | Task was `failed`, normalized source exists → history appended (`restarted`, `queued`), attempt counter reset, task re-queued at tail |
-| 409 | `{ "reason": "..." }` | Task not in `failed` status, already re-queued/running (incl. concurrent duplicate — CAS loser), or normalized source missing |
-| 404 | empty | Unknown task id |
+| 409 | error envelope, `code` one of `restart_task_not_failed`, `restart_already_in_progress`, `restart_source_missing` | Task not in `failed` status, already re-queued/running (incl. concurrent duplicate — CAS loser), or normalized source missing |
+| 404 | error envelope | Unknown task id |
 
 Concurrency guarantee (SC-008): for N concurrent restart calls on one failed task, exactly one returns 202; the rest return 409. Exactly one `restarted` history entry and one queue insertion result.
+
+## Superseded: error response shape
+
+Every failure row above originally described an ad-hoc body — `{ "message": ... }`,
+`{ "reason": ... }`, or an empty one. Those shapes were replaced by the single error envelope
+introduced in [024-api-error-presentation](../../024-api-error-presentation/contracts/api-error-envelope.md)
+(ADR-026), which is the authority: `application/problem+json` carrying `status`, `title`, `detail`,
+`code`, and `traceId`. The three restart declines, previously one undifferentiated `reason` string,
+now carry distinct codes so a caller can tell them apart — noted inline above.
 
 ## Unchanged (explicitly)
 

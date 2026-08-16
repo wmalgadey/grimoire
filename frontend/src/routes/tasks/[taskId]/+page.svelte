@@ -14,6 +14,8 @@
 	} from '$lib/services/ingestSubmissionsApi';
 	import { fetchRemediationTaskMessages, getRemediationTask } from '$lib/services/remediationApi';
 	import { createRemediationLifecycleClient } from '$lib/services/remediationLifecycleClient';
+	import { toPresentedError, type PresentedError } from '$lib/services/apiError';
+	import ApiErrorAlert from '$lib/components/ApiErrorAlert.svelte';
 	import type {
 		ConnectionState,
 		RemediationTaskDetail,
@@ -65,7 +67,7 @@
 	// disabled while the request is in flight; a 409 (someone else won the race, or the
 	// task moved on) re-fetches the true current state instead of trusting the click.
 	let restarting = $state(false);
-	let restartError: string | null = $state(null);
+	let restartError: PresentedError | null = $state(null);
 
 	async function handleRestart() {
 		restarting = true;
@@ -74,7 +76,7 @@
 			await restartTask(data.taskId);
 		} catch (err) {
 			if (err instanceof IngestSubmissionApiError && err.status === 409) {
-				restartError = err.message;
+				restartError = toPresentedError(err);
 			} else {
 				throw err;
 			}
@@ -236,7 +238,11 @@
 					{restarting ? 'Restarting…' : 'Restart'}
 				</button>
 				{#if restartError}
-					<p class="text-xs text-stage-failed" data-testid="task-restart-error">{restartError}</p>
+					<ApiErrorAlert
+						error={restartError}
+						testId="task-restart-error"
+						onDismiss={() => (restartError = null)}
+					/>
 				{/if}
 			</div>
 		{/if}

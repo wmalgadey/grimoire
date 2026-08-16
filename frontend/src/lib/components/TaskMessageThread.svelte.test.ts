@@ -163,6 +163,12 @@ test('empty message submission shows a client-side error and never calls the API
 
 	await screen.getByTestId('task-message-thread-send-button').click();
 
-	await expect.element(screen.getByTestId('task-message-thread-send-error')).toBeInTheDocument();
+	// 024: a client-side validation message, not a request failure — nothing reached the Hub.
+	await expect
+		.element(screen.getByTestId('task-message-thread-send-validation'))
+		.toBeInTheDocument();
+	expect(
+		screen.container.querySelector('[data-testid="task-message-thread-send-error"]')
+	).toBeNull();
 	expect(sendMock).not.toHaveBeenCalled();
 });

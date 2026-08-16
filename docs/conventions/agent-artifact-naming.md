@@ -84,6 +84,8 @@ the fixture fails the build.
 | `HubCliCommandTests` | 018-hub-cli-commands: the CLI command surface's per-command success/failure contract matrix, growing across every user story (US1 lint-run, US2 remediation, US3 ingest, US4 query) — cross-agent by construction like `Grimoire.Hub.Cli` itself; currently references only lint-owned namespaces because US1 is the only story landed so far |
 | `HubCliConcurrencyTests` | 018-hub-cli-commands: the CLI/Hub dual-writer and cross-process lock concurrency matrix, growing across every user story alongside `HubCliCommandTests` above |
 | `HubCliParityTests` | 018-hub-cli-commands: the CLI-vs-HTTP outcome parity matrix (SC-005), growing across every user story alongside `HubCliCommandTests` above |
+| `HubApiErrorEnvelopeTests` | 024-api-error-presentation (ADR-026): the Hub-wide HTTP failure contract — one envelope for every endpoint family, asserted across ingest and lint surfaces. Cross-agent by construction like `Grimoire.Hub.ApiErrors` itself; reference detection sees only ingest-owned namespaces because the lint cases reach that surface through `LintTriggerHostHarness` rather than importing a lint namespace directly |
+| `HubApiErrorObservabilityTests` | 024-api-error-presentation (ADR-026): the metric, log and trace contracts of the same Hub-wide envelope. One endpoint family suffices to prove the signal wiring, so it references ingest-owned namespaces only; what it instruments is not ingest-specific |
 
 Also cross-agent by construction (not name-listed): everything in `*.Fakes`
 namespaces, `Grimoire.AgentRuntime.*`, `Grimoire.EvalRunner` machinery outside the
