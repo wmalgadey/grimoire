@@ -199,7 +199,7 @@ field names, exactly as the Hub's existing `*LogEvents` classes do.
 **Derivation rule (MANDATORY)**: each row maps to (1) an implementation task emitting the event with
 its stable name and mandatory fields, (2) a deterministic integration test validating name, level
 and every mandatory field, and (3) a CI task confirming those tests run in the standard PR pipeline.
-See tasks T012–T014 and T031.
+See tasks T013 (implementation), T055 (deterministic test) and T058 (CI).
 
 ### Distributed Trace Spans (OpenTelemetry)
 
@@ -221,8 +221,8 @@ the one an operator will find.
 
 **Derivation rule (MANDATORY)**: each row maps to (1) an implementation task creating the span with
 the declared parent linkage and attributes, (2) a deterministic integration test validating span
-name, parent/child linkage and correlation attributes, and (3) a CI task. See tasks T015–T016 and
-T031.
+name, parent/child linkage and correlation attributes, and (3) a CI task. See tasks T014
+(implementation), T056–T057 (deterministic tests) and T058 (CI).
 
 **Correlation**: `trace_id` is the shared identifier joining the metric, both log events, both spans,
 and the `traceId` member of the response body. It is read from `Activity.Current` inside our own
