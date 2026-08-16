@@ -280,3 +280,71 @@ test('a pagehide event with no active turn does not call interruptQueryTurn', as
 
 	expect(interruptQueryTurnMock).not.toHaveBeenCalled();
 });
+
+// 024 Phase 10 convergence (FR-010, FR-011, SC-005): the Stop button is a user action, so its
+// failure is a request failure and belongs in the shared presentation. It used to be swallowed
+// on the reasoning that the turn's true state arrives via `queryTurnChanged` anyway — which
+// inverts exactly where it matters: a request that never reached the Hub produces no such
+// event, so the turn goes on running and the click is indistinguishable from a no-op.
+test('a failed interrupt is presented in the shared region rather than swallowed', async () => {
+	onAnswerChunkHandlers.length = 0;
+	onTurnChangedHandlers.length = 0;
+	submitQueryTurnMock.mockReset();
+	interruptQueryTurnMock.mockReset();
+	interruptQueryTurnMock.mockRejectedValue(new TypeError('Failed to fetch'));
+	submitQueryTurnMock.mockResolvedValue({
+		turnId: 't-5',
+		conversationId: 'ignored-by-page-state',
+		position: 1,
+		state: 'running',
+		acceptedAt: new Date().toISOString()
+	});
+
+	const screen = await render(Page);
+
+	await screen.getByTestId('query-prompt-input').fill('What does ADR-004 decide?');
+	await screen.getByTestId('query-prompt-submit-button').click();
+	await expect.element(screen.getByTestId('query-turn-state')).toHaveTextContent('Answering…');
+
+	await screen.getByTestId('query-turn-stop-button').click();
+
+	await expect.element(screen.getByTestId('query-interrupt-error')).toBeInTheDocument();
+	await expect
+		.element(screen.getByTestId('query-interrupt-error-message'))
+		.toHaveTextContent('The wiki did not respond.');
+});
+
+// FR-008: retrying an interrupt that failed to reach the Hub can plausibly succeed, so the
+// affordance re-runs the interrupt for the same turn rather than merely clearing the message.
+test('retrying a failed interrupt re-runs it for the same turn', async () => {
+	onAnswerChunkHandlers.length = 0;
+	onTurnChangedHandlers.length = 0;
+	submitQueryTurnMock.mockReset();
+	interruptQueryTurnMock.mockReset();
+	interruptQueryTurnMock.mockRejectedValue(new TypeError('Failed to fetch'));
+	submitQueryTurnMock.mockResolvedValue({
+		turnId: 't-6',
+		conversationId: 'ignored-by-page-state',
+		position: 1,
+		state: 'running',
+		acceptedAt: new Date().toISOString()
+	});
+
+	const screen = await render(Page);
+
+	await screen.getByTestId('query-prompt-input').fill('What does ADR-004 decide?');
+	await screen.getByTestId('query-prompt-submit-button').click();
+	await expect.element(screen.getByTestId('query-turn-state')).toHaveTextContent('Answering…');
+
+	await screen.getByTestId('query-turn-stop-button').click();
+	await expect.element(screen.getByTestId('query-interrupt-error')).toBeInTheDocument();
+
+	interruptQueryTurnMock.mockResolvedValue({});
+	await screen.getByTestId('query-interrupt-error-retry').click();
+
+	await vi.waitFor(() =>
+		expect(screen.container.querySelector('[data-testid="query-interrupt-error"]')).toBeNull()
+	);
+	expect(interruptQueryTurnMock).toHaveBeenCalledTimes(2);
+	expect(interruptQueryTurnMock.mock.calls[1][0]).toBe('t-6');
+});

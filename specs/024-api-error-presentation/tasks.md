@@ -320,3 +320,15 @@ envelope contract and its Boundary Rule already enforced. Everything after it im
 delivered as a stack rather than one big-bang PR — a natural cut is Phase 0–2 (contract + machinery),
 Phase 3 (MVP), Phases 4–7 (presentation), Phase 8–9 (observability + audit). The Definition of Done
 stays whole-feature regardless of how the stack is cut.
+
+---
+
+## Phase 10: Convergence
+
+Appended by `/speckit-converge`. Both findings are the same shape as the gap the Phase 9 audit
+already closed for `handleResume`: a *user action* whose request failure never reaches the shared
+presentation. The audit found that one by reading `routes/+page.svelte`; these two sit in files that
+phase did not re-read.
+
+- [X] T065 Route the query-turn interrupt failure through `ApiErrorAlert` in `frontend/src/routes/query/+page.svelte`: `handleInterrupt`'s `catch {}` currently swallows it, though the "Stop" button (`QueryConversation.svelte`, `data-testid="query-turn-stop-button"`) makes it a user action, not a background refresh. Its stated reason — that the true state "arrives via `queryTurnChanged` regardless" — does not hold for the case that matters: if the interrupt never reached the Hub there is no such event, so the turn keeps running and nothing explains why the click did nothing. Present it on the query surface with a retry, as `handleResume` already is, and cover it with a classicist test asserting the shared presentation appears when `interruptQueryTurn` rejects. Implements FR-010, FR-011; verifies SC-005 (partial)
+- [X] T066 Record at `frontend/src/lib/components/QueryPromptForm.svelte`'s validation message (`data-testid="query-prompt-error"`) that its pre-024 `<p class="text-sm text-stage-failed">` shape is a deliberate distinction — client-side validation, not a request failure — matching the note `SubmissionForm.svelte` carries at its own equivalent. It is the last surviving instance of the shape `ApiErrorAlert` replaced, and without the note a reader cannot tell a decision from a missed migration. Implements plan FSI2; extends T049's distinction (partial)
