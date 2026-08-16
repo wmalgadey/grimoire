@@ -19,7 +19,8 @@ formulas, thresholds, and sources.
 
 - **Backend** (`backend/`) — .NET / C#, hexagonal (ports & adapters) architecture
 - **Frontend** (`frontend/`) — SvelteKit
-- **Agents** (`backend/src/Grimoire.*Agent/Instructions/`) — per-agent instruction files (`system-prompt.md`, `policy.json`) that govern each agent's behavior at runtime, delivered to the configured agent directory by the agent build
+- **Agents** (`backend/src/Grimoire.*Agent/Instructions/`) — per-agent instruction files (`system-prompt.md`, `policy.json`, plus `default-user-prompt.md` where the agent has a default steering message) that govern each agent's behavior at runtime, delivered to the configured agent directory by the agent build
+- **Evals** (`backend/src/Grimoire.EvalRunner`, `backend/tests/Grimoire.AgentEvals`) — a standalone runner that replays committed recordings at the model port ([ADR-012](docs/adr/ADR-012-eval-runner-recorded-replay.md)), so agent *judgment* is scored against thresholds rather than pinned by deterministic tests
 
 Grimoire is split into a **deterministic harness** (the Hub: dispatch, credential scoping,
 guardrails, persistence, observability) and the **agents** that actually decide what the
@@ -40,7 +41,8 @@ consumer, and infrastructure are read together instead of scattered across a sha
 - **Adapters (edge)** — every `*.Adapters.*` namespace, plus repositories and artifact
   stores. Infrastructure packages live here and nowhere else: `Microsoft.Data.Sqlite` only
   in `OperationalState`, the Anthropic SDK only in `Core.Adapters.Anthropic`, outbound HTTP
-  only in `Adapters.HttpFetch`, process spawning only in the two adapters that need it.
+  only in `Adapters.HttpFetch`, and, inside the Hub, process spawning only in the two
+  adapters that need it (`Adapters.AgentProcess`, `Adapters.MarkItDown`).
 
 ### Bounded contexts
 
@@ -57,16 +59,18 @@ Harness side — `backend/src/Grimoire.Hub`:
 | Realtime | `Realtime` | Pushing lifecycle changes to the board over SignalR | — |
 | Task Artifact | `IngestTaskArtifact` | The per-task markdown record the UI reads | — |
 | CLI | `Cli` | Operator commands against the same state the Hub uses | — |
+| Runtime Paths | `Runtime.Paths` | Resolving the four independent directory roots — data, agent, wiki, memory ([ADR-022](docs/adr/ADR-022-minimal-directory-configuration-surface.md), [ADR-024](docs/adr/ADR-024-memory-directory-root.md)) | — |
 
 Agent side — one process per agent, all on a shared runtime:
 
 | Context | Namespace | Owns |
 | --- | --- | --- |
 | Agent Runtime | `Grimoire.AgentRuntime.Core` | The agent loop and the model boundary — `IModelClient` → `Core.Adapters.Anthropic` (and `Core.Adapters.Replay` for recorded runs) |
+| Host & Composition | `Grimoire.AgentRuntime.Host`, `.Composition` | The shared hosting and DI wiring every agent process builds on ([ADR-013](docs/adr/ADR-013-unified-agent-platform-packaging-and-naming.md)) |
 | Guardrails | `Grimoire.AgentRuntime.Guardrails` | The guarded tool layer: deny-by-default policy enforced at call time, plus shared-file write coordination |
 | Instructions | `Grimoire.AgentRuntime.Instructions` | Loading and hashing the instruction files that govern agent behavior |
 | Run Events / Telemetry / Wiki Log | `Grimoire.AgentRuntime.RunEvents`, `.Telemetry`, `.WikiLog` | What a run reports back to the Hub and to the wiki's own log |
-| Ingest / Query / Lint Agent | `Grimoire.IngestAgent`, `.QueryAgent`, `.LintAgent` | Each agent's process entry point and its versioned instruction files |
+| Ingest / Query / Lint Agent | `Grimoire.IngestAgent`, `.QueryAgent`, `.LintAgent` | Each agent's own entry point, CLI options, tool registry, instrumentation, and versioned instruction files |
 
 Ports, adapter containment, and the guarded-write boundary are not conventions — they are
 structural tests in [`backend/tests/Grimoire.ArchTests`](backend/tests/Grimoire.ArchTests),
@@ -77,7 +81,9 @@ each proven to detect violations by a Red/Green probe, and each run on every PR.
 This project is built with **Spec-Driven Development (Spec Kit)**: every feature goes
 through `/speckit-specify` → `/speckit-plan` → `/speckit-tasks` → `/speckit-implement` →
 `/speckit-converge`, gated by [`.specify/memory/constitution.md`](.specify/memory/constitution.md)
-and the ADRs in [`docs/adr/`](docs/adr/). See [CLAUDE.md](CLAUDE.md) for the full document map.
+and the ADRs in [`docs/adr/`](docs/adr/) — [`docs/adr/index.md`](docs/adr/index.md) is the
+single place to see which decisions currently govern the codebase. See
+[CLAUDE.md](CLAUDE.md) for the full document map.
 
 ## Contributing
 
