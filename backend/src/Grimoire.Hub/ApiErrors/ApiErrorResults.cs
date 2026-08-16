@@ -21,6 +21,9 @@ namespace Grimoire.Hub.ApiErrors;
 /// </summary>
 public static class ApiErrorResults
 {
+    /// <summary>RFC 7807's media type — see the note at the write site for why it is contractual.</summary>
+    internal const string ProblemJsonContentType = "application/problem+json";
+
     /// <summary>
     /// The error response for <paramref name="code"/>.
     /// </summary>
@@ -93,8 +96,12 @@ public static class ApiErrorResults
             Emit(httpContext, definition, path, traceId, failureReason: null);
 
             httpContext.Response.StatusCode = definition.Status;
-            httpContext.Response.ContentType = "application/problem+json";
-            await httpContext.Response.WriteAsJsonAsync(problem, httpContext.RequestAborted);
+            // The content type is part of the contract, not decoration: it is how a client decides
+            // whether a body is a recognizable error structure before parsing it, which is what
+            // lets a proxy's HTML page be classified without guessing. It has to be passed to
+            // WriteAsJsonAsync — setting Response.ContentType beforehand is overwritten.
+            await httpContext.Response.WriteAsJsonAsync(
+                problem, options: null, contentType: ProblemJsonContentType, httpContext.RequestAborted);
         }
     }
 
