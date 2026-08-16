@@ -2,6 +2,7 @@ import { expect, test, vi } from 'vitest';
 import {
 	applyRemediationTaskLifecycleEvent,
 	createRemediationTaskStream,
+	fetchRemediationTasksFromBoard,
 	type RemediationLifecycleClient
 } from './remediationLifecycleClient';
 import type {
@@ -144,4 +145,26 @@ test('applyRemediationTaskLifecycleEvent signals unknownTask for a task the clie
 
 	expect(result.unknownTask).toBe(true);
 	expect(result.entries).toEqual([]);
+});
+
+// 023 T052: same rule as the lint client — the Hub's own reason is shown when it sent one.
+test('fetchRemediationTasksFromBoard surfaces the Hub JSON message when the body carries one', async () => {
+	const fetchImpl = vi.fn().mockResolvedValue(
+		new Response(JSON.stringify({ message: 'Board is unavailable during reconciliation.' }), {
+			status: 503,
+			headers: { 'Content-Type': 'application/json' }
+		})
+	);
+
+	await expect(
+		fetchRemediationTasksFromBoard(fetchImpl as unknown as typeof fetch)
+	).rejects.toThrow('Board is unavailable during reconciliation.');
+});
+
+test('fetchRemediationTasksFromBoard falls back to the status when the body is absent or unparseable', async () => {
+	const fetchImpl = vi.fn().mockResolvedValue(new Response('', { status: 500 }));
+
+	await expect(
+		fetchRemediationTasksFromBoard(fetchImpl as unknown as typeof fetch)
+	).rejects.toThrow('Request failed with status 500');
 });

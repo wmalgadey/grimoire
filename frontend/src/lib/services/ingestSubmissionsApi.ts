@@ -8,6 +8,7 @@ import type {
 	TaskDetail,
 	TaskRecord
 } from '$lib/types';
+import { parseHttpErrorMessage } from './httpErrorMessage';
 
 const BASE_PATH = '/api/ingest-submissions';
 const QUEUE_BASE_PATH = '/api/ingest-queue';
@@ -22,17 +23,11 @@ export class IngestSubmissionApiError extends Error {
 	}
 }
 
-async function parseErrorMessage(response: Response): Promise<string> {
-	try {
-		const body = await response.json();
-		if (typeof body?.message === 'string') return body.message;
-		// 023: restart's 409 body is `{ reason }` (contracts/http-api.md), not `{ message }`.
-		if (typeof body?.reason === 'string') return body.reason;
-	} catch {
-		// fall through to a generic message below
-	}
-	return `Request failed with status ${response.status}`;
-}
+// 023 T052: extracted to httpErrorMessage.ts so the lint and remediation board clients read
+// the Hub's JSON reason the same way instead of discarding it. Behavior is unchanged —
+// `{ message }` first, then restart's `{ reason }` 409 shape (contracts/http-api.md), then
+// the status fallback.
+const parseErrorMessage = parseHttpErrorMessage;
 
 // 004: optional per-submission steering prompt and convert-step overrides (FR-006, FR-011).
 // Both stay optional so a caller that doesn't touch either reproduces feature 003 exactly.
