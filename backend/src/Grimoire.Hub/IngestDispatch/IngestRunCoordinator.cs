@@ -47,8 +47,7 @@ public sealed class IngestRunCoordinator
 
     private readonly SemaphoreSlim _slotLock = new(1, 1);
     private readonly ConcurrentDictionary<string, RunActivitySnapshot> _activity = new();
-    private string? _runningTaskId;
-
+    private volatile string? _runningTaskId;
     /// <summary>
     /// 023-task-ui-improvements (ADR-025, research.md R2): the bounded automatic
     /// reactivation schedule. Three attempts spaced by an increasing wait — operational
