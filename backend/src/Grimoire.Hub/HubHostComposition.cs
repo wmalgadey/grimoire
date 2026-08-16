@@ -1,6 +1,7 @@
 using Grimoire.Hub;
 using Grimoire.Hub.AgentDispatch;
 using Grimoire.Hub.AgentDispatch.Adapters.AgentProcess;
+using Grimoire.Hub.ApiErrors;
 using Grimoire.Hub.ContentRoot;
 using Grimoire.Hub.Conversion;
 using Grimoire.Hub.IngestDispatch;
@@ -66,6 +67,12 @@ internal static class HubHostComposition
             ContentRootPath = GrimoirePathResolver.ProcessBaseDirectory,
         });
         builder.Services.AddHubTelemetry();
+        // 024-api-error-presentation (ADR-026): the unhandled path answers in the same envelope
+        // as every deliberate rejection. Registered here rather than in Program.cs, which ADR-023
+        // reduced to a one-line pass-through — the web host boots through the CLI default command,
+        // so this is the composition point both paths actually reach.
+        builder.Services.AddProblemDetails();
+        builder.Services.AddExceptionHandler<ApiErrorExceptionHandler>();
         builder.Services.AddSignalR();
         builder.Services.AddHttpClient<IUrlContentFetcher, UrlContentFetcher>();
         builder.Services.AddSingleton(sp => MarkItDownOptions.FromConfiguration(sp.GetRequiredService<IConfiguration>()));

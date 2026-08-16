@@ -53,7 +53,7 @@ public class IngestSubmissionPromptApiTests
         Assert.Equal(HttpStatusCode.InternalServerError, response.StatusCode);
 
         var json = await response.Content.ReadFromJsonAsync<JsonElement>();
-        Assert.Contains("default-user-prompt.md", json.GetProperty("message").GetString(), StringComparison.Ordinal);
+        Assert.Equal("default_user_prompt_missing", json.GetProperty("code").GetString());
     }
 
     [Fact]
@@ -69,7 +69,10 @@ public class IngestSubmissionPromptApiTests
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
         var json = await response.Content.ReadFromJsonAsync<JsonElement>();
-        Assert.Contains("user_prompt_too_long", json.GetProperty("message").GetString(), StringComparison.Ordinal);
+        // The identifier is now a member of its own rather than a prefix inside the text the
+        // user reads — that separation is the point of the feature (024 FR-002).
+        Assert.Equal("user_prompt_too_long", json.GetProperty("code").GetString());
+        Assert.DoesNotContain("user_prompt_too_long", json.GetProperty("detail").GetString(), StringComparison.Ordinal);
 
         // FR-010: rejected before task creation — no artifact, no board entry.
         Assert.Empty(Directory.GetFiles(fixture.ContentPaths.TasksDir, "*.md"));
@@ -93,7 +96,8 @@ public class IngestSubmissionPromptApiTests
         Assert.Equal(HttpStatusCode.UnprocessableEntity, response.StatusCode);
 
         var json = await response.Content.ReadFromJsonAsync<JsonElement>();
-        Assert.Contains("convert_step_required", json.GetProperty("message").GetString(), StringComparison.Ordinal);
+        Assert.Equal("convert_step_required", json.GetProperty("code").GetString());
+        Assert.DoesNotContain("convert_step_required", json.GetProperty("detail").GetString(), StringComparison.Ordinal);
         Assert.Empty(Directory.GetFiles(fixture.ContentPaths.TasksDir, "*.md"));
     }
 

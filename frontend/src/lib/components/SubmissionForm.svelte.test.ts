@@ -101,7 +101,10 @@ test('Missing URL shows a validation error and does not call the API', async () 
 	const screen = await render(SubmissionForm);
 	await screen.getByTestId('submission-submit-button').click();
 
-	await expect.element(screen.getByTestId('submission-error')).toBeVisible();
+	// 024: client-side validation stays distinct from a request failure — nothing was sent, so
+	// this is not what the shared error presentation is for.
+	await expect.element(screen.getByTestId('submission-validation-error')).toBeVisible();
+	expect(screen.container.querySelector('[data-testid="submission-error"]')).toBeNull();
 	expect(api.submitUrl).not.toHaveBeenCalled();
 });
 

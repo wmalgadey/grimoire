@@ -54,7 +54,7 @@ only the shared port surface (`IAgentProcessLauncher`, `AgentRunEvent`,
 | Ingest | `Grimoire.Hub.IngestSubmission`, `Grimoire.Hub.IngestDispatch`, `Grimoire.Hub.IngestTaskArtifact` |
 | Query | `Grimoire.Hub.QueryDispatch`, `Grimoire.Hub.QuerySubmission`, `Grimoire.Hub.QueryRunArtifact` |
 | Lint | `Grimoire.Hub.LintDispatch`, `Grimoire.Hub.LintFindings`, `Grimoire.Hub.RemediationTasks` (015-lint-board-parity, ADR-018 — remediation artifacts carry their own `Remediation` vocabulary, so this namespace is not a Part-1 reference-detection prefix) |
-| Cross-agent | `Grimoire.Hub` (root), `Grimoire.Hub.AgentDispatch`, `Grimoire.Hub.Realtime`, `Grimoire.Hub.Runtime`, `Grimoire.Hub.ContentRoot`, `Grimoire.Hub.OperationalState`, `Grimoire.Hub.Conversion`, `Grimoire.Hub.Cli` (018-hub-cli-commands, ADR-020 — the CLI command surface; like `Realtime`, may host agent-token command types as per-agent entries of shared infrastructure) |
+| Cross-agent | `Grimoire.Hub` (root), `Grimoire.Hub.AgentDispatch`, `Grimoire.Hub.Realtime`, `Grimoire.Hub.Runtime`, `Grimoire.Hub.ContentRoot`, `Grimoire.Hub.OperationalState`, `Grimoire.Hub.Conversion`, `Grimoire.Hub.Cli` (018-hub-cli-commands, ADR-020 — the CLI command surface; like `Realtime`, may host agent-token command types as per-agent entries of shared infrastructure), `Grimoire.Hub.ApiErrors` (024-api-error-presentation, ADR-026 — the HTTP failure contract; it serves the ingest, query, lint and remediation endpoint families and the Hub's own unhandled-exception path, so it is cross-agent by construction) |
 
 ## Exemption list
 
@@ -84,6 +84,8 @@ the fixture fails the build.
 | `HubCliCommandTests` | 018-hub-cli-commands: the CLI command surface's per-command success/failure contract matrix, growing across every user story (US1 lint-run, US2 remediation, US3 ingest, US4 query) — cross-agent by construction like `Grimoire.Hub.Cli` itself; currently references only lint-owned namespaces because US1 is the only story landed so far |
 | `HubCliConcurrencyTests` | 018-hub-cli-commands: the CLI/Hub dual-writer and cross-process lock concurrency matrix, growing across every user story alongside `HubCliCommandTests` above |
 | `HubCliParityTests` | 018-hub-cli-commands: the CLI-vs-HTTP outcome parity matrix (SC-005), growing across every user story alongside `HubCliCommandTests` above |
+| `HubApiErrorEnvelopeTests` | 024-api-error-presentation (ADR-026): the Hub-wide HTTP failure contract — one envelope for every endpoint family, asserted across ingest and lint surfaces. Cross-agent by construction like `Grimoire.Hub.ApiErrors` itself; reference detection sees only ingest-owned namespaces because the lint cases reach that surface through `LintTriggerHostHarness` rather than importing a lint namespace directly |
+| `HubApiErrorObservabilityTests` | 024-api-error-presentation (ADR-026): the metric, log and trace contracts of the same Hub-wide envelope. One endpoint family suffices to prove the signal wiring, so it references ingest-owned namespaces only; what it instruments is not ingest-specific |
 
 Also cross-agent by construction (not name-listed): everything in `*.Fakes`
 namespaces, `Grimoire.AgentRuntime.*`, `Grimoire.EvalRunner` machinery outside the

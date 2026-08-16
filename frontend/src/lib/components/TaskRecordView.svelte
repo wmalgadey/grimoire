@@ -1,4 +1,6 @@
 <script lang="ts">
+	import { presentRecordedFailure } from '$lib/services/apiError';
+	import ApiErrorAlert from './ApiErrorAlert.svelte';
 	import DOMPurify from 'dompurify';
 	import { marked } from 'marked';
 	import type { TaskRecord, TaskSourceLink } from '$lib/types';
@@ -85,9 +87,10 @@
 				{/if}
 			</dl>
 			{#if record.metadata.failureReason}
-				<p class="text-stage-failed" data-testid="task-record-failure-reason">
-					{record.metadata.failureReason}
-				</p>
+				<ApiErrorAlert
+					error={presentRecordedFailure(record.metadata.failureReason)}
+					testId="task-record-failure-reason"
+				/>
 			{/if}
 		</header>
 

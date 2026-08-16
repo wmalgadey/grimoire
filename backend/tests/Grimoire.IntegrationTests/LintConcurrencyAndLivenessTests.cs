@@ -46,7 +46,7 @@ public class LintConcurrencyAndLivenessTests
         Assert.Equal(HttpStatusCode.Conflict, second.StatusCode);
 
         var secondJson = await second.Content.ReadFromJsonAsync<System.Text.Json.JsonElement>();
-        Assert.Equal("lint_run_active", secondJson.GetProperty("reason").GetString());
+        Assert.Equal("lint_run_active", secondJson.GetProperty("code").GetString());
 
         // No queue: exactly one process was ever dispatched, never two.
         Assert.Single(launcher.LintRequests);

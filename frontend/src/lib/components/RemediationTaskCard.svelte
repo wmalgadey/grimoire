@@ -1,10 +1,15 @@
 <script lang="ts">
+	import {
+		presentRecordedFailure,
+		toPresentedError,
+		type PresentedError
+	} from '$lib/services/apiError';
+	import ApiErrorAlert from './ApiErrorAlert.svelte';
 	import type { RemediationTaskBoardEntry, RemediationTaskState } from '$lib/types';
 	import {
 		authorizeRemediationTask,
 		dismissRemediationTask,
-		withdrawRemediationTaskAuthorization,
-		RemediationApiError
+		withdrawRemediationTaskAuthorization
 	} from '$lib/services/remediationApi';
 
 	// 015-lint-board-parity T026 (US3, FR-006) / T037 (US4): one board card per
@@ -26,7 +31,7 @@
 	let { task }: Props = $props();
 
 	let busy = $state(false);
-	let errorMessage: string | null = $state(null);
+	let errorMessage: PresentedError | null = $state(null);
 
 	const stateLabels: Record<RemediationTaskState, string> = {
 		proposed: 'Proposed',
@@ -59,10 +64,7 @@
 		try {
 			await action();
 		} catch (err) {
-			errorMessage =
-				err instanceof RemediationApiError
-					? err.message
-					: 'The request failed unexpectedly. Please try again.';
+			errorMessage = toPresentedError(err);
 		} finally {
 			busy = false;
 		}
@@ -107,13 +109,19 @@
 	</div>
 
 	{#if (task.state === 'failed' || task.state === 'not_applicable') && task.outcomeReason}
-		<!-- FR-005/FR-018: the outcome reason is surfaced on the card itself. -->
-		<p
-			class="text-sm {task.state === 'failed' ? 'text-red-700' : 'text-slate-600'}"
-			data-testid="remediation-task-card-outcome-reason"
-		>
-			{task.outcomeReason}
-		</p>
+		<!-- FR-005/FR-018: the outcome reason is surfaced on the card itself. A `not_applicable`
+		     outcome is not a failure — the agent looked and found nothing to do — so it keeps its
+		     plain rendering rather than being dressed as an error (024 FR-012). -->
+		{#if task.state === 'failed'}
+			<ApiErrorAlert
+				error={presentRecordedFailure(task.outcomeReason)}
+				testId="remediation-task-card-outcome-reason"
+			/>
+		{:else}
+			<p class="text-sm text-slate-600" data-testid="remediation-task-card-outcome-reason">
+				{task.outcomeReason}
+			</p>
+		{/if}
 	{/if}
 
 	{#if task.state === 'proposed'}
@@ -156,9 +164,11 @@
 
 	{#if errorMessage}
 		<!-- FR-016/SC-004 discipline: a lost CAS race or any other rejection is shown, never silent. -->
-		<p class="text-sm text-red-700" data-testid="remediation-task-card-error">
-			{errorMessage}
-		</p>
+		<ApiErrorAlert
+			error={errorMessage}
+			testId="remediation-task-card-error"
+			onDismiss={() => (errorMessage = null)}
+		/>
 	{/if}
 
 	<div class="flex items-center justify-between text-xs text-slate-500">

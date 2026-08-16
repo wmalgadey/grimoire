@@ -70,8 +70,11 @@ public class IngestTaskRestartTests
 
         Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
         var body = await response.Content.ReadFromJsonAsync<JsonElement>();
-        Assert.True(body.TryGetProperty("reason", out var reason));
-        Assert.False(string.IsNullOrWhiteSpace(reason.GetString()));
+        // ADR-025's two declines are now distinguishable: this one is "not failed", not the
+        // "source missing" case, and the caller can tell them apart (ADR-018's rule that the
+        // caller sees the actual outcome). Before 024 both arrived as an untyped prose string.
+        Assert.Equal("restart_task_not_failed", body.GetProperty("code").GetString());
+        Assert.False(string.IsNullOrWhiteSpace(body.GetProperty("detail").GetString()));
     }
 
     [Fact]

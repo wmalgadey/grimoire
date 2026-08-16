@@ -1,3 +1,4 @@
+using Grimoire.Hub.ApiErrors;
 using System.Text.Json;
 using Grimoire.Domain.Ingest;
 using Grimoire.Hub.AgentDispatch;
@@ -68,13 +69,14 @@ public static class IngestSubmissionEndpoints
         }
         catch (JsonException)
         {
-            return Results.BadRequest(new { message = "Request body is not valid JSON." });
+            return ApiErrorResults.Problem(ApiErrorCatalogue.IngestSubmissionBodyInvalid);
         }
 
         if (body is null || !string.Equals(body.Kind, "url", StringComparison.OrdinalIgnoreCase))
         {
             HubMetrics.RecordIngestSubmission("url", "rejected");
-            return Results.BadRequest(new { message = "kind must be 'url' for a JSON submission." });
+            return ApiErrorResults.Problem(ApiErrorCatalogue.IngestSubmissionKindInvalid,
+                "A JSON submission must carry a URL. Submit a URL, or send a file instead.");
         }
 
         var validation = validator.ValidateUrl(body.Url);
@@ -115,14 +117,15 @@ public static class IngestSubmissionEndpoints
         if (!IngestSubmissionValidator.TryParseKind(rawKind, out var kind) || kind == IngestSubmissionKind.Url)
         {
             HubMetrics.RecordIngestSubmission(rawKind, "rejected");
-            return Results.BadRequest(new { message = "kind must be one of markdown_file, pdf_file, office_file for a file submission." });
+            return ApiErrorResults.Problem(ApiErrorCatalogue.IngestSubmissionKindInvalid,
+                "A file submission must be a Markdown, PDF, or Office document.");
         }
 
         var file = form.Files["file"];
         if (file is null || file.Length == 0 && form.Files.Count == 0)
         {
             HubMetrics.RecordIngestSubmission(rawKind, "rejected");
-            return Results.BadRequest(new { message = "A file is required." });
+            return ApiErrorResults.Problem(ApiErrorCatalogue.IngestSubmissionFileMissing);
         }
 
         var validation = validator.ValidateFile(kind, file.FileName, file.Length);
@@ -143,7 +146,7 @@ public static class IngestSubmissionEndpoints
             catch (JsonException)
             {
                 HubMetrics.RecordIngestSubmission(rawKind, "rejected");
-                return Results.BadRequest(new { message = "convertSteps must be a JSON object of step name to boolean." });
+                return ApiErrorResults.Problem(ApiErrorCatalogue.IngestSubmissionConvertStepsInvalid);
             }
         }
 
@@ -190,7 +193,7 @@ public static class IngestSubmissionEndpoints
         if (!promptValidation.IsValid)
         {
             HubMetrics.RecordIngestSubmission(kindLabel, "rejected");
-            IngestSubmissionLogEvents.LogConfigRejected(logger, kindLabel, promptValidation.ErrorMessage!);
+            IngestSubmissionLogEvents.LogConfigRejected(logger, kindLabel, promptValidation.Code!);
             return ToErrorResult(promptValidation);
         }
 
@@ -198,7 +201,7 @@ public static class IngestSubmissionEndpoints
         if (!stepsValidation.IsValid)
         {
             HubMetrics.RecordIngestSubmission(kindLabel, "rejected");
-            IngestSubmissionLogEvents.LogConfigRejected(logger, kindLabel, stepsValidation.ErrorMessage!);
+            IngestSubmissionLogEvents.LogConfigRejected(logger, kindLabel, stepsValidation.Code!);
             return ToErrorResult(stepsValidation);
         }
 
@@ -218,19 +221,13 @@ public static class IngestSubmissionEndpoints
 
         if (!File.Exists(defaultUserPromptPath))
         {
-            return Results.Json(new
-            {
-                message = $"Default user prompt document not found at '{defaultUserPromptPath}'.",
-            }, statusCode: StatusCodes.Status500InternalServerError);
+            return ApiErrorResults.Problem(ApiErrorCatalogue.DefaultUserPromptMissing);
         }
 
         var defaultUserPrompt = await File.ReadAllTextAsync(defaultUserPromptPath, cancellationToken);
         if (string.IsNullOrWhiteSpace(defaultUserPrompt))
         {
-            return Results.Json(new
-            {
-                message = $"Default user prompt document at '{defaultUserPromptPath}' is empty.",
-            }, statusCode: StatusCodes.Status500InternalServerError);
+            return ApiErrorResults.Problem(ApiErrorCatalogue.DefaultUserPromptEmpty);
         }
 
         return Results.Ok(new
@@ -284,7 +281,7 @@ public static class IngestSubmissionEndpoints
         var projection = await store.GetByTaskIdAsync(contentPaths.TasksDir, taskId, cancellationToken);
         if (projection is null)
         {
-            return Results.NotFound(new { message = $"Task '{taskId}' was not found." });
+            return ApiErrorResults.Problem(ApiErrorCatalogue.IngestTaskNotFound);
         }
 
         var artifactSet = await sourceArtifactStore.TryReadMetadataAsync(taskId, cancellationToken);
@@ -388,7 +385,7 @@ public static class IngestSubmissionEndpoints
         {
             span?.SetTag("result", "not_found");
             HubMetrics.RecordSourceContentRead("not_found");
-            return Results.NotFound(new { message = $"Source content for '{taskId}' was not found." });
+            return ApiErrorResults.Problem(ApiErrorCatalogue.IngestSourceContentNotFound);
         }
 
         span?.SetTag("result", "served");
@@ -451,7 +448,7 @@ public static class IngestSubmissionEndpoints
 
         if (result.Outcome != TaskRecordOutcome.Ok)
         {
-            return Results.NotFound(new { message = $"Task record for '{taskId}' is not available." });
+            return ApiErrorResults.Problem(ApiErrorCatalogue.IngestTaskRecordUnavailable);
         }
 
         var record = result.Record!;
@@ -479,13 +476,14 @@ public static class IngestSubmissionEndpoints
         var projection = await store.GetByTaskIdAsync(contentPaths.TasksDir, taskId, cancellationToken);
         if (projection is null)
         {
-            return Results.NotFound(new { message = $"Task '{taskId}' was not found." });
+            return ApiErrorResults.Problem(ApiErrorCatalogue.IngestTaskNotFound);
         }
 
         var retriggered = await coordinator.RetriggerAsync(taskId, cancellationToken);
         return retriggered
             ? Results.Ok(new { taskId, retriggered = true })
-            : Results.Conflict(new { message = $"Task '{taskId}' is not in the queue ({projection.Column})." });
+            : ApiErrorResults.Problem(ApiErrorCatalogue.IngestTaskNotQueued,
+                $"This task has already moved on from the queue (it is now {projection.Column}), so it cannot be changed there.");
     }
 
     /// <summary>
@@ -511,20 +509,20 @@ public static class IngestSubmissionEndpoints
         if (projection is null)
         {
             span?.SetTag("outcome", "not_found");
-            return Results.NotFound(new { message = $"Task '{taskId}' was not found." });
+            return ApiErrorResults.Problem(ApiErrorCatalogue.IngestTaskNotFound);
         }
 
         if (projection.Column != "failed")
         {
             return Reject(span, logger, taskId, projection.Column,
-                $"Task '{taskId}' is not in a failed state (currently {projection.Column}).");
+                ApiErrorCatalogue.RestartTaskNotFailed);
         }
 
         var manifest = await sourceArtifactStore.TryReadMetadataAsync(taskId, cancellationToken);
         if (manifest is null || !File.Exists(manifest.NormalizedMarkdownPath))
         {
             return Reject(span, logger, taskId, projection.Column,
-                $"Normalized source for '{taskId}' is missing; cannot restart.");
+                ApiErrorCatalogue.RestartSourceMissing);
         }
 
         var artifactPath = Path.Combine(contentPaths.TasksDir, $"{taskId}.md");
@@ -536,7 +534,7 @@ public static class IngestSubmissionEndpoints
         if (!accepted)
         {
             return Reject(span, logger, taskId, projection.Column,
-                $"Task '{taskId}' is already restarting.");
+                ApiErrorCatalogue.RestartAlreadyInProgress);
         }
 
         span?.SetTag("outcome", "accepted");
@@ -546,13 +544,20 @@ public static class IngestSubmissionEndpoints
         return Results.Accepted(value: new { taskId, status = "queued" });
     }
 
+    /// <summary>
+    /// ADR-025 fixes two distinct restart declines by semantics (task not <c>failed</c>; normalized
+    /// source missing) and the coordinator's compare-and-swap adds a third (a concurrent restart
+    /// already won). Each carries its own catalogue code rather than one shared "restart rejected",
+    /// because ADR-018's rule that the caller sees the actual outcome applies here too — and
+    /// because only one of the three has a way forward the user can act on.
+    /// </summary>
     private static IResult Reject(
-        System.Diagnostics.Activity? span, ILogger logger, string taskId, string currentStatus, string reason)
+        System.Diagnostics.Activity? span, ILogger logger, string taskId, string currentStatus, string code)
     {
         span?.SetTag("outcome", "rejected");
         HubMetrics.RecordRestart("rejected");
         IngestSubmissionLogEvents.LogTaskRestartRejected(logger, taskId, currentStatus);
-        return Results.Conflict(new { reason });
+        return ApiErrorResults.Problem(code);
     }
 
     /// <summary>Resumes automatic queue processing after a Hub restart (004 FR-021); idempotent.</summary>
@@ -562,10 +567,18 @@ public static class IngestSubmissionEndpoints
         return Results.Ok(new { queuePaused = false, queuedTasks });
     }
 
-    private static IResult ToErrorResult(IngestSubmissionValidationResult validation) => validation.ErrorKind switch
+    /// <summary>
+    /// A validation failure that named itself (<see cref="IngestSubmissionValidationResult.Code"/>)
+    /// answers under that code; one that did not falls back to a code chosen by its error kind, so
+    /// every validation path still resolves to authored prose (024 FR-016).
+    /// </summary>
+    private static IResult ToErrorResult(IngestSubmissionValidationResult validation)
+        => ApiErrorResults.Problem(validation.Code ?? DefaultCodeFor(validation.ErrorKind), validation.ErrorMessage);
+
+    private static string DefaultCodeFor(IngestSubmissionValidationErrorKind kind) => kind switch
     {
-        IngestSubmissionValidationErrorKind.UnsupportedMediaType => Results.Json(new { message = validation.ErrorMessage }, statusCode: StatusCodes.Status415UnsupportedMediaType),
-        IngestSubmissionValidationErrorKind.UnprocessableEntity => Results.UnprocessableEntity(new { message = validation.ErrorMessage }),
-        _ => Results.BadRequest(new { message = validation.ErrorMessage }),
+        IngestSubmissionValidationErrorKind.UnsupportedMediaType => ApiErrorCatalogue.IngestSubmissionUnsupportedMediaType,
+        IngestSubmissionValidationErrorKind.UnprocessableEntity => ApiErrorCatalogue.IngestSubmissionUnprocessable,
+        _ => ApiErrorCatalogue.IngestSubmissionInvalid,
     };
 }

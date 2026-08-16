@@ -5,6 +5,8 @@
 	import ConnectionStatusIndicator from '$lib/components/ConnectionStatusIndicator.svelte';
 	import QueryConversation from '$lib/components/QueryConversation.svelte';
 	import QueryPromptForm from '$lib/components/QueryPromptForm.svelte';
+	import ApiErrorAlert from '$lib/components/ApiErrorAlert.svelte';
+	import { toPresentedError, type PresentedError } from '$lib/services/apiError';
 	import {
 		applyAnswerChunk,
 		applyTurnChanged,
@@ -27,7 +29,9 @@
 	let turns: QueryTurn[] = $state([]);
 	let activeTurnId: string | null = $state(null);
 	let connectionState: ConnectionState = $state('connecting');
-	let submissionError: string | null = $state(null);
+	let submissionError: PresentedError | null = $state(null);
+	// Kept so the retry affordance can re-run exactly what failed (FR-008).
+	let lastSubmittedPrompt: string | null = $state(null);
 
 	let client: QueryLifecycleClient | undefined;
 	const seenTurnChangedKeys = new SvelteSet<string>();
@@ -39,6 +43,7 @@
 
 	async function handleSubmit(prompt: string) {
 		submissionError = null;
+		lastSubmittedPrompt = prompt;
 
 		// ADR-014 (011-query-conversations): the submission carries only the prompt —
 		// the Hub sources follow-up context from its Conversation Record. The client-side
@@ -57,18 +62,36 @@
 			activeTurnId = accepted.turnId;
 			lastAppliedSequenceByTurnId.set(accepted.turnId, 0);
 		} catch (error) {
-			submissionError =
-				error instanceof Error ? error.message : 'Failed to submit the question unexpectedly.';
+			submissionError = toPresentedError(error);
 		}
 	}
 
+	function retrySubmit() {
+		if (lastSubmittedPrompt !== null) void handleSubmit(lastSubmittedPrompt);
+	}
+
+	// 024 SC-005: stopping a turn is a user action, so its failure is a request failure and
+	// belongs in the shared presentation — the same reasoning that moved `handleResume` out of
+	// silence. This one used to be swallowed on the grounds that the turn's true state arrives
+	// via `queryTurnChanged` regardless. That inverts precisely where it matters: an interrupt
+	// that never reached the Hub produces no such event, so the answer keeps streaming and the
+	// click is indistinguishable from a no-op.
+	let interruptError: PresentedError | null = $state(null);
+	// Kept so the retry affordance can re-run exactly what failed (FR-008), as retrySubmit does.
+	let lastInterruptedTurnId: string | null = $state(null);
+
 	async function handleInterrupt(turnId: string) {
+		interruptError = null;
+		lastInterruptedTurnId = turnId;
 		try {
 			await interruptQueryTurn(turnId);
-		} catch {
-			// The turn's actual state arrives via queryTurnChanged regardless; nothing
-			// else to do client-side if the interrupt call itself failed to reach the Hub.
+		} catch (error) {
+			interruptError = toPresentedError(error);
 		}
+	}
+
+	function retryInterrupt() {
+		if (lastInterruptedTurnId !== null) void handleInterrupt(lastInterruptedTurnId);
 	}
 
 	// On reconnect, refresh the active turn's authoritative state via REST before resuming
@@ -106,9 +129,12 @@
 	// `keepalive: true` lets the request complete even as the page is unloading.
 	function handlePageHide() {
 		if (!activeTurnId) return;
+		// 024 FR-011: silence here is deliberate, unlike handleInterrupt above. The page is
+		// unloading, so there is no surface left to present a failure on — but the promise still
+		// needs settling, or a failed unload-time interrupt is an unhandled rejection.
 		void interruptQueryTurn(activeTurnId, (input, init) =>
 			fetch(input, { ...init, keepalive: true })
-		);
+		).catch(() => {});
 	}
 
 	onMount(() => {
@@ -199,9 +225,27 @@
 
 	<QueryConversation {turns} onInterrupt={handleInterrupt} />
 
+	<!-- Its own region, beside the conversation whose Stop button raised it: the board page sets
+	     the precedent that one page carries one error slot per action (queue resume, lint
+	     trigger), which is what keeps a submission failure and an interrupt failure from
+	     overwriting each other. -->
+	{#if interruptError}
+		<ApiErrorAlert
+			error={interruptError}
+			testId="query-interrupt-error"
+			onRetry={retryInterrupt}
+			onDismiss={() => (interruptError = null)}
+		/>
+	{/if}
+
 	<QueryPromptForm disabled={activeTurnId !== null} onSubmit={handleSubmit} />
 
 	{#if submissionError}
-		<p class="text-sm text-stage-failed" data-testid="query-submission-error">{submissionError}</p>
+		<ApiErrorAlert
+			error={submissionError}
+			testId="query-submission-error"
+			onRetry={retrySubmit}
+			onDismiss={() => (submissionError = null)}
+		/>
 	{/if}
 </main>

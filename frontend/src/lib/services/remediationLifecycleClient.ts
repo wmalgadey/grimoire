@@ -6,7 +6,7 @@ import type {
 	RemediationTaskBoardEntry,
 	RemediationTaskLifecycleEvent
 } from '$lib/types';
-import { parseHttpErrorMessage } from './httpErrorMessage';
+import { PresentedApiError, presentResponseError } from './apiError';
 
 const HUB_PATH = '/hubs/remediation-lifecycle';
 const BOARD_PATH = '/api/board';
@@ -98,8 +98,9 @@ export async function fetchRemediationTasksFromBoard(
 ): Promise<RemediationTaskBoardEntry[]> {
 	const response = await fetchImpl(BOARD_PATH);
 	if (!response.ok) {
-		// 023 T052: the Hub's own reason, when it sent one — the bare status is the fallback.
-		throw new Error(await parseHttpErrorMessage(response));
+		// 023 T052 / 024: the Hub's own sentence, carried with its category and technical detail
+		// so a caller routing this through toPresentedError() gets the real classification.
+		throw new PresentedApiError(await presentResponseError(response));
 	}
 
 	const board: CompositeBoardResponse = await response.json();
@@ -186,6 +187,9 @@ export function createRemediationTaskStream(
 		tasks = applied.entries;
 		onTasksChanged(tasks);
 		if (applied.unknownTask) {
+			// 024 FR-011: a best-effort catch-up read triggered by an event about a task we have
+			// not seen. Deliberately silent — the user did not ask for it, and the next event or
+			// reconnect re-reads anyway.
 			void refresh().catch(() => {});
 		}
 	});

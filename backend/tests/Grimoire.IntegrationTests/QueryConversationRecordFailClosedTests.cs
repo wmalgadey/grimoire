@@ -96,7 +96,7 @@ public class QueryConversationRecordFailClosedTests
         // FR-006 fail-closed: 500 with the machine reason, no turn, no agent process.
         Assert.Equal(HttpStatusCode.InternalServerError, response.StatusCode);
         var body = await response.Content.ReadFromJsonAsync<JsonElement>();
-        Assert.Equal("conversation_record_unreadable", body.GetProperty("reason").GetString());
+        Assert.Equal("conversation_record_unreadable", body.GetProperty("code").GetString());
         Assert.Empty(launcher.QueryRequests);
 
         // T036: the ERROR log event with its mandatory fields…

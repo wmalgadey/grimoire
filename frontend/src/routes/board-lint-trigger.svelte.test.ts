@@ -69,6 +69,10 @@ test('blocked trigger (lint_run_active): the reason is shown, never a silent no-
 	await expect
 		.element(screen.getByTestId('lint-trigger-error'))
 		.toHaveTextContent('A Lint Run is already active');
+
+	// 024 SC-005 (FSI2): this surface renders through the shared presentation, not a bespoke
+	// paragraph of its own — the disclosure is the observable part only the shared component has.
+	await expect.element(screen.getByTestId('lint-trigger-error-details-toggle')).toBeInTheDocument();
 });
 
 test('blocked trigger (unresolved_remediation_tasks): the reason is shown, never a silent no-op', async () => {

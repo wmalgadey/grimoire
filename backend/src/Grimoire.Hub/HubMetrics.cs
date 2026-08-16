@@ -387,4 +387,21 @@ public static class HubMetrics
 
     public static void RecordPathResolutionFailure(string reason)
         => _pathResolutionFailuresTotal.Add(1, new KeyValuePair<string, object?>("reason", reason));
+
+    // --- 024-api-error-presentation (plan.md ## Observability > Business Metrics) ---
+
+    /// <summary>
+    /// Error responses the Hub returns, by catalogue <paramref name="code"/> and HTTP
+    /// <paramref name="status"/>. Labelled by code rather than only by status because the status
+    /// alone cannot distinguish "the conversation is busy" from "the concurrency limit is reached"
+    /// — the two operational questions an operator actually asks of this counter.
+    /// </summary>
+    private static readonly Counter<long> _apiErrorsTotal =
+        Meter.CreateCounter<long>("hub.api_errors_total",
+            description: "Error responses returned by the Hub, by failure code and status");
+
+    public static void RecordApiError(string code, int status)
+        => _apiErrorsTotal.Add(1,
+            new KeyValuePair<string, object?>("code", code),
+            new KeyValuePair<string, object?>("status", status));
 }

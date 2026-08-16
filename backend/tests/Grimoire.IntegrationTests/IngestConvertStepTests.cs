@@ -21,19 +21,19 @@ public class IngestConvertStepTests
 
         var unknown = validator.ValidateConvertSteps("url", new Dictionary<string, bool> { ["foo"] = false });
         Assert.False(unknown.IsValid);
-        Assert.Contains("unknown_convert_step", unknown.ErrorMessage, StringComparison.Ordinal);
+        Assert.Equal("unknown_convert_step", unknown.Code);
         Assert.Equal(IngestSubmissionValidationErrorKind.BadRequest, unknown.ErrorKind);
 
         var notApplicable = validator.ValidateConvertSteps("markdown_file", new Dictionary<string, bool> { ["markitdown"] = false });
         Assert.False(notApplicable.IsValid);
-        Assert.Contains("convert_step_not_applicable", notApplicable.ErrorMessage, StringComparison.Ordinal);
+        Assert.Equal("convert_step_not_applicable", notApplicable.Code);
         Assert.Equal(IngestSubmissionValidationErrorKind.BadRequest, notApplicable.ErrorKind);
 
         foreach (var binaryKind in new[] { "pdf_file", "office_file" })
         {
             var requiredDisabled = validator.ValidateConvertSteps(binaryKind, new Dictionary<string, bool> { ["markitdown"] = false });
             Assert.False(requiredDisabled.IsValid);
-            Assert.Contains("convert_step_required", requiredDisabled.ErrorMessage, StringComparison.Ordinal);
+            Assert.Equal("convert_step_required", requiredDisabled.Code);
             Assert.Equal(IngestSubmissionValidationErrorKind.UnprocessableEntity, requiredDisabled.ErrorKind);
         }
 

@@ -1,4 +1,6 @@
 <script lang="ts">
+	import { presentRecordedFailure } from '$lib/services/apiError';
+	import ApiErrorAlert from './ApiErrorAlert.svelte';
 	import { resolve } from '$app/paths';
 	import type { LintRun, LintRunStatus } from '$lib/types';
 
@@ -60,9 +62,10 @@
 		</p>
 	{:else}
 		{#if run.status === 'failed' && run.failureReason}
-			<p class="text-sm text-red-700" data-testid="lint-run-card-failure-reason">
-				{run.failureReason}
-			</p>
+			<ApiErrorAlert
+				error={presentRecordedFailure(run.failureReason)}
+				testId="lint-run-card-failure-reason"
+			/>
 		{/if}
 
 		<div class="flex items-center justify-between text-xs text-slate-500">

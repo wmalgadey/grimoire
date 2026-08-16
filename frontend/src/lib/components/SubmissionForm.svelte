@@ -1,11 +1,8 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import {
-		submitFile,
-		submitUrl,
-		getSubmissionDefaults,
-		IngestSubmissionApiError
-	} from '$lib/services/ingestSubmissionsApi';
+	import { submitFile, submitUrl, getSubmissionDefaults } from '$lib/services/ingestSubmissionsApi';
+	import { toPresentedError, type PresentedError } from '$lib/services/apiError';
+	import ApiErrorAlert from './ApiErrorAlert.svelte';
 	import type {
 		ConvertStepConfig,
 		ConvertStepDefinition,
@@ -21,7 +18,10 @@
 	let fileKind: FileKind = $state('markdown_file');
 	let file: File | null = $state(null);
 	let submitting = $state(false);
-	let errorMessage: string | null = $state(null);
+	// Client-side validation — nothing was sent yet, so this is not a request failure and does
+	// not belong in the shared error presentation (024 FR-010 covers request failures).
+	let validationMessage: string | null = $state(null);
+	let submissionError: PresentedError | null = $state(null);
 	let accepted: SubmissionAcceptedResponse | null = $state(null);
 
 	// 004 US2/US3: defaults are the single source of truth for the prompt editor and
@@ -54,6 +54,9 @@
 			// The form still works with system defaults (default prompt / all steps
 			// enabled) even if the defaults endpoint is unreachable; only the editable
 			// prefill and toggle labels are unavailable.
+			// 024 FR-010: deliberately a low-key notice rather than the shared error alert —
+			// nothing the user asked for failed, and dressing a graceful degradation as an
+			// error would overstate it.
 			defaultsError = 'Could not load prompt/step defaults; using system defaults.';
 		}
 	});
@@ -67,24 +70,27 @@
 		return step.requiredFor.includes(currentKind);
 	}
 
-	async function handleSubmit(event: SubmitEvent) {
-		event.preventDefault();
-		errorMessage = null;
+	// The event is optional so the shared alert's retry can re-run exactly this submission
+	// without synthesizing one (024 FR-008).
+	async function handleSubmit(event?: SubmitEvent) {
+		event?.preventDefault();
+		validationMessage = null;
+		submissionError = null;
 		accepted = null;
 
 		if (mode === 'url') {
 			if (!url.trim()) {
-				errorMessage = 'Enter a URL to submit.';
+				validationMessage = 'Enter a URL to submit.';
 				return;
 			}
 		} else if (!file) {
-			errorMessage = 'Choose a file to submit.';
+			validationMessage = 'Choose a file to submit.';
 			return;
 		}
 
 		const trimmedPrompt = userPrompt.trim();
 		if (trimmedPrompt.length > userPromptMaxLength) {
-			errorMessage = `The prompt exceeds the maximum of ${userPromptMaxLength} characters.`;
+			validationMessage = `The prompt exceeds the maximum of ${userPromptMaxLength} characters.`;
 			return;
 		}
 
@@ -119,10 +125,7 @@
 			url = '';
 			file = null;
 		} catch (error) {
-			errorMessage =
-				error instanceof IngestSubmissionApiError
-					? error.message
-					: 'Submission failed unexpectedly.';
+			submissionError = toPresentedError(error);
 		} finally {
 			submitting = false;
 		}
@@ -215,8 +218,19 @@
 		{submitting ? 'Submitting…' : 'Submit'}
 	</button>
 
-	{#if errorMessage}
-		<p class="text-sm text-stage-failed" data-testid="submission-error">{errorMessage}</p>
+	{#if validationMessage}
+		<p class="text-sm text-stage-failed" data-testid="submission-validation-error">
+			{validationMessage}
+		</p>
+	{/if}
+
+	{#if submissionError}
+		<ApiErrorAlert
+			error={submissionError}
+			testId="submission-error"
+			onRetry={() => handleSubmit()}
+			onDismiss={() => (submissionError = null)}
+		/>
 	{/if}
 
 	{#if defaultsError}

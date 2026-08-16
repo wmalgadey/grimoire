@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { presentRecordedFailure } from '$lib/services/apiError';
 	import type { HistoryStatus, StatusHistoryEntry } from '$lib/types';
 
 	interface Props {
@@ -45,8 +46,13 @@
 					>{formatTimestamp(entry.enteredAt)}</time
 				>
 				{#if entry.detail}
+					<!-- 024 FR-012: a compact timeline entry is not the place for an alert box, but the
+					     technical prefix our own adapter composes onto a provider rejection has no
+					     business here either — it is dropped so the row reads as prose. Nothing is
+					     lost: the same failure appears in full, with its disclosure, in the task's own
+					     failure presentation. -->
 					<span class="text-xs text-slate-500" data-testid="status-history-entry-detail"
-						>{entry.detail}</span
+						>{presentRecordedFailure(entry.detail).message}</span
 					>
 				{/if}
 			</li>

@@ -60,6 +60,29 @@ architectural boundary: it needs no ADR and changes nothing about the SDD artifa
 the Definition of Done, which stays whole-feature. The procedure lives in the
 [`stacked-pr`](.claude/skills/stacked-pr/SKILL.md) skill.
 
+**The delivery-shape decision happens between `/speckit-tasks` and `/speckit-implement`,
+and it is made out loud.** The moment `tasks.md` exists, its phase groups are visible and
+the cut points are knowable — that is the only point at which the choice is cheap. Before
+starting implementation, state which shape this feature gets:
+
+- **Stack** (default when `tasks.md` has more than two phase groups beyond Phase 0):
+  invoke the `stacked-pr` skill and name the cut, then implement layer by layer.
+- **Single PR**: say so and say why — a feature whose phases genuinely cannot be reviewed
+  independently, or one small enough that a stack is ceremony.
+
+**Writing the intended cut into `tasks.md` is not the same as delivering it.** Feature 024
+recorded "a natural cut is Phase 0–2 / Phase 3 / Phases 4–7 / Phase 8–9" in its
+Implementation Strategy section and then shipped all 64 tasks as one 72-file pull request:
+the convention was known, the cut points were already identified, and the skill was never
+invoked, because nothing in the workflow required stopping to ask. A recorded intent that
+implementation does not act on is worse than no record — it reads like the decision was
+made. If the answer is "single PR", the tasks.md Implementation Strategy section must say
+that, not describe a stack nobody built.
+
+Once implementation is under way this decision is effectively spent: retro-splitting a PR
+that has already been reviewed discards the review rather than shortening it. Decide
+before, not after.
+
 ## Spec-Kit Workflow
 
 <!-- SPECKIT START -->

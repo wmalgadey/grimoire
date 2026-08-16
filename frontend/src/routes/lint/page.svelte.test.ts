@@ -79,6 +79,8 @@ test('a busy rejection shows a clear message and does not create a run', async (
 	await expect
 		.element(screen.getByTestId('lint-trigger-error'))
 		.toHaveTextContent('A Lint Run is already active.');
+	// 024 SC-005 (FSI2): rendered through the shared presentation, not this page's own markup.
+	await expect.element(screen.getByTestId('lint-trigger-error-details-toggle')).toBeInTheDocument();
 	expect(screen.container.querySelector('[data-testid="lint-run-status"]')).toBeNull();
 });
 

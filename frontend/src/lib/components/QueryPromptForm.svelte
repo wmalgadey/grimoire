@@ -12,6 +12,10 @@
 	let { disabled = false, onSubmit }: Props = $props();
 
 	let prompt = $state('');
+	// Client-side validation — nothing was sent yet, so this is not a request failure and does
+	// not belong in the shared error presentation (024 FR-010 covers request failures). The
+	// query page renders the submission's own failures through ApiErrorAlert; this line keeping
+	// the plain pre-024 shape is that distinction, not a surface the migration missed.
 	let errorMessage: string | null = $state(null);
 	let submitting = $state(false);
 

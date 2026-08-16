@@ -1,10 +1,11 @@
 <script lang="ts">
+	import { toPresentedError, type PresentedError } from '$lib/services/apiError';
+	import ApiErrorAlert from './ApiErrorAlert.svelte';
 	import DOMPurify from 'dompurify';
 	import { marked } from 'marked';
 	import {
 		attachRemediationTaskContext,
-		sendRemediationTaskMessage,
-		RemediationApiError
+		sendRemediationTaskMessage
 	} from '$lib/services/remediationApi';
 	import type {
 		RemediationTaskAttachedContext,
@@ -36,11 +37,15 @@
 
 	let contextInput = $state('');
 	let contextBusy = $state(false);
-	let contextError: string | null = $state(null);
+	// Client-side validation and request failure stay separable: validation means nothing was
+	// sent yet, so it is not what the shared error presentation is for (024 FR-010).
+	let contextValidation: string | null = $state(null);
+	let contextError: PresentedError | null = $state(null);
 
 	let messageInput = $state('');
 	let messageBusy = $state(false);
-	let messageError: string | null = $state(null);
+	let messageValidation: string | null = $state(null);
+	let messageError: PresentedError | null = $state(null);
 
 	const canCompose = $derived(taskState === 'proposed');
 
@@ -53,15 +58,16 @@
 
 	async function handleAttachContext(event: SubmitEvent) {
 		event.preventDefault();
+		contextValidation = null;
 		contextError = null;
 
 		const trimmed = contextInput.trim();
 		if (!trimmed) {
-			contextError = 'Enter some context before attaching it.';
+			contextValidation = 'Enter some context before attaching it.';
 			return;
 		}
 		if (trimmed.length > CONTENT_MAX_LENGTH) {
-			contextError = `The attached context exceeds the maximum of ${CONTENT_MAX_LENGTH} characters.`;
+			contextValidation = `The attached context exceeds the maximum of ${CONTENT_MAX_LENGTH} characters.`;
 			return;
 		}
 
@@ -70,10 +76,7 @@
 			await attachRemediationTaskContext(taskId, trimmed);
 			contextInput = '';
 		} catch (err) {
-			contextError =
-				err instanceof RemediationApiError
-					? err.message
-					: 'The request failed unexpectedly. Please try again.';
+			contextError = toPresentedError(err);
 		} finally {
 			contextBusy = false;
 		}
@@ -81,15 +84,16 @@
 
 	async function handleSendMessage(event: SubmitEvent) {
 		event.preventDefault();
+		messageValidation = null;
 		messageError = null;
 
 		const trimmed = messageInput.trim();
 		if (!trimmed) {
-			messageError = 'Enter a message before sending.';
+			messageValidation = 'Enter a message before sending.';
 			return;
 		}
 		if (trimmed.length > CONTENT_MAX_LENGTH) {
-			messageError = `The message exceeds the maximum of ${CONTENT_MAX_LENGTH} characters.`;
+			messageValidation = `The message exceeds the maximum of ${CONTENT_MAX_LENGTH} characters.`;
 			return;
 		}
 
@@ -98,10 +102,7 @@
 			await sendRemediationTaskMessage(taskId, trimmed);
 			messageInput = '';
 		} catch (err) {
-			messageError =
-				err instanceof RemediationApiError
-					? err.message
-					: 'The request failed unexpectedly. Please try again.';
+			messageError = toPresentedError(err);
 		} finally {
 			messageBusy = false;
 		}
@@ -150,10 +151,17 @@
 				>
 					{contextBusy ? 'Attaching…' : 'Attach context'}
 				</button>
-				{#if contextError}
-					<p class="text-xs text-red-700" data-testid="task-message-thread-context-error">
-						{contextError}
+				{#if contextValidation}
+					<p class="text-xs text-red-700" data-testid="task-message-thread-context-validation">
+						{contextValidation}
 					</p>
+				{/if}
+				{#if contextError}
+					<ApiErrorAlert
+						error={contextError}
+						testId="task-message-thread-context-error"
+						onDismiss={() => (contextError = null)}
+					/>
 				{/if}
 			</form>
 		{/if}
@@ -217,10 +225,17 @@
 				>
 					{messageBusy ? 'Sending…' : 'Send'}
 				</button>
-				{#if messageError}
-					<p class="text-xs text-red-700" data-testid="task-message-thread-send-error">
-						{messageError}
+				{#if messageValidation}
+					<p class="text-xs text-red-700" data-testid="task-message-thread-send-validation">
+						{messageValidation}
 					</p>
+				{/if}
+				{#if messageError}
+					<ApiErrorAlert
+						error={messageError}
+						testId="task-message-thread-send-error"
+						onDismiss={() => (messageError = null)}
+					/>
 				{/if}
 			</form>
 		{/if}

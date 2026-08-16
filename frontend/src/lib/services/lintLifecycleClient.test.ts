@@ -142,25 +142,33 @@ test('applyLintRunLifecycleEvent ignores a stale "running" event after a termina
 
 // 023 T052: the Hub answers a rejected board read with a JSON reason; discarding it and
 // showing only the status code turns an actionable message into "failed with status 409".
-test('fetchLintRunFromBoard surfaces the Hub JSON message when the body carries one', async () => {
+// 024 (ADR-026): the board read answers in the shared envelope. Discarding its sentence and
+// showing only the status turned an actionable message into "failed with status 409".
+test('fetchLintRunFromBoard surfaces the Hub sentence from the envelope', async () => {
 	const fetchImpl = vi.fn().mockResolvedValue(
-		new Response(JSON.stringify({ message: 'Lint is disabled for this wiki.' }), {
-			status: 409,
-			headers: { 'Content-Type': 'application/json' }
-		})
+		new Response(
+			JSON.stringify({
+				status: 409,
+				title: 'Declined',
+				detail: 'This board read was declined for a stated reason.',
+				code: 'board_read_declined'
+			}),
+			{ status: 409, headers: { 'Content-Type': 'application/problem+json' } }
+		)
 	);
 
 	await expect(fetchLintRunFromBoard(fetchImpl as unknown as typeof fetch)).rejects.toThrow(
-		'Lint is disabled for this wiki.'
+		'This board read was declined for a stated reason.'
 	);
 });
 
-test('fetchLintRunFromBoard falls back to the status when the body is absent or unparseable', async () => {
+test('fetchLintRunFromBoard still reads as a sentence when the body is not an envelope', async () => {
 	const fetchImpl = vi
 		.fn()
 		.mockResolvedValue(new Response('<html>Bad Gateway</html>', { status: 502 }));
 
+	// Never "Request failed with status 502" — a status line tells a user nothing they can act on.
 	await expect(fetchLintRunFromBoard(fetchImpl as unknown as typeof fetch)).rejects.toThrow(
-		'Request failed with status 502'
+		/wiki ran into a problem/
 	);
 });

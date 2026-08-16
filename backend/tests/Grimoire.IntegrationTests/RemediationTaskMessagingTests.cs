@@ -68,7 +68,7 @@ public class RemediationTaskMessagingTests
 
         Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
         using var body = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
-        Assert.Equal("task_not_proposed", body.RootElement.GetProperty("reason").GetString());
+        Assert.Equal("task_not_proposed", body.RootElement.GetProperty("code").GetString());
         Assert.Equal(state, body.RootElement.GetProperty("state").GetString());
     }
 
@@ -217,7 +217,7 @@ public class RemediationTaskMessagingTests
 
         Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
         using var body = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
-        Assert.Equal("task_not_proposed", body.RootElement.GetProperty("reason").GetString());
+        Assert.Equal("task_not_proposed", body.RootElement.GetProperty("code").GetString());
     }
 
     [Fact]
@@ -235,7 +235,7 @@ public class RemediationTaskMessagingTests
 
         Assert.Equal(HttpStatusCode.Conflict, second.StatusCode);
         using var body = JsonDocument.Parse(await second.Content.ReadAsStringAsync());
-        Assert.Equal("message_turn_active", body.RootElement.GetProperty("reason").GetString());
+        Assert.Equal("message_turn_active", body.RootElement.GetProperty("code").GetString());
     }
 
     // ── history (FR-014) ────────────────────────────────────────────────────────────

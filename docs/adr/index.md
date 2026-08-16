@@ -15,10 +15,11 @@ below fully retires an ADR's core decision (each is scoped — "in part", "this 
 only", a single table row) — every ADR therefore stays `Accepted`; the chain columns
 qualify what still applies.
 
-`Extends` relationships (ADR-016 on ADR-015; ADR-017 on ADR-006/ADR-015/ADR-016) are
-listed for context but are not supersede/amend links — their own text states they
-supersede no part of what they extend, so Constitution Principle III's bidirectional
-linking rule does not apply to them.
+An ADR may also **extend** another: it builds on that decision without replacing any part
+of it. `Extends` is listed in the chain columns for context but is not a supersede/amend
+link — an extending ADR's own text states it supersedes nothing, so Constitution Principle
+III's bidirectional linking rule does not apply. The table below is the record of which
+relationships exist.
 
 | ADR | Title | Status | Supersedes / Amends | Superseded by / Amended by |
 | --- | --- | --- | --- | --- |
@@ -47,6 +48,7 @@ linking rule does not apply to them.
 | [ADR-023](ADR-023-hub-cli-default-command-and-root-help-routing.md) | Hub CLI Default Command and Root Help Routing | Accepted | Amends ADR-020 | — |
 | [ADR-024](ADR-024-memory-directory-root.md) | Memory Directory — A Fourth Independent Root for Agent Process Bookkeeping | Accepted | Amends ADR-022 (R1 switch cap, sub-path anchoring) | — |
 | [ADR-025](ADR-025-ingest-task-lifecycle-reentry.md) | Ingest Task Lifecycle Re-Entry — Liveness Reactivation, Manual Restart, and Status History | Accepted | Amends ADR-002 (retry/backoff deferral revoked for the liveness case), ADR-008 (liveness consequence, terminal-state re-entry) | — |
+| [ADR-026](ADR-026-hub-api-error-contract-and-frontend-error-presentation.md) | Hub API Error Response Contract and Shared Frontend Error Presentation | Accepted | Extends ADR-020 (HTTP counterpart to the CLI failure contract), ADR-013 (registers `Grimoire.Hub.ApiErrors` in the N1 ownership map) — no supersession | — |
 
 ## Maintenance
 
