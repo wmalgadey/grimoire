@@ -6,9 +6,11 @@
 		stage: LifecycleStage;
 		tasks: BoardTask[];
 		runActivityByTaskId?: Record<string, RunActivity>;
+		/** 023 T049: handed straight through to the cards so the board owns the post-restart refresh. */
+		onRefreshRequested?: () => void;
 	}
 
-	let { stage, tasks, runActivityByTaskId = {} }: Props = $props();
+	let { stage, tasks, runActivityByTaskId = {}, onRefreshRequested }: Props = $props();
 
 	const titles: Record<LifecycleStage, string> = {
 		received: 'Received',
@@ -32,7 +34,11 @@
 
 	<div class="flex flex-col gap-2">
 		{#each tasks as task (task.taskId)}
-			<TaskCard {task} runActivity={runActivityByTaskId[task.taskId] ?? null} />
+			<TaskCard
+				{task}
+				runActivity={runActivityByTaskId[task.taskId] ?? null}
+				{onRefreshRequested}
+			/>
 		{/each}
 	</div>
 </section>
