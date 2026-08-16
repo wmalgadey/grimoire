@@ -23,7 +23,7 @@ linking rule does not apply to them.
 | ADR | Title | Status | Supersedes / Amends | Superseded by / Amended by |
 | --- | --- | --- | --- | --- |
 | [ADR-001](ADR-001-backend-frontend-tech-stack.md) | Backend and Frontend Technology Stack | Accepted | — | — |
-| [ADR-002](ADR-002-ingest-agent-execution-model.md) | Ingest Agent Execution Model | Accepted | — | Amended by ADR-008, ADR-009, ADR-022 |
+| [ADR-002](ADR-002-ingest-agent-execution-model.md) | Ingest Agent Execution Model | Accepted | — | Amended by ADR-008, ADR-009, ADR-022, ADR-025 |
 | [ADR-003](ADR-003-domain-operational-state-persistence.md) | Domain vs. Operational State Persistence | Accepted | — | Superseded in part by ADR-009 |
 | [ADR-004](ADR-004-credential-scoping.md) | Credential Scoping for the LLM API Key | Accepted | — | Amended by ADR-009 |
 | [ADR-005](ADR-005-observability-backend.md) | Observability Backend (Local and CI) | Accepted | — | — |
@@ -46,7 +46,7 @@ linking rule does not apply to them.
 | [ADR-022](ADR-022-minimal-directory-configuration-surface.md) | Minimal Directory Configuration Surface — Three Roots, Mandatory Configuration File, and Build-Distributed Agent Artifacts | Accepted | Amends ADR-002, ADR-007, ADR-012, ADR-019, ADR-020; supersedes ADR-009 (in part) | Amended by ADR-024 |
 | [ADR-023](ADR-023-hub-cli-default-command-and-root-help-routing.md) | Hub CLI Default Command and Root Help Routing | Accepted | Amends ADR-020 | — |
 | [ADR-024](ADR-024-memory-directory-root.md) | Memory Directory — A Fourth Independent Root for Agent Process Bookkeeping | Accepted | Amends ADR-022 (R1 switch cap, sub-path anchoring) | — |
-| [ADR-025](ADR-025-ingest-task-lifecycle-reentry.md) | Ingest Task Lifecycle Re-Entry — Liveness Reactivation, Manual Restart, and Status History | Accepted | Amends ADR-008 (liveness consequence, terminal-state re-entry) | — |
+| [ADR-025](ADR-025-ingest-task-lifecycle-reentry.md) | Ingest Task Lifecycle Re-Entry — Liveness Reactivation, Manual Restart, and Status History | Accepted | Amends ADR-002 (retry/backoff deferral revoked for the liveness case), ADR-008 (liveness consequence, terminal-state re-entry) | — |
 
 ## Maintenance
 
