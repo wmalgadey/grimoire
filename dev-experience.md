@@ -24,6 +24,109 @@ jeder neue Eintrag wird oben angefügt, ältere Einträge rücken nach unten.
 
 ## Timeline
 
+### [2026-08-16] Process | GitHub-Backlog statt Doku-Übersicht
+
+Mehr und mehr Issues lege ich als Backlog in GitHub an. Das macht Sinn, da die Docs im
+Projekt keine gute Übersicht liefern.
+
+Inzwischen sind es 45 Issues, und die Labels aus dem Juli tragen tatsächlich:
+`spec-candidate` (neue Idee, noch kein Spec), `tail-tasks` (Rest einer schon
+spezifizierten Feature), `housekeeping`, dazu `bug`. Das war im Juli noch der Versuch,
+liegengebliebene Punkte überhaupt mal zu erfassen — jetzt ist es der Ort, an dem ich
+schaue, was als Nächstes drankommt.
+
+Und genau das ist der Unterschied: Die Docs (`decision-context-overview.md`, die alten
+`tasks.md`-Reste) sind gut darin, eine Entscheidung oder einen Kontext festzuhalten. Aber
+sie beantworten nicht die Frage "was ist offen?". Dafür müsste ich sie durchlesen — und
+das tut niemand, ich selbst am wenigsten. Eine Issue-Liste mit Labels beantwortet die
+Frage in 10 Sekunden.
+
+Nebeneffekt, den ich nicht bedacht hatte: Die Complexity-Findings landen automatisch als
+`housekeeping`-Issues (#76–#79) im gleichen Backlog wie die Feature-Ideen. Damit
+konkurriert Aufräumen direkt sichtbar mit neuen Features, statt in einem separaten
+"Technical Debt"-Dokument zu verstauben, das eh keiner aufmacht.
+
+---
+
+### [2026-08-16] Decision | Complexity-KPIs gegen den Wildwuchs
+
+Ich hatte das Gefühl, die Anwendung wird immer komplexer, und das Ziel, eine einfache Code
+Base zu haben, die man auch als Mensch noch versteht, geht immer weiter in den
+Hintergrund. Dennoch habe ich Complexity-KPIs eingeführt, um den Wildwuchs etwas in den
+Griff zu bekommen.
+
+Konkret zwei Sachen:
+
+- Zwei Badges im README — durchschnittliche zyklomatische Komplexität pro Funktion
+  (Low/Moderate/High/Very High) und eine geschätzte "Zeit, um die Codebase einmal zu
+  lesen". Beide aus einem `lizard`-CSV über `backend/src` + `frontend/src` gerechnet.
+- Ein PR-Gate (`.github/workflows/complexity.yml`, `CCN_THRESHOLD: 15`), das nur bei
+  *Regressionen* rot wird: Wer eine neue Funktion über CCN 15 reinbringt oder eine
+  bestehende verschlimmert, fliegt raus. Der Bestand wird nur berichtet, nicht bestraft.
+
+Diese Delta-Regel war die wichtigste Design-Entscheidung dabei. Ein hartes "alles unter 15"
+hätte ich am ersten Tag nicht bestanden — `SharedFileWriteGuard.EvaluateWriteAsync` steht
+bei CCN 34, `TaskArtifactStore.ParseMarkdown` bei 29, der EvalRunner-Switch bei 25,
+`GuardedToolExecutor.ExecuteWriteFileAsync` bei 20. Die liegen jetzt als
+Housekeeping-Issues (#76–#79) im Backlog, statt das Gate von vornherein unbrauchbar zu
+machen. Ein Gate, das man beim ersten Kontakt abschalten muss, ist kein Gate.
+
+Und es greift auch schon: Beim Ingest-Feature musste ich `ProcessAsync` auseinandernehmen,
+weil das Gate sonst rot war (`f922603`). Genau das war die Absicht — nicht nachträglich
+aufräumen, sondern im PR gestoppt werden.
+
+Ehrlich bleibt trotzdem: Eine Zahl im README macht die Codebase nicht einfacher. Sie macht
+nur sichtbar, in welche Richtung sie sich bewegt. Ob ich das Ziel "als Mensch noch
+verstehen" damit wirklich halte, weiß ich nicht — aber vorher hatte ich nicht mal ein
+Gefühl dafür, ob es besser oder schlechter wird.
+
+---
+
+### [2026-08-16] Retro | Die Tests haben das Falsche getestet
+
+Die Tests waren mir zu ungenau bzw. aus meiner Sicht wurde das Falsche getestet. Das hat
+sich über mehrere Constitution-Amendments hingezogen, bis ich benennen konnte, was mich
+eigentlich stört.
+
+Auslöser war `HubCliCommandTests`. Die Datei testet das, wofür die Suite da ist — Exit
+Codes, Meldungen, die stdout/stderr-Trennung, gegen einen echten Coordinator und ein
+echtes Repository. Aber daneben standen Assertions, die nur deshalb grün waren, weil
+Spectre.Console `Settings.Validate()` vor `ExecuteAsync` aufruft. Die Tests haben
+`ExecuteAsync` aber direkt aufgerufen, den Pfad also nie durchlaufen. Das "kein Store wurde
+kontaktiert" war wahr durch das Test-Setup selbst, nicht durch den Produktionscode. So ein
+Test kann gar nicht rot werden — der kostet nur Review-Aufmerksamkeit und Reibung beim
+Refactoring.
+
+Daraus ist die Regel "Test what we own" geworden (v1.9.0), mit einem Entscheidungskriterium
+das ich mir merken kann: **Könnte diese Assertion durch eine Änderung an unserem eigenen
+Code rot werden?** Wenn nur ein Dependency-Update sie kippen kann, ist es der Test der
+Dependency und gehört nicht zu uns. Wichtig war mir dabei die Gegenrichtung explizit
+reinzuschreiben: Straddling-Tests werden *umgeschrieben, nicht gelöscht*. Sonst wird aus
+"weniger falsche Tests" ganz schnell "weniger Tests".
+
+Zwei Wochen später kam das gleiche Muster nochmal von einer anderen Seite (v1.11.0):
+
+- Ich hatte Structural Tests für Regeln, die gar keine Architektur-Grenze sind — "das CLI
+  hat genau N Path-Switches", "kein Literal dupliziert einen Config-Default". Das sind
+  keine dauerhaften Dependency-Richtungen, das ist die aktuelle Form *eines* Features. Wenn
+  ich einen Switch dazubaue, ist der Test rot — und das ist dann keine erkannte
+  Regression, sondern nur ein kaputter Test. Jetzt gibt es zwei Kategorien, und die ADR
+  muss selbst sagen, welche sie meint: **Boundary Rule** (Phase-0-Test, IL-Level, mit
+  Red/Green-Probe) oder **Feature-Scoped Invariant** (ganz normaler Verhaltens-Test in der
+  Implementierungs-Phase).
+- Und: Deterministische Tests haben angefangen, den *Inhalt* der `system-prompt.md` zu
+  prüfen — String-Matching auf Sätze, die drinstehen müssen. Das ist genau die Grenze aus
+  Prinzip V von der falschen Seite. Ein Harness-Test darf nur den Lade-*Mechanismus*
+  prüfen (existiert, wird byte-genau geladen, failt closed, Hash wird protokolliert). Was
+  der Inhalt beim Agenten *bewirkt*, gehört ausschließlich in die Eval-Tests. Sonst habe
+  ich Agent-Verhalten zweimal abgedeckt: einmal richtig und einmal als sprödes Proxy.
+
+Was ich daraus mitnehme: "Die Tests sind zu ungenau" war die falsche Diagnose. Es waren
+nicht zu wenige Assertions, es waren Assertions auf der falschen Ebene. Und das merkt man
+nicht daran, dass sie fehlschlagen — sondern daran, dass sie *nie* fehlschlagen.
+
+---
+
 ### [2026-08-13] Incident | CodeQL hält "ccn" für eine Kreditkartennummer
 
 CodeQL hat heute gleich dreimal in `scripts/ci/*` rumgezickt, weil die
