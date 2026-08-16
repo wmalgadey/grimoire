@@ -15,10 +15,11 @@ below fully retires an ADR's core decision (each is scoped — "in part", "this 
 only", a single table row) — every ADR therefore stays `Accepted`; the chain columns
 qualify what still applies.
 
-`Extends` relationships (ADR-016 on ADR-015; ADR-017 on ADR-006/ADR-015/ADR-016; ADR-026
-on ADR-020/ADR-013) are listed for context but are not supersede/amend links — their own
-text states they supersede no part of what they extend, so Constitution Principle III's
-bidirectional linking rule does not apply to them.
+An ADR may also **extend** another: it builds on that decision without replacing any part
+of it. `Extends` is listed in the chain columns for context but is not a supersede/amend
+link — an extending ADR's own text states it supersedes nothing, so Constitution Principle
+III's bidirectional linking rule does not apply. The table below is the record of which
+relationships exist.
 
 | ADR | Title | Status | Supersedes / Amends | Superseded by / Amended by |
 | --- | --- | --- | --- | --- |

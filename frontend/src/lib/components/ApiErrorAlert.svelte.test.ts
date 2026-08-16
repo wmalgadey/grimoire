@@ -90,6 +90,18 @@ test('an unrecognized response body is shown only inside the disclosure', async 
 		.toHaveTextContent('Bad Gateway');
 });
 
+test('a new error closes the disclosure the previous one had open', async () => {
+	// The component instance survives when one failure replaces another on the same surface. If
+	// the disclosure stayed open, the next error would expose its internals with no user action.
+	const screen = await render(ApiErrorAlert, { error: presented() });
+	await screen.getByTestId('api-error-details-toggle').click();
+	await expect.element(screen.getByTestId('api-error-details')).toBeInTheDocument();
+
+	await screen.rerender({ error: presented({ code: 'a_different_failure' }) });
+
+	expect(screen.container.querySelector('[data-testid="api-error-details"]')).toBeNull();
+});
+
 // ---------------------------------------------------------------------------
 // SC-004 — categories and retry (T044)
 // ---------------------------------------------------------------------------

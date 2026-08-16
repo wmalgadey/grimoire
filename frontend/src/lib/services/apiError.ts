@@ -171,6 +171,21 @@ export function presentRecordedFailure(failureReason: string): PresentedError {
 }
 
 /**
+ * An `Error` that carries its presentation with it.
+ *
+ * Throwing a bare `Error(presented.message)` loses the category, status, code, trace id and body
+ * excerpt, and — worse — makes {@link toPresentedError} classify it as `unreachable`, telling the
+ * user to check their connection about a request the wiki plainly answered. Anything that throws
+ * after deriving a presentation should throw this instead.
+ */
+export class PresentedApiError extends Error {
+	constructor(public readonly presented: PresentedError) {
+		super(presented.message);
+		this.name = 'PresentedApiError';
+	}
+}
+
+/**
  * Turns whatever a `catch` block received into something presentable.
  *
  * Surfaces call this rather than branching on `error instanceof SomeApiError` themselves — that

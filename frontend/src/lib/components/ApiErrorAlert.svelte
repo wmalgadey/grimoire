@@ -28,6 +28,19 @@
 
 	let detailsOpen = $state(false);
 
+	// The component instance survives when one error replaces another on the same surface, so the
+	// disclosure has to be closed explicitly — otherwise a user who opened the details for the
+	// previous failure gets the next one's internals shown without asking for them (FR-006).
+	// `shownError` is a plain variable, not $state: it is a bookkeeping marker, and making it
+	// reactive would have this effect retrigger itself.
+	let shownError: PresentedError | undefined;
+	$effect(() => {
+		if (error !== shownError) {
+			shownError = error;
+			detailsOpen = false;
+		}
+	});
+
 	const showRetry = $derived(error.retryable && onRetry !== undefined);
 	const hasTechnicalDetail = $derived(
 		error.status !== null ||

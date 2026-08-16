@@ -1,4 +1,3 @@
-using System.Diagnostics;
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -31,7 +30,7 @@ internal sealed class ApiErrorExceptionHandler : IExceptionHandler
         HttpContext httpContext, Exception exception, CancellationToken cancellationToken)
     {
         var definition = ApiErrorCatalogue.Resolve(ApiErrorCatalogue.InternalError);
-        var traceId = Activity.Current?.TraceId.ToString();
+        var traceId = ApiErrorResults.CurrentTraceId(httpContext);
         var path = httpContext.Request.Path.Value ?? string.Empty;
 
         ApiErrorResults.Emit(httpContext, definition, path, traceId, failureReason: exception.Message);

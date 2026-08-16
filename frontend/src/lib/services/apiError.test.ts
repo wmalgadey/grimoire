@@ -1,5 +1,6 @@
 import { expect, test } from 'vitest';
 import {
+	PresentedApiError,
 	presentRecordedFailure,
 	presentRequestFailure,
 	presentResponseError,
@@ -201,6 +202,20 @@ test('an error carrying a status is never presented as unreachable', () => {
 
 	expect(presented.category).toBe('declined');
 	expect(presented.message).toBe('Already running.');
+});
+
+test('a thrown PresentedApiError round-trips its whole presentation', async () => {
+	// Throwing a bare Error(message) used to lose the category here, so a 409 the wiki plainly
+	// answered came back as "unreachable" — telling the user to check their connection.
+	const original = await presentResponseError(
+		problem(409, { status: 409, title: 'Busy', detail: 'Try later.', code: 'busy' })
+	);
+
+	const roundTripped = toPresentedError(new PresentedApiError(original));
+
+	expect(roundTripped).toBe(original);
+	expect(roundTripped.category).toBe('declined');
+	expect(roundTripped.code).toBe('busy');
 });
 
 test('anything else reaching a catch block means the request never completed', () => {

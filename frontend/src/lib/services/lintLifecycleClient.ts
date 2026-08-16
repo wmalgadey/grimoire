@@ -6,7 +6,7 @@ import type {
 	LintRunBoardEntry,
 	LintRunLifecycleEvent
 } from '$lib/types';
-import { presentResponseError } from './apiError';
+import { PresentedApiError, presentResponseError } from './apiError';
 
 const HUB_PATH = '/hubs/lint-lifecycle';
 const BOARD_PATH = '/api/board';
@@ -86,8 +86,9 @@ export async function fetchLintRunFromBoard(
 ): Promise<LintRun | null> {
 	const response = await fetchImpl(BOARD_PATH);
 	if (!response.ok) {
-		// 023 T052: the Hub's own reason, when it sent one — the bare status is the fallback.
-		throw new Error((await presentResponseError(response)).message);
+		// 023 T052 / 024: the Hub's own sentence, carried with its category and technical detail
+		// so a caller routing this through toPresentedError() gets the real classification.
+		throw new PresentedApiError(await presentResponseError(response));
 	}
 
 	const board: CompositeBoardResponse = await response.json();

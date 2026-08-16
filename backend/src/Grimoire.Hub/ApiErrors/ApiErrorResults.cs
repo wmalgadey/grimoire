@@ -66,7 +66,7 @@ public static class ApiErrorResults
     {
         public async Task ExecuteAsync(HttpContext httpContext)
         {
-            var traceId = Activity.Current?.TraceId.ToString();
+            var traceId = CurrentTraceId(httpContext);
             var path = httpContext.Request.Path.Value ?? string.Empty;
 
             var problem = new ProblemDetails
@@ -103,6 +103,29 @@ public static class ApiErrorResults
             await httpContext.Response.WriteAsJsonAsync(
                 problem, options: null, contentType: ProblemJsonContentType, httpContext.RequestAborted);
         }
+    }
+
+    /// <summary>
+    /// The correlation identifier for this request: the ambient trace id when one exists, and
+    /// otherwise ASP.NET Core's own request identifier.
+    ///
+    /// <para>
+    /// The fallback is what ADR-026 and research R3 specify, and it is not academic: without it
+    /// an operator handed a failure by a user has nothing to search on whenever tracing is off,
+    /// unsampled, or not yet started for the request — which is exactly the situation in which
+    /// they most need the log line. Returning <c>null</c> only when neither exists keeps the
+    /// member omitted rather than blank in the one genuinely uncorrelatable case.
+    /// </para>
+    /// </summary>
+    internal static string? CurrentTraceId(HttpContext httpContext)
+    {
+        var traceId = Activity.Current?.TraceId.ToString();
+        if (!string.IsNullOrEmpty(traceId))
+        {
+            return traceId;
+        }
+
+        return string.IsNullOrEmpty(httpContext.TraceIdentifier) ? null : httpContext.TraceIdentifier;
     }
 
     /// <summary>

@@ -266,6 +266,26 @@ public class HubApiErrorEnvelopeTests
             $"No exported span carried the traceId '{traceId}' returned in the response body.");
     }
 
+    /// <summary>
+    /// ADR-026 and research R3 specify the correlation identifier as the ambient trace id
+    /// <i>falling back to the request identifier</i>. Without the fallback an operator handed a
+    /// failure by a user has nothing to search on whenever tracing is off or unsampled — which is
+    /// precisely when they most need the log line. The host here registers no telemetry at all, so
+    /// no Activity is in scope.
+    /// </summary>
+    [Fact]
+    public async Task TraceId_FallsBackToTheRequestIdentifier_WhenNoActivityIsInScope()
+    {
+        using var host = await BuildThrowingHostAsync();
+        var client = host.GetTestClient();
+
+        var response = await client.GetAsync("/boom");
+        var body = await response.Content.ReadFromJsonAsync<JsonElement>();
+
+        Assert.True(body.TryGetProperty("traceId", out var traceId));
+        Assert.False(string.IsNullOrWhiteSpace(traceId.GetString()));
+    }
+
     // -----------------------------------------------------------------------
 
     private const string ThrownSecret = "connection-string-abc123";
