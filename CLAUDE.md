@@ -53,6 +53,13 @@ the constitution's "Spec-Kit Workflow Integration" section. Do not implement fea
 ad hoc outside this workflow. The individual commands are available as auto-discovered
 `/speckit-*` skills.
 
+**Delivery shape.** A feature that spans several `tasks.md` phases SHOULD be delivered as
+a stack of small pull requests rather than one big-bang PR — one layer per phase group,
+each PR targeting the branch below it. This is a delivery convention, not an
+architectural boundary: it needs no ADR and changes nothing about the SDD artifacts or
+the Definition of Done, which stays whole-feature. The procedure lives in the
+[`stacked-pr`](.claude/skills/stacked-pr/SKILL.md) skill.
+
 ## Spec-Kit Workflow
 
 <!-- SPECKIT START -->

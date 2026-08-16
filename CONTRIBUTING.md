@@ -141,6 +141,31 @@ and include the updated files in your PR.
 ## Pull requests
 
 - One feature branch per Spec Kit feature (`NNN-feature-name`), matching its `specs/NNN-feature-name/` directory
+- Large features ship as a **stack** of small PRs rather than one big-bang PR — see below
 - CI must pass: architecture tests, integration tests, linting, build
 - No unapproved infrastructure — new external dependencies (cloud resources, brokers,
   persistence stores) require an approved ADR first
+
+### Stacked pull requests
+
+A feature's `tasks.md` is already sliced into phases — Phase 0 (structural boundary
+tests), setup/foundational, one phase per user story, polish. Those phases are the
+natural cut lines for a **stack**: an ordered chain of small pull requests, each
+targeting the branch below it, all landing on `main`. Reviewers see one story per diff
+instead of an 80-file feature drop, and the MVP story can merge while later stories are
+still under review.
+
+Stacks are managed with [`github/gh-stack`](https://github.com/github/gh-stack)
+(`gh extension install github/gh-stack`, requires gh ≥ 2.0). Layer branches keep the
+feature's numeric prefix (`023-task-ui-improvements-03-us1-status-history`) so branch
+validation and the `specs/NNN-*` lookup keep working; feature resolution itself is
+branch-independent, so every `/speckit-*` command works from any layer.
+
+Two things to know before splitting: CI runs in full on every layer (cost multiplies by
+layer count), and `tasks.md` should be updated in one layer only — per-layer checkbox
+edits conflict on every cascading rebase. The Definition of Done stays whole-feature and
+is satisfied at the top of the stack.
+
+The full procedure, including layer-cutting rules and the fallback for environments
+without `gh`, is in the [`stacked-pr`](.claude/skills/stacked-pr/SKILL.md) skill —
+invoke it with `/stacked-pr` when starting implementation of a large feature.
