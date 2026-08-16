@@ -92,6 +92,9 @@
 			const board = await getBoard();
 			queuePaused = board.queuePaused ?? false;
 		} catch {
+			// 024 FR-011: silence here is deliberate, not an oversight. This is a background
+			// refresh the user did not ask for, and surfacing it would displace an error they
+			// are reading about their own action.
 			// Non-critical: the board still renders from the lifecycle stream even if this
 			// supplementary call fails.
 		}
@@ -106,17 +109,26 @@
 			tasks = board.tasks;
 			queuePaused = board.queuePaused ?? false;
 		} catch {
+			// 024 FR-011: silence here is deliberate, not an oversight. This is a background
+			// refresh the user did not ask for, and surfacing it would displace an error they
+			// are reading about their own action.
 			// Non-critical: the lifecycle stream keeps the board live regardless.
 		}
 	}
 
+	// 024 SC-005: resuming the queue is a user action, so its failure is a request failure and
+	// belongs in the shared presentation. It used to be swallowed entirely — the banner simply
+	// stayed put with no explanation of why the click did nothing.
+	let resumeError: PresentedError | null = $state(null);
+
 	async function handleResume() {
 		resuming = true;
+		resumeError = null;
 		try {
 			await resumeQueue();
 			queuePaused = false;
-		} catch {
-			// Leave the banner visible; the user can retry.
+		} catch (err) {
+			resumeError = toPresentedError(err);
 		} finally {
 			resuming = false;
 		}
@@ -216,6 +228,14 @@
 				{resuming ? 'Resuming…' : 'Resume queue'}
 			</button>
 		</div>
+		{#if resumeError}
+			<ApiErrorAlert
+				error={resumeError}
+				testId="queue-resume-error"
+				onRetry={handleResume}
+				onDismiss={() => (resumeError = null)}
+			/>
+		{/if}
 	{/if}
 
 	<section class="flex flex-col gap-2" data-testid="lint-board-section">

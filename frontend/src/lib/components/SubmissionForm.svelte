@@ -54,6 +54,9 @@
 			// The form still works with system defaults (default prompt / all steps
 			// enabled) even if the defaults endpoint is unreachable; only the editable
 			// prefill and toggle labels are unavailable.
+			// 024 FR-010: deliberately a low-key notice rather than the shared error alert —
+			// nothing the user asked for failed, and dressing a graceful degradation as an
+			// error would overstate it.
 			defaultsError = 'Could not load prompt/step defaults; using system defaults.';
 		}
 	});

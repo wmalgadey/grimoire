@@ -59,6 +59,8 @@
 		} catch {
 			// A task with no detail (unknown id, or removed while the page was open) simply
 			// renders without the history panel — the record view already reports absence.
+			// 024 FR-011: deliberately not routed to the shared error presentation — this is a
+			// background refresh, and it must not displace the restart error the user is reading.
 			detail = null;
 		}
 	}

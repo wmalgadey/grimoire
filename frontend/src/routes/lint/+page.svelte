@@ -44,6 +44,8 @@
 			findingsContent = report.content;
 		} catch {
 			// Best-effort — the run's status is still shown even if the report fetch fails.
+			// 024 FR-011: a background poll the user did not trigger, so it stays silent rather
+			// than displacing a trigger error they are reading.
 		}
 	}
 

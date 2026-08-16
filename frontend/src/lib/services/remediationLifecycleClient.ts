@@ -186,6 +186,9 @@ export function createRemediationTaskStream(
 		tasks = applied.entries;
 		onTasksChanged(tasks);
 		if (applied.unknownTask) {
+			// 024 FR-011: a best-effort catch-up read triggered by an event about a task we have
+			// not seen. Deliberately silent — the user did not ask for it, and the next event or
+			// reconnect re-reads anyway.
 			void refresh().catch(() => {});
 		}
 	});
