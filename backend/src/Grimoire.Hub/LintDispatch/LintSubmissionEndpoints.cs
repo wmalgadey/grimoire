@@ -1,3 +1,4 @@
+using Grimoire.Hub.ApiErrors;
 using Grimoire.Hub.LintFindings;
 
 namespace Grimoire.Hub.LintDispatch;
@@ -30,20 +31,15 @@ public static class LintSubmissionEndpoints
                 status = "running",
                 triggeredAt = accepted.Run.TriggeredAt,
             }),
-            LintSubmissionResult.Busy => Results.Conflict(new
-            {
-                reason = "lint_run_active",
-                message = "A Lint Run is already active. Wait for it to finish before triggering another.",
-            }),
+            LintSubmissionResult.Busy => ApiErrorResults.Problem(ApiErrorCatalogue.LintRunActive),
             // 015-lint-board-parity T017 (FR-004/SC-004, contracts/lint-board-api.md):
             // the second distinguishable 409 reason — never one generic "busy".
-            LintSubmissionResult.Blocked blocked => Results.Conflict(new
-            {
-                reason = blocked.Reason,
-                message = "Remediation action tasks from the previous lint run are still unresolved. "
-                    + "Authorize, dismiss, or wait for them to finish before starting a new run.",
-                unresolvedTaskIds = blocked.UnresolvedTaskIds,
-            }),
+            // The unresolved ids ride along as an RFC 7807 extension member: they are structured
+            // data the board genuinely consumes (LintTriggerPreconditionTests asserts them), not
+            // prose, so they sit beside the five core members rather than inside the detail.
+            LintSubmissionResult.Blocked blocked => ApiErrorResults.Problem(
+                ApiErrorCatalogue.UnresolvedRemediationTasks,
+                extensions: new Dictionary<string, object?> { ["unresolvedTaskIds"] = blocked.UnresolvedTaskIds }),
             _ => throw new InvalidOperationException($"Unknown submission result: {result.GetType().Name}"),
         };
     }
@@ -64,7 +60,7 @@ public static class LintSubmissionEndpoints
         var run = coordinator.GetRun(runId);
         if (run is null)
         {
-            return Task.FromResult(Results.NotFound(new { message = $"Lint run '{runId}' was not found." }));
+            return Task.FromResult(ApiErrorResults.Problem(ApiErrorCatalogue.LintRunNotFound));
         }
 
         return Task.FromResult(Results.Ok(new
@@ -83,7 +79,7 @@ public static class LintSubmissionEndpoints
         var content = await store.TryReadAsync(runId, cancellationToken);
         if (content is null)
         {
-            return Results.NotFound(new { message = $"Findings Report for run '{runId}' is not available." });
+            return ApiErrorResults.Problem(ApiErrorCatalogue.LintFindingsReportUnavailable);
         }
 
         return Results.Ok(new { runId, content });

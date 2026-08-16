@@ -22,6 +22,13 @@ internal static class HubEndpoints
 {
     public static WebApplication MapGrimoireEndpoints(this WebApplication app)
     {
+        // 024-api-error-presentation (ADR-026): first in the pipeline, so an exception escaping any
+        // endpoint below answers with the same envelope as a deliberate rejection instead of the
+        // bare, empty-bodied 500 Kestrel produced before this feature. The handler itself is
+        // registered in HubHostComposition; the middleware has to sit in the app pipeline, which
+        // only exists on the server path.
+        app.UseExceptionHandler();
+
         app.MapGet("/", () => "Grimoire Hub");
         app.MapHub<IngestLifecycleHub>("/hubs/ingest-lifecycle");
         app.MapGroup("/api/ingest-submissions").MapIngestSubmissionEndpoints();

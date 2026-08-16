@@ -1,3 +1,4 @@
+using Grimoire.Hub.ApiErrors;
 using Grimoire.Hub.QueryDispatch;
 using Microsoft.Extensions.Logging;
 
@@ -36,7 +37,7 @@ public static class QuerySubmissionEndpoints
     {
         if (body is null)
         {
-            return Results.BadRequest(new { message = "Request body is required." });
+            return ApiErrorResults.Problem(ApiErrorCatalogue.QuerySubmissionBodyRequired);
         }
 
         // conversationId names the Conversation Record file, so path safety is enforced
@@ -44,13 +45,14 @@ public static class QuerySubmissionEndpoints
         var conversationIdValidation = validator.ValidateConversationId(conversationId);
         if (!conversationIdValidation.IsValid)
         {
-            return Results.BadRequest(new { message = conversationIdValidation.ErrorMessage });
+            return ApiErrorResults.Problem(
+                ApiErrorCatalogue.QueryConversationIdInvalid, conversationIdValidation.ErrorMessage);
         }
 
         var validation = validator.ValidatePrompt(body.Prompt);
         if (!validation.IsValid)
         {
-            return Results.BadRequest(new { message = validation.ErrorMessage });
+            return ApiErrorResults.Problem(ApiErrorCatalogue.QuerySubmissionInvalid, validation.ErrorMessage);
         }
 
         var result = await coordinator.SubmitTurnAsync(conversationId, body.Prompt.Trim(), cancellationToken);
@@ -72,23 +74,21 @@ public static class QuerySubmissionEndpoints
                     HubMetrics.RecordQuerySubmissionRejected();
                     var logger = loggerFactory.CreateLogger(typeof(QuerySubmissionEndpoints));
                     QueryLifecycleLogEvents.LogSubmissionRejected(logger, conversationId);
-                    return Results.Json(new { reason = "query_concurrency_limit_reached" },
-                        statusCode: StatusCodes.Status503ServiceUnavailable);
+                    return ApiErrorResults.Problem(ApiErrorCatalogue.QueryConcurrencyLimitReached);
                 }
 
             case QuerySubmissionResult.ConversationAlreadyActive:
                 {
                     var logger = loggerFactory.CreateLogger(typeof(QuerySubmissionEndpoints));
                     QueryLifecycleLogEvents.LogSubmissionRejected(logger, conversationId);
-                    return Results.Conflict(new { reason = "conversation_already_active" });
+                    return ApiErrorResults.Problem(ApiErrorCatalogue.ConversationAlreadyActive);
                 }
 
             case QuerySubmissionResult.RecordUnreadable:
                 // FR-006 fail-closed: no turn created, no agent spawned; the store
                 // already reported query.conversation.record_load_failed with the
                 // structural reason. Recovery: start a new conversation.
-                return Results.Json(new { reason = "conversation_record_unreadable" },
-                    statusCode: StatusCodes.Status500InternalServerError);
+                return ApiErrorResults.Problem(ApiErrorCatalogue.ConversationRecordUnreadable);
 
             default:
                 throw new InvalidOperationException($"Unknown submission result: {result.GetType().Name}");
@@ -100,7 +100,7 @@ public static class QuerySubmissionEndpoints
         var turn = coordinator.GetTurn(turnId);
         if (turn is null)
         {
-            return Task.FromResult(Results.NotFound(new { message = $"Query turn '{turnId}' was not found." }));
+            return Task.FromResult(ApiErrorResults.Problem(ApiErrorCatalogue.QueryTurnNotFound));
         }
 
         return Task.FromResult(Results.Ok(new
@@ -121,7 +121,7 @@ public static class QuerySubmissionEndpoints
         var turn = await coordinator.InterruptAsync(turnId, cancellationToken);
         if (turn is null)
         {
-            return Results.NotFound(new { message = $"Query turn '{turnId}' was not found." });
+            return ApiErrorResults.Problem(ApiErrorCatalogue.QueryTurnNotFound);
         }
 
         return Results.Ok(new { turnId = turn.TurnId, state = turn.Status.ToString().ToLowerInvariant() });

@@ -240,6 +240,11 @@ public class AgentArtifactNamingRuleTests
         "Grimoire.Hub.OperationalState",
         "Grimoire.Hub.Conversion",
         "Grimoire.Hub.Cli",
+        // 024-api-error-presentation (ADR-026, N1): the HTTP failure contract. Serves the
+        // ingest, query, lint and remediation endpoint families and the Hub's own
+        // unhandled-exception path, so it is cross-agent by construction — and per BR1 it
+        // is the only namespace permitted to produce an error result at all.
+        "Grimoire.Hub.ApiErrors",
     ];
 
     [Fact]

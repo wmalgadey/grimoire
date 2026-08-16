@@ -1,3 +1,4 @@
+using Grimoire.Hub.ApiErrors;
 using Grimoire.Hub.OperationalState;
 
 namespace Grimoire.Hub.RemediationTasks;
@@ -66,7 +67,7 @@ public static class RemediationTaskEndpoints
         var row = rows.FirstOrDefault(r => r.TaskId == taskId);
         if (row is null)
         {
-            return Results.NotFound(new { message = $"Remediation task '{taskId}' was not found." });
+            return ApiErrorResults.Problem(ApiErrorCatalogue.RemediationTaskNotFound);
         }
 
         // Record-derived history (FR-011/FR-014): attached context in append order,
@@ -191,7 +192,8 @@ public static class RemediationTaskEndpoints
         var validation = ValidateContent(body?.Content);
         if (!validation.IsValid)
         {
-            return Results.BadRequest(new { message = validation.ErrorMessage });
+            return ApiErrorResults.Problem(
+                ApiErrorCatalogue.RemediationAttachmentInvalid, validation.ErrorMessage);
         }
 
         var row = await FindTaskAsync(repository, taskId, cancellationToken);
@@ -230,7 +232,8 @@ public static class RemediationTaskEndpoints
         var validation = ValidateContent(body?.Content);
         if (!validation.IsValid)
         {
-            return Results.BadRequest(new { message = validation.ErrorMessage });
+            return ApiErrorResults.Problem(
+                ApiErrorCatalogue.RemediationMessageInvalid, validation.ErrorMessage);
         }
 
         var row = await FindTaskAsync(repository, taskId, cancellationToken);
@@ -255,12 +258,9 @@ public static class RemediationTaskEndpoints
                 state = "running",
                 acceptedAt = accepted.AcceptedAt,
             }),
-            RemediationMessageTurnSubmissionResult.TurnActive => Results.Conflict(new
-            {
-                reason = "message_turn_active",
-                state = row.State,
-                message = "A message turn is already running for this task; wait for it to finish before sending another.",
-            }),
+            RemediationMessageTurnSubmissionResult.TurnActive => ApiErrorResults.Problem(
+                ApiErrorCatalogue.MessageTurnActive,
+                extensions: new Dictionary<string, object?> { ["state"] = row.State }),
             _ => throw new InvalidOperationException($"Unknown message-turn submission result: {result.GetType().Name}"),
         };
     }
@@ -332,48 +332,32 @@ public static class RemediationTaskEndpoints
     }
 
     private static IResult NotFound(string taskId)
-        => Results.NotFound(new { message = $"Remediation task '{taskId}' was not found." });
+        => ApiErrorResults.Problem(ApiErrorCatalogue.RemediationTaskNotFound);
 
     private static IResult TaskNotProposedConflict(RemediationTaskRow row)
-        => Results.Conflict(new
-        {
-            reason = "task_not_proposed",
-            state = row.State,
-            message = $"Only a proposed task can be authorized or dismissed. This task is {row.State}.",
-        });
+        => ApiErrorResults.Problem(
+            ApiErrorCatalogue.TaskNotProposed,
+            extensions: new Dictionary<string, object?> { ["state"] = row.State });
 
     /// <summary>
-    /// 018-hub-cli-commands T022: translates a
-    /// <see cref="RemediationTaskTransitionService"/> conflict (reason + current state
-    /// only) back into the exact 409 body shape (incl. the human-readable <c>message</c>)
-    /// the pre-extraction inline handlers returned, for all three reasons the service can
-    /// produce across authorize/dismiss/withdraw:
-    /// <c>task_not_proposed</c> (authorize/dismiss), <c>task_not_authorized</c> and
-    /// <c>execution_already_started</c> (withdraw — contracts/remediation-task-api.md
-    /// "withdraw-authorization error shapes").
+    /// Translates a <see cref="RemediationTaskTransitionService"/> conflict into its own catalogue
+    /// entry. ADR-018 requires the caller to see the actual outcome — "the board shows the actual
+    /// outcome" — so the three reasons keep three distinct messages rather than collapsing into one
+    /// generic "request declined". The current state rides along as an extension member because it
+    /// is data the board renders, not prose.
     /// </summary>
-    private static IResult ToConflictResult(RemediationTransitionResult.Conflict conflict) => conflict.Reason switch
+    private static IResult ToConflictResult(RemediationTransitionResult.Conflict conflict)
     {
-        "task_not_proposed" => Results.Conflict(new
+        var state = new Dictionary<string, object?> { ["state"] = conflict.CurrentState };
+
+        return conflict.Reason switch
         {
-            reason = conflict.Reason,
-            state = conflict.CurrentState,
-            message = $"Only a proposed task can be authorized or dismissed. This task is {conflict.CurrentState}.",
-        }),
-        "task_not_authorized" => Results.Conflict(new
-        {
-            reason = conflict.Reason,
-            state = conflict.CurrentState,
-            message = $"Only an authorized task can have its authorization withdrawn. This task is {conflict.CurrentState}.",
-        }),
-        "execution_already_started" => Results.Conflict(new
-        {
-            reason = conflict.Reason,
-            state = conflict.CurrentState,
-            message = "The agent already began executing this task; it will run to a terminal outcome and can no longer be cancelled.",
-        }),
-        _ => throw new InvalidOperationException($"Unknown remediation transition conflict reason: {conflict.Reason}"),
-    };
+            "task_not_proposed" => ApiErrorResults.Problem(ApiErrorCatalogue.TaskNotProposed, extensions: state),
+            "task_not_authorized" => ApiErrorResults.Problem(ApiErrorCatalogue.TaskNotAuthorized, extensions: state),
+            "execution_already_started" => ApiErrorResults.Problem(ApiErrorCatalogue.ExecutionAlreadyStarted, extensions: state),
+            _ => throw new InvalidOperationException($"Unknown remediation conflict reason: {conflict.Reason}"),
+        };
+    }
 
     private static object ToListEntry(RemediationTaskRow row, IReadOnlyDictionary<string, int> queuePositions) => new
     {
