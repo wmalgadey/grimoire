@@ -322,6 +322,13 @@ public sealed class IngestSubmissionPipeline
     private async Task WriteStageAsync(
         PipelineContext context, string status, string? sourceRef, string? originalRef, string? failureReason, string narrative, CancellationToken cancellationToken)
     {
+        // 023 T045 (FR-003): mirror the label the board and detail views resolve, through the
+        // one chain that owns it. Before conversion has written a manifest (the `received` and
+        // `converting` writes) the chain legitimately falls back to the task id; the extracted
+        // heading appears from `queued` onward.
+        var manifest = await _sourceArtifactStore.TryReadMetadataAsync(context.TaskId, cancellationToken);
+        var title = KanbanBoardProjectionStore.ResolveTitle(context.TaskId, manifest);
+
         var document = new HubTaskArtifactDocument(
             TaskId: context.TaskId,
             Status: status,
@@ -333,7 +340,8 @@ public sealed class IngestSubmissionPipeline
             Narrative: narrative,
             UserPromptSource: context.PromptSource,
             UserPrompt: context.UserPrompt,
-            ConvertSteps: context.ConvertSteps);
+            ConvertSteps: context.ConvertSteps,
+            Title: title);
 
         await _taskArtifactWriter.WriteAsync(context.TaskArtifactPath, document, cancellationToken);
     }

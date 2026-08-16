@@ -528,6 +528,11 @@ public sealed class AgentProcessHost : IAgentProcessLauncher
             startInfo.ArgumentList.Add("--user-prompt");
             startInfo.ArgumentList.Add(request.UserPrompt);
         }
+        if (!string.IsNullOrWhiteSpace(request.Title))
+        {
+            startInfo.ArgumentList.Add("--title");
+            startInfo.ArgumentList.Add(request.Title);
+        }
 
         var authToken = _secretsLoader.GetAnthropicAuthToken();
         var ingestModel = _secretsLoader.GetIngestModel();

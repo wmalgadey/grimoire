@@ -174,7 +174,10 @@ public sealed class IngestSubmissionPipelineFixture : IDisposable
             timeProvider,
             livenessWindow ?? TimeSpan.FromSeconds(60),
             CoordinatorLogger,
-            reactivationDelays);
+            reactivationDelays,
+            // 023 T045: same manifest store the board resolves the label from, exactly as
+            // in production — the Hub's own artifact writes must not disagree with the UI.
+            SourceArtifactStore);
         Coordinator.InitializeAsync().GetAwaiter().GetResult();
 
         var httpClient = new HttpClient(urlFetchHandler ?? new NotFoundHandler());

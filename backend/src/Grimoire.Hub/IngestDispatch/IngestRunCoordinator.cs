@@ -1,6 +1,7 @@
 using System.Collections.Concurrent;
 using System.Diagnostics;
 using Grimoire.Hub.ContentRoot;
+using Grimoire.Hub.Conversion;
 using Grimoire.Hub.IngestSubmission;
 using Grimoire.Hub.OperationalState;
 using Grimoire.Hub.Realtime;
@@ -41,6 +42,7 @@ public sealed class IngestRunCoordinator
     private readonly TimeProvider _timeProvider;
     private readonly TimeSpan _livenessWindow;
     private readonly IReadOnlyList<TimeSpan> _reactivationDelays;
+    private readonly SourceArtifactStore? _sourceArtifactStore;
     private readonly ILogger<IngestRunCoordinator> _logger;
 
     private readonly SemaphoreSlim _slotLock = new(1, 1);
@@ -71,7 +73,8 @@ public sealed class IngestRunCoordinator
         TimeProvider? timeProvider = null,
         TimeSpan? livenessWindow = null,
         ILogger<IngestRunCoordinator>? logger = null,
-        IReadOnlyList<TimeSpan>? reactivationDelays = null)
+        IReadOnlyList<TimeSpan>? reactivationDelays = null,
+        SourceArtifactStore? sourceArtifactStore = null)
     {
         _repository = repository;
         _launcher = launcher;
@@ -82,6 +85,7 @@ public sealed class IngestRunCoordinator
         _timeProvider = timeProvider ?? TimeProvider.System;
         _livenessWindow = livenessWindow ?? TimeSpan.FromSeconds(60);
         _reactivationDelays = reactivationDelays ?? DefaultReactivationDelays;
+        _sourceArtifactStore = sourceArtifactStore;
         _logger = logger ?? NullLogger<IngestRunCoordinator>.Instance;
     }
 
@@ -221,9 +225,29 @@ public sealed class IngestRunCoordinator
             Narrative: "Task restarted; queued for ingest.",
             UserPromptSource: existing?.UserPromptSource,
             UserPrompt: userPrompt,
-            ConvertSteps: existing?.ConvertSteps);
+            ConvertSteps: existing?.ConvertSteps,
+            Title: await ResolveTitleAsync(taskId, existing, cancellationToken));
 
         await _taskArtifactWriter.WriteAsync(artifactPath, document, cancellationToken);
+    }
+
+    /// <summary>
+    /// 023 T045 (FR-003): the human-readable label, resolved through the same manifest chain
+    /// the board and detail views use, so no Hub write can disagree with what the UI shows.
+    /// When no manifest store is wired (board-only test compositions) the label already on the
+    /// artifact is carried forward rather than dropped, with the task id as the last resort —
+    /// the same terminal fallback the chain itself has.
+    /// </summary>
+    private async Task<string> ResolveTitleAsync(
+        string taskId, TaskArtifactFrontmatter? existing, CancellationToken cancellationToken)
+    {
+        if (_sourceArtifactStore is null)
+        {
+            return string.IsNullOrWhiteSpace(existing?.Title) ? taskId : existing.Title;
+        }
+
+        var manifest = await _sourceArtifactStore.TryReadMetadataAsync(taskId, cancellationToken);
+        return KanbanBoardProjectionStore.ResolveTitle(taskId, manifest);
     }
 
     /// <summary>Starts the next queued task iff the slot is free and the queue is not paused (FIFO).</summary>
@@ -306,7 +330,10 @@ public sealed class IngestRunCoordinator
             DefaultUserPromptPath: _resolvedPaths.Ingest.DefaultUserPromptPath!,
             PolicyPath: _resolvedPaths.Ingest.PolicyPath,
             WriteLocksDir: _contentPaths.WriteLocksDir,
-            UserPrompt: run.UserPrompt);
+            UserPrompt: run.UserPrompt,
+            // 023 T046 (FR-003): the label travels with the launch so the agent's own artifact
+            // writes keep it, rather than the Hub having to re-touch an agent-owned file.
+            Title: await ResolveTitleAsync(run.TaskId, existing: null, cancellationToken));
 
         IAgentProcessHandle handle;
         try
@@ -585,7 +612,8 @@ public sealed class IngestRunCoordinator
             Narrative: $"Ingest failed: {failureReason}",
             UserPromptSource: existing?.UserPromptSource,
             UserPrompt: userPrompt,
-            ConvertSteps: existing?.ConvertSteps);
+            ConvertSteps: existing?.ConvertSteps,
+            Title: await ResolveTitleAsync(taskId, existing, cancellationToken));
 
         await _taskArtifactWriter.WriteAsync(artifactPath, document, cancellationToken);
     }

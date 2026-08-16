@@ -144,7 +144,10 @@ internal static class HubHostComposition
                 sp.GetRequiredService<IngestContentPaths>(),
                 sp.GetRequiredService<ResolvedGrimoirePaths>(),
                 sp.GetRequiredService<TimeProvider>(),
-                logger: sp.GetRequiredService<ILogger<IngestRunCoordinator>>()));
+                logger: sp.GetRequiredService<ILogger<IngestRunCoordinator>>(),
+                // 023 T045 (FR-003): the manifest the human-readable label is resolved from,
+                // so the Hub's own restart/failure artifact writes mirror what the UI shows.
+                sourceArtifactStore: sp.GetRequiredService<SourceArtifactStore>()));
             builder.Services.AddSingleton<IngestSubmissionValidator>();
             builder.Services.AddSingleton<IngestSubmissionPipeline>();
             // 018-hub-cli-commands T010: SubmitSourceCommand resolves this via DI instead

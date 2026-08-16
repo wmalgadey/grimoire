@@ -27,9 +27,14 @@ public sealed class TaskArtifactStore
         // Keep pages_touched for backward compat (Hub reconciliation reads it).
         var pagesTouched = BuildStringList(doc.PagesTouched);
 
+        // 023 (FR-003): quoted so a label containing ':' or '"' cannot corrupt the
+        // frontmatter; `null` when the run was launched without one.
+        var title = string.IsNullOrWhiteSpace(doc.Title) ? "null" : $"\"{Escape(doc.Title)}\"";
+
         var sb = new StringBuilder();
         sb.AppendLine("---");
         sb.AppendLine($"task_id: {doc.TaskId}");
+        sb.AppendLine($"title: {title}");
         sb.AppendLine($"type: {doc.Type}");
         sb.AppendLine($"status: {doc.Status}");
         sb.AppendLine($"agent: {doc.Agent}");
@@ -151,8 +156,6 @@ public sealed class TaskArtifactStore
             .Where(parts => parts.Length == 2)
             .ToDictionary(parts => parts[0], parts => parts[1]);
 
-        static string Unquote(string value) => value.Trim().Trim('"');
-
         var pagesTouched = ParseStringList(frontmatter, "pages_touched");
         var pagesCreated = ParseStringList(frontmatter, "pages_created");
         var pagesUpdated = ParseStringList(frontmatter, "pages_updated");
@@ -162,13 +165,8 @@ public sealed class TaskArtifactStore
             ? DateTimeOffset.Parse(completedAtRaw, CultureInfo.InvariantCulture)
             : null;
 
-        var failureReason = frontmatter.TryGetValue("failure_reason", out var failureRaw) && !string.Equals(failureRaw, "null", StringComparison.OrdinalIgnoreCase)
-            ? Unquote(failureRaw)
-            : null;
-
-        var model = frontmatter.TryGetValue("model", out var modelRaw) && !string.Equals(modelRaw, "null", StringComparison.OrdinalIgnoreCase)
-            ? Unquote(modelRaw)
-            : null;
+        var failureReason = ParseOptionalString(frontmatter, "failure_reason");
+        var model = ParseOptionalString(frontmatter, "model");
 
         int? turns = frontmatter.TryGetValue("turns", out var turnsRaw) && !string.Equals(turnsRaw, "null", StringComparison.OrdinalIgnoreCase)
             ? int.Parse(turnsRaw, CultureInfo.InvariantCulture)
@@ -178,11 +176,10 @@ public sealed class TaskArtifactStore
             ? string.Equals(rbRaw, "true", StringComparison.OrdinalIgnoreCase)
             : null;
 
-        var userPromptSource = frontmatter.TryGetValue("user_prompt_source", out var upsRaw) && !string.Equals(upsRaw, "null", StringComparison.OrdinalIgnoreCase)
-            ? Unquote(upsRaw)
-            : null;
+        var userPromptSource = ParseOptionalString(frontmatter, "user_prompt_source");
 
         var convertSteps = ParseConvertSteps(frontmatter);
+        var title = ParseOptionalString(frontmatter, "title");
 
         var body = sections[2];
         var userPrompt = ExtractSection(body, "## User Prompt");
@@ -231,7 +228,8 @@ public sealed class TaskArtifactStore
             RolledBack: rolledBack,
             UserPromptSource: userPromptSource,
             UserPrompt: userPrompt,
-            ConvertSteps: convertSteps);
+            ConvertSteps: convertSteps,
+            Title: title);
     }
 
     private static string NarrativeWithoutUserPromptSection(string body)
@@ -269,6 +267,29 @@ public sealed class TaskArtifactStore
     }
 
     private static string Escape(string value) => value.Replace("\\", "\\\\").Replace("\"", "\\\"");
+
+    /// <summary>
+    /// The exact inverse of <see cref="Escape"/> plus the surrounding quotes: strips one
+    /// enclosing quote pair (never more — a value ending in an escaped quote would otherwise
+    /// lose a character) and undoes the <c>\"</c> / <c>\\</c> escaping. 023: titles carry
+    /// both characters.
+    /// </summary>
+    private static string Unquote(string value)
+    {
+        var trimmed = value.Trim();
+        if (trimmed.Length >= 2 && trimmed[0] == '"' && trimmed[^1] == '"')
+        {
+            trimmed = trimmed[1..^1];
+        }
+
+        return trimmed.Replace("\\\"", "\"").Replace("\\\\", "\\");
+    }
+
+    /// <summary>Reads a nullable quoted frontmatter string, treating the bare literal <c>null</c> as absent.</summary>
+    private static string? ParseOptionalString(Dictionary<string, string> fm, string key)
+        => fm.TryGetValue(key, out var raw) && !string.Equals(raw, "null", StringComparison.OrdinalIgnoreCase)
+            ? Unquote(raw)
+            : null;
 
     private static readonly JsonSerializerOptions _jsonOptions = new()
     {

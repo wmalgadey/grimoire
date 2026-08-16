@@ -571,10 +571,18 @@ public sealed class FakeAgentProcessLauncher : IAgentProcessLauncher
             }
         }
 
+        // Mirrors the real agent's Program.cs behavior (023 T046): the human-readable label
+        // arrives as an explicit launch input (`--title`) and is written into every artifact
+        // this process produces, so it survives the agent taking the file over from the Hub.
+        var titleLine = string.IsNullOrWhiteSpace(request.Title)
+            ? "null"
+            : $"\"{request.Title.Replace("\\", "\\\\").Replace("\"", "\\\"")}\"";
+
         var content =
             $"""
             ---
             task_id: {request.TaskId}
+            title: {titleLine}
             type: ingest
             status: {status}
             agent: ingest

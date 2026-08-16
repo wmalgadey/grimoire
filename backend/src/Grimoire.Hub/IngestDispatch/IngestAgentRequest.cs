@@ -15,4 +15,9 @@ public sealed record IngestAgentRequest(
     string DefaultUserPromptPath,
     string PolicyPath,
     string WriteLocksDir,
-    string? UserPrompt = null);
+    string? UserPrompt = null,
+    // 023 T046 (FR-003): the Hub-resolved human-readable label, handed to the agent as an
+    // explicit launch input so the agent's own artifact writes carry it forward instead of
+    // dropping it. Each process keeps its own artifact I/O (ADR-002) — no read-modify-write
+    // on the shared file.
+    string? Title = null);
