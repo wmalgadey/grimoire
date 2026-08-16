@@ -1,18 +1,28 @@
 <script lang="ts">
 	import { onDestroy, onMount } from 'svelte';
+	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
-	import ConnectionStatusIndicator from '$lib/components/ConnectionStatusIndicator.svelte';
-	import KanbanColumn from '$lib/components/KanbanColumn.svelte';
-	import LintRunCard from '$lib/components/LintRunCard.svelte';
-	import RemediationTaskCard from '$lib/components/RemediationTaskCard.svelte';
-	import SubmissionForm from '$lib/components/SubmissionForm.svelte';
+	import AppNav from '$lib/components/AppNav.svelte';
+	import ApiErrorAlert from '$lib/components/ApiErrorAlert.svelte';
+	import BoardLane from '$lib/components/BoardLane.svelte';
+	import CardPopover from '$lib/components/CardPopover.svelte';
+	import FindingsDialog from '$lib/components/FindingsDialog.svelte';
 	import { createBoardLifecycleStream } from '$lib/services/ingestLifecycleClient';
 	import { getBoard, resumeQueue } from '$lib/services/ingestSubmissionsApi';
-	import { triggerLintRun } from '$lib/services/lintApi';
 	import { createLintRunStream } from '$lib/services/lintLifecycleClient';
 	import { createRemediationTaskStream } from '$lib/services/remediationLifecycleClient';
 	import { toPresentedError, type PresentedError } from '$lib/services/apiError';
-	import ApiErrorAlert from '$lib/components/ApiErrorAlert.svelte';
+	import { conversations } from '$lib/stores/conversations.svelte';
+	import {
+		applyFilters,
+		buildBoardItems,
+		groupByLane,
+		LANES,
+		needsYou,
+		needsYouSummary,
+		type BoardFilters,
+		type BoardItem
+	} from '$lib/board';
 	import type {
 		BoardTask,
 		ConnectionState,
@@ -23,104 +33,116 @@
 		RunActivityEvent
 	} from '$lib/types';
 
-	const stages: LifecycleStage[] = [
-		'received',
-		'converting',
-		'queued',
-		'running',
-		'completed',
-		'failed'
-	];
+	// The board from the Hi-Fi design (4a at rest, 4c for the popover contents and the empty
+	// state). The live plumbing below is unchanged from the pre-design board — three
+	// independent streams, one per activity kind (015 FR-015) — and everything the design added
+	// sits on top of it as a projection: `$lib/board.ts` merges the three snapshots into lanes,
+	// the filter row and the triage strip narrow that list, and a card opens a popover instead
+	// of carrying its own actions.
 
 	let tasks: BoardTask[] = $state([]);
 	let stream: ReturnType<typeof createBoardLifecycleStream> | undefined;
-	// 015-lint-board-parity T014 (FR-001/FR-003): the board's lint run view, bootstrapped
-	// from GET /api/board and kept live via /hubs/lint-lifecycle — its own stream and hub
-	// connection, fully independent of the ingest stream above (FR-015).
 	let lintRun: LintRun | null = $state(null);
 	let lintStream: ReturnType<typeof createLintRunStream> | undefined;
-	// 015-lint-board-parity T026 (US3, FR-007): agent-proposed remediation task cards,
-	// bootstrapped from GET /api/board and kept live via /hubs/remediation-lifecycle —
-	// its own stream and hub connection, independent of ingest and lint (FR-015).
 	let remediationTasks: RemediationTaskBoardEntry[] = $state([]);
 	let remediationStream: ReturnType<typeof createRemediationTaskStream> | undefined;
-	// 015-lint-board-parity T018 (FR-002/SC-003): trigger a lint run in one action from
-	// the board itself; blocked triggers surface their reason — never silent (SC-004).
-	let triggeringLint = $state(false);
-	let lintTriggerError: PresentedError | null = $state(null);
-
-	async function handleLintTrigger() {
-		triggeringLint = true;
-		lintTriggerError = null;
-		try {
-			const accepted = await triggerLintRun();
-			// Optimistic view from the 202; the lint lifecycle stream confirms/refines it.
-			lintRun = {
-				runId: accepted.runId,
-				status: accepted.status,
-				triggeredAt: accepted.triggeredAt,
-				completedAt: null,
-				failureReason: null,
-				hasFindingsReport: false
-			};
-		} catch (err) {
-			// The Hub's own sentence for both 409 shapes (lint_run_active,
-			// unresolved_remediation_tasks) arrives in the presentation — SC-004.
-			lintTriggerError = toPresentedError(err);
-		} finally {
-			triggeringLint = false;
-		}
-	}
-	// 004 FR-018: live loop-activity, keyed by taskId, layered onto the board without a
-	// separate detail page.
+	// 004 FR-018: live loop-activity, keyed by taskId.
 	let runActivityByTaskId: Record<string, RunActivity> = $state({});
 	// 004 FR-021: queued tasks survive a Hub restart but wait for explicit resume.
 	let queuePaused = $state(false);
 	let resuming = $state(false);
-	// 004 FR-023: persistent connection-health indicator, projected from the board's own
-	// SignalR connection lifecycle callbacks.
+	let resumeError: PresentedError | null = $state(null);
+	// 004 FR-023: connection health, projected from the board's own SignalR lifecycle.
 	let connectionState: ConnectionState = $state('connecting');
+	// Distinguishes "the board is empty" from "the board has not answered yet", so the empty
+	// state is never shown to someone who is simply still loading.
+	let boardLoaded = $state(false);
 
-	const tasksByStage = $derived(
-		Object.fromEntries(
-			stages.map((stage) => [stage, tasks.filter((t) => t.status === stage)])
-		) as Record<LifecycleStage, BoardTask[]>
+	let filters: BoardFilters = $state({
+		query: '',
+		failedOnly: false,
+		lastDayOnly: false,
+		needsYouOnly: false
+	});
+
+	// Done and Failed start put away, as in the design's resting state; every lane can be
+	// collapsed and reopened from its own icon.
+	let collapsedLanes: Record<string, boolean> = $state({ completed: true, failed: true });
+
+	let openCard: { item: BoardItem; position: { left: number; top: number } } | null = $state(null);
+	let findingsRunId: string | null = $state(null);
+
+	const items = $derived(
+		buildBoardItems({ tasks, lintRun, remediationTasks, runActivityByTaskId })
 	);
+	const visibleItems = $derived(applyFilters(items, filters));
+	const lanes = $derived(groupByLane(visibleItems));
+	const needsYouCount = $derived(items.filter(needsYou).length);
+	const boardEmpty = $derived(boardLoaded && items.length === 0);
+
+	const laneEmptyText: Record<LifecycleStage, string> = {
+		received: 'nothing new',
+		converting: 'nothing converting',
+		queued: 'queue empty',
+		running: 'nothing running',
+		completed: 'nothing completed',
+		failed: 'nothing failed'
+	};
+
+	function toggleLane(stage: LifecycleStage) {
+		collapsedLanes = { ...collapsedLanes, [stage]: !collapsedLanes[stage] };
+		openCard = null;
+	}
+
+	/**
+	 * The triage strip filters the board down to what is waiting on a person and opens the
+	 * Failed lane so the failures it counted are actually visible; clicking again clears both
+	 * ("It's now clickable — it filters the board down to just those tasks and expands the
+	 * Failed lane; clicking again clears the filter", chat 3).
+	 */
+	function toggleNeedsYou() {
+		const next = !filters.needsYouOnly;
+		filters = { ...filters, needsYouOnly: next };
+		collapsedLanes = next
+			? { ...collapsedLanes, failed: false, completed: true }
+			: { ...collapsedLanes, completed: true, failed: true };
+		openCard = null;
+	}
+
+	function openPopover(item: BoardItem, anchor: HTMLElement) {
+		const rect = anchor.getBoundingClientRect();
+		// Keep the panel inside the viewport on both axes — the design went through two rounds
+		// of exactly this ("Popover now clears the '+12 more' control and sits fully inside the
+		// frame", chat 1).
+		const left = Math.min(Math.max(12, rect.left), Math.max(12, window.innerWidth - 332));
+		const top = Math.min(rect.bottom + 8, Math.max(12, window.innerHeight - 320));
+		openCard = { item, position: { left, top } };
+	}
 
 	async function refreshQueueState() {
 		try {
 			const board = await getBoard();
 			queuePaused = board.queuePaused ?? false;
 		} catch {
-			// 024 FR-011: silence here is deliberate, not an oversight. This is a background
-			// refresh the user did not ask for, and surfacing it would displace an error they
-			// are reading about their own action.
-			// Non-critical: the board still renders from the lifecycle stream even if this
-			// supplementary call fails.
+			// 024 FR-011: a background refresh the user did not ask for stays silent rather than
+			// displacing an error they are reading. The board still renders from the stream.
 		}
 	}
 
-	// 023 T049 (FR-012): after a restart attempt on a board card the board — not the card —
-	// re-reads the Hub's board projection, so the operator always ends up looking at the
-	// task's true current status even when the restart was rejected.
+	// 023 T049 (FR-012): after a restart attempt the board — not the card — re-reads the Hub's
+	// projection, so the operator ends up looking at the task's true current status.
 	async function refreshBoard() {
 		try {
 			const board = await getBoard();
 			tasks = board.tasks;
 			queuePaused = board.queuePaused ?? false;
+			boardLoaded = true;
 		} catch {
-			// 024 FR-011: silence here is deliberate, not an oversight. This is a background
-			// refresh the user did not ask for, and surfacing it would displace an error they
-			// are reading about their own action.
-			// Non-critical: the lifecycle stream keeps the board live regardless.
+			// Non-critical, same reasoning as refreshQueueState.
 		}
 	}
 
-	// 024 SC-005: resuming the queue is a user action, so its failure is a request failure and
-	// belongs in the shared presentation. It used to be swallowed entirely — the banner simply
-	// stayed put with no explanation of why the click did nothing.
-	let resumeError: PresentedError | null = $state(null);
-
+	// 024 SC-005: resuming is a user action, so its failure belongs in the shared presentation.
 	async function handleResume() {
 		resuming = true;
 		resumeError = null;
@@ -134,10 +156,16 @@
 		}
 	}
 
+	function startConversation() {
+		conversations.create();
+		void goto(resolve('/query'));
+	}
+
 	onMount(() => {
 		stream = createBoardLifecycleStream(
 			(updated) => {
 				tasks = updated;
+				boardLoaded = true;
 			},
 			{
 				onRunActivityChanged: (event: RunActivityEvent) => {
@@ -162,14 +190,12 @@
 		lintStream = createLintRunStream((run) => {
 			lintRun = run;
 		});
-		// Non-critical, like refreshQueueState above: the ingest board still renders if
-		// the lint bootstrap/stream fails; the card shows "no lint activity" until then.
+		// Non-critical: the ingest board still renders if the lint bootstrap/stream fails.
 		void lintStream.start().catch(() => {});
 
-		remediationStream = createRemediationTaskStream((tasks) => {
-			remediationTasks = tasks;
+		remediationStream = createRemediationTaskStream((entries) => {
+			remediationTasks = entries;
 		});
-		// Non-critical for the same reason: the section simply stays empty until it loads.
 		void remediationStream.start().catch(() => {});
 	});
 
@@ -181,105 +207,166 @@
 </script>
 
 <svelte:head>
-	<title>Ingest — Grimoire</title>
+	<title>Board — Grimoire</title>
 </svelte:head>
 
-<main class="mx-auto flex min-h-screen max-w-5xl flex-col gap-6 bg-white p-6">
-	<header class="sticky top-0 z-10 flex flex-col gap-1 bg-white/95 py-2 backdrop-blur">
-		<div class="flex items-center justify-between gap-2">
-			<h1 class="text-lg font-semibold text-slate-900">Submit a source</h1>
-			<div class="flex items-center gap-3">
-				<a
-					href={resolve('/query')}
-					class="text-sm font-medium text-slate-600 underline-offset-2 hover:underline"
-					data-testid="nav-link-query">Ask the wiki</a
-				>
-				<a
-					href={resolve('/lint')}
-					class="text-sm font-medium text-slate-600 underline-offset-2 hover:underline"
-					data-testid="nav-link-lint">Wiki health check</a
-				>
-				<ConnectionStatusIndicator state={connectionState} />
-			</div>
-		</div>
-		<p class="text-sm text-slate-500">
-			Submit a URL, Markdown, PDF, or Office document to ingest into the wiki. Its progress appears
-			on the board below as soon as it's accepted.
-		</p>
-	</header>
+<div class="flex min-h-screen flex-col bg-white">
+	<AppNav
+		current="board"
+		{connectionState}
+		onNewConversation={startConversation}
+		onIngestAccepted={() => void refreshBoard()}
+	/>
 
-	<SubmissionForm />
-
-	{#if queuePaused}
+	{#if boardEmpty}
 		<div
-			class="flex items-center justify-between rounded border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-800"
-			data-testid="queue-paused-banner"
+			class="flex flex-1 flex-col items-center justify-center gap-3 px-6 py-20 text-center"
+			data-testid="board-empty-state"
 		>
-			<span
-				>Queue processing is paused after a restart. Queued tasks will not start automatically.</span
-			>
-			<button
-				type="button"
-				class="rounded bg-amber-600 px-3 py-1 text-xs font-medium text-white disabled:opacity-50"
-				onclick={handleResume}
-				disabled={resuming}
-				data-testid="queue-resume-button"
-			>
-				{resuming ? 'Resuming…' : 'Resume queue'}
-			</button>
+			<div class="h-20 w-20 rounded-full bg-slate-100"></div>
+			<h2 class="text-lg font-semibold text-slate-900">Nothing in flight.</h2>
+			<p class="max-w-sm text-sm text-slate-500">
+				Submit a URL or a file with <span class="font-medium">+ Ingest</span> and it appears here as Received
+				within a second.
+			</p>
 		</div>
-		{#if resumeError}
-			<ApiErrorAlert
-				error={resumeError}
-				testId="queue-resume-error"
-				onRetry={handleResume}
-				onDismiss={() => (resumeError = null)}
-			/>
-		{/if}
-	{/if}
-
-	<section class="flex flex-col gap-2" data-testid="lint-board-section">
-		<div class="flex items-center justify-between">
-			<h2 class="text-sm font-semibold text-slate-700">Wiki health check</h2>
-			<button
-				type="button"
-				class="rounded bg-violet-600 px-3 py-1 text-xs font-medium text-white hover:bg-violet-700 disabled:opacity-50"
-				onclick={handleLintTrigger}
-				disabled={triggeringLint}
-				data-testid="lint-trigger-button"
+	{:else}
+		<div class="flex flex-wrap items-center gap-2 px-6 py-3">
+			<label
+				class="flex min-w-[220px] flex-1 items-center gap-2 rounded-full border border-slate-300 px-3 py-1.5 sm:max-w-md"
 			>
-				{triggeringLint ? 'Triggering…' : 'Run health check'}
-			</button>
-		</div>
-		{#if lintTriggerError}
-			<ApiErrorAlert
-				error={lintTriggerError}
-				testId="lint-trigger-error"
-				onRetry={handleLintTrigger}
-				onDismiss={() => (lintTriggerError = null)}
-			/>
-		{/if}
-		<LintRunCard run={lintRun} />
+				<svg
+					width="14"
+					height="14"
+					viewBox="0 0 24 24"
+					fill="none"
+					stroke="currentColor"
+					stroke-width="2.5"
+					stroke-linecap="round"
+					class="shrink-0 text-slate-400"
+					aria-hidden="true"
+				>
+					<circle cx="11" cy="11" r="7"></circle>
+					<path d="m20 20-3.6-3.6"></path>
+				</svg>
+				<span class="sr-only">Search tasks</span>
+				<input
+					type="search"
+					class="w-full border-0 bg-transparent text-sm text-slate-900 outline-none placeholder:text-slate-400"
+					placeholder="search title or id"
+					bind:value={filters.query}
+					data-testid="board-search-input"
+				/>
+			</label>
 
-		{#if remediationTasks.length > 0}
-			<!-- US3 (FR-007): one independently reviewable card per agent-proposed action;
-			     a run with no proposals renders no cards (scenario 2). -->
-			<div class="flex flex-col gap-2" data-testid="remediation-task-list">
-				{#each remediationTasks as task (task.taskId)}
-					<RemediationTaskCard {task} />
-				{/each}
+			<div class="flex flex-wrap gap-2">
+				<button
+					type="button"
+					class="rounded-full border px-3 py-1 text-xs {!filters.failedOnly && !filters.lastDayOnly
+						? 'border-slate-900 text-slate-900'
+						: 'border-slate-300 text-slate-500 hover:border-slate-400'}"
+					aria-pressed={!filters.failedOnly && !filters.lastDayOnly}
+					onclick={() => (filters = { ...filters, failedOnly: false, lastDayOnly: false })}
+					data-testid="board-filter-all">All kinds</button
+				>
+				<button
+					type="button"
+					class="rounded-full border px-3 py-1 text-xs {filters.failedOnly
+						? 'border-slate-900 text-slate-900'
+						: 'border-slate-300 text-slate-500 hover:border-slate-400'}"
+					aria-pressed={filters.failedOnly}
+					onclick={() => (filters = { ...filters, failedOnly: !filters.failedOnly })}
+					data-testid="board-filter-failed">Failed only</button
+				>
+				<button
+					type="button"
+					class="rounded-full border px-3 py-1 text-xs {filters.lastDayOnly
+						? 'border-slate-900 text-slate-900'
+						: 'border-slate-300 text-slate-500 hover:border-slate-400'}"
+					aria-pressed={filters.lastDayOnly}
+					onclick={() => (filters = { ...filters, lastDayOnly: !filters.lastDayOnly })}
+					data-testid="board-filter-last-day">Last 24h</button
+				>
+			</div>
+		</div>
+
+		{#if needsYouCount > 0 || queuePaused}
+			<div class="flex flex-wrap items-center gap-3 px-6 pb-3">
+				{#if needsYouCount > 0}
+					<button
+						type="button"
+						class="flex items-center gap-3 rounded-full border px-3 py-1.5 text-left {filters.needsYouOnly
+							? 'border-amber-500 bg-amber-50'
+							: 'border-transparent hover:border-amber-300 hover:bg-amber-50'}"
+						aria-pressed={filters.needsYouOnly}
+						onclick={toggleNeedsYou}
+						title="Show only what needs you"
+						data-testid="board-needs-you"
+					>
+						<span
+							class="inline-flex items-center rounded-full border border-amber-500 px-2.5 py-0.5 text-xs font-medium text-amber-700"
+							data-testid="board-needs-you-count">{needsYouCount} need you</span
+						>
+						<span class="text-sm text-slate-600">{needsYouSummary(items, queuePaused)}</span>
+						<span class="text-xs text-amber-700 underline underline-offset-2">
+							{filters.needsYouOnly ? 'showing only these — clear' : 'show only these'}
+						</span>
+					</button>
+				{/if}
+
+				{#if queuePaused}
+					<!-- 004 FR-021: the queue does not restart itself after a Hub restart. -->
+					<button
+						type="button"
+						class="text-sm text-slate-500 underline underline-offset-2 hover:text-slate-900 disabled:opacity-50"
+						onclick={handleResume}
+						disabled={resuming}
+						data-testid="queue-resume-button">{resuming ? 'Resuming…' : 'Resume the queue'}</button
+					>
+				{/if}
 			</div>
 		{/if}
-	</section>
 
-	<div class="flex gap-4 overflow-x-auto" data-testid="kanban-board">
-		{#each stages as stage (stage)}
-			<KanbanColumn
-				{stage}
-				tasks={tasksByStage[stage]}
-				{runActivityByTaskId}
-				onRefreshRequested={() => void refreshBoard()}
-			/>
-		{/each}
-	</div>
-</main>
+		{#if resumeError}
+			<div class="px-6 pb-3">
+				<ApiErrorAlert
+					error={resumeError}
+					testId="queue-resume-error"
+					onRetry={handleResume}
+					onDismiss={() => (resumeError = null)}
+				/>
+			</div>
+		{/if}
+
+		<div class="flex flex-1 items-start gap-3 overflow-x-auto px-6 pb-8" data-testid="kanban-board">
+			{#each LANES as stage (stage)}
+				<BoardLane
+					{stage}
+					items={lanes[stage]}
+					collapsed={!!collapsedLanes[stage]}
+					onToggle={() => toggleLane(stage)}
+					onOpenCard={openPopover}
+					maxVisible={stage === 'queued' ? 5 : undefined}
+					emptyText={laneEmptyText[stage]}
+				/>
+			{/each}
+		</div>
+	{/if}
+</div>
+
+{#if openCard}
+	<CardPopover
+		item={openCard.item}
+		position={openCard.position}
+		onClose={() => (openCard = null)}
+		onRefreshRequested={() => void refreshBoard()}
+		onShowFindings={(runId) => {
+			findingsRunId = runId;
+			openCard = null;
+		}}
+	/>
+{/if}
+
+{#if findingsRunId}
+	<FindingsDialog runId={findingsRunId} onClose={() => (findingsRunId = null)} />
+{/if}

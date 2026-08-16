@@ -37,7 +37,10 @@ const { getTaskRecordMock, getTaskDetailMock, restartTaskMock, FakeIngestSubmiss
 		};
 	});
 
-vi.mock('$lib/services/ingestSubmissionsApi', () => ({
+// The page now carries the app shell, whose Ingest dialog reaches the rest of this module —
+// so the real exports stay in place and only the three the page itself drives are replaced.
+vi.mock('$lib/services/ingestSubmissionsApi', async (importOriginal) => ({
+	...(await importOriginal<typeof import('$lib/services/ingestSubmissionsApi')>()),
 	getTaskRecord: getTaskRecordMock,
 	getTaskDetail: getTaskDetailMock,
 	restartTask: restartTaskMock,
@@ -316,14 +319,56 @@ test('ignores a taskLifecycleChanged event for a different task', async () => {
 	expect(getTaskDetailMock).toHaveBeenCalledTimes(1);
 });
 
-test('renders the history panel with no entries when the task recorded none', async () => {
+// The design (5a) answers an empty history with a sentence rather than an empty list, so the
+// region still explains itself — what it must never do is silently disappear.
+test('explains the empty history when the task recorded none', async () => {
 	getTaskRecordMock.mockResolvedValue({ status: 'ok', record: record() });
 	getTaskDetailMock.mockResolvedValue(detail({ statusHistory: [], status: 'failed' }));
 
 	const screen = await render(Page, { data: { taskId: 'task-1' }, params: { taskId: 'task-1' } });
 
-	await expect.element(screen.getByTestId('status-history-path')).toBeVisible();
+	await expect
+		.element(screen.getByTestId('task-history-empty'))
+		.toHaveTextContent('Nothing has happened yet');
 	expect(screen.getByTestId('status-history-entry').elements()).toHaveLength(0);
+});
+
+// 5a's right-hand column: the loop mechanics the Hub publishes for a task an agent has picked
+// up, and a plain sentence for one it has not.
+test('shows agent activity when the Hub reports it, and says so when it does not', async () => {
+	getTaskRecordMock.mockResolvedValue({ status: 'ok', record: record() });
+	getTaskDetailMock.mockResolvedValue(
+		detail({
+			status: 'running',
+			runActivity: {
+				modelTurns: 7,
+				toolCalls: 21,
+				toolCallsByName: { read_wiki: 9, write_page: 2 },
+				currentAction: 'writing wiki page'
+			}
+		})
+	);
+
+	const withActivity = await render(Page, {
+		data: { taskId: 'task-1' },
+		params: { taskId: 'task-1' }
+	});
+	await expect
+		.element(withActivity.getByTestId('task-activity-counts'))
+		.toHaveTextContent('7 model turns');
+	await expect
+		.element(withActivity.getByTestId('task-tool-calls'))
+		.toHaveTextContent('read_wiki ×9');
+	withActivity.unmount();
+
+	getTaskDetailMock.mockResolvedValue(detail({ status: 'queued', runActivity: null }));
+	const withoutActivity = await render(Page, {
+		data: { taskId: 'task-1' },
+		params: { taskId: 'task-1' }
+	});
+	await expect
+		.element(withoutActivity.getByTestId('task-activity-empty'))
+		.toHaveTextContent('No agent has picked this up');
 });
 
 // ── 023 T033 (US5, FR-010..FR-012, SC-007) ─────────────────────────────────────────

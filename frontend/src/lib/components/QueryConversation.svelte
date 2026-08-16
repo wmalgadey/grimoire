@@ -1,16 +1,23 @@
 <script lang="ts">
 	import { presentRecordedFailure } from '$lib/services/apiError';
 	import ApiErrorAlert from './ApiErrorAlert.svelte';
-	import DOMPurify from 'dompurify';
-	import { marked } from 'marked';
+	import { renderMarkdown } from '$lib/markdown';
+	import { linkifyCitations } from '$lib/wikiLinks';
 	import type { QueryTurn } from '$lib/types';
 
+	// The thread from the Hi-Fi design (5c): the question as a spoken block, the answer beneath
+	// it as prose, and nothing else on the message — the Stop control moved into the composer
+	// ("Stop now lives in the composer: while an answer streams, the Ask button becomes Stop",
+	// chat 3), so a message carries only what was asked and what came back.
+	//
+	// The agent's `[[page]]` citations become inline Obsidian links ("the citation inside the
+	// answer should be inline as links in the text", chat 3). Everything is still parsed by
+	// marked and sanitized by DOMPurify — untrusted source content, Principle V.
 	interface Props {
 		turns: QueryTurn[];
-		onInterrupt?: (turnId: string) => void;
 	}
 
-	let { turns, onInterrupt }: Props = $props();
+	let { turns }: Props = $props();
 
 	const stateLabels: Record<QueryTurn['state'], string> = {
 		running: 'Answering…',
@@ -19,36 +26,26 @@
 		failed: 'Failed'
 	};
 
-	// The answer is agent-authored markdown (bold, lists, [[wikilink]] citations per the
-	// Query system prompt's citation convention) — render it formatted, not as raw text.
-	// Sanitized because the source content it draws from is untrusted (Principle V),
-	// same reasoning as TaskRecordView.svelte's rendering of ingest task records.
 	function renderAnswer(answer: string): string {
-		return DOMPurify.sanitize(marked.parse(answer, { async: false }) as string);
+		return renderMarkdown(linkifyCitations(answer));
 	}
 </script>
 
-<div class="flex flex-col gap-4" data-testid="query-conversation">
+<div class="flex flex-col gap-6" data-testid="query-conversation">
 	{#each turns as turn (turn.turnId)}
-		<article
-			class="flex flex-col gap-2 rounded border p-3"
-			class:border-slate-200={turn.state !== 'running'}
-			class:border-blue-300={turn.state === 'running'}
-			class:bg-blue-50={turn.state === 'running'}
-			data-testid="query-turn"
-		>
-			<p class="text-sm font-medium text-slate-900" data-testid="query-turn-prompt">
+		<article class="flex max-w-[74ch] flex-col gap-2" data-testid="query-turn">
+			<p
+				class="self-start rounded-2xl bg-slate-100 px-4 py-2 text-sm font-medium text-slate-900"
+				data-testid="query-turn-prompt"
+			>
 				{turn.prompt}
 			</p>
 
 			<div data-testid="query-turn-answer" data-turn-state={turn.state}>
 				{#if turn.state === 'running'}
-					<!-- Streamed text is partial/unclosed markdown (e.g. a list or bold span mid-word),
-					     so it is shown as plain text rather than parsed — parsing incomplete markdown
-					     produces broken HTML. `white-space: pre-wrap` keeps the model's own line breaks
-					     visible, and the muted, smaller styling signals "still forming", distinct from
-					     the fully-formatted answer shown once the turn is terminal. -->
-					<p class="query-turn-answer-streaming-text text-xs whitespace-pre-wrap text-slate-400">
+					<!-- Streamed text is partial/unclosed markdown, so it is shown as plain text rather
+					     than parsed — parsing incomplete markdown produces broken HTML. -->
+					<p class="text-sm whitespace-pre-wrap text-slate-500">
 						{turn.answer}<span
 							class="ml-0.5 animate-pulse font-bold text-blue-500"
 							data-testid="query-turn-streaming-cursor"
@@ -63,29 +60,24 @@
 				{/if}
 			</div>
 
-			<div class="flex items-center gap-2">
+			{#if turn.state !== 'completed'}
+				<!-- A completed turn says so by simply being there; the other three states are worth
+				     a word (the design keeps only the "Answering…" tag on the message itself). -->
 				<span
-					class="text-xs"
-					class:text-slate-400={turn.state === 'running'}
-					class:text-emerald-600={turn.state === 'completed'}
-					class:text-amber-600={turn.state === 'interrupted'}
-					class:text-red-600={turn.state === 'failed'}
+					class="inline-flex w-fit items-center rounded-full px-2 py-0.5 text-xs"
+					class:bg-blue-50={turn.state === 'running'}
+					class:text-blue-700={turn.state === 'running'}
+					class:bg-amber-50={turn.state === 'interrupted'}
+					class:text-amber-700={turn.state === 'interrupted'}
+					class:bg-red-50={turn.state === 'failed'}
+					class:text-red-700={turn.state === 'failed'}
 					data-testid="query-turn-state"
 				>
 					{stateLabels[turn.state]}
 				</span>
-
-				{#if turn.state === 'running' && onInterrupt}
-					<button
-						type="button"
-						class="rounded border border-slate-300 px-2 py-0.5 text-xs text-slate-600"
-						onclick={() => onInterrupt(turn.turnId)}
-						data-testid="query-turn-stop-button"
-					>
-						Stop
-					</button>
-				{/if}
-			</div>
+			{:else}
+				<span class="sr-only" data-testid="query-turn-state">{stateLabels[turn.state]}</span>
+			{/if}
 
 			{#if turn.state === 'failed' && turn.failureReason}
 				<ApiErrorAlert
@@ -151,5 +143,13 @@
 	.query-turn-answer-body :global(code) {
 		font-family: ui-monospace, monospace;
 		font-size: 0.85em;
+	}
+	/* The inline citations the design asks for: a link in the running text, marked with the
+	   same ↗ every outbound page link carries. */
+	.query-turn-answer-body :global(a) {
+		font-weight: 600;
+		color: var(--color-slate-900);
+		text-decoration: underline;
+		text-underline-offset: 3px;
 	}
 </style>

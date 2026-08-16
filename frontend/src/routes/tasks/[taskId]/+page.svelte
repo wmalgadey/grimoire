@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { onDestroy, onMount } from 'svelte';
 	import { resolve } from '$app/paths';
-	import ConnectionStatusIndicator from '$lib/components/ConnectionStatusIndicator.svelte';
+	import AppNav from '$lib/components/AppNav.svelte';
 	import StatusHistoryPath from '$lib/components/StatusHistoryPath.svelte';
 	import TaskMessageThread from '$lib/components/TaskMessageThread.svelte';
 	import TaskRecordView from '$lib/components/TaskRecordView.svelte';
@@ -18,6 +18,7 @@
 	import ApiErrorAlert from '$lib/components/ApiErrorAlert.svelte';
 	import type {
 		ConnectionState,
+		LifecycleStage,
 		RemediationTaskDetail,
 		RemediationTaskMessage,
 		TaskDetail,
@@ -27,22 +28,18 @@
 
 	let { data }: PageProps = $props();
 
-	// 015-lint-board-parity T043: remediation task ids always contain "-remediation-"
-	// (Grimoire.Hub.LintDispatch.LintRunCoordinator's task-id shape) — a cheap,
-	// server-authoritative-shape-derived branch that keeps ingest task detail rendering
-	// completely untouched below (FR-015-style discipline: no shared code path mutated).
+	// Task detail as the design lays it out (5a): the history on the left, what the agent has
+	// been doing on the right, and the record it wrote underneath. The data behind each region
+	// is unchanged — the detail endpoint is still authoritative for history (023 FR-006) and
+	// the record still arrives on its own channel.
+
+	// 015-lint-board-parity T043: remediation task ids always contain "-remediation-".
 	const isRemediationTask = $derived(data.taskId.includes('-remediation-'));
 
-	// ── ingest task detail (unchanged) ──────────────────────────────────────────────
 	let record: TaskRecord | null = $state(null);
 	let loaded = $state(false);
-	// 006 FR-010/SC-005: reuse the board's connection-state projection so the detail view
-	// surfaces staleness while disconnected and resynchronizes on reconnect.
+	// 006 FR-010/SC-005: the same connection projection the board uses, so staleness is visible.
 	let connectionState: ConnectionState = $state('connecting');
-
-	// 023 T011 (FR-006): the status history is endpoint-authoritative — no history rows
-	// travel over SignalR (contracts/signalr-events.md), so the detail response is the one
-	// source of truth and a lifecycle event is merely the trigger to re-read it.
 	let detail: TaskDetail | null = $state(null);
 
 	let client: ReturnType<typeof createIngestLifecycleClient> | undefined;
@@ -58,21 +55,17 @@
 			detail = await getTaskDetail(data.taskId);
 		} catch (err) {
 			// 024 FR-011: a background refresh is deliberately not routed to the shared error
-			// presentation — it must not displace the restart error the user is reading. Keeping
-			// that promise takes more than staying quiet: `detail` gates the restart button and
-			// its error region below, so blanking it on *any* failure unmounted the very error
-			// this comment claims to protect. Only the Hub actually saying the task is gone
-			// clears it; a refresh we simply could not perform (offline, 5xx) leaves the last
-			// known detail standing.
+			// presentation — it must not displace the restart error the user is reading. Only the
+			// Hub actually saying the task is gone clears it; a refresh we simply could not
+			// perform leaves the last known detail standing.
 			if (err instanceof IngestSubmissionApiError && err.status === 404) {
 				detail = null;
 			}
 		}
 	}
 
-	// 023 T033 (US5, FR-010..FR-012): restart is a button shown only for a failed task,
-	// disabled while the request is in flight; a 409 (someone else won the race, or the
-	// task moved on) re-fetches the true current state instead of trusting the click.
+	// 023 T033 (US5, FR-010..FR-012): restart is shown only for a failed task, disabled while
+	// in flight; any rejection re-reads the true current state instead of trusting the click.
 	let restarting = $state(false);
 	let restartError: PresentedError | null = $state(null);
 
@@ -82,11 +75,6 @@
 		try {
 			await restartTask(data.taskId);
 		} catch (err) {
-			// 024 FR-010/SC-005: restart is a user action, so *every* way it can fail belongs in
-			// the shared presentation — not just the 409 this handler was originally written for.
-			// Re-throwing the rest left the detail page silent (an unhandled rejection) for an
-			// unreachable Hub, a 404, or a 5xx, while TaskCard.svelte's identical button showed
-			// them. toPresentedError classifies each one; the 409 keeps the wording it had.
 			restartError = toPresentedError(err);
 		} finally {
 			restarting = false;
@@ -109,6 +97,24 @@
 	async function refreshRemediationMessages() {
 		remediationMessages = (await fetchRemediationTaskMessages(data.taskId)).messages;
 	}
+
+	const statusLabels: Record<LifecycleStage, string> = {
+		received: 'Received',
+		converting: 'Converting',
+		queued: 'Queued',
+		running: 'Running',
+		completed: 'Completed',
+		failed: 'Failed'
+	};
+
+	const statusClasses: Record<LifecycleStage, string> = {
+		received: 'bg-slate-100 text-slate-700',
+		converting: 'bg-amber-100 text-amber-800',
+		queued: 'bg-sky-100 text-sky-700',
+		running: 'bg-blue-100 text-blue-700',
+		completed: 'bg-emerald-100 text-emerald-700',
+		failed: 'bg-red-100 text-red-700'
+	};
 
 	const unsubscribers: Array<() => void> = [];
 
@@ -150,14 +156,13 @@
 		client = createIngestLifecycleClient();
 		unsubscribers.push(
 			client.onTaskRecordChanged((event) => {
-				// Only refetch for this route's own task (contracts/task-record-changed-event.md).
 				if (event.taskId === data.taskId) {
 					void refresh();
 				}
 			}),
 			client.onLifecycleChanged((event) => {
-				// 023 (contracts/signalr-events.md): any lifecycle event for this task — board
-				// stage or history-only status alike — means the history moved on; re-read it.
+				// 023: any lifecycle event for this task — board stage or history-only status
+				// alike — means the history moved on; re-read it.
 				if (event.taskId === data.taskId) {
 					void refreshDetail();
 				}
@@ -185,16 +190,18 @@
 	<title>Task {data.taskId} — Grimoire</title>
 </svelte:head>
 
-<main class="mx-auto flex min-h-screen max-w-3xl flex-col gap-4 bg-white p-6">
-	<header class="flex items-start justify-between gap-2">
+<div class="flex min-h-screen flex-col bg-white">
+	<AppNav current="board" {connectionState} />
+
+	<header class="flex flex-wrap items-start gap-4 px-6 pt-5 pb-4">
 		<!-- 023 FR-003/FR-004: the label heads the page, the raw id stays beneath it —
 		     selectable as plain text, for when the exact identifier is what you need. -->
-		<div class="flex min-w-0 flex-col">
+		<div class="flex min-w-0 flex-1 flex-col">
 			<h1
 				class="truncate text-lg font-semibold text-slate-900"
 				data-testid="task-record-page-title"
 			>
-				{detail?.title ?? data.taskId}
+				{(isRemediationTask ? remediationTask?.title : detail?.title) ?? data.taskId}
 			</h1>
 			<p
 				class="truncate font-mono text-xs text-slate-400 select-all"
@@ -203,57 +210,117 @@
 				{data.taskId}
 			</p>
 		</div>
-		<div class="flex shrink-0 items-center gap-3">
-			<ConnectionStatusIndicator state={connectionState} />
-			<a href={resolve('/')} class="text-sm text-slate-500 underline hover:no-underline"
-				>Back to board</a
-			>
-		</div>
-	</header>
 
-	{#if isRemediationTask}
-		{#if remediationLoaded && remediationTask}
-			<section class="flex flex-col gap-1" data-testid="remediation-task-detail-header">
-				<h2 class="text-sm font-medium text-slate-900">{remediationTask.title}</h2>
-				<p class="text-xs text-slate-500">
-					From run {remediationTask.runId} — state: {remediationTask.state}
-				</p>
-				{#if remediationTask.outcomeReason}
-					<p class="text-xs text-slate-600">{remediationTask.outcomeReason}</p>
-				{/if}
-			</section>
-			<TaskMessageThread
-				taskId={data.taskId}
-				taskState={remediationTask.state}
-				attachedContext={remediationTask.attachedContext}
-				messages={remediationMessages}
-				messageTurnActive={remediationTask.messageTurnActive}
-			/>
-		{/if}
-	{:else if loaded}
-		{#if detail}
-			<StatusHistoryPath entries={detail.statusHistory ?? []} />
-		{/if}
-		{#if detail?.status === 'failed'}
-			<div class="flex items-center gap-2">
+		<div class="flex shrink-0 items-center gap-2">
+			{#if detail?.status}
+				<span
+					class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium {statusClasses[
+						detail.status
+					]}"
+					data-testid="task-detail-status"
+					data-status={detail.status}>{statusLabels[detail.status]}</span
+				>
+			{/if}
+			{#if detail?.status === 'failed'}
 				<button
 					type="button"
-					class="rounded-md bg-slate-900 px-3 py-1.5 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-50"
+					class="rounded bg-slate-900 px-3 py-1.5 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-50"
 					data-testid="task-restart-button"
 					disabled={restarting}
 					onclick={handleRestart}
 				>
 					{restarting ? 'Restarting…' : 'Restart'}
 				</button>
-				{#if restartError}
-					<ApiErrorAlert
-						error={restartError}
-						testId="task-restart-error"
-						onDismiss={() => (restartError = null)}
-					/>
-				{/if}
+			{/if}
+			<a
+				href={resolve('/')}
+				class="rounded border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50"
+				data-testid="task-back-to-board">← Board</a
+			>
+		</div>
+	</header>
+
+	{#if restartError}
+		<div class="px-6 pb-3">
+			<ApiErrorAlert
+				error={restartError}
+				testId="task-restart-error"
+				onDismiss={() => (restartError = null)}
+			/>
+		</div>
+	{/if}
+
+	{#if isRemediationTask}
+		{#if remediationLoaded && remediationTask}
+			<div class="flex flex-col gap-4 border-t border-slate-200 px-6 py-5">
+				<section class="flex flex-col gap-1" data-testid="remediation-task-detail-header">
+					<h2 class="text-sm font-medium text-slate-900">{remediationTask.title}</h2>
+					<p class="text-xs text-slate-500">
+						From run {remediationTask.runId} — state: {remediationTask.state}
+					</p>
+					{#if remediationTask.outcomeReason}
+						<p class="text-xs text-slate-600">{remediationTask.outcomeReason}</p>
+					{/if}
+				</section>
+				<TaskMessageThread
+					taskId={data.taskId}
+					taskState={remediationTask.state}
+					attachedContext={remediationTask.attachedContext}
+					messages={remediationMessages}
+					messageTurnActive={remediationTask.messageTurnActive}
+				/>
 			</div>
 		{/if}
-		<TaskRecordView {record} source={detail?.source} />
+	{:else if loaded}
+		<div class="flex flex-wrap items-stretch border-t border-slate-200">
+			<div class="flex min-w-72 flex-[1.15] flex-col gap-3 border-r border-slate-200 px-6 py-5">
+				{#if detail && (detail.statusHistory?.length ?? 0) > 0}
+					<StatusHistoryPath entries={detail.statusHistory ?? []} />
+				{:else}
+					<h2 class="text-xs font-semibold tracking-wider text-slate-600 uppercase">
+						Status history
+					</h2>
+					<p class="max-w-[34ch] text-sm text-slate-500" data-testid="task-history-empty">
+						Nothing has happened yet beyond the submission. Stages appear here as the task moves.
+					</p>
+				{/if}
+			</div>
+
+			<div class="flex min-w-72 flex-1 flex-col gap-3 px-6 py-5">
+				<h2 class="text-xs font-semibold tracking-wider text-slate-600 uppercase">
+					Agent activity
+				</h2>
+				{#if detail?.runActivity}
+					<!-- 004 FR-018: loop mechanics only — turns, tool calls and the current action are
+					     what the Hub publishes. The design also sketches the wiki pages the agent
+					     wrote; no endpoint reports them today, so nothing stands in for them here.
+					     TODO(backend): expose pages touched per task (the guarded write tool already
+					     knows them) and this region gains the "Wrote / Writing" list from the design. -->
+					<div class="flex gap-5 text-sm text-slate-700" data-testid="task-activity-counts">
+						<span>{detail.runActivity.modelTurns} model turns</span>
+						<span>{detail.runActivity.toolCalls} tool calls</span>
+					</div>
+					{#if detail.runActivity.currentAction}
+						<p class="text-sm text-slate-500" data-testid="task-activity-current">
+							{detail.runActivity.currentAction}
+						</p>
+					{/if}
+					<div class="flex flex-col gap-1 rounded-lg bg-slate-50 p-3" data-testid="task-tool-calls">
+						{#each Object.entries(detail.runActivity.toolCallsByName) as [name, count] (name)}
+							<span class="font-mono text-xs text-slate-600">{name} ×{count}</span>
+						{/each}
+					</div>
+				{:else}
+					<p class="max-w-[34ch] text-sm text-slate-500" data-testid="task-activity-empty">
+						No agent has picked this up, so there are no turns or tool calls to show.
+					</p>
+				{/if}
+			</div>
+		</div>
+
+		<section class="flex flex-col gap-3 border-t border-slate-200 px-6 py-5">
+			<h2 class="text-xs font-semibold tracking-wider text-slate-600 uppercase">Task record</h2>
+			<TaskRecordView {record} source={detail?.source} />
+		</section>
 	{/if}
-</main>
+</div>
