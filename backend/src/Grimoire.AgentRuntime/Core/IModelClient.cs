@@ -191,3 +191,30 @@ public interface IModelClient
 
 /// <summary>JSON schema and metadata for a tool offered to the model.</summary>
 public sealed record ToolDefinition(string Name, string Description, string InputSchemaJson);
+
+/// <summary>
+/// 023 T051: a model-provider rejection, translated into a harness-owned type at the port
+/// so provider-SDK exception types never leave the adapter namespace (ADR-010 containment).
+/// <para>
+/// <see cref="Exception.Message"/> is the operator-facing text: a single line, length-capped,
+/// of the form <c>Model API error 400 (invalid_request_error): &lt;provider message&gt;</c>.
+/// It is what the agents' unhandled-failure path sanitizes and records, so it reaches the
+/// board card, the task detail, and the status history through the one existing code path —
+/// replacing the bare status that used to be all an operator could see.
+/// </para>
+/// </summary>
+public sealed class ModelApiException : Exception
+{
+    public ModelApiException(string message, int statusCode, string? errorType, Exception? innerException = null)
+        : base(message, innerException)
+    {
+        StatusCode = statusCode;
+        ErrorType = errorType;
+    }
+
+    /// <summary>HTTP status the provider answered with.</summary>
+    public int StatusCode { get; }
+
+    /// <summary>The provider's own error classification (e.g. <c>invalid_request_error</c>), when it sent one.</summary>
+    public string? ErrorType { get; }
+}
