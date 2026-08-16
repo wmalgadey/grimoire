@@ -13,6 +13,13 @@ status: accepted
 > argument and a policy-prefix anchor from ADR-009's path configuration; the event/queue
 > supervision model itself is unchanged.
 
+> **Amended by [ADR-025](ADR-025-ingest-task-lifecycle-reentry.md)**: liveness
+> silence remains the sole failure-detection authority, but its consequence becomes
+> bounded automatic reactivation with backoff before final failure, and a finally-failed
+> task becomes manually restartable under the same task id; every transition is recorded
+> in an append-only status history. Event channel, single-slot FIFO queue, and queue
+> persistence are unchanged.
+
 ## Context and Problem Statement
 
 Under ADR-002 the Hub spawns the Ingest agent as a child process and awaits its exit

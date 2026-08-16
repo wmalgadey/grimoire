@@ -1,13 +1,15 @@
 <script lang="ts">
 	import DOMPurify from 'dompurify';
 	import { marked } from 'marked';
-	import type { TaskRecord } from '$lib/types';
+	import type { TaskRecord, TaskSourceLink } from '$lib/types';
 
 	interface Props {
 		record: TaskRecord | null;
+		/** 023 FR-001/FR-002: derived server-side (data-model.md §4); absent for a non-ingest record. */
+		source?: TaskSourceLink | null;
 	}
 
-	let { record }: Props = $props();
+	let { record, source = null }: Props = $props();
 
 	// Sanitize even though the record is system/agent-authored: it embeds arbitrary
 	// source-derived text (Principle V — the backend only parses/strips frontmatter, it
@@ -55,6 +57,30 @@
 					<dt class="text-slate-400">Original</dt>
 					<dd class="truncate" data-testid="task-record-original-ref">
 						{record.metadata.originalRef}
+					</dd>
+				{/if}
+				{#if source}
+					<dt class="text-slate-400">Source</dt>
+					<dd class="truncate">
+						{#if source.available && source.href}
+							<!-- source.href is either an external URL or the Hub's own file-streaming
+							     endpoint (023 FR-001) — not a SvelteKit page route, so resolve() doesn't apply. -->
+							<!-- eslint-disable svelte/no-navigation-without-resolve -->
+							<a
+								href={source.href}
+								target="_blank"
+								rel="noopener noreferrer"
+								class="text-slate-900 underline hover:no-underline"
+								data-testid="task-source-link"
+							>
+								{source.kind === 'url' ? source.href : 'View original'}
+							</a>
+							<!-- eslint-enable svelte/no-navigation-without-resolve -->
+						{:else}
+							<span class="text-slate-400" data-testid="task-source-unavailable">
+								Source unavailable
+							</span>
+						{/if}
 					</dd>
 				{/if}
 			</dl>

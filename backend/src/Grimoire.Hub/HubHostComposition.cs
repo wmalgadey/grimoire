@@ -71,7 +71,10 @@ internal static class HubHostComposition
         builder.Services.AddSingleton(sp => MarkItDownOptions.FromConfiguration(sp.GetRequiredService<IConfiguration>()));
         builder.Services.AddSingleton<IMarkdownConverter, MarkItDownConverter>();
         builder.Services.AddSingleton<HubTaskArtifactWriter>();
-        builder.Services.AddSingleton<KanbanBoardProjectionStore>();
+        // 023 T021: the board's human-readable label comes from the source-artifact manifest,
+        // so the projection store is constructed with it (registered further down, once the
+        // resolved paths exist).
+        builder.Services.AddSingleton(sp => new KanbanBoardProjectionStore(sp.GetRequiredService<SourceArtifactStore>()));
 
         // ADR-022: every runtime location is composed in exactly one place, resolved before
         // the host is built (no repository/project-structure discovery, FR-002/FR-003). The
@@ -108,12 +111,25 @@ internal static class HubHostComposition
             builder.Services.AddSingleton(rawStoragePaths);
             builder.Services.AddSingleton<SourceArtifactStore>();
             builder.Services.AddSingleton<TaskRecordReadModel>();
-            builder.Services.AddSingleton<IngestLifecyclePublisher>();
             builder.Services.AddHostedService<TaskRecordWatcher>();
 
             var repository = new OperationalStateRepository(resolvedPaths.StateDbPath);
             await repository.InitializeAsync();
             builder.Services.AddSingleton(repository);
+
+            // 023-task-ui-improvements T005 (ADR-025, ADR-021): the one place the Hub binds
+            // a clock. Production gets the system clock; deterministic tests construct the
+            // coordinator with a FakeTimeProvider so the reactivation backoff schedule runs
+            // on virtual time instead of wall-clock waits. Registered explicitly (rather
+            // than left to an optional-parameter default) so both consumers below — history
+            // timestamps in the publisher, backoff scheduling in the coordinator — provably
+            // share one clock.
+            builder.Services.AddSingleton(TimeProvider.System);
+            builder.Services.AddSingleton<IngestLifecyclePublisher>(sp => new IngestLifecyclePublisher(
+                sp.GetRequiredService<IHubContext<IngestLifecycleHub>>(),
+                sp.GetRequiredService<ILogger<IngestLifecyclePublisher>>(),
+                sp.GetRequiredService<OperationalStateRepository>(),
+                sp.GetRequiredService<TimeProvider>()));
             builder.Services.AddSingleton(contentPaths);
             builder.Services.AddSingleton(new LocalSecretsLoader(resolvedPaths.SecretsFilePath));
             builder.Services.AddSingleton<AgentProcessHost>(sp => new AgentProcessHost(
@@ -127,7 +143,11 @@ internal static class HubHostComposition
                 sp.GetRequiredService<HubTaskArtifactWriter>(),
                 sp.GetRequiredService<IngestContentPaths>(),
                 sp.GetRequiredService<ResolvedGrimoirePaths>(),
-                logger: sp.GetRequiredService<ILogger<IngestRunCoordinator>>()));
+                sp.GetRequiredService<TimeProvider>(),
+                logger: sp.GetRequiredService<ILogger<IngestRunCoordinator>>(),
+                // 023 T045 (FR-003): the manifest the human-readable label is resolved from,
+                // so the Hub's own restart/failure artifact writes mirror what the UI shows.
+                sourceArtifactStore: sp.GetRequiredService<SourceArtifactStore>()));
             builder.Services.AddSingleton<IngestSubmissionValidator>();
             builder.Services.AddSingleton<IngestSubmissionPipeline>();
             // 018-hub-cli-commands T010: SubmitSourceCommand resolves this via DI instead

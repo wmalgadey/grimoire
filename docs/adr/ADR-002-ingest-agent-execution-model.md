@@ -19,6 +19,15 @@ status: accepted
 > prior `.csproj`/`dotnet run --project` dev-convenience branch alongside the standalone-
 > executable model this ADR describes.
 
+> **Amended by [ADR-025](ADR-025-ingest-task-lifecycle-reentry.md)**: this ADR's recorded
+> deferral of retry/backoff ("acceptable while there is only ever one trusted operator
+> submitting one ingest at a time", Consequences) is revoked for the liveness case — the
+> Hub now re-launches the same task id with increasing backoff up to a fixed number of
+> attempts before declaring final failure, and an operator may manually restart a
+> finally-failed task. The spawn model (child process, CLI args, file-based artifacts,
+> ADR-004 credential scoping) is otherwise unchanged, and the task artifact remains
+> agent-owned.
+
 ## Context and Problem Statement
 
 Grimoire's Hub dispatches work to specialized agents (Ingest, Query, Lint). Most agents

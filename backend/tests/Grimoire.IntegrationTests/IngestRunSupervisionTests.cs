@@ -12,11 +12,24 @@ public class IngestRunSupervisionTests
 {
     private static readonly TimeSpan ShortWindow = TimeSpan.FromMilliseconds(400);
 
+    /// <summary>
+    /// 023-task-ui-improvements / ADR-025 amends ADR-008: liveness silence is no longer
+    /// immediately terminal — it is followed by bounded automatic reactivation, and the
+    /// final failure only happens once those attempts are exhausted. The two tests below
+    /// still assert that terminal path, so they configure an empty reactivation schedule:
+    /// with no attempts available the very first silence exhausts, which is exactly the
+    /// state this class has always covered. The reactivation loop itself — interruption
+    /// entries, increasing backoff, re-launch, exhaustion — is covered deterministically
+    /// (virtual time, no wall clock) by <see cref="IngestRunReactivationTests"/>.
+    /// </summary>
+    private static readonly IReadOnlyList<TimeSpan> NoReactivation = [];
+
     [Fact]
-    public async Task EventSilence_BeyondLivenessWindow_FailsRun_TerminatesProcess_AndAdvancesQueue()
+    public async Task EventSilence_WithNoReactivationAttemptsLeft_FailsRun_TerminatesProcess_AndAdvancesQueue()
     {
         var launcher = new FakeAgentProcessLauncher(autoPlay: false);
-        using var fixture = new IngestSubmissionPipelineFixture(launcher: launcher, livenessWindow: ShortWindow);
+        using var fixture = new IngestSubmissionPipelineFixture(
+            launcher: launcher, livenessWindow: ShortWindow, reactivationDelays: NoReactivation);
 
         await fixture.Coordinator.EnqueueAsync("task-silent", Path.Combine(fixture.Root, "src.md"), null);
         await fixture.Coordinator.EnqueueAsync("task-next", Path.Combine(fixture.Root, "src2.md"), null);
@@ -137,7 +150,8 @@ public class IngestRunSupervisionTests
     public async Task PipeCloseWithoutTerminalEvent_DoesNotTransition_UntilLivenessWindowFires()
     {
         var launcher = new FakeAgentProcessLauncher(autoPlay: false);
-        using var fixture = new IngestSubmissionPipelineFixture(launcher: launcher, livenessWindow: ShortWindow);
+        using var fixture = new IngestSubmissionPipelineFixture(
+            launcher: launcher, livenessWindow: ShortWindow, reactivationDelays: NoReactivation);
 
         await fixture.Coordinator.EnqueueAsync("task-crash", Path.Combine(fixture.Root, "src.md"), null);
         var handle = Assert.Single(launcher.Handles);

@@ -63,9 +63,31 @@ export interface RunActivity {
 	lastEventAt?: string;
 }
 
+// 023-task-ui-improvements (data-model.md §5, FR-005/FR-006): the status vocabulary of the
+// persisted history is a superset of the board's columns. The three history-only statuses
+// are rendered in the detail view's path and are deliberately never board columns
+// (clarification 2026-08-13) — board consumers ignore them for column placement.
+export type HistoryStatus = LifecycleStage | 'liveness_interrupted' | 'reactivated' | 'restarted';
+
+export interface StatusHistoryEntry {
+	status: HistoryStatus;
+	enteredAt: string; // UTC ISO-8601
+	detail: string | null;
+}
+
+// 023 (FR-001/FR-002, data-model.md §4): the source-link object the detail view renders as
+// an anchor when available, or a non-link "unavailable" indicator otherwise.
+export interface TaskSourceLink {
+	kind: 'url' | 'file';
+	href: string | null; // null when unavailable
+	available: boolean;
+}
+
 export interface TaskDetail {
 	taskId: string;
 	status: LifecycleStage;
+	// 023 FR-003: human-readable label from the server-side fallback chain; never empty.
+	title?: string;
 	failureReason: string | null;
 	sourceRef: string | null;
 	originalRef: string | null;
@@ -73,15 +95,36 @@ export interface TaskDetail {
 	userPrompt?: string | null;
 	convertSteps?: ConvertStepConfig | null;
 	runActivity?: RunActivity | null;
+	// Ordered by the server; empty for a task with no recorded transitions.
+	statusHistory?: StatusHistoryEntry[];
+	source?: TaskSourceLink;
 }
 
+// 023 (contracts/signalr-events.md): the same event now also carries the three history-only
+// transitions so the detail view refreshes live. Board consumers MUST ignore any status
+// outside the six LifecycleStage values for column placement — the task's column is
+// unchanged by a history-only event.
 export interface LifecycleEvent {
 	eventId: string;
 	taskId: string;
-	fromStatus: LifecycleStage | null;
-	toStatus: LifecycleStage;
+	fromStatus: HistoryStatus | null;
+	toStatus: HistoryStatus;
 	timestamp: string;
 	failureReason: string | null;
+}
+
+const BOARD_STAGES: readonly LifecycleStage[] = [
+	'received',
+	'converting',
+	'queued',
+	'running',
+	'completed',
+	'failed'
+];
+
+/** True when a history status is one of the six board columns (contracts/signalr-events.md). */
+export function isLifecycleStage(status: HistoryStatus): status is LifecycleStage {
+	return (BOARD_STAGES as readonly string[]).includes(status);
 }
 
 // 004 (contracts/ingest-submission-api-extension.md): realtime `run_activity` payload

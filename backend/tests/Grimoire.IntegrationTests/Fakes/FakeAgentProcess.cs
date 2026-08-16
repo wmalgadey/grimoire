@@ -24,6 +24,15 @@ public sealed class ScriptedAgentProcessHandle : IAgentProcessHandle
 
     public bool Terminated { get; private set; }
 
+    /// <summary>
+    /// 023-task-ui-improvements T012: true once supervision has attached to this handle's
+    /// stdout. Tests that drive virtual time wait on it — the coordinator arms its liveness
+    /// watchdog immediately before starting the read loop, so an attached read loop proves
+    /// the watchdog timer is registered and a <c>FakeTimeProvider.Advance</c> can no longer
+    /// land before it exists (which would silently arm nothing and hang the test).
+    /// </summary>
+    public bool ReadLoopAttached { get; private set; }
+
     public void EmitLine(string line) => _lines.Writer.TryWrite(line);
 
     public void EmitEvent(string type, string taskId, object? extra = null)
@@ -94,6 +103,7 @@ public sealed class ScriptedAgentProcessHandle : IAgentProcessHandle
     public async IAsyncEnumerable<string> ReadStdoutLinesAsync(
         [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken cancellationToken)
     {
+        ReadLoopAttached = true;
         await foreach (var line in _lines.Reader.ReadAllAsync(cancellationToken))
         {
             yield return line;
@@ -131,6 +141,19 @@ public sealed class FakeAgentProcessLauncher : IAgentProcessLauncher
     public List<(DateTimeOffset Started, DateTimeOffset Finished)> RunWindows { get; } = [];
     public List<ScriptedAgentProcessHandle> Handles { get; } = [];
 
+    private int _ingestLaunchCount;
+
+    /// <summary>
+    /// 023-task-ui-improvements T002 (US2, FR-007/SC-005): go-silent mode. The first
+    /// <see cref="GoSilentIngestLaunches"/> ingest launches write the `running` artifact and
+    /// emit `started` — exactly what a real agent does — and then fall silent: no further
+    /// events, no terminal event, pipe left open. That is precisely the liveness-window
+    /// trigger the coordinator's reactivation path recovers from. Launches beyond the count
+    /// behave per <c>autoPlay</c>, so a test can script "silent for N attempts, then a
+    /// normal run" as well as "silent forever" (<c>int.MaxValue</c>).
+    /// </summary>
+    public int GoSilentIngestLaunches { get; set; }
+
     /// <summary>Every <see cref="QueryAgentRequest"/> received via the Query-shaped StartAsync overload.</summary>
     public List<QueryAgentRequest> QueryRequests { get; } = [];
 
@@ -164,9 +187,19 @@ public sealed class FakeAgentProcessLauncher : IAgentProcessLauncher
         }
 
         var handle = new ScriptedAgentProcessHandle();
+        int launchIndex;
         lock (Handles)
         {
             Handles.Add(handle);
+            launchIndex = ++_ingestLaunchCount;
+        }
+
+        if (launchIndex <= GoSilentIngestLaunches)
+        {
+            // Go silent (T002): the run visibly starts and then stops emitting anything.
+            await WriteArtifactAsync(Path.Combine(request.TasksDir, $"{request.TaskId}.md"), request, "running", null);
+            handle.EmitEvent("started", request.TaskId);
+            return handle;
         }
 
         if (_autoPlay)
@@ -538,10 +571,18 @@ public sealed class FakeAgentProcessLauncher : IAgentProcessLauncher
             }
         }
 
+        // Mirrors the real agent's Program.cs behavior (023 T046): the human-readable label
+        // arrives as an explicit launch input (`--title`) and is written into every artifact
+        // this process produces, so it survives the agent taking the file over from the Hub.
+        var titleLine = string.IsNullOrWhiteSpace(request.Title)
+            ? "null"
+            : $"\"{request.Title.Replace("\\", "\\\\").Replace("\"", "\\\"")}\"";
+
         var content =
             $"""
             ---
             task_id: {request.TaskId}
+            title: {titleLine}
             type: ingest
             status: {status}
             agent: ingest

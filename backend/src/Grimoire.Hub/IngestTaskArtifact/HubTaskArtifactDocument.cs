@@ -21,4 +21,9 @@ public sealed record HubTaskArtifactDocument(
     // 004: effective steering prompt + applied convert-step configuration (FR-009, FR-014)
     string? UserPromptSource = null,
     string? UserPrompt = null,
-    IReadOnlyDictionary<string, bool>? ConvertSteps = null);
+    IReadOnlyDictionary<string, bool>? ConvertSteps = null,
+    // 023 T045 (FR-003): the human-readable label, mirrored from the Hub-owned manifest via
+    // KanbanBoardProjectionStore.ResolveTitle so the file on disk and the board/detail views
+    // cannot disagree. Null only when no caller supplied one — the resolve chain itself always
+    // produces a value, falling back to the task id.
+    string? Title = null);

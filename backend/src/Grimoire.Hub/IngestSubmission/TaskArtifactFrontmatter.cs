@@ -18,7 +18,10 @@ public sealed record TaskArtifactFrontmatter(
     string? UserPromptSource = null,
     IReadOnlyDictionary<string, bool>? ConvertSteps = null,
     string? Agent = null,
-    DateTimeOffset? CompletedAt = null)
+    DateTimeOffset? CompletedAt = null,
+    // 023 T045 (FR-003): the mirrored human-readable label. Absent from artifacts written
+    // before this feature — "defaults of their time" — which read back as null.
+    string? Title = null)
 {
     public static TaskArtifactFrontmatter? TryParse(string markdown)
     {
@@ -59,7 +62,8 @@ public sealed record TaskArtifactFrontmatter(
             UserPromptSource: Unquote(frontmatter, "user_prompt_source"),
             ConvertSteps: ParseConvertSteps(frontmatter),
             Agent: Unquote(frontmatter, "agent"),
-            CompletedAt: completedAt);
+            CompletedAt: completedAt,
+            Title: Unquote(frontmatter, "title"));
     }
 
     /// <summary>
@@ -111,6 +115,22 @@ public sealed record TaskArtifactFrontmatter(
         {
             return null;
         }
-        return raw.Trim().Trim('"');
+        return Unquote(raw);
+    }
+
+    /// <summary>
+    /// The exact inverse of the writers' quoting: strip one enclosing quote pair (never more —
+    /// a value legitimately ending in an escaped quote would otherwise lose a character) and
+    /// undo the <c>\"</c> / <c>\\</c> escaping. 023 T045: titles carry both characters.
+    /// </summary>
+    internal static string Unquote(string raw)
+    {
+        var value = raw.Trim();
+        if (value.Length >= 2 && value[0] == '"' && value[^1] == '"')
+        {
+            value = value[1..^1];
+        }
+
+        return value.Replace("\\\"", "\"").Replace("\\\\", "\\");
     }
 }

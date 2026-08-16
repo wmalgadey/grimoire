@@ -8,6 +8,7 @@ import type {
 	TaskDetail,
 	TaskRecord
 } from '$lib/types';
+import { parseHttpErrorMessage } from './httpErrorMessage';
 
 const BASE_PATH = '/api/ingest-submissions';
 const QUEUE_BASE_PATH = '/api/ingest-queue';
@@ -22,15 +23,11 @@ export class IngestSubmissionApiError extends Error {
 	}
 }
 
-async function parseErrorMessage(response: Response): Promise<string> {
-	try {
-		const body = await response.json();
-		if (typeof body?.message === 'string') return body.message;
-	} catch {
-		// fall through to a generic message below
-	}
-	return `Request failed with status ${response.status}`;
-}
+// 023 T052: extracted to httpErrorMessage.ts so the lint and remediation board clients read
+// the Hub's JSON reason the same way instead of discarding it. Behavior is unchanged —
+// `{ message }` first, then restart's `{ reason }` 409 shape (contracts/http-api.md), then
+// the status fallback.
+const parseErrorMessage = parseHttpErrorMessage;
 
 // 004: optional per-submission steering prompt and convert-step overrides (FR-006, FR-011).
 // Both stay optional so a caller that doesn't touch either reproduces feature 003 exactly.
@@ -168,4 +165,24 @@ export async function resumeQueue(fetchImpl: typeof fetch = fetch): Promise<void
 	if (!response.ok) {
 		throw new IngestSubmissionApiError(await parseErrorMessage(response), response.status);
 	}
+}
+
+/** 023 FR-010..FR-013: restarts a finally-failed task under the same id. */
+export interface RestartTaskResponse {
+	taskId: string;
+	status: 'queued';
+}
+
+export async function restartTask(
+	taskId: string,
+	fetchImpl: typeof fetch = fetch
+): Promise<RestartTaskResponse> {
+	const response = await fetchImpl(`${BASE_PATH}/${encodeURIComponent(taskId)}/restart`, {
+		method: 'POST'
+	});
+	if (!response.ok) {
+		throw new IngestSubmissionApiError(await parseErrorMessage(response), response.status);
+	}
+
+	return response.json();
 }

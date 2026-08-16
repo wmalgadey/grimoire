@@ -53,4 +53,7 @@ public sealed record TaskArtifactDocument(
     // 004 field: Hub-owned convert-step configuration, carried forward verbatim
     // across every write this process makes so it survives the agent taking over
     // the artifact from the Hub (FR-014).
-    IReadOnlyDictionary<string, bool>? ConvertSteps = null);
+    IReadOnlyDictionary<string, bool>? ConvertSteps = null,
+    // 023 field (FR-003): Hub-resolved human-readable label, arriving as `--title` and
+    // carried forward on the same terms as ConvertSteps.
+    string? Title = null);

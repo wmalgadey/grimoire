@@ -1,5 +1,6 @@
 using System.Diagnostics.Metrics;
 using Grimoire.Hub.IngestSubmission;
+using Grimoire.Hub.OperationalState;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -22,19 +23,60 @@ public sealed class IngestLifecyclePublisher
             description: "Realtime ingest lifecycle events published");
 
     private readonly IHubContext _hubContext;
+    private readonly OperationalStateRepository? _stateRepository;
+    private readonly TimeProvider _timeProvider;
     private readonly ILogger<IngestLifecyclePublisher> _logger;
 
-    public IngestLifecyclePublisher(IHubContext hubContext, ILogger<IngestLifecyclePublisher>? logger = null)
+    public IngestLifecyclePublisher(
+        IHubContext hubContext,
+        ILogger<IngestLifecyclePublisher>? logger = null,
+        OperationalStateRepository? stateRepository = null,
+        TimeProvider? timeProvider = null)
     {
         _hubContext = hubContext;
+        _stateRepository = stateRepository;
+        _timeProvider = timeProvider ?? TimeProvider.System;
         _logger = logger ?? NullLogger<IngestLifecyclePublisher>.Instance;
     }
 
-    public async Task PublishAsync(string taskId, string? fromStatus, string toStatus, string? failureReason = null, CancellationToken cancellationToken = default)
+    /// <summary>
+    /// Publishes one transition and — 023-task-ui-improvements T004 (FR-005, ADR-025) —
+    /// records it in the append-only status history first. This method is the Hub's single
+    /// choke point for ingest transitions (pipeline stages, coordinator terminal states,
+    /// and the three history-only statuses alike), which makes it the one place history has
+    /// to be written from: a single writer, in call order, with the agent process never
+    /// touching the table (ADR-003). A failed history append MUST NOT swallow the realtime
+    /// event — bookkeeping is a diagnostic, the board update is the product behavior — so
+    /// the append is logged and the publish continues.
+    /// </summary>
+    /// <param name="historyDetail">
+    /// Context for the history row when it is not simply the failure reason — e.g.
+    /// "attempt 1; next retry in 10s" for a <c>liveness_interrupted</c> entry. Falls back
+    /// to <paramref name="failureReason"/>, so existing callers record what they already
+    /// pass without change.
+    /// </param>
+    public async Task PublishAsync(
+        string taskId, string? fromStatus, string toStatus, string? failureReason = null,
+        CancellationToken cancellationToken = default, string? historyDetail = null)
     {
         using var span = HubTracing.ActivitySource.StartActivity("hub.ingest_lifecycle.publish_update");
         span?.SetTag("task_id", taskId);
         span?.SetTag("stage", toStatus);
+
+        if (_stateRepository is not null)
+        {
+            try
+            {
+                await _stateRepository.AppendStatusHistoryAsync(
+                    taskId, toStatus, _timeProvider.GetUtcNow(), historyDetail ?? failureReason, cancellationToken);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex,
+                    "Failed to append status history for {task_id} ({to_stage}); the lifecycle event is still published.",
+                    taskId, toStatus);
+            }
+        }
 
         var lifecycleEvent = new RealtimeLifecycleEvent(
             EventId: Guid.NewGuid().ToString("N"),

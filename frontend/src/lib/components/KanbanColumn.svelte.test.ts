@@ -41,3 +41,23 @@ test('re-rendering with an updated task list moves cards without a page reload',
 
 	await expect.element(screen.getByTestId('kanban-column-count')).toHaveTextContent('0');
 });
+
+// 023 T034 (US6, FR-009/SC-006): with the per-card status badge gone, the column header is
+// the only thing naming the stage — so it has to keep naming it.
+
+test.for([
+	['received', 'Received'],
+	['converting', 'Converting'],
+	['queued', 'Queued'],
+	['running', 'Running'],
+	['completed', 'Completed'],
+	['failed', 'Failed']
+] as const)('the %s column header still names its stage', async ([stage, label]) => {
+	const screen = await render(KanbanColumn, {
+		stage,
+		tasks: [task({ taskId: `t-${stage}`, status: stage })]
+	});
+
+	const column = screen.getByTestId('kanban-column').element();
+	expect(column.querySelector('h2')?.textContent).toBe(label);
+});

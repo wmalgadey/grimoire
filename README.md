@@ -15,11 +15,62 @@ through it once at a careful pace. See
 [`docs/codebase-complexity-metric.md`](docs/codebase-complexity-metric.md) for the exact
 formulas, thresholds, and sources.
 
-## Stack
+## Architecture
 
 - **Backend** (`backend/`) — .NET / C#, hexagonal (ports & adapters) architecture
 - **Frontend** (`frontend/`) — SvelteKit
 - **Agents** (`backend/src/Grimoire.*Agent/Instructions/`) — per-agent instruction files (`system-prompt.md`, `policy.json`) that govern each agent's behavior at runtime, delivered to the configured agent directory by the agent build
+
+Grimoire is split into a **deterministic harness** (the Hub: dispatch, credential scoping,
+guardrails, persistence, observability) and the **agents** that actually decide what the
+wiki says. The harness never decides wiki content, and the agents never write outside the
+guarded tool layer — that boundary is the whole design.
+
+Inside the backend, the hexagon is drawn **per bounded context, not per technical layer**
+([ADR-010](docs/adr/ADR-010-hexagonal-ports-adapter-namespaces.md)). A context owns its
+port interface, and the adapter that implements it sits one namespace below, so port,
+consumer, and infrastructure are read together instead of scattered across a shared
+`Adapters` bucket. Concretely, three rings:
+
+- **Domain core** — `backend/src/Grimoire.Domain` — dependency-free by construction: safety
+  policy and its decisions, ingest submission kinds. It imports no framework, no
+  infrastructure, nothing from the outer rings.
+- **Orchestration (inside the hexagon)** — the Hub's contexts and `Grimoire.AgentRuntime` —
+  the code that sequences work and declares the ports it needs.
+- **Adapters (edge)** — every `*.Adapters.*` namespace, plus repositories and artifact
+  stores. Infrastructure packages live here and nowhere else: `Microsoft.Data.Sqlite` only
+  in `OperationalState`, the Anthropic SDK only in `Core.Adapters.Anthropic`, outbound HTTP
+  only in `Adapters.HttpFetch`, process spawning only in the two adapters that need it.
+
+### Bounded contexts
+
+Harness side — `backend/src/Grimoire.Hub`:
+
+| Context | Namespace | Owns | Port → adapter |
+| --- | --- | --- | --- |
+| Ingest Submission | `IngestSubmission`, `Conversion`, `ContentRoot` | Accepting a URL or file, converting it to markdown, storing the source artifacts | `IMarkdownConverter` → `Adapters.MarkItDown`, `IUrlContentFetcher` → `Adapters.HttpFetch` |
+| Ingest Dispatch | `IngestDispatch` | Run queue, liveness supervision, reactivation and manual restart | — |
+| Query | `QuerySubmission`, `QueryDispatch`, `QueryConversations` | Questions against the wiki and their conversation history | — |
+| Lint & Remediation | `LintDispatch`, `LintFindings`, `RemediationTasks` | Wiki health findings and the authorized actions that resolve them | — |
+| Agent Dispatch | `AgentDispatch` | Spawning and supervising agent child processes | `IAgentProcessLauncher` → `Adapters.AgentProcess` |
+| Operational State | `OperationalState` | Durable run state, queue, status history (SQLite) | none — persistence is port-exempt |
+| Realtime | `Realtime` | Pushing lifecycle changes to the board over SignalR | — |
+| Task Artifact | `IngestTaskArtifact` | The per-task markdown record the UI reads | — |
+| CLI | `Cli` | Operator commands against the same state the Hub uses | — |
+
+Agent side — one process per agent, all on a shared runtime:
+
+| Context | Namespace | Owns |
+| --- | --- | --- |
+| Agent Runtime | `Grimoire.AgentRuntime.Core` | The agent loop and the model boundary — `IModelClient` → `Core.Adapters.Anthropic` (and `Core.Adapters.Replay` for recorded runs) |
+| Guardrails | `Grimoire.AgentRuntime.Guardrails` | The guarded tool layer: deny-by-default policy enforced at call time, plus shared-file write coordination |
+| Instructions | `Grimoire.AgentRuntime.Instructions` | Loading and hashing the instruction files that govern agent behavior |
+| Run Events / Telemetry / Wiki Log | `Grimoire.AgentRuntime.RunEvents`, `.Telemetry`, `.WikiLog` | What a run reports back to the Hub and to the wiki's own log |
+| Ingest / Query / Lint Agent | `Grimoire.IngestAgent`, `.QueryAgent`, `.LintAgent` | Each agent's process entry point and its versioned instruction files |
+
+Ports, adapter containment, and the guarded-write boundary are not conventions — they are
+structural tests in [`backend/tests/Grimoire.ArchTests`](backend/tests/Grimoire.ArchTests),
+each proven to detect violations by a Red/Green probe, and each run on every PR.
 
 ## Development process
 

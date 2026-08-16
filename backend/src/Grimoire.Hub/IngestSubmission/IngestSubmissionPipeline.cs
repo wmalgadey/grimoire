@@ -122,78 +122,25 @@ public sealed class IngestSubmissionPipeline
             var conversionStarted = Stopwatch.GetTimestamp();
             var markItDownEnabled = ApplyConvertConfig(context, ConvertStepRegistry.MarkItDown);
 
-            string originalPath;
-            string originalContentType;
-            long originalSize;
-            SourceArtifactSet artifactSet;
+            // 023 T020 (FR-003/FR-001): what the operator actually submitted. The uploaded
+            // filename was previously discarded after extension sniffing and the URL was
+            // never persisted at all — both are recorded in the manifest so the label chain
+            // and the source link have something to fall back to.
+            var submission = input.Kind == IngestSubmissionKind.Url
+                ? new SourceSubmissionMetadata(SourceUrl: input.Url)
+                : new SourceSubmissionMetadata(OriginalFileName: input.FileName);
 
-            if (input.Kind == IngestSubmissionKind.Url)
+            var artifactSet = input.Kind switch
             {
-                UrlFetchResult fetchResult;
-                using (var fetchSpan = HubTracing.ActivitySource.StartActivity("hub.ingest_submission.fetch_url"))
-                {
-                    fetchSpan?.SetTag("task_id", taskId);
-                    fetchSpan?.SetTag("url_host", TryGetHost(input.Url));
+                IngestSubmissionKind.Url => await ProcessUrlSubmissionAsync(context, input, markItDownEnabled, submission, cancellationToken),
+                IngestSubmissionKind.MarkdownFile => await ProcessMarkdownFileSubmissionAsync(context, input, submission, cancellationToken),
+                _ => await ProcessConvertibleFileSubmissionAsync(context, input, submission, cancellationToken)
+            };
 
-                    fetchResult = await _urlFetcher.FetchAsync(new Uri(input.Url!), cancellationToken);
-                    fetchSpan?.SetTag("http_status", fetchResult.HttpStatus);
-                }
-
-                HubMetrics.RecordIngestSubmissionUrlFetch(fetchResult.Success ? "completed" : "failed", fetchResult.Success ? null : "fetch_error");
-
-                if (!fetchResult.Success)
-                {
-                    IngestSubmissionLogEvents.LogUrlFetchFailed(_logger, taskId, input.Url!, fetchResult.FailureReason!, fetchResult.HttpStatus);
-                    await FailAsync(context, fetchResult.FailureReason!, cancellationToken);
-                    return;
-                }
-
-                var extension = ExtensionFromContentType(fetchResult.ContentType);
-                originalContentType = fetchResult.ContentType ?? "application/octet-stream";
-                originalPath = await PersistOriginalAsync(taskId, extension, fetchResult.Content!, originalContentType, cancellationToken);
-                originalSize = fetchResult.Content!.LongLength;
-
-                if (markItDownEnabled)
-                {
-                    var conversion = await ConvertAsync(context, input.Kind, originalPath, cancellationToken);
-                    if (conversion is null)
-                    {
-                        return;
-                    }
-                    artifactSet = await PersistNormalizedAsync(taskId, originalPath, originalContentType, originalSize, conversion, cancellationToken);
-                }
-                else
-                {
-                    // Convert step disabled (FR-012): store the fetched content exactly as
-                    // received — byte-identical, checksum over the unmodified bytes (SC-004).
-                    artifactSet = await PersistNormalizedBytesAsync(taskId, originalPath, originalContentType, originalSize, fetchResult.Content!, cancellationToken);
-                }
-            }
-            else if (input.Kind == IngestSubmissionKind.MarkdownFile)
+            if (artifactSet is null)
             {
-                var extension = Path.GetExtension(input.FileName) is { Length: > 0 } ext ? ext : ".md";
-                originalContentType = input.FileContentType ?? "text/markdown";
-                originalPath = await PersistOriginalAsync(taskId, extension, input.FileBytes!, originalContentType, cancellationToken);
-                originalSize = input.FileBytes!.LongLength;
-                // Markdown is already the canonical format: pass through byte-identical,
-                // never routed through MarkItDown (FR-004; 004 FR-015).
-                artifactSet = await PersistNormalizedBytesAsync(taskId, originalPath, originalContentType, originalSize, input.FileBytes!, cancellationToken);
-            }
-            else
-            {
-                // PDF/Office: the convert step is required (FR-013) — the validator rejected
-                // any disabled configuration before a task was created.
-                var extension = Path.GetExtension(input.FileName) ?? string.Empty;
-                originalContentType = input.FileContentType ?? "application/octet-stream";
-                originalPath = await PersistOriginalAsync(taskId, extension, input.FileBytes!, originalContentType, cancellationToken);
-                originalSize = input.FileBytes!.LongLength;
-
-                var conversion = await ConvertAsync(context, input.Kind, originalPath, cancellationToken);
-                if (conversion is null)
-                {
-                    return;
-                }
-                artifactSet = await PersistNormalizedAsync(taskId, originalPath, originalContentType, originalSize, conversion, cancellationToken);
+                // The branch already reported failure via FailAsync — nothing left to do.
+                return;
             }
 
             HubMetrics.RecordIngestSubmissionArtifactPersisted("normalized_markdown");
@@ -213,6 +160,82 @@ public sealed class IngestSubmissionPipeline
         {
             await FailAsync(context, $"Unexpected ingest-submission error: {ex.Message}", cancellationToken);
         }
+    }
+
+    private async Task<SourceArtifactSet?> ProcessUrlSubmissionAsync(
+        PipelineContext context, IngestSubmissionInput input, bool markItDownEnabled, SourceSubmissionMetadata submission, CancellationToken cancellationToken)
+    {
+        var taskId = context.TaskId;
+
+        UrlFetchResult fetchResult;
+        using (var fetchSpan = HubTracing.ActivitySource.StartActivity("hub.ingest_submission.fetch_url"))
+        {
+            fetchSpan?.SetTag("task_id", taskId);
+            fetchSpan?.SetTag("url_host", TryGetHost(input.Url));
+
+            fetchResult = await _urlFetcher.FetchAsync(new Uri(input.Url!), cancellationToken);
+            fetchSpan?.SetTag("http_status", fetchResult.HttpStatus);
+        }
+
+        HubMetrics.RecordIngestSubmissionUrlFetch(fetchResult.Success ? "completed" : "failed", fetchResult.Success ? null : "fetch_error");
+
+        if (!fetchResult.Success)
+        {
+            IngestSubmissionLogEvents.LogUrlFetchFailed(_logger, taskId, input.Url!, fetchResult.FailureReason!, fetchResult.HttpStatus);
+            await FailAsync(context, fetchResult.FailureReason!, cancellationToken);
+            return null;
+        }
+
+        var extension = ExtensionFromContentType(fetchResult.ContentType);
+        var originalContentType = fetchResult.ContentType ?? "application/octet-stream";
+        var originalPath = await PersistOriginalAsync(taskId, extension, fetchResult.Content!, originalContentType, cancellationToken);
+        var originalSize = fetchResult.Content!.LongLength;
+
+        if (!markItDownEnabled)
+        {
+            // Convert step disabled (FR-012): store the fetched content exactly as
+            // received — byte-identical, checksum over the unmodified bytes (SC-004).
+            return await PersistNormalizedBytesAsync(taskId, originalPath, originalContentType, originalSize, fetchResult.Content!, cancellationToken, submission);
+        }
+
+        var conversion = await ConvertAsync(context, input.Kind, originalPath, cancellationToken);
+        if (conversion is null)
+        {
+            return null;
+        }
+        return await PersistNormalizedAsync(taskId, originalPath, originalContentType, originalSize, conversion, cancellationToken, submission);
+    }
+
+    private async Task<SourceArtifactSet> ProcessMarkdownFileSubmissionAsync(
+        PipelineContext context, IngestSubmissionInput input, SourceSubmissionMetadata submission, CancellationToken cancellationToken)
+    {
+        var taskId = context.TaskId;
+        var extension = Path.GetExtension(input.FileName) is { Length: > 0 } ext ? ext : ".md";
+        var originalContentType = input.FileContentType ?? "text/markdown";
+        var originalPath = await PersistOriginalAsync(taskId, extension, input.FileBytes!, originalContentType, cancellationToken);
+        var originalSize = input.FileBytes!.LongLength;
+        // Markdown is already the canonical format: pass through byte-identical,
+        // never routed through MarkItDown (FR-004; 004 FR-015).
+        return await PersistNormalizedBytesAsync(taskId, originalPath, originalContentType, originalSize, input.FileBytes!, cancellationToken, submission);
+    }
+
+    private async Task<SourceArtifactSet?> ProcessConvertibleFileSubmissionAsync(
+        PipelineContext context, IngestSubmissionInput input, SourceSubmissionMetadata submission, CancellationToken cancellationToken)
+    {
+        // PDF/Office: the convert step is required (FR-013) — the validator rejected
+        // any disabled configuration before a task was created.
+        var taskId = context.TaskId;
+        var extension = Path.GetExtension(input.FileName) ?? string.Empty;
+        var originalContentType = input.FileContentType ?? "application/octet-stream";
+        var originalPath = await PersistOriginalAsync(taskId, extension, input.FileBytes!, originalContentType, cancellationToken);
+        var originalSize = input.FileBytes!.LongLength;
+
+        var conversion = await ConvertAsync(context, input.Kind, originalPath, cancellationToken);
+        if (conversion is null)
+        {
+            return null;
+        }
+        return await PersistNormalizedAsync(taskId, originalPath, originalContentType, originalSize, conversion, cancellationToken, submission);
     }
 
     private bool ApplyConvertConfig(PipelineContext context, string stepName)
@@ -250,25 +273,27 @@ public sealed class IngestSubmissionPipeline
     }
 
     private async Task<SourceArtifactSet> PersistNormalizedAsync(
-        string taskId, string originalPath, string originalContentType, long originalSize, string normalizedMarkdown, CancellationToken cancellationToken)
+        string taskId, string originalPath, string originalContentType, long originalSize, string normalizedMarkdown,
+        CancellationToken cancellationToken, SourceSubmissionMetadata submission)
     {
         using var storeNormalizedSpan = HubTracing.ActivitySource.StartActivity("hub.ingest_submission.store_normalized");
         storeNormalizedSpan?.SetTag("task_id", taskId);
 
         var artifactSet = await _sourceArtifactStore.PersistNormalizedAsync(
-            taskId, originalPath, originalContentType, originalSize, normalizedMarkdown, cancellationToken);
+            taskId, originalPath, originalContentType, originalSize, normalizedMarkdown, cancellationToken, submission);
         storeNormalizedSpan?.SetTag("normalized_path", artifactSet.NormalizedMarkdownPath);
         return artifactSet;
     }
 
     private async Task<SourceArtifactSet> PersistNormalizedBytesAsync(
-        string taskId, string originalPath, string originalContentType, long originalSize, byte[] normalizedBytes, CancellationToken cancellationToken)
+        string taskId, string originalPath, string originalContentType, long originalSize, byte[] normalizedBytes,
+        CancellationToken cancellationToken, SourceSubmissionMetadata submission)
     {
         using var storeNormalizedSpan = HubTracing.ActivitySource.StartActivity("hub.ingest_submission.store_normalized");
         storeNormalizedSpan?.SetTag("task_id", taskId);
 
         var artifactSet = await _sourceArtifactStore.PersistNormalizedBytesAsync(
-            taskId, originalPath, originalContentType, originalSize, normalizedBytes, cancellationToken);
+            taskId, originalPath, originalContentType, originalSize, normalizedBytes, cancellationToken, submission);
         storeNormalizedSpan?.SetTag("normalized_path", artifactSet.NormalizedMarkdownPath);
         return artifactSet;
     }
@@ -297,6 +322,13 @@ public sealed class IngestSubmissionPipeline
     private async Task WriteStageAsync(
         PipelineContext context, string status, string? sourceRef, string? originalRef, string? failureReason, string narrative, CancellationToken cancellationToken)
     {
+        // 023 T045 (FR-003): mirror the label the board and detail views resolve, through the
+        // one chain that owns it. Before conversion has written a manifest (the `received` and
+        // `converting` writes) the chain legitimately falls back to the task id; the extracted
+        // heading appears from `queued` onward.
+        var manifest = await _sourceArtifactStore.TryReadMetadataAsync(context.TaskId, cancellationToken);
+        var title = KanbanBoardProjectionStore.ResolveTitle(context.TaskId, manifest);
+
         var document = new HubTaskArtifactDocument(
             TaskId: context.TaskId,
             Status: status,
@@ -308,7 +340,8 @@ public sealed class IngestSubmissionPipeline
             Narrative: narrative,
             UserPromptSource: context.PromptSource,
             UserPrompt: context.UserPrompt,
-            ConvertSteps: context.ConvertSteps);
+            ConvertSteps: context.ConvertSteps,
+            Title: title);
 
         await _taskArtifactWriter.WriteAsync(context.TaskArtifactPath, document, cancellationToken);
     }

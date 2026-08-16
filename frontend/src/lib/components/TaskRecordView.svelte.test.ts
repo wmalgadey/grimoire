@@ -125,3 +125,50 @@ test('renders the placeholder state for an unavailable record', async () => {
 	await expect.element(screen.getByTestId('task-record-placeholder')).toBeVisible();
 	await expect.element(screen.getByTestId('task-record-view')).not.toBeInTheDocument();
 });
+
+// ── 023 T027 (US4, FR-001/FR-002, SC-001/SC-002) ───────────────────────────────────
+// The source row: an anchor when available (URL sources link to the URL, file sources to
+// "View original"), a non-link "unavailable" indicator otherwise.
+
+test('renders the source as a clickable link, opening in a new tab, for a URL source', async () => {
+	const screen = await render(TaskRecordView, {
+		record: record(),
+		source: { kind: 'url', href: 'https://example.test/article', available: true }
+	});
+
+	const link = screen.getByTestId('task-source-link');
+	await expect.element(link).toHaveAttribute('href', 'https://example.test/article');
+	await expect.element(link).toHaveAttribute('target', '_blank');
+});
+
+test('renders the source as a clickable link to the serve endpoint for a file source', async () => {
+	const screen = await render(TaskRecordView, {
+		record: record(),
+		source: {
+			kind: 'file',
+			href: '/api/ingest-submissions/task-1/source/original',
+			available: true
+		}
+	});
+
+	await expect
+		.element(screen.getByTestId('task-source-link'))
+		.toHaveAttribute('href', '/api/ingest-submissions/task-1/source/original');
+});
+
+test('renders a non-link "unavailable" indicator when the source cannot be resolved', async () => {
+	const screen = await render(TaskRecordView, {
+		record: record(),
+		source: { kind: 'file', href: null, available: false }
+	});
+
+	await expect.element(screen.getByTestId('task-source-unavailable')).toBeVisible();
+	await expect.element(screen.getByTestId('task-source-link')).not.toBeInTheDocument();
+});
+
+test('renders no source row when the detail carries none', async () => {
+	const screen = await render(TaskRecordView, { record: record() });
+
+	await expect.element(screen.getByTestId('task-source-link')).not.toBeInTheDocument();
+	await expect.element(screen.getByTestId('task-source-unavailable')).not.toBeInTheDocument();
+});

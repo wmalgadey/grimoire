@@ -28,6 +28,12 @@ public static class IngestSubmissionLogEvents
     private static readonly EventId TaskRecordServedEvent = new(35, "task_record.served");
     private static readonly EventId TaskRecordChangePublishedEvent = new(36, "task_record.change_published");
     private static readonly EventId TaskRecordWatchFailedEvent = new(37, "task_record.watch_failed");
+    private static readonly EventId RunLivenessInterruptedEvent = new(38, "ingest.run.liveness_interrupted");
+    private static readonly EventId RunReactivatedEvent = new(39, "ingest.run.reactivated");
+    private static readonly EventId ReactivationExhaustedEvent = new(40, "ingest.run.reactivation_exhausted");
+    private static readonly EventId TaskRestartedEvent = new(41, "ingest.task.restarted");
+    private static readonly EventId TaskRestartRejectedEvent = new(42, "ingest.task.restart_rejected");
+    private static readonly EventId SourceServedEvent = new(43, "ingest.source.served");
 
     public static void LogSubmissionAccepted(ILogger logger, string taskId, string sourceKind, DateTimeOffset submittedAt)
     {
@@ -243,6 +249,78 @@ public static class IngestSubmissionLogEvents
         logger.LogWarning(TaskRecordWatchFailedEvent,
             "Task record watcher failed; restarting. path={path} reason={reason}",
             path, reason);
+    }
+
+    // --- 023-task-ui-improvements (plan.md ## Observability > Structured Log Events) ---
+
+    /// <summary>
+    /// Liveness window exceeded while a reactivation attempt is still available (FR-007/FR-008).
+    /// Distinct from <see cref="LogRunLivenessFailed"/>, which keeps its existing meaning and is
+    /// emitted only once the bounded attempts are exhausted.
+    /// </summary>
+    public static void LogRunLivenessInterrupted(ILogger logger, string taskId, int attempt, long nextDelaySeconds)
+    {
+        using var span = StartLogEventSpan("ingest.run.liveness_interrupted", "Warning");
+        span?.SetTag("task_id", taskId);
+        span?.SetTag("attempt", attempt);
+        span?.SetTag("next_delay_seconds", nextDelaySeconds);
+
+        logger.LogWarning(RunLivenessInterruptedEvent,
+            "Ingest run liveness interrupted; reactivation scheduled. task_id={task_id} attempt={attempt} next_delay_seconds={next_delay_seconds}",
+            taskId, attempt, nextDelaySeconds);
+    }
+
+    public static void LogRunReactivated(ILogger logger, string taskId, int attempt)
+    {
+        using var span = StartLogEventSpan("ingest.run.reactivated", "Information");
+        span?.SetTag("task_id", taskId);
+        span?.SetTag("attempt", attempt);
+
+        logger.LogInformation(RunReactivatedEvent,
+            "Ingest run reactivated after a liveness interruption. task_id={task_id} attempt={attempt}",
+            taskId, attempt);
+    }
+
+    public static void LogReactivationExhausted(ILogger logger, string taskId, int attempts)
+    {
+        using var span = StartLogEventSpan("ingest.run.reactivation_exhausted", "Error");
+        span?.SetTag("task_id", taskId);
+        span?.SetTag("attempts", attempts);
+
+        logger.LogError(ReactivationExhaustedEvent,
+            "Ingest run reactivation attempts exhausted; failing the task. task_id={task_id} attempts={attempts}",
+            taskId, attempts);
+    }
+
+    public static void LogTaskRestarted(ILogger logger, string taskId)
+    {
+        using var span = StartLogEventSpan("ingest.task.restarted", "Information");
+        span?.SetTag("task_id", taskId);
+
+        logger.LogInformation(TaskRestartedEvent,
+            "Failed ingest task restarted and re-queued. task_id={task_id}", taskId);
+    }
+
+    public static void LogTaskRestartRejected(ILogger logger, string taskId, string currentStatus)
+    {
+        using var span = StartLogEventSpan("ingest.task.restart_rejected", "Warning");
+        span?.SetTag("task_id", taskId);
+        span?.SetTag("current_status", currentStatus);
+
+        logger.LogWarning(TaskRestartRejectedEvent,
+            "Ingest task restart rejected. task_id={task_id} current_status={current_status}",
+            taskId, currentStatus);
+    }
+
+    public static void LogSourceServed(ILogger logger, string taskId, string contentType)
+    {
+        using var span = StartLogEventSpan("ingest.source.served", "Information");
+        span?.SetTag("task_id", taskId);
+        span?.SetTag("content_type", contentType);
+
+        logger.LogInformation(SourceServedEvent,
+            "Ingest source content served. task_id={task_id} content_type={content_type}",
+            taskId, contentType);
     }
 
     private static Activity? StartLogEventSpan(string eventName, string level)

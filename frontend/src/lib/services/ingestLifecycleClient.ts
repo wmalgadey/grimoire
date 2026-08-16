@@ -6,6 +6,7 @@ import type {
 	RunActivityEvent,
 	TaskRecordChangedEvent
 } from '$lib/types';
+import { isLifecycleStage } from '$lib/types';
 import { listBoard } from './ingestSubmissionsApi';
 
 const HUB_PATH = '/hubs/ingest-lifecycle';
@@ -108,6 +109,15 @@ export function applyLifecycleEvent(
 		return tasks;
 	}
 	seenEventKeys.add(key);
+
+	// 023 T014 (contracts/signalr-events.md): the channel now also carries
+	// liveness_interrupted/reactivated/restarted so the detail view can refresh live. Those
+	// are history-only statuses — never board columns (clarification 2026-08-13) — so the
+	// board leaves the card exactly where it is: a task stays in `running` across an
+	// interruption/reactivation cycle and in `failed` until a restart's `queued` arrives.
+	if (!isLifecycleStage(event.toStatus)) {
+		return tasks;
+	}
 
 	const index = tasks.findIndex((t) => t.taskId === event.taskId);
 	if (index >= 0 && new Date(event.timestamp) < new Date(tasks[index].updatedAt)) {

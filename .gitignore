@@ -17,6 +17,10 @@ packages/
 # Frontend
 node_modules/
 src/frontend/dist/
+# `svelte-kit sync` output. Unanchored: it lands in frontend/ for a normal build, but in
+# the repo root whenever the sync is run from there — that root copy is what leaked into
+# git once, and it embeds the machine's $env/static/private variable names.
+.svelte-kit/
 
 # Python (scripts/ci/*.py, run via pytest)
 __pycache__/

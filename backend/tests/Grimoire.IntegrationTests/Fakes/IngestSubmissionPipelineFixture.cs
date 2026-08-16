@@ -26,7 +26,7 @@ public sealed class IngestSubmissionPipelineFixture : IDisposable
     public RawStoragePaths RawPaths { get; }
     public ResolvedGrimoirePaths ResolvedPaths { get; }
     public SourceArtifactStore SourceArtifactStore { get; }
-    public KanbanBoardProjectionStore BoardStore { get; } = new();
+    public KanbanBoardProjectionStore BoardStore { get; }
     public FakeAgentProcessLauncher Launcher { get; }
     public OperationalStateRepository Repository { get; }
     public IngestRunCoordinator Coordinator { get; }
@@ -58,7 +58,8 @@ public sealed class IngestSubmissionPipelineFixture : IDisposable
         RawStoragePaths? rawPaths = null,
         string? root = null,
         IMarkdownConverter? converter = null,
-        IUrlContentFetcher? urlFetcher = null)
+        IUrlContentFetcher? urlFetcher = null,
+        IReadOnlyList<TimeSpan>? reactivationDelays = null)
     {
         Root = root ?? Path.Combine(Path.GetTempPath(), $"grimoire-ingest-submission-{Guid.NewGuid():N}");
         Directory.CreateDirectory(Root);
@@ -67,6 +68,8 @@ public sealed class IngestSubmissionPipelineFixture : IDisposable
             OriginalsDir: Path.Combine(Root, "raw", "originals"),
             SourcesDir: Path.Combine(Root, "raw", "sources"));
         SourceArtifactStore = new SourceArtifactStore(RawPaths);
+        // 023 T021: the board label is resolved from the manifest, exactly as in production.
+        BoardStore = new KanbanBoardProjectionStore(SourceArtifactStore);
 
         if (resolvedPaths is not null)
         {
@@ -154,7 +157,11 @@ public sealed class IngestSubmissionPipelineFixture : IDisposable
         Launcher = launcher ?? new FakeAgentProcessLauncher();
 
         var hubContext = new RecordingHubContext(PublishedEvents, PublishedActivity);
-        var publisher = new IngestLifecyclePublisher(hubContext);
+        // 023 T004: the publisher is the Hub's status-history writer, so it gets the same
+        // repository and clock the coordinator uses — history rows are real rows in the
+        // fixture's real SQLite file, asserted state-based like every other outcome.
+        var publisher = new IngestLifecyclePublisher(
+            hubContext, logger: null, stateRepository: Repository, timeProvider: timeProvider);
         Publisher = publisher;
 
         Coordinator = new IngestRunCoordinator(
@@ -166,7 +173,11 @@ public sealed class IngestSubmissionPipelineFixture : IDisposable
             ResolvedPaths,
             timeProvider,
             livenessWindow ?? TimeSpan.FromSeconds(60),
-            CoordinatorLogger);
+            CoordinatorLogger,
+            reactivationDelays,
+            // 023 T045: same manifest store the board resolves the label from, exactly as
+            // in production — the Hub's own artifact writes must not disagree with the UI.
+            SourceArtifactStore);
         Coordinator.InitializeAsync().GetAwaiter().GetResult();
 
         var httpClient = new HttpClient(urlFetchHandler ?? new NotFoundHandler());

@@ -2,6 +2,7 @@ import { expect, test, vi } from 'vitest';
 import {
 	applyLintRunLifecycleEvent,
 	createLintRunStream,
+	fetchLintRunFromBoard,
 	type LintLifecycleClient
 } from './lintLifecycleClient';
 import type { CompositeBoardResponse, LintRun, LintRunLifecycleEvent } from '$lib/types';
@@ -137,4 +138,29 @@ test('applyLintRunLifecycleEvent ignores a stale "running" event after a termina
 	const result = applyLintRunLifecycleEvent(terminal, staleRunningEvent, seen);
 
 	expect(result).toBe(terminal);
+});
+
+// 023 T052: the Hub answers a rejected board read with a JSON reason; discarding it and
+// showing only the status code turns an actionable message into "failed with status 409".
+test('fetchLintRunFromBoard surfaces the Hub JSON message when the body carries one', async () => {
+	const fetchImpl = vi.fn().mockResolvedValue(
+		new Response(JSON.stringify({ message: 'Lint is disabled for this wiki.' }), {
+			status: 409,
+			headers: { 'Content-Type': 'application/json' }
+		})
+	);
+
+	await expect(fetchLintRunFromBoard(fetchImpl as unknown as typeof fetch)).rejects.toThrow(
+		'Lint is disabled for this wiki.'
+	);
+});
+
+test('fetchLintRunFromBoard falls back to the status when the body is absent or unparseable', async () => {
+	const fetchImpl = vi
+		.fn()
+		.mockResolvedValue(new Response('<html>Bad Gateway</html>', { status: 502 }));
+
+	await expect(fetchLintRunFromBoard(fetchImpl as unknown as typeof fetch)).rejects.toThrow(
+		'Request failed with status 502'
+	);
 });

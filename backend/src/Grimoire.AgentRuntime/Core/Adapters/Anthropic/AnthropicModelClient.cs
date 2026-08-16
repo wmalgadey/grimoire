@@ -1,4 +1,5 @@
 using Anthropic;
+using Anthropic.Exceptions;
 using Anthropic.Models.Messages;
 using Grimoire.AgentRuntime.Core;
 using Microsoft.Extensions.Logging;
@@ -97,7 +98,15 @@ public sealed class AnthropicModelClient : IModelClient
     private async Task<ModelTurn> NextTurnNonStreamingAsync(
         MessageCreateParams createParams, CancellationToken cancellationToken)
     {
-        var response = await _client.Messages.Create(createParams, cancellationToken: cancellationToken);
+        Message response;
+        try
+        {
+            response = await _client.Messages.Create(createParams, cancellationToken: cancellationToken);
+        }
+        catch (AnthropicApiException ex)
+        {
+            throw TranslateProviderError(ex);
+        }
 
         var toolUseRequests = new List<ToolUseRequest>();
         string? assistantText = null;
@@ -135,56 +144,175 @@ public sealed class AnthropicModelClient : IModelClient
     private async Task<ModelTurn> NextTurnStreamingAsync(
         MessageCreateParams createParams, Action<string> onTextDelta, CancellationToken cancellationToken)
     {
-        string? assistantText = null;
-        var toolBlocksByIndex = new SortedDictionary<long, (string Id, string Name, StringBuilder Json)>();
-        var stopReason = ModelStopReason.Unknown;
-        int inputTokens = 0;
-        int outputTokens = 0;
+        var accumulator = new StreamingTurn();
 
-        await foreach (var streamEvent in _client.Messages.CreateStreaming(createParams, cancellationToken))
+        // A provider rejection on a streaming call surfaces while the sequence is being
+        // advanced rather than at call time, so the whole consumption is covered.
+        try
+        {
+            await foreach (var streamEvent in _client.Messages.CreateStreaming(createParams, cancellationToken))
+            {
+                accumulator.Apply(streamEvent, onTextDelta);
+            }
+        }
+        catch (AnthropicApiException ex)
+        {
+            throw TranslateProviderError(ex);
+        }
+
+        return accumulator.ToModelTurn();
+    }
+
+    /// <summary>
+    /// Per-turn accumulation of the streaming event sequence. Extracted from
+    /// <see cref="NextTurnStreamingAsync"/> so the event dispatch and the
+    /// translate-provider-errors wrapper around it stay separately readable (and each
+    /// below the repository's complexity gate).
+    /// </summary>
+    private sealed class StreamingTurn
+    {
+        private readonly SortedDictionary<long, (string Id, string Name, StringBuilder Json)> _toolBlocksByIndex = new();
+        private string? _assistantText;
+        private ModelStopReason _stopReason = ModelStopReason.Unknown;
+        private int _inputTokens;
+        private int _outputTokens;
+
+        public void Apply(RawMessageStreamEvent streamEvent, Action<string> onTextDelta)
         {
             if (streamEvent.TryPickStart(out var start))
             {
-                inputTokens = (int)(start.Message.Usage?.InputTokens ?? 0);
+                _inputTokens = (int)(start.Message.Usage?.InputTokens ?? 0);
             }
             else if (streamEvent.TryPickContentBlockStart(out var blockStart) &&
                      blockStart.ContentBlock.TryPickToolUse(out var toolUseStart))
             {
-                toolBlocksByIndex[blockStart.Index] = (toolUseStart.ID, toolUseStart.Name, new StringBuilder());
+                _toolBlocksByIndex[blockStart.Index] = (toolUseStart.ID, toolUseStart.Name, new StringBuilder());
             }
             else if (streamEvent.TryPickContentBlockDelta(out var blockDelta))
             {
-                if (blockDelta.Delta.TryPickText(out var textDelta) && !string.IsNullOrEmpty(textDelta.Text))
-                {
-                    assistantText = (assistantText ?? string.Empty) + textDelta.Text;
-                    onTextDelta(textDelta.Text);
-                }
-                else if (blockDelta.Delta.TryPickInputJson(out var inputJsonDelta) &&
-                         toolBlocksByIndex.TryGetValue(blockDelta.Index, out var entry))
-                {
-                    entry.Json.Append(inputJsonDelta.PartialJson);
-                }
+                ApplyContentBlockDelta(blockDelta, onTextDelta);
             }
             else if (streamEvent.TryPickDelta(out var messageDelta))
             {
-                stopReason = ModelStopReasonContract.FromRawValue(messageDelta.Delta.StopReason);
-                outputTokens = (int)messageDelta.Usage.OutputTokens;
+                _stopReason = ModelStopReasonContract.FromRawValue(messageDelta.Delta.StopReason);
+                _outputTokens = (int)messageDelta.Usage.OutputTokens;
             }
         }
 
-        var toolUseRequests = toolBlocksByIndex.Values
-            .Select(t => new ToolUseRequest(
-                ToolUseId: t.Id,
-                ToolName: t.Name,
-                InputJson: t.Json.Length == 0 ? "{}" : t.Json.ToString()))
-            .ToList();
+        private void ApplyContentBlockDelta(RawContentBlockDeltaEvent blockDelta, Action<string> onTextDelta)
+        {
+            if (blockDelta.Delta.TryPickText(out var textDelta) && !string.IsNullOrEmpty(textDelta.Text))
+            {
+                _assistantText = (_assistantText ?? string.Empty) + textDelta.Text;
+                onTextDelta(textDelta.Text);
+            }
+            else if (blockDelta.Delta.TryPickInputJson(out var inputJsonDelta) &&
+                     _toolBlocksByIndex.TryGetValue(blockDelta.Index, out var entry))
+            {
+                entry.Json.Append(inputJsonDelta.PartialJson);
+            }
+        }
 
-        return new ModelTurn(
-            AssistantText: assistantText,
-            ToolUseRequests: toolUseRequests,
-            StopReason: stopReason,
-            InputTokens: inputTokens,
-            OutputTokens: outputTokens);
+        public ModelTurn ToModelTurn() => new(
+            AssistantText: _assistantText,
+            ToolUseRequests: _toolBlocksByIndex.Values
+                .Select(t => new ToolUseRequest(
+                    ToolUseId: t.Id,
+                    ToolName: t.Name,
+                    InputJson: t.Json.Length == 0 ? "{}" : t.Json.ToString()))
+                .ToList(),
+            StopReason: _stopReason,
+            InputTokens: _inputTokens,
+            OutputTokens: _outputTokens);
+    }
+
+    /// <summary>
+    /// 023 T051 (converge input; FR-006): translates a provider rejection into the
+    /// harness-owned <see cref="ModelApiException"/>. Two things matter here.
+    /// <para>
+    /// First, the <em>message</em>: the SDK's own exception text is a bare status ("Status
+    /// Code: BadRequest"), while the provider's explanation of what was actually wrong sits
+    /// in the response body and used to be dropped. That explanation is what an operator
+    /// needs on the card, the detail view, and the status history, so it is composed into
+    /// the message here — once, at the single place the provider boundary is crossed.
+    /// </para>
+    /// <para>
+    /// Second, the <em>type</em>: the SDK exception must not escape this namespace, or the
+    /// Anthropic package leaks into orchestration code that ADR-010's containment rules keep
+    /// it out of. The original is kept as the inner exception for diagnostics.
+    /// </para>
+    /// Applies to the Query and Lint agents too — they share this adapter.
+    /// </summary>
+    private static ModelApiException TranslateProviderError(AnthropicApiException exception)
+    {
+        var status = (int)exception.StatusCode;
+        var (errorType, providerMessage) = ParseProviderError(exception.ResponseBody);
+
+        var text = $"Model API error {status}";
+        if (!string.IsNullOrWhiteSpace(errorType))
+        {
+            text += $" ({errorType})";
+        }
+        if (!string.IsNullOrWhiteSpace(providerMessage))
+        {
+            text += $": {providerMessage}";
+        }
+
+        return new ModelApiException(SingleLineCapped(text), status, errorType, exception);
+    }
+
+    /// <summary>
+    /// Reads the provider's error envelope (<c>{"type":"error","error":{"type":…,"message":…}}</c>),
+    /// tolerating a top-level <c>message</c> and any body that is empty, HTML, or otherwise
+    /// not JSON — an unreadable body simply yields no detail, never an exception thrown from
+    /// the error path itself.
+    /// </summary>
+    private static (string? ErrorType, string? Message) ParseProviderError(string? responseBody)
+    {
+        if (string.IsNullOrWhiteSpace(responseBody))
+        {
+            return (null, null);
+        }
+
+        try
+        {
+            using var document = JsonDocument.Parse(responseBody);
+            if (document.RootElement.ValueKind != JsonValueKind.Object)
+            {
+                return (null, null);
+            }
+
+            if (document.RootElement.TryGetProperty("error", out var error) &&
+                error.ValueKind == JsonValueKind.Object)
+            {
+                return (
+                    error.TryGetProperty("type", out var nestedType) ? nestedType.GetString() : null,
+                    error.TryGetProperty("message", out var nestedMessage) ? nestedMessage.GetString() : null);
+            }
+
+            return (
+                document.RootElement.TryGetProperty("type", out var topType) ? topType.GetString() : null,
+                document.RootElement.TryGetProperty("message", out var topMessage) ? topMessage.GetString() : null);
+        }
+        catch (JsonException)
+        {
+            return (null, null);
+        }
+    }
+
+    /// <summary>
+    /// Both artifact writers persist only <c>failure_reason.Split('\n')[0]</c>, so a
+    /// multi-line provider message would silently lose everything after its first line;
+    /// the cap keeps a pathologically long body out of the frontmatter.
+    /// </summary>
+    private const int MaxProviderErrorLength = 500;
+
+    private static string SingleLineCapped(string text)
+    {
+        var singleLine = text.Replace("\r\n", " ").Replace('\n', ' ').Replace('\r', ' ').Trim();
+        return singleLine.Length <= MaxProviderErrorLength
+            ? singleLine
+            : singleLine[..MaxProviderErrorLength] + "…";
     }
 
     private static List<ToolUnion> BuildTools(IReadOnlyList<ToolDefinition> tools)

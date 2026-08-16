@@ -44,7 +44,8 @@ public sealed class SourceArtifactStore
         string originalContentType,
         long originalSizeBytes,
         string normalizedMarkdown,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default,
+        SourceSubmissionMetadata? submission = null)
     {
         Directory.CreateDirectory(_paths.SourcesDir);
         var normalizedPath = _paths.NormalizedMarkdownPathFor(taskId);
@@ -68,7 +69,10 @@ public sealed class SourceArtifactStore
             OriginalSizeBytes: originalSizeBytes,
             NormalizedMarkdownPath: normalizedPath,
             NormalizedChecksum: checksum,
-            CreatedAt: DateTimeOffset.UtcNow);
+            CreatedAt: DateTimeOffset.UtcNow,
+            Title: ExtractTitle(normalizedMarkdown),
+            OriginalFileName: submission?.OriginalFileName,
+            SourceUrl: submission?.SourceUrl);
 
         await WriteMetadataAsync(taskId, set, cancellationToken);
         return set;
@@ -85,7 +89,8 @@ public sealed class SourceArtifactStore
         string originalContentType,
         long originalSizeBytes,
         byte[] normalizedBytes,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default,
+        SourceSubmissionMetadata? submission = null)
     {
         Directory.CreateDirectory(_paths.SourcesDir);
         var normalizedPath = _paths.NormalizedMarkdownPathFor(taskId);
@@ -108,10 +113,70 @@ public sealed class SourceArtifactStore
             OriginalSizeBytes: originalSizeBytes,
             NormalizedMarkdownPath: normalizedPath,
             NormalizedChecksum: checksum,
-            CreatedAt: DateTimeOffset.UtcNow);
+            CreatedAt: DateTimeOffset.UtcNow,
+            // Byte-identical pass-through: the bytes ARE the normalized markdown, so the
+            // heading is read from them exactly as on the converted path.
+            Title: ExtractTitle(TryDecodeUtf8(normalizedBytes)),
+            OriginalFileName: submission?.OriginalFileName,
+            SourceUrl: submission?.SourceUrl);
 
         await WriteMetadataAsync(taskId, set, cancellationToken);
         return set;
+    }
+
+    /// <summary>
+    /// 023-task-ui-improvements T020 (FR-003, research.md R4): the first ATX <c>#</c>
+    /// heading of the normalized markdown, trimmed and capped at
+    /// <see cref="TitleMaxLength"/>. Only a level-1 heading counts — a document that opens
+    /// with a subsection heading has not told us its title — and only leading <c>#</c>
+    /// markers are stripped, never the rest of the line's markup: this is a display label
+    /// lifted verbatim from content the pipeline already produced, not an interpretation
+    /// of it (Principle V).
+    /// </summary>
+    public const int TitleMaxLength = 120;
+
+    internal static string? ExtractTitle(string? normalizedMarkdown)
+    {
+        if (string.IsNullOrWhiteSpace(normalizedMarkdown))
+        {
+            return null;
+        }
+
+        foreach (var rawLine in normalizedMarkdown.Split('\n'))
+        {
+            var line = rawLine.Trim();
+            if (line.Length == 0 || !line.StartsWith("# ", StringComparison.Ordinal))
+            {
+                continue;
+            }
+
+            var heading = line[2..].Trim();
+            if (heading.Length == 0)
+            {
+                continue;
+            }
+
+            return heading.Length > TitleMaxLength ? heading[..TitleMaxLength] : heading;
+        }
+
+        return null;
+    }
+
+    /// <summary>
+    /// Pass-through content is whatever the source was; a payload that is not valid UTF-8
+    /// simply has no readable heading, which the fallback chain already covers.
+    /// </summary>
+    private static string? TryDecodeUtf8(byte[] bytes)
+    {
+        try
+        {
+            return new System.Text.UTF8Encoding(encoderShouldEmitUTF8Identifier: false, throwOnInvalidBytes: true)
+                .GetString(bytes);
+        }
+        catch (ArgumentException)
+        {
+            return null;
+        }
     }
 
     /// <summary>

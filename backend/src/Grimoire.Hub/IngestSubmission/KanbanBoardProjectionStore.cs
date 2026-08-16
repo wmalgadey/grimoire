@@ -1,3 +1,5 @@
+using Grimoire.Hub.Conversion;
+
 namespace Grimoire.Hub.IngestSubmission;
 
 /// <summary>
@@ -8,11 +10,23 @@ namespace Grimoire.Hub.IngestSubmission;
 /// </summary>
 public sealed class KanbanBoardProjectionStore
 {
-    public Task<IReadOnlyList<KanbanBoardProjection>> GetAllAsync(string tasksDir, CancellationToken cancellationToken = default)
+    private readonly SourceArtifactStore? _sourceArtifactStore;
+
+    /// <param name="sourceArtifactStore">
+    /// 023-task-ui-improvements T021 (FR-003): supplies the Hub-owned manifest the human-readable
+    /// label comes from. Optional so board tests that only care about columns need not wire it;
+    /// without it every row falls through the chain to its task id.
+    /// </param>
+    public KanbanBoardProjectionStore(SourceArtifactStore? sourceArtifactStore = null)
+    {
+        _sourceArtifactStore = sourceArtifactStore;
+    }
+
+    public async Task<IReadOnlyList<KanbanBoardProjection>> GetAllAsync(string tasksDir, CancellationToken cancellationToken = default)
     {
         if (!Directory.Exists(tasksDir))
         {
-            return Task.FromResult<IReadOnlyList<KanbanBoardProjection>>([]);
+            return [];
         }
 
         var projections = new List<KanbanBoardProjection>();
@@ -20,18 +34,17 @@ public sealed class KanbanBoardProjectionStore
         {
             cancellationToken.ThrowIfCancellationRequested();
 
-            var markdown = File.ReadAllText(path);
+            var markdown = await File.ReadAllTextAsync(path, cancellationToken);
             var frontmatter = TaskArtifactFrontmatter.TryParse(markdown);
             if (frontmatter is null)
             {
                 continue;
             }
 
-            projections.Add(ToProjection(frontmatter, File.GetLastWriteTimeUtc(path)));
+            projections.Add(await ToProjectionAsync(frontmatter, File.GetLastWriteTimeUtc(path), cancellationToken));
         }
 
-        return Task.FromResult<IReadOnlyList<KanbanBoardProjection>>(
-            projections.OrderByDescending(p => p.UpdatedAt).ToList());
+        return projections.OrderByDescending(p => p.UpdatedAt).ToList();
     }
 
     public async Task<KanbanBoardProjection?> GetByTaskIdAsync(string tasksDir, string taskId, CancellationToken cancellationToken = default)
@@ -44,23 +57,39 @@ public sealed class KanbanBoardProjectionStore
 
         var markdown = await File.ReadAllTextAsync(path, cancellationToken);
         var frontmatter = TaskArtifactFrontmatter.TryParse(markdown);
-        return frontmatter is null ? null : ToProjection(frontmatter, File.GetLastWriteTimeUtc(path));
+        return frontmatter is null
+            ? null
+            : await ToProjectionAsync(frontmatter, File.GetLastWriteTimeUtc(path), cancellationToken);
     }
 
-    private static KanbanBoardProjection ToProjection(TaskArtifactFrontmatter frontmatter, DateTime lastWriteUtc)
+    private async Task<KanbanBoardProjection> ToProjectionAsync(
+        TaskArtifactFrontmatter frontmatter, DateTime lastWriteUtc, CancellationToken cancellationToken)
     {
-        var title = frontmatter.SourceRef is not null
-            ? Path.GetFileName(frontmatter.SourceRef)
-            : frontmatter.TaskId;
+        var manifest = _sourceArtifactStore is null
+            ? null
+            : await _sourceArtifactStore.TryReadMetadataAsync(frontmatter.TaskId, cancellationToken);
         var subtitle = frontmatter.OriginalRef is not null ? Path.GetFileName(frontmatter.OriginalRef) : null;
 
         return new KanbanBoardProjection(
             TaskId: frontmatter.TaskId,
             Column: frontmatter.Status,
-            Title: title,
+            Title: ResolveTitle(frontmatter.TaskId, manifest),
             Subtitle: subtitle,
             UpdatedAt: new DateTimeOffset(lastWriteUtc, TimeSpan.Zero),
             FailureReason: frontmatter.FailureReason,
             TaskLink: $"/api/ingest-submissions/{frontmatter.TaskId}");
     }
+
+    /// <summary>
+    /// The label fallback chain (023 data-model.md §3, FR-003): extracted content title →
+    /// uploaded filename → submitted URL → task id. Applied at read time in one place, so
+    /// board rows and the detail response cannot disagree about what a task is called. The
+    /// result is never null or empty — the task id is always available as the last resort,
+    /// which is what a task whose conversion failed before writing a manifest falls back to.
+    /// </summary>
+    internal static string ResolveTitle(string taskId, SourceArtifactSet? manifest) =>
+        Coalesce(manifest?.Title, manifest?.OriginalFileName, manifest?.SourceUrl) ?? taskId;
+
+    private static string? Coalesce(params string?[] candidates) =>
+        candidates.FirstOrDefault(c => !string.IsNullOrWhiteSpace(c));
 }

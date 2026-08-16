@@ -47,10 +47,14 @@ public sealed class HubTaskArtifactWriter
         var failure = string.IsNullOrWhiteSpace(failureFirstLine) ? "null" : $"\"{Escape(failureFirstLine)}\"";
         var sourceRef = doc.SourceRef is null ? "null" : $"\"{Escape(doc.SourceRef)}\"";
         var originalRef = doc.OriginalRef is null ? "null" : $"\"{Escape(doc.OriginalRef)}\"";
+        // 023 T045 (FR-003): quoted so a label containing ':' or '"' cannot corrupt the
+        // frontmatter; `null` when the caller had no label to mirror.
+        var title = string.IsNullOrWhiteSpace(doc.Title) ? "null" : $"\"{Escape(doc.Title)}\"";
 
         var sb = new StringBuilder();
         sb.AppendLine("---");
         sb.AppendLine($"task_id: {doc.TaskId}");
+        sb.AppendLine($"title: {title}");
         sb.AppendLine("type: ingest");
         sb.AppendLine($"status: {doc.Status}");
         sb.AppendLine("agent: ingest");

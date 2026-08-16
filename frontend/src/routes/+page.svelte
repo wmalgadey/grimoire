@@ -96,6 +96,19 @@
 		}
 	}
 
+	// 023 T049 (FR-012): after a restart attempt on a board card the board — not the card —
+	// re-reads the Hub's board projection, so the operator always ends up looking at the
+	// task's true current status even when the restart was rejected.
+	async function refreshBoard() {
+		try {
+			const board = await getBoard();
+			tasks = board.tasks;
+			queuePaused = board.queuePaused ?? false;
+		} catch {
+			// Non-critical: the lifecycle stream keeps the board live regardless.
+		}
+	}
+
 	async function handleResume() {
 		resuming = true;
 		try {
@@ -240,7 +253,12 @@
 
 	<div class="flex gap-4 overflow-x-auto" data-testid="kanban-board">
 		{#each stages as stage (stage)}
-			<KanbanColumn {stage} tasks={tasksByStage[stage]} {runActivityByTaskId} />
+			<KanbanColumn
+				{stage}
+				tasks={tasksByStage[stage]}
+				{runActivityByTaskId}
+				onRefreshRequested={() => void refreshBoard()}
+			/>
 		{/each}
 	</div>
 </main>

@@ -6,6 +6,7 @@ import type {
 	LintRunBoardEntry,
 	LintRunLifecycleEvent
 } from '$lib/types';
+import { parseHttpErrorMessage } from './httpErrorMessage';
 
 const HUB_PATH = '/hubs/lint-lifecycle';
 const BOARD_PATH = '/api/board';
@@ -85,7 +86,8 @@ export async function fetchLintRunFromBoard(
 ): Promise<LintRun | null> {
 	const response = await fetchImpl(BOARD_PATH);
 	if (!response.ok) {
-		throw new Error(`Board request failed with status ${response.status}`);
+		// 023 T052: the Hub's own reason, when it sent one — the bare status is the fallback.
+		throw new Error(await parseHttpErrorMessage(response));
 	}
 
 	const board: CompositeBoardResponse = await response.json();
