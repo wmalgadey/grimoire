@@ -50,12 +50,19 @@ in the same conversation.
 Confirm the same on the wire:
 
 ```bash
-curl -i -X POST http://localhost:5255/api/query-submissions \
-  -H 'Content-Type: application/json' -d '{"question":"anything"}'
+# Submit a turn, then submit a second one to the same conversation while the first is running.
+CID=manual-check
+curl -s -X POST "http://localhost:5255/api/query-conversations/$CID/turns" \
+  -H 'Content-Type: application/json' -d '{"prompt":"anything"}'
+curl -i -X POST "http://localhost:5255/api/query-conversations/$CID/turns" \
+  -H 'Content-Type: application/json' -d '{"prompt":"another"}'
 ```
 
 - **Expect**: `Content-Type: application/problem+json`, and a body carrying `status`, `title`,
   `detail`, `code`, `traceId`.
+- **Note**: the route is `/api/query-conversations/{conversationId}/turns` and the body field is
+  `prompt`. There is no `/api/query-submissions` endpoint and no `question` field — a request
+  spelled that way returns a bare framework 404, which is not the envelope and proves nothing.
 
 ### 2. The technical facts are one step away (FR-006 — User Story 2)
 
@@ -67,14 +74,21 @@ With the error from step 1 on screen, open its technical detail.
 
 ### 3. Unreachable is not the same as declined (FR-007, FR-008 — User Story 4)
 
-Stop the Hub, leave the frontend running, and submit anything.
+`unreachable` means the request never completed. Take the **browser** offline (DevTools →
+Network → Offline) and submit anything.
 
 - **Expect**: a connectivity message naming the system as unreachable, plus a retry control.
 - **Expect not**: wording that implies the request was refused or that the input was wrong.
 
-Restart the Hub and press retry.
+Go back online and press retry.
 
 - **Expect**: the request goes through and the error clears (FR-011).
+
+Stopping the Hub while the frontend keeps running is a *different* case, and deliberately so:
+`bun run dev` proxies `/api` to the Hub, so a stopped Hub makes the proxy answer **502** — a
+real HTTP response. That is a fault, not an unreachable host, and it is presented as one (with
+a retry, per step 4). Any deployment behind a reverse proxy behaves the same way. Use the
+offline toggle above to exercise `unreachable`; use a stopped Hub to exercise the 502 fault.
 
 ### 4. A fault stays retryable even when its body is noise (User Story 4, scenario 5)
 

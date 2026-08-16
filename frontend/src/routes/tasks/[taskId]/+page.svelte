@@ -56,12 +56,17 @@
 	async function refreshDetail() {
 		try {
 			detail = await getTaskDetail(data.taskId);
-		} catch {
-			// A task with no detail (unknown id, or removed while the page was open) simply
-			// renders without the history panel — the record view already reports absence.
-			// 024 FR-011: deliberately not routed to the shared error presentation — this is a
-			// background refresh, and it must not displace the restart error the user is reading.
-			detail = null;
+		} catch (err) {
+			// 024 FR-011: a background refresh is deliberately not routed to the shared error
+			// presentation — it must not displace the restart error the user is reading. Keeping
+			// that promise takes more than staying quiet: `detail` gates the restart button and
+			// its error region below, so blanking it on *any* failure unmounted the very error
+			// this comment claims to protect. Only the Hub actually saying the task is gone
+			// clears it; a refresh we simply could not perform (offline, 5xx) leaves the last
+			// known detail standing.
+			if (err instanceof IngestSubmissionApiError && err.status === 404) {
+				detail = null;
+			}
 		}
 	}
 
@@ -77,11 +82,12 @@
 		try {
 			await restartTask(data.taskId);
 		} catch (err) {
-			if (err instanceof IngestSubmissionApiError && err.status === 409) {
-				restartError = toPresentedError(err);
-			} else {
-				throw err;
-			}
+			// 024 FR-010/SC-005: restart is a user action, so *every* way it can fail belongs in
+			// the shared presentation — not just the 409 this handler was originally written for.
+			// Re-throwing the rest left the detail page silent (an unhandled rejection) for an
+			// unreachable Hub, a 404, or a 5xx, while TaskCard.svelte's identical button showed
+			// them. toPresentedError classifies each one; the 409 keeps the wording it had.
+			restartError = toPresentedError(err);
 		} finally {
 			restarting = false;
 			await refreshDetail();

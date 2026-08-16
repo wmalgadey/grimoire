@@ -387,3 +387,77 @@ test('a 409 conflict on restart shows the reason and re-fetches the true state',
 	await expect.element(screen.getByTestId('task-restart-error-details-toggle')).toBeInTheDocument();
 	await vi.waitFor(() => expect(getTaskDetailMock).toHaveBeenCalledTimes(2));
 });
+
+// 024 FR-010/SC-005: the 409 is not the only way restart fails. An unreachable Hub used to be
+// re-thrown out of the handler, leaving the page silent while TaskCard.svelte's identical
+// button presented it — the one surface that disagreed with "the same treatment everywhere".
+test('an unreachable Hub on restart is presented, not swallowed', async () => {
+	getTaskRecordMock.mockResolvedValue({ status: 'ok', record: record() });
+	getTaskDetailMock.mockResolvedValue(detail({ status: 'failed' }));
+	restartTaskMock.mockRejectedValue(new TypeError('Failed to fetch'));
+
+	const screen = await render(Page, { data: { taskId: 'task-1' }, params: { taskId: 'task-1' } });
+	await screen.getByTestId('task-restart-button').click();
+
+	await expect.element(screen.getByTestId('task-restart-error')).toBeInTheDocument();
+	await expect
+		.element(screen.getByTestId('task-restart-error-message'))
+		.toHaveTextContent('The wiki did not respond.');
+});
+
+// The offline case as it actually happens: the restart AND the refresh that follows it both
+// fail, because the Hub is unreachable for both. `detail` gates the error region, so a refresh
+// failure that blanked it took the restart error down with it — the user clicked Restart and
+// saw nothing at all. Only the Hub saying the task is gone may clear the detail.
+test('a restart error survives the background refresh that fails alongside it', async () => {
+	getTaskRecordMock.mockResolvedValue({ status: 'ok', record: record() });
+	getTaskDetailMock.mockResolvedValueOnce(detail({ status: 'failed' }));
+	restartTaskMock.mockRejectedValue(new TypeError('Failed to fetch'));
+	getTaskDetailMock.mockRejectedValue(new TypeError('Failed to fetch'));
+
+	const screen = await render(Page, { data: { taskId: 'task-1' }, params: { taskId: 'task-1' } });
+	await screen.getByTestId('task-restart-button').click();
+
+	await vi.waitFor(() => expect(getTaskDetailMock).toHaveBeenCalledTimes(2));
+	await expect.element(screen.getByTestId('task-restart-error')).toBeInTheDocument();
+});
+
+// The counterpart: when the Hub does say the task is gone, the stale detail must not linger.
+test('a 404 from the background refresh clears the detail', async () => {
+	getTaskRecordMock.mockResolvedValue({ status: 'ok', record: record() });
+	getTaskDetailMock.mockResolvedValueOnce(detail({ status: 'failed' }));
+
+	const screen = await render(Page, { data: { taskId: 'task-1' }, params: { taskId: 'task-1' } });
+	await expect.element(screen.getByTestId('task-restart-button')).toBeInTheDocument();
+
+	getTaskDetailMock.mockRejectedValue(new FakeIngestSubmissionApiError('gone', 404));
+	getLastFakeLifecycleClient().emitLifecycleChanged({
+		eventId: 'evt-gone',
+		taskId: 'task-1',
+		fromStatus: 'failed',
+		toStatus: 'failed',
+		timestamp: '2026-08-16T07:03:40Z',
+		failureReason: null
+	});
+
+	await vi.waitFor(() =>
+		expect(screen.container.querySelector('[data-testid="task-restart-button"]')).toBeNull()
+	);
+});
+
+// A rejected restart that is not a 409 (the task vanished, the Hub faulted) reaches the same
+// region rather than the console.
+test('a non-409 status on restart is presented in the shared region', async () => {
+	getTaskRecordMock.mockResolvedValue({ status: 'ok', record: record() });
+	getTaskDetailMock.mockResolvedValue(detail({ status: 'failed' }));
+	restartTaskMock.mockRejectedValue(
+		new FakeIngestSubmissionApiError('This task no longer exists.', 404)
+	);
+
+	const screen = await render(Page, { data: { taskId: 'task-1' }, params: { taskId: 'task-1' } });
+	await screen.getByTestId('task-restart-button').click();
+
+	await expect
+		.element(screen.getByTestId('task-restart-error'))
+		.toHaveTextContent('This task no longer exists.');
+});
