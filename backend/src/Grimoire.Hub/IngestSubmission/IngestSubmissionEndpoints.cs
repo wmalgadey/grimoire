@@ -193,7 +193,7 @@ public static class IngestSubmissionEndpoints
         if (!promptValidation.IsValid)
         {
             HubMetrics.RecordIngestSubmission(kindLabel, "rejected");
-            IngestSubmissionLogEvents.LogConfigRejected(logger, kindLabel, promptValidation.ErrorMessage!);
+            IngestSubmissionLogEvents.LogConfigRejected(logger, kindLabel, promptValidation.Code!);
             return ToErrorResult(promptValidation);
         }
 
@@ -201,7 +201,7 @@ public static class IngestSubmissionEndpoints
         if (!stepsValidation.IsValid)
         {
             HubMetrics.RecordIngestSubmission(kindLabel, "rejected");
-            IngestSubmissionLogEvents.LogConfigRejected(logger, kindLabel, stepsValidation.ErrorMessage!);
+            IngestSubmissionLogEvents.LogConfigRejected(logger, kindLabel, stepsValidation.Code!);
             return ToErrorResult(stepsValidation);
         }
 
@@ -567,12 +567,18 @@ return ApiErrorResults.Problem(ApiErrorCatalogue.DefaultUserPromptEmpty);
         return Results.Ok(new { queuePaused = false, queuedTasks });
     }
 
-    private static IResult ToErrorResult(IngestSubmissionValidationResult validation) => validation.ErrorKind switch
+    /// <summary>
+    /// A validation failure that named itself (<see cref="IngestSubmissionValidationResult.Code"/>)
+    /// answers under that code; one that did not falls back to a code chosen by its error kind, so
+    /// every validation path still resolves to authored prose (024 FR-016).
+    /// </summary>
+    private static IResult ToErrorResult(IngestSubmissionValidationResult validation)
+        => ApiErrorResults.Problem(validation.Code ?? DefaultCodeFor(validation.ErrorKind), validation.ErrorMessage);
+
+    private static string DefaultCodeFor(IngestSubmissionValidationErrorKind kind) => kind switch
     {
-        IngestSubmissionValidationErrorKind.UnsupportedMediaType =>
-            ApiErrorResults.Problem(ApiErrorCatalogue.IngestSubmissionUnsupportedMediaType, validation.ErrorMessage),
-        IngestSubmissionValidationErrorKind.UnprocessableEntity =>
-            ApiErrorResults.Problem(ApiErrorCatalogue.IngestSubmissionUnprocessable, validation.ErrorMessage),
-        _ => ApiErrorResults.Problem(ApiErrorCatalogue.IngestSubmissionInvalid, validation.ErrorMessage),
+        IngestSubmissionValidationErrorKind.UnsupportedMediaType => ApiErrorCatalogue.IngestSubmissionUnsupportedMediaType,
+        IngestSubmissionValidationErrorKind.UnprocessableEntity => ApiErrorCatalogue.IngestSubmissionUnprocessable,
+        _ => ApiErrorCatalogue.IngestSubmissionInvalid,
     };
 }

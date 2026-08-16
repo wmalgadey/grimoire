@@ -266,12 +266,14 @@ public class BoardCompositeResponseTests
 
         Assert.False(root.GetProperty("messageTurnActive").GetBoolean());
 
-        // Unknown task ⇒ 404 with the contract's message shape.
+        // Unknown task ⇒ 404 in the shared error envelope (ADR-026). The detail is authored
+        // prose rather than the old interpolated "Remediation task 'no-such-task' was not
+        // found." — echoing the requested id back told the user nothing they did not type.
         var notFound = await client.GetAsync("/api/remediation-tasks/no-such-task");
         Assert.Equal(HttpStatusCode.NotFound, notFound.StatusCode);
         using var notFoundBody = JsonDocument.Parse(await notFound.Content.ReadAsStringAsync());
-        Assert.Equal("Remediation task 'no-such-task' was not found.",
-            notFoundBody.RootElement.GetProperty("message").GetString());
+        Assert.Equal("remediation_task_not_found", notFoundBody.RootElement.GetProperty("code").GetString());
+        Assert.False(string.IsNullOrWhiteSpace(notFoundBody.RootElement.GetProperty("detail").GetString()));
     }
 
     private static RemediationTaskRow MakeRemediationRow(

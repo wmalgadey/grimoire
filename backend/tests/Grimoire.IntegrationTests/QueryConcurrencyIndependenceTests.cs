@@ -59,7 +59,7 @@ public class QueryConcurrencyIndependenceTests
 
         Assert.Equal(HttpStatusCode.ServiceUnavailable, rejected.StatusCode);
         var body = await rejected.Content.ReadFromJsonAsync<System.Text.Json.JsonElement>();
-        Assert.Equal("query_concurrency_limit_reached", body.GetProperty("reason").GetString());
+        Assert.Equal("query_concurrency_limit_reached", body.GetProperty("code").GetString());
 
         // The 4th submission was rejected outright, never dispatched to the launcher.
         Assert.Equal(3, launcher.QueryRequests.Count);

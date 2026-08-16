@@ -83,9 +83,9 @@ public class RemediationAuthorizationTests
         Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
 
         using var body = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
-        Assert.Equal("task_not_proposed", body.RootElement.GetProperty("reason").GetString());
+        Assert.Equal("task_not_proposed", body.RootElement.GetProperty("code").GetString());
         Assert.Equal(state, body.RootElement.GetProperty("state").GetString());
-        Assert.False(string.IsNullOrWhiteSpace(body.RootElement.GetProperty("message").GetString()));
+        Assert.False(string.IsNullOrWhiteSpace(body.RootElement.GetProperty("detail").GetString()));
     }
 
     [Fact]
@@ -146,7 +146,7 @@ public class RemediationAuthorizationTests
 
         Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
         using var body = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
-        Assert.Equal("task_not_proposed", body.RootElement.GetProperty("reason").GetString());
+        Assert.Equal("task_not_proposed", body.RootElement.GetProperty("code").GetString());
         Assert.Equal(state, body.RootElement.GetProperty("state").GetString());
     }
 
@@ -191,7 +191,7 @@ public class RemediationAuthorizationTests
 
         Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
         using var body = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
-        Assert.Equal("task_not_authorized", body.RootElement.GetProperty("reason").GetString());
+        Assert.Equal("task_not_authorized", body.RootElement.GetProperty("code").GetString());
         Assert.Equal("proposed", body.RootElement.GetProperty("state").GetString());
     }
 
@@ -211,7 +211,7 @@ public class RemediationAuthorizationTests
 
         Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
         using var body = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
-        Assert.Equal("execution_already_started", body.RootElement.GetProperty("reason").GetString());
+        Assert.Equal("execution_already_started", body.RootElement.GetProperty("code").GetString());
         Assert.Equal(state, body.RootElement.GetProperty("state").GetString());
     }
 

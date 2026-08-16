@@ -14,7 +14,22 @@ public enum IngestSubmissionValidationErrorKind
     UnprocessableEntity,
 }
 
-public sealed record IngestSubmissionValidationResult(bool IsValid, string? ErrorMessage, IngestSubmissionValidationErrorKind ErrorKind = IngestSubmissionValidationErrorKind.None)
+/// <param name="Code">
+/// The stable machine identifier for this failure — the value that reaches the
+/// <c>ingest.submission.config_rejected</c> log event's <c>reason</c> field and the API error
+/// envelope's <c>code</c> (024-api-error-presentation, ADR-026).
+///
+/// It used to be glued onto the front of <see cref="ErrorMessage"/> as a
+/// <c>"user_prompt_too_long: ..."</c> prefix, which meant the identifier travelled inside the text
+/// shown to the user. Carrying it as its own field is what lets the envelope put the code where
+/// machines read it and the prose where people do, without either side parsing the other's half
+/// back out of a string.
+/// </param>
+public sealed record IngestSubmissionValidationResult(
+    bool IsValid,
+    string? ErrorMessage,
+    IngestSubmissionValidationErrorKind ErrorKind = IngestSubmissionValidationErrorKind.None,
+    string? Code = null)
 {
     public static readonly IngestSubmissionValidationResult Valid = new(true, null);
 }
@@ -87,8 +102,9 @@ public sealed class IngestSubmissionValidator
         {
             normalizedPrompt = null;
             return new IngestSubmissionValidationResult(false,
-                $"user_prompt_too_long: The user prompt exceeds the maximum of {UserPromptMaxLength} characters.",
-                IngestSubmissionValidationErrorKind.BadRequest);
+                $"The steering prompt exceeds the maximum of {UserPromptMaxLength} characters. Shorten it and submit again.",
+                IngestSubmissionValidationErrorKind.BadRequest,
+                "user_prompt_too_long");
         }
 
         return IngestSubmissionValidationResult.Valid;
@@ -113,23 +129,26 @@ public sealed class IngestSubmissionValidator
             if (step is null)
             {
                 return new IngestSubmissionValidationResult(false,
-                    $"unknown_convert_step: '{name}' is not a registered convert step.",
-                    IngestSubmissionValidationErrorKind.BadRequest);
+                    $"'{name}' is not a conversion step this wiki knows about.",
+                    IngestSubmissionValidationErrorKind.BadRequest,
+                    "unknown_convert_step");
             }
 
             if (!step.AppliesTo.Contains(kindLabel))
             {
                 return new IngestSubmissionValidationResult(false,
-                    $"convert_step_not_applicable: step '{name}' does not apply to {kindLabel} submissions.",
-                    IngestSubmissionValidationErrorKind.BadRequest);
+                    $"The '{name}' conversion step does not apply to {kindLabel} submissions.",
+                    IngestSubmissionValidationErrorKind.BadRequest,
+                    "convert_step_not_applicable");
             }
 
             if (!enabled && step.RequiredFor.Contains(kindLabel))
             {
                 return new IngestSubmissionValidationResult(false,
-                    $"convert_step_required: step '{name}' cannot be disabled for {kindLabel} submissions — " +
-                    "binary formats must be converted to Markdown to be usable by the agent.",
-                    IngestSubmissionValidationErrorKind.UnprocessableEntity);
+                    $"The '{name}' conversion step cannot be switched off for {kindLabel} submissions — " +
+                    "binary formats must be converted to Markdown before an agent can read them.",
+                    IngestSubmissionValidationErrorKind.UnprocessableEntity,
+                    "convert_step_required");
             }
         }
 

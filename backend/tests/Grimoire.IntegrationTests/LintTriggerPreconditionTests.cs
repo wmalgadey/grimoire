@@ -38,8 +38,8 @@ public class LintTriggerPreconditionTests
         Assert.Equal(HttpStatusCode.Conflict, second.StatusCode);
 
         using var body = JsonDocument.Parse(await second.Content.ReadAsStringAsync());
-        Assert.Equal("lint_run_active", body.RootElement.GetProperty("reason").GetString());
-        Assert.False(string.IsNullOrWhiteSpace(body.RootElement.GetProperty("message").GetString()));
+        Assert.Equal("lint_run_active", body.RootElement.GetProperty("code").GetString());
+        Assert.False(string.IsNullOrWhiteSpace(body.RootElement.GetProperty("detail").GetString()));
     }
 
     [Fact]
@@ -59,8 +59,8 @@ public class LintTriggerPreconditionTests
         Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
 
         using var body = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
-        Assert.Equal("unresolved_remediation_tasks", body.RootElement.GetProperty("reason").GetString());
-        Assert.False(string.IsNullOrWhiteSpace(body.RootElement.GetProperty("message").GetString()));
+        Assert.Equal("unresolved_remediation_tasks", body.RootElement.GetProperty("code").GetString());
+        Assert.False(string.IsNullOrWhiteSpace(body.RootElement.GetProperty("detail").GetString()));
 
         var unresolvedIds = body.RootElement.GetProperty("unresolvedTaskIds")
             .EnumerateArray().Select(e => e.GetString()).ToList();
@@ -121,7 +121,7 @@ public class LintTriggerPreconditionTests
 
                 // Clean reject: 409 naming the reason — never any other shape.
                 Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
-                Assert.Equal("lint_run_active", body.RootElement.GetProperty("reason").GetString());
+                Assert.Equal("lint_run_active", body.RootElement.GetProperty("code").GetString());
                 return false;
             },
             TimeSpan.FromSeconds(10),

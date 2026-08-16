@@ -119,7 +119,7 @@ public class IngestTaskRecordApiTests
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
 
         var json = await response.Content.ReadFromJsonAsync<JsonElement>();
-        Assert.False(string.IsNullOrWhiteSpace(json.GetProperty("message").GetString()));
+        Assert.False(string.IsNullOrWhiteSpace(json.GetProperty("detail").GetString()));
     }
 
     [Fact]
@@ -144,7 +144,7 @@ public class IngestTaskRecordApiTests
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
 
         var json = await response.Content.ReadFromJsonAsync<JsonElement>();
-        Assert.False(string.IsNullOrWhiteSpace(json.GetProperty("message").GetString()));
+        Assert.False(string.IsNullOrWhiteSpace(json.GetProperty("detail").GetString()));
     }
 
     [Fact]

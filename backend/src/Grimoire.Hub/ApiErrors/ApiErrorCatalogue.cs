@@ -37,6 +37,10 @@ public static class ApiErrorCatalogue
     public const string IngestSubmissionInvalid = "ingest_submission_invalid";
     public const string IngestSubmissionUnsupportedMediaType = "ingest_submission_unsupported_media_type";
     public const string IngestSubmissionUnprocessable = "ingest_submission_unprocessable";
+    public const string UserPromptTooLong = "user_prompt_too_long";
+    public const string UnknownConvertStep = "unknown_convert_step";
+    public const string ConvertStepNotApplicable = "convert_step_not_applicable";
+    public const string ConvertStepRequired = "convert_step_required";
     public const string IngestTaskNotFound = "ingest_task_not_found";
     public const string IngestSourceContentNotFound = "ingest_source_content_not_found";
     public const string IngestTaskRecordUnavailable = "ingest_task_record_unavailable";
@@ -108,6 +112,22 @@ public static class ApiErrorCatalogue
         new(IngestSubmissionUnprocessable, 422,
             "Source could not be processed",
             "The source was recognized but could not be processed. Check that it is reachable and not empty."),
+        // The four validator-owned failures. Their identifiers used to live glued to the front of
+        // the validator's own message text; carrying them here is what lets the endpoint answer
+        // with the code and the prose in separate members.
+        new(UserPromptTooLong, 400,
+            "Steering prompt is too long",
+            "The steering prompt is longer than this wiki allows. Shorten it and submit again."),
+        new(UnknownConvertStep, 400,
+            "Unknown conversion step",
+            "One of the conversion steps in this submission is not one this wiki knows about."),
+        new(ConvertStepNotApplicable, 400,
+            "Conversion step does not apply",
+            "One of the conversion steps in this submission does not apply to this kind of source."),
+        new(ConvertStepRequired, 422,
+            "Conversion step cannot be switched off",
+            "A conversion step this source type requires was switched off. Binary formats must be converted to Markdown before an agent can read them."),
+
         new(IngestTaskNotFound, 404,
             "Task not found",
             "This task no longer exists, or the link that led here is out of date."),

@@ -296,7 +296,8 @@ public class HubCliParityTests
         var httpResponse = await httpHarness.Client.PostAsync($"/api/ingest-submissions/{httpTaskId}/retrigger", content: null);
         Assert.Equal(HttpStatusCode.Conflict, httpResponse.StatusCode);
         using var httpBody = JsonDocument.Parse(await httpResponse.Content.ReadAsStringAsync());
-        Assert.Equal($"Task '{httpTaskId}' is not in the queue (completed).", httpBody.RootElement.GetProperty("message").GetString());
+        Assert.Equal("ingest_task_not_queued", httpBody.RootElement.GetProperty("code").GetString());
+        Assert.Contains("completed", httpBody.RootElement.GetProperty("detail").GetString(), StringComparison.Ordinal);
 
         // --- CLI path ---
         var (cliExitCode, cliStdout, _) = await cliHarness.RunRetriggerCommandAsync(cliTaskId);
