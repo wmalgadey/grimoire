@@ -1,10 +1,10 @@
-# The same-origin bridge (ADR-027 F1).
+# The same-origin bridge. See deploy/README.md.
 #
 # In development, `frontend/vite.config.ts` proxies /api and /hubs to the Hub so the
 # frontend's relative paths reach it. The Hub registers no static-file middleware and no
 # CORS policy, so a deployment needs the same bridge; this file is it. Keep the two route
 # prefixes here in step with `HubEndpoints.MapGrimoireEndpoints` — a prefix mapped there
-# and missing here is a 404 no test in the suite can see (ADR-027 consequences).
+# and missing here is a 404 no test in the suite can see.
 
 :8080 {
 	log
@@ -21,7 +21,7 @@
 	}
 
 	# Everything else is the SPA. adapter-static wrote one fallback document
-	# (ADR-027); try_files hands every unmatched path to it so the client router
+	# fallback document; try_files hands every unmatched path to it so the client router
 	# resolves deep links like /tasks/<id> on a cold load.
 	handle {
 		root * /srv

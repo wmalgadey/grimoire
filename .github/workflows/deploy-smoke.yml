@@ -1,8 +1,10 @@
 name: Deployment Smoke
 
-# ADR-027's Principle IV gate. The deployment stack introduces no code and therefore no
-# Boundary Rule; its invariants (V1/V2/V3) are configuration-shaped, so they are enforced
-# the way ADR-019 enforced the devcontainer's — by building the thing and exercising it.
+# The gate for the deployment stack (Constitution Principle IV: a convention not enforced
+# by CI does not exist). The stack introduces no code and therefore no Boundary Rule, so
+# what it needs enforcing are configuration-shaped properties — enforced the way ADR-019
+# enforced the devcontainer's, by building the thing and exercising it. deploy/README.md
+# explains why the stack is shaped the way these checks assert.
 #
 # The path filter is a deliberate cost tradeoff: a full image build duplicates work the
 # backend and frontend jobs already do in ci.yml, so this runs on the files that define
@@ -30,7 +32,7 @@ permissions:
 
 jobs:
   no-credentials-in-deployment-config:
-    name: V2 — no credential-shaped value in the deployment config
+    name: No credential-shaped value in the deployment config
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -55,13 +57,13 @@ jobs:
         run: |
           pattern='(ANTHROPIC_AUTH_TOKEN|ANTHROPIC_API_KEY|NVIDIA_API_KEY|GRIMOIRE_EVAL_PROVIDER_API_KEY)[[:space:]]*[=:]'
           if grep -rEn "$pattern" compose.yaml deploy/ | grep -vE '^\S+:[0-9]+:\s*#' ; then
-            echo "::error::Credential-shaped variable found in the deployment config (ADR-027 V2). The token reaches the Hub through the mounted .env file, never through a service environment."
+            echo "::error::Credential-shaped variable found in the deployment config (ADR-004). The token reaches the Hub through the mounted .env file, never through a service environment."
             exit 1
           fi
           echo "No credential-shaped variable in compose.yaml or deploy/."
 
   smoke:
-    name: V1/V3 — the stack serves, and fails closed without a secrets file
+    name: The stack serves, and fails closed without a secrets file
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -70,7 +72,7 @@ jobs:
       - name: Build the stack
         run: docker compose build
 
-      # V3 first, and without a .env anywhere: agent_dir and secrets_file are RequiredInput
+      # Fail-closed first, and without a .env anywhere: agent_dir and secrets_file are RequiredInput
       # locations (ADR-022), so a deployment missing the credential file must fail at
       # startup naming it — not start and fail at first dispatch.
       - name: Hub fails closed when no secrets file is mounted
@@ -81,11 +83,11 @@ jobs:
           set -e
           echo "$output"
           if [ "$status" -eq 0 ]; then
-            echo "::error::The Hub started without a secrets file (ADR-027 V3)."
+            echo "::error::The Hub started without a secrets file — it must fail closed."
             exit 1
           fi
           if ! echo "$output" | grep -q "secrets_file"; then
-            echo "::error::The Hub failed without naming secrets_file (ADR-027 V3)."
+            echo "::error::The Hub failed without naming secrets_file."
             exit 1
           fi
           echo "Hub failed closed, naming secrets_file."
@@ -98,7 +100,7 @@ jobs:
       - name: Start the stack
         run: docker compose up -d --wait
 
-      # V1: one origin serves both halves. The frontend document comes from the proxy's
+      # One origin serves both halves. The frontend document comes from the proxy's
       # own file server; /api/board is answered by the Hub through the same origin, which
       # is what the frontend's relative paths assume.
       - name: The proxy serves the frontend document

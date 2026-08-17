@@ -40,13 +40,13 @@ export default defineConfig({
 					filename.split(/[/\\]/).includes('node_modules') ? undefined : true
 			},
 
-			// ADR-027: the app is a declared SPA. Every route's `load` is a redirect or a
+			// The app is a declared SPA. Every route's `load` is a redirect or a
 			// route-param pass-through and every screen fetches its data in the browser
 			// (fetch + SignalR) after mount, so there is nothing for a server to render.
 			// `fallback` makes the proxy serve one document for every path and lets the
 			// client router resolve it; `ssr = false` in src/routes/+layout.ts is the other
 			// half. Reintroducing a server `load` means switching to adapter-node — see
-			// ADR-027's revisit trigger, not a change made here.
+			// deploy/README.md "Why it is shaped this way", not a change made here.
 			adapter: adapter({ fallback: 'index.html' })
 		})
 	],

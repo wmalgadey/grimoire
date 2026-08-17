@@ -1,17 +1,17 @@
-# Grimoire, self-hosted (ADR-027).
+# Grimoire, self-hosted.
 #
 #   cp .env-example .env    # then put a real ANTHROPIC_AUTH_TOKEN in it
 #   docker compose up --build
 #   open http://localhost:8080
 #
-# See deploy/README.md. This stack has no TLS and no authentication: it is meant for a
-# trusted host, not for exposure to an untrusted network.
+# deploy/README.md covers configuration and why the stack is shaped this way. It has no TLS
+# and no authentication: meant for a trusted host, not for an untrusted network.
 
 name: grimoire
 
 services:
   # The only published port. Serves the SPA and is the same-origin bridge to the Hub —
-  # the role Vite's proxy plays in development (ADR-027 F1).
+  # the role Vite's proxy plays in development.
   proxy:
     build:
       context: .
@@ -39,7 +39,7 @@ services:
     expose:
       - "8080"
     environment:
-      # ADR-027 S1: the three writable roots move onto named volumes. The agent
+      # The three writable roots move off their in-image defaults. The agent
       # directory is NOT overridden — it is a build artifact inside the image, and a
       # volume mounted over .grimoire would shadow the agent runtimes the build put
       # there. appsettings.json stays the sole source of defaults (ADR-022); these are

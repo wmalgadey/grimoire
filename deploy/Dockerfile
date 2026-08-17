@@ -1,4 +1,4 @@
-# Grimoire Hub runtime image (ADR-027).
+# Grimoire Hub runtime image. See deploy/README.md.
 #
 # Two build stages and two runnable targets. The backend build also distributes the three
 # agent runtimes into the image; the frontend build produces the static SPA. `runtime`
@@ -49,7 +49,7 @@ RUN dotnet publish backend/src/Grimoire.Hub/Grimoire.Hub.csproj \
         --configuration Release --no-restore -o /app/hub
 
 # ---------------------------------------------------------------------------
-# Stage 2 — frontend (static SPA, ADR-027 F1)
+# Stage 2 — frontend (static SPA)
 # ---------------------------------------------------------------------------
 FROM oven/bun:1.3.14 AS frontend
 
@@ -112,7 +112,7 @@ USER $APP_UID
 ENTRYPOINT ["dotnet", "/app/Grimoire.Hub.dll"]
 
 # ---------------------------------------------------------------------------
-# Stage 4 — proxy (the published origin, ADR-027 F1)
+# Stage 4 — proxy (the published origin)
 # ---------------------------------------------------------------------------
 # Same Dockerfile, second target: compose builds `runtime` for the hub service and this
 # for the proxy, so the SPA and the Hub can never be built from different commits.
