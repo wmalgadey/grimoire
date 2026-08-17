@@ -68,15 +68,20 @@ RUN bun run build
 FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS runtime
 
 # markitdown is a real external dependency of the ingest convert step
-# (MarkItDownOptions.DefaultExecutablePath = "markitdown"), installed the same way CI and
-# the devcontainer install it. Without it on PATH, conversion fails at dispatch time
-# rather than at startup.
+# (MarkItDownOptions.DefaultExecutablePath = "markitdown"). Without it on PATH, conversion
+# fails at dispatch time rather than at startup.
+#
+# Pinned, and pinned in all three places at once — here, .github/workflows/ci.yml and
+# .devcontainer/Dockerfile. An image rebuilt months from now must contain the converter the
+# suite was green against, and a pin that only one of the three carries is worse than none:
+# CI would then verify a version the deployment does not run. Moving the version means
+# moving all three.
 # curl is here for the container healthcheck only; the ASP.NET runtime image ships
 # without it.
 RUN apt-get update \
  && apt-get install -y --no-install-recommends python3-pip curl \
  && rm -rf /var/lib/apt/lists/* \
- && pip3 install --break-system-packages --no-cache-dir markitdown
+ && pip3 install --break-system-packages --no-cache-dir "markitdown==0.1.7"
 
 WORKDIR /app
 

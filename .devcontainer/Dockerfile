@@ -8,9 +8,10 @@ RUN rm -f /etc/apt/sources.list.d/yarn.list
 
 # markitdown (CLI) is a real, external conversion dependency several
 # Grimoire.IntegrationTests cases exercise directly (see IngestConvertStepTests
-# "FR-015: default path converts (real markitdown)"). Installed the same way
-# .github/workflows/ci.yml installs it, so devcontainer and CI stay the same claim.
+# "FR-015: default path converts (real markitdown)"). Installed and pinned the same way
+# .github/workflows/ci.yml and deploy/Dockerfile install it, so the devcontainer, CI and
+# the shipped image all exercise one version.
 RUN apt-get update \
     && apt-get install -y --no-install-recommends python3-pip \
     && rm -rf /var/lib/apt/lists/* \
-    && pip3 install --break-system-packages markitdown
+    && pip3 install --break-system-packages "markitdown==0.1.7"

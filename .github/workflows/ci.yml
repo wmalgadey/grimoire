@@ -25,7 +25,9 @@ jobs:
           dotnet-version: 10.0.x
 
       - name: Install markitdown (003-ingest-intake-webui conversion adapter)
-        run: pip install --break-system-packages markitdown
+        # Pinned in step with .devcontainer/Dockerfile and deploy/Dockerfile — see the note
+        # in deploy/Dockerfile for why the three move together.
+        run: pip install --break-system-packages "markitdown==0.1.7"
 
       - name: Restore solution
         run: dotnet restore backend/Grimoire.slnx
