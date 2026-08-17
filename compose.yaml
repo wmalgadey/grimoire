@@ -57,9 +57,19 @@ services:
       # already reads (ADR-004 / ADR-022 SecretsFile). Read-only, and a required input:
       # the Hub fails closed at startup naming `secrets_file` when it is absent.
       - ./.env:/app/.env:ro
-      - grimoire-data:/var/lib/grimoire/data
-      - grimoire-wiki:/var/lib/grimoire/wiki
-      - grimoire-memory:/var/lib/grimoire/memory
+      # Named volume by default, host directory on request. Compose decides which by the
+      # shape of the source: a bare name is a named volume, anything starting with `/` or
+      # `./` is a bind mount. So setting GRIMOIRE_WIKI_DIR=/home/me/vault in .env points
+      # the Hub at an existing Obsidian vault with no edit to this file; leaving it unset
+      # keeps the managed volume. See deploy/README.md for the ownership caveat.
+      - ${GRIMOIRE_DATA_DIR:-grimoire-data}:/var/lib/grimoire/data
+      - ${GRIMOIRE_WIKI_DIR:-grimoire-wiki}:/var/lib/grimoire/wiki
+      - ${GRIMOIRE_MEMORY_DIR:-grimoire-memory}:/var/lib/grimoire/memory
+    # Root by default, matching the base image. Set GRIMOIRE_UID/GRIMOIRE_GID to your own
+    # ids when bind-mounting a directory you also edit from the host, so the Hub does not
+    # leave root-owned files in it. Only meaningful for bind mounts — a fresh named volume
+    # inherits the image's root-owned mount point, which a non-root Hub cannot write to.
+    user: "${GRIMOIRE_UID:-0}:${GRIMOIRE_GID:-0}"
     healthcheck:
       # HubEndpoints maps GET / to a literal "Grimoire Hub" — the cheapest honest signal
       # that the host is serving, and the gate the proxy waits on.

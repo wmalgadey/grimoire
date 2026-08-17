@@ -47,7 +47,7 @@ containing a literal `$` will make Compose emit an interpolation warning.
 | `hub` | — | The Hub and the agent runtimes. Reachable only from inside the stack. |
 | `dashboard` | 18888 | Traces, metrics and logs (ADR-005). Holds no credential. |
 
-State lives in three named volumes:
+State lives in three places, managed volumes by default:
 
 - `grimoire-wiki` — **the product**. Back this one up.
 - `grimoire-data` — operational-state database and raw sources.
@@ -55,6 +55,43 @@ State lives in three named volumes:
 
 The agent directory is *not* a volume. It is a build artifact inside the image, so the Hub
 and the agents it spawns are always the same build.
+
+### Pointing the Hub at your own directories
+
+Each of the three takes a host path instead, without editing `compose.yaml`. Compose picks
+the kind from the shape of the value — a bare name is a managed volume, anything starting
+with `/` or `./` is a bind mount — so setting any of these in `.env` is enough:
+
+```bash
+GRIMOIRE_WIKI_DIR=/home/me/obsidian/my-vault   # run against an existing vault
+GRIMOIRE_DATA_DIR=./state/data
+GRIMOIRE_MEMORY_DIR=./state/memory
+```
+
+Mix freely: an unset variable keeps its managed volume while the others are bound to host
+paths.
+
+**If you bind-mount a directory you also use from the host — a real Obsidian vault, say —
+set the ownership knobs too:**
+
+```bash
+GRIMOIRE_UID=1000    # your `id -u`
+GRIMOIRE_GID=1000    # your `id -g`
+```
+
+Without them the Hub runs as root (the base image's default) and every page, log entry and
+record it writes into your vault lands root-owned, which your editor will not be able to
+change. With them, `chown` the directories to yourself once beforehand and everything the
+Hub creates belongs to you.
+
+These knobs are for bind mounts specifically. A *managed* volume starts out owned by root
+— it inherits the image's mount point — so a non-root Hub cannot write to one; leave
+`GRIMOIRE_UID` unset when you are using managed volumes.
+
+One more thing to check when you set them: `.env` has to be readable by that id. Root reads
+it regardless, so this never comes up in the default mode — but a `0600` file owned by a
+different host account is unreadable to a Hub running as `GRIMOIRE_UID`, and the Hub will
+fail closed naming `secrets_file`.
 
 ## Hub CLI commands
 
