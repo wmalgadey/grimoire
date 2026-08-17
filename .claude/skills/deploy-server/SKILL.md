@@ -51,7 +51,7 @@ The stack is deliberately left running — it is usually the thing the operator 
 look at. Diagnose before proposing anything:
 
 ```bash
-grimoire-server logs hub          # or: proxy
+grimoire-server logs hub          # or: dashboard
 ```
 
 Then say what broke and offer the choice: fix it on the branch, or
@@ -60,7 +60,9 @@ initiative** — that discards the state they asked to see. Ask first.
 
 Two failures have known causes worth naming immediately rather than investigating:
 
-- Only the SignalR check failed → the proxy is not passing the WebSocket upgrade.
+- Only the SignalR check failed → the realtime upgrade is not getting through. If
+  anything sits in front of the stack, that is the first place to look; otherwise the Hub
+  is up but its SignalR mapping is not answering.
 - The Hub restarts in a loop and the log names `secrets_file` → `.env` is missing, empty,
   or unreadable by the container's uid.
 

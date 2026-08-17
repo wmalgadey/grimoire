@@ -5,8 +5,8 @@
 # `grimoire-server` applies it for you, from its own copy in the state directory. Two
 # things differ from a laptop, and only two:
 #
-# 1. Published ports bind to the loopback address, not to every interface. ADR-027 records
-#    that this stack has no TLS and no authentication and is meant for a trusted host —
+# 1. Published ports bind to the loopback address, not to every interface. The stack has
+#    no TLS and no authentication and is meant for a trusted host (see deploy/README.md) —
 #    on a laptop "trusted host" is the machine you are sitting at, on a server it is a
 #    box with a public interface, and Compose's default `8080:8080` publishes there. The
 #    reverse of this decision is one variable (GRIMOIRE_BIND=0.0.0.0), but it should be a
@@ -21,16 +21,11 @@
 # needs Compose 2.24 or newer, which `grimoire-server` checks before it builds anything.
 
 services:
-  proxy:
+  # The Hub publishes the application port itself: it serves the UI, the API and the
+  # SignalR hubs on one origin, so there is no proxy in this stack to bind instead.
+  hub:
     ports: !override
       - "${GRIMOIRE_BIND:-127.0.0.1}:${GRIMOIRE_PORT:-8080}:8080"
-    logging:
-      driver: json-file
-      options:
-        max-size: "10m"
-        max-file: "3"
-
-  hub:
     logging:
       driver: json-file
       options:

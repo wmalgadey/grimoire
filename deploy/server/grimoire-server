@@ -2,7 +2,7 @@
 # Deploy a git ref of Grimoire to a self-hosted server and prove it serves.
 #
 # One host, one stack, one ref at a time: `deploy` moves the checkout to the requested
-# ref, rebuilds ADR-027's images and replaces the running containers. The three state
+# ref, rebuilds the deployment images and replaces the running containers. The three state
 # volumes are never touched, so the wiki survives every deployment and every rollback.
 #
 #   grimoire-server deploy pr/95      # a pull request head
@@ -221,8 +221,8 @@ base_url() { printf 'http://127.0.0.1:%s\n' "${GRIMOIRE_PORT:-8080}"; }
 
 # The stack's contract as an operator can observe it: one origin serves the SPA, that same
 # origin reaches the Hub, deep links fall back to the SPA document, and the realtime
-# transport survives the proxy. The last one is the check CI omits and the one a proxy
-# misconfiguration breaks first.
+# transport still works end to end. The last one is the check CI omits, and the one that
+# breaks first when something in front of the stack mishandles the upgrade.
 smoke() {
   local url failures=0
 
@@ -241,7 +241,7 @@ smoke() {
 
   log "Smoke checks against $url"
   _check "SPA document at /" "<!doctype html>" "$url/"
-  _check "Hub through the proxy at /api/board" "entries" "$url/api/board"
+  _check "API at /api/board" "entries" "$url/api/board"
   _check "deep link falls back to the SPA" "<!doctype html>" "$url/tasks/does-not-exist"
   _check "SignalR negotiate offers WebSockets" "WebSockets" \
     -X POST "$url/hubs/ingest-lifecycle/negotiate?negotiateVersion=1"
@@ -295,10 +295,10 @@ cmd_deploy() {
   previous="$(git -C "$repo" rev-parse HEAD)"
   started=$SECONDS
 
-  # A ref older than ADR-027 has no stack to bring up. Saying so before the checkout
-  # leaves the running deployment untouched.
+  # A ref older than the deployment stack has no compose file to bring up. Saying so
+  # before the checkout leaves the running deployment untouched.
   git -C "$repo" cat-file -e "$sha:compose.yaml" 2>/dev/null ||
-    die "$label ($(short "$sha")) has no compose.yaml — it predates the deployment stack (ADR-027)"
+    die "$label ($(short "$sha")) has no compose.yaml — it predates the deployment stack"
 
   subject="$(git -C "$repo" log -1 --format=%s "$sha")"
   log "Deploying $label — $(short "$sha") $subject"

@@ -2,9 +2,8 @@
 
 The development loop this sets up: you develop on your laptop and push a branch, then tell
 a Claude Code session running **on the server** to put that ref live. It rebuilds
-[ADR-027's stack](../../docs/adr/ADR-027-container-image-and-deployment-topology.md),
-replaces the running containers, checks that the deployment actually serves, and reports
-back. You look at the real thing over an SSH tunnel.
+[the stack](../README.md), replaces the running containers, checks that the deployment
+actually serves, and reports back. You look at the real thing over an SSH tunnel.
 
 One host, one stack, one ref at a time. `deploy` is the only command that changes what is
 running, and the three state volumes are never touched by it — the wiki survives every
@@ -78,8 +77,9 @@ reboot, on whatever ref was last deployed.
 ## Reaching it from your laptop
 
 **The stack publishes to `127.0.0.1` only.** It has no TLS and no authentication, and its
-telemetry dashboard is deliberately unsecured — ADR-027 records that as out of scope, and
-on a server "trusted host" has to mean something narrower than it does on a laptop.
+telemetry dashboard is deliberately unsecured — [`deploy/README.md`](../README.md) records
+that as out of scope, and on a server "trusted host" has to mean something narrower than it
+does on a laptop.
 
 Tunnel in over SSH:
 
@@ -163,13 +163,14 @@ Four things, against the running stack, in the order a broken deployment tends t
 
 | Check | Breaks when |
 | --- | --- |
-| `/` returns the SPA document | the frontend build or the proxy's file server is wrong |
-| `/api/board` answers through the proxy | the Hub is down, or `/api` is not forwarded |
+| `/` returns the SPA document | the frontend build is wrong, or the Hub did not mount it |
+| `/api/board` answers | the Hub is down, or failed to start |
 | `/tasks/does-not-exist` falls back to the SPA | deep links 404 instead of reaching the router |
-| `/hubs/ingest-lifecycle/negotiate` offers WebSockets | the proxy drops the realtime upgrade |
+| `/hubs/ingest-lifecycle/negotiate` offers WebSockets | the realtime transport is broken |
 
-The first three are what `.github/workflows/deploy-smoke.yml` verifies for ADR-027's V1;
-the fourth is the one CI omits and a proxy misconfiguration breaks first.
+All four hit the Hub directly — it serves the UI, the API and the SignalR hubs on one
+origin, so there is nothing between them and the application. The first three overlap
+`.github/workflows/deploy-smoke.yml`; the fourth is the one CI omits.
 
 A failing deployment is **left running**. It is usually the thing you wanted to look at,
 and tearing it down would take the evidence with it — `grimoire-server logs` and
@@ -210,13 +211,14 @@ All of it is environment, all of it optional:
 - **`the deployment checkout has local changes`** — the checkout drifted from origin.
   `git -C ~/grimoire status` will say how; this host is meant to run what is on origin.
 - **`... has no compose.yaml — it predates the deployment stack`** — the ref is older than
-  ADR-027. Nothing was deployed and the running stack is untouched.
+  the deployment stack. Nothing was deployed and the running stack is untouched.
 - **`no such pull request head on origin`** — the PR number is wrong, or the PR is from a
   fork whose head is not on this remote.
 - **`cannot talk to the docker daemon`** — the daemon is down, or your user is not in the
   `docker` group (`newgrp docker` after adding it).
-- **Smoke fails on the SignalR check only** — the proxy is not passing the WebSocket
-  upgrade. `grimoire-server logs proxy`.
+- **Smoke fails on the SignalR check only** — the realtime upgrade is not getting through.
+  If you put anything in front of the stack, check that it passes WebSocket upgrades;
+  otherwise `grimoire-server logs hub`.
 - **The Hub restarts in a loop** — nearly always `.env`: absent, empty, or unreadable by
   the container's uid. The message names `secrets_file`.
 
