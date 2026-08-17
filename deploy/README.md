@@ -72,26 +72,43 @@ Mix freely: an unset variable keeps its managed volume while the others are boun
 paths.
 
 **If you bind-mount a directory you also use from the host — a real Obsidian vault, say —
-set the ownership knobs too:**
+run the Hub as yourself:**
 
 ```bash
 GRIMOIRE_UID=1000    # your `id -u`
-GRIMOIRE_GID=1000    # your `id -g`
 ```
 
-Without them the Hub runs as root (the base image's default) and every page, log entry and
-record it writes into your vault lands root-owned, which your editor will not be able to
-change. With them, `chown` the directories to yourself once beforehand and everything the
-Hub creates belongs to you.
+Both containers are rootless by default and run as uid `1654`, so without this the pages,
+`log.md` entries and records the Hub writes into your vault belong to `1654` rather than
+to you. Point `GRIMOIRE_UID` at your own id and `chown` the directory to yourself once,
+and everything the Hub creates is yours.
 
-These knobs are for bind mounts specifically. A *managed* volume starts out owned by root
-— it inherits the image's mount point — so a non-root Hub cannot write to one; leave
-`GRIMOIRE_UID` unset when you are using managed volumes.
+Leave `GRIMOIRE_GID` alone. The image's writable roots are owned by group 0 and are
+group-writable, which is what lets *any* uid write to them — change the group and a
+managed volume stops being writable.
 
-One more thing to check when you set them: `.env` has to be readable by that id. Root reads
-it regardless, so this never comes up in the default mode — but a `0600` file owned by a
-different host account is unreadable to a Hub running as `GRIMOIRE_UID`, and the Hub will
-fail closed naming `secrets_file`.
+One more thing when you set it: `.env` has to be readable by that id, or the Hub fails
+closed naming `secrets_file`.
+
+## Security posture
+
+Rootless by default, on terms meant to survive the move to a cluster:
+
+- Both containers run as a **numeric non-root uid** (`1654`). Numeric rather than a
+  username because Kubernetes' `runAsNonRoot` admission check can only verify a number.
+- Writable directories are owned by **group 0 and group-writable**, the arbitrary-uid
+  convention OpenShift requires. A `runAsUser: <anything>` pod can write to them with no
+  init container fixing permissions first.
+- **All capabilities dropped**, `no-new-privileges` set. Nothing needs a capability: the
+  ports are unprivileged, the Hub spawns agents as its own uid, and it writes only under
+  `/var/lib/grimoire`.
+- Nothing under `/app` is written at runtime — the secrets file and the agent runtime are
+  read-only inputs — so the Hub's own image content stays untouched while it runs.
+
+What is still **not** covered, and would be needed before this faces an untrusted network:
+there is no TLS, no authentication in front of the Hub or the UI, and the telemetry
+dashboard is deliberately unsecured. Those are properties of this compose stack, not of
+the image; a cluster deployment would put an ingress with TLS and an auth proxy in front.
 
 ## Hub CLI commands
 

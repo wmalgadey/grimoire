@@ -22,6 +22,11 @@ services:
     depends_on:
       hub:
         condition: service_healthy
+    user: "${GRIMOIRE_PROXY_UID:-1654}:0"
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
     restart: unless-stopped
 
   hub:
@@ -65,11 +70,17 @@ services:
       - ${GRIMOIRE_DATA_DIR:-grimoire-data}:/var/lib/grimoire/data
       - ${GRIMOIRE_WIKI_DIR:-grimoire-wiki}:/var/lib/grimoire/wiki
       - ${GRIMOIRE_MEMORY_DIR:-grimoire-memory}:/var/lib/grimoire/memory
-    # Root by default, matching the base image. Set GRIMOIRE_UID/GRIMOIRE_GID to your own
-    # ids when bind-mounting a directory you also edit from the host, so the Hub does not
-    # leave root-owned files in it. Only meaningful for bind mounts — a fresh named volume
-    # inherits the image's root-owned mount point, which a non-root Hub cannot write to.
-    user: "${GRIMOIRE_UID:-0}:${GRIMOIRE_GID:-0}"
+    # Rootless by default — the uid baked into the image. Override GRIMOIRE_UID with your
+    # own `id -u` when bind-mounting a directory you also edit from the host, so the files
+    # the Hub writes belong to you. Leave GRIMOIRE_GID at 0: the image's writable roots are
+    # group-0-owned and group-writable, which is what lets any uid write to them.
+    user: "${GRIMOIRE_UID:-1654}:${GRIMOIRE_GID:-0}"
+    # Nothing here needs a capability: the Hub binds an unprivileged port, spawns agents as
+    # the same uid, and writes only under /var/lib/grimoire.
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
     healthcheck:
       # HubEndpoints maps GET / to a literal "Grimoire Hub" — the cheapest honest signal
       # that the host is serving, and the gate the proxy waits on.

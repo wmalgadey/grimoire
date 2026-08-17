@@ -247,12 +247,16 @@ scan is the same narrow, credential-only denylist ADR-019 already justified.
   interpreter with markitdown, and three agent runtimes that each hold their own copy of
   the shared dependency set — the per-agent duplication ADR-022 already accepted and
   justified, now multiplied into an image layer.
-- **Bad / accepted**: the Hub container runs as root, the image default. Dropping to the
-  `app` user requires volume ownership handling and makes the read-only `.env` mount
-  depend on host file permissions matching a container UID. Deferred deliberately, and
-  called out here rather than left implicit: **this stack is not hardened for exposure to
-  an untrusted network.** It has no TLS, no authentication, and an unsecured telemetry
-  dashboard. Publishing it beyond a trusted host is a decision this ADR does not make.
+- **Good**: both containers are rootless by default — a numeric non-root uid (so
+  Kubernetes' `runAsNonRoot` can verify it), all capabilities dropped, `no-new-privileges`
+  set, and writable roots owned by group 0 and group-writable so an arbitrary `runAsUser`
+  can write to them without an init container. Nothing under `/app` is written at runtime.
+- **Bad / accepted, and stated rather than implied**: **this stack is still not hardened
+  for exposure to an untrusted network.** It has no TLS, no authentication in front of the
+  Hub or the UI, and an unsecured telemetry dashboard. Those are properties of this compose
+  stack rather than of the image — a cluster deployment would front it with a TLS ingress
+  and an auth proxy. Publishing it beyond a trusted host is a decision this ADR does not
+  make.
 - **Bad**: a fourth long-running artifact (the proxy configuration) now encodes the route
   split between frontend and Hub. Adding a route prefix to `HubEndpoints` without adding
   it to the proxy configuration produces a 404 that the test suite cannot see; V1 covers
