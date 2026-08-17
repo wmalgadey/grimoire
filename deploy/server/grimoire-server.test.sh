@@ -269,6 +269,32 @@ assert_equals "$(record_get "$(tool_file)" missing)" "" "record_get on an absent
 SCRIPT_PATH="$work/installed"
 assert_equals "$(installed_copy "$fake_checkout")" "$work/installed" "installed_copy while running an installed copy"
 
+# --- Invoked by bare name off $PATH, which is how an installed copy is actually run.
+#
+# `installed_copy` resolves the running script from BASH_SOURCE[0], and everything `update`
+# does hangs off getting that right: a wrong answer here means refreshing the wrong file, or
+# a file that does not exist. The case worth pinning is the one an operator uses — `PATH` set
+# by ~/.bashrc, command typed bare — because it is the one where BASH_SOURCE[0] could
+# plausibly be just the command name.
+#
+# It is not: the kernel resolves a shebang script's path before the interpreter ever sees it,
+# so BASH_SOURCE[0] arrives absolute. That is a property of how the script is launched rather
+# than of anything this file does, which is exactly why it is worth a test — it cannot be
+# read off the source, and `installed_copy` would need a `command -v` fallback if it were
+# ever untrue. Run as a real subprocess, because that is the only way to exercise it;
+# `version` is used because it reports the resolved path and touches no network or docker.
+
+path_dir="$work/bin"
+mkdir -p "$path_dir"
+cp "$script_dir/grimoire-server" "$path_dir/grimoire-server"
+chmod 0755 "$path_dir/grimoire-server"
+
+reported="$(PATH="$path_dir:$PATH" GRIMOIRE_REPO="$fake_checkout" GRIMOIRE_STATE_DIR="$work/state-bare" \
+  grimoire-server version 2>&1 | sed -n 's/^ *script *//p' | tail -n 1)"
+
+assert_equals "$reported" "$path_dir/grimoire-server" \
+  "a bare-name invocation off \$PATH resolves to the absolute installed copy"
+
 if ((failures > 0)); then
   echo "$failures assertion(s) failed" >&2
   exit 1
