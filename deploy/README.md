@@ -208,6 +208,16 @@ separate trees — which is what makes the image disposable and the volumes port
 environment tier is part of ADR-022's own precedence chain (CLI > environment >
 `appsettings.json`), so `appsettings.json` remains the sole source of *defaults*.
 
+**The image is told its own version; it cannot work it out.** GitVersion computes every
+version number this repository produces, from the git history and the tags (ADR-027) — and
+the build context has no history to read, because `.dockerignore` excludes `.git/` to keep
+the context small and the layer cache from invalidating on every commit. So the version
+comes in as the `GRIMOIRE_VERSION` build argument, `backend/Directory.Build.props` detects
+the absent repository and steps aside, and the Hub prints what it was given under its logo
+on every help screen. `grimoire-server deploy` sets it from the checkout it is deploying; a
+bare `docker compose up --build` gets `0.0.0-local`, which is honest about being a local
+build rather than pretending to be a release.
+
 **The telemetry dashboard is ADR-005's**, reused rather than re-decided. The Hub's OTLP
 exporter is registered unconditionally, so without a receiver it would retry into the void.
 

@@ -267,6 +267,7 @@ All of it is environment, all of it optional:
 | `GRIMOIRE_DASHBOARD_PORT` | `18888` | telemetry dashboard port |
 | `GRIMOIRE_HEALTH_TIMEOUT` | `180` | seconds to wait for the stack to answer |
 | `GRIMOIRE_LOG_LINES` | `100` | lines `logs` tails |
+| `GRIMOIRE_VERSION` | `git describe` of the checkout | the version stamped into the image (ADR-027); set it to override what a deployed Hub reports for itself |
 | `GRIMOIRE_TAILSCALE_SERVICE` | unset | tailnet service to advertise, e.g. `svc:grimoire`; unset turns the feature off |
 | `GRIMOIRE_TAILSCALE_PORT` | `443` | HTTPS port of the service endpoint; rejected before an image build if it is not a port |
 | `GRIMOIRE_TAILSCALE_DOMAIN` | derived | overrides the derived `<service>.<tailnet>.ts.net` |

@@ -1,0 +1,43 @@
+# GitVersion — the one place a Grimoire version number is decided (ADR-027).
+#
+# GitHub Flow: `main` is always releasable, and everything else is a short-lived branch cut
+# from it and merged back through a pull request. There is no develop branch, no release
+# branch and no long-lived maintenance line, so the only two shapes GitVersion has to
+# recognise here are "main" and "a branch on its way to main".
+#
+# Nothing in the build restates a version: `backend/Directory.Build.props` takes what this
+# computes, and the container image — whose build context has no .git — receives it as a
+# build argument. See docs/adr/ADR-027-gitversion-github-flow.md.
+workflow: GitHubFlow/v1
+
+# This repository's tags are bare SemVer (`0.0.25`), not `v`-prefixed. The default pattern
+# accepts both; it is pinned because the whole version line hangs off it — a change that
+# stopped matching the existing tags would silently restart the count from 0.0.1 rather
+# than fail.
+tag-prefix: '[vV]?'
+
+branches:
+  # A commit on main is a release candidate with no prerelease label: the version it
+  # carries is the version that ships if it is tagged. The number moves by a patch unless a
+  # commit message says otherwise (see the bump messages below).
+  main:
+    label: ''
+    increment: Patch
+
+  # Every branch in this repository is the same thing to GitHub Flow — a branch on its way
+  # to main — but they are not all named alike: Spec Kit features and their stacked layers
+  # are `NNN-feature-name`, agent-authored branches are `claude/<slug>`, and the
+  # conventional prefixes show up too. All of them get a prerelease label derived from the
+  # branch name, so two branches building the same commit count never collide.
+  feature:
+    regex: ^(?<BranchName>(features?|feat|fix|chore|docs|deploy|refactor|test|claude)[/-].+|\d{3}-.+)$
+    source-branches: ['main']
+    label: '{BranchName}'
+    increment: Inherit
+
+# GitHub Flow has no release branch to announce that a change is more than a patch, so the
+# commit message carries it: `+semver: minor` in a commit or in the squashed pull request
+# title is what moves the minor number. Without one, main increments the patch.
+major-version-bump-message: '\+semver:\s?(breaking|major)'
+minor-version-bump-message: '\+semver:\s?(feature|minor)'
+patch-version-bump-message: '\+semver:\s?(fix|patch)'

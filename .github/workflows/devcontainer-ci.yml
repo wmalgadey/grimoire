@@ -54,6 +54,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          # GitVersion reads the git history and the tags to compute the build's version
+          # (ADR-027); a shallow clone has neither and it fails rather than guessing.
+          fetch-depth: 0
 
       - name: Build and run backend suites inside the devcontainer
         uses: devcontainers/ci@v0.3

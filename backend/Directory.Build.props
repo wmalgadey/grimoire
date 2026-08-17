@@ -4,12 +4,41 @@
     <TargetFramework>net10.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
-
-    <Version>1.0.0</Version>
-    <AssemblyVersion>1.0.0.0</AssemblyVersion>
-    <FileVersion>1.0.0.0</FileVersion>
-    <InformationalVersion>$(Version)</InformationalVersion>
   </PropertyGroup>
+
+  <!--
+    Versioning (ADR-027). GitVersion computes Version/AssemblyVersion/FileVersion/
+    InformationalVersion from the git history and the tags, following the GitHub Flow
+    configuration in GitVersion.yml at the repository root. No version number is written
+    down here: a literal would be a second source of truth, and the one that is wrong.
+
+    GitVersion needs a git repository with its tags and its history — a shallow clone is
+    not enough, which is why every workflow that builds checks out with fetch-depth: 0.
+
+    Two places have no repository to read and must not fail because of it: the container
+    image build (deploy/Dockerfile — .dockerignore excludes .git/ so the context never
+    carries one) and a plain source drop. Both fall back to an honest 0.0.0-nogit, and the
+    image build passes the real version in as -p:InformationalVersion=… instead. Setting
+    DisableGitVersionTask=true by hand takes the same path.
+  -->
+  <PropertyGroup>
+    <DisableGitVersionTask Condition="'$(DisableGitVersionTask)' == '' And !Exists('$(MSBuildThisFileDirectory)../.git')">true</DisableGitVersionTask>
+    <!-- The generated GitVersionInformation class is not read by any code here; the Hub's
+         help header goes through AssemblyInformationalVersionAttribute (HubCliHelpProvider),
+         which the SDK stamps from $(InformationalVersion) either way. -->
+    <GenerateGitVersionInformation>false</GenerateGitVersionInformation>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(DisableGitVersionTask)' == 'true'">
+    <Version>0.0.0-nogit</Version>
+    <AssemblyVersion>0.0.0.0</AssemblyVersion>
+    <FileVersion>0.0.0.0</FileVersion>
+    <InformationalVersion Condition="'$(InformationalVersion)' == ''">$(Version)</InformationalVersion>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="GitVersion.MsBuild" PrivateAssets="all" IncludeAssets="runtime; build; native; contentfiles; analyzers; buildtransitive" />
+  </ItemGroup>
 
   <PropertyGroup Condition="'$(IsTestProject)' == 'true'">
     <IsPackable>false</IsPackable>
