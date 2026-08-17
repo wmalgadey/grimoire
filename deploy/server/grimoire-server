@@ -1,0 +1,484 @@
+#!/usr/bin/env bash
+# Deploy a git ref of Grimoire to a self-hosted server and prove it serves.
+#
+# One host, one stack, one ref at a time: `deploy` moves the checkout to the requested
+# ref, rebuilds the deployment images and replaces the running containers. The three state
+# volumes are never touched, so the wiki survives every deployment and every rollback.
+#
+#   grimoire-server deploy pr/95      # a pull request head
+#   grimoire-server deploy main       # a branch, tag or commit
+#   grimoire-server status            # what is running, and what origin has since
+#   grimoire-server smoke             # re-run the checks against the running stack
+#   grimoire-server rollback          # back to the previously deployed commit
+#
+# See deploy/server/README.md. Every function is defined before `main` runs at the very
+# bottom: bash parses the whole file first, so a `deploy` that checks out a ref which
+# changes or removes this script cannot pull the rug from under the running invocation.
+set -euo pipefail
+
+# Configuration is all environment, all optional — see `usage` at the bottom.
+SCRIPT_PATH="${BASH_SOURCE[0]}"
+MIN_COMPOSE_VERSION="2.24.0" # `!override` in the server compose overlay
+
+# --- Output ------------------------------------------------------------------------
+# Progress goes to stderr so that a helper's stdout is only ever its value.
+
+log() { printf '==> %s\n' "$*" >&2; }
+info() { printf '    %s\n' "$*" >&2; }
+warn() { printf 'warning: %s\n' "$*" >&2; }
+die() {
+  printf 'error: %s\n' "$*" >&2
+  exit 1
+}
+
+short() { printf '%s\n' "${1:0:12}"; }
+
+# --- Locations ---------------------------------------------------------------------
+
+state_dir() {
+  printf '%s\n' "${GRIMOIRE_STATE_DIR:-${XDG_STATE_HOME:-$HOME/.local/state}/grimoire-server}"
+}
+
+repo_dir() {
+  if [[ -n "${GRIMOIRE_REPO:-}" ]]; then
+    printf '%s\n' "$GRIMOIRE_REPO"
+    return
+  fi
+  local here
+  here="$(cd "$(dirname "$SCRIPT_PATH")" && pwd)"
+  git -C "$here" rev-parse --show-toplevel 2>/dev/null ||
+    die "not inside a git checkout and GRIMOIRE_REPO is unset — point it at the deployment checkout"
+}
+
+# --- Ref specifications ------------------------------------------------------------
+
+# A pull request head is the one ref shape git does not fetch by default, so it is the
+# one shape this has to recognise. Everything else — branch, tag, commit — is handed to
+# git as written and resolved after the fetch.
+#
+# Prints: <kind>\t<fetch refspec>\t<label>
+resolve_ref_spec() {
+  local spec="$1" number=""
+
+  case "$spec" in
+  '#'[0-9]*) number="${spec#\#}" ;;
+  pr/[0-9]* | PR/[0-9]*) number="${spec#*/}" ;;
+  pr-[0-9]* | PR-[0-9]*) number="${spec#*-}" ;;
+  pull/[0-9]*/head)
+    number="${spec#pull/}"
+    number="${number%/head}"
+    ;;
+  pull/[0-9]*) number="${spec#pull/}" ;;
+  esac
+
+  if [[ -n "$number" ]]; then
+    [[ "$number" =~ ^[0-9]+$ ]] || die "not a pull request number: $spec"
+    printf 'pr\tpull/%s/head\tpr/%s\n' "$number" "$number"
+    return
+  fi
+
+  [[ -n "$spec" ]] || die "empty ref"
+  printf 'ref\t%s\t%s\n' "$spec" "$spec"
+}
+
+# Fetches and resolves a ref specification to a commit in the deployment checkout.
+#
+# Prints: <sha>\t<label>
+fetch_and_resolve() {
+  local repo="$1" spec="$2" kind refspec label
+
+  IFS=$'\t' read -r kind refspec label < <(resolve_ref_spec "$spec")
+  [[ -n "${kind:-}" ]] || die "could not read the ref specification: $spec"
+
+  if [[ "$kind" == pr ]]; then
+    log "Fetching $label ($refspec)"
+    git -C "$repo" fetch --force origin "$refspec:refs/deploy/$label" >/dev/null ||
+      die "no such pull request head on origin: $refspec"
+    printf '%s\t%s\n' "$(git -C "$repo" rev-parse --verify "refs/deploy/$label^{commit}")" "$label"
+    return
+  fi
+
+  log "Fetching origin"
+  git -C "$repo" fetch --prune --tags origin >/dev/null || die "git fetch failed"
+
+  local candidate
+  for candidate in "refs/remotes/origin/$refspec" "$refspec"; do
+    if git -C "$repo" rev-parse --verify --quiet "$candidate^{commit}" >/dev/null; then
+      printf '%s\t%s\n' "$(git -C "$repo" rev-parse --verify "$candidate^{commit}")" "$label"
+      return
+    fi
+  done
+  die "unknown ref on origin: $spec"
+}
+
+# --- Deployment state --------------------------------------------------------------
+
+state_file() { printf '%s/deployed\n' "$(state_dir)"; }
+
+state_get() {
+  local key="$1" file
+  file="$(state_file)"
+  [[ -f "$file" ]] || return 0
+  sed -n "s/^${key}=//p" "$file" | tail -n 1
+}
+
+state_write() {
+  local ref="$1" sha="$2" subject="$3" previous="$4" file
+  file="$(state_file)"
+  mkdir -p "$(dirname "$file")"
+  {
+    printf 'ref=%s\n' "$ref"
+    printf 'sha=%s\n' "$sha"
+    printf 'subject=%s\n' "$subject"
+    printf 'deployed_at=%s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+    printf 'previous_sha=%s\n' "$previous"
+  } >"$file"
+}
+
+# --- Compose -----------------------------------------------------------------------
+
+# The overlay is operator configuration, not repository content: it is seeded from the
+# checkout once and then lives in the state directory. Deploying a ref that predates this
+# tooling — every ref until it merges — must not silently drop the loopback binding.
+overlay_file() {
+  local repo="$1" seed="$1/deploy/server/compose.server.yaml" overlay
+  overlay="$(state_dir)/compose.server.yaml"
+
+  if [[ ! -f "$overlay" ]]; then
+    [[ -f "$seed" ]] || die "no server overlay to seed from — expected $seed"
+    mkdir -p "$(dirname "$overlay")"
+    cp "$seed" "$overlay"
+    log "Seeded the server overlay into $overlay"
+  fi
+  printf '%s\n' "$overlay"
+}
+
+compose() {
+  local repo="$1" overlay
+  shift
+  overlay="$(overlay_file "$repo")"
+  GRIMOIRE_BIND="${GRIMOIRE_BIND:-127.0.0.1}" \
+    GRIMOIRE_PORT="${GRIMOIRE_PORT:-8080}" \
+    GRIMOIRE_DASHBOARD_PORT="${GRIMOIRE_DASHBOARD_PORT:-18888}" \
+    docker compose \
+    --project-directory "$repo" \
+    -f "$repo/compose.yaml" \
+    -f "$overlay" \
+    "$@"
+}
+
+# Compares dotted versions without sorting surprises: 2.9.0 is older than 2.24.0.
+version_at_least() {
+  local have="$1" want="$2" i hv wv
+  local -a h w
+  IFS=. read -r -a h <<<"${have%%-*}"
+  IFS=. read -r -a w <<<"${want%%-*}"
+  for i in 0 1 2; do
+    hv="${h[i]:-0}"
+    wv="${w[i]:-0}"
+    hv="${hv//[^0-9]/}"
+    wv="${wv//[^0-9]/}"
+    hv="${hv:-0}"
+    wv="${wv:-0}"
+    if ((10#$hv > 10#$wv)); then return 0; fi
+    if ((10#$hv < 10#$wv)); then return 1; fi
+  done
+  return 0
+}
+
+# --- Checks ------------------------------------------------------------------------
+
+preflight() {
+  local repo="$1" version mode
+
+  command -v docker >/dev/null || die "docker is not installed"
+  command -v curl >/dev/null || die "curl is not installed"
+  docker compose version >/dev/null 2>&1 ||
+    die "docker compose v2 is not available (the stack needs the compose plugin, not docker-compose)"
+
+  version="$(docker compose version --short 2>/dev/null || echo 0)"
+  version_at_least "$version" "$MIN_COMPOSE_VERSION" ||
+    die "docker compose $version is too old — the server overlay needs $MIN_COMPOSE_VERSION or newer for \`!override\`"
+
+  docker info >/dev/null 2>&1 ||
+    die "cannot talk to the docker daemon — is it running, and are you in the docker group?"
+
+  git -C "$repo" rev-parse --git-dir >/dev/null 2>&1 || die "not a git checkout: $repo"
+
+  # ADR-022 makes the secrets file a RequiredInput: without it the Hub fails closed at
+  # startup. Catching it here costs a stat instead of a full image build.
+  [[ -f "$repo/.env" ]] ||
+    die "no $repo/.env — copy .env-example to .env and put a real ANTHROPIC_AUTH_TOKEN in it"
+  [[ -s "$repo/.env" ]] || die "$repo/.env is empty"
+
+  mode="$(stat -c '%a' "$repo/.env" 2>/dev/null || stat -f '%Lp' "$repo/.env" 2>/dev/null || echo '')"
+  if [[ -n "$mode" && "${mode: -2}" != "00" ]]; then
+    warn "$repo/.env is readable beyond its owner (mode $mode) — it holds your Anthropic token; chmod 600 it"
+  fi
+}
+
+base_url() { printf 'http://127.0.0.1:%s\n' "${GRIMOIRE_PORT:-8080}"; }
+
+# The stack's contract as an operator can observe it: one origin serves the SPA, that same
+# origin reaches the Hub, deep links fall back to the SPA document, and the realtime
+# transport still works end to end. The last one is the check CI omits, and the one that
+# breaks first when something in front of the stack mishandles the upgrade.
+smoke() {
+  local url failures=0
+
+  url="$(base_url)"
+
+  _check() {
+    local name="$1" needle="$2" body
+    shift 2
+    if body="$(curl -fsS --max-time 20 "$@" 2>&1)" && [[ "$body" == *"$needle"* ]]; then
+      info "ok    $name"
+    else
+      info "FAIL  $name"
+      failures=$((failures + 1))
+    fi
+  }
+
+  log "Smoke checks against $url"
+  _check "SPA document at /" "<!doctype html>" "$url/"
+  _check "API at /api/board" "entries" "$url/api/board"
+  _check "deep link falls back to the SPA" "<!doctype html>" "$url/tasks/does-not-exist"
+  _check "SignalR negotiate offers WebSockets" "WebSockets" \
+    -X POST "$url/hubs/ingest-lifecycle/negotiate?negotiateVersion=1"
+
+  ((failures == 0)) || return 1
+}
+
+wait_for_health() {
+  local deadline=$((SECONDS + ${GRIMOIRE_HEALTH_TIMEOUT:-180})) url
+  url="$(base_url)"
+  log "Waiting for $url"
+  while ((SECONDS < deadline)); do
+    if curl -fsS --max-time 5 -o /dev/null "$url/"; then
+      info "serving"
+      return 0
+    fi
+    sleep 3
+  done
+  return 1
+}
+
+# --- Commands ----------------------------------------------------------------------
+
+cmd_deploy() {
+  local repo spec="" force=0 sha label previous started subject
+
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+    --force) force=1 ;;
+    -*) die "unknown option: $1" ;;
+    *) spec="$1" ;;
+    esac
+    shift
+  done
+
+  repo="$(repo_dir)"
+  [[ -n "$spec" ]] || spec="$(state_get ref)"
+  [[ -n "$spec" ]] || die "no ref given and nothing deployed yet — try: grimoire-server deploy main"
+
+  preflight "$repo"
+
+  if [[ -n "$(git -C "$repo" status --porcelain)" ]]; then
+    ((force == 1)) ||
+      die "the deployment checkout has local changes — this host deploys what is on origin. Clean the tree, or re-run with --force."
+    warn "local changes present; --force given"
+  fi
+
+  IFS=$'\t' read -r sha label < <(fetch_and_resolve "$repo" "$spec")
+  [[ -n "${sha:-}" ]] || die "could not resolve $spec"
+
+  previous="$(git -C "$repo" rev-parse HEAD)"
+  started=$SECONDS
+
+  # A ref older than the deployment stack has no compose file to bring up. Saying so
+  # before the checkout leaves the running deployment untouched.
+  git -C "$repo" cat-file -e "$sha:compose.yaml" 2>/dev/null ||
+    die "$label ($(short "$sha")) has no compose.yaml — it predates the deployment stack"
+
+  subject="$(git -C "$repo" log -1 --format=%s "$sha")"
+  log "Deploying $label — $(short "$sha") $subject"
+  git -C "$repo" checkout --detach --quiet "$sha"
+
+  log "Building images (the SDK, Bun and agent builds all run — first build takes a while)"
+  compose "$repo" build
+
+  log "Starting the stack"
+  compose "$repo" up -d --remove-orphans --wait ||
+    die "the stack did not come up — see: grimoire-server logs"
+
+  if ! wait_for_health; then
+    compose "$repo" logs --no-color --tail 60 >&2
+    die "the stack never answered on $(base_url)"
+  fi
+
+  if ! smoke; then
+    compose "$repo" logs --no-color --tail 60 >&2
+    # No automatic rollback: a failing deployment is usually the thing being tested, and
+    # tearing it down would take away the evidence. `rollback` is one command away.
+    die "smoke checks failed for $label — the stack is left running for diagnosis. Undo with: grimoire-server rollback"
+  fi
+
+  state_write "$label" "$sha" "$subject" "$previous"
+
+  log "Deployed $label in $((SECONDS - started))s"
+  info "app       $(base_url)"
+  info "telemetry http://127.0.0.1:${GRIMOIRE_DASHBOARD_PORT:-18888}"
+}
+
+cmd_status() {
+  local repo fetch=1 ref sha head upstream="" behind
+
+  if [[ "${1:-}" == "--no-fetch" ]]; then fetch=0; fi
+  repo="$(repo_dir)"
+  ref="$(state_get ref)"
+  sha="$(state_get sha)"
+  head="$(git -C "$repo" rev-parse HEAD)"
+
+  if [[ -z "$sha" ]]; then
+    log "Nothing deployed by this tool yet"
+    info "the checkout is at $(short "$head")"
+  else
+    log "Deployed $ref — $(short "$sha")"
+    info "$(state_get subject)"
+    info "at $(state_get deployed_at)"
+    [[ "$head" == "$sha" ]] ||
+      warn "the checkout is at $(short "$head"), not at the deployed commit — someone moved it by hand"
+  fi
+
+  if ((fetch == 1)) && [[ -n "$ref" ]]; then
+    log "Checking origin for newer commits on $ref"
+    if [[ "$ref" == pr/* ]]; then
+      git -C "$repo" fetch --force origin "pull/${ref#pr/}/head:refs/deploy/$ref" >/dev/null 2>&1 &&
+        upstream="refs/deploy/$ref"
+    else
+      git -C "$repo" fetch --prune --tags origin >/dev/null 2>&1 &&
+        upstream="refs/remotes/origin/$ref"
+    fi
+
+    if [[ -n "$upstream" ]] && git -C "$repo" rev-parse --verify --quiet "$upstream" >/dev/null; then
+      behind="$(git -C "$repo" rev-list --count "$sha..$upstream" 2>/dev/null || echo 0)"
+      if [[ "$behind" == "0" ]]; then
+        info "up to date"
+      else
+        info "$behind new commit(s) on $ref — deploy them with: grimoire-server deploy $ref"
+        # `-n 10` rather than `| head -n 10`: under `set -euo pipefail` a producer that
+        # outfills the pipe buffer dies of SIGPIPE when head closes it, and the pipeline's
+        # 141 then ends `status` right here — before the container listing and the smoke
+        # checks it exists to report. Letting git do the limiting removes the pipe.
+        git -C "$repo" log --oneline --no-decorate -n 10 "$sha..$upstream" | sed 's/^/      /' >&2
+      fi
+    else
+      info "could not resolve $ref on origin"
+    fi
+  fi
+
+  log "Containers"
+  compose "$repo" ps || true
+
+  smoke || warn "the running stack is not answering every check"
+}
+
+cmd_smoke() { smoke; }
+
+cmd_logs() {
+  local repo
+  repo="$(repo_dir)"
+  compose "$repo" logs --no-color --tail "${GRIMOIRE_LOG_LINES:-100}" "$@"
+}
+
+cmd_restart() {
+  local repo
+  repo="$(repo_dir)"
+  compose "$repo" restart "$@"
+  wait_for_health || die "the stack never answered on $(base_url) after the restart"
+  smoke
+}
+
+cmd_down() {
+  local repo
+  repo="$(repo_dir)"
+  # Volumes are never removed here. Wiping state is a deliberate act with its own command
+  # in the README, not a flag away from the routine stop.
+  compose "$repo" down
+  log "Stopped. The state volumes are untouched."
+}
+
+cmd_rollback() {
+  local previous
+  previous="$(state_get previous_sha)"
+  [[ -n "$previous" ]] || die "no previous deployment recorded"
+  log "Rolling back to $(short "$previous")"
+  cmd_deploy "$previous"
+}
+
+cmd_install() {
+  local dest="${1:-$HOME/.local/bin/grimoire-server}"
+  mkdir -p "$(dirname "$dest")"
+  install -m 0755 "$SCRIPT_PATH" "$dest"
+  log "Installed $dest"
+  info "It finds the checkout through GRIMOIRE_REPO — set that in your shell profile:"
+  info "  export GRIMOIRE_REPO=$(repo_dir)"
+  case ":$PATH:" in
+  *":$(dirname "$dest"):"*) ;;
+  *) info "  export PATH=\"$(dirname "$dest"):\$PATH\"" ;;
+  esac
+}
+
+usage() {
+  cat <<'EOF'
+grimoire-server — deploy a git ref of Grimoire to a self-hosted server and prove it serves.
+
+One host, one stack, one ref at a time. The three state volumes are never touched, so the
+wiki survives every deployment and every rollback. See deploy/server/README.md.
+
+Commands:
+  deploy [<ref>] [--force]   check out a ref, rebuild the images, replace the stack
+  status [--no-fetch]        what is deployed, what origin has since, container health
+  smoke                      re-run the endpoint checks against the running stack
+  logs [service...]          tail container logs (GRIMOIRE_LOG_LINES, default 100)
+  restart [service...]       restart containers without rebuilding
+  down                       stop the stack; the state volumes are kept
+  rollback                   redeploy the commit that ran before the current one
+  install [path]             copy this script outside the checkout (default ~/.local/bin)
+
+Refs:  main · some/branch · v1.2.3 · pr/95 · #95 · a703846
+
+Environment:
+  GRIMOIRE_REPO            the deployment checkout
+  GRIMOIRE_STATE_DIR       operator state (default $XDG_STATE_HOME/grimoire-server)
+  GRIMOIRE_BIND            published-port bind address (default 127.0.0.1)
+  GRIMOIRE_PORT            application port (default 8080)
+  GRIMOIRE_DASHBOARD_PORT  telemetry dashboard port (default 18888)
+  GRIMOIRE_HEALTH_TIMEOUT  seconds to wait for the stack (default 180)
+EOF
+}
+
+main() {
+  local command="${1:-help}"
+  if [[ $# -gt 0 ]]; then shift; fi
+  case "$command" in
+  deploy) cmd_deploy "$@" ;;
+  status) cmd_status "$@" ;;
+  smoke) cmd_smoke "$@" ;;
+  logs) cmd_logs "$@" ;;
+  restart) cmd_restart "$@" ;;
+  down) cmd_down "$@" ;;
+  rollback) cmd_rollback "$@" ;;
+  install) cmd_install "$@" ;;
+  help | --help | -h) usage ;;
+  *)
+    usage >&2
+    die "unknown command: $command"
+    ;;
+  esac
+}
+
+# Sourced by the test suite, which exercises the helpers above without running a command.
+if [[ "${GRIMOIRE_SERVER_LIB:-}" != "1" ]]; then
+  main "$@"
+fi

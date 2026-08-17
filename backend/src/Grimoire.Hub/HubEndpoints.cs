@@ -1,3 +1,4 @@
+using Grimoire.Hub.ApiErrors;
 using Grimoire.Hub.IngestSubmission;
 using Grimoire.Hub.LintDispatch;
 using Grimoire.Hub.QuerySubmission;
@@ -29,7 +30,16 @@ internal static class HubEndpoints
         // only exists on the server path.
         app.UseExceptionHandler();
 
-        app.MapGet("/", () => "Grimoire Hub");
+        var frontendMounted = app.MapSingleOriginFrontend();
+
+        // Only when there is no frontend to serve. Routing selects an endpoint before the
+        // static-file middleware runs, and that middleware deliberately stands down once an
+        // endpoint is already selected — so leaving this mapped would make "/" answer the bare
+        // greeting while every other path served the app.
+        if (!frontendMounted)
+        {
+            app.MapGet("/", () => "Grimoire Hub");
+        }
         app.MapHub<IngestLifecycleHub>("/hubs/ingest-lifecycle");
         app.MapGroup("/api/ingest-submissions").MapIngestSubmissionEndpoints();
         app.MapGroup("/api/ingest-queue").MapIngestQueueEndpoints();
@@ -45,5 +55,55 @@ internal static class HubEndpoints
         app.MapHub<RemediationLifecycleHub>("/hubs/remediation-lifecycle");
         app.MapGroup("/api/remediation-tasks").MapRemediationTaskEndpoints();
         return app;
+    }
+
+    /// <summary>
+    /// Serves the built frontend from the Hub itself, so a deployment is one container and any
+    /// proxy in front of it is ordinary infrastructure with a single upstream rather than
+    /// something that has to know Grimoire's route layout.
+    ///
+    /// <para>
+    /// Opt-in on the fallback document existing. The SPA is copied to <c>wwwroot/</c> beside the
+    /// Hub assembly by the deployment image build; a checkout run with <c>dotnet run</c> has none
+    /// and is served by <c>vite dev</c> instead, so this must stay a no-op there rather than a
+    /// startup failure. The test is <c>index.html</c> rather than the directory precisely because
+    /// the directory is not a reliable signal — <c>WebApplicationBuilder</c> creates the web root
+    /// when it is configured, so an empty <c>wwwroot/</c> would otherwise mount a frontend that
+    /// does not exist and answer every path with 404.
+    /// </para>
+    ///
+    /// <para>
+    /// The two explicit fallbacks are the load-bearing part. <c>MapFallbackToFile</c> catches
+    /// every unmatched path, which would answer a mistyped <c>/api/…</c> with the SPA document
+    /// and HTTP 200 — turning a client bug into a blank screen and hiding it from anything that
+    /// checks status codes. Both share the file fallback's order, so ASP.NET Core's route
+    /// precedence (a literal segment beats a catch-all) is what selects them; the behaviour is
+    /// pinned by <c>HubFrontendHostingTests</c>.
+    /// </para>
+    /// </summary>
+    /// <returns><see langword="true"/> when a built frontend was found and mounted.</returns>
+    internal static bool MapSingleOriginFrontend(this WebApplication app)
+    {
+        var fallbackDocument = Path.Combine(app.Environment.ContentRootPath, "wwwroot", "index.html");
+        if (!File.Exists(fallbackDocument))
+        {
+            return false;
+        }
+
+        // Before routing, so "/" and every hashed asset are served without reaching an endpoint.
+        app.UseDefaultFiles();
+        app.UseStaticFiles();
+
+        app.MapFallbackToFile("index.html");
+
+        // Unmatched backend paths answer 404 through the one envelope every Hub failure
+        // carries (ADR-026 BR1) rather than the bare, empty-bodied 404 an unrouted path used
+        // to produce — a client that mistyped a path gets the same shape it parses everywhere
+        // else, and `Results.NotFound()` here would be exactly the inline error result that
+        // rule exists to prevent.
+        app.MapFallback("/api/{**rest}", () => ApiErrorResults.Problem(ApiErrorCatalogue.EndpointNotFound));
+        app.MapFallback("/hubs/{**rest}", () => ApiErrorResults.Problem(ApiErrorCatalogue.EndpointNotFound));
+
+        return true;
     }
 }

@@ -1,0 +1,91 @@
+# Grimoire, self-hosted.
+#
+#   cp .env-example .env    # then put a real ANTHROPIC_AUTH_TOKEN in it
+#   docker compose up --build
+#   open http://localhost:8080
+#
+# deploy/README.md covers configuration and why the stack is shaped this way. It has no TLS
+# and no authentication: meant for a trusted host, not for an untrusted network.
+
+name: grimoire
+
+services:
+  hub:
+    build:
+      context: .
+      dockerfile: deploy/Dockerfile
+      target: runtime
+    # One port for everything: the Hub serves the UI, the API and the SignalR hubs, so the
+    # browser sees a single origin without anything in front of it. Put a TLS terminator or
+    # an auth proxy here if you need one — it needs no Grimoire-specific configuration.
+    ports:
+      - "${GRIMOIRE_PORT:-8080}:8080"
+    environment:
+      # The three writable roots move off their in-image defaults. The agent
+      # directory is NOT overridden — it is a build artifact inside the image, and a
+      # volume mounted over .grimoire would shadow the agent runtimes the build put
+      # there. appsettings.json stays the sole source of defaults (ADR-022); these are
+      # the environment tier of its own precedence chain.
+      Grimoire__Paths__Data__Dir: /var/lib/grimoire/data
+      Grimoire__Paths__Wiki__Dir: /var/lib/grimoire/wiki
+      Grimoire__Paths__Memory__Dir: /var/lib/grimoire/memory
+      # ADR-005's local OTLP backend. The Hub's exporter is registered unconditionally,
+      # so without a receiver it would retry into the void.
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://dashboard:18889
+      OTEL_EXPORTER_OTLP_PROTOCOL: grpc
+      #
+      # NOTHING credential-shaped belongs in this block. ADR-004 scopes the Anthropic
+      # token to the spawned agent process: the Hub reads it from the mounted .env below
+      # and injects it per spawn, and putting it here would place it in the Hub's own
+      # environment where every child inherits it. The deploy-smoke workflow fails the
+      # build if a credential variable appears in this file.
+    volumes:
+      # The credential and all agent model configuration, delivered as the file the Hub
+      # already reads (ADR-004 / ADR-022 SecretsFile). Read-only, and a required input:
+      # the Hub fails closed at startup naming `secrets_file` when it is absent.
+      - ./.env:/app/.env:ro
+      # Named volume by default, host directory on request. Compose decides which by the
+      # shape of the source: a bare name is a named volume, anything starting with `/` or
+      # `./` is a bind mount. So setting GRIMOIRE_WIKI_DIR=/home/me/vault in .env points
+      # the Hub at an existing Obsidian vault with no edit to this file; leaving it unset
+      # keeps the managed volume. See deploy/README.md for the ownership caveat.
+      - ${GRIMOIRE_DATA_DIR:-grimoire-data}:/var/lib/grimoire/data
+      - ${GRIMOIRE_WIKI_DIR:-grimoire-wiki}:/var/lib/grimoire/wiki
+      - ${GRIMOIRE_MEMORY_DIR:-grimoire-memory}:/var/lib/grimoire/memory
+    # Rootless by default — the uid baked into the image. Override GRIMOIRE_UID with your
+    # own `id -u` when bind-mounting a directory you also edit from the host, so the files
+    # the Hub writes belong to you. Leave GRIMOIRE_GID at 0: the image's writable roots are
+    # group-0-owned and group-writable, which is what lets any uid write to them.
+    user: "${GRIMOIRE_UID:-1654}:${GRIMOIRE_GID:-0}"
+    # Nothing here needs a capability: the Hub binds an unprivileged port, spawns agents as
+    # the same uid, and writes only under /var/lib/grimoire.
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    healthcheck:
+      # GET / is the frontend document once the SPA is mounted, and the bare "Grimoire Hub"
+      # greeting when it is not — either way the cheapest honest "this host is serving".
+      test: ["CMD", "curl", "-fsS", "http://localhost:8080/"]
+      interval: 10s
+      timeout: 3s
+      retries: 12
+      start_period: 20s
+    restart: unless-stopped
+
+  # ADR-005's already-decided local OTLP receiver and viewer, reused rather than
+  # re-decided. Unsecured because it is local-only; it holds no credential.
+  dashboard:
+    image: mcr.microsoft.com/dotnet/aspire-dashboard:9.0
+    environment:
+      DOTNET_DASHBOARD_UNSECURED_ALLOW_ANONYMOUS: "true"
+    ports:
+      - "${GRIMOIRE_DASHBOARD_PORT:-18888}:18888"
+    restart: unless-stopped
+
+volumes:
+  # The wiki is the product — back this one up. data holds the operational-state database
+  # and raw sources; memory holds task, conversation, finding and remediation records.
+  grimoire-wiki:
+  grimoire-data:
+  grimoire-memory:

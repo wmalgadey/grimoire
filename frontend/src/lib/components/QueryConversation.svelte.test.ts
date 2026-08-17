@@ -1,5 +1,5 @@
 import { render } from 'vitest-browser-svelte';
-import { expect, test, vi } from 'vitest';
+import { expect, test } from 'vitest';
 import QueryConversation from './QueryConversation.svelte';
 import type { QueryTurn } from '$lib/types';
 
@@ -36,13 +36,28 @@ test('renders the prompt and progressively-arriving answer text as it grows', as
 		.toHaveTextContent('ADR-004 scopes the API key');
 });
 
-test('displays the full answer with page-reference wikilinks once the turn completes', async () => {
-	const completedAnswer = 'ADR-004 scopes the credential to [[adr-004]] and [[adr-009]].';
+// The design turns the agent's own citation convention into links in the running text ("the
+// citation inside the answer should be inline as links in the text", chat 3), so a completed
+// answer reads as prose with each cited page openable in Obsidian rather than as raw
+// `[[wikilink]]` markup.
+test('renders page-reference citations as inline Obsidian links once the turn completes', async () => {
 	const screen = await render(QueryConversation, {
-		turns: [turn({ answer: completedAnswer, state: 'completed' })]
+		turns: [
+			turn({
+				answer: 'ADR-004 scopes the credential to [[adr-004]] and [[adr-009]].',
+				state: 'completed'
+			})
+		]
 	});
 
-	await expect.element(screen.getByTestId('query-turn-answer')).toHaveTextContent(completedAnswer);
+	const answerEl = screen.getByTestId('query-turn-answer').element();
+	const links = [...answerEl.querySelectorAll('a')];
+	expect(links.map((a) => a.getAttribute('href'))).toEqual([
+		'obsidian://open?file=adr-004',
+		'obsidian://open?file=adr-009'
+	]);
+	expect(answerEl.textContent).toContain('ADR-004 scopes the credential to adr-004');
+	expect(answerEl.innerHTML).not.toContain('[[adr-004]]');
 	await expect.element(screen.getByTestId('query-turn-state')).toHaveTextContent('Completed');
 });
 
@@ -118,17 +133,10 @@ test('shows an in-progress streaming cue while running, absent once terminal', a
 	await expect.element(screen.getByTestId('query-turn-streaming-cursor')).not.toBeInTheDocument();
 });
 
-test('shows a stop control only while the turn is running, and calls onInterrupt', async () => {
-	const onInterrupt = vi.fn();
-	const screen = await render(QueryConversation, {
-		turns: [turn({ state: 'running' })],
-		onInterrupt
-	});
+// Stop moved out of the message and into the composer (chat 3), so the message itself now
+// carries no controls at all — QueryPromptForm.svelte.test.ts covers the control's behaviour.
+test('the message carries no controls of its own', async () => {
+	const screen = await render(QueryConversation, { turns: [turn({ state: 'running' })] });
 
-	await expect.element(screen.getByTestId('query-turn-stop-button')).toBeVisible();
-	await screen.getByTestId('query-turn-stop-button').click();
-	expect(onInterrupt).toHaveBeenCalledWith('t-1');
-
-	await screen.rerender({ turns: [turn({ state: 'completed' })], onInterrupt });
-	await expect.element(screen.getByTestId('query-turn-stop-button')).not.toBeInTheDocument();
+	expect(screen.container.querySelectorAll('button').length).toBe(0);
 });

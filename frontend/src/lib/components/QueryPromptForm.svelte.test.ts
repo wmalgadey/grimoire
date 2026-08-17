@@ -102,11 +102,52 @@ test('plain Enter in the textarea does not submit the form', async () => {
 	expect(onSubmit).not.toHaveBeenCalled();
 });
 
-test('disabled prop disables the input and submit button, and shows the one-turn-at-a-time hint', async () => {
+test('disabled prop disables the input and submit button', async () => {
 	const onSubmit = vi.fn();
 	const screen = await render(QueryPromptForm, { onSubmit, disabled: true });
 
 	await expect.element(screen.getByTestId('query-prompt-input')).toBeDisabled();
 	await expect.element(screen.getByTestId('query-prompt-submit-button')).toBeDisabled();
-	await expect.element(screen.getByTestId('query-prompt-disabled-hint')).toBeVisible();
+});
+
+// FR-008's rule is stated whether or not a turn is running, so nobody has to trigger the
+// disabled state to learn it.
+test('the one-question-at-a-time rule is always on the composer', async () => {
+	const screen = await render(QueryPromptForm, { onSubmit: vi.fn() });
+
+	await expect
+		.element(screen.getByTestId('query-context-hint'))
+		.toHaveTextContent('One question at a time');
+});
+
+// The design's composer: while an answer streams the Ask button becomes Stop and the input
+// says what it is waiting for (chat 3).
+test('while answering, Ask becomes Stop and the input says what it is waiting for', async () => {
+	const onStop = vi.fn();
+	const screen = await render(QueryPromptForm, { onSubmit: vi.fn(), disabled: true, onStop });
+
+	await expect.element(screen.getByTestId('query-prompt-submit-button')).not.toBeInTheDocument();
+	await expect
+		.element(screen.getByTestId('query-prompt-input'))
+		.toHaveAttribute('placeholder', 'waiting for the current answer…');
+
+	await screen.getByTestId('query-prompt-stop-button').click();
+
+	expect(onStop).toHaveBeenCalledOnce();
+});
+
+test('the model row appears only when the thread offers a choice, and reports the pick', async () => {
+	const onModelChange = vi.fn();
+	const without = await render(QueryPromptForm, { onSubmit: vi.fn() });
+	await expect.element(without.getByTestId('ask-model-picker')).not.toBeInTheDocument();
+	without.unmount();
+
+	const withPicker = await render(QueryPromptForm, {
+		onSubmit: vi.fn(),
+		model: 'Claude Sonnet 4.5',
+		onModelChange
+	});
+	await withPicker.getByTestId('model-option').filter({ hasText: 'Claude Opus 4.1' }).click();
+
+	expect(onModelChange).toHaveBeenCalledWith('Claude Opus 4.1');
 });

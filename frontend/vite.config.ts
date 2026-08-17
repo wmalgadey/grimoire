@@ -2,7 +2,7 @@ import { existsSync } from 'node:fs';
 import tailwindcss from '@tailwindcss/vite';
 import { defineConfig } from 'vitest/config';
 import { playwright } from '@vitest/browser-playwright';
-import adapter from '@sveltejs/adapter-auto';
+import adapter from '@sveltejs/adapter-static';
 import { sveltekit } from '@sveltejs/kit/vite';
 
 // Some sandboxed dev/CI environments pre-install a Chromium build under
@@ -40,10 +40,14 @@ export default defineConfig({
 					filename.split(/[/\\]/).includes('node_modules') ? undefined : true
 			},
 
-			// adapter-auto only supports some environments, see https://svelte.dev/docs/kit/adapter-auto for a list.
-			// If your environment is not supported, or you settled on a specific environment, switch out the adapter.
-			// See https://svelte.dev/docs/kit/adapters for more information about adapters.
-			adapter: adapter()
+			// The app is a declared SPA. Every route's `load` is a redirect or a
+			// route-param pass-through and every screen fetches its data in the browser
+			// (fetch + SignalR) after mount, so there is nothing for a server to render.
+			// `fallback` makes the proxy serve one document for every path and lets the
+			// client router resolve it; `ssr = false` in src/routes/+layout.ts is the other
+			// half. Reintroducing a server `load` means switching to adapter-node — see
+			// deploy/README.md "Why it is shaped this way", not a change made here.
+			adapter: adapter({ fallback: 'index.html' })
 		})
 	],
 	server: {

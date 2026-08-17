@@ -1,0 +1,42 @@
+# Server overlay for compose.yaml — what changes when the stack stops being local.
+#
+#   docker compose -f compose.yaml -f deploy/server/compose.server.yaml up -d
+#
+# `grimoire-server` applies it for you, from its own copy in the state directory. Two
+# things differ from a laptop, and only two:
+#
+# 1. Published ports bind to the loopback address, not to every interface. The stack has
+#    no TLS and no authentication and is meant for a trusted host (see deploy/README.md) —
+#    on a laptop "trusted host" is the machine you are sitting at, on a server it is a
+#    box with a public interface, and Compose's default `8080:8080` publishes there. The
+#    reverse of this decision is one variable (GRIMOIRE_BIND=0.0.0.0), but it should be a
+#    decision, not the default. Reach the UI over an SSH tunnel or a private overlay
+#    network; put a TLS-terminating proxy in front if it needs to be public.
+#
+# 2. Container logs are capped. A long-lived deployment with `restart: unless-stopped`
+#    otherwise grows its json-file logs until the host's disk is the limit.
+#
+# `!override` replaces the base file's list instead of appending to it — Compose merges
+# sequences by concatenation, which for `ports` would try to publish twice and fail. It
+# needs Compose 2.24 or newer, which `grimoire-server` checks before it builds anything.
+
+services:
+  # The Hub publishes the application port itself: it serves the UI, the API and the
+  # SignalR hubs on one origin, so there is no proxy in this stack to bind instead.
+  hub:
+    ports: !override
+      - "${GRIMOIRE_BIND:-127.0.0.1}:${GRIMOIRE_PORT:-8080}:8080"
+    logging:
+      driver: json-file
+      options:
+        max-size: "50m"
+        max-file: "5"
+
+  dashboard:
+    ports: !override
+      - "${GRIMOIRE_BIND:-127.0.0.1}:${GRIMOIRE_DASHBOARD_PORT:-18888}:18888"
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"

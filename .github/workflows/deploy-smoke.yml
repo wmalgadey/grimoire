@@ -1,0 +1,160 @@
+name: Deployment Smoke
+
+# The gate for the deployment stack (Constitution Principle IV: a convention not enforced
+# by CI does not exist). The stack introduces no code and therefore no Boundary Rule, so
+# what it needs enforcing are configuration-shaped properties — enforced the way ADR-019
+# enforced the devcontainer's, by building the thing and exercising it. deploy/README.md
+# explains why the stack is shaped the way these checks assert.
+#
+# The path filter is a deliberate cost tradeoff: a full image build duplicates work the
+# backend and frontend jobs already do in ci.yml, so this runs on the files that define
+# the deployment or that the image build contract depends on, plus on demand. A backend
+# change that breaks only the image build is caught on the next deployment-touching PR or
+# by a manual run, not immediately.
+on:
+  pull_request:
+    paths:
+      - "compose.yaml"
+      - "deploy/**"
+      - ".dockerignore"
+      - ".github/workflows/deploy-smoke.yml"
+      - "backend/Directory.Build.targets"
+      - "backend/Directory.Packages.props"
+      - "backend/src/Grimoire.Hub/appsettings.json"
+      - "frontend/vite.config.ts"
+      - "frontend/package.json"
+      - "frontend/bun.lock"
+      - "frontend/src/routes/+layout.ts"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  # The server deployment tool decides things of its own — which ref a specification means,
+  # whether the installed Compose is new enough for the overlay's `!override`, what the
+  # deployment record holds, when the overlay is seeded. Those are the parts that can break
+  # from a change to the script alone, and they are what this exercises; it starts no
+  # containers and reaches no network.
+  server-tool:
+    name: deploy/server — the deployment tool's own decisions
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run the grimoire-server tests
+        run: ./deploy/server/grimoire-server.test.sh
+
+      # The overlay's whole purpose is that the published ports stop facing every
+      # interface. A merge mistake — `!override` dropped, or the tag unsupported — shows up
+      # as a second, unbound port entry rather than as an error, so assert the rendered
+      # configuration instead of trusting the file.
+      - name: The server overlay binds the published ports to the loopback address
+        run: |
+          rendered=$(docker compose -f compose.yaml -f deploy/server/compose.server.yaml config)
+          published=$(echo "$rendered" | grep -c 'published:')
+          bound=$(echo "$rendered" | grep -c 'host_ip: 127.0.0.1')
+          echo "$rendered" | grep -E 'published:|host_ip:'
+          if [ "$published" -ne 2 ] || [ "$bound" -ne 2 ]; then
+            echo "::error::The server overlay must publish exactly two loopback-bound ports; got $published published, $bound on 127.0.0.1."
+            exit 1
+          fi
+
+  no-credentials-in-deployment-config:
+    name: No credential-shaped value in the deployment config
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # ADR-004 scopes the Anthropic token to the spawned agent process: the Hub reads it
+      # from the mounted .env and injects it per spawn. Declaring it on a service would
+      # put it in the Hub's own environment, where every child inherits it — the exact
+      # leak ADR-004 exists to prevent, and the one a container makes tempting.
+      #
+      # The denylist is deliberately narrow — the credential-shaped .env-example variables
+      # only, the same scope devcontainer-ci.yml's SC-004 job uses. Broadening it would
+      # false-positive on legitimate non-secret configuration.
+      #
+      # What is forbidden is *wiring the variable in*, so the match requires an assignment
+      # or a YAML key (`NAME=` / `NAME:`) rather than any mention of the name. Naming it in
+      # prose is how deploy/README.md tells an operator which variable to put in their .env
+      # — the documented, correct path — and an earlier revision of this scan failed the
+      # build on exactly that sentence. Unlike devcontainer-ci.yml's pattern this does not
+      # require a value to follow: `ANTHROPIC_AUTH_TOKEN: ${TOKEN}` on a service passes the
+      # credential just as effectively as a literal would.
+      - name: Fail if a credential variable is declared or assigned
+        run: |
+          pattern='(ANTHROPIC_AUTH_TOKEN|ANTHROPIC_API_KEY|NVIDIA_API_KEY|GRIMOIRE_EVAL_PROVIDER_API_KEY)[[:space:]]*[=:]'
+          if grep -rEn "$pattern" compose.yaml deploy/ | grep -vE '^\S+:[0-9]+:\s*#' ; then
+            echo "::error::Credential-shaped variable found in the deployment config (ADR-004). The token reaches the Hub through the mounted .env file, never through a service environment."
+            exit 1
+          fi
+          echo "No credential-shaped variable in compose.yaml or deploy/."
+
+  smoke:
+    name: The stack serves, and fails closed without a secrets file
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build the stack
+        run: docker compose build
+
+      # Fail-closed first, and without a .env anywhere: agent_dir and secrets_file are RequiredInput
+      # locations (ADR-022), so a deployment missing the credential file must fail at
+      # startup naming it — not start and fail at first dispatch.
+      - name: Hub fails closed when no secrets file is mounted
+        run: |
+          set +e
+          output=$(docker run --rm grimoire-hub 2>&1)
+          status=$?
+          set -e
+          echo "$output"
+          if [ "$status" -eq 0 ]; then
+            echo "::error::The Hub started without a secrets file — it must fail closed."
+            exit 1
+          fi
+          if ! echo "$output" | grep -q "secrets_file"; then
+            echo "::error::The Hub failed without naming secrets_file."
+            exit 1
+          fi
+          echo "Hub failed closed, naming secrets_file."
+
+      # A throwaway credential: the smoke test proves the stack serves, never that the
+      # model provider answers. No real token is needed and none is available here.
+      - name: Create a throwaway secrets file
+        run: printf 'ANTHROPIC_AUTH_TOKEN=sk-ant-not-a-real-token\n' > .env
+
+      - name: Start the stack
+        run: docker compose up -d --wait
+
+      # One origin serves everything: the Hub answers the frontend document and the API on
+      # the same port, which is what the frontend's relative paths assume.
+      - name: The Hub serves the frontend document
+        run: |
+          body=$(curl -fsS --retry 5 --retry-connrefused http://localhost:8080/)
+          echo "$body" | head -c 200
+          echo "$body" | grep -q "<!doctype html>"
+
+      - name: The API answers on the same origin
+        run: curl -fsS --retry 5 --retry-connrefused http://localhost:8080/api/board | grep -q "entries"
+
+      - name: A deep link falls back to the SPA document
+        run: curl -fsS http://localhost:8080/tasks/does-not-exist | grep -q "<!doctype html>"
+
+      # The counterpart HubFrontendHostingTests pins in-process, asserted here against the
+      # real image: the SPA fallback must not turn an unknown API path into a 200.
+      - name: An unknown API path is a 404, not the SPA
+        run: |
+          status=$(curl -s -o /dev/null -w '%{http_code}' http://localhost:8080/api/not-a-real-endpoint)
+          echo "status=$status"
+          [ "$status" = "404" ]
+
+      - name: Dump logs on failure
+        if: failure()
+        run: docker compose logs --no-color
+
+      - name: Tear down
+        if: always()
+        run: docker compose down -v
