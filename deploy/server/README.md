@@ -88,14 +88,67 @@ ssh -L 8080:127.0.0.1:8080 -L 18888:127.0.0.1:18888 server
 ```
 
 Then open <http://localhost:8080> on your laptop, and the dashboard on
-<http://localhost:18888>. A private overlay network (Tailscale, WireGuard) works the same
-way — bind to the interface it gives you with `GRIMOIRE_BIND`.
+<http://localhost:18888>. Another private overlay network (WireGuard, say) works the same
+way — bind to the interface it gives you with `GRIMOIRE_BIND`. Tailscale has a first-class
+path below that needs no rebinding at all.
 
 Only widen the binding once something in front of it terminates TLS and asks who you are:
 
 ```bash
 GRIMOIRE_BIND=0.0.0.0 grimoire-server deploy main     # deliberate, not the default
 ```
+
+### As a Tailscale Service
+
+The other way in, and the one that gets you a real hostname without widening the binding
+at all. `tailscale serve` runs **on the host**, terminates TLS for the service's own
+MagicDNS name and proxies to `127.0.0.1` — the stack keeps publishing to loopback only,
+and the tailnet's grants decide who reaches it.
+
+```bash
+export GRIMOIRE_TAILSCALE_SERVICE=svc:grimoire
+grimoire-server deploy main
+#   ==> Advertising svc:grimoire on :443 → 127.0.0.1:8080
+#       tailnet   https://grimoire.crested-centauri.ts.net
+```
+
+Two preconditions belong to the tailnet, not to this script, and it can only tell you
+about them:
+
+1. **The service exists in the tailnet policy** with a `tcp:443` endpoint — admin console
+   → *Services* → *Define a Service*. Its DNS name is not yours to choose; it is
+   `<service>.<tailnet>.ts.net`, which is what `grimoire-server` prints.
+2. **This host is a tagged node.** `tailscale serve` refuses to host a service from a node
+   that authenticated as a user, so the deployment host needs `tailscale up --advertise-tags=...`
+   and a grant that lets your users reach `svc:grimoire` on port 443.
+
+Set nothing and none of this happens: with `GRIMOIRE_TAILSCALE_SERVICE` unset, every
+command behaves exactly as it did before, and a host without `tailscale` installed is
+unaffected.
+
+The service follows the deployment's lifecycle, so the tailnet name never points at a
+stack that is not serving:
+
+| When | What happens to the service |
+| --- | --- |
+| `deploy`, after the images are built | drained — the old stack served until the containers went away |
+| `deploy`, after all four smoke checks pass | configured and advertised |
+| `deploy`, smoke failed | left drained; the stack still runs for diagnosis |
+| `restart`, after its smoke checks pass | advertised again — this is how a drained stack comes back |
+| `down` | drained before the containers stop |
+
+Drive it by hand when you need to:
+
+```bash
+grimoire-server tailscale status      # the URL, and what this host serves for it
+grimoire-server tailscale up          # advertise the running stack
+grimoire-server tailscale drain       # stop taking new connections; config kept
+grimoire-server tailscale off         # remove the service config from this host
+```
+
+The telemetry dashboard is deliberately **not** published this way. It has no
+authentication of its own and `deploy/README.md` records securing it as out of scope; the
+SSH tunnel above stays the way to reach it.
 
 ## The Claude Code session on the server
 
@@ -104,11 +157,18 @@ your server, so "deploy pr/95" from your phone runs on the server's filesystem. 
 the checkout, inside `tmux` — the process must outlive your SSH connection:
 
 ```bash
-tmux new -s grimoire
-cd ~/grimoire
+grimoire-server tmux         # the `grimoire` session, in the deployment checkout
 claude                       # once, to accept the workspace trust dialog and /login
 claude remote-control --name grimoire-server
 ```
+
+`grimoire-server tmux` is the whole tmux dance in one command: it attaches to the
+`grimoire` session, and creates it in the deployment checkout if it is not there yet — so
+the same command starts the session on Monday and finds it again on Friday. It takes a
+session name (`grimoire-server tmux scratch`), reads `GRIMOIRE_TMUX_SESSION` for a
+different default, and does the sensible thing when you are already inside tmux (switch
+this client) or have no terminal to attach to at all — the Claude Code session running the
+command itself gets told the session exists and how to reach it, rather than an error.
 
 Then detach (`Ctrl-b d`) and pick the session up from the session list at
 [claude.ai/code](https://claude.ai/code) or in the Claude app. Requirements and the full
@@ -149,6 +209,8 @@ grimoire-server logs [service...]          tail container logs
 grimoire-server restart [service...]       restart without rebuilding
 grimoire-server down                       stop; the state volumes are kept
 grimoire-server rollback                   redeploy the previously deployed commit
+grimoire-server tailscale [action]         status · up · drain · off
+grimoire-server tmux [session]             attach to the Claude Code session, or start it
 ```
 
 Refs take any of `main`, `some/branch`, `v1.2.3`, `a703846`, and — the shape git does not
@@ -205,6 +267,10 @@ All of it is environment, all of it optional:
 | `GRIMOIRE_DASHBOARD_PORT` | `18888` | telemetry dashboard port |
 | `GRIMOIRE_HEALTH_TIMEOUT` | `180` | seconds to wait for the stack to answer |
 | `GRIMOIRE_LOG_LINES` | `100` | lines `logs` tails |
+| `GRIMOIRE_TAILSCALE_SERVICE` | unset | tailnet service to advertise, e.g. `svc:grimoire`; unset turns the feature off |
+| `GRIMOIRE_TAILSCALE_PORT` | `443` | HTTPS port of the service endpoint |
+| `GRIMOIRE_TAILSCALE_DOMAIN` | derived | overrides the derived `<service>.<tailnet>.ts.net` |
+| `GRIMOIRE_TMUX_SESSION` | `grimoire` | tmux session `grimoire-server tmux` attaches to |
 
 ## When something is wrong
 
@@ -221,6 +287,14 @@ All of it is environment, all of it optional:
   otherwise `grimoire-server logs hub`.
 - **The Hub restarts in a loop** — nearly always `.env`: absent, empty, or unreadable by
   the container's uid. The message names `secrets_file`.
+- **`tailscale serve failed`** — usually one of the two tailnet preconditions: the service
+  is not defined in the policy with a `tcp:443` endpoint, or this host authenticated as a
+  user instead of a tag (`service hosts must be tagged nodes`).
+  `grimoire-server tailscale status` shows what this host currently serves.
+- **The tailnet name resolves but refuses the connection** — the host is drained. That is
+  what `down`, and a `deploy` whose smoke checks failed, leave behind.
+  `grimoire-server tailscale up` re-advertises a stack you have since satisfied yourself
+  about.
 
 ## Tests
 
@@ -229,5 +303,8 @@ All of it is environment, all of it optional:
 ```
 
 Covers what this script itself decides — ref-specification parsing, the Compose version
-gate, the deployment state file, the overlay seeding rule — and runs in
-`.github/workflows/deploy-smoke.yml`. It starts no containers and reaches no network.
+gate, the deployment state file, the overlay seeding rule, and the tailnet service name,
+port and URL it derives from the environment — and runs in
+`.github/workflows/deploy-smoke.yml`. It starts no containers, runs no `tailscale`, and
+reaches no network: whether `tailscale serve` then works is tailscale's contract, not
+this script's.

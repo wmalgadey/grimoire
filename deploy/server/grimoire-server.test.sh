@@ -116,6 +116,61 @@ if (overlay_file "$fake_repo" >/dev/null 2>&1); then
   fail "overlay_file succeeded with no overlay and nothing to seed from"
 fi
 
+# --- The tailnet service name, port and URL this script derives from the environment.
+#
+# Nothing here runs `tailscale`: what is tested is the translation from an operator's
+# environment into the arguments tailscale is handed, which is the only part of it this
+# script decides. Whether `tailscale serve` then works is tailscale's own contract.
+
+unset GRIMOIRE_TAILSCALE_SERVICE GRIMOIRE_TAILSCALE_PORT GRIMOIRE_TAILSCALE_DOMAIN
+
+if tailscale_enabled; then fail "the tailnet service is on with GRIMOIRE_TAILSCALE_SERVICE unset"; fi
+assert_equals "$(tailscale_service)" "" "tailscale_service with nothing configured"
+assert_equals "$(tailscale_domain)" "" "tailscale_domain with nothing configured"
+assert_equals "$(tailscale_url)" "" "tailscale_url with nothing configured"
+
+# The `svc:` prefix is what tailscale validates against, so a bare name grows one.
+for configured in grimoire svc:grimoire; do
+  export GRIMOIRE_TAILSCALE_SERVICE="$configured"
+  assert_equals "$(tailscale_service)" "svc:grimoire" "tailscale_service $configured"
+done
+
+export GRIMOIRE_TAILSCALE_SERVICE=grimoire-server
+assert_equals "$(tailscale_service)" "svc:grimoire-server" "tailscale_service with a hyphen"
+
+# Names tailscale would reject are rejected here instead — before a full image build.
+for bad in "svc:" "Grimoire" "-grimoire" "grimoire-" "grim_oire" "grimoire.wiki" "svc:svc:grimoire"; do
+  export GRIMOIRE_TAILSCALE_SERVICE="$bad"
+  if (tailscale_service >/dev/null 2>&1); then
+    fail "tailscale_service accepted an invalid service name: $bad"
+  fi
+done
+
+# --- MagicDNSSuffix comes out of `tailscale status --json` without a jq dependency.
+
+status_json='{
+  "Version": "1.90.0",
+  "MagicDNSSuffix": "crested-centauri.ts.net",
+  "CurrentTailnet": {"Name": "crested-centauri.ts.net", "MagicDNSSuffix": "crested-centauri.ts.net"}
+}'
+assert_equals "$(printf '%s' "$status_json" | magic_dns_suffix)" "crested-centauri.ts.net" "magic_dns_suffix"
+assert_equals "$(printf '%s' '{"Version":"1.90.0"}' | magic_dns_suffix)" "" "magic_dns_suffix when the host is logged out"
+
+# --- The URL an operator is told to open.
+
+export GRIMOIRE_TAILSCALE_SERVICE=svc:grimoire
+export GRIMOIRE_TAILSCALE_DOMAIN=grimoire.crested-centauri.ts.net
+
+assert_equals "$(tailscale_domain)" "grimoire.crested-centauri.ts.net" "tailscale_domain override"
+assert_equals "$(tailscale_port)" "443" "tailscale_port default"
+assert_equals "$(tailscale_url)" "https://grimoire.crested-centauri.ts.net" "tailscale_url on 443"
+
+# A service endpoint on another port has to say so; 443 is the one that stays implicit.
+export GRIMOIRE_TAILSCALE_PORT=8443
+assert_equals "$(tailscale_url)" "https://grimoire.crested-centauri.ts.net:8443" "tailscale_url off 443"
+
+unset GRIMOIRE_TAILSCALE_SERVICE GRIMOIRE_TAILSCALE_PORT GRIMOIRE_TAILSCALE_DOMAIN
+
 if ((failures > 0)); then
   echo "$failures assertion(s) failed" >&2
   exit 1

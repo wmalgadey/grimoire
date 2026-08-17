@@ -10,6 +10,8 @@
 #   grimoire-server status            # what is running, and what origin has since
 #   grimoire-server smoke             # re-run the checks against the running stack
 #   grimoire-server rollback          # back to the previously deployed commit
+#   grimoire-server tailscale status  # the tailnet service, if one is configured
+#   grimoire-server tmux              # attach to the Claude Code session on this host
 #
 # See deploy/server/README.md. Every function is defined before `main` runs at the very
 # bottom: bash parses the whole file first, so a `deploy` that checks out a ref which
@@ -167,6 +169,142 @@ compose() {
     "$@"
 }
 
+# --- Tailscale Service ---------------------------------------------------------------
+#
+# The stack publishes to loopback and has neither TLS nor authentication of its own, so
+# reaching it from another machine has so far meant an SSH tunnel. A Tailscale Service is
+# the other answer, and the one that does not widen GRIMOIRE_BIND: `tailscale serve` runs
+# on the host, terminates TLS for the service's own MagicDNS name, and proxies to
+# 127.0.0.1 — the tailnet's grants decide who gets through.
+#
+#   GRIMOIRE_TAILSCALE_SERVICE=svc:grimoire grimoire-server deploy main
+#     → https://grimoire.<tailnet>.ts.net
+#
+# Two preconditions belong to the tailnet, not to this script: the service exists in the
+# policy with a `tcp:443` endpoint, and this host is a tagged node — `tailscale serve`
+# refuses to host a service from a node that authenticated as a user. Neither can be
+# created from here, so both are reported as the operator's next step rather than
+# worked around.
+#
+# Unset GRIMOIRE_TAILSCALE_SERVICE and every function below is a no-op: the feature is
+# off, and a host without tailscale deploys exactly as it did before.
+
+tailscale_enabled() { [[ -n "${GRIMOIRE_TAILSCALE_SERVICE:-}" ]]; }
+
+tailscale_port() { printf '%s\n' "${GRIMOIRE_TAILSCALE_PORT:-443}"; }
+
+# Prints the service name the way tailscale spells it, or nothing when the feature is off.
+# `grimoire` and `svc:grimoire` name the same service; the prefix is what tailscale
+# validates against, so it is added here instead of left to fail after a full image build.
+tailscale_service() {
+  local name="${GRIMOIRE_TAILSCALE_SERVICE:-}"
+  [[ -n "$name" ]] || return 0
+  name="svc:${name#svc:}"
+  [[ "${name#svc:}" =~ ^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$ ]] ||
+    die "GRIMOIRE_TAILSCALE_SERVICE is not a valid service name: ${GRIMOIRE_TAILSCALE_SERVICE} — tailscale wants svc:<lowercase letters, digits and hyphens>"
+  printf '%s\n' "$name"
+}
+
+# The tailnet's MagicDNS suffix, read from `tailscale status --json` on stdin. No jq
+# dependency, and no pipeline a large status document could kill with SIGPIPE: sed reads
+# its input to the end and tail closes nothing early.
+magic_dns_suffix() {
+  sed -n 's/.*"MagicDNSSuffix"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' | tail -n 1
+}
+
+# The name a browser on the tailnet resolves. Derived rather than configured, because the
+# service's DNS name is not the operator's to choose: it is <service>.<tailnet>.ts.net.
+# GRIMOIRE_TAILSCALE_DOMAIN is the escape hatch for a split-DNS or CNAME arrangement.
+tailscale_domain() {
+  local service suffix
+  service="$(tailscale_service)"
+  [[ -n "$service" ]] || return 0
+
+  if [[ -n "${GRIMOIRE_TAILSCALE_DOMAIN:-}" ]]; then
+    printf '%s\n' "$GRIMOIRE_TAILSCALE_DOMAIN"
+    return
+  fi
+
+  command -v tailscale >/dev/null || return 0
+  suffix="$(tailscale status --json 2>/dev/null | magic_dns_suffix)"
+  [[ -n "$suffix" ]] || return 0
+  printf '%s.%s\n' "${service#svc:}" "${suffix%.}"
+}
+
+tailscale_url() {
+  local domain port
+  domain="$(tailscale_domain)"
+  [[ -n "$domain" ]] || return 0
+  port="$(tailscale_port)"
+  if [[ "$port" == "443" ]]; then
+    printf 'https://%s\n' "$domain"
+  else
+    printf 'https://%s:%s\n' "$domain" "$port"
+  fi
+}
+
+# `tailscale serve --service=...` writes the endpoint and advertises this host in one
+# call, and it is idempotent — re-running it for an unchanged target is how a redeploy
+# re-arms the service. Service serves are background-only: tailscale rejects the
+# foreground form outright, so there is no --bg to pass.
+tailscale_publish() {
+  local service port target url
+  service="$(tailscale_service)"
+  [[ -n "$service" ]] || return 0
+  port="$(tailscale_port)"
+  target="127.0.0.1:${GRIMOIRE_PORT:-8080}"
+
+  log "Advertising $service on :$port → $target"
+  tailscale serve --service="$service" --https="$port" "$target" >/dev/null ||
+    die "tailscale serve failed for $service — check that the service is defined in the tailnet policy with a tcp:$port endpoint and that this node is tagged"
+
+  url="$(tailscale_url)"
+  [[ -z "$url" ]] || info "tailnet   $url"
+}
+
+# Draining keeps the endpoint configuration and stops this host answering for the service,
+# so replacing the containers does not leave the tailnet name pointing at a stack that is
+# half gone. `tailscale_publish` brings it back.
+tailscale_drain() {
+  local service
+  service="$(tailscale_service)"
+  [[ -n "$service" ]] || return 0
+  log "Draining $service"
+  tailscale serve drain "$service" >/dev/null 2>&1 ||
+    warn "could not drain $service — this host may not be advertising it"
+}
+
+# The full withdrawal: the endpoint configuration goes too, not just the advertisement.
+tailscale_clear() {
+  local service
+  service="$(tailscale_service)"
+  [[ -n "$service" ]] || die "GRIMOIRE_TAILSCALE_SERVICE is unset — there is no service to remove"
+  log "Removing $service from this host"
+  tailscale serve clear "$service" >/dev/null ||
+    die "tailscale serve clear failed for $service"
+}
+
+tailscale_report() {
+  local service url
+  service="$(tailscale_service)"
+
+  if [[ -z "$service" ]]; then
+    log "No tailnet service configured"
+    info "set GRIMOIRE_TAILSCALE_SERVICE=svc:grimoire to publish this stack on the tailnet"
+    return
+  fi
+
+  log "Tailnet service $service"
+  url="$(tailscale_url)"
+  [[ -z "$url" ]] || info "url       $url"
+
+  if command -v tailscale >/dev/null; then
+    tailscale serve status 2>&1 | sed 's/^/    /' >&2
+  else
+    info "tailscale is not installed on this host"
+  fi
+}
+
 # Compares dotted versions without sorting surprises: 2.9.0 is older than 2.24.0.
 version_at_least() {
   local have="$1" want="$2" i hv wv
@@ -214,6 +352,16 @@ preflight() {
   mode="$(stat -c '%a' "$repo/.env" 2>/dev/null || stat -f '%Lp' "$repo/.env" 2>/dev/null || echo '')"
   if [[ -n "$mode" && "${mode: -2}" != "00" ]]; then
     warn "$repo/.env is readable beyond its owner (mode $mode) — it holds your Anthropic token; chmod 600 it"
+  fi
+
+  # A tailnet the host cannot reach, or a service name tailscale will reject, is worth
+  # finding out here rather than after a full image build.
+  if tailscale_enabled; then
+    tailscale_service >/dev/null
+    command -v tailscale >/dev/null ||
+      die "GRIMOIRE_TAILSCALE_SERVICE is set but tailscale is not installed on this host"
+    tailscale status >/dev/null 2>&1 ||
+      die "tailscale is installed but this host is not on a tailnet — run: tailscale up"
   fi
 }
 
@@ -307,6 +455,10 @@ cmd_deploy() {
   log "Building images (the SDK, Bun and agent builds all run — first build takes a while)"
   compose "$repo" build
 
+  # Drained after the build, not before it: the old stack keeps serving the tailnet for
+  # however long the images take, and only stops when the containers actually go away.
+  tailscale_drain
+
   log "Starting the stack"
   compose "$repo" up -d --remove-orphans --wait ||
     die "the stack did not come up — see: grimoire-server logs"
@@ -320,10 +472,17 @@ cmd_deploy() {
     compose "$repo" logs --no-color --tail 60 >&2
     # No automatic rollback: a failing deployment is usually the thing being tested, and
     # tearing it down would take away the evidence. `rollback` is one command away.
+    if tailscale_enabled; then
+      info "$(tailscale_service) stays drained — nothing on the tailnet points at this deployment"
+    fi
     die "smoke checks failed for $label — the stack is left running for diagnosis. Undo with: grimoire-server rollback"
   fi
 
   state_write "$label" "$sha" "$subject" "$previous"
+
+  # Last, and only after the stack proved it serves: the tailnet never gets pointed at a
+  # deployment that has not answered all four checks.
+  tailscale_publish
 
   log "Deployed $label in $((SECONDS - started))s"
   info "app       $(base_url)"
@@ -381,6 +540,8 @@ cmd_status() {
   compose "$repo" ps || true
 
   smoke || warn "the running stack is not answering every check"
+
+  if tailscale_enabled; then tailscale_report; fi
 }
 
 cmd_smoke() { smoke; }
@@ -397,15 +558,41 @@ cmd_restart() {
   compose "$repo" restart "$@"
   wait_for_health || die "the stack never answered on $(base_url) after the restart"
   smoke
+  # Idempotent when the service was already advertised, and the way back onto the tailnet
+  # for a stack that a `down` — or a deployment whose smoke checks failed — left drained.
+  tailscale_publish
 }
 
 cmd_down() {
   local repo
   repo="$(repo_dir)"
+  # The advertisement goes before the containers do — a stopped stack that still answers
+  # for the service on the tailnet is a connection refused with a good DNS name in front
+  # of it. The endpoint configuration stays, so the next `deploy` re-arms it.
+  tailscale_drain
   # Volumes are never removed here. Wiping state is a deliberate act with its own command
   # in the README, not a flag away from the routine stop.
   compose "$repo" down
   log "Stopped. The state volumes are untouched."
+}
+
+cmd_tailscale() {
+  local action="${1:-status}"
+  case "$action" in
+  up)
+    tailscale_enabled || die "GRIMOIRE_TAILSCALE_SERVICE is unset — there is nothing to advertise"
+    tailscale_publish
+    ;;
+  drain)
+    tailscale_enabled || die "GRIMOIRE_TAILSCALE_SERVICE is unset — there is nothing to drain"
+    tailscale_drain
+    ;;
+  off) tailscale_clear ;;
+  status) tailscale_report ;;
+  *)
+    die "unknown tailscale action: $action — try one of up, drain, off, status"
+    ;;
+  esac
 }
 
 cmd_rollback() {
@@ -414,6 +601,48 @@ cmd_rollback() {
   [[ -n "$previous" ]] || die "no previous deployment recorded"
   log "Rolling back to $(short "$previous")"
   cmd_deploy "$previous"
+}
+
+# The Claude Code session on this host has to outlive the SSH connection that started it,
+# which is why the README puts it in tmux. This is the way back to it: attach if the
+# session is there, create it in the deployment checkout if it is not — `new-session -A`
+# is one call for both, and `=name` keeps tmux from matching some other session by prefix.
+cmd_tmux() {
+  local session repo
+  session="${1:-${GRIMOIRE_TMUX_SESSION:-grimoire}}"
+
+  command -v tmux >/dev/null || die "tmux is not installed on this host"
+  repo="$(repo_dir)"
+
+  # Already inside tmux: attaching would nest a session in itself, which tmux refuses.
+  # Moving this client to the session is what was meant.
+  if [[ -n "${TMUX:-}" ]]; then
+    if [[ "$(tmux display-message -p '#S' 2>/dev/null)" == "$session" ]]; then
+      log "Already in the $session session"
+      return
+    fi
+    tmux has-session -t "=$session" 2>/dev/null ||
+      tmux new-session -d -s "$session" -c "$repo"
+    log "Switching this client to the $session session"
+    exec tmux switch-client -t "=$session"
+  fi
+
+  # No terminal to attach to — this is the Claude Code session itself running the command,
+  # or a cron job. Make sure the session exists and say how to reach it, which is more
+  # use than the error tmux would give for attaching to nothing.
+  if [[ ! -t 0 || ! -t 1 ]]; then
+    if tmux has-session -t "=$session" 2>/dev/null; then
+      log "The $session session is running"
+    else
+      tmux new-session -d -s "$session" -c "$repo"
+      log "Started the $session session in $repo"
+    fi
+    info "no terminal here to attach it to — from a shell on this host: tmux attach -t $session"
+    return
+  fi
+
+  log "Attaching to the $session session in $repo"
+  exec tmux new-session -A -s "$session" -c "$repo"
 }
 
 cmd_install() {
@@ -444,17 +673,26 @@ Commands:
   restart [service...]       restart containers without rebuilding
   down                       stop the stack; the state volumes are kept
   rollback                   redeploy the commit that ran before the current one
+  tailscale [action]         status (default) · up · drain · off
+  tmux [session]             attach to the Claude Code session, starting it if needed
   install [path]             copy this script outside the checkout (default ~/.local/bin)
 
 Refs:  main · some/branch · v1.2.3 · pr/95 · #95 · a703846
 
 Environment:
-  GRIMOIRE_REPO            the deployment checkout
-  GRIMOIRE_STATE_DIR       operator state (default $XDG_STATE_HOME/grimoire-server)
-  GRIMOIRE_BIND            published-port bind address (default 127.0.0.1)
-  GRIMOIRE_PORT            application port (default 8080)
-  GRIMOIRE_DASHBOARD_PORT  telemetry dashboard port (default 18888)
-  GRIMOIRE_HEALTH_TIMEOUT  seconds to wait for the stack (default 180)
+  GRIMOIRE_REPO              the deployment checkout
+  GRIMOIRE_STATE_DIR         operator state (default $XDG_STATE_HOME/grimoire-server)
+  GRIMOIRE_BIND              published-port bind address (default 127.0.0.1)
+  GRIMOIRE_PORT              application port (default 8080)
+  GRIMOIRE_DASHBOARD_PORT    telemetry dashboard port (default 18888)
+  GRIMOIRE_HEALTH_TIMEOUT    seconds to wait for the stack (default 180)
+  GRIMOIRE_LOG_LINES         lines `logs` tails (default 100)
+  GRIMOIRE_TMUX_SESSION      session `tmux` attaches to (default grimoire)
+
+Tailscale Service (unset the first one and none of this happens):
+  GRIMOIRE_TAILSCALE_SERVICE service to advertise, e.g. svc:grimoire
+  GRIMOIRE_TAILSCALE_PORT    HTTPS port of the service endpoint (default 443)
+  GRIMOIRE_TAILSCALE_DOMAIN  override the derived <service>.<tailnet>.ts.net name
 EOF
 }
 
@@ -469,6 +707,8 @@ main() {
   restart) cmd_restart "$@" ;;
   down) cmd_down "$@" ;;
   rollback) cmd_rollback "$@" ;;
+  tailscale) cmd_tailscale "$@" ;;
+  tmux) cmd_tmux "$@" ;;
   install) cmd_install "$@" ;;
   help | --help | -h) usage ;;
   *)
