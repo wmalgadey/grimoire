@@ -18,6 +18,10 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          # GitVersion reads the git history and the tags to compute the build's version
+          # (ADR-027); a shallow clone has neither and it fails rather than guessing.
+          fetch-depth: 0
 
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
@@ -31,6 +35,23 @@ jobs:
 
       - name: Restore solution
         run: dotnet restore backend/Grimoire.slnx
+
+      # Constitution Principle IV — a convention not enforced by CI does not exist, and this
+      # one fails silently: a shallow checkout, an unfetched tag, or a GitVersion.yml that
+      # stops matching the tag shape all leave the build compiling perfectly happily while
+      # stamping the no-repository fallback into every assembly. Nothing downstream notices
+      # until an operator asks a deployed Hub which version it is and it answers 0.0.0.
+      - name: The build is versioned from the git history (ADR-027)
+        run: |
+          version=$(dotnet msbuild backend/src/Grimoire.Hub/Grimoire.Hub.csproj \
+            -t:GetVersion -getProperty:Version -nologo)
+          echo "GitVersion computed: ${version:-<nothing>}"
+          case "$version" in
+            ""|0.0.0-nogit|0.0.0*)
+              echo "::error::GitVersion produced no version — see ADR-027. The checkout needs fetch-depth: 0 and the repository's tags."
+              exit 1
+              ;;
+          esac
 
       - name: Build solution
         run: dotnet build backend/Grimoire.slnx --configuration Release --no-restore

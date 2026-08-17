@@ -203,21 +203,88 @@ To stop approving the same command every time, allow it in the server checkout's
 
 ```
 grimoire-server deploy [<ref>] [--force]   check out a ref, rebuild, replace the stack
-grimoire-server status [--no-fetch]        what is deployed, what origin has since
+grimoire-server status [--no-fetch]        what is deployed, and what else is running
 grimoire-server smoke                      re-run the endpoint checks
 grimoire-server logs [service...]          tail container logs
 grimoire-server restart [service...]       restart without rebuilding
 grimoire-server down                       stop; the state volumes are kept
 grimoire-server rollback                   redeploy the previously deployed commit
+grimoire-server update [path]              fetch origin, refresh this script, then status
 grimoire-server tailscale [action]         status · up · drain · off
 grimoire-server tmux [session]             attach to the Claude Code session, or start it
+grimoire-server install [path]             copy the script outside the checkout
+grimoire-server version                    the tool, where it came from, what is deployed
 ```
 
 Refs take any of `main`, `some/branch`, `v1.2.3`, `a703846`, and — the shape git does not
 fetch by default — `pr/95`, `#95` or `pull/95/head`.
 
-`status` fetches first, so it answers the question this whole setup exists for: *is there
-something new on the ref I am running?* It prints the new commits if there are any.
+### `status` — everything the server is doing
+
+It fetches first, so it answers the question this whole setup exists for: *is there
+something new on the ref I am running?* It prints the new commits if there are any. Then it
+reports the four things a server can be wrong in independently:
+
+| Section | Answers |
+| --- | --- |
+| the deployment record | which ref and commit is deployed, when, and whether someone has moved the checkout by hand since |
+| `Containers` | what `docker compose ps` sees |
+| the smoke checks | whether the stack actually serves (the same four checks a deployment must pass) |
+| `tmux` / tailnet service | whether the Claude Code session is still there, and whether the tailnet name points at this stack |
+
+The last two are reported whether or not they are set up — "no `grimoire` session" and "no
+tailnet service configured" are answers, and a server whose agent session quietly died
+overnight looks perfectly healthy from every other section.
+
+### `update` — the tool catches up, the stack does not
+
+```console
+$ grimoire-server update
+==> Fetching origin
+==> Updated /home/ops/.local/bin/grimoire-server — 0.9.0 → 1.0.0
+    this invocation is still running the old copy; the next one is the new one
+==> Deployed main — a703846e4573
+    …
+```
+
+It fetches origin and then refreshes the copy `install` put in `~/.local/bin` from the one
+in the checkout — and then runs `status`, without fetching a second time. It deliberately
+**does not deploy**: moving the running stack to another commit stays an explicit `deploy`.
+
+The copy is refreshed from the *checkout*, which is at the commit this host has deployed
+and smoke-checked — so the tool you get is the tool this server has actually exercised. A
+newer one sitting on `origin/main` is reported rather than installed; it arrives with the
+deploy that brings the rest of that commit.
+
+Two details that matter on a server: the copy is replaced by rename, never written in
+place, so an `update` cannot truncate the script that is running it (which is also why the
+invocation you typed finishes as the old version). And `install` and `update` both write
+down the commit the copy came from, which is what `version` reports — a single file lifted
+out of a checkout has no other way to say where it is from.
+
+### `version` — three versions that are not the same thing
+
+```console
+$ grimoire-server version
+==> grimoire-server 1.0.0
+    script    /home/ops/.local/bin/grimoire-server
+    copied    from 5bd8fa63a762 on 2026-08-17T11:36:31Z
+    checkout  /srv/grimoire at 0.0.25-2-g5bd8fa6
+    deployed  main — a703846e4573
+```
+
+The tool's own version is hand-maintained in the script's text: it is one file running
+outside every checkout, so no build step can stamp it (ADR-027 explains why that is the one
+exception, and what stamps everything else). The commit it was copied from, the checkout,
+and the deployed commit are all recorded rather than inferred, and any of the four can be
+out of step with the others — which is exactly why they are printed separately.
+
+The stack has a version of its own: `deploy` passes `git describe` of the commit it is
+building into the image, and the Hub prints it under its logo:
+
+```console
+$ docker compose exec hub dotnet /app/Grimoire.Hub.dll --help
+```
 
 ### What a deployment checks before it believes itself
 
@@ -267,8 +334,9 @@ All of it is environment, all of it optional:
 | `GRIMOIRE_DASHBOARD_PORT` | `18888` | telemetry dashboard port |
 | `GRIMOIRE_HEALTH_TIMEOUT` | `180` | seconds to wait for the stack to answer |
 | `GRIMOIRE_LOG_LINES` | `100` | lines `logs` tails |
+| `GRIMOIRE_VERSION` | `git describe` of the checkout | the version stamped into the image (ADR-027); set it to override what a deployed Hub reports for itself |
 | `GRIMOIRE_TAILSCALE_SERVICE` | unset | tailnet service to advertise, e.g. `svc:grimoire`; unset turns the feature off |
-| `GRIMOIRE_TAILSCALE_PORT` | `443` | HTTPS port of the service endpoint |
+| `GRIMOIRE_TAILSCALE_PORT` | `443` | HTTPS port of the service endpoint; rejected before an image build if it is not a port |
 | `GRIMOIRE_TAILSCALE_DOMAIN` | derived | overrides the derived `<service>.<tailnet>.ts.net` |
 | `GRIMOIRE_TMUX_SESSION` | `grimoire` | tmux session `grimoire-server tmux` attaches to |
 

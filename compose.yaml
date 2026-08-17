@@ -15,6 +15,13 @@ services:
       context: .
       dockerfile: deploy/Dockerfile
       target: runtime
+      args:
+        # The version the image reports for itself. GitVersion computes it from the git
+        # history (ADR-027) and cannot run inside the image build — the build context
+        # excludes .git — so it travels in as a build argument. `grimoire-server deploy`
+        # sets it from the checkout it is deploying; a bare `docker compose up --build`
+        # gets the honest placeholder.
+        GRIMOIRE_VERSION: "${GRIMOIRE_VERSION:-0.0.0-local}"
     # One port for everything: the Hub serves the UI, the API and the SignalR hubs, so the
     # browser sees a single origin without anything in front of it. Put a TLS terminator or
     # an auth proxy here if you need one — it needs no Grimoire-specific configuration.

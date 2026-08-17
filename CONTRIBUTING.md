@@ -138,6 +138,59 @@ change to `backend/src` or `frontend/src`, refresh them per
 [`docs/codebase-complexity-metric.md`](docs/codebase-complexity-metric.md#regenerating-the-badges)
 and include the updated files in your PR.
 
+## Branching and versions: GitHub Flow + GitVersion
+
+The branching model is **GitHub Flow** (ADR-027): `main` is always releasable, everything
+else is a short-lived branch cut from `main` and merged back through a pull request, then
+deleted. There is no `develop`, no release branch, no maintenance line.
+
+Version numbers are **computed, never written down**. [GitVersion](https://gitversion.net)
+reads the tags and the history and stamps `Version`, `AssemblyVersion`, `FileVersion` and
+`InformationalVersion` on every assembly the build produces — `GitVersion.yml` at the
+repository root is its configuration, and `backend/Directory.Build.props` contains no
+version literal. Ask any build what it is:
+
+```bash
+dotnet msbuild backend/src/Grimoire.Hub/Grimoire.Hub.csproj -t:GetVersion -getProperty:Version -nologo
+```
+
+The Hub prints the same number under its logo on every help screen, so a deployed stack can
+be identified without the deployment record.
+
+**Only a tagged commit gets a bare release number.** Everything else carries a prerelease
+tag, so no untagged build can be mistaken for a release, and no two builds claim the same
+version:
+
+| Where you are | What the version looks like |
+| --- | --- |
+| a tagged commit | `0.0.26` |
+| `main`, two commits past the tag | `0.0.26-2` |
+| a branch off it | `0.0.26-<branch-name>.1` |
+| a pull request, as CI builds it | `0.0.26-PullRequest95.4` |
+
+The prerelease tags sort correctly ahead of the release they lead to (`0.0.26-2` <
+`0.0.26`), and the branch name in the label is what keeps two branches at the same commit
+height from producing the same version — which matters because CI builds every pull
+request.
+
+Three things follow for day-to-day work:
+
+- **Clone with the full history.** GitVersion fails on a shallow clone rather than guessing,
+  which is why every workflow that builds checks out with `fetch-depth: 0`. A plain
+  `git clone` is already fine.
+- **Say when a change is more than a patch.** `main` increments the patch number by default.
+  Put `+semver: minor` (or `+semver: major`) in a commit message or in the squashed pull
+  request title when it is not.
+- **Releasing is tagging.** `git tag 0.0.26 && git push origin 0.0.26` on a `main` commit —
+  bare SemVer, no `v` prefix, matching the existing tags. The artifacts built from that
+  commit then carry exactly `0.0.26`.
+
+Two things are deliberately outside this and version themselves:
+`deploy/server/grimoire-server` carries `GRIMOIRE_SERVER_VERSION` in its own text (it is a
+single file that runs outside every checkout, so no build step can stamp it), and
+`frontend/package.json` keeps a fixed `0.0.1` because the frontend is not published
+separately. ADR-027 has the reasoning for both.
+
 ## Pull requests
 
 - One feature branch per Spec Kit feature (`NNN-feature-name`), matching its `specs/NNN-feature-name/` directory

@@ -17,6 +17,20 @@ FROM mcr.microsoft.com/dotnet/sdk:10.0 AS backend
 
 WORKDIR /src
 
+# The version this image reports for itself (ADR-027). GitVersion owns every version number
+# in this repository, and it reads the git history to produce one — history this stage does
+# not have and should not have: .dockerignore excludes .git/, which is what keeps the build
+# context small and the layer cache from invalidating on every commit. So the version is
+# computed outside and handed in. backend/Directory.Build.props detects the missing
+# repository on its own and steps aside; this argument is what fills the gap.
+#
+# Only InformationalVersion, deliberately: it is a free-form string, so whatever the caller
+# can honestly say — a GitVersion SemVer, a `git describe`, nothing at all — lands here
+# without a malformed value failing the build. It is also the one the Hub's help header
+# reads (HubCliHelpProvider).
+ARG GRIMOIRE_VERSION=0.0.0-nogit
+ENV GRIMOIRE_INFORMATIONAL_VERSION=${GRIMOIRE_VERSION}
+
 # Only the four projects the image needs are restored and built — the test projects are
 # never copied into the build context stage, so the image build does not carry them.
 # Directory.Build.targets is what makes an agent project distribute its runtime (below).
@@ -38,16 +52,20 @@ RUN dotnet restore backend/src/Grimoire.Hub/Grimoire.Hub.csproj \
 # test projects stay out of the image build.
 RUN dotnet build backend/src/Grimoire.IngestAgent/Grimoire.IngestAgent.csproj \
         --configuration Release --no-restore -p:GrimoireAgentDir=/app/.grimoire/agents/ \
+        -p:InformationalVersion="$GRIMOIRE_INFORMATIONAL_VERSION" \
  && dotnet build backend/src/Grimoire.QueryAgent/Grimoire.QueryAgent.csproj \
         --configuration Release --no-restore -p:GrimoireAgentDir=/app/.grimoire/agents/ \
+        -p:InformationalVersion="$GRIMOIRE_INFORMATIONAL_VERSION" \
  && dotnet build backend/src/Grimoire.LintAgent/Grimoire.LintAgent.csproj \
-        --configuration Release --no-restore -p:GrimoireAgentDir=/app/.grimoire/agents/
+        --configuration Release --no-restore -p:GrimoireAgentDir=/app/.grimoire/agents/ \
+        -p:InformationalVersion="$GRIMOIRE_INFORMATIONAL_VERSION"
 
 # appsettings.json is copied to the publish output by the project itself; ADR-022 makes it
 # the sole source of default paths, and the Hub pins its ContentRoot to the directory the
 # assembly sits in, so it must stay beside Grimoire.Hub.dll.
 RUN dotnet publish backend/src/Grimoire.Hub/Grimoire.Hub.csproj \
-        --configuration Release --no-restore -o /app/hub
+        --configuration Release --no-restore -o /app/hub \
+        -p:InformationalVersion="$GRIMOIRE_INFORMATIONAL_VERSION"
 
 # ---------------------------------------------------------------------------
 # Stage 2 — frontend (static SPA)
