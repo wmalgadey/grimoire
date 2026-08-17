@@ -96,6 +96,10 @@ public sealed class HubFrontendHostingTests : IDisposable
         // SPA answering 200 here is the failure this test exists to prevent.
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
         Assert.DoesNotContain(IndexMarkup, await response.Content.ReadAsStringAsync(), StringComparison.Ordinal);
+        // And it answers through the one envelope every Hub failure carries (ADR-026), rather
+        // than the bare 404 an unrouted path produced before the frontend moved in. The
+        // envelope's own shape is HubApiErrorEnvelopeTests' subject, not this file's.
+        Assert.Equal("application/problem+json", response.Content.Headers.ContentType?.MediaType);
     }
 
     [Fact]

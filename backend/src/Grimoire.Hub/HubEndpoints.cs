@@ -1,3 +1,4 @@
+using Grimoire.Hub.ApiErrors;
 using Grimoire.Hub.IngestSubmission;
 using Grimoire.Hub.LintDispatch;
 using Grimoire.Hub.QuerySubmission;
@@ -95,10 +96,13 @@ internal static class HubEndpoints
 
         app.MapFallbackToFile("index.html");
 
-        // Unmatched backend paths stay 404s. Nothing is asserted about the body here: an
-        // unrouted path answers exactly as it did before the frontend moved in.
-        app.MapFallback("/api/{**rest}", () => Results.NotFound());
-        app.MapFallback("/hubs/{**rest}", () => Results.NotFound());
+        // Unmatched backend paths answer 404 through the one envelope every Hub failure
+        // carries (ADR-026 BR1) rather than the bare, empty-bodied 404 an unrouted path used
+        // to produce — a client that mistyped a path gets the same shape it parses everywhere
+        // else, and `Results.NotFound()` here would be exactly the inline error result that
+        // rule exists to prevent.
+        app.MapFallback("/api/{**rest}", () => ApiErrorResults.Problem(ApiErrorCatalogue.EndpointNotFound));
+        app.MapFallback("/hubs/{**rest}", () => ApiErrorResults.Problem(ApiErrorCatalogue.EndpointNotFound));
 
         return true;
     }

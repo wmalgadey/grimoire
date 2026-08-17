@@ -28,6 +28,10 @@ public static class ApiErrorCatalogue
     public const string InternalError = "internal_error";
     public const string RequestDeclined = "request_declined";
 
+    // --- Cross-cutting -----------------------------------------------------
+
+    public const string EndpointNotFound = "endpoint_not_found";
+
     // --- Ingest submission -------------------------------------------------
 
     public const string IngestSubmissionBodyInvalid = "ingest_submission_body_invalid";
@@ -89,6 +93,11 @@ public static class ApiErrorCatalogue
         new(RequestDeclined, 400,
             "Request declined",
             "The request could not be completed as sent. Check what you submitted and try again."),
+
+        // --- Cross-cutting ---
+        new(EndpointNotFound, 404,
+            "No such endpoint",
+            "This address is not part of the Hub's API. Check the path, or the version of the client that produced it."),
 
         // --- Ingest submission ---
         new(IngestSubmissionBodyInvalid, 400,
