@@ -185,6 +185,90 @@ assert_equals "$(tailscale_url)" "https://grimoire.crested-centauri.ts.net:8443"
 
 unset GRIMOIRE_TAILSCALE_SERVICE GRIMOIRE_TAILSCALE_PORT GRIMOIRE_TAILSCALE_DOMAIN
 
+# --- The tmux session name `status` reports and `tmux` attaches to are the same one.
+#
+# Two callers reading the same environment variable is exactly the shape that drifts: a
+# `status` that reports on one session while `tmux` attaches to another is worse than no
+# report at all, because it is a wrong answer rather than a missing one.
+
+assert_equals "$(tmux_session)" "grimoire" "tmux_session default"
+assert_equals "$(GRIMOIRE_TMUX_SESSION=ops tmux_session)" "ops" "tmux_session from the environment"
+
+# --- This script's own version, and reading it back out of a copy.
+#
+# `update` names the version it moves from and to by reading the constant out of two files
+# it does not run. That only works while the declaration keeps the shape the reader expects,
+# so the reader is pointed at this very script — the copy that ships.
+
+assert_equals "$(script_version_of "$script_dir/grimoire-server")" "$GRIMOIRE_SERVER_VERSION" \
+  "script_version_of reads this script's own constant"
+[[ "$GRIMOIRE_SERVER_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$ ]] ||
+  fail "GRIMOIRE_SERVER_VERSION is not a semantic version: $GRIMOIRE_SERVER_VERSION"
+
+assert_equals "$(script_version_of "$work/not-a-script")" "" "script_version_of on a missing file"
+printf 'GRIMOIRE_SERVER_VERSION="0.1.0"\n' >"$work/older"
+assert_equals "$(script_version_of "$work/older")" "0.1.0" "script_version_of on another copy"
+printf '#!/usr/bin/env bash\necho hello\n' >"$work/unversioned"
+assert_equals "$(script_version_of "$work/unversioned")" "" "script_version_of on a copy without the constant"
+
+# --- The installed copy is replaced by rename, not written in place.
+#
+# Bash reads a script as it runs it, so `update` overwriting the running file in place can
+# leave a shell executing half of each version. What is asserted is the observable
+# consequence: the inode changes, the mode is executable, and the content is the new one.
+
+inode_of() { stat -c '%i' "$1" 2>/dev/null || stat -f '%i' "$1"; }
+
+printf 'GRIMOIRE_SERVER_VERSION="9.9.9"\n' >"$work/source"
+printf 'old\n' >"$work/installed"
+chmod 0755 "$work/installed"
+before_inode="$(inode_of "$work/installed")"
+
+replace_script "$work/source" "$work/installed"
+
+assert_equals "$(cat "$work/installed")" 'GRIMOIRE_SERVER_VERSION="9.9.9"' "replace_script copies the content"
+assert_equals "$(script_version_of "$work/installed")" "9.9.9" "replace_script's result reads as the new version"
+[[ -x "$work/installed" ]] || fail "replace_script left the copy without its executable bit"
+[[ "$(inode_of "$work/installed")" != "$before_inode" ]] ||
+  fail "replace_script wrote in place — the running script's inode was truncated under it"
+# Nothing of the swap is left behind in the destination directory.
+assert_equals "$(find "$work" -maxdepth 1 -name '.grimoire-server.*' | wc -l | tr -d ' ')" "0" \
+  "replace_script leaves no temporary file behind"
+
+replace_script "$work/source" "$work/fresh/grimoire-server"
+assert_equals "$(script_version_of "$work/fresh/grimoire-server")" "9.9.9" "replace_script creates a missing directory"
+
+if (replace_script "$work/does-not-exist" "$work/installed" >/dev/null 2>&1); then
+  fail "replace_script accepted a source that does not exist"
+fi
+
+# --- Where `update` looks for the copy to refresh.
+
+fake_checkout="$work/checkout"
+mkdir -p "$fake_checkout/deploy/server"
+
+# Running the checkout's own script: there is nothing to update, and no record says there is.
+# SCRIPT_PATH is read by the sourced script, which is what `installed_copy` resolves — the
+# assignments below are the input to these assertions, not dead stores.
+# shellcheck disable=SC2034
+rm -f "$(tool_file)"
+SCRIPT_PATH="$fake_checkout/deploy/server/grimoire-server"
+assert_equals "$(installed_copy "$fake_checkout")" "" "installed_copy while running from the checkout"
+
+# The same run, once `install` has written down where it put a copy: that copy is the one
+# an `update` from inside the checkout has to refresh.
+tool_write "1.0.0" "a703846e457303e8daa404c8f433fad53ae06474" "$HOME/.local/bin/grimoire-server"
+assert_equals "$(installed_copy "$fake_checkout")" "$HOME/.local/bin/grimoire-server" \
+  "installed_copy falls back to the path install recorded"
+assert_equals "$(record_get "$(tool_file)" version)" "1.0.0" "the install record keeps the version"
+assert_equals "$(record_get "$(tool_file)" commit)" "a703846e457303e8daa404c8f433fad53ae06474" \
+  "the install record keeps the commit"
+assert_equals "$(record_get "$(tool_file)" missing)" "" "record_get on an absent key"
+
+# Running an installed copy: that copy is the one, whatever the record says.
+SCRIPT_PATH="$work/installed"
+assert_equals "$(installed_copy "$fake_checkout")" "$work/installed" "installed_copy while running an installed copy"
+
 if ((failures > 0)); then
   echo "$failures assertion(s) failed" >&2
   exit 1

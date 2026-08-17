@@ -10,6 +10,7 @@
 #   grimoire-server status            # what is running, and what origin has since
 #   grimoire-server smoke             # re-run the checks against the running stack
 #   grimoire-server rollback          # back to the previously deployed commit
+#   grimoire-server update            # refresh origin and this script's installed copy
 #   grimoire-server tailscale status  # the tailnet service, if one is configured
 #   grimoire-server tmux              # attach to the Claude Code session on this host
 #
@@ -21,6 +22,16 @@ set -euo pipefail
 # Configuration is all environment, all optional — see `usage` at the bottom.
 SCRIPT_PATH="${BASH_SOURCE[0]}"
 MIN_COMPOSE_VERSION="2.24.0" # `!override` in the server compose overlay
+
+# This tool's own SemVer, and the one number in this repository that is not computed.
+# GitVersion stamps the .NET build from the git history (ADR-027), but a single shell file
+# copied to ~/.local/bin by `install` runs outside every checkout and outside every build,
+# so the version has to travel inside the file itself. Bump it by hand when the command
+# surface or an operator-visible behaviour changes; `update` reports the move.
+#
+# It versions the tool, never the stack it deploys — `status` and `version` report that
+# separately, from the deployment record and the checkout.
+GRIMOIRE_SERVER_VERSION="1.0.0"
 
 # --- Output ------------------------------------------------------------------------
 # Progress goes to stderr so that a helper's stdout is only ever its value.
@@ -113,16 +124,40 @@ fetch_and_resolve() {
   die "unknown ref on origin: $spec"
 }
 
+# Refreshes origin and prints the ref a deployed one can be compared against — nothing when
+# the fetch failed, which is a server without a route to origin rather than an error worth
+# ending the command over. A pull request head needs its own refspec; everything else rides
+# along with the ordinary fetch, so an empty ref still refreshes the checkout's view.
+fetch_upstream_of() {
+  local repo="$1" ref="${2:-}"
+
+  if [[ "$ref" == pr/* ]]; then
+    if git -C "$repo" fetch --force origin "pull/${ref#pr/}/head:refs/deploy/$ref" >/dev/null 2>&1; then
+      printf '%s\n' "refs/deploy/$ref"
+    fi
+    return 0
+  fi
+
+  if git -C "$repo" fetch --prune --tags origin >/dev/null 2>&1 && [[ -n "$ref" ]]; then
+    printf '%s\n' "refs/remotes/origin/$ref"
+  fi
+  return 0
+}
+
 # --- Deployment state --------------------------------------------------------------
 
 state_file() { printf '%s/deployed\n' "$(state_dir)"; }
 
-state_get() {
-  local key="$1" file
-  file="$(state_file)"
+# One key out of a `key=value` record file, or nothing when the file or the key is absent.
+# Last occurrence wins, so a record that was appended to rather than replaced still reads
+# as its most recent value.
+record_get() {
+  local file="$1" key="$2"
   [[ -f "$file" ]] || return 0
   sed -n "s/^${key}=//p" "$file" | tail -n 1
 }
+
+state_get() { record_get "$(state_file)" "$1"; }
 
 state_write() {
   local ref="$1" sha="$2" subject="$3" previous="$4" file
@@ -134,6 +169,27 @@ state_write() {
     printf 'subject=%s\n' "$subject"
     printf 'deployed_at=%s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
     printf 'previous_sha=%s\n' "$previous"
+  } >"$file"
+}
+
+# --- Tool provenance -----------------------------------------------------------------
+#
+# A copy of this script outside the checkout carries no git history of its own: it is one
+# file, and the commit it came from is not recoverable from its contents. So `install` and
+# `update` write it down, and `version` reads it back. Without this the only honest answer
+# to "which commit is this tool from?" would be "no idea".
+
+tool_file() { printf '%s/tool\n' "$(state_dir)"; }
+
+tool_write() {
+  local version="$1" commit="$2" dest="$3" file
+  file="$(tool_file)"
+  mkdir -p "$(dirname "$file")"
+  {
+    printf 'version=%s\n' "$version"
+    printf 'commit=%s\n' "$commit"
+    printf 'path=%s\n' "$dest"
+    printf 'installed_at=%s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
   } >"$file"
 }
 
@@ -338,6 +394,41 @@ tailscale_report() {
   else
     info "tailscale is not installed on this host"
   fi
+}
+
+# --- tmux ------------------------------------------------------------------------------
+#
+# The Claude Code session that operates this host lives in tmux (see the README), which
+# makes "is that session still there?" part of what an operator wants from `status` — a
+# server whose stack serves but whose agent session died overnight looks healthy from
+# every other angle.
+
+tmux_session() { printf '%s\n' "${GRIMOIRE_TMUX_SESSION:-grimoire}"; }
+
+tmux_report() {
+  local session windows clients
+  session="$(tmux_session)"
+
+  if ! command -v tmux >/dev/null; then
+    log "tmux is not installed on this host"
+    info "the Claude Code session lives in tmux — without it there is nothing to attach to"
+    return
+  fi
+
+  if ! tmux has-session -t "=$session" 2>/dev/null; then
+    log "No $session tmux session"
+    info "start one with: grimoire-server tmux"
+    return
+  fi
+
+  # `-t "=$session"` throughout: without the `=` tmux resolves the name by prefix, so a
+  # count taken here could belong to a different session than the one `tmux` attaches to.
+  windows="$(tmux list-windows -t "=$session" 2>/dev/null | wc -l | tr -d ' ')"
+  clients="$(tmux list-clients -t "=$session" 2>/dev/null | wc -l | tr -d ' ')"
+
+  log "tmux session $session"
+  info "$windows window(s), $clients attached client(s)"
+  info "attach with: grimoire-server tmux"
 }
 
 # Compares dotted versions without sorting surprises: 2.9.0 is older than 2.24.0.
@@ -547,13 +638,7 @@ cmd_status() {
 
   if ((fetch == 1)) && [[ -n "$ref" ]]; then
     log "Checking origin for newer commits on $ref"
-    if [[ "$ref" == pr/* ]]; then
-      git -C "$repo" fetch --force origin "pull/${ref#pr/}/head:refs/deploy/$ref" >/dev/null 2>&1 &&
-        upstream="refs/deploy/$ref"
-    else
-      git -C "$repo" fetch --prune --tags origin >/dev/null 2>&1 &&
-        upstream="refs/remotes/origin/$ref"
-    fi
+    upstream="$(fetch_upstream_of "$repo" "$ref")"
 
     if [[ -n "$upstream" ]] && git -C "$repo" rev-parse --verify --quiet "$upstream" >/dev/null; then
       behind="$(git -C "$repo" rev-list --count "$sha..$upstream" 2>/dev/null || echo 0)"
@@ -577,7 +662,12 @@ cmd_status() {
 
   smoke || warn "the running stack is not answering every check"
 
-  if tailscale_enabled; then tailscale_report; fi
+  # Both are reported unconditionally, including when they are not set up. "No tailnet
+  # service configured" and "no grimoire session" are answers to the question `status`
+  # asks; silence is not, and silence is what an operator gets today on the host where
+  # the session quietly died.
+  tmux_report
+  tailscale_report
 }
 
 cmd_smoke() { smoke; }
@@ -651,7 +741,7 @@ cmd_rollback() {
 # is one call for both, and `=name` keeps tmux from matching some other session by prefix.
 cmd_tmux() {
   local session repo
-  session="${1:-${GRIMOIRE_TMUX_SESSION:-grimoire}}"
+  session="${1:-$(tmux_session)}"
 
   command -v tmux >/dev/null || die "tmux is not installed on this host"
   repo="$(repo_dir)"
@@ -687,37 +777,175 @@ cmd_tmux() {
   exec tmux new-session -A -s "$session" -c "$repo"
 }
 
-cmd_install() {
-  local dest="${1:-$HOME/.local/bin/grimoire-server}"
+# --- Installing and updating this script ------------------------------------------------
+#
+# `install` copies this file outside the checkout precisely so that a `deploy` — which moves
+# the checkout to another commit — cannot change the tool while it is running. That copy
+# then ages, and `update` is how it catches up.
+#
+# It catches up with the *checkout*, not with origin: the checkout is at the commit this
+# host has deployed and smoke-checked, so its copy of the tool is the one this host has
+# actually exercised. A newer one on origin is reported rather than installed — it arrives
+# with the deploy that brings the rest of that commit.
+
+# Replaced by rename, never written in place. Bash reads a script as it runs it, so
+# truncating the running file can leave a shell executing the first half of the old version
+# and the second half of the new one. A rename leaves this process on the old inode and
+# every later invocation on the new one.
+replace_script() {
+  local source="$1" dest="$2" tmp
+  [[ -f "$source" ]] || die "no script to copy from: $source"
   mkdir -p "$(dirname "$dest")"
-  install -m 0755 "$SCRIPT_PATH" "$dest"
-  log "Installed $dest"
+  tmp="$(mktemp "$(dirname "$dest")/.grimoire-server.XXXXXX")" ||
+    die "cannot write into $(dirname "$dest")"
+  if ! cat "$source" >"$tmp" || ! chmod 0755 "$tmp" || ! mv -f "$tmp" "$dest"; then
+    rm -f "$tmp"
+    die "could not replace $dest"
+  fi
+}
+
+# The version constant out of a copy of this script, read rather than executed: `update`
+# has to name the version it is moving to before that copy is in place, and sourcing a file
+# to find out what it is is not something an operator tool should do.
+read_script_version() {
+  sed -n 's/^GRIMOIRE_SERVER_VERSION="\([^"]*\)".*/\1/p' | tail -n 1
+}
+
+script_version_of() {
+  [[ -f "$1" ]] || return 0
+  read_script_version <"$1"
+}
+
+# Where the installed copy is: the running script when that is not the checkout's own, and
+# otherwise whatever `install` last wrote down. Prints nothing when neither applies, which
+# is a host that only ever runs the tool out of the checkout.
+installed_copy() {
+  local repo="$1" running
+  running="$(cd "$(dirname "$SCRIPT_PATH")" 2>/dev/null && pwd || true)/$(basename "$SCRIPT_PATH")"
+  if [[ "$running" != "$repo/deploy/server/grimoire-server" ]]; then
+    printf '%s\n' "$running"
+    return 0
+  fi
+  record_get "$(tool_file)" path
+}
+
+cmd_install() {
+  local dest="${1:-$HOME/.local/bin/grimoire-server}" repo
+  repo="$(repo_dir)"
+  replace_script "$SCRIPT_PATH" "$dest"
+  tool_write "$GRIMOIRE_SERVER_VERSION" "$(git -C "$repo" rev-parse HEAD 2>/dev/null || printf 'unknown\n')" "$dest"
+  log "Installed grimoire-server $GRIMOIRE_SERVER_VERSION to $dest"
   info "It finds the checkout through GRIMOIRE_REPO — set that in your shell profile:"
-  info "  export GRIMOIRE_REPO=$(repo_dir)"
+  info "  export GRIMOIRE_REPO=$repo"
   case ":$PATH:" in
   *":$(dirname "$dest"):"*) ;;
   *) info "  export PATH=\"$(dirname "$dest"):\$PATH\"" ;;
   esac
+  info "Keep it current with: grimoire-server update"
+}
+
+# Says whether origin's default branch already carries a different tool than the checkout
+# does. News, not an action: installing it here would put a version on this host that no
+# deployment has run.
+origin_tool_note() {
+  local repo="$1" branch mine theirs
+  branch="$(git -C "$repo" symbolic-ref --quiet --short refs/remotes/origin/HEAD 2>/dev/null || printf 'origin/main\n')"
+  git -C "$repo" rev-parse --verify --quiet "$branch" >/dev/null || return 0
+
+  mine="$(script_version_of "$repo/deploy/server/grimoire-server")"
+  theirs="$(git -C "$repo" show "$branch:deploy/server/grimoire-server" 2>/dev/null | read_script_version || true)"
+
+  if [[ -n "$theirs" && "$theirs" != "$mine" ]]; then
+    info "$branch carries grimoire-server $theirs — it arrives with the next deploy"
+  fi
+}
+
+cmd_update() {
+  local repo dest source from to
+  repo="$(repo_dir)"
+  git -C "$repo" rev-parse --git-dir >/dev/null 2>&1 || die "not a git checkout: $repo"
+
+  # The fetch comes first: everything below is a comparison against origin, and `status`
+  # is then handed --no-fetch rather than asked to go back for the same refs.
+  log "Fetching origin"
+  fetch_upstream_of "$repo" "$(state_get ref)" >/dev/null
+
+  source="$repo/deploy/server/grimoire-server"
+  dest="${1:-$(installed_copy "$repo")}"
+
+  if [[ -z "$dest" ]]; then
+    log "No installed copy to refresh — this is the checkout's own script"
+    info "copy it out of the checkout with: grimoire-server install"
+  elif [[ ! -f "$source" ]]; then
+    warn "the checkout has no $source — the deployed ref predates this tool, so $dest is left alone"
+  elif [[ -f "$dest" ]] && cmp -s "$source" "$dest"; then
+    log "The installed copy is current — grimoire-server $(script_version_of "$dest")"
+    info "$dest"
+  else
+    from="$(script_version_of "$dest")"
+    to="$(script_version_of "$source")"
+    replace_script "$source" "$dest"
+    tool_write "${to:-unknown}" "$(git -C "$repo" rev-parse HEAD)" "$dest"
+    log "Updated $dest — ${from:-unknown} → ${to:-unknown}"
+    info "this invocation is still running the old copy; the next one is the new one"
+  fi
+
+  origin_tool_note "$repo"
+
+  cmd_status --no-fetch
+}
+
+# Three versions an operator can be asked about and cannot otherwise tell apart: the tool
+# they typed, the commit that tool was copied from, and the commit the stack is running.
+cmd_version() {
+  local repo sha describe commit
+
+  log "grimoire-server $GRIMOIRE_SERVER_VERSION"
+  info "script    $SCRIPT_PATH"
+
+  commit="$(record_get "$(tool_file)" commit)"
+  if [[ -n "$commit" && "$commit" != "unknown" ]]; then
+    info "copied    from $(short "$commit") on $(record_get "$(tool_file)" installed_at)"
+  fi
+
+  if repo="$(repo_dir 2>/dev/null)"; then
+    describe="$(git -C "$repo" describe --tags --always --dirty 2>/dev/null || true)"
+    info "checkout  $repo${describe:+ at $describe}"
+  fi
+
+  sha="$(state_get sha)"
+  if [[ -n "$sha" ]]; then
+    info "deployed  $(state_get ref) — $(short "$sha")"
+  else
+    info "deployed  nothing yet"
+  fi
 }
 
 usage() {
+  # The banner is printed rather than part of the here-document: the body below is quoted
+  # (<<'EOF') on purpose, so that `logs` in backticks and $XDG_STATE_HOME reach the reader
+  # as written instead of as a command substitution and an empty string.
+  printf 'grimoire-server %s — deploy a git ref of Grimoire to a self-hosted server and prove it serves.\n' \
+    "$GRIMOIRE_SERVER_VERSION"
   cat <<'EOF'
-grimoire-server — deploy a git ref of Grimoire to a self-hosted server and prove it serves.
 
 One host, one stack, one ref at a time. The three state volumes are never touched, so the
 wiki survives every deployment and every rollback. See deploy/server/README.md.
 
 Commands:
   deploy [<ref>] [--force]   check out a ref, rebuild the images, replace the stack
-  status [--no-fetch]        what is deployed, what origin has since, container health
+  status [--no-fetch]        what is deployed and what origin has since, containers,
+                             endpoint checks, the tmux session and the tailnet service
   smoke                      re-run the endpoint checks against the running stack
   logs [service...]          tail container logs (GRIMOIRE_LOG_LINES, default 100)
   restart [service...]       restart containers without rebuilding
   down                       stop the stack; the state volumes are kept
   rollback                   redeploy the commit that ran before the current one
+  update [path]              fetch origin, refresh this script's installed copy, status
   tailscale [action]         status (default) · up · drain · off
   tmux [session]             attach to the Claude Code session, starting it if needed
   install [path]             copy this script outside the checkout (default ~/.local/bin)
+  version                    this tool, the commit it came from, the deployed commit
 
 Refs:  main · some/branch · v1.2.3 · pr/95 · #95 · a703846
 
@@ -749,9 +977,11 @@ main() {
   restart) cmd_restart "$@" ;;
   down) cmd_down "$@" ;;
   rollback) cmd_rollback "$@" ;;
+  update) cmd_update "$@" ;;
   tailscale) cmd_tailscale "$@" ;;
   tmux) cmd_tmux "$@" ;;
   install) cmd_install "$@" ;;
+  version | --version | -V) cmd_version ;;
   help | --help | -h) usage ;;
   *)
     usage >&2

@@ -76,7 +76,21 @@ grimoire-server status
 
 It fetches first and prints the new commits on the deployed ref, if any. Report the
 deployed ref and age, whether origin has moved, and whether the stack answers its checks.
-Offer the deployment; do not start one that was not asked for.
+It also reports the tmux session and the tailnet service — mention those only when one of
+them is not as it should be. Offer the deployment; do not start one that was not asked for.
+
+When the operator asks which version something is, `grimoire-server version` answers the
+tool, the commit it was copied from, and the deployed commit as three separate facts — do
+not collapse them into one number. To bring the tool itself up to date after a deployment:
+
+```bash
+grimoire-server update
+```
+
+It fetches origin, refreshes the installed copy from the checkout, and runs `status`. It
+never deploys, so it is safe to run unasked when a command fails in a way that looks like
+an old copy of the script. The invocation you run finishes as the old version by design;
+anything relying on the new behaviour needs a second call.
 
 ## Rules for this host
 
