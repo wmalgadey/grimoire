@@ -90,7 +90,9 @@ assert_equals "$(state_get previous_sha)" "bbb4f84000000000000000000000000000000
 # A second deployment replaces the record rather than appending to it.
 state_write "main" "1111111111111111111111111111111111111111" "later" "a703846e457303e8daa404c8f433fad53ae06474"
 assert_equals "$(state_get ref)" "main" "state_get ref after a second deployment"
-assert_equals "$(wc -l <"$(state_file)")" "5" "the state file holds one record"
+# `tr -d` because BSD wc pads its count and GNU wc does not — the assertion is about the
+# number of lines, not about which coreutils an operator's laptop ships.
+assert_equals "$(wc -l <"$(state_file)" | tr -d ' ')" "5" "the state file holds one record"
 
 # --- The overlay is seeded from the checkout once, then belongs to the host.
 #
@@ -137,6 +139,18 @@ done
 
 export GRIMOIRE_TAILSCALE_SERVICE=grimoire-server
 assert_equals "$(tailscale_service)" "svc:grimoire-server" "tailscale_service with a hyphen"
+
+# The port lands in `tailscale serve --https=` and in the sentence naming the `tcp:<port>`
+# endpoint the tailnet policy needs. Neither is a useful place to discover a typo.
+assert_equals "$(GRIMOIRE_TAILSCALE_PORT=8443 tailscale_port)" "8443" "tailscale_port explicit"
+assert_equals "$(GRIMOIRE_TAILSCALE_PORT=65535 tailscale_port)" "65535" "tailscale_port at the top of the range"
+assert_equals "$(GRIMOIRE_TAILSCALE_PORT=0443 tailscale_port)" "443" "tailscale_port normalises a leading zero"
+
+for bad in "0" "65536" "99999" "443/tcp" "https" "-1" "8.443" "44 3"; do
+  if (GRIMOIRE_TAILSCALE_PORT="$bad" tailscale_port >/dev/null 2>&1); then
+    fail "tailscale_port accepted [$bad], which is not a TCP port"
+  fi
+done
 
 # Names tailscale would reject are rejected here instead — before a full image build.
 for bad in "svc:" "Grimoire" "-grimoire" "grimoire-" "grim_oire" "grimoire.wiki" "svc:svc:grimoire"; do

@@ -191,7 +191,20 @@ compose() {
 
 tailscale_enabled() { [[ -n "${GRIMOIRE_TAILSCALE_SERVICE:-}" ]]; }
 
-tailscale_port() { printf '%s\n' "${GRIMOIRE_TAILSCALE_PORT:-443}"; }
+# The port reaches two places that both need it to be a port: `tailscale serve --https=`,
+# and the sentence telling an operator which `tcp:<port>` endpoint their tailnet policy is
+# missing. Neither fails usefully on a typo — serve reports its own parse error and the
+# sentence names an endpoint that cannot exist — so it is checked here, at the same point
+# and for the same reason the service name is.
+tailscale_port() {
+  local port="${GRIMOIRE_TAILSCALE_PORT:-443}"
+  if [[ ! "$port" =~ ^[0-9]{1,5}$ ]] || ((10#$port < 1 || 10#$port > 65535)); then
+    die "GRIMOIRE_TAILSCALE_PORT is not a TCP port: $port — tailscale wants a number from 1 to 65535"
+  fi
+  # `10#` throughout, and on the way out too: a leading zero would otherwise make bash read
+  # the value as octal, and 0443 is not 291.
+  printf '%s\n' "$((10#$port))"
+}
 
 # Prints the service name the way tailscale spells it, or nothing when the feature is off.
 # `grimoire` and `svc:grimoire` name the same service; the prefix is what tailscale
@@ -241,6 +254,18 @@ tailscale_url() {
   else
     printf 'https://%s:%s\n' "$domain" "$port"
   fi
+}
+
+# Everything below shells out to tailscale, and `grimoire-server tailscale ...` reaches it
+# without going through preflight — which is where deploy learns that this host has no
+# tailscale or is logged out. Without this check the same two conditions surface as
+# "tailscale serve failed for svc:grimoire — check that the service is defined in the
+# tailnet policy...", which sends the operator to the policy file over a missing binary.
+tailscale_require_cli() {
+  command -v tailscale >/dev/null ||
+    die "tailscale is not installed on this host — there is nothing to advertise the service with"
+  tailscale status >/dev/null 2>&1 ||
+    die "tailscale is installed but this host is not on a tailnet — run: tailscale up"
 }
 
 # `tailscale serve --service=...` writes the endpoint and advertises this host in one
@@ -354,10 +379,11 @@ preflight() {
     warn "$repo/.env is readable beyond its owner (mode $mode) — it holds your Anthropic token; chmod 600 it"
   fi
 
-  # A tailnet the host cannot reach, or a service name tailscale will reject, is worth
-  # finding out here rather than after a full image build.
+  # A tailnet the host cannot reach, or a service name or port tailscale will reject, is
+  # worth finding out here rather than after a full image build.
   if tailscale_enabled; then
     tailscale_service >/dev/null
+    tailscale_port >/dev/null
     command -v tailscale >/dev/null ||
       die "GRIMOIRE_TAILSCALE_SERVICE is set but tailscale is not installed on this host"
     tailscale status >/dev/null 2>&1 ||
@@ -581,13 +607,19 @@ cmd_tailscale() {
   case "$action" in
   up)
     tailscale_enabled || die "GRIMOIRE_TAILSCALE_SERVICE is unset — there is nothing to advertise"
+    tailscale_require_cli
     tailscale_publish
     ;;
   drain)
     tailscale_enabled || die "GRIMOIRE_TAILSCALE_SERVICE is unset — there is nothing to drain"
+    tailscale_require_cli
     tailscale_drain
     ;;
-  off) tailscale_clear ;;
+  off)
+    tailscale_enabled || die "GRIMOIRE_TAILSCALE_SERVICE is unset — there is no service to remove"
+    tailscale_require_cli
+    tailscale_clear
+    ;;
   status) tailscale_report ;;
   *)
     die "unknown tailscale action: $action — try one of up, drain, off, status"
