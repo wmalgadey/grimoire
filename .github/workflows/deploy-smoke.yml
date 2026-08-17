@@ -43,9 +43,17 @@ jobs:
       # The denylist is deliberately narrow — the credential-shaped .env-example variables
       # only, the same scope devcontainer-ci.yml's SC-004 job uses. Broadening it would
       # false-positive on legitimate non-secret configuration.
+      #
+      # What is forbidden is *wiring the variable in*, so the match requires an assignment
+      # or a YAML key (`NAME=` / `NAME:`) rather than any mention of the name. Naming it in
+      # prose is how deploy/README.md tells an operator which variable to put in their .env
+      # — the documented, correct path — and an earlier revision of this scan failed the
+      # build on exactly that sentence. Unlike devcontainer-ci.yml's pattern this does not
+      # require a value to follow: `ANTHROPIC_AUTH_TOKEN: ${TOKEN}` on a service passes the
+      # credential just as effectively as a literal would.
       - name: Fail if a credential variable is declared or assigned
         run: |
-          pattern='(ANTHROPIC_AUTH_TOKEN|ANTHROPIC_API_KEY|NVIDIA_API_KEY|GRIMOIRE_EVAL_PROVIDER_API_KEY)'
+          pattern='(ANTHROPIC_AUTH_TOKEN|ANTHROPIC_API_KEY|NVIDIA_API_KEY|GRIMOIRE_EVAL_PROVIDER_API_KEY)[[:space:]]*[=:]'
           if grep -rEn "$pattern" compose.yaml deploy/ | grep -vE '^\S+:[0-9]+:\s*#' ; then
             echo "::error::Credential-shaped variable found in the deployment config (ADR-027 V2). The token reaches the Hub through the mounted .env file, never through a service environment."
             exit 1
