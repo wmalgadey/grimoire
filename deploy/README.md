@@ -136,6 +136,20 @@ docker compose up --build -d
 
 The volumes survive; the image is disposable.
 
+## Running it on a server instead
+
+Everything above assumes the machine you are sitting at. A host you deploy *to* — where
+the ref changes as branches and pull requests come in, and where the published ports face
+a network — has [`deploy/server/`](server/README.md): one command that puts a given ref
+live and proves it serves, a compose overlay that binds the published ports to the
+loopback address and caps container logs, and a skill that lets a Claude Code session on
+that host do it on request.
+
+```bash
+grimoire-server deploy pr/95
+grimoire-server status
+```
+
 ## Why it is shaped this way
 
 The rationale, kept here because each choice is a consequence of a decision already

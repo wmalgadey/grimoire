@@ -31,6 +31,35 @@ permissions:
   contents: read
 
 jobs:
+  # The server deployment tool decides things of its own — which ref a specification means,
+  # whether the installed Compose is new enough for the overlay's `!override`, what the
+  # deployment record holds, when the overlay is seeded. Those are the parts that can break
+  # from a change to the script alone, and they are what this exercises; it starts no
+  # containers and reaches no network.
+  server-tool:
+    name: deploy/server — the deployment tool's own decisions
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run the grimoire-server tests
+        run: ./deploy/server/grimoire-server.test.sh
+
+      # The overlay's whole purpose is that the published ports stop facing every
+      # interface. A merge mistake — `!override` dropped, or the tag unsupported — shows up
+      # as a second, unbound port entry rather than as an error, so assert the rendered
+      # configuration instead of trusting the file.
+      - name: The server overlay binds the published ports to the loopback address
+        run: |
+          rendered=$(docker compose -f compose.yaml -f deploy/server/compose.server.yaml config)
+          published=$(echo "$rendered" | grep -c 'published:')
+          bound=$(echo "$rendered" | grep -c 'host_ip: 127.0.0.1')
+          echo "$rendered" | grep -E 'published:|host_ip:'
+          if [ "$published" -ne 2 ] || [ "$bound" -ne 2 ]; then
+            echo "::error::The server overlay must publish exactly two loopback-bound ports; got $published published, $bound on 127.0.0.1."
+            exit 1
+          fi
+
   no-credentials-in-deployment-config:
     name: No credential-shaped value in the deployment config
     runs-on: ubuntu-latest
