@@ -105,3 +105,26 @@ test('cancel and the backdrop both dismiss without triggering a run', async () =
 
 	expect(triggerMock).not.toHaveBeenCalled();
 });
+
+test('dismissing after a failure clears it, so reopening starts clean', async () => {
+	triggerMock.mockRejectedValue(
+		new LintApiError(
+			'A Lint Run is already active. Wait for it to finish before triggering another.',
+			409,
+			'lint_run_active'
+		)
+	);
+	const screen = await render(LintTriggerPopover);
+
+	await screen.getByTestId('nav-lint-button').click();
+	await screen.getByTestId('lint-trigger-button').click();
+	await expect.element(screen.getByTestId('lint-trigger-error')).toBeVisible();
+
+	await screen.getByTestId('lint-popover-cancel').click();
+	await screen.getByTestId('nav-lint-button').click();
+
+	// The operator is starting a fresh attempt; the previous one's reason is not theirs to
+	// read again, and leaving it up would describe a state that may no longer hold.
+	await expect.element(screen.getByTestId('lint-popover')).toBeVisible();
+	await expect.element(screen.getByTestId('lint-trigger-error')).not.toBeInTheDocument();
+});

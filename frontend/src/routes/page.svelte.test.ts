@@ -68,6 +68,8 @@ vi.mock('$lib/services/remediationLifecycleClient', () => ({
 }));
 
 beforeEach(() => {
+	startMock.mockReset();
+	stopMock.mockReset();
 	restartTaskMock.mockReset();
 	restartTaskMock.mockResolvedValue({ taskId: 'task-1', status: 'queued' });
 	getBoardMock.mockReset();
@@ -198,7 +200,6 @@ test('Done and Failed start collapsed into rails, and reopen on click', async ()
 });
 
 test('unmounting the page stops the lifecycle stream', async () => {
-	stopMock.mockClear();
 	const screen = await render(Page);
 
 	await screen.unmount();
