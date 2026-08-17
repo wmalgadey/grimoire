@@ -9,8 +9,9 @@ using Microsoft.Extensions.Hosting;
 namespace Grimoire.IntegrationTests;
 
 /// <summary>
-/// The Hub serves the built frontend itself, so the deployment is one container and whatever
-/// proxy sits in front of it needs no knowledge of Grimoire's routes.
+/// The Hub serves the built frontend itself, so the deployment is one container and anything
+/// put in front of it is ordinary infrastructure with one upstream — it needs no knowledge of
+/// Grimoire's routes.
 ///
 /// <para>
 /// What is asserted here is our own routing decision, not ASP.NET Core's static-file middleware
@@ -117,8 +118,9 @@ public sealed class HubFrontendHostingTests : IDisposable
     [Fact]
     public async Task WithoutABuiltFrontend_TheHubStillServes_SoRunningFromSourceIsUnaffected()
     {
-        // `dotnet run` against a checkout has no wwwroot — the frontend is `bun run dev` beside
-        // it. Mounting must be opt-in on the directory, never a startup requirement.
+        // `dotnet run` against a checkout has no built frontend — that is `bun run dev` beside
+        // it, and VS Code's `prod` launch config too. Mounting must be opt-in on the fallback
+        // document, never a startup requirement.
         using var host = await BuildHostAsync(withFrontend: false);
         var client = host.GetTestClient();
 
