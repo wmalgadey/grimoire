@@ -366,7 +366,11 @@ cmd_status() {
         info "up to date"
       else
         info "$behind new commit(s) on $ref — deploy them with: grimoire-server deploy $ref"
-        git -C "$repo" log --oneline --no-decorate "$sha..$upstream" | head -n 10 | sed 's/^/      /' >&2
+        # `-n 10` rather than `| head -n 10`: under `set -euo pipefail` a producer that
+        # outfills the pipe buffer dies of SIGPIPE when head closes it, and the pipeline's
+        # 141 then ends `status` right here — before the container listing and the smoke
+        # checks it exists to report. Letting git do the limiting removes the pipe.
+        git -C "$repo" log --oneline --no-decorate -n 10 "$sha..$upstream" | sed 's/^/      /' >&2
       fi
     else
       info "could not resolve $ref on origin"

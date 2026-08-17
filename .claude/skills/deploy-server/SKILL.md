@@ -1,6 +1,6 @@
 ---
 name: deploy-server
-description: Put a git ref live on the self-hosted server and report what it does — use when asked to deploy, redeploy, roll back, or check what is running there ("deploy pr/95", "put main on the server", "was läuft gerade auf dem Server?"). Only for a Claude Code session running ON that server.
+description: Put a git ref live on the self-hosted server and report what it does — use when asked to deploy, redeploy, roll back, or check what is running there ("deploy pr/95", "put main on the server", "what is running on the server right now?"). Only for a Claude Code session running ON that server.
 allowed-tools: Bash, Read, Grep, Glob
 ---
 
