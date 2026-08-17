@@ -1,0 +1,32 @@
+# The same-origin bridge (ADR-027 F1).
+#
+# In development, `frontend/vite.config.ts` proxies /api and /hubs to the Hub so the
+# frontend's relative paths reach it. The Hub registers no static-file middleware and no
+# CORS policy, so a deployment needs the same bridge; this file is it. Keep the two route
+# prefixes here in step with `HubEndpoints.MapGrimoireEndpoints` — a prefix mapped there
+# and missing here is a 404 no test in the suite can see (ADR-027 consequences).
+
+:8080 {
+	log
+
+	# Four SignalR hubs live under this prefix. reverse_proxy passes the WebSocket
+	# upgrade through untouched, which is what keeps the live board, query streaming and
+	# lint/remediation channels working.
+	handle /hubs/* {
+		reverse_proxy hub:8080
+	}
+
+	handle /api/* {
+		reverse_proxy hub:8080
+	}
+
+	# Everything else is the SPA. adapter-static wrote one fallback document
+	# (ADR-027); try_files hands every unmatched path to it so the client router
+	# resolves deep links like /tasks/<id> on a cold load.
+	handle {
+		root * /srv
+		encode gzip zstd
+		try_files {path} /index.html
+		file_server
+	}
+}

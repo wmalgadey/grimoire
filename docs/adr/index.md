@@ -49,6 +49,7 @@ relationships exist.
 | [ADR-024](ADR-024-memory-directory-root.md) | Memory Directory — A Fourth Independent Root for Agent Process Bookkeeping | Accepted | Amends ADR-022 (R1 switch cap, sub-path anchoring) | — |
 | [ADR-025](ADR-025-ingest-task-lifecycle-reentry.md) | Ingest Task Lifecycle Re-Entry — Liveness Reactivation, Manual Restart, and Status History | Accepted | Amends ADR-002 (retry/backoff deferral revoked for the liveness case), ADR-008 (liveness consequence, terminal-state re-entry) | — |
 | [ADR-026](ADR-026-hub-api-error-contract-and-frontend-error-presentation.md) | Hub API Error Response Contract and Shared Frontend Error Presentation | Accepted | Extends ADR-020 (HTTP counterpart to the CLI failure contract), ADR-013 (registers `Grimoire.Hub.ApiErrors` in the N1 ownership map) — no supersession | — |
+| [ADR-027](ADR-027-container-image-and-deployment-topology.md) | Container Image and Self-Hosted Deployment Topology | Proposed | Extends ADR-004 (credential delivery in a container), ADR-005 (reuses the Aspire Dashboard as the deployed OTLP backend), ADR-022 (deployment expression of build-distributed agent artifacts) — no supersession | — |
 
 ## Maintenance
 

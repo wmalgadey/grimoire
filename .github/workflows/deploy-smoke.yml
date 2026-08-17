@@ -1,0 +1,114 @@
+name: Deployment Smoke
+
+# ADR-027's Principle IV gate. The deployment stack introduces no code and therefore no
+# Boundary Rule; its invariants (V1/V2/V3) are configuration-shaped, so they are enforced
+# the way ADR-019 enforced the devcontainer's — by building the thing and exercising it.
+#
+# The path filter is a deliberate cost tradeoff: a full image build duplicates work the
+# backend and frontend jobs already do in ci.yml, so this runs on the files that define
+# the deployment or that the image build contract depends on, plus on demand. A backend
+# change that breaks only the image build is caught on the next deployment-touching PR or
+# by a manual run, not immediately.
+on:
+  pull_request:
+    paths:
+      - "compose.yaml"
+      - "deploy/**"
+      - ".dockerignore"
+      - ".github/workflows/deploy-smoke.yml"
+      - "backend/Directory.Build.targets"
+      - "backend/Directory.Packages.props"
+      - "backend/src/Grimoire.Hub/appsettings.json"
+      - "frontend/vite.config.ts"
+      - "frontend/package.json"
+      - "frontend/bun.lock"
+      - "frontend/src/routes/+layout.ts"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  no-credentials-in-deployment-config:
+    name: V2 — no credential-shaped value in the deployment config
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # ADR-004 scopes the Anthropic token to the spawned agent process: the Hub reads it
+      # from the mounted .env and injects it per spawn. Declaring it on a service would
+      # put it in the Hub's own environment, where every child inherits it — the exact
+      # leak ADR-004 exists to prevent, and the one a container makes tempting.
+      #
+      # The denylist is deliberately narrow — the credential-shaped .env-example variables
+      # only, the same scope devcontainer-ci.yml's SC-004 job uses. Broadening it would
+      # false-positive on legitimate non-secret configuration.
+      - name: Fail if a credential variable is declared or assigned
+        run: |
+          pattern='(ANTHROPIC_AUTH_TOKEN|ANTHROPIC_API_KEY|NVIDIA_API_KEY|GRIMOIRE_EVAL_PROVIDER_API_KEY)'
+          if grep -rEn "$pattern" compose.yaml deploy/ | grep -vE '^\S+:[0-9]+:\s*#' ; then
+            echo "::error::Credential-shaped variable found in the deployment config (ADR-027 V2). The token reaches the Hub through the mounted .env file, never through a service environment."
+            exit 1
+          fi
+          echo "No credential-shaped variable in compose.yaml or deploy/."
+
+  smoke:
+    name: V1/V3 — the stack serves, and fails closed without a secrets file
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build the stack
+        run: docker compose build
+
+      # V3 first, and without a .env anywhere: agent_dir and secrets_file are RequiredInput
+      # locations (ADR-022), so a deployment missing the credential file must fail at
+      # startup naming it — not start and fail at first dispatch.
+      - name: Hub fails closed when no secrets file is mounted
+        run: |
+          set +e
+          output=$(docker run --rm grimoire-hub 2>&1)
+          status=$?
+          set -e
+          echo "$output"
+          if [ "$status" -eq 0 ]; then
+            echo "::error::The Hub started without a secrets file (ADR-027 V3)."
+            exit 1
+          fi
+          if ! echo "$output" | grep -q "secrets_file"; then
+            echo "::error::The Hub failed without naming secrets_file (ADR-027 V3)."
+            exit 1
+          fi
+          echo "Hub failed closed, naming secrets_file."
+
+      # A throwaway credential: the smoke test proves the stack serves, never that the
+      # model provider answers. No real token is needed and none is available here.
+      - name: Create a throwaway secrets file
+        run: printf 'ANTHROPIC_AUTH_TOKEN=sk-ant-not-a-real-token\n' > .env
+
+      - name: Start the stack
+        run: docker compose up -d --wait
+
+      # V1: one origin serves both halves. The frontend document comes from the proxy's
+      # own file server; /api/board is answered by the Hub through the same origin, which
+      # is what the frontend's relative paths assume.
+      - name: The proxy serves the frontend document
+        run: |
+          body=$(curl -fsS --retry 5 --retry-connrefused http://localhost:8080/)
+          echo "$body" | head -c 200
+          echo "$body" | grep -q "<!doctype html>"
+
+      - name: The proxy reaches the Hub
+        run: curl -fsS --retry 5 --retry-connrefused http://localhost:8080/api/board | grep -q "entries"
+
+      - name: A deep link falls back to the SPA document
+        run: curl -fsS http://localhost:8080/tasks/does-not-exist | grep -q "<!doctype html>"
+
+      - name: Dump logs on failure
+        if: failure()
+        run: docker compose logs --no-color
+
+      - name: Tear down
+        if: always()
+        run: docker compose down -v
