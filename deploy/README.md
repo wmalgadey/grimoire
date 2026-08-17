@@ -43,6 +43,51 @@ One wrinkle worth knowing: Compose also reads `./.env` for its own variable subs
 That is harmless — the stack only substitutes the two port variables — but a token
 containing a literal `$` will make Compose emit an interpolation warning.
 
+A second wrinkle if you edit `.env` while the stack runs: it is bind-mounted as a *file*,
+so the container follows the inode, not the name. `sed -i` and most editors write a new
+file and rename it over the old one, which leaves the Hub reading the original forever.
+Truncate in place instead — `cat new-env > .env` — or recreate the container.
+
+### Model overrides, and what a 429 really means
+
+Each agent reads its **own** model variable — `GRIMOIRE_INGEST_MODEL`,
+`GRIMOIRE_QUERY_MODEL`, `GRIMOIRE_LINT_MODEL`. ADR-004 keeps their scopes independent, and
+that independence goes further than it first looks: they do not inherit from one another,
+and an unset one does not quietly borrow a sibling's value. It falls back to
+`AnthropicModelClient`'s hardcoded default. Setting only `GRIMOIRE_INGEST_MODEL` therefore
+leaves Query and Lint on a model nobody chose.
+
+Getting that model wrong does not present as a configuration error. An OAuth-style
+credential — `sk-ant-oat…`, as opposed to a classic `sk-ant-api…` key — answers a request
+for a model it is not entitled to with
+
+```
+Model API error 429 (rate_limit_error): Error
+```
+
+A rate limit, in other words, for a request that was never rate limited. Grimoire is
+reporting faithfully; the provider is what says almost nothing. Before going looking for
+load or backoff, check entitlement directly:
+
+```bash
+curl -sS -D - -o /dev/null https://api.anthropic.com/v1/messages \
+  -H "Authorization: Bearer $ANTHROPIC_AUTH_TOKEN" \
+  -H "anthropic-beta: oauth-2025-04-20" \
+  -H "anthropic-version: 2023-06-01" -H "content-type: application/json" \
+  -d '{"model":"claude-haiku-4-5","max_tokens":4,"messages":[{"role":"user","content":"hi"}]}'
+```
+
+A 200 carries `anthropic-ratelimit-unified-*` headers reporting the real utilization of the
+5-hour and 7-day windows. That is what separates the two cases: a genuine rate limit shows
+up there as a high number, an entitlement gap as a 429 carrying no such headers at all. Use
+`Authorization: Bearer` plus the beta header for an `oat` token — `x-api-key` returns a bare
+401 for it and tells you nothing. Swap the model in that payload to map which ones the
+credential actually covers.
+
+Worth knowing before the first 429 rather than after it: nothing in the harness retries or
+backs off. The turn fails, the record is written with its `failure_reason`, and the run is
+over.
+
 ## What runs
 
 | Service | Port | Notes |
@@ -96,6 +141,32 @@ managed volume stops being writable.
 
 One more thing when you set it: `.env` has to be readable by that id, or the Hub fails
 closed naming `secrets_file`.
+
+**Changing `GRIMOIRE_UID` on a stack that has already run needs one more step.** The
+group-0 convention above covers the three roots the image creates — it does not reach what
+the Hub writes underneath them afterwards. `state/`, `raw/`, `write-locks/` and
+`operational-state.db` come into existence at runtime under the process umask, so they end
+up writable by their owner alone, and that owner is whichever uid was running at the time.
+Point `GRIMOIRE_UID` somewhere new and the Hub crash-loops before it serves a single
+request:
+
+```
+SQLite Error 8: 'attempt to write a readonly database'
+```
+
+Re-own the existing contents once, to the new uid and the same group 0 (`docker volume ls`
+gives you the prefixed name — it is the project directory, so `grimoire_grimoire-data` from
+a checkout called `grimoire`):
+
+```bash
+docker run --rm -u 0:0 -v grimoire_grimoire-data:/d alpine \
+  sh -c 'chown -R 1000:0 /d && chmod -R g=u /d'
+```
+
+This bites hardest when you rebind only *some* of the three roots. The directories you
+moved out to host paths already belong to you, which is the whole point of setting the uid;
+the managed volume you deliberately left alone is the one that stops being writable, and it
+is the one holding the database the Hub opens first.
 
 ## Security posture
 
