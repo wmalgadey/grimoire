@@ -1,13 +1,14 @@
 # Grimoire Hub runtime image. See deploy/README.md.
 #
-# Two build stages and two runnable targets. The backend build also distributes the three
-# agent runtimes into the image; the frontend build produces the static SPA. `runtime`
-# carries the Hub, the agents, and the external converter the ingest pipeline dispatches
-# to; `proxy` carries the SPA and the same-origin routing.
+# One image: the Hub, the three agent runtimes, the built frontend, and the external
+# converter the ingest pipeline dispatches to. Two build stages feed it.
+#
+# The frontend is served by the Hub itself (HubEndpoints.MapSingleOriginFrontend), so the
+# deployment is a single container and any proxy in front of it is ordinary infrastructure
+# with one upstream — nothing that needs to know Grimoire's routes.
 #
 # Build context is the repository root:
-#   docker build -f deploy/Dockerfile --target runtime -t grimoire-hub .
-#   docker build -f deploy/Dockerfile --target proxy   -t grimoire-proxy .
+#   docker build -f deploy/Dockerfile -t grimoire-hub .
 
 # ---------------------------------------------------------------------------
 # Stage 1 — backend and agent runtimes
@@ -81,6 +82,10 @@ WORKDIR /app
 
 COPY --from=backend /app/hub/ /app/
 COPY --from=backend /app/.grimoire/agents/ /app/.grimoire/agents/
+# Beside the Hub assembly, because the Hub pins its content root there (ADR-022). Read-only
+# at runtime like the rest of /app; the Hub mounts it only when this directory exists, so a
+# source checkout without it is served by `bun run dev` instead.
+COPY --from=frontend /src/frontend/build/ /app/wwwroot/
 
 # The writable roots are relocated here by Grimoire__Paths__* in compose.yaml and are
 # volume mount points. They are created in the image so the Hub's auto-creation never has
@@ -110,35 +115,3 @@ USER $APP_UID
 # No command name: starting the web server is what the Hub's default command does
 # (ADR-023). Every other Hub CLI command is reachable with `docker compose exec`.
 ENTRYPOINT ["dotnet", "/app/Grimoire.Hub.dll"]
-
-# ---------------------------------------------------------------------------
-# Stage 4 — proxy (the published origin)
-# ---------------------------------------------------------------------------
-# Same Dockerfile, second target: compose builds `runtime` for the hub service and this
-# for the proxy, so the SPA and the Hub can never be built from different commits.
-FROM caddy:2-alpine AS proxy
-
-COPY deploy/Caddyfile /etc/caddy/Caddyfile
-COPY --from=frontend /src/frontend/build/ /srv/
-
-# Rootless here too, on the same arbitrary-uid terms as the Hub. Caddy initializes its
-# storage on every start even with no TLS to manage, so /data and /config have to be
-# writable by whatever uid it runs as — group 0 and group-writable rather than owned by
-# one specific uid, so `runAsUser` on a cluster does not need them re-chowned.
-#
-# The image ships /usr/bin/caddy with a cap_net_bind_service file capability so it can
-# bind :80/:443 unprivileged. That capability has to be REMOVED, not merely left unused:
-# executing a file that carries capabilities fails outright with "operation not permitted"
-# once the bounding set is empty, which is exactly what `cap_drop: ALL` (and a Kubernetes
-# `capabilities.drop: [ALL]`) produces. This proxy only ever binds 8080, which needs no
-# capability at all.
-RUN apk add --no-cache --virtual .setcap libcap \
- && setcap -r /usr/bin/caddy \
- && apk del .setcap \
- && mkdir -p /data/caddy /config/caddy \
- && chown -R 1654:0 /data /config \
- && chmod -R g=u /data /config
-
-USER 1654
-
-EXPOSE 8080

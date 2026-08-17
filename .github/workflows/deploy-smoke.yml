@@ -100,20 +100,27 @@ jobs:
       - name: Start the stack
         run: docker compose up -d --wait
 
-      # One origin serves both halves. The frontend document comes from the proxy's
-      # own file server; /api/board is answered by the Hub through the same origin, which
-      # is what the frontend's relative paths assume.
-      - name: The proxy serves the frontend document
+      # One origin serves everything: the Hub answers the frontend document and the API on
+      # the same port, which is what the frontend's relative paths assume.
+      - name: The Hub serves the frontend document
         run: |
           body=$(curl -fsS --retry 5 --retry-connrefused http://localhost:8080/)
           echo "$body" | head -c 200
           echo "$body" | grep -q "<!doctype html>"
 
-      - name: The proxy reaches the Hub
+      - name: The API answers on the same origin
         run: curl -fsS --retry 5 --retry-connrefused http://localhost:8080/api/board | grep -q "entries"
 
       - name: A deep link falls back to the SPA document
         run: curl -fsS http://localhost:8080/tasks/does-not-exist | grep -q "<!doctype html>"
+
+      # The counterpart HubFrontendHostingTests pins in-process, asserted here against the
+      # real image: the SPA fallback must not turn an unknown API path into a 200.
+      - name: An unknown API path is a 404, not the SPA
+        run: |
+          status=$(curl -s -o /dev/null -w '%{http_code}' http://localhost:8080/api/not-a-real-endpoint)
+          echo "status=$status"
+          [ "$status" = "404" ]
 
       - name: Dump logs on failure
         if: failure()

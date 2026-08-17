@@ -47,9 +47,12 @@ containing a literal `$` will make Compose emit an interpolation warning.
 
 | Service | Port | Notes |
 | --- | --- | --- |
-| `proxy` | 8080 | The only published application port. Serves the frontend and forwards `/api` and `/hubs` to the Hub, so the browser sees one origin. |
-| `hub` | — | The Hub and the agent runtimes. Reachable only from inside the stack. |
+| `hub` | 8080 | The whole application: the UI, the API, the SignalR hubs and the three agent runtimes, on one origin. |
 | `dashboard` | 18888 | Traces, metrics and logs (ADR-005). Holds no credential. |
+
+There is no proxy in this stack. The Hub serves the frontend itself, so if you want TLS, a
+hostname or authentication, put your own terminator in front of port 8080 — it needs no
+Grimoire-specific configuration, only one upstream. On a cluster that is an Ingress.
 
 State lives in three places, managed volumes by default:
 
@@ -82,7 +85,7 @@ run the Hub as yourself:**
 GRIMOIRE_UID=1000    # your `id -u`
 ```
 
-Both containers are rootless by default and run as uid `1654`, so without this the pages,
+The Hub runs rootless as uid `1654` by default, so without this the pages,
 `log.md` entries and records the Hub writes into your vault belong to `1654` rather than
 to you. Point `GRIMOIRE_UID` at your own id and `chown` the directory to yourself once,
 and everything the Hub creates is yours.
@@ -98,7 +101,7 @@ closed naming `secrets_file`.
 
 Rootless by default, on terms meant to survive the move to a cluster:
 
-- Both containers run as a **numeric non-root uid** (`1654`). Numeric rather than a
+- The Hub image declares a **numeric non-root uid** (`1654`). Numeric rather than a
   username because Kubernetes' `runAsNonRoot` admission check can only verify a number.
 - Writable directories are owned by **group 0 and group-writable**, the arbitrary-uid
   convention OpenShift requires. A `runAsUser: <anything>` pod can write to them with no
@@ -138,13 +141,21 @@ The volumes survive; the image is disposable.
 The rationale, kept here because each choice is a consequence of a decision already
 recorded elsewhere rather than a new decision of its own.
 
-**A reverse proxy rather than static hosting inside the Hub.** `HubEndpoints` maps `/api/*`
-and four SignalR hubs under `/hubs/*`, and registers no static-file middleware and no CORS
-policy. The frontend addresses both with relative paths, so in development the *only* thing
-making them same-origin is the Vite proxy in `frontend/vite.config.ts`. Caddy occupies
-exactly that role here. The alternatives — teaching the Hub to serve an SPA, or adding a
-CORS policy — both widen a backend contract to solve a packaging problem, and would make
-the Hub's browser-facing surface depend on where the frontend happens to be deployed.
+**The Hub serves the frontend, so the deployment is one container.** The frontend addresses
+the API and the SignalR hubs with relative paths; in development the Vite proxy in
+`frontend/vite.config.ts` is what makes them same-origin. Rather than reproduce that with a
+proxy of our own, `HubEndpoints.MapSingleOriginFrontend` mounts the built SPA from
+`wwwroot/` beside the Hub assembly. Same-origin becomes true by construction, no CORS policy
+is needed, and any proxy in front is ordinary infrastructure with a single upstream instead
+of something that has to mirror Grimoire's route layout.
+
+It is opt-in on the directory existing, so a source checkout — where `bun run dev` serves
+the frontend — is unaffected. The load-bearing detail is that `MapFallbackToFile` catches
+*every* unmatched path: without the explicit `/api/{**rest}` and `/hubs/{**rest}` fallbacks
+beside it, a mistyped API path would answer the SPA document with HTTP 200 and every caller
+checking status codes would read that as success. `HubFrontendHostingTests` pins both halves
+— deep links reach the SPA, unmatched backend paths stay 404 — and was probed by removing
+the guards and watching it fail.
 
 **The frontend is a client-rendered SPA.** `@sveltejs/adapter-static` with an
 `index.html` fallback, plus `ssr = false` in `src/routes/+layout.ts`. This is the one
@@ -155,7 +166,8 @@ today — `board/+page.ts` is a redirect and `tasks/[taskId]/+page.ts` threads a
 shells. `@sveltejs/adapter-auto`, which this replaced, is a platform chooser that fails the
 build on anything it does not recognize; a container is exactly that case.
 *If a server `load` is ever wanted*: `bun add -d @sveltejs/adapter-node`, swap the import in
-`vite.config.ts`, delete the `ssr = false` line, and run `node build` behind the same proxy.
+`vite.config.ts`, and delete the `ssr = false` line — the Node server then replaces the
+static mount rather than sitting behind it.
 One commit, no data migration, nothing in the Hub changes.
 
 **The credential arrives as a mounted file, never as a service environment variable.**
@@ -196,8 +208,6 @@ next deployment-touching PR or a manual run.
 
 ### Known rough edges
 
-- The proxy configuration encodes the route split between frontend and Hub. A new prefix
-  mapped in `HubEndpoints` and not added to `deploy/Caddyfile` is a 404 no test can see.
 - Each agent subfolder carries its own copy of the shared dependency set — the per-agent
   duplication ADR-022 accepted, now multiplied into an image layer.
 - Rebuilding while the stack runs rewrites the directory agents are launched from.

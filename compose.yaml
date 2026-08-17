@@ -10,34 +10,16 @@
 name: grimoire
 
 services:
-  # The only published port. Serves the SPA and is the same-origin bridge to the Hub —
-  # the role Vite's proxy plays in development.
-  proxy:
-    build:
-      context: .
-      dockerfile: deploy/Dockerfile
-      target: proxy
-    ports:
-      - "${GRIMOIRE_PORT:-8080}:8080"
-    depends_on:
-      hub:
-        condition: service_healthy
-    user: "${GRIMOIRE_PROXY_UID:-1654}:0"
-    cap_drop:
-      - ALL
-    security_opt:
-      - no-new-privileges:true
-    restart: unless-stopped
-
   hub:
     build:
       context: .
       dockerfile: deploy/Dockerfile
       target: runtime
-    # Deliberately not published: the browser reaches the Hub through the proxy, on one
-    # origin, exactly as the frontend's relative /api and /hubs paths assume.
-    expose:
-      - "8080"
+    # One port for everything: the Hub serves the UI, the API and the SignalR hubs, so the
+    # browser sees a single origin without anything in front of it. Put a TLS terminator or
+    # an auth proxy here if you need one — it needs no Grimoire-specific configuration.
+    ports:
+      - "${GRIMOIRE_PORT:-8080}:8080"
     environment:
       # The three writable roots move off their in-image defaults. The agent
       # directory is NOT overridden — it is a build artifact inside the image, and a
@@ -82,8 +64,8 @@ services:
     security_opt:
       - no-new-privileges:true
     healthcheck:
-      # HubEndpoints maps GET / to a literal "Grimoire Hub" — the cheapest honest signal
-      # that the host is serving, and the gate the proxy waits on.
+      # GET / is the frontend document once the SPA is mounted, and the bare "Grimoire Hub"
+      # greeting when it is not — either way the cheapest honest "this host is serving".
       test: ["CMD", "curl", "-fsS", "http://localhost:8080/"]
       interval: 10s
       timeout: 3s
