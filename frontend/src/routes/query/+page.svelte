@@ -18,7 +18,11 @@
 		interruptQueryTurn,
 		submitQueryTurn
 	} from '$lib/services/querySubmissionApi';
-	import { activeTurnId, conversations } from '$lib/stores/conversations.svelte';
+	import {
+		activeTurnId,
+		conversations,
+		NEW_CONVERSATION_PARAM
+	} from '$lib/stores/conversations.svelte';
 	import { citationNote, extractConversationCitations, obsidianUri } from '$lib/wikiLinks';
 	import type { ConnectionState, QueryTurn, QueryTurnStatus } from '$lib/types';
 
@@ -136,6 +140,17 @@
 	}
 
 	onMount(() => {
+		// "+ Ask" from another screen is a plain link — the store lives in this tab, but the
+		// page it lands on defaults to the overview, so the action's own promise ("start a new
+		// conversation") ended one click short of a thread. The flag carries that intent across
+		// the navigation, and is stripped again so a refresh does not open a second empty one.
+		if (new URLSearchParams(window.location.search).has(NEW_CONVERSATION_PARAM)) {
+			startConversation();
+			const url = new URL(window.location.href);
+			url.searchParams.delete(NEW_CONVERSATION_PARAM);
+			history.replaceState(history.state, '', url);
+		}
+
 		client = createQueryLifecycleClient();
 
 		client.onAnswerChunk((event) => {

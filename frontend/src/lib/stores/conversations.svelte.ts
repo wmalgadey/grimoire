@@ -112,3 +112,10 @@ export function conversationNote(conversation: Conversation): string {
 	const questions = `${count} question${count === 1 ? '' : 's'}`;
 	return activeTurnId(conversation) ? `${questions} · answering now` : questions;
 }
+
+/**
+ * Query-string flag that carries "+ Ask" intent across a navigation. The nav sets it when
+ * the action is a link from another screen; `routes/query/+page.svelte` consumes it on
+ * mount and strips it again. Declared here so the writer and the reader cannot drift.
+ */
+export const NEW_CONVERSATION_PARAM = 'new';

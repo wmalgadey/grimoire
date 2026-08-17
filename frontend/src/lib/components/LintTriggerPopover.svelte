@@ -15,6 +15,14 @@
 	let triggerError: PresentedError | null = $state(null);
 	let model = $state(DEFAULT_LINT_MODEL);
 
+	// Every dismissal goes through here. Closing has to drop the error too: the popover is
+	// reused across attempts, and a failure left in state reappears the next time it opens,
+	// on top of a form the operator has just started fresh.
+	function close() {
+		open = false;
+		triggerError = null;
+	}
+
 	async function handleTrigger() {
 		triggering = true;
 		triggerError = null;
@@ -33,7 +41,7 @@
 
 <svelte:window
 	onkeydown={(event) => {
-		if (open && event.key === 'Escape') open = false;
+		if (open && event.key === 'Escape') close();
 	}}
 />
 
@@ -50,7 +58,7 @@
 		<!-- Backdrop first, panel above it: a click anywhere else dismisses (chat 3). -->
 		<div
 			class="fixed inset-0 z-40"
-			onclick={() => (open = false)}
+			onclick={close}
 			onkeydown={() => {}}
 			role="presentation"
 			data-testid="lint-popover-backdrop"
@@ -87,7 +95,7 @@
 				<button
 					type="button"
 					class="rounded border border-slate-300 px-3 py-1 text-sm text-slate-700 hover:bg-slate-50"
-					onclick={() => (open = false)}
+					onclick={close}
 					data-testid="lint-popover-cancel">Cancel</button
 				>
 				<button

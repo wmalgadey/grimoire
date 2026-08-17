@@ -78,6 +78,9 @@ beforeEach(() => {
 	// The conversation list outlives any one component, which is the point of it — so each
 	// test starts from an empty one.
 	conversations.reset();
+	// The "+ Ask" flag is read off the real URL, and the page strips it — reset it so one
+	// test's navigation intent cannot leak into the next.
+	history.replaceState(history.state, '', window.location.pathname);
 	onAnswerChunkHandlers.length = 0;
 	onTurnChangedHandlers.length = 0;
 	onReconnectedHandlers.length = 0;
@@ -137,6 +140,22 @@ test('the tab lands on the conversation overview, empty until one is started', a
 
 	await expect.element(screen.getByTestId('thread-empty')).toBeVisible();
 	await expect.element(screen.getByTestId('query-prompt-input')).toBeVisible();
+});
+
+test('arriving from another screen via "+ Ask" opens a fresh thread, not the overview', async () => {
+	// The nav renders "+ Ask" as a plain link everywhere except this page, so the intent has
+	// to survive the navigation — landing on the overview would leave the action one click
+	// short of what its label promises.
+	history.replaceState(history.state, '', `${window.location.pathname}?new=1`);
+
+	const screen = await render(Page);
+
+	await expect.element(screen.getByTestId('thread-empty')).toBeVisible();
+	await expect.element(screen.getByTestId('query-prompt-input')).toBeVisible();
+	await expect.element(screen.getByTestId('conversation-list-empty')).not.toBeInTheDocument();
+
+	// Stripped again, so a refresh does not open a second empty conversation on top.
+	expect(window.location.search).toBe('');
 });
 
 test('a conversation appears in the overview and reopens from it', async () => {

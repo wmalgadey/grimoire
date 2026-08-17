@@ -4,6 +4,7 @@
 	import IngestDialog from './IngestDialog.svelte';
 	import LintTriggerPopover from './LintTriggerPopover.svelte';
 	import { obsidianVaultUri } from '$lib/wikiLinks';
+	import { NEW_CONVERSATION_PARAM } from '$lib/stores/conversations.svelte';
 	import type { ConnectionState } from '$lib/types';
 
 	// The app shell from the Hi-Fi design: brand, two destinations, and the actions on the
@@ -66,12 +67,19 @@
 				data-testid="nav-ask-button">+ Ask</button
 			>
 		{:else}
+			<!-- From another screen this is a link, so the intent has to survive the navigation:
+			     the flag tells the conversations page to open a fresh thread rather than the
+			     overview, which is what the label promises. The path still goes through
+			     resolve(); the rule fires on the query string appended to it, which resolve()
+			     has no parameter for. -->
+			<!-- eslint-disable svelte/no-navigation-without-resolve -->
 			<a
-				href={resolve('/query')}
+				href={`${resolve('/query')}?${NEW_CONVERSATION_PARAM}=1`}
 				class="rounded border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50"
 				title="Start a new conversation with fresh context"
 				data-testid="nav-ask-button">+ Ask</a
 			>
+			<!-- eslint-enable svelte/no-navigation-without-resolve -->
 		{/if}
 
 		<LintTriggerPopover />
