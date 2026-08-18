@@ -133,6 +133,59 @@ public class QueryConversationRecordBookkeepingTests
         Assert.Equal("Yes, all of them.", recordedTurn.Answer);
     }
 
+    /// <summary>
+    /// 025-agent-owned-log T031 (FR-012, SC-008): a turn that answers without writing any
+    /// wiki content stays fully accounted for in the conversation record — its completion,
+    /// its correlation reference, and the fact that it produced no wiki changes are all
+    /// discoverable <em>without consulting the wiki's activity log</em>. This is the
+    /// safety net for deleting the harness fallback entry: FR-012 requires the existing
+    /// coverage be confirmed by test rather than replaced.
+    /// </summary>
+    [Fact]
+    public async Task NoWriteTurn_IsFullyAccountedForInTheConversationRecord_WithoutTheActivityLog()
+    {
+        var launcher = new FakeAgentProcessLauncher(autoPlay: false);
+        var root = QueryTurnSubmissionApiTests.CreateTempRoot();
+        using var host = await QueryTurnSubmissionApiTests.BuildHostAsync(launcher, root);
+        var client = host.GetTestClient();
+
+        var turnId = await QueryConversationRecordLifecycleTests.SubmitAsync(
+            client, "c-bk-no-write", "What do we already know about retrieval patterns?");
+        var handle = Assert.Single(launcher.Handles);
+        handle.EmitEvent("started", turnId);
+        handle.EmitEvent("answer_chunk", turnId, new { text = "Answered from the existing pages." });
+        await QueryConversationRecordLifecycleTests.WaitForAnswerAsync(client, turnId);
+        handle.EmitEvent("completed", turnId, new
+        {
+            summary = "routine lookup",
+            systemPromptSha256 = "sha-sp-1",
+            policyPath = "agents/query/policy.json",
+            policyVersion = 3,
+            policySha256 = "sha-pol-1",
+            model = "claude-sonnet-4-5",
+            turnsUsed = 2,
+            createdArtifacts = Array.Empty<string>(),
+        });
+        await QueryConversationRecordLifecycleTests.WaitForStateAsync(client, turnId, "completed");
+
+        var recordedTurn = await ReadSingleTurnAsync(root, "c-bk-no-write");
+
+        // The run happened, completed, and is correlatable — all from the record alone.
+        Assert.Equal(turnId, recordedTurn.TurnId);
+        Assert.Equal("completed", recordedTurn.State);
+        Assert.NotNull(recordedTurn.CompletedAt);
+        Assert.Null(recordedTurn.FailureReason);
+        Assert.Equal("What do we already know about retrieval patterns?", recordedTurn.Prompt);
+        Assert.Equal("Answered from the existing pages.", recordedTurn.Answer);
+
+        // ...and it hit no guardrail, so nothing about the turn is unexplained.
+        Assert.Empty(recordedTurn.DeniedActions);
+
+        // The activity log was never created: no agent wrote it, and no harness component
+        // can (FR-001). Its absence costs nothing above.
+        Assert.False(File.Exists(Path.Combine(root, "log.md")));
+    }
+
     [Fact]
     public async Task InterruptedTurn_BookkeepingCarriesStateTimestampsAndNullableMetadata()
     {

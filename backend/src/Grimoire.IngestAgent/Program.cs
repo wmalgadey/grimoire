@@ -120,6 +120,7 @@ internal sealed class IngestIntentHandler : IAgentIntentHandler
     private readonly RunEventEmitter _runEvents;
     private readonly TaskArtifactStore _taskStore;
     private readonly SourceReader _sourceReader;
+    private readonly WikiLogCoverageObserver _coverageObserver;
     private readonly ILoggerFactory _loggerFactory;
     private readonly ILogger _logger;
     private readonly DateTimeOffset _startTime;
@@ -147,6 +148,10 @@ internal sealed class IngestIntentHandler : IAgentIntentHandler
         _taskStore = taskStore;
         _sourceReader = sourceReader;
         _loggerFactory = loggerFactory;
+        _coverageObserver = new WikiLogCoverageObserver(
+            IngestAgentTracing.ActivitySource,
+            IngestAgentMetrics.Meter,
+            loggerFactory.CreateLogger<WikiLogCoverageObserver>());
         _logger = logger;
         _startTime = startTime;
         _convertSteps = convertSteps;
@@ -323,6 +328,11 @@ internal sealed class IngestIntentHandler : IAgentIntentHandler
         IngestAgentMetrics.RecordIngest("completed",
             (DateTimeOffset.UtcNow - _startTime).TotalSeconds);
 
+        // 025-agent-owned-log (FR-012a): evaluated once at run end, inside the finalize
+        // span so wiki_log.coverage_check is its child. Writes nothing — it only reads the
+        // executor's own record of the writes it allowed.
+        _coverageObserver.Observe(_executor, "ingest", _options.TaskId);
+
         _runEvents.EmitCompleted(loopResult.Narrative);
         return 0;
     }
@@ -405,6 +415,15 @@ internal sealed class IngestIntentHandler : IAgentIntentHandler
 
         IngestAgentMetrics.RecordIngest("failed",
             (DateTimeOffset.UtcNow - _startTime).TotalSeconds);
+
+        // 025-agent-owned-log (FR-012a): a failed run that had already changed wiki content
+        // before failing is exactly the case worth reporting — the deleted backstop used to
+        // paper over it by writing its own entry. _executor is null if the run failed
+        // before the executor was built, in which case there is nothing to observe.
+        if (_executor is not null)
+        {
+            _coverageObserver.Observe(_executor, "ingest", _options.TaskId);
+        }
     }
 
     private static int ResolveTokenCapFromEnvironment()

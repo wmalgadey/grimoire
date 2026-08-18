@@ -95,6 +95,7 @@ internal sealed class QueryIntentHandler : IAgentIntentHandler
     private readonly QueryConversationInput _conversationInput;
     private readonly RunEventEmitter _runEvents;
     private readonly ILoggerFactory _loggerFactory;
+    private readonly WikiLogCoverageObserver _coverageObserver;
     private readonly ILogger _logger;
 
     private GuardedToolExecutor? _executor;
@@ -112,6 +113,10 @@ internal sealed class QueryIntentHandler : IAgentIntentHandler
         _conversationInput = conversationInput;
         _runEvents = runEvents;
         _loggerFactory = loggerFactory;
+        _coverageObserver = new WikiLogCoverageObserver(
+            QueryAgentTracing.ActivitySource,
+            QueryAgentMetrics.Meter,
+            loggerFactory.CreateLogger<WikiLogCoverageObserver>());
         _logger = logger;
     }
 
@@ -181,6 +186,12 @@ internal sealed class QueryIntentHandler : IAgentIntentHandler
         // the artifact, and the Hub now records the turn into the Conversation Record. The
         // stdin/scaffold contract is untouched (ADR-012 fingerprints must not drift).
 
+        // 025-agent-owned-log (FR-012a): evaluated once at run end. Query has no run-level
+        // span at completion (ADR-014 removed the finalize span), so wiki_log.coverage_check
+        // is root-parented; correlation is carried by task_id_or_run_id in both agents.
+        // Writes nothing — it only reads the executor's own record of allowed writes.
+        _coverageObserver.Observe(executor, "query", _options.TurnId);
+
         _runEvents.EmitCompleted(result.Narrative, new RunCompletionMetadata(
             SystemPromptSha256: instructions.SystemPrompt.Sha256,
             PolicyPath: instructions.Policy.Identity.Path,
@@ -204,6 +215,13 @@ internal sealed class QueryIntentHandler : IAgentIntentHandler
         {
             _logger.LogError(exception, "Query agent failed for turn {TurnId}.", _options.TurnId);
             reason = ErrorSanitizer.Sanitize(exception.Message, "Unknown query error.");
+        }
+
+        // A turn that changed wiki content before failing is worth reporting; _executor is
+        // null when the failure preceded its construction, leaving nothing to observe.
+        if (_executor is not null)
+        {
+            _coverageObserver.Observe(_executor, "query", _options.TurnId);
         }
 
         return reason;

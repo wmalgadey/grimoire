@@ -62,6 +62,18 @@ public class IngestFailureAndReconciliationTests
         var taskArtifact = await File.ReadAllTextAsync(Path.Combine(tasksDir, $"{taskId}.md"));
         Assert.Contains("status: failed", taskArtifact);
         Assert.Contains("failure_reason:", taskArtifact);
+
+        // 025-agent-owned-log (FR-012, SC-008): removing the harness fallback entry must
+        // cost no diagnostic capability, so the failed run stays fully accounted for
+        // *without consulting the wiki*. Everything an operator needs is in the task
+        // artifact: the outcome, the stage it failed at, and the correlation reference.
+        Assert.Contains($"task_id: {taskId}", taskArtifact, StringComparison.Ordinal);
+        Assert.Contains("completed_at:", taskArtifact, StringComparison.Ordinal);
+        Assert.Contains("source_ref:", taskArtifact, StringComparison.Ordinal);
+
+        // ...and the activity log is exactly as the test seeded it — empty. The failure is
+        // discoverable above; none of it was written here (FR-001, FR-002, SC-002).
+        Assert.Equal(string.Empty, await File.ReadAllTextAsync(logPath));
     }
 
     [Fact]

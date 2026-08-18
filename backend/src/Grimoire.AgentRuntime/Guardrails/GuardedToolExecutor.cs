@@ -37,6 +37,7 @@ public sealed class GuardedToolExecutor
     private readonly ToolRegistry _registry;
     private readonly IToolCallInstrumentation _instrumentation;
     private readonly SharedFileWriteGuard? _writeGuard;
+    private readonly string? _canonicalLogPath;
     private readonly List<DeniedActionRecord> _denials = [];
     private readonly List<string> _touchedPaths = [];
     private readonly List<string> _createdPaths = [];
@@ -98,10 +99,10 @@ public sealed class GuardedToolExecutor
         _taskId = taskId ?? string.Empty;
         _registry = registry ?? ToolRegistry.Default;
         _instrumentation = instrumentation ?? NullToolCallInstrumentation.Instance;
-        var canonicalLogPath = logPath is not null ? Canonicalize(logPath) : null;
+        _canonicalLogPath = logPath is not null ? Canonicalize(logPath) : null;
         var canonicalIndexPath = indexPath is not null ? Canonicalize(indexPath) : null;
         _writeGuard = writeLocksDir is not null
-            ? new SharedFileWriteGuard(writeLocksDir, writeLockBackoffCap, canonicalLogPath, canonicalIndexPath, activitySource)
+            ? new SharedFileWriteGuard(writeLocksDir, writeLockBackoffCap, _canonicalLogPath, canonicalIndexPath, activitySource)
             : null;
     }
 
@@ -120,6 +121,31 @@ public sealed class GuardedToolExecutor
     /// the run's own journal — no judgment about page content (Constitution Principle V).
     /// </summary>
     public IReadOnlyList<string> CreatedPaths => _createdPaths;
+
+    /// <summary>
+    /// 025-agent-owned-log (ADR-028, FR-012a): the run's allowed <em>wiki-content</em>
+    /// writes — <see cref="TouchedPaths"/> minus the canonical activity-log path. Pure set
+    /// arithmetic over the harness's own record of writes it allowed: no file is read, no
+    /// content is inspected, and no judgment is made about what any write meant
+    /// (Constitution Principle V).
+    ///
+    /// Deliberately derived from <see cref="TouchedPaths"/> and not
+    /// <see cref="CreatedPaths"/>: the latter is create-only writes, which would miss an
+    /// index-only or page-update run — both of which the spec counts as wiki changes.
+    /// </summary>
+    public IReadOnlyList<string> WikiContentWrites =>
+        _canonicalLogPath is null
+            ? _touchedPaths
+            : [.. _touchedPaths.Where(p => !string.Equals(p, _canonicalLogPath, StringComparison.Ordinal))];
+
+    /// <summary>
+    /// 025-agent-owned-log (ADR-028, FR-012a): whether the canonical activity-log path is
+    /// among this run's successfully written paths. <c>false</c> when no log path was
+    /// configured for the run.
+    /// </summary>
+    public bool ActivityLogWritten =>
+        _canonicalLogPath is not null
+        && _touchedPaths.Contains(_canonicalLogPath, StringComparer.Ordinal);
 
     /// <summary>
     /// Executes one tool call, applying policy, journaling, and telemetry.
