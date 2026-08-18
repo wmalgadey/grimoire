@@ -5,6 +5,7 @@
 	import LintTriggerPopover from './LintTriggerPopover.svelte';
 	import { obsidianVaultUri } from '$lib/wikiLinks';
 	import { NEW_CONVERSATION_PARAM } from '$lib/stores/conversations.svelte';
+	import { getServerVersion } from '$lib/services/serverVersionApi';
 	import type { ConnectionState } from '$lib/types';
 
 	// The app shell from the Hi-Fi design: brand, two destinations, and the actions on the
@@ -23,6 +24,29 @@
 	let { current, connectionState, onNewConversation, onIngestAccepted }: Props = $props();
 
 	let ingestOpen = $state(false);
+
+	// The version of the Hub the board is connected to, shown in the connection indicator's
+	// hover panel. Fetched on every transition *into* `connected` rather than once on mount:
+	// a tab left open across a redeploy reconnects to a different build, and re-reading it at
+	// exactly that moment is what keeps the panel describing the server actually on the other
+	// end. Cleared while there is no connection, because a version from the previous one is a
+	// claim this component can no longer stand behind.
+	let serverVersion = $state<string | null>(null);
+	let previousConnectionState: ConnectionState | null = null;
+
+	$effect(() => {
+		const current = connectionState;
+		const justConnected = current === 'connected' && previousConnectionState !== 'connected';
+		previousConnectionState = current;
+
+		if (justConnected) {
+			void getServerVersion().then((version) => {
+				serverVersion = version;
+			});
+		} else if (current === 'disconnected') {
+			serverVersion = null;
+		}
+	});
 
 	const tabClass = (active: boolean) =>
 		'rounded-full px-4 py-1 text-sm font-medium ' +
@@ -112,7 +136,7 @@
 		</a>
 		<!-- eslint-enable svelte/no-navigation-without-resolve -->
 
-		<ConnectionStatusIndicator state={connectionState} />
+		<ConnectionStatusIndicator state={connectionState} {serverVersion} />
 	</div>
 </header>
 

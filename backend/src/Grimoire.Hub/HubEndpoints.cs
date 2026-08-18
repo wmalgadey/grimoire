@@ -1,3 +1,4 @@
+using Grimoire.Hub;
 using Grimoire.Hub.ApiErrors;
 using Grimoire.Hub.IngestSubmission;
 using Grimoire.Hub.LintDispatch;
@@ -40,6 +41,10 @@ internal static class HubEndpoints
         {
             app.MapGet("/", () => "Grimoire Hub");
         }
+        // The Hub's own version (ADR-027), so the frontend's connection indicator can name the
+        // server it is connected to. Mapped first among the API groups because it depends on
+        // nothing: it answers even when everything below it is misconfigured.
+        app.MapGroup("/api/version").MapHubVersionEndpoints();
         app.MapHub<IngestLifecycleHub>("/hubs/ingest-lifecycle");
         app.MapGroup("/api/ingest-submissions").MapIngestSubmissionEndpoints();
         app.MapGroup("/api/ingest-queue").MapIngestQueueEndpoints();

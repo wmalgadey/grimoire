@@ -54,28 +54,16 @@ public sealed class HubCliHelpProvider : HelpProvider
     });
 
     /// <summary>
-    /// The Hub's own version, shown under the logo. Read from
-    /// <see cref="AssemblyInformationalVersionAttribute"/> — the assembly's most descriptive
-    /// version, set by <c>backend/Directory.Build.props</c> from <c>$(Version)</c> — falling
-    /// back to the assembly version if that attribute is ever absent. Anything after a '+' is
-    /// dropped: should a future SourceLink/versioning setup append build metadata (a commit
-    /// sha), this line should still name a release rather than a build.
+    /// The Hub's own version, shown under the logo — <see cref="HubVersion.Current"/>, the same
+    /// string <c>GET /api/version</c> serves to the frontend's connection indicator, so the two
+    /// surfaces can never disagree about which build is running.
     ///
-    /// Deliberately read here rather than through Spectre's own
+    /// Deliberately read from there rather than through Spectre's own
     /// <c>ICommandModel.ApplicationVersion</c>: populating that (via
     /// <c>SetApplicationVersion</c>) would also add a <c>-v, --version</c> option to every
     /// help screen — a separate decision from showing the version in the logo block.
     /// </summary>
-    private static readonly Lazy<string> LogoVersion = new(() =>
-    {
-        var assembly = typeof(HubCliHelpProvider).Assembly;
-        var informational = assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion;
-        var version = string.IsNullOrWhiteSpace(informational)
-            ? assembly.GetName().Version?.ToString()
-            : informational;
-
-        return version?.Split('+')[0] ?? string.Empty;
-    });
+    private static string LogoVersion => HubVersion.Current;
 
     /// <summary>
     /// The build configuration, but only when it is NOT a release build — worth flagging in
@@ -143,9 +131,9 @@ public sealed class HubCliHelpProvider : HelpProvider
     {
         var parts = new List<string>(capacity: 2);
 
-        if (LogoVersion.Value.Length > 0)
+        if (LogoVersion.Length > 0)
         {
-            parts.Add($"[italic]Version {Markup.Escape(LogoVersion.Value)}[/]");
+            parts.Add($"[italic]Version {Markup.Escape(LogoVersion)}[/]");
         }
 
         if (NonReleaseConfiguration.Value is { } configuration)

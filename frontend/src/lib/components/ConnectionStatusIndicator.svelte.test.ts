@@ -39,3 +39,26 @@ test('connected and disconnected states render with distinct styling', async () 
 
 	expect(connectedClass).not.toBe(disconnectedClass);
 });
+
+// The hover panel names the Hub behind the connection, so "connected" says connected to what.
+test('names the connected server version in the hover panel', async () => {
+	const screen = await render(ConnectionStatusIndicator, {
+		state: 'connected',
+		serverVersion: '0.0.26'
+	});
+
+	await expect
+		.element(screen.getByTestId('connection-status-server-version'))
+		.toHaveTextContent('Server 0.0.26');
+});
+
+test('says the version is unknown rather than going blank when the server did not report one', async () => {
+	const screen = await render(ConnectionStatusIndicator, {
+		state: 'disconnected',
+		serverVersion: null
+	});
+
+	await expect
+		.element(screen.getByTestId('connection-status-server-version'))
+		.toHaveTextContent('version unknown');
+});

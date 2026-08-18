@@ -11,9 +11,16 @@
 	// colour and on `data-connection-state`.
 	interface Props {
 		state: ConnectionState;
+		/**
+		 * The version of the Hub behind this connection, or `null` while it is unknown — not yet
+		 * fetched, or a server that could not answer. The panel is where it belongs: "connected"
+		 * on its own does not say connected to *what*, and a tab left open across a redeploy is
+		 * exactly the case where that matters.
+		 */
+		serverVersion?: string | null;
 	}
 
-	let { state }: Props = $props();
+	let { state, serverVersion = null }: Props = $props();
 
 	const labels: Record<ConnectionState, string> = {
 		connecting: 'Connecting',
@@ -66,6 +73,12 @@
 		<span class="text-xs text-slate-500">{descriptions[state]}</span>
 		<span class="text-xs text-slate-400">
 			Drops in the connection show here, and the board reconnects on its own.
+		</span>
+		<span
+			class="mt-1 border-t border-slate-100 pt-1 text-xs text-slate-500"
+			data-testid="connection-status-server-version"
+		>
+			Server {serverVersion ?? 'version unknown'}
 		</span>
 	</span>
 </button>
