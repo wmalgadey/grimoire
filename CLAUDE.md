@@ -34,12 +34,11 @@ enforceable once extracted into the constitution or an Accepted ADR.
 | Artifact | Role | Binding for SDD? |
 | --- | --- | --- |
 | `.specify/memory/constitution.md` | Enforceable project rules | Yes — gates every plan |
+| `specs/<feature>/` | Feature-scoped SDD artifacts | Yes, for only the specific feature |
 | `docs/adr/` | Architectural decisions incl. tech-stack rationale (MADR) | Yes, once Accepted (Principle III) |
-| `docs/decision-context-overview.md` | Problem space & product vision (North Star) | Only via extraction into constitution/ADRs; audited with `/drift-check` |
-| `specs/<feature>/` | Feature-scoped SDD artifacts | Yes, for that feature |
-| `docs/befunde-remediation-prompts.md` | Prompt library for remediation workflows | No — source material only; never cite as requirements in specs/plans/ADRs |
-| `docs/foundational/llm-wiki-*.md`, `docs/ideas/project-conversation.md` | Source material (absorbed) | No — never cite as requirements |
-| `docs/llm-wiki-pattern-conformance.md` | Conformance analysis: the agent instruction files against the LLM-Wiki pattern they came from | No — findings bind only once filed as issues and taken through the spec-kit workflow |
+| `docs/foundational/decision-context-overview.md` | Problem space & product vision (North Star) | Only via extraction into constitution/ADRs; audited with `/drift-check` |
+| `docs/foundational/llm-wiki-*.md`, `docs/ideas/*.md` | Source material (absorbed or moved to github issues) | No — never cite as requirements |
+| `docs/**/*.md` | Other documents like analysis or summaries of promblems | No — never cite as requirements |
 | `dev-experience.md` | Personal learning log (German) | No — outside SDD; never cite in specs/plans/ADRs; updated via `/dev-log` |
 
 New documents require a declared reader (which process step consumes it?). If none
