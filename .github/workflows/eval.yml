@@ -11,6 +11,10 @@ on:
         description: "Samples per eval (optional; suite default is 10, clamped 1-20)"
         required: false
         type: string
+      scenarios:
+        description: "Scenario ids to capture, comma- or space-separated (optional; omit to capture every scenario)"
+        required: false
+        type: string
 
 permissions:
   contents: read
@@ -94,11 +98,27 @@ jobs:
           GRIMOIRE_EVAL_PROVIDER_MODEL: "nvidia-model"
           GRIMOIRE_EVAL_PROVIDER_API_KEY: ${{ secrets.NVIDIA_NIM_API_KEY }}
           GRIMOIRE_EVAL_SAMPLES: ${{ inputs.sample_count }}
+          SCENARIOS: ${{ inputs.scenarios }}
         run: |
+          # Capturing every scenario to refresh a handful wastes provider quota and time —
+          # a stale fingerprint usually touches a subset. `--scenario` is repeatable, so
+          # translate the comma/space-separated input into one flag per id; empty input
+          # keeps the previous behaviour of capturing everything.
+          args=()
+          for scenario in ${SCENARIOS//,/ }; do
+            args+=(--scenario "$scenario")
+          done
+
+          if [ ${#args[@]} -gt 0 ]; then
+            echo "Capturing ${#args[@]} selected scenario(s): ${SCENARIOS}"
+          else
+            echo "No scenario filter given — capturing every scenario."
+          fi
+
           dotnet run --project backend/src/Grimoire.EvalRunner \
             --configuration Release \
             --no-build \
-            -- capture --summary eval-summary.md
+            -- capture --summary eval-summary.md "${args[@]}"
 
       # The proxy log records every upstream call to the provider and its status, and is
       # the only place a capture failure's real cause shows up: the runner reports
