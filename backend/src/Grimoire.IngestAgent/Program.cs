@@ -39,8 +39,6 @@ var options = ReadCliOptions(args);
 // Stdout is the NDJSON event channel (ADR-008); all logging goes to stderr/OTLP.
 using var runEvents = new RunEventEmitter(Console.Out, options.TaskId);
 var taskStore = new TaskArtifactStore();
-var logAppender = new WikiLogAppender(
-    IngestAgentTracing.ActivitySource, IngestAgentMetrics.Meter, loggerFactory.CreateLogger<WikiLogAppender>());
 var sourceReader = new SourceReader();
 
 var startTime = DateTimeOffset.UtcNow;
@@ -66,7 +64,7 @@ if (File.Exists(options.TaskArtifactPath))
 }
 
 var intent = new IngestIntentHandler(
-    profile, options, runEvents, taskStore, logAppender, sourceReader,
+    profile, options, runEvents, taskStore, sourceReader,
     loggerFactory, logger, startTime, convertSteps);
 
 return await new AgentHost(profile).RunAsync(
@@ -121,7 +119,6 @@ internal sealed class IngestIntentHandler : IAgentIntentHandler
     private readonly IngestCliOptions _options;
     private readonly RunEventEmitter _runEvents;
     private readonly TaskArtifactStore _taskStore;
-    private readonly WikiLogAppender _logAppender;
     private readonly SourceReader _sourceReader;
     private readonly ILoggerFactory _loggerFactory;
     private readonly ILogger _logger;
@@ -138,7 +135,6 @@ internal sealed class IngestIntentHandler : IAgentIntentHandler
         IngestCliOptions options,
         RunEventEmitter runEvents,
         TaskArtifactStore taskStore,
-        WikiLogAppender logAppender,
         SourceReader sourceReader,
         ILoggerFactory loggerFactory,
         ILogger logger,
@@ -149,7 +145,6 @@ internal sealed class IngestIntentHandler : IAgentIntentHandler
         _options = options;
         _runEvents = runEvents;
         _taskStore = taskStore;
-        _logAppender = logAppender;
         _sourceReader = sourceReader;
         _loggerFactory = loggerFactory;
         _logger = logger;
@@ -317,10 +312,6 @@ internal sealed class IngestIntentHandler : IAgentIntentHandler
                 Title: _options.Title),
             CancellationToken.None);
 
-        await _logAppender.EnsureLogEntryAsync(
-            _options.LogPath, "ingest", "completed", _options.SourceRef, _options.TaskId,
-            forceAppend: false, CancellationToken.None);
-
         IngestAgentLogEvents.LogAgentCompleted(
             _logger,
             _options.TaskId,
@@ -411,10 +402,6 @@ internal sealed class IngestIntentHandler : IAgentIntentHandler
                 ConvertSteps: _convertSteps,
                 Title: _options.Title),
             CancellationToken.None);
-
-        await _logAppender.EnsureLogEntryAsync(
-            _options.LogPath, "ingest", "failed", _options.SourceRef, _options.TaskId,
-            forceAppend: true, CancellationToken.None);
 
         IngestAgentMetrics.RecordIngest("failed",
             (DateTimeOffset.UtcNow - _startTime).TotalSeconds);

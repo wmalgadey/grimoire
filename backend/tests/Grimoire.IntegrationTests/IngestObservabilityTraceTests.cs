@@ -24,43 +24,6 @@ public class IngestObservabilityTraceTests
     // Agent loop span coverage is asserted below.
 
     [Fact]
-    public async Task WikiLogAppender_Creates_BackstopAppend_Span()
-    {
-        var spanNames = new ConcurrentQueue<string>();
-        using var listener = new ActivityListener
-        {
-            ShouldListenTo = src => src.Name == "Grimoire.IngestAgent",
-            Sample = (ref ActivityCreationOptions<ActivityContext> _) => ActivitySamplingResult.AllDataAndRecorded,
-            ActivityStopped = a => spanNames.Enqueue(a.OperationName)
-        };
-        ActivitySource.AddActivityListener(listener);
-
-        var root = Path.Combine(Path.GetTempPath(), $"trace-test-{Guid.NewGuid():N}");
-        var logPath = Path.Combine(root, "log.md");
-        Directory.CreateDirectory(root);
-        await File.WriteAllTextAsync(logPath, string.Empty);
-
-        var appender = new WikiLogAppender(IngestAgentTracing.ActivitySource, TestMeter);
-        await appender.AppendAsync(logPath, "ingest", "completed", "source.md", "Create tech/test.md", "task-001", CancellationToken.None);
-
-        Assert.Contains("wiki_log.backstop_append", spanNames);
-    }
-
-    [Fact]
-    public async Task WikiLogAppender_EnsureLogEntry_CreatesMissingDirectory()
-    {
-        var root = Path.Combine(Path.GetTempPath(), $"trace-test-{Guid.NewGuid():N}");
-        var logPath = Path.Combine(root, "wiki", "log.md");
-
-        var appender = new WikiLogAppender(IngestAgentTracing.ActivitySource, TestMeter);
-        await appender.EnsureLogEntryAsync(logPath, "ingest", "completed", "source.md", "task-001", forceAppend: false, CancellationToken.None);
-
-        Assert.True(File.Exists(logPath));
-        var content = await File.ReadAllTextAsync(logPath);
-        Assert.Contains("task-001", content, StringComparison.Ordinal);
-    }
-
-    [Fact]
     public async Task ObservabilitySignals_CreateChildSpans_ForLogsMetricsAndHubEvents()
     {
         var spanNames = new ConcurrentQueue<string>();

@@ -30,9 +30,12 @@ public class IngestAgentGuardedWriteBoundaryRuleTests
     [
         "Grimoire.AgentRuntime.Guardrails",
         "Grimoire.IngestAgent.TaskArtifact",
-        // 014-wiki-storage-restructure R5: Grimoire.IngestAgent.IngestLog moved (and
-        // generalized to all three agent types) into Grimoire.AgentRuntime.WikiLog.
-        "Grimoire.AgentRuntime.WikiLog",
+        // 025-agent-owned-log (ADR-028 BR-1): Grimoire.AgentRuntime.WikiLog was exempt
+        // solely to permit the WikiLogAppender backstop's File.AppendAllTextAsync. The
+        // backstop is deleted and the exemption with it — the activity log is agent-owned
+        // wiki content, written only through the guarded tool layer. The namespace still
+        // exists (it hosts the write-free WikiLogCoverageObserver) and must contain zero
+        // filesystem-write calls.
         "Grimoire.AgentRuntime.Core.Adapters.Replay",
     ];
 
@@ -110,7 +113,7 @@ public class IngestAgentGuardedWriteBoundaryRuleTests
         Assert.True(
             violations.Count == 0,
             $"Filesystem-write APIs must only be called from allowed namespaces " +
-            $"(Grimoire.AgentRuntime.Guardrails, Grimoire.IngestAgent.TaskArtifact, Grimoire.AgentRuntime.WikiLog). Violations:\n" +
+            $"(Grimoire.AgentRuntime.Guardrails, Grimoire.IngestAgent.TaskArtifact, Grimoire.AgentRuntime.Core.Adapters.Replay). Violations:\n" +
             string.Join("\n", violations));
     }
 

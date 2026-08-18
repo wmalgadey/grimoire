@@ -276,13 +276,12 @@ public class LogEntryFormatEnforcementTests
     }
 
     /// <summary>
-    /// T063 (014-wiki-storage-restructure, /speckit-analyze finding G1): SC-004 — every
-    /// entry appended to <c>log.md</c>, whether agent-written (via the guard, as every
-    /// other test in this file exercises) or backstop-written (via
-    /// <see cref="WikiLogAppender"/> directly, which never goes through the guard — see
-    /// its own doc comment), remains locatable by searching the file for the heading
-    /// pattern. plan.md's Test Strategy names this multi-entry regex-search assertion for
-    /// SC-004 but, until this task, no test implemented it.
+    /// 025-agent-owned-log SC-003/FR-009 (was 014's SC-004): every entry in
+    /// <c>log.md</c> remains locatable by searching the file for the heading pattern,
+    /// however many entries accumulate. Every entry is now agent-written through the
+    /// guard — the backstop that wrote a third entry directly is deleted (FR-001,
+    /// FR-002), so this test's third entry is a third guarded prepend rather than a
+    /// harness append.
     /// </summary>
     [Fact]
     public async Task MultiEntryLog_EveryEntryLocatableByHeadingPattern()
@@ -304,19 +303,19 @@ public class LogEntryFormatEnforcementTests
             guard.OnWriteCommitted(logPath, firstEntry);
             firstDecision.LockHandle!.Dispose();
 
-            var afterSecond = firstEntry + "## [2026-07-29] query | completed\n\nAgent-authored entry two. Ref: turn-002.\n";
+            var afterSecond = "## [2026-07-29] query | completed\n\nAgent-authored entry two. Ref: turn-002.\n" + firstEntry;
             var secondDecision = await guard.EvaluateWriteAsync(logPath, WriteMode.ReadWrite, afterSecond, CancellationToken.None);
             Assert.True(secondDecision.IsAllowed);
             await File.WriteAllTextAsync(logPath, afterSecond);
             guard.OnWriteCommitted(logPath, afterSecond);
             secondDecision.LockHandle!.Dispose();
 
-            // The backstop appends directly (WikiLogAppender writes via File.AppendAllTextAsync,
-            // not through the guard — see WikiLogAppender's own doc comment), the same as it
-            // does in production when an agent's run fails or omits its own entry.
-            var appender = new WikiLogAppender(new ActivitySource("MultiEntryLogTest"), new Meter("MultiEntryLogTest"));
-            await appender.AppendAsync(
-                logPath, "ingest", "failed", "source.md", "Detail text.", "task-003", CancellationToken.None);
+            var afterThird = "## [2026-07-30] ingest | superseded\n\nAgent-authored entry three. Ref: task-003.\n" + afterSecond;
+            var thirdDecision = await guard.EvaluateWriteAsync(logPath, WriteMode.ReadWrite, afterThird, CancellationToken.None);
+            Assert.True(thirdDecision.IsAllowed);
+            await File.WriteAllTextAsync(logPath, afterThird);
+            guard.OnWriteCommitted(logPath, afterThird);
+            thirdDecision.LockHandle!.Dispose();
 
             var content = await File.ReadAllTextAsync(logPath);
             var matches = Regex.Matches(content, @"^## \[\d{4}-\d{2}-\d{2}\] .+ \| .+$", RegexOptions.Multiline);

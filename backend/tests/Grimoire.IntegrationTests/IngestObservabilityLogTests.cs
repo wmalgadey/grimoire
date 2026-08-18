@@ -73,8 +73,10 @@ public class IngestObservabilityLogTests
         AssertEvent(logger.Entries, "ingest.tool.allowed", LogLevel.Information, ["task_id", "tool", "target", "turn"]);
         AssertEvent(logger.Entries, "ingest.tool.denied", LogLevel.Warning, ["task_id", "tool", "target", "reason", "turn"]);
         AssertEvent(logger.Entries, "ingest.run.rolled_back", LogLevel.Warning, ["task_id", "paths_restored", "restored_ok"]);
-        // ingest.log.backstop_appended retired (014-wiki-storage-restructure R5): replaced
-        // by the shared wiki.log.backstop_appended event, asserted in WikiLogAppenderTests.
+        // ingest.log.backstop_appended retired (014-wiki-storage-restructure R5), and its
+        // shared successor wiki.log.backstop_appended retired with the backstop itself
+        // (025-agent-owned-log, ADR-028). The replacement signal
+        // wiki.log.change_not_logged is asserted in WikiLogCoverageObservabilityTests.
         AssertEvent(logger.Entries, "ingest.agent.completed", LogLevel.Information, ["task_id", "turns", "pages_created", "pages_updated", "pages_superseded", "denials"]);
         AssertEvent(logger.Entries, "ingest.agent.cap_exceeded", LogLevel.Error, ["task_id", "cap", "turns"]);
     }
@@ -194,8 +196,9 @@ public class IngestObservabilityLogTests
         Assert.Equal("0", entry.Fields["denials"]?.ToString());
     }
 
-    // IngestLogBackstop_EmitsEvent_WhenEntryIsAppended moved to WikiLogAppenderTests
-    // (014-wiki-storage-restructure R5): IngestLogAppender -> shared WikiLogAppender.
+    // IngestLogBackstop_EmitsEvent_WhenEntryIsAppended is gone: the backstop it covered
+    // was deleted by 025-agent-owned-log (ADR-028, FR-001/FR-002), so there is no
+    // harness-authored log entry left to assert.
 
     [Fact]
     public async Task RestartReconciler_Emits_ReconciliationLogEvent_WithMandatoryFields()
