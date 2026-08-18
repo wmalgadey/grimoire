@@ -292,7 +292,7 @@ public sealed class GuardedToolExecutor
                 // index.md check (found missing here by /speckit-analyze's T060
                 // remediation, which needed all four wired to write a passing test).
                 if (reason is "create_only_target_exists" or "write_conflict_stale_read"
-                    or "log_entry_not_appended" or "log_entry_malformed_heading" or "log_entry_missing_paragraph"
+                    or "log_entry_not_prepended" or "log_entry_malformed_heading" or "log_entry_missing_paragraph"
                     or "catalog_entry_malformed")
                 {
                     _instrumentation.RecordWriteConflictRejected(_taskId, canonical, reason, turn);
