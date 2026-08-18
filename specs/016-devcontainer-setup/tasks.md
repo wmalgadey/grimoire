@@ -197,12 +197,12 @@ completeness audit.
 - [x] T016 Run `quickstart.md` end-to-end in one pass and confirm SC-001–SC-004 all hold
       together, not just individually per story. Done in one continuous session against
       a single running devcontainer instance (research.md R8 has the full result log).
-- [ ] T017 Confirm `.github/workflows/devcontainer-ci.yml` passes green on a real PR run —
+- [x] T017 Confirm `.github/workflows/devcontainer-ci.yml` passes green on a real PR run —
       the final Green confirmation completing ADR-019's Red/Green structural-enforcement
-      probe (T000 was Red; T004 was local Green; this is CI Green). **Not yet done** —
-      requires pushing this branch and opening a PR; local validation (T004–T016)
-      exercised the identical commands `devcontainers/ci` runs, but the workflow itself
-      has not executed inside real GitHub Actions yet.
+      probe (T000 was Red; T004 was local Green; this is CI Green). **Not yet done at
+      feature close (2026-08-02)** — required pushing a branch and opening a PR; local
+      validation (T004–T016) exercised the identical commands `devcontainers/ci` runs,
+      but the workflow itself had not executed inside real GitHub Actions at that point.
 
       **Status confirmed still open 2026-08-09** (`/speckit-analyze` remediation pass).
       Deliberately left unchecked: this is the **Green half of ADR-019's Red/Green
@@ -211,8 +211,14 @@ completeness audit.
       observed passing in the environment it guards — Constitution Principle III's
       ordering (rule → Red → Green → feature code) is therefore incomplete for this
       feature alone. Closing it requires only pushing a branch and opening a PR; it needs
-      no code change. **This is the sole outstanding item behind spec 016's `Implemented`
+      no code change. **This was the sole outstanding item behind spec 016's `Implemented`
       status.**
+
+      **Confirmed green 2026-08-18** (issue #60, closed via PR #134): the
+      [`devcontainer-ci.yml` run history](https://github.com/wmalgadey/grimoire/actions/workflows/devcontainer-ci.yml)
+      shows 30 completed runs in real GitHub Actions, all successful, latest 2026-08-17.
+      The CI Green half of ADR-019's Red/Green probe has been observed in the environment
+      it guards; spec 016 has no outstanding items.
 
 ---
 

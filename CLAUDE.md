@@ -87,6 +87,12 @@ Once implementation is under way this decision is effectively spent: retro-split
 that has already been reviewed discards the review rather than shortening it. Decide
 before, not after.
 
+**Between features: triage the board.** When a feature reaches its Definition of Done and
+its final PR merges, run the [`issue-triage`](.claude/skills/issue-triage/SKILL.md) skill
+before choosing the next unit of work. The pinned triage map issue is the durable state;
+the skill's label taxonomy (`quick-fix`, `decision-needed`, `blocked`) applies at issue
+creation time too, so sessions that file issues label them on filing.
+
 ## Spec-Kit Workflow
 
 <!-- SPECKIT START -->
