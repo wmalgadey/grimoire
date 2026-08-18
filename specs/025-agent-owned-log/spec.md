@@ -1,6 +1,6 @@
 # Feature Specification: Agent-Owned, Newest-First Wiki Activity Log
 
-**Feature Branch**: `claude/grimoire-issue-89-spec-g5jes6`
+**Feature Branch**: `025-agent-owned-log`
 
 **Created**: 2026-08-16
 
