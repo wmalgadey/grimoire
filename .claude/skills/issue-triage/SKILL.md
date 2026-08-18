@@ -46,10 +46,11 @@ Rules:
    (the map issue's last-edited date is the watermark; use the `since` filter).
    Also list issues **closed** since then.
 2. **Triage new/changed issues.** For each: assign it to a cluster in the map,
-   apply the taxonomy label that fits, and if `blocked`, post the "Blocked by"
-   comment. If it duplicates or is contained by an existing issue, propose the
-   fold (sub-issue link or close-as-duplicate) — execute it if the containment is
-   explicit in the issue's own text, otherwise flag it in the run summary.
+   apply the taxonomy label that fits, assign the best-fitting milestone (see
+   "Milestones" below), and if `blocked`, post the "Blocked by" comment. If it
+   duplicates or is contained by an existing issue, propose the fold (sub-issue
+   link or close-as-duplicate) — execute it if the containment is explicit in
+   the issue's own text, otherwise flag it in the run summary.
 3. **Release resolved blocks.** For each closed issue, find open issues whose
    "Blocked by" comment names it. If all named blockers are now closed/decided,
    remove the `blocked` label and comment that the issue is unblocked.
@@ -58,16 +59,37 @@ Rules:
    pending decisions visible, not to nag on every run.
 5. **Update the map issue.** Check off landed items, add new issues to their
    cluster/wave lists, and update the mermaid dependency graph if edges changed.
-6. **Summarize.** End with a short report: newly triaged (with labels given),
-   blocks released, stale decisions, and any proposed folds awaiting the
-   maintainer. If the delta was empty, say so and change nothing.
+6. **Summarize.** End with a short report: newly triaged (with labels and
+   milestones given), blocks released, stale decisions, and any proposals
+   awaiting the maintainer (folds, milestone escalations, issues no milestone
+   fits). If the delta was empty, say so and change nothing.
+
+## Milestones
+
+Every open issue carries a milestone; the repository's milestone list is the
+source of truth for which ones exist and what each release means (as of this
+writing: a version milestone per release plus a dateless "Tech debt & evals"
+bucket for opportunistic refactors and eval methodology). Rules:
+
+- **Assign by theme, not urgency.** A new issue goes to the milestone whose
+  theme it belongs to — the furthest-out bucket it fits, by default.
+- **Escalating into the release currently in progress** (the earliest open
+  version milestone) is a scope decision, not a filing default: a triage run
+  proposes it in the run summary instead of assigning it silently. Only an
+  issue that describes the current release's own functionality being broken
+  goes straight in.
+- **Never create milestones** during triage. If no existing milestone fits,
+  leave the issue unassigned and flag it in the run summary — new buckets are
+  the maintainer's call.
+- The triage map issue itself stays milestone-less; it is a living document,
+  not deliverable work.
 
 ## Hygiene at the source
 
 A session that **files** issues applies this taxonomy at creation time: kind
 label plus, where already clear, `quick-fix` / `decision-needed` / `blocked`
-(with the "Blocked by" comment). A well-filed issue makes the next triage run a
-no-op.
+(with the "Blocked by" comment) — and a milestone per the rules above. A
+well-filed issue makes the next triage run a no-op.
 
 ## When a feature completes
 
