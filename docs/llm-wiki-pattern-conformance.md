@@ -5,7 +5,7 @@ binding: none — never cite as requirements; findings are binding only once fil
 sdd_usage: input to /speckit-specify for issues #109–#113; re-run when the agent instruction files or the upstream pattern change
 sources_compared:
   - docs/foundational/llm-wiki-nanoclaw-idea.md (Karpathy's pattern; verified byte-identical to upstream on 2026-08-18)
-  - wmalgadey/nanoclaw .claude/skills/add-karpathy-llm-wiki/SKILL.md (activation skill, main @ 2026-08-18)
+  - https://github.com/wmalgadey/nanoclaw/blob/main/.claude/skills/add-karpathy-llm-wiki/SKILL.md (activation skill; fetched from `main` on 2026-08-18)
   - docs/foundational/llm-wiki-magrathea-claude.md (the deployed schema layer)
   - docs/foundational/llm-wiki-magrathea-skill.md (the deployed wiki skill)
   - backend/src/Grimoire.{Ingest,Query,Lint}Agent/Instructions/*.md (1043 lines, 2026-08-18)
