@@ -257,16 +257,25 @@ When re-capturing `log-no-day-grouping`, re-seed its fixture date in the same ch
 
 ### Deterministic tiers, for contrast
 
+Measured on the CI runner (authoritative — run 32075283408, commit `f4c33f8`):
+
 | Suite | Result |
 | --- | --- |
-| `Grimoire.ArchTests` | 57 passed, 0 failed |
-| `Grimoire.Domain.UnitTests` | 93 passed, 0 failed |
-| `Grimoire.IntegrationTests` | 784 passed, 15 failed — all 15 pre-existing, see below |
-| `dotnet format --verify-no-changes` | clean |
+| Build + `dotnet format --verify-no-changes` | clean |
+| `Grimoire.ArchTests` | **57 passed**, 0 failed |
+| `Grimoire.Domain.UnitTests` | **93 passed**, 0 failed |
+| `Grimoire.IntegrationTests` | **799 passed, 0 failed** |
+| `Grimoire.AgentEvals` | 57 passed, **19 failed** — all recording staleness, see above |
 
-The 15 integration failures are spawned Hub processes aborting (exit 134) in this container.
-Measured against the same tree with these changes stashed: **16 failed / 781 total** before,
-**15 failed / 799 total** after — no new failure, 18 tests added.
+The implementation container showed 15 integration failures that CI does not: spawned Hub
+processes abort there with exit 134. They were confirmed environmental before the CI run, by
+stashing these changes and re-running on the same tree (**16 failed / 781 total** before vs.
+**15 failed / 799 total** after — no new failure, 18 tests added); CI's clean 799/799 settles
+it.
+
+The 19 eval failures are 15 `Stale` + 3 `Missing` + `EvalIndependenceFromHubConfigurationTests`
+(`Expected: Trusted, Actual: Stale`), which is a downstream consequence of the same staleness
+rather than a nineteenth capture.
 
 ## Dependencies & Execution Order
 
