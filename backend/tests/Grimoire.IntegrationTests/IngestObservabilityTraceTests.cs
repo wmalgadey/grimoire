@@ -73,7 +73,7 @@ public class IngestObservabilityTraceTests
         await repository.UpsertAsync(new OperationalTaskState(taskId, "running", null, DateTimeOffset.UtcNow));
 
         var reconciler = new RestartReconciler(repository);
-        await reconciler.ReconcileRunningTasksAsync(tasksDir, logPath);
+        await reconciler.ReconcileRunningTasksAsync(tasksDir);
 
         Assert.Contains("ingest.instructions.loaded", spanNames);
         Assert.Contains("wiki.ingest.tool_calls_total", spanNames);

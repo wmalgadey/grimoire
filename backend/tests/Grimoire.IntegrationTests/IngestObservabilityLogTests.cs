@@ -231,7 +231,7 @@ public class IngestObservabilityLogTests
 
         var logger = new CaptureLogger<RestartReconciler>();
         var reconciler = new RestartReconciler(repository, logger);
-        await reconciler.ReconcileRunningTasksAsync(tasksDir, logPath);
+        await reconciler.ReconcileRunningTasksAsync(tasksDir);
 
         var entry = Assert.Single(logger.Entries);
         Assert.Equal("ingest.task.reconciled", entry.EventName);
@@ -265,7 +265,7 @@ public class IngestObservabilityLogTests
 
         var logger = new CaptureLogger<RestartReconciler>();
         var reconciler = new RestartReconciler(repository, logger);
-        await reconciler.ReconcileRunningTasksAsync(tasksDir, logPath);
+        await reconciler.ReconcileRunningTasksAsync(tasksDir);
 
         Assert.Single(logger.Entries);
         Assert.Contains("Hub restarted", logger.Entries[0].Message);

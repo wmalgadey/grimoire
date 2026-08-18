@@ -94,7 +94,7 @@ public class IngestFailureAndReconciliationTests
         await repository.UpsertAsync(new OperationalTaskState(taskId, "running", 100, DateTimeOffset.UtcNow));
 
         var reconciler = new RestartReconciler(repository);
-        var count = await reconciler.ReconcileRunningTasksAsync(tasksDir, logPath);
+        var count = await reconciler.ReconcileRunningTasksAsync(tasksDir);
 
         Assert.Equal(1, count);
 
@@ -102,11 +102,14 @@ public class IngestFailureAndReconciliationTests
         Assert.Contains("status: failed", updatedTask);
         Assert.Contains("failure_reason: \"Hub restarted while task was running.\"", updatedTask);
 
-        var logText = await File.ReadAllTextAsync(logPath);
-        Assert.Contains("reconciled on startup", logText);
+        // 025-agent-owned-log (ADR-028, FR-001, SC-002): reconciliation writes nothing to
+        // the wiki. It used to append its own "reconciled on startup" entry here; the
+        // activity log is agent-authored wiki content, so the file is left exactly as the
+        // test seeded it.
+        Assert.Equal(string.Empty, await File.ReadAllTextAsync(logPath));
 
         // After successful reconciliation the stale operational-state row is deleted;
-        // the task artifact and log.md are the durable record (ADR-003).
+        // the task artifact is the durable record (ADR-003).
         var running = await repository.GetByStatusAsync("running");
         Assert.DoesNotContain(running, x => x.TaskId == taskId);
         var failed = await repository.GetByStatusAsync("failed");
