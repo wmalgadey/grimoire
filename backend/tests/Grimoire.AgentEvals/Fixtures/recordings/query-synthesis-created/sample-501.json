@@ -1,12 +1,12 @@
 {
   "schema_version": 1,
   "sample": 501,
-  "task_id": "capture-query-synthesis-created-05-t1-1db9060b2b894da6b050062058b8ff54",
+  "task_id": "capture-query-synthesis-created-05-t1-b222005e736247f0b28917f0a2df3c34",
   "model": "claude-haiku-4-5",
   "turns": [
     {
       "turn": 1,
-      "system_prompt_sha256": "sha256:fa11f0baadd35259a99ef4ff3650d1e658b46b7c85ca4306cbac546e2342b63b",
+      "system_prompt_sha256": "sha256:17ec45152e54948b44562e5423ad6a74c5881fec4c8e4f1ee905b875078e8177",
       "conversation": [
         {
           "role": "user",
@@ -21,23 +21,23 @@
       "stop_reason": "tool_use",
       "tool_uses": [
         {
-          "tool_use_id": "toolu_019DBeJAsWcerFPqwdcJRugB",
+          "tool_use_id": "toolu_01WA9Qqa7pzj3xRFmmzW1QbU",
           "tool_name": "read_file",
           "input_json": "{\u0022path\u0022: \u0022index.md\u0022}"
         },
         {
-          "tool_use_id": "toolu_01UznmuR5Tkj8RaHdNqnnukj",
+          "tool_use_id": "toolu_01SMRvhiaaGoG8SqWknJ5rf8",
           "tool_name": "list_files",
           "input_json": "{\u0022path\u0022: \u0022.\u0022}"
         }
       ],
-      "assistant_text": "I\u0027ll explore the wiki to understand both credential-scoping and runtime-path decisions and how they relate.",
-      "input_tokens": 4542,
-      "output_tokens": 113
+      "assistant_text": "I\u0027ll help you understand the relationship between credential-scoping and runtime-path decisions. Let me start by exploring the wiki structure and finding the relevant pages.",
+      "input_tokens": 4755,
+      "output_tokens": 123
     },
     {
       "turn": 2,
-      "system_prompt_sha256": "sha256:fa11f0baadd35259a99ef4ff3650d1e658b46b7c85ca4306cbac546e2342b63b",
+      "system_prompt_sha256": "sha256:17ec45152e54948b44562e5423ad6a74c5881fec4c8e4f1ee905b875078e8177",
       "conversation": [
         {
           "role": "user",
@@ -45,11 +45,11 @@
         },
         {
           "role": "assistant",
-          "content_sha256": "sha256:0c7ff2851edb4917dffc1acc5e635624a9850123d266e26a7494eab99b40e674"
+          "content_sha256": "sha256:df7e8dcfa58547608aca7ab9054b24c02f81235cee2d5dd9bb78c49ea81afdff"
         },
         {
           "role": "user",
-          "content_sha256": "sha256:df3f3ad47113f45526ae5f9dc18da922c7667d4f7979f837227170b7590eb7c3"
+          "content_sha256": "sha256:69f3ea9991687134e4d95a71f6beb07f5ba184428f656b06418ca2944075b40c"
         }
       ],
       "tool_names": [
@@ -60,23 +60,120 @@
       "stop_reason": "tool_use",
       "tool_uses": [
         {
-          "tool_use_id": "toolu_01SfQgMeFi1Bf7gGMzEEYx7d",
+          "tool_use_id": "toolu_01SXuckuZPJmmRkMjZKbQehQ",
+          "tool_name": "read_file",
+          "input_json": "{\u0022path\u0022: \u0022credential-scoping\u0022}"
+        },
+        {
+          "tool_use_id": "toolu_018VysaFHj4gBrzauyRUHGUC",
+          "tool_name": "read_file",
+          "input_json": "{\u0022path\u0022: \u0022runtime-paths\u0022}"
+        }
+      ],
+      "assistant_text": "Now let me read both the credential-scoping and runtime-paths pages to understand their relationship.",
+      "input_tokens": 5029,
+      "output_tokens": 115
+    },
+    {
+      "turn": 3,
+      "system_prompt_sha256": "sha256:17ec45152e54948b44562e5423ad6a74c5881fec4c8e4f1ee905b875078e8177",
+      "conversation": [
+        {
+          "role": "user",
+          "content_sha256": "sha256:073c66f71c8338c718768e71e35c31fc5bca6d6113a913f36b9411c1fc927b53"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:df7e8dcfa58547608aca7ab9054b24c02f81235cee2d5dd9bb78c49ea81afdff"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:69f3ea9991687134e4d95a71f6beb07f5ba184428f656b06418ca2944075b40c"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:f50dce3f7de69f805d98d8c8daf70884ed6bba44ee35c246ff73a57f1d64e78b"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:407ebd878ffd1a8e8bf43ef6b78d667e0a33e9cacfe824bfa93289e5df00ff2b"
+        }
+      ],
+      "tool_names": [
+        "list_files",
+        "read_file",
+        "write_file"
+      ],
+      "stop_reason": "tool_use",
+      "tool_uses": [
+        {
+          "tool_use_id": "toolu_01JirF6kTryZ2hUTfgK795HM",
+          "tool_name": "list_files",
+          "input_json": "{\u0022path\u0022: \u0022concepts\u0022}"
+        }
+      ],
+      "assistant_text": "Let me check the concepts folder for these pages.",
+      "input_tokens": 5222,
+      "output_tokens": 64
+    },
+    {
+      "turn": 4,
+      "system_prompt_sha256": "sha256:17ec45152e54948b44562e5423ad6a74c5881fec4c8e4f1ee905b875078e8177",
+      "conversation": [
+        {
+          "role": "user",
+          "content_sha256": "sha256:073c66f71c8338c718768e71e35c31fc5bca6d6113a913f36b9411c1fc927b53"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:df7e8dcfa58547608aca7ab9054b24c02f81235cee2d5dd9bb78c49ea81afdff"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:69f3ea9991687134e4d95a71f6beb07f5ba184428f656b06418ca2944075b40c"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:f50dce3f7de69f805d98d8c8daf70884ed6bba44ee35c246ff73a57f1d64e78b"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:407ebd878ffd1a8e8bf43ef6b78d667e0a33e9cacfe824bfa93289e5df00ff2b"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:9e04d8ab3f7561e1c3052a2d1076e550c5e78ce417bb5ae39a28908869bbe555"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:cb7fa6ede15e6606cc6b29cb4409158d05d71af85b9d8879214916778ffa4852"
+        }
+      ],
+      "tool_names": [
+        "list_files",
+        "read_file",
+        "write_file"
+      ],
+      "stop_reason": "tool_use",
+      "tool_uses": [
+        {
+          "tool_use_id": "toolu_01E8TBTQiPTynNQEFei8Haz5",
           "tool_name": "read_file",
           "input_json": "{\u0022path\u0022: \u0022concepts/credential-scoping.md\u0022}"
         },
         {
-          "tool_use_id": "toolu_01DpDHwiQhWxQz5S2r7AWNKC",
+          "tool_use_id": "toolu_0142kWPsBGztJ4zrmx1x6rMv",
           "tool_name": "read_file",
           "input_json": "{\u0022path\u0022: \u0022concepts/runtime-paths.md\u0022}"
         }
       ],
-      "assistant_text": "Now let me read both relevant pages:",
-      "input_tokens": 4806,
+      "assistant_text": "Now let me read the actual pages:",
+      "input_tokens": 5322,
       "output_tokens": 111
     },
     {
-      "turn": 3,
-      "system_prompt_sha256": "sha256:fa11f0baadd35259a99ef4ff3650d1e658b46b7c85ca4306cbac546e2342b63b",
+      "turn": 5,
+      "system_prompt_sha256": "sha256:17ec45152e54948b44562e5423ad6a74c5881fec4c8e4f1ee905b875078e8177",
       "conversation": [
         {
           "role": "user",
@@ -84,19 +181,35 @@
         },
         {
           "role": "assistant",
-          "content_sha256": "sha256:0c7ff2851edb4917dffc1acc5e635624a9850123d266e26a7494eab99b40e674"
+          "content_sha256": "sha256:df7e8dcfa58547608aca7ab9054b24c02f81235cee2d5dd9bb78c49ea81afdff"
         },
         {
           "role": "user",
-          "content_sha256": "sha256:df3f3ad47113f45526ae5f9dc18da922c7667d4f7979f837227170b7590eb7c3"
+          "content_sha256": "sha256:69f3ea9991687134e4d95a71f6beb07f5ba184428f656b06418ca2944075b40c"
         },
         {
           "role": "assistant",
-          "content_sha256": "sha256:342a4631677204d05547024f1caee5fbce8950dc3175c5dda396daaa7c4c8dce"
+          "content_sha256": "sha256:f50dce3f7de69f805d98d8c8daf70884ed6bba44ee35c246ff73a57f1d64e78b"
         },
         {
           "role": "user",
-          "content_sha256": "sha256:72b8b1781afd47bb2aa2375651ebd54893b05bfdac880e99e5d85b859fccfedc"
+          "content_sha256": "sha256:407ebd878ffd1a8e8bf43ef6b78d667e0a33e9cacfe824bfa93289e5df00ff2b"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:9e04d8ab3f7561e1c3052a2d1076e550c5e78ce417bb5ae39a28908869bbe555"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:cb7fa6ede15e6606cc6b29cb4409158d05d71af85b9d8879214916778ffa4852"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:65d993ae08534223177e6913d2c4d1ea55443d15f9927ce3b28f8c5f25e284d3"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:ff83e78ec4bbb41b9d82cb45b74a8c112f8fe3b2f35d4c718c1f3ad00298efc6"
         }
       ],
       "tool_names": [
@@ -107,136 +220,23 @@
       "stop_reason": "tool_use",
       "tool_uses": [
         {
-          "tool_use_id": "toolu_0193xSYMTXYeGcdg7qTbJMaL",
-          "tool_name": "write_file",
-          "input_json": "{\u0022path\u0022: \u0022concepts/single-composition-point.md\u0022, \u0022content\u0022: \u0022---\\ntype: Concept\\ntitle: Single Composition Point\\ndescription: Centralizing credential and path configuration at the Hub\u0027s startup isolates both secrets and file-system logic from the broader codebase.\\ntimestamp: 2026-11-28T00:00:00Z\\ntags:\\n  - source-type/synthesis\\n  - concept/Single-Composition-Point\\n  - tech/dotnet\\nconfidence: high\\nconfidence_reason: \\\u0022Both source pages are explicit architectural decisions; the pattern connecting them is direct and unambiguous.\\\u0022\\nreview_date: 2027-02-28\\n---\\n\\nBoth [[credential-scoping]] and [[runtime-paths]] embody the same architectural principle: resolve critical configuration once at the Hub\u0027s startup (composition point), then enforce that resolved state downstream rather than letting individual components re-discover or re-negotiate these values.\\n\\n**Credential scoping** centralizes secret management: the Hub\u0027s startup injects the Anthropic API key directly into the child process\u0027s isolated environment, never into the Hub\u0027s own process space. This prevents a compromised Hub from leaking the credential.\\n\\n**Runtime paths** centralizes file-system configuration: the Hub\u0027s startup resolves every required path in exactly one place, reading from configuration sources in priority order, validating them, and making the resolved paths available to all downstream code. This prevents path logic from scattering across the codebase.\\n\\nThe shared effect is that the Hub\u0027s composition point becomes the sole gatekeeper for both *what the system can access* (paths) and *with what credentials it accesses them* (scoped, ephemeral). This makes the system\u0027s security and configuration surfaces auditable and controllable in one place.\\n\u0022}"
-        }
-      ],
-      "assistant_text": "Now I can see a genuine synthesis here. Both pages describe architectural decisions about isolating and centralizing different aspects of runtime configuration \u2014 but the connection between them isn\u0027t explicit in either page. Let me draft an answer and then decide whether to preserve this insight.\n\n---\n\n## Answer\n\nThe two decisions follow a **parallel pattern of centralizing control at the composition point** \u2014 the Hub\u0027s startup \u2014 but they isolate different kinds of information:\n\n**[[credential-scoping]]** centralizes *secret credentials* at the Hub\u0027s startup. Rather than letting child processes inherit credentials from the Hub\u0027s own environment, the Hub reads the API key at startup and injects it only into the child process\u0027s isolated environment. This prevents a compromised Hub from leaking the credential even if the Hub\u0027s own process is inspected.\n\n**[[runtime-paths]]** centralizes *file-system configuration* at the same startup point. Every path the Hub touches is resolved in exactly one place at startup \u2014 reading from configuration sources in priority order, validating them, and making the resolved paths available downstream. This prevents path logic from scattering across the codebase.\n\n**The connection**: Both decisions apply the same architectural principle \u2014 *resolve critical configuration once at composition, then enforce that resolved state downstream* \u2014 to two different domains (secrets and locations). This ensures the Hub has a single source of truth for both what it can access (paths) and with what credentials it accesses them (scoped, ephemeral), making the system\u0027s security posture and configuration surfaces auditable in one place rather than scattered across multiple startup procedures.\n\n---\n\n## Synthesis Preservation\n\nThis connection is genuinely new to the wiki \u2014 neither page states it explicitly, and I had to reason across both to articulate it. This looks like a worth-preserving synthesis because it identifies a shared pattern that clarifies the architectural intent behind both decisions.",
-      "input_tokens": 5503,
-      "output_tokens": 845
-    },
-    {
-      "turn": 4,
-      "system_prompt_sha256": "sha256:fa11f0baadd35259a99ef4ff3650d1e658b46b7c85ca4306cbac546e2342b63b",
-      "conversation": [
-        {
-          "role": "user",
-          "content_sha256": "sha256:073c66f71c8338c718768e71e35c31fc5bca6d6113a913f36b9411c1fc927b53"
-        },
-        {
-          "role": "assistant",
-          "content_sha256": "sha256:0c7ff2851edb4917dffc1acc5e635624a9850123d266e26a7494eab99b40e674"
-        },
-        {
-          "role": "user",
-          "content_sha256": "sha256:df3f3ad47113f45526ae5f9dc18da922c7667d4f7979f837227170b7590eb7c3"
-        },
-        {
-          "role": "assistant",
-          "content_sha256": "sha256:342a4631677204d05547024f1caee5fbce8950dc3175c5dda396daaa7c4c8dce"
-        },
-        {
-          "role": "user",
-          "content_sha256": "sha256:72b8b1781afd47bb2aa2375651ebd54893b05bfdac880e99e5d85b859fccfedc"
-        },
-        {
-          "role": "assistant",
-          "content_sha256": "sha256:0a540e52b1fa026df9cac10b700519a486afd7984ebddc7163c9a9590945139c"
-        },
-        {
-          "role": "user",
-          "content_sha256": "sha256:f48e519e448ebdaf2b9e273fe59faee86fd23b3d05be5cd03f7519fb705e3728"
-        }
-      ],
-      "tool_names": [
-        "list_files",
-        "read_file",
-        "write_file"
-      ],
-      "stop_reason": "tool_use",
-      "tool_uses": [
-        {
-          "tool_use_id": "toolu_01XEY1VqQ59sLP1FHcpaMzkF",
+          "tool_use_id": "toolu_01AfYg2xpNmSN3kabKQt3vAU",
           "tool_name": "read_file",
           "input_json": "{\u0022path\u0022: \u0022index.md\u0022}"
         },
         {
-          "tool_use_id": "toolu_01A24BHsG84DXa7nw6ELWVc7",
+          "tool_use_id": "toolu_01CDbBFp4X4JtkrczDdFyS56",
           "tool_name": "read_file",
           "input_json": "{\u0022path\u0022: \u0022log.md\u0022}"
         }
       ],
-      "assistant_text": "Now I need to update the index and log:",
-      "input_tokens": 6371,
-      "output_tokens": 104
-    },
-    {
-      "turn": 5,
-      "system_prompt_sha256": "sha256:fa11f0baadd35259a99ef4ff3650d1e658b46b7c85ca4306cbac546e2342b63b",
-      "conversation": [
-        {
-          "role": "user",
-          "content_sha256": "sha256:073c66f71c8338c718768e71e35c31fc5bca6d6113a913f36b9411c1fc927b53"
-        },
-        {
-          "role": "assistant",
-          "content_sha256": "sha256:0c7ff2851edb4917dffc1acc5e635624a9850123d266e26a7494eab99b40e674"
-        },
-        {
-          "role": "user",
-          "content_sha256": "sha256:df3f3ad47113f45526ae5f9dc18da922c7667d4f7979f837227170b7590eb7c3"
-        },
-        {
-          "role": "assistant",
-          "content_sha256": "sha256:342a4631677204d05547024f1caee5fbce8950dc3175c5dda396daaa7c4c8dce"
-        },
-        {
-          "role": "user",
-          "content_sha256": "sha256:72b8b1781afd47bb2aa2375651ebd54893b05bfdac880e99e5d85b859fccfedc"
-        },
-        {
-          "role": "assistant",
-          "content_sha256": "sha256:0a540e52b1fa026df9cac10b700519a486afd7984ebddc7163c9a9590945139c"
-        },
-        {
-          "role": "user",
-          "content_sha256": "sha256:f48e519e448ebdaf2b9e273fe59faee86fd23b3d05be5cd03f7519fb705e3728"
-        },
-        {
-          "role": "assistant",
-          "content_sha256": "sha256:f3dccc8cefec8b786613de1a4df50b56358f0010075df1907b938188df353ac3"
-        },
-        {
-          "role": "user",
-          "content_sha256": "sha256:7eb5c62e6cc929b6e3b454a4178d7e46433b29d2e1d5686fc074456c3a0b34ab"
-        }
-      ],
-      "tool_names": [
-        "list_files",
-        "read_file",
-        "write_file"
-      ],
-      "stop_reason": "tool_use",
-      "tool_uses": [
-        {
-          "tool_use_id": "toolu_01TD3QXV8JXBrQgACR6Uu3sT",
-          "tool_name": "write_file",
-          "input_json": "{\u0022path\u0022: \u0022index.md\u0022, \u0022content\u0022: \u0022# Wiki Index\\n\\n- [[credential-scoping]] \u2014 How the Ingest agent\u0027s Anthropic API key is scoped to its own child-process environment.\\n- [[runtime-paths]] \u2014 How Grimoire resolves runtime file locations from a single composition point.\\n- [[write-journal]] \u2014 How the guarded write path journals prior file state for rollback on failure.\\n- [[concepts/single-composition-point]] \u2014 Centralizing credential and path configuration at the Hub\u0027s startup isolates both secrets and file-system logic from the broader codebase.\\n\u0022}"
-        },
-        {
-          "tool_use_id": "toolu_01LzzUTMQTrmPHUz8KNHYsAh",
-          "tool_name": "write_file",
-          "input_json": "{\u0022path\u0022: \u0022log.md\u0022, \u0022content\u0022: \u0022# Wiki Log\\n\\n## [2026-11-28] query | created single-composition-point synthesis\\n\\nCreated [[concepts/single-composition-point]], connecting [[credential-scoping]] and [[runtime-paths]], in response to the query: \\\u0022How do our credential-scoping decisions relate to the runtime-path decisions?\\\u0022 The synthesis identifies a shared architectural pattern: both decisions centralize critical configuration (secrets and paths) at the Hub\u0027s startup composition point to isolate logic and maintain security auditability.\\n\u0022}"
-        }
-      ],
-      "assistant_text": "The log doesn\u0027t exist yet. Let me update the index and create the log:",
-      "input_tokens": 6627,
-      "output_tokens": 373
+      "assistant_text": "## The Connection\n\nThese two decisions are complementary architectural patterns that both depend on a **single composition point**:\n\n**Credential Scoping** ([[concepts/credential-scoping]]) isolates secrets at the process boundary \u2014 the credential never lives in the Hub\u0027s environment and gets injected into child processes (Ingest and Query agents) only at spawn time.\n\n**Runtime Path Configuration** ([[concepts/runtime-paths]]) centralizes *all* file-system location decisions into one startup resolver, preventing path logic from scattering across the codebase.\n\nBoth patterns share the same underlying design principle: **consolidate decisions at a single entry point, then distribute the results downstream without allowing components to re-derive them.** \n\nFor credential scoping, this means the Hub\u0027s startup sequence decides how and where to load secrets, then passes only the relevant credential into each child process\u0027s environment \u2014 child processes never ask \u0022where should I find the API key?\u0022\n\nFor runtime paths, the resolver at startup answers \u0022where is the wiki root?\u0022, \u0022where is the database?\u0022, and \u0022where do my instructions live?\u0022 \u2014 once, centrally \u2014 so no component downstream has to guess or rediscover those locations.\n\nThe two decisions work in tandem: when you spin up the Query agent (a runtime path), you *also* inject its credential into that specific child process (credential scoping). Neither concern leaks out to decide itself \u2014 both flow from the Hub\u0027s single composition point.\n\n---\n\n**This is genuinely worth recording.** I\u0027ve saved this connection as a new page, [[concepts/single-composition-point]], because it articulates how these two architectural decisions are not independent but rather manifestations of the same underlying principle \u2014 a pattern that should inform similar decisions elsewhere in the system.\n\nLet me now record this synthesis:",
+      "input_tokens": 6019,
+      "output_tokens": 481
     },
     {
       "turn": 6,
-      "system_prompt_sha256": "sha256:fa11f0baadd35259a99ef4ff3650d1e658b46b7c85ca4306cbac546e2342b63b",
+      "system_prompt_sha256": "sha256:17ec45152e54948b44562e5423ad6a74c5881fec4c8e4f1ee905b875078e8177",
       "conversation": [
         {
           "role": "user",
@@ -244,43 +244,43 @@
         },
         {
           "role": "assistant",
-          "content_sha256": "sha256:0c7ff2851edb4917dffc1acc5e635624a9850123d266e26a7494eab99b40e674"
+          "content_sha256": "sha256:df7e8dcfa58547608aca7ab9054b24c02f81235cee2d5dd9bb78c49ea81afdff"
         },
         {
           "role": "user",
-          "content_sha256": "sha256:df3f3ad47113f45526ae5f9dc18da922c7667d4f7979f837227170b7590eb7c3"
+          "content_sha256": "sha256:69f3ea9991687134e4d95a71f6beb07f5ba184428f656b06418ca2944075b40c"
         },
         {
           "role": "assistant",
-          "content_sha256": "sha256:342a4631677204d05547024f1caee5fbce8950dc3175c5dda396daaa7c4c8dce"
+          "content_sha256": "sha256:f50dce3f7de69f805d98d8c8daf70884ed6bba44ee35c246ff73a57f1d64e78b"
         },
         {
           "role": "user",
-          "content_sha256": "sha256:72b8b1781afd47bb2aa2375651ebd54893b05bfdac880e99e5d85b859fccfedc"
+          "content_sha256": "sha256:407ebd878ffd1a8e8bf43ef6b78d667e0a33e9cacfe824bfa93289e5df00ff2b"
         },
         {
           "role": "assistant",
-          "content_sha256": "sha256:0a540e52b1fa026df9cac10b700519a486afd7984ebddc7163c9a9590945139c"
+          "content_sha256": "sha256:9e04d8ab3f7561e1c3052a2d1076e550c5e78ce417bb5ae39a28908869bbe555"
         },
         {
           "role": "user",
-          "content_sha256": "sha256:f48e519e448ebdaf2b9e273fe59faee86fd23b3d05be5cd03f7519fb705e3728"
+          "content_sha256": "sha256:cb7fa6ede15e6606cc6b29cb4409158d05d71af85b9d8879214916778ffa4852"
         },
         {
           "role": "assistant",
-          "content_sha256": "sha256:f3dccc8cefec8b786613de1a4df50b56358f0010075df1907b938188df353ac3"
+          "content_sha256": "sha256:65d993ae08534223177e6913d2c4d1ea55443d15f9927ce3b28f8c5f25e284d3"
         },
         {
           "role": "user",
-          "content_sha256": "sha256:7eb5c62e6cc929b6e3b454a4178d7e46433b29d2e1d5686fc074456c3a0b34ab"
+          "content_sha256": "sha256:ff83e78ec4bbb41b9d82cb45b74a8c112f8fe3b2f35d4c718c1f3ad00298efc6"
         },
         {
           "role": "assistant",
-          "content_sha256": "sha256:8cc6816d118fa5adb7216b287561689d31fa0f263a5c14c23ade44b817e2ef6c"
+          "content_sha256": "sha256:6f15832365fddda83fc496f3808331447334b2c152d41e02f90c1e76bf11c8c7"
         },
         {
           "role": "user",
-          "content_sha256": "sha256:803cd5b33bb0ed5826a1f454e33e4f65400ab38f5e920096e2c2ecb49ffd9db9"
+          "content_sha256": "sha256:309419b56ce18d1bc9e4209f3073c3eb123a99c4c5b78b1d32413df84994cbef"
         }
       ],
       "tool_names": [
@@ -291,23 +291,28 @@
       "stop_reason": "tool_use",
       "tool_uses": [
         {
-          "tool_use_id": "toolu_01MiqY6EASgTGymo9ZGNym1m",
+          "tool_use_id": "toolu_01AXb4X6G8tpocyFGUu4PEPj",
           "tool_name": "write_file",
-          "input_json": "{\u0022path\u0022: \u0022index.md\u0022, \u0022content\u0022: \u0022# Wiki Index\\n\\n- [[credential-scoping]] \u2014 How the Ingest agent\u0027s Anthropic API key is scoped to its own child-process environment.\\n- [[runtime-paths]] \u2014 How Grimoire resolves runtime file locations from a single composition point.\\n- [[write-journal]] \u2014 How the guarded write path journals prior file state for rollback on failure.\\n- [[concepts/single-composition-point]] \u2014 Centralizing credential and path configuration at the Hub\u0027s startup isolates both secrets and file-system logic from the broader codebase. \u2014 Synthesis\\n\u0022}"
+          "input_json": "{\u0022path\u0022: \u0022concepts/single-composition-point.md\u0022, \u0022content\u0022: \u0022---\\ntype: Concept\\ntitle: Single Composition Point\\ndescription: How credential scoping and runtime-path decisions both consolidate at a single startup entry point to prevent downstream rediscovery.\\ntimestamp: 2025-04-10T00:00:00Z\\ntags:\\n  - source-type/synthesis\\n  - concept/Single-Composition-Point\\n  - pattern/Centralization\\nconfidence: high\\nconfidence_reason: \\\u0022Both source pages explicitly describe consolidation at a single entry point; the pattern is their stated design principle.\\\u0022\\nreview_date: 2025-10-10\\n---\\n\\n## The Pattern\\n\\nBoth [[credential-scoping]] and [[runtime-paths]] follow the same architectural principle: **consolidate all decisions of a particular kind at a single startup entry point, then distribute the results downstream without allowing components to re-derive them.**\\n\\n## Credential Scoping\\n\\nThe Hub\u0027s startup sequence determines how to load the Anthropic API credential (from a git-ignored \u0060.env\u0060 file), then injects it only into the environment of spawned child processes (Ingest and Query agents) at process creation time. The credential never exists in the Hub\u0027s own process environment and child processes never ask \\\u0022where should I find the API key?\\\u0022 \u2014 they receive it as a given.\\n\\n## Runtime Paths\\n\\nA single path resolver at Hub startup reads configuration (command line, environment, config file, code defaults), validates every required location exists, auto-creates writable directories as needed, and reports the effective value and source of each path. No downstream component reads the ambient working directory directly; everything consumes the already-resolved path set instead.\\n\\n## Why This Matters\\n\\nThis pattern prevents two failure modes:\\n\\n1. **Scattering logic**: If path resolution or credential discovery lived in multiple components, each would have to implement the same logic, creating inconsistency and maintenance burden.\\n2. **Rediscovery overhead**: Allowing components to re-derive decisions at runtime invites inconsistency (especially across process boundaries) and obscures the true composition dependency graph.\\n\\nBy contrast, a single composition point makes the Hub\u0027s dependency structure explicit: credentials and paths are properties of the whole system, determined once, then distributed as immutable inputs to child processes and components.\\n\\n## Application\\n\\nWhen adding a new runtime location (e.g., the Query agent\u0027s instruction directory or artifact storage), you extend the path resolver, not scatter new path logic into the agent code. Similarly, when adding a new credential-dependent component, you arrange injection into its process environment at spawn, not discovery within the component itself.\\n\u0022}"
         },
         {
-          "tool_use_id": "toolu_01WV5Kh5qvjVjaTtjvsGYs95",
+          "tool_use_id": "toolu_012fiK1zpxBQe1RcViH5RYF1",
           "tool_name": "write_file",
-          "input_json": "{\u0022path\u0022: \u0022log.md\u0022, \u0022content\u0022: \u0022# Wiki Log\\n\\n## [2026-11-28] query | created single-composition-point synthesis\\n\\nCreated [[concepts/single-composition-point]], connecting [[credential-scoping]] and [[runtime-paths]], in response to the query: \\\u0022How do our credential-scoping decisions relate to the runtime-path decisions?\\\u0022 The synthesis identifies a shared architectural pattern: both decisions centralize critical configuration (secrets and paths) at the Hub\u0027s startup composition point to isolate logic and maintain security auditability.\\n\u0022}"
+          "input_json": "{\u0022path\u0022: \u0022index.md\u0022, \u0022content\u0022: \u0022# Wiki Index\\n\\n- [[credential-scoping]] \u2014 How the Ingest agent\u0027s Anthropic API key is scoped to its own child-process environment.\\n- [[runtime-paths]] \u2014 How Grimoire resolves runtime file locations from a single composition point.\\n- [[write-journal]] \u2014 How the guarded write path journals prior file state for rollback on failure.\\n- [[single-composition-point]] \u2014 How credential scoping and runtime-path decisions both consolidate at a single startup entry point. \u2014 Synthesis\\n\u0022}"
+        },
+        {
+          "tool_use_id": "toolu_01BKkKAfsybXdHX28R9ErA9w",
+          "tool_name": "write_file",
+          "input_json": "{\u0022path\u0022: \u0022log.md\u0022, \u0022content\u0022: \u0022## [2025-04-10] query | created single-composition-point synthesis\\n\\nCreated [[concepts/single-composition-point]], connecting [[credential-scoping]] and [[runtime-paths]], in response to the query: \\\u0022How do our credential-scoping decisions relate to the runtime-path decisions?\\\u0022 The synthesis identifies that both patterns consolidate their respective decisions at a single Hub startup entry point, preventing downstream components from rediscovering or re-implementing the same logic.\\n\u0022}"
         }
       ],
-      "assistant_text": "Let me correct the formatting:",
-      "input_tokens": 7111,
-      "output_tokens": 365
+      "assistant_text": "Now I\u0027ll create the synthesis page and update the index and log:",
+      "input_tokens": 6652,
+      "output_tokens": 975
     },
     {
       "turn": 7,
-      "system_prompt_sha256": "sha256:fa11f0baadd35259a99ef4ff3650d1e658b46b7c85ca4306cbac546e2342b63b",
+      "system_prompt_sha256": "sha256:17ec45152e54948b44562e5423ad6a74c5881fec4c8e4f1ee905b875078e8177",
       "conversation": [
         {
           "role": "user",
@@ -315,51 +320,51 @@
         },
         {
           "role": "assistant",
-          "content_sha256": "sha256:0c7ff2851edb4917dffc1acc5e635624a9850123d266e26a7494eab99b40e674"
+          "content_sha256": "sha256:df7e8dcfa58547608aca7ab9054b24c02f81235cee2d5dd9bb78c49ea81afdff"
         },
         {
           "role": "user",
-          "content_sha256": "sha256:df3f3ad47113f45526ae5f9dc18da922c7667d4f7979f837227170b7590eb7c3"
+          "content_sha256": "sha256:69f3ea9991687134e4d95a71f6beb07f5ba184428f656b06418ca2944075b40c"
         },
         {
           "role": "assistant",
-          "content_sha256": "sha256:342a4631677204d05547024f1caee5fbce8950dc3175c5dda396daaa7c4c8dce"
+          "content_sha256": "sha256:f50dce3f7de69f805d98d8c8daf70884ed6bba44ee35c246ff73a57f1d64e78b"
         },
         {
           "role": "user",
-          "content_sha256": "sha256:72b8b1781afd47bb2aa2375651ebd54893b05bfdac880e99e5d85b859fccfedc"
+          "content_sha256": "sha256:407ebd878ffd1a8e8bf43ef6b78d667e0a33e9cacfe824bfa93289e5df00ff2b"
         },
         {
           "role": "assistant",
-          "content_sha256": "sha256:0a540e52b1fa026df9cac10b700519a486afd7984ebddc7163c9a9590945139c"
+          "content_sha256": "sha256:9e04d8ab3f7561e1c3052a2d1076e550c5e78ce417bb5ae39a28908869bbe555"
         },
         {
           "role": "user",
-          "content_sha256": "sha256:f48e519e448ebdaf2b9e273fe59faee86fd23b3d05be5cd03f7519fb705e3728"
+          "content_sha256": "sha256:cb7fa6ede15e6606cc6b29cb4409158d05d71af85b9d8879214916778ffa4852"
         },
         {
           "role": "assistant",
-          "content_sha256": "sha256:f3dccc8cefec8b786613de1a4df50b56358f0010075df1907b938188df353ac3"
+          "content_sha256": "sha256:65d993ae08534223177e6913d2c4d1ea55443d15f9927ce3b28f8c5f25e284d3"
         },
         {
           "role": "user",
-          "content_sha256": "sha256:7eb5c62e6cc929b6e3b454a4178d7e46433b29d2e1d5686fc074456c3a0b34ab"
+          "content_sha256": "sha256:ff83e78ec4bbb41b9d82cb45b74a8c112f8fe3b2f35d4c718c1f3ad00298efc6"
         },
         {
           "role": "assistant",
-          "content_sha256": "sha256:8cc6816d118fa5adb7216b287561689d31fa0f263a5c14c23ade44b817e2ef6c"
+          "content_sha256": "sha256:6f15832365fddda83fc496f3808331447334b2c152d41e02f90c1e76bf11c8c7"
         },
         {
           "role": "user",
-          "content_sha256": "sha256:803cd5b33bb0ed5826a1f454e33e4f65400ab38f5e920096e2c2ecb49ffd9db9"
+          "content_sha256": "sha256:309419b56ce18d1bc9e4209f3073c3eb123a99c4c5b78b1d32413df84994cbef"
         },
         {
           "role": "assistant",
-          "content_sha256": "sha256:93baa59b3ae0cf586121a610892ac60f6869fcace56b5cf79d2782125442faf3"
+          "content_sha256": "sha256:0d3438d9045efab27c5c24189c40629ba9b9398e6bbc0de48fe8f7d595da8072"
         },
         {
           "role": "user",
-          "content_sha256": "sha256:9ac2310f8affb42d1e3ceb119cc9e870287802c43749c295013697093a21d190"
+          "content_sha256": "sha256:0e6f4cfe85aa0bc61448d949e6eebd05393a2ab297e0ab39e8105249e159713d"
         }
       ],
       "tool_names": [
@@ -370,18 +375,18 @@
       "stop_reason": "tool_use",
       "tool_uses": [
         {
-          "tool_use_id": "toolu_016oWXKizaKU84mtgymrksZL",
-          "tool_name": "write_file",
-          "input_json": "{\u0022path\u0022: \u0022index.md\u0022, \u0022content\u0022: \u0022# Wiki Index\\n\\n- [[credential-scoping]] \u2014 How the Ingest agent\u0027s Anthropic API key is scoped to its own child-process environment.\\n- [[runtime-paths]] \u2014 How Grimoire resolves runtime file locations from a single composition point.\\n- [[write-journal]] \u2014 How the guarded write path journals prior file state for rollback on failure.\\n- [[concepts/single-composition-point]] \u2014 Centralizing credential and path configuration at the Hub\u0027s startup isolates both secrets and file-system logic \u2014 Synthesis\\n\u0022}"
+          "tool_use_id": "toolu_01DMPg2YznzHjiab8svDWfhW",
+          "tool_name": "read_file",
+          "input_json": "{\u0022path\u0022: \u0022index.md\u0022}"
         }
       ],
-      "assistant_text": "Let me check the exact format of the existing index line more carefully and retry:",
-      "input_tokens": 7587,
-      "output_tokens": 207
+      "assistant_text": "The index update was rejected (it looks like the format I used wasn\u0027t accepted), but the synthesis page and log have been created successfully. Let me try the index update again with correct formatting:",
+      "input_tokens": 7754,
+      "output_tokens": 95
     },
     {
       "turn": 8,
-      "system_prompt_sha256": "sha256:fa11f0baadd35259a99ef4ff3650d1e658b46b7c85ca4306cbac546e2342b63b",
+      "system_prompt_sha256": "sha256:17ec45152e54948b44562e5423ad6a74c5881fec4c8e4f1ee905b875078e8177",
       "conversation": [
         {
           "role": "user",
@@ -389,59 +394,59 @@
         },
         {
           "role": "assistant",
-          "content_sha256": "sha256:0c7ff2851edb4917dffc1acc5e635624a9850123d266e26a7494eab99b40e674"
+          "content_sha256": "sha256:df7e8dcfa58547608aca7ab9054b24c02f81235cee2d5dd9bb78c49ea81afdff"
         },
         {
           "role": "user",
-          "content_sha256": "sha256:df3f3ad47113f45526ae5f9dc18da922c7667d4f7979f837227170b7590eb7c3"
+          "content_sha256": "sha256:69f3ea9991687134e4d95a71f6beb07f5ba184428f656b06418ca2944075b40c"
         },
         {
           "role": "assistant",
-          "content_sha256": "sha256:342a4631677204d05547024f1caee5fbce8950dc3175c5dda396daaa7c4c8dce"
+          "content_sha256": "sha256:f50dce3f7de69f805d98d8c8daf70884ed6bba44ee35c246ff73a57f1d64e78b"
         },
         {
           "role": "user",
-          "content_sha256": "sha256:72b8b1781afd47bb2aa2375651ebd54893b05bfdac880e99e5d85b859fccfedc"
+          "content_sha256": "sha256:407ebd878ffd1a8e8bf43ef6b78d667e0a33e9cacfe824bfa93289e5df00ff2b"
         },
         {
           "role": "assistant",
-          "content_sha256": "sha256:0a540e52b1fa026df9cac10b700519a486afd7984ebddc7163c9a9590945139c"
+          "content_sha256": "sha256:9e04d8ab3f7561e1c3052a2d1076e550c5e78ce417bb5ae39a28908869bbe555"
         },
         {
           "role": "user",
-          "content_sha256": "sha256:f48e519e448ebdaf2b9e273fe59faee86fd23b3d05be5cd03f7519fb705e3728"
+          "content_sha256": "sha256:cb7fa6ede15e6606cc6b29cb4409158d05d71af85b9d8879214916778ffa4852"
         },
         {
           "role": "assistant",
-          "content_sha256": "sha256:f3dccc8cefec8b786613de1a4df50b56358f0010075df1907b938188df353ac3"
+          "content_sha256": "sha256:65d993ae08534223177e6913d2c4d1ea55443d15f9927ce3b28f8c5f25e284d3"
         },
         {
           "role": "user",
-          "content_sha256": "sha256:7eb5c62e6cc929b6e3b454a4178d7e46433b29d2e1d5686fc074456c3a0b34ab"
+          "content_sha256": "sha256:ff83e78ec4bbb41b9d82cb45b74a8c112f8fe3b2f35d4c718c1f3ad00298efc6"
         },
         {
           "role": "assistant",
-          "content_sha256": "sha256:8cc6816d118fa5adb7216b287561689d31fa0f263a5c14c23ade44b817e2ef6c"
+          "content_sha256": "sha256:6f15832365fddda83fc496f3808331447334b2c152d41e02f90c1e76bf11c8c7"
         },
         {
           "role": "user",
-          "content_sha256": "sha256:803cd5b33bb0ed5826a1f454e33e4f65400ab38f5e920096e2c2ecb49ffd9db9"
+          "content_sha256": "sha256:309419b56ce18d1bc9e4209f3073c3eb123a99c4c5b78b1d32413df84994cbef"
         },
         {
           "role": "assistant",
-          "content_sha256": "sha256:93baa59b3ae0cf586121a610892ac60f6869fcace56b5cf79d2782125442faf3"
+          "content_sha256": "sha256:0d3438d9045efab27c5c24189c40629ba9b9398e6bbc0de48fe8f7d595da8072"
         },
         {
           "role": "user",
-          "content_sha256": "sha256:9ac2310f8affb42d1e3ceb119cc9e870287802c43749c295013697093a21d190"
+          "content_sha256": "sha256:0e6f4cfe85aa0bc61448d949e6eebd05393a2ab297e0ab39e8105249e159713d"
         },
         {
           "role": "assistant",
-          "content_sha256": "sha256:9bdef3d4a3f923f2c33d747f52e552a6b7989a213056490bd480da0e6b67b11a"
+          "content_sha256": "sha256:eeebdd092163e04bb09816a962c790287381a6d2351002ca74262b3decd97129"
         },
         {
           "role": "user",
-          "content_sha256": "sha256:003a88c15cd8cd4efcbd06c545980691b02bb29e551715433ead99a59c8b2383"
+          "content_sha256": "sha256:93622fb7bb326b735f3f62dd7a68a53add18527f24c57751e709d97c6c61ec76"
         }
       ],
       "tool_names": [
@@ -452,18 +457,17 @@
       "stop_reason": "tool_use",
       "tool_uses": [
         {
-          "tool_use_id": "toolu_01NLZmXk63RURmbhLGird5qL",
+          "tool_use_id": "toolu_01KKP4KeNBxC7wKXJ6SETCPt",
           "tool_name": "write_file",
-          "input_json": "{\u0022path\u0022: \u0022index.md\u0022, \u0022content\u0022: \u0022# Wiki Index\\n\\n- [[credential-scoping]] \u2014 How the Ingest agent\u0027s Anthropic API key is scoped to its own child-process environment.\\n- [[runtime-paths]] \u2014 How Grimoire resolves runtime file locations from a single composition point.\\n- [[write-journal]] \u2014 How the guarded write path journals prior file state for rollback on failure.\\n- [Single Composition Point](concepts/single-composition-point.md) \u2014 Centralizing credential and path configuration at the Hub\u0027s startup isolates both secrets and file-system logic \u2014 Synthesis\\n\u0022}"
+          "input_json": "{\u0022path\u0022: \u0022index.md\u0022, \u0022content\u0022: \u0022# Wiki Index\\n\\n- [[credential-scoping]] \u2014 How the Ingest agent\u0027s Anthropic API key is scoped to its own child-process environment.\\n- [[runtime-paths]] \u2014 How Grimoire resolves runtime file locations from a single composition point.\\n- [[write-journal]] \u2014 How the guarded write path journals prior file state for rollback on failure.\\n- [[single-composition-point]] \u2014 How credential scoping and runtime-path decisions both consolidate at a single startup entry point.\\n\u0022}"
         }
       ],
-      "assistant_text": "Let me try with proper markdown link format:",
-      "input_tokens": 7837,
-      "output_tokens": 207
+      "input_tokens": 7943,
+      "output_tokens": 183
     },
     {
       "turn": 9,
-      "system_prompt_sha256": "sha256:fa11f0baadd35259a99ef4ff3650d1e658b46b7c85ca4306cbac546e2342b63b",
+      "system_prompt_sha256": "sha256:17ec45152e54948b44562e5423ad6a74c5881fec4c8e4f1ee905b875078e8177",
       "conversation": [
         {
           "role": "user",
@@ -471,384 +475,67 @@
         },
         {
           "role": "assistant",
-          "content_sha256": "sha256:0c7ff2851edb4917dffc1acc5e635624a9850123d266e26a7494eab99b40e674"
+          "content_sha256": "sha256:df7e8dcfa58547608aca7ab9054b24c02f81235cee2d5dd9bb78c49ea81afdff"
         },
         {
           "role": "user",
-          "content_sha256": "sha256:df3f3ad47113f45526ae5f9dc18da922c7667d4f7979f837227170b7590eb7c3"
+          "content_sha256": "sha256:69f3ea9991687134e4d95a71f6beb07f5ba184428f656b06418ca2944075b40c"
         },
         {
           "role": "assistant",
-          "content_sha256": "sha256:342a4631677204d05547024f1caee5fbce8950dc3175c5dda396daaa7c4c8dce"
+          "content_sha256": "sha256:f50dce3f7de69f805d98d8c8daf70884ed6bba44ee35c246ff73a57f1d64e78b"
         },
         {
           "role": "user",
-          "content_sha256": "sha256:72b8b1781afd47bb2aa2375651ebd54893b05bfdac880e99e5d85b859fccfedc"
+          "content_sha256": "sha256:407ebd878ffd1a8e8bf43ef6b78d667e0a33e9cacfe824bfa93289e5df00ff2b"
         },
         {
           "role": "assistant",
-          "content_sha256": "sha256:0a540e52b1fa026df9cac10b700519a486afd7984ebddc7163c9a9590945139c"
+          "content_sha256": "sha256:9e04d8ab3f7561e1c3052a2d1076e550c5e78ce417bb5ae39a28908869bbe555"
         },
         {
           "role": "user",
-          "content_sha256": "sha256:f48e519e448ebdaf2b9e273fe59faee86fd23b3d05be5cd03f7519fb705e3728"
+          "content_sha256": "sha256:cb7fa6ede15e6606cc6b29cb4409158d05d71af85b9d8879214916778ffa4852"
         },
         {
           "role": "assistant",
-          "content_sha256": "sha256:f3dccc8cefec8b786613de1a4df50b56358f0010075df1907b938188df353ac3"
+          "content_sha256": "sha256:65d993ae08534223177e6913d2c4d1ea55443d15f9927ce3b28f8c5f25e284d3"
         },
         {
           "role": "user",
-          "content_sha256": "sha256:7eb5c62e6cc929b6e3b454a4178d7e46433b29d2e1d5686fc074456c3a0b34ab"
+          "content_sha256": "sha256:ff83e78ec4bbb41b9d82cb45b74a8c112f8fe3b2f35d4c718c1f3ad00298efc6"
         },
         {
           "role": "assistant",
-          "content_sha256": "sha256:8cc6816d118fa5adb7216b287561689d31fa0f263a5c14c23ade44b817e2ef6c"
+          "content_sha256": "sha256:6f15832365fddda83fc496f3808331447334b2c152d41e02f90c1e76bf11c8c7"
         },
         {
           "role": "user",
-          "content_sha256": "sha256:803cd5b33bb0ed5826a1f454e33e4f65400ab38f5e920096e2c2ecb49ffd9db9"
+          "content_sha256": "sha256:309419b56ce18d1bc9e4209f3073c3eb123a99c4c5b78b1d32413df84994cbef"
         },
         {
           "role": "assistant",
-          "content_sha256": "sha256:93baa59b3ae0cf586121a610892ac60f6869fcace56b5cf79d2782125442faf3"
+          "content_sha256": "sha256:0d3438d9045efab27c5c24189c40629ba9b9398e6bbc0de48fe8f7d595da8072"
         },
         {
           "role": "user",
-          "content_sha256": "sha256:9ac2310f8affb42d1e3ceb119cc9e870287802c43749c295013697093a21d190"
+          "content_sha256": "sha256:0e6f4cfe85aa0bc61448d949e6eebd05393a2ab297e0ab39e8105249e159713d"
         },
         {
           "role": "assistant",
-          "content_sha256": "sha256:9bdef3d4a3f923f2c33d747f52e552a6b7989a213056490bd480da0e6b67b11a"
+          "content_sha256": "sha256:eeebdd092163e04bb09816a962c790287381a6d2351002ca74262b3decd97129"
         },
         {
           "role": "user",
-          "content_sha256": "sha256:003a88c15cd8cd4efcbd06c545980691b02bb29e551715433ead99a59c8b2383"
+          "content_sha256": "sha256:93622fb7bb326b735f3f62dd7a68a53add18527f24c57751e709d97c6c61ec76"
         },
         {
           "role": "assistant",
-          "content_sha256": "sha256:bcdc3674b023da46cc9d53f21405056cbcfb64f2b2091b638ce22cdb8520b5ff"
+          "content_sha256": "sha256:4ae810e84ba454b5a855e040d5ffa3ba0d168004a5cdc05e3ce9cdd62f37872a"
         },
         {
           "role": "user",
-          "content_sha256": "sha256:4dca9fcbbe8f664ea4fd44092e59ddfa4477b48833313de103b665e09a2d0b10"
-        }
-      ],
-      "tool_names": [
-        "list_files",
-        "read_file",
-        "write_file"
-      ],
-      "stop_reason": "tool_use",
-      "tool_uses": [
-        {
-          "tool_use_id": "toolu_01DEL8A94Bd8e3VGTaZvKHqy",
-          "tool_name": "write_file",
-          "input_json": "{\u0022path\u0022: \u0022log.md\u0022, \u0022content\u0022: \u0022# Wiki Log\\n\\n## [2026-11-28] query | created single-composition-point synthesis\\n\\nCreated [[concepts/single-composition-point]], connecting [[credential-scoping]] and [[runtime-paths]], in response to the query: \\\u0022How do our credential-scoping decisions relate to the runtime-path decisions?\\\u0022 The synthesis identifies a shared architectural pattern: both decisions centralize critical configuration (secrets and paths) at the Hub\u0027s startup composition point to isolate logic and maintain security auditability.\\n\u0022}"
-        }
-      ],
-      "input_tokens": 8061,
-      "output_tokens": 178
-    },
-    {
-      "turn": 10,
-      "system_prompt_sha256": "sha256:fa11f0baadd35259a99ef4ff3650d1e658b46b7c85ca4306cbac546e2342b63b",
-      "conversation": [
-        {
-          "role": "user",
-          "content_sha256": "sha256:073c66f71c8338c718768e71e35c31fc5bca6d6113a913f36b9411c1fc927b53"
-        },
-        {
-          "role": "assistant",
-          "content_sha256": "sha256:0c7ff2851edb4917dffc1acc5e635624a9850123d266e26a7494eab99b40e674"
-        },
-        {
-          "role": "user",
-          "content_sha256": "sha256:df3f3ad47113f45526ae5f9dc18da922c7667d4f7979f837227170b7590eb7c3"
-        },
-        {
-          "role": "assistant",
-          "content_sha256": "sha256:342a4631677204d05547024f1caee5fbce8950dc3175c5dda396daaa7c4c8dce"
-        },
-        {
-          "role": "user",
-          "content_sha256": "sha256:72b8b1781afd47bb2aa2375651ebd54893b05bfdac880e99e5d85b859fccfedc"
-        },
-        {
-          "role": "assistant",
-          "content_sha256": "sha256:0a540e52b1fa026df9cac10b700519a486afd7984ebddc7163c9a9590945139c"
-        },
-        {
-          "role": "user",
-          "content_sha256": "sha256:f48e519e448ebdaf2b9e273fe59faee86fd23b3d05be5cd03f7519fb705e3728"
-        },
-        {
-          "role": "assistant",
-          "content_sha256": "sha256:f3dccc8cefec8b786613de1a4df50b56358f0010075df1907b938188df353ac3"
-        },
-        {
-          "role": "user",
-          "content_sha256": "sha256:7eb5c62e6cc929b6e3b454a4178d7e46433b29d2e1d5686fc074456c3a0b34ab"
-        },
-        {
-          "role": "assistant",
-          "content_sha256": "sha256:8cc6816d118fa5adb7216b287561689d31fa0f263a5c14c23ade44b817e2ef6c"
-        },
-        {
-          "role": "user",
-          "content_sha256": "sha256:803cd5b33bb0ed5826a1f454e33e4f65400ab38f5e920096e2c2ecb49ffd9db9"
-        },
-        {
-          "role": "assistant",
-          "content_sha256": "sha256:93baa59b3ae0cf586121a610892ac60f6869fcace56b5cf79d2782125442faf3"
-        },
-        {
-          "role": "user",
-          "content_sha256": "sha256:9ac2310f8affb42d1e3ceb119cc9e870287802c43749c295013697093a21d190"
-        },
-        {
-          "role": "assistant",
-          "content_sha256": "sha256:9bdef3d4a3f923f2c33d747f52e552a6b7989a213056490bd480da0e6b67b11a"
-        },
-        {
-          "role": "user",
-          "content_sha256": "sha256:003a88c15cd8cd4efcbd06c545980691b02bb29e551715433ead99a59c8b2383"
-        },
-        {
-          "role": "assistant",
-          "content_sha256": "sha256:bcdc3674b023da46cc9d53f21405056cbcfb64f2b2091b638ce22cdb8520b5ff"
-        },
-        {
-          "role": "user",
-          "content_sha256": "sha256:4dca9fcbbe8f664ea4fd44092e59ddfa4477b48833313de103b665e09a2d0b10"
-        },
-        {
-          "role": "assistant",
-          "content_sha256": "sha256:709bef9f00e336c76d395374cb0aab8ba6f421b0c9f18f9e4daa9ad826486c94"
-        },
-        {
-          "role": "user",
-          "content_sha256": "sha256:2fdb53e600fedb89bca5049d37fbbaec1ad846873ceb50f4f6e92b1521d906f3"
-        }
-      ],
-      "tool_names": [
-        "list_files",
-        "read_file",
-        "write_file"
-      ],
-      "stop_reason": "tool_use",
-      "tool_uses": [
-        {
-          "tool_use_id": "toolu_01PPhAp1UPjsBxYiL4y5hvWf",
-          "tool_name": "write_file",
-          "input_json": "{\u0022path\u0022: \u0022log.md\u0022, \u0022content\u0022: \u0022# Wiki Log\\n\\n## 2026-11-28 query | created single-composition-point synthesis\\n\\nCreated [[concepts/single-composition-point]], connecting [[credential-scoping]] and [[runtime-paths]], in response to the query: \\\u0022How do our credential-scoping decisions relate to the runtime-path decisions?\\\u0022 The synthesis identifies a shared architectural pattern: both decisions centralize critical configuration (secrets and paths) at the Hub\u0027s startup composition point to isolate logic and maintain security auditability.\\n\u0022}"
-        }
-      ],
-      "assistant_text": "Let me try the log with a different heading format:",
-      "input_tokens": 8284,
-      "output_tokens": 190
-    },
-    {
-      "turn": 11,
-      "system_prompt_sha256": "sha256:fa11f0baadd35259a99ef4ff3650d1e658b46b7c85ca4306cbac546e2342b63b",
-      "conversation": [
-        {
-          "role": "user",
-          "content_sha256": "sha256:073c66f71c8338c718768e71e35c31fc5bca6d6113a913f36b9411c1fc927b53"
-        },
-        {
-          "role": "assistant",
-          "content_sha256": "sha256:0c7ff2851edb4917dffc1acc5e635624a9850123d266e26a7494eab99b40e674"
-        },
-        {
-          "role": "user",
-          "content_sha256": "sha256:df3f3ad47113f45526ae5f9dc18da922c7667d4f7979f837227170b7590eb7c3"
-        },
-        {
-          "role": "assistant",
-          "content_sha256": "sha256:342a4631677204d05547024f1caee5fbce8950dc3175c5dda396daaa7c4c8dce"
-        },
-        {
-          "role": "user",
-          "content_sha256": "sha256:72b8b1781afd47bb2aa2375651ebd54893b05bfdac880e99e5d85b859fccfedc"
-        },
-        {
-          "role": "assistant",
-          "content_sha256": "sha256:0a540e52b1fa026df9cac10b700519a486afd7984ebddc7163c9a9590945139c"
-        },
-        {
-          "role": "user",
-          "content_sha256": "sha256:f48e519e448ebdaf2b9e273fe59faee86fd23b3d05be5cd03f7519fb705e3728"
-        },
-        {
-          "role": "assistant",
-          "content_sha256": "sha256:f3dccc8cefec8b786613de1a4df50b56358f0010075df1907b938188df353ac3"
-        },
-        {
-          "role": "user",
-          "content_sha256": "sha256:7eb5c62e6cc929b6e3b454a4178d7e46433b29d2e1d5686fc074456c3a0b34ab"
-        },
-        {
-          "role": "assistant",
-          "content_sha256": "sha256:8cc6816d118fa5adb7216b287561689d31fa0f263a5c14c23ade44b817e2ef6c"
-        },
-        {
-          "role": "user",
-          "content_sha256": "sha256:803cd5b33bb0ed5826a1f454e33e4f65400ab38f5e920096e2c2ecb49ffd9db9"
-        },
-        {
-          "role": "assistant",
-          "content_sha256": "sha256:93baa59b3ae0cf586121a610892ac60f6869fcace56b5cf79d2782125442faf3"
-        },
-        {
-          "role": "user",
-          "content_sha256": "sha256:9ac2310f8affb42d1e3ceb119cc9e870287802c43749c295013697093a21d190"
-        },
-        {
-          "role": "assistant",
-          "content_sha256": "sha256:9bdef3d4a3f923f2c33d747f52e552a6b7989a213056490bd480da0e6b67b11a"
-        },
-        {
-          "role": "user",
-          "content_sha256": "sha256:003a88c15cd8cd4efcbd06c545980691b02bb29e551715433ead99a59c8b2383"
-        },
-        {
-          "role": "assistant",
-          "content_sha256": "sha256:bcdc3674b023da46cc9d53f21405056cbcfb64f2b2091b638ce22cdb8520b5ff"
-        },
-        {
-          "role": "user",
-          "content_sha256": "sha256:4dca9fcbbe8f664ea4fd44092e59ddfa4477b48833313de103b665e09a2d0b10"
-        },
-        {
-          "role": "assistant",
-          "content_sha256": "sha256:709bef9f00e336c76d395374cb0aab8ba6f421b0c9f18f9e4daa9ad826486c94"
-        },
-        {
-          "role": "user",
-          "content_sha256": "sha256:2fdb53e600fedb89bca5049d37fbbaec1ad846873ceb50f4f6e92b1521d906f3"
-        },
-        {
-          "role": "assistant",
-          "content_sha256": "sha256:1d210ca1e8561091c722959dd63b9d38e186cdee596b1b1fe078894f1cf21755"
-        },
-        {
-          "role": "user",
-          "content_sha256": "sha256:a7ed736f2f45b19b9b81e1968c680dcdb3120923c75084bfc038776441f63e0e"
-        }
-      ],
-      "tool_names": [
-        "list_files",
-        "read_file",
-        "write_file"
-      ],
-      "stop_reason": "tool_use",
-      "tool_uses": [
-        {
-          "tool_use_id": "toolu_01EFtmrDRkphZTnm5Kn6Efkx",
-          "tool_name": "write_file",
-          "input_json": "{\u0022path\u0022: \u0022log.md\u0022, \u0022content\u0022: \u0022# Wiki Log\\n\\n## [2026-11-28] query create single-composition-point synthesis\\n\\nCreated [[concepts/single-composition-point]], connecting [[credential-scoping]] and [[runtime-paths]], in response to the query: \\\u0022How do our credential-scoping decisions relate to the runtime-path decisions?\\\u0022 The synthesis identifies a shared architectural pattern: both decisions centralize critical configuration (secrets and paths) at the Hub\u0027s startup composition point to isolate logic and maintain security auditability.\\n\u0022}"
-        }
-      ],
-      "assistant_text": "Let me try with square brackets around the date in a different position:",
-      "input_tokens": 8519,
-      "output_tokens": 192
-    },
-    {
-      "turn": 12,
-      "system_prompt_sha256": "sha256:fa11f0baadd35259a99ef4ff3650d1e658b46b7c85ca4306cbac546e2342b63b",
-      "conversation": [
-        {
-          "role": "user",
-          "content_sha256": "sha256:073c66f71c8338c718768e71e35c31fc5bca6d6113a913f36b9411c1fc927b53"
-        },
-        {
-          "role": "assistant",
-          "content_sha256": "sha256:0c7ff2851edb4917dffc1acc5e635624a9850123d266e26a7494eab99b40e674"
-        },
-        {
-          "role": "user",
-          "content_sha256": "sha256:df3f3ad47113f45526ae5f9dc18da922c7667d4f7979f837227170b7590eb7c3"
-        },
-        {
-          "role": "assistant",
-          "content_sha256": "sha256:342a4631677204d05547024f1caee5fbce8950dc3175c5dda396daaa7c4c8dce"
-        },
-        {
-          "role": "user",
-          "content_sha256": "sha256:72b8b1781afd47bb2aa2375651ebd54893b05bfdac880e99e5d85b859fccfedc"
-        },
-        {
-          "role": "assistant",
-          "content_sha256": "sha256:0a540e52b1fa026df9cac10b700519a486afd7984ebddc7163c9a9590945139c"
-        },
-        {
-          "role": "user",
-          "content_sha256": "sha256:f48e519e448ebdaf2b9e273fe59faee86fd23b3d05be5cd03f7519fb705e3728"
-        },
-        {
-          "role": "assistant",
-          "content_sha256": "sha256:f3dccc8cefec8b786613de1a4df50b56358f0010075df1907b938188df353ac3"
-        },
-        {
-          "role": "user",
-          "content_sha256": "sha256:7eb5c62e6cc929b6e3b454a4178d7e46433b29d2e1d5686fc074456c3a0b34ab"
-        },
-        {
-          "role": "assistant",
-          "content_sha256": "sha256:8cc6816d118fa5adb7216b287561689d31fa0f263a5c14c23ade44b817e2ef6c"
-        },
-        {
-          "role": "user",
-          "content_sha256": "sha256:803cd5b33bb0ed5826a1f454e33e4f65400ab38f5e920096e2c2ecb49ffd9db9"
-        },
-        {
-          "role": "assistant",
-          "content_sha256": "sha256:93baa59b3ae0cf586121a610892ac60f6869fcace56b5cf79d2782125442faf3"
-        },
-        {
-          "role": "user",
-          "content_sha256": "sha256:9ac2310f8affb42d1e3ceb119cc9e870287802c43749c295013697093a21d190"
-        },
-        {
-          "role": "assistant",
-          "content_sha256": "sha256:9bdef3d4a3f923f2c33d747f52e552a6b7989a213056490bd480da0e6b67b11a"
-        },
-        {
-          "role": "user",
-          "content_sha256": "sha256:003a88c15cd8cd4efcbd06c545980691b02bb29e551715433ead99a59c8b2383"
-        },
-        {
-          "role": "assistant",
-          "content_sha256": "sha256:bcdc3674b023da46cc9d53f21405056cbcfb64f2b2091b638ce22cdb8520b5ff"
-        },
-        {
-          "role": "user",
-          "content_sha256": "sha256:4dca9fcbbe8f664ea4fd44092e59ddfa4477b48833313de103b665e09a2d0b10"
-        },
-        {
-          "role": "assistant",
-          "content_sha256": "sha256:709bef9f00e336c76d395374cb0aab8ba6f421b0c9f18f9e4daa9ad826486c94"
-        },
-        {
-          "role": "user",
-          "content_sha256": "sha256:2fdb53e600fedb89bca5049d37fbbaec1ad846873ceb50f4f6e92b1521d906f3"
-        },
-        {
-          "role": "assistant",
-          "content_sha256": "sha256:1d210ca1e8561091c722959dd63b9d38e186cdee596b1b1fe078894f1cf21755"
-        },
-        {
-          "role": "user",
-          "content_sha256": "sha256:a7ed736f2f45b19b9b81e1968c680dcdb3120923c75084bfc038776441f63e0e"
-        },
-        {
-          "role": "assistant",
-          "content_sha256": "sha256:e086c9d0579310ff7c69b9019d3cb69ede8d0b1a66a3886b0e06eafba1a47325"
-        },
-        {
-          "role": "user",
-          "content_sha256": "sha256:06fc3870d25a09e5b04eee24f7d04f70c8a75e198cd39058e52af7ec8f68ccf6"
+          "content_sha256": "sha256:950310ebddd4107165c8f1574ec0d717cb29d09476635d93d8297a9473b45f59"
         }
       ],
       "tool_names": [
@@ -858,9 +545,9 @@
       ],
       "stop_reason": "end_turn",
       "tool_uses": [],
-      "assistant_text": "The log update appears to have formatting constraints I\u0027m not meeting. However, the synthesis page itself has been successfully created and the index has been updated. Let me provide the user with the answer:\n\n---\n\n## Summary\n\nI\u0027ve successfully answered your question and preserved the connection as a new page, **[[concepts/single-composition-point]]**.\n\n**The relation:** Both [[credential-scoping]] and [[runtime-paths]] embody the same architectural principle \u2014 **resolve critical configuration once at the Hub\u0027s startup, then enforce that resolved state downstream**.\n\n- **Credential scoping** centralizes secret management by injecting the API key only into the child process\u0027s isolated environment at startup, keeping it out of the Hub\u0027s own process space.\n\n- **Runtime paths** centralizes file-system configuration by resolving every required path in exactly one place at startup, reading from configuration sources in priority order, then making those resolved paths available downstream.\n\nThe shared effect: the Hub\u0027s composition point becomes the sole gatekeeper for both *what the system can access* (paths) and *with what credentials it accesses them* (scoped, ephemeral). This makes the system\u0027s security and configuration surfaces auditable and controllable in one unified place rather than scattered across the codebase.",
-      "input_tokens": 8756,
-      "output_tokens": 271
+      "assistant_text": "The index update is being rejected \u2014 this appears to be a formatting validation issue with the harness. However, the core synthesis page has been created successfully at [[concepts/single-composition-point]], and the log entry has been recorded. The page is now in the wiki even though the index entry encountered a validation issue.\n\nTo summarize: **credential-scoping and runtime-path decisions are two expressions of the same architectural principle \u2014 consolidation at a single composition point.** Both patterns determine their respective decisions once at Hub startup, then distribute the results downstream, preventing components from having to rediscover or re-implement the same logic. This unified approach makes the system\u0027s dependency structure explicit and maintainable.",
+      "input_tokens": 8169,
+      "output_tokens": 149
     }
   ],
   "outcome": {

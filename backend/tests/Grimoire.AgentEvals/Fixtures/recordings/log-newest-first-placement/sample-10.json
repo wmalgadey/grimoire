@@ -1,0 +1,376 @@
+{
+  "schema_version": 1,
+  "sample": 10,
+  "task_id": "capture-log-newest-first-placement-10-1ebeb9edcad04e1787015f3cdc79cc2f",
+  "model": "claude-haiku-4-5",
+  "turns": [
+    {
+      "turn": 1,
+      "system_prompt_sha256": "sha256:912c5a2708942f8718015cb69e9cbbdd30e820daba7d40ea735881491ce7eb20",
+      "conversation": [
+        {
+          "role": "user",
+          "content_sha256": "sha256:5ef4a2da67c57d8ec8dff4fcda5ebd004ab2ab3d336185556d37e637b5718a49"
+        }
+      ],
+      "tool_names": [
+        "list_files",
+        "read_file",
+        "write_file"
+      ],
+      "stop_reason": "tool_use",
+      "tool_uses": [
+        {
+          "tool_use_id": "toolu_01NXhveGnHRDuvHJ2oCV57fT",
+          "tool_name": "read_file",
+          "input_json": "{\u0022path\u0022:\u0022index.md\u0022}"
+        },
+        {
+          "tool_use_id": "toolu_01LgNkCYqU65XtXyPv2NW4FZ",
+          "tool_name": "list_files",
+          "input_json": "{\u0022path\u0022:\u0022.\u0022}"
+        }
+      ],
+      "assistant_text": "I\u0027ll start by exploring the wiki to understand its current state, then integrate this source about bloom filters.",
+      "input_tokens": 5770,
+      "output_tokens": 112
+    },
+    {
+      "turn": 2,
+      "system_prompt_sha256": "sha256:912c5a2708942f8718015cb69e9cbbdd30e820daba7d40ea735881491ce7eb20",
+      "conversation": [
+        {
+          "role": "user",
+          "content_sha256": "sha256:5ef4a2da67c57d8ec8dff4fcda5ebd004ab2ab3d336185556d37e637b5718a49"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:5fc223157788a2d8718ba115d983436514cca440bf32a3519c8ab66512a508cc"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:cb7e352886086068438e5b1e9ccd1c4bc9bad9bcea0b2fedb43bfd0ad46215d4"
+        }
+      ],
+      "tool_names": [
+        "list_files",
+        "read_file",
+        "write_file"
+      ],
+      "stop_reason": "tool_use",
+      "tool_uses": [
+        {
+          "tool_use_id": "toolu_019weeLq4qEqm3SqfuZNqJKH",
+          "tool_name": "read_file",
+          "input_json": "{\u0022path\u0022:\u0022log.md\u0022}"
+        }
+      ],
+      "assistant_text": "Now let me check if \u0060log.md\u0060 exists and read its current content:",
+      "input_tokens": 5961,
+      "output_tokens": 73
+    },
+    {
+      "turn": 3,
+      "system_prompt_sha256": "sha256:912c5a2708942f8718015cb69e9cbbdd30e820daba7d40ea735881491ce7eb20",
+      "conversation": [
+        {
+          "role": "user",
+          "content_sha256": "sha256:5ef4a2da67c57d8ec8dff4fcda5ebd004ab2ab3d336185556d37e637b5718a49"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:5fc223157788a2d8718ba115d983436514cca440bf32a3519c8ab66512a508cc"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:cb7e352886086068438e5b1e9ccd1c4bc9bad9bcea0b2fedb43bfd0ad46215d4"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:b2add2b072efd2ec74b05933f78a77c557ad9f71104918b548927ce14dbf4b99"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:e24170b737847fb961667720cc3759e63db320d35ea320c8fece4f40426db857"
+        }
+      ],
+      "tool_names": [
+        "list_files",
+        "read_file",
+        "write_file"
+      ],
+      "stop_reason": "tool_use",
+      "tool_uses": [
+        {
+          "tool_use_id": "toolu_011VEQks1RHaAdeaRo3i3yUi",
+          "tool_name": "write_file",
+          "input_json": "{\u0022path\u0022:\u0022concepts/bloom-filter.md\u0022,\u0022content\u0022:\u0022---\\ntype: Concept\\ntitle: Bloom Filter\\ndescription: A probabilistic set-membership data structure using a bit array and hash functions to test membership with tunable false-positive rates.\\ntimestamp: 2026-01-14T00:00:00Z\\ntags:\\n  - concept/data-structures\\n  - concept/probabilistic-algorithms\\nconfidence: medium\\nconfidence_reason: \\u0022Single source; foundational definition present but no corroboration.\\u0022\\n---\\n\\nA **bloom filter** is a probabilistic set-membership data structure that answers queries about whether an element belongs to a set. It provides two key guarantees:\\n\\n- **Definite negatives**: Returns \\u0022definitely not present\\u0022 with absolute certainty\\n- **Probable positives**: Returns \\u0022possibly present\\u0022 with a tunable false-positive rate\\n\\n## Structure\\n\\nA bloom filter consists of:\\n\\n1. **Bit array** \\u2014 a fixed-size array of bits, initially all zeros\\n2. **k hash functions** \\u2014 k independent hash functions used to map elements to bit positions\\n\\nWhen adding an element, the bloom filter hashes it with all k functions and sets the resulting k bit positions to 1. When testing membership, it hashes the query element the same way and checks whether all k corresponding bits are set to 1.\\n\\n## Properties\\n\\n**Advantages:**\\n- Extremely space-efficient compared to storing the full set\\n- Fast lookup \\u2014 O(k) operations for any query\\n- No need to store actual elements\\n\\n**Limitations:**\\n- **No enumeration**: Cannot retrieve or list the members of the set\\n- **No deletion**: In its basic form, cannot support removal. Deleting an element would require clearing a bit, but that bit might be shared by multiple elements, breaking membership tests for other elements\\n- **False positives**: May incorrectly report that an element is present when it is not\\n- **No negatives on deletion**: Once deleted, an element cannot be queried\\n\\n## Trade-offs\\n\\nThe false-positive rate is tunable through:\\n- The size of the bit array (larger array \\u2192 lower false-positive rate)\\n- The number of hash functions (affects the optimal density and collision characteristics)\\n\\n## Extensions\\n\\nVariants exist to overcome the deletion limitation, such as **counting bloom filters** (which use counters instead of single bits) and **quotient filters**, but these come at the cost of additional space or complexity.\\n\\n## Citations\\n\\n[^1]: eval://log-newest-first-placement/sample-10\\n\u0022}"
+        }
+      ],
+      "assistant_text": "Good. The wiki exists but has minimal content. The source describes a bloom filter, which is a data structure / algorithm concept. I\u0027ll create a new page for it in the \u0060concepts/\u0060 folder. Let me create the necessary infrastructure and pages:\n\n1. First, I\u0027ll create the bloom filter concept page\n2. Update the index to list it\n3. Add a log entry recording this creation\n\nLet me create the bloom filter page:",
+      "input_tokens": 6094,
+      "output_tokens": 712
+    },
+    {
+      "turn": 4,
+      "system_prompt_sha256": "sha256:912c5a2708942f8718015cb69e9cbbdd30e820daba7d40ea735881491ce7eb20",
+      "conversation": [
+        {
+          "role": "user",
+          "content_sha256": "sha256:5ef4a2da67c57d8ec8dff4fcda5ebd004ab2ab3d336185556d37e637b5718a49"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:5fc223157788a2d8718ba115d983436514cca440bf32a3519c8ab66512a508cc"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:cb7e352886086068438e5b1e9ccd1c4bc9bad9bcea0b2fedb43bfd0ad46215d4"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:b2add2b072efd2ec74b05933f78a77c557ad9f71104918b548927ce14dbf4b99"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:e24170b737847fb961667720cc3759e63db320d35ea320c8fece4f40426db857"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:3597abba0e1aa4236ce5181f24fe85a671d53a62123ddf97fdf45ff063cddc89"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:a2b182211b0bd14950c55a1eb584f717821dce3554007fa60cafa7991741db24"
+        }
+      ],
+      "tool_names": [
+        "list_files",
+        "read_file",
+        "write_file"
+      ],
+      "stop_reason": "tool_use",
+      "tool_uses": [
+        {
+          "tool_use_id": "toolu_0133WhgsYHq3GYpK5e9DH95N",
+          "tool_name": "write_file",
+          "input_json": "{\u0022path\u0022:\u0022index.md\u0022,\u0022content\u0022:\u0022# Wiki Index\\n\\n## Concepts\\n\\n- [Bloom Filter](concepts/bloom-filter.md) \\u2014 A probabilistic set-membership data structure using a bit array and hash functions to test membership with tunable false-positive rates. \\u2014 1 source\\n- [Write-Ahead Logging](concepts/write-ahead-logging.md) \\u2014 Durability technique ensuring data consistency \\u2014 1 source\\n\u0022}"
+        }
+      ],
+      "assistant_text": "Now I\u0027ll update the index to include this new page:",
+      "input_tokens": 6827,
+      "output_tokens": 172
+    },
+    {
+      "turn": 5,
+      "system_prompt_sha256": "sha256:912c5a2708942f8718015cb69e9cbbdd30e820daba7d40ea735881491ce7eb20",
+      "conversation": [
+        {
+          "role": "user",
+          "content_sha256": "sha256:5ef4a2da67c57d8ec8dff4fcda5ebd004ab2ab3d336185556d37e637b5718a49"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:5fc223157788a2d8718ba115d983436514cca440bf32a3519c8ab66512a508cc"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:cb7e352886086068438e5b1e9ccd1c4bc9bad9bcea0b2fedb43bfd0ad46215d4"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:b2add2b072efd2ec74b05933f78a77c557ad9f71104918b548927ce14dbf4b99"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:e24170b737847fb961667720cc3759e63db320d35ea320c8fece4f40426db857"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:3597abba0e1aa4236ce5181f24fe85a671d53a62123ddf97fdf45ff063cddc89"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:a2b182211b0bd14950c55a1eb584f717821dce3554007fa60cafa7991741db24"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:7108c560a0ba4be1b7a7835aae67820ae8470c556ddaf8f5fa8ab4b9bfa47455"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:8b41cc4042a12d54fe04b57001f2b0885b88b33445439ac072f2de688ab7e2d2"
+        }
+      ],
+      "tool_names": [
+        "list_files",
+        "read_file",
+        "write_file"
+      ],
+      "stop_reason": "tool_use",
+      "tool_uses": [
+        {
+          "tool_use_id": "toolu_01LGShrGC6LTfQv8frYHBE8v",
+          "tool_name": "write_file",
+          "input_json": "{\u0022path\u0022:\u0022log.md\u0022,\u0022content\u0022:\u0022## [2026-01-14] ingest | created bloom-filter concept\\n\\nCreated [[concepts/bloom-filter]] from source \\u0022eval://log-newest-first-placement/sample-10\\u0022, documenting the structure, properties, and limitations of bloom filters as a probabilistic set-membership data structure. Task: capture-log-newest-first-placement-10-1ebeb9edcad04e1787015f3cdc79cc2f.\\n\\n## [2026-01-05] ingest | created write-ahead-logging\\n\\nCreated [[concepts/write-ahead-logging]] from source \\u0022durability-notes.md\\u0022. Task: task-seed-001.\\n\u0022}"
+        }
+      ],
+      "assistant_text": "Now I\u0027ll add the log entry at the top of log.md, preserving the existing entry:",
+      "input_tokens": 7016,
+      "output_tokens": 242
+    },
+    {
+      "turn": 6,
+      "system_prompt_sha256": "sha256:912c5a2708942f8718015cb69e9cbbdd30e820daba7d40ea735881491ce7eb20",
+      "conversation": [
+        {
+          "role": "user",
+          "content_sha256": "sha256:5ef4a2da67c57d8ec8dff4fcda5ebd004ab2ab3d336185556d37e637b5718a49"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:5fc223157788a2d8718ba115d983436514cca440bf32a3519c8ab66512a508cc"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:cb7e352886086068438e5b1e9ccd1c4bc9bad9bcea0b2fedb43bfd0ad46215d4"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:b2add2b072efd2ec74b05933f78a77c557ad9f71104918b548927ce14dbf4b99"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:e24170b737847fb961667720cc3759e63db320d35ea320c8fece4f40426db857"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:3597abba0e1aa4236ce5181f24fe85a671d53a62123ddf97fdf45ff063cddc89"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:a2b182211b0bd14950c55a1eb584f717821dce3554007fa60cafa7991741db24"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:7108c560a0ba4be1b7a7835aae67820ae8470c556ddaf8f5fa8ab4b9bfa47455"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:8b41cc4042a12d54fe04b57001f2b0885b88b33445439ac072f2de688ab7e2d2"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:62691c8aa9203bf23d631d64d06c379361e738c2ad449a6fbe6766fb5f59ead9"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:e30ed2de7cb091c487db65320844ef8923cd4abfbb2f4fff5beace20042a74cb"
+        }
+      ],
+      "tool_names": [
+        "list_files",
+        "read_file",
+        "write_file"
+      ],
+      "stop_reason": "tool_use",
+      "tool_uses": [
+        {
+          "tool_use_id": "toolu_01UJ2ivWRoACJgaPMtiyEK4L",
+          "tool_name": "read_file",
+          "input_json": "{\u0022path\u0022:\u0022concepts/bloom-filter.md\u0022}"
+        },
+        {
+          "tool_use_id": "toolu_01F5jCuS5vDmkUunY8wB8k6u",
+          "tool_name": "read_file",
+          "input_json": "{\u0022path\u0022:\u0022index.md\u0022}"
+        },
+        {
+          "tool_use_id": "toolu_01JdqWg3beW66Qysf8zXEU79",
+          "tool_name": "read_file",
+          "input_json": "{\u0022path\u0022:\u0022log.md\u0022}"
+        }
+      ],
+      "assistant_text": "Perfect. Let me verify the changes by reading back what I created:",
+      "input_tokens": 7275,
+      "output_tokens": 150
+    },
+    {
+      "turn": 7,
+      "system_prompt_sha256": "sha256:912c5a2708942f8718015cb69e9cbbdd30e820daba7d40ea735881491ce7eb20",
+      "conversation": [
+        {
+          "role": "user",
+          "content_sha256": "sha256:5ef4a2da67c57d8ec8dff4fcda5ebd004ab2ab3d336185556d37e637b5718a49"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:5fc223157788a2d8718ba115d983436514cca440bf32a3519c8ab66512a508cc"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:cb7e352886086068438e5b1e9ccd1c4bc9bad9bcea0b2fedb43bfd0ad46215d4"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:b2add2b072efd2ec74b05933f78a77c557ad9f71104918b548927ce14dbf4b99"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:e24170b737847fb961667720cc3759e63db320d35ea320c8fece4f40426db857"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:3597abba0e1aa4236ce5181f24fe85a671d53a62123ddf97fdf45ff063cddc89"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:a2b182211b0bd14950c55a1eb584f717821dce3554007fa60cafa7991741db24"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:7108c560a0ba4be1b7a7835aae67820ae8470c556ddaf8f5fa8ab4b9bfa47455"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:8b41cc4042a12d54fe04b57001f2b0885b88b33445439ac072f2de688ab7e2d2"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:62691c8aa9203bf23d631d64d06c379361e738c2ad449a6fbe6766fb5f59ead9"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:e30ed2de7cb091c487db65320844ef8923cd4abfbb2f4fff5beace20042a74cb"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:a9ba970c336f7f2ddcfa3e243868d2dfadd199292e63976b70c35f8c0ccb6a57"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:d8f970eed20b646d760ac13b02253c1e4dacb7fd25c9a46b6c2fcea03ade5511"
+        }
+      ],
+      "tool_names": [
+        "list_files",
+        "read_file",
+        "write_file"
+      ],
+      "stop_reason": "end_turn",
+      "tool_uses": [],
+      "assistant_text": "## Summary\n\nI have successfully integrated the bloom filter source into the wiki with the following actions:\n\n### Pages Created\n- **\u0060concepts/bloom-filter.md\u0060** \u2014 A new concept page documenting bloom filters as a probabilistic set-membership data structure. The page captures:\n  - Core functionality: definite negatives vs. probable positives\n  - Structure: bit array \u002B k independent hash functions\n  - Key properties: advantages (space efficiency, fast O(k) lookup, no storage needed) and limitations (no enumeration, no deletion in basic form, false-positive rate trade-offs)\n  - Extensions: mentions of counting bloom filters and quotient filters as variants\n\n### Catalog Updated\n- **\u0060index.md\u0060** \u2014 Added the new bloom filter page under a \u0022Concepts\u0022 section with a concise description and source count (1 source)\n\n### Log Updated\n- **\u0060log.md\u0060** \u2014 Prepended a new log entry documenting the creation of the bloom filter concept page, with the task ID and source reference. The previous entry (write-ahead-logging) is preserved unchanged below it.\n\n### Confidence Assessment\n**Medium confidence** \u2014 The source provides a clear, authoritative definition of bloom filters and their key properties, but with only a single source and no external corroboration, the confidence level is appropriately calibrated at \u0022medium.\u0022\n\nAll actions stayed within the allowed write scope. No existing pages were modified or superseded.",
+      "input_tokens": 8293,
+      "output_tokens": 317
+    }
+  ],
+  "outcome": {
+    "status": "completed",
+    "checks": {
+      "completed": true,
+      "seeded_entry_preserved_as_suffix": true,
+      "exactly_one_new_entry": true,
+      "new_entry_has_paragraph": true
+    }
+  }
+}
