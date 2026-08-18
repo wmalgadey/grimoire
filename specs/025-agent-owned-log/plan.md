@@ -73,7 +73,7 @@ evaluations; see the post-design re-check at the end of this section).
 | **I — Domain architecture & hexagonal boundaries** | No new external system; no new port. | **Pass.** The feature touches only the guarded-write layer (`Grimoire.AgentRuntime.Guardrails.Coordination`), a telemetry-only component in `Grimoire.AgentRuntime.WikiLog`, and Hub operational recovery. The filesystem is a persistence/local-filesystem adapter, explicitly exempt from the port requirement; adapter containment is *tightened*, not loosened (R3). No infrastructure package moves. |
 | **II — Pragmatic testing strategy** | Real infrastructure; classicist, state-based; no mocking framework; harness vs. agent split; test what we own. | **Pass.** Every deterministic test drives the real `SharedFileWriteGuard`, the real `RestartReconciler`, and real files in per-test temp directories. No test double is introduced; the existing recorded-replay model adapter (an existing port fake, ADR-012) serves the eval tier. Assertions are state-based throughout — denial reason returned, bytes on disk, emitted signal — never "method X was called". Every criterion asserts a Grimoire-owned contract: the denial reasons, the ordering rule, the reconciler's non-write, and our own event/metric names are all decided by our source. |
 | **II — Success-criteria split** | Deterministic guarantees vs. agent-judgment thresholds. | **Pass.** The spec already splits them correctly: SC-001/002/003/004/008/009 are 100% harness guarantees (ordering rule, zero harness authorship, locatability, allow-path, existing operational coverage, the new signal); SC-005/006/007 are ≥90% agent-judgment thresholds (one entry per change, no entry when nothing changed, no day-grouping). The Test Strategy below maps each to its tier without moving any criterion across the line. |
-| **III — ADR-driven & test-enforced** | All ADRs read; new boundary → new ADR, Accepted before `/speckit-tasks`; Boundary Rules vs. Feature-Scoped Invariants tagged. | **Pass with an open gate.** All 26 existing ADRs were read; ADR-027 is drafted (`proposed`) with bidirectional links to ADR-017 and an index row. It classifies its rules explicitly: one Boundary Rule (BR-1) and two Feature-Scoped Invariants (FSI-1, FSI-2). **`/speckit-tasks` MUST NOT run until ADR-027 is Accepted.** |
+| **III — ADR-driven & test-enforced** | All ADRs read; new boundary → new ADR, Accepted before `/speckit-tasks`; Boundary Rules vs. Feature-Scoped Invariants tagged. | **Pass.** All 27 existing ADRs were read; ADR-028 is drafted and Accepted with bidirectional links to ADR-017 and an index row. It classifies its rules explicitly: one Boundary Rule (BR-1) and two Feature-Scoped Invariants (FSI-1, FSI-2). **Gate satisfied: ADR-028 reached Accepted before `/speckit-tasks`.** |
 | **IV — Behavioral & observable engineering** | Mandatory `## Observability`; every log/trace row gets impl + deterministic test + CI tasks; contract tests exercise production wiring. | **Pass.** The Observability section below enumerates one new metric, one new log event, one new span, and the three retired signals. The contract test for the new signal attaches to the same composition root the agent process uses, per the Feature-003 lesson recorded in the constitution. No new infrastructure is introduced. |
 | **V — Agentic core & deterministic harness** | Wiki-content judgment lives in instruction files; harness owns mechanics; guarded-write boundary structurally enforced; no deterministic test asserts instruction wording. | **Pass, and this is the feature's point.** The change *restores* a boundary the backstop crossed: harness-generated prose is removed from wiki content entirely. What remains harness-side is purely mechanical — a byte-comparison of proposed against current content, and set arithmetic over the run's own allowed writes. The changes-only criterion and the entry's text move into the two writing agents' `system-prompt.md` files and are verified only at evaluation thresholds. No task in this feature may assert instruction-file wording. |
 
@@ -86,7 +86,7 @@ Complexity Tracking table below is empty because there is nothing to justify.
 ## Architectural Constraints & ADRs
 
 *GATE: Agent MUST read all ADRs in `docs/adr/` before completing this section.* — all
-ADR-001 … ADR-026 read via `docs/adr/index.md` and the individual files.
+ADR-001 … ADR-027 read via `docs/adr/index.md` and the individual files.
 
 | ADR | Title | Constraint on this feature |
 | --- | --- | --- |
@@ -96,18 +96,20 @@ ADR-001 … ADR-026 read via `docs/adr/index.md` and the individual files.
 | ADR-013 | Unified Agent Platform Packaging and Naming | The replacement observer stays a shared `Grimoire.AgentRuntime` component that receives the caller's frozen `ActivitySource`/`Meter` rather than owning a static telemetry identity — the same reason `WikiLogEvents`/`WikiLogMetrics` take parameters today. |
 | ADR-015 | Query Write Scope and Cross-Process Wiki Write Coordination | The cross-process lock and the read-then-write compare-and-swap are unchanged and still evaluated **before** the ordering check. `write_conflict_stale_read` continues to be the concurrency answer under the new rule (FR-011). |
 | ADR-016 | Lint Write Scope — Frontmatter-Only Enforcement | Lint's write scope is untouched: it never writes the activity log. Its instruction file is explicitly out of scope (FR-013). The frontmatter-only check remains an independent, earlier step in the guard. |
-| ADR-017 | Structural Format Enforcement for `log.md` and `index.md` | **Amended by ADR-027 for the `log.md` half only.** The heading pattern, the following-paragraph requirement, the check's position in the evaluation order, the `guardrails.format_validate` span, and the whole `index.md` catalog half are binding and unchanged. Only the ordering direction and the one denial reason change. |
+| ADR-017 | Structural Format Enforcement for `log.md` and `index.md` | **Amended by ADR-028 for the `log.md` half only.** The heading pattern, the following-paragraph requirement, the check's position in the evaluation order, the `guardrails.format_validate` span, and the whole `index.md` catalog half are binding and unchanged. Only the ordering direction and the one denial reason change. |
 | ADR-022 | Minimal Directory Configuration Surface | Instruction files are edited at their versioned source under `backend/src/Grimoire.*Agent/Instructions/` and build-distributed; the gitignored `.grimoire/agents/` copies are never edited directly. |
 | ADR-025 | Ingest Task Lifecycle Re-Entry | Restart reconciliation keeps recording the failure in the task artifact and the status history. Only its wiki write is removed; its lifecycle semantics are untouched. |
-| **ADR-027** | **Agent-Owned Activity Log — Prepend-Only Ordering and Removal of Harness Authorship** | **New (proposed).** Defines the prepend-only rule and its renamed denial reason, the deletion of all harness authorship plus the tightened allow-list that enforces it, and the replacement operational signal. Classifies BR-1 as a Boundary Rule and FSI-1/FSI-2 as Feature-Scoped Invariants. |
+| **ADR-028** | **Agent-Owned Activity Log — Prepend-Only Ordering and Removal of Harness Authorship** | **New (Accepted).** Defines the prepend-only rule and its renamed denial reason, the deletion of all harness authorship plus the tightened allow-list that enforces it, and the replacement operational signal. Classifies BR-1 as a Boundary Rule and FSI-1/FSI-2 as Feature-Scoped Invariants. |
 
-**New ADR required?**: **Yes — drafted.**
-[`docs/adr/ADR-027-agent-owned-activity-log-prepend-ordering.md`](../../docs/adr/ADR-027-agent-owned-activity-log-prepend-ordering.md),
-status `proposed`. ADR-017's header carries the reciprocal `Amended by ADR-027` link and
-`docs/adr/index.md` carries the row, so no one-sided link ships. **Per Constitution
-Principle III, `/speckit-tasks` MUST NOT be invoked until ADR-027 is Accepted**; at
-acceptance, flip `status: proposed` → `accepted` in ADR-027, drop the "(proposed)" qualifier
-from ADR-017's admonition and from the index row, in one change.
+**New ADR required?**: **Yes — drafted and Accepted.**
+[`docs/adr/ADR-028-agent-owned-activity-log-prepend-ordering.md`](../../docs/adr/ADR-028-agent-owned-activity-log-prepend-ordering.md),
+status `accepted` (author sign-off, 2026-08-17). ADR-017's header carries the reciprocal
+`Amended by ADR-028` link and `docs/adr/index.md` carries the row, so no one-sided link
+ships. The Constitution Principle III gate on `/speckit-tasks` is therefore satisfied.
+
+The ADR was drafted as ADR-027 and renumbered to ADR-028 before acceptance: ADR-027 was
+already taken by the Accepted GitVersion/GitHub-Flow decision merged in parallel. ADR
+numbers are permanent, so the later draft moved.
 
 **Hexagonal gate**: no new external system, no new port, no new adapter namespace, no
 infrastructure package moved. The only containment change is a *tightening* of the existing

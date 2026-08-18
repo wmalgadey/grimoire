@@ -1,8 +1,8 @@
 ---
-status: proposed
+status: accepted
 ---
 
-# ADR-027: Agent-Owned Activity Log — Prepend-Only Ordering and Removal of Harness Authorship
+# ADR-028: Agent-Owned Activity Log — Prepend-Only Ordering and Removal of Harness Authorship
 
 > **Amends [ADR-017](ADR-017-log-and-catalog-entry-format-enforcement.md)**: the `log.md`
 > half of ADR-017's format-validation mechanism is inverted — the structural check becomes

@@ -1,7 +1,7 @@
 # Contract: Activity-Log Guarded Write (prepend-only)
 
 **Feature**: 025-agent-owned-log | **Amends**: `specs/014-wiki-storage-restructure/contracts/log-and-catalog-entry-format.md`
-(the `log.md` half only) | **ADR**: ADR-027 (amends ADR-017)
+(the `log.md` half only) | **ADR**: ADR-028 (amends ADR-017)
 
 This is the normative contract for a guarded `write_file` whose canonical target is the
 resolved activity-log path. The `index.md` catalog-entry contract from feature 014 is
@@ -156,11 +156,11 @@ FR-002, SC-002)*
 from `Grimoire.IngestAgent`, `Grimoire.QueryAgent`, `Grimoire.LintAgent`, and the shared
 `Grimoire.AgentRuntime` may be called only from `Grimoire.AgentRuntime.Guardrails*` and
 `Grimoire.AgentRuntime.Core.Adapters.Replay`. `Grimoire.AgentRuntime.WikiLog` is **not**
-exempt. *(ADR-027 BR-1)*
+exempt. *(ADR-028 BR-1)*
 
 **A3.** For the Hub, A1 is verified behaviourally: restart reconciliation records a task's
 failure in the task artifact and the operational status history, and leaves the activity log
-byte-for-byte unchanged. *(ADR-027 FSI-2)*
+byte-for-byte unchanged. *(ADR-028 FSI-2)*
 
 ---
 

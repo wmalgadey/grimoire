@@ -4,7 +4,7 @@ status: accepted
 
 # ADR-017: Structural Format Enforcement for `log.md` and `index.md` Entries
 
-> **Amended by [ADR-027](ADR-027-agent-owned-activity-log-prepend-ordering.md)** (proposed):
+> **Amended by [ADR-028](ADR-028-agent-owned-activity-log-prepend-ordering.md)**:
 > the `log.md` half of the mechanism below is inverted from *append-only* to
 > *prepend-only* — the current content must be an unchanged **suffix** of the proposed
 > content, not an unchanged prefix — and the denial reason `log_entry_not_appended` is
