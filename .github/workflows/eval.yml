@@ -100,6 +100,15 @@ jobs:
             --no-build \
             -- capture --summary eval-summary.md
 
+      # The proxy log records every upstream call to the provider and its status, and is
+      # the only place a capture failure's real cause shows up: the runner reports
+      # "not every sample produced a recording" per scenario without saying why. The
+      # readiness path above already dumps this log; a capture failure discarded it,
+      # which left run 32116986584 undiagnosable from CI output alone.
+      - name: Dump LiteLLM proxy log
+        if: failure()
+        run: cat /tmp/litellm-proxy.log || true
+
       - name: Publish job summary
         if: always()
         run: |
