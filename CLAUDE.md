@@ -34,12 +34,16 @@ enforceable once extracted into the constitution or an Accepted ADR.
 | Artifact | Role | Binding for SDD? |
 | --- | --- | --- |
 | `.specify/memory/constitution.md` | Enforceable project rules | Yes — gates every plan |
+| `specs/<feature>/` | Feature-scoped SDD artifacts | Yes, for that feature only |
 | `docs/adr/` | Architectural decisions incl. tech-stack rationale (MADR) | Yes, once Accepted (Principle III) |
-| `docs/decision-context-overview.md` | Problem space & product vision (North Star) | Only via extraction into constitution/ADRs; audited with `/drift-check` |
-| `specs/<feature>/` | Feature-scoped SDD artifacts | Yes, for that feature |
-| `docs/befunde-remediation-prompts.md` | Prompt library for remediation workflows | No — source material only; never cite as requirements in specs/plans/ADRs |
-| `docs/llm-wiki-*.md`, `docs/project-conversation.md` | Source material (absorbed) | No — never cite as requirements |
+| `docs/foundational/decision-context-overview.md` | Problem space & product vision (North Star) | Only via extraction into constitution/ADRs; audited with `/drift-check` |
+| `docs/foundational/llm-wiki-*.md`, `docs/ideas/*.md` | Source material (absorbed or moved to GitHub issues) | No — never cite as requirements |
+| `docs/**/*.md` (only where no row above matches) | Everything else under `docs/`: analyses, problem summaries, conventions, operational references | No — never cite as requirements |
 | `dev-experience.md` | Personal learning log (German) | No — outside SDD; never cite in specs/plans/ADRs; updated via `/dev-log` |
+
+The last row is a catch-all: where a file matches it *and* a row above, the more specific
+row wins. An ADR under `docs/adr/` stays binding once Accepted — the catch-all never
+downgrades it.
 
 New documents require a declared reader (which process step consumes it?). If none
 exists, the content belongs in `dev-experience.md`, not in a new file.
