@@ -28,11 +28,18 @@ Run it from the repository root, with `.env` sourced:
 
 ```bash
 set -a; . .env; set +a
-dotnet run scripts/probe-models.cs
+dotnet run scripts/probe-models.cs                # or: … claude-opus-5 claude-haiku-4-5
 ```
 
-It is a .NET 10 file-based app, so it needs no project file. The header comment carries the
-container invocation for hosts without a local .NET 10 SDK, the full list of environment
-variables it reads, and its exit codes.
+It is a .NET 10 file-based app, so it needs no project file. Its header comment lists every
+environment variable it reads and its exit codes (0 = something works, 1 = nothing does,
+2 = no credential).
+
+On a host with no local .NET SDK — the deployment server, for instance — use the wrapper,
+which reads `.env` itself and runs the same thing in a container:
+
+```bash
+./scripts/probe-models.sh                         # same arguments, same exit codes
+```
 
 Note that every successful probe spends a few tokens from the 5-hour and 7-day windows.
