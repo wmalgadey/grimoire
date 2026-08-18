@@ -41,6 +41,25 @@ expectation in four ways:
    nothing end up in the log. The log should contain only entries that record an actual
    change to wiki content.
 
+## Clarifications
+
+### Session 2026-08-17
+
+- Q: When the harness stops writing its fallback entry, should the system emit a new
+  operational signal for a run that changed wiki content but wrote no log entry? (FR-012)
+  → A: Existing coverage is sufficient for failed and no-write runs; add one harness-side
+  observability signal (log event + metric, no wiki write) for a run whose allowed
+  wiki-content writes are non-zero but that wrote no activity-log entry.
+- Q: Does the lint agent's instruction file need updating to describe the log as
+  newest-first, given the lint agent only ever reads the file? (FR-013)
+  → A: No. FR-013 is scoped to the agents that write the log (Ingest, Query); the lint
+  instruction file states no ordering assumption and is left unchanged.
+- Q: Should this feature decide how its per-action entry shape reconciles with the
+  day-grouped bullet shape described in issue #38, or explicitly defer that to whichever
+  feature addresses the format? (Assumptions)
+  → A: Defer to the format feature, but record that the operator has explicitly rejected
+  day-grouping, so the format feature must resolve the conflict against that constraint.
+
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - Read the newest wiki change first (Priority: P1)
@@ -152,6 +171,9 @@ the wiki's activity log.
 2. **Given** a run that completes without changing wiki content, **When** an operator
    inspects the operational signals and the run's task record, **Then** the run's completion
    and the fact that it produced no wiki changes are discoverable there.
+3. **Given** a run whose wiki-content writes were allowed but which wrote no activity-log
+   entry, **When** the run completes, **Then** an operational signal records that the wiki
+   changed without being logged, and nothing is written to the wiki's activity log.
 
 ---
 
@@ -168,8 +190,8 @@ the wiki's activity log.
   content as a suffix but adds no conforming entry above it MUST still be rejected by the
   existing entry-shape validation.
 - **Lint runs**: the lint agent writes proposals, never the activity log, so it produces no
-  entries; only its read-side understanding of the log's ordering may need to match the new
-  convention.
+  entries. It reads the file but assumes nothing about its ordering, so the new convention
+  requires no change on its side.
 - **Pre-existing logs written oldest-first**: files produced under the previous rules are
   not rewritten or re-sorted. Newest-first applies from this change onward, so an existing
   file will have a newest-first section above an older oldest-first section.
@@ -212,15 +234,22 @@ the wiki's activity log.
 - **FR-011**: Concurrent activity-log writes MUST continue to be detected and denied when
   the file changed after the writing agent read it, under the new prepend rule.
 - **FR-012**: Operational visibility for runs that changed nothing and for failed runs MUST
-  remain available through the system's own operational signals and task records, so that
-  removing the harness fallback entries costs no diagnostic capability.
-  [NEEDS CLARIFICATION: is the existing signal and task-record coverage already sufficient,
-  or does removing the fallback leave a gap that warrants a new operational event?]
+  remain available through the system's own existing operational signals and task records,
+  so that removing the harness fallback entries costs no diagnostic capability. No new
+  operational event is introduced for these two cases; the existing coverage MUST instead be
+  confirmed by test.
+- **FR-012a**: The harness MUST emit one operational signal — a structured log event and a
+  metric, never a write to the wiki — when a run's allowed wiki-content writes are non-zero
+  but the run wrote no activity-log entry. This preserves the "an agent changed the wiki and
+  failed to log it" diagnostic that the removed fallback provided. The determination MUST be
+  made from the harness's own record of which guarded writes it allowed, never from judging
+  the meaning of wiki content.
 - **FR-013**: The versioned instruction files that govern the agents which write to the
   activity log MUST state newest-first placement, one complete entry per action, and the
-  changes-only criterion.
-  [NEEDS CLARIFICATION: does the lint agent's read-side description of the activity log
-  also need updating, given it never writes the file?]
+  changes-only criterion. This requirement is scoped to the writing agents only. The lint
+  agent's instruction file MUST NOT be changed by this feature: it states no ordering
+  assumption about the activity log, never writes the file, and none of its finding
+  categories inspects the log's ordering.
 - **FR-014**: Activity-log files produced under the previous oldest-first rules MUST NOT be
   rewritten, re-sorted, or migrated; the new ordering applies to entries written from this
   change onward.
@@ -263,6 +292,9 @@ the wiki's activity log.
   system's operational signals and task records — run outcome, stage, and correlation
   reference are all discoverable without consulting the wiki's activity log (deterministic
   harness guarantee).
+- **SC-009**: 100% of runs whose allowed wiki-content writes are non-zero and that wrote no
+  activity-log entry emit the operational signal required by FR-012a, and that signal never
+  results in a write to the wiki (deterministic harness guarantee).
 
 ## Assumptions
 
@@ -289,17 +321,27 @@ the wiki's activity log.
   newest-first, which corroborates this feature's ordering requirement, but describes a
   different entry shape (bullet items grouped under a bare date heading) than the per-action
   heading-plus-paragraph shape required here. This specification keeps the existing entry
-  shape (FR-008); reconciling the two shapes is left to whichever feature addresses the
-  format itself. [NEEDS CLARIFICATION: should this feature make that reconciliation decision
-  now, or explicitly defer it to the format feature?]
-- Existing operational signals and task records are assumed to be the correct home for run
-  bookkeeping. FR-012 requires confirming that coverage before the harness fallback is
-  removed, not designing a replacement for it.
+  shape (FR-008) and defers the reconciliation to whichever feature addresses the format
+  itself. That deferral carries one inherited constraint: issue #38's shape groups bullet
+  items under a bare date heading, which is day-grouping — the very behaviour the operator
+  explicitly rejected in issue #89 and that this feature exists to remove (FR-006). The
+  format feature MUST therefore resolve the two shapes against that operator constraint,
+  not silently adopt #38's grouping.
+- Existing operational signals and task records are the correct home for run bookkeeping.
+  For failed runs and runs that changed nothing, FR-012 requires confirming that coverage
+  by test rather than designing a replacement for it. The one diagnostic the
+  removed fallback provided that existing coverage does not already carry — an agent
+  changed the wiki but logged nothing — is preserved by the single new harness-side signal
+  in FR-012a, which observes the harness's own allowed-write record and writes nothing to
+  the wiki.
 
 ## Out of Scope
 
 - Changing the entry format itself — heading shape, the required paragraph, or the wikilink
   convention.
+- Reconciling this feature's per-action entry shape with the day-grouped shape described in
+  issue #38; that decision belongs to the format feature, bound by the operator constraint
+  recorded under Assumptions.
 - The wiki index's catalog entry format and ordering.
 - Rewriting, re-sorting, or migrating activity-log files produced under the previous rules.
 - Introducing any structured or parsed representation of the activity log.

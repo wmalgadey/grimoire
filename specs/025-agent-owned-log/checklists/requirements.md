@@ -13,7 +13,7 @@
 
 ## Requirement Completeness
 
-- [ ] No [NEEDS CLARIFICATION] markers remain
+- [x] No [NEEDS CLARIFICATION] markers remain
 - [x] Requirements are testable and unambiguous
 - [x] Success criteria are measurable
 - [x] Success criteria are technology-agnostic (no implementation details)
@@ -32,15 +32,16 @@
 ## Notes
 
 - Items marked incomplete require spec updates before `/speckit-clarify` or `/speckit-plan`
-- **Open**: three `[NEEDS CLARIFICATION]` markers remain, carried over deliberately from the
-  source issue (#89), which names `/speckit-clarify` as the next step for exactly these:
-  1. FR-012 — is existing operational-signal and task-record coverage sufficient once the
-     harness fallback entry is removed, or is a new operational event warranted?
-  2. FR-013 — does the lint agent's read-side description of the activity log need updating,
-     given it never writes the file?
-  3. Assumptions — should this feature reconcile its per-action entry shape with the
-     newest-first day-grouped shape described in issue #38 (open knowledge format v0.2), or
-     explicitly defer that decision to the format feature?
+- **Resolved** (`/speckit-clarify`, session 2026-08-17): the three `[NEEDS CLARIFICATION]`
+  markers carried over from the source issue (#89) are now answered and integrated — see
+  spec.md `## Clarifications`:
+  1. FR-012 — existing coverage is sufficient for failed and no-write runs; one new
+     harness-side signal (FR-012a, SC-009) preserves the "changed the wiki but logged
+     nothing" diagnostic the removed fallback provided.
+  2. FR-013 — scoped to the writing agents (Ingest, Query); the lint instruction file
+     states no ordering assumption and is left unchanged.
+  3. Assumptions — the entry-shape reconciliation with issue #38 is deferred to the format
+     feature, which inherits the operator's explicit rejection of day-grouping.
 - The constitutional success-criteria split (Principle II) is honoured: SC-001 through
   SC-004 and SC-008 are deterministic harness guarantees; SC-005 through SC-007 are
   agent-judgment evaluation thresholds. No agent-judgment outcome carries a 100% guarantee.
