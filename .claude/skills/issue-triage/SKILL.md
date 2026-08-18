@@ -10,8 +10,9 @@ The open backlog is only useful when three questions are answerable from the iss
 list itself, without opening anything: *what can I pick up right now?*, *what is
 waiting, and on what?*, and *which decision unblocks the most work?* This skill is
 the recurring procedure that keeps those answers current. The durable state lives
-in the **triage map issue** (a pinned issue titled "Triage map: …" — currently
-[#133](https://github.com/wmalgadey/grimoire/issues/133)); each run updates it.
+in the **triage map issue**: find it as the pinned open issue whose title starts
+with "Triage map:" — the pin and title prefix are the source of truth, not any
+hard-coded number (at the time of writing it is #133). Each run updates it.
 
 Triage organizes and surfaces. It does **not** make the decisions themselves —
 `decision-needed` issues are resolved by the maintainer, not by a triage run.
@@ -34,8 +35,10 @@ Rules:
   blocks). Comments also create timeline backlinks on the blocking issue.
 - Real containment (issue X is a part/shape-decision of issue Y) is a native
   **sub-issue** relation, not a label.
-- The GitHub MCP `issue_write` tool **replaces** the whole label set — always
-  include the issue's existing labels when adding one.
+- When editing labels, always carry the issue's existing labels along unless one
+  is being removed on purpose: label-update APIs commonly **replace** the whole
+  set rather than append (the GitHub MCP `issue_write` tool does). Verify the
+  behavior of whichever tool is in use before the first label write of a run.
 
 ## Per-run procedure (delta, not full re-read)
 

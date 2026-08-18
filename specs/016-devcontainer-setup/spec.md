@@ -4,7 +4,7 @@
 
 **Created**: 2026-08-02
 
-**Status**: Implemented — completed 2026-08-02 (residual validation closed 2026-08-18: `devcontainer-ci.yml` observed green in real GitHub Actions, completing ADR-019's Red/Green probe — tasks.md T017)
+**Status**: Implemented — completed 2026-08-02 (residual validation closed 2026-08-18: `devcontainer-ci.yml` observed green in real GitHub Actions, completing ADR-019's Red/Green probe — tasks.md T017; evidence: [workflow run history](https://github.com/wmalgadey/grimoire/actions/workflows/devcontainer-ci.yml), issue #60, PR #134)
 
 **Input**: User description: "erstelle einen devcontainer (https://containers.dev/) für das aktuelle projekt um die entwicklung zu beschleunigen und die abhängigkeiten im system zu reduzieren"
 (English: "create a devcontainer (https://containers.dev/) for the current project to
