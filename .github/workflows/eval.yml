@@ -52,7 +52,14 @@ jobs:
         run: |
           set -euo pipefail
           pip install --break-system-packages uv
-          uv tool install 'litellm[proxy]' --with python-dotenv
+          # fastapi is pinned below 0.141 deliberately: litellm 1.97.0's
+          # proxy.management_endpoints.management_v1.common imports get_flat_dependant
+          # from fastapi.dependencies.utils, which 0.141.0 removed. Unpinned, uv resolves
+          # litellm 1.97.0 against fastapi 0.141.1 and the proxy dies on import — the
+          # readiness probe below then times out after 60s and the job fails without ever
+          # reaching an eval. Verified: 0.140.0 is the newest fastapi that still exports
+          # the symbol, and the proxy answers /health/liveliness within ~4s with it.
+          uv tool install 'litellm[proxy]' --with python-dotenv --with 'fastapi<0.141'
           export PATH="$HOME/.local/bin:$PATH"
 
           (cd scripts/nim && nohup litellm --config litellm_config.yaml --port 4000 > /tmp/litellm-proxy.log 2>&1 &)
