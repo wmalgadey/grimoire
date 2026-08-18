@@ -38,7 +38,8 @@ enforceable once extracted into the constitution or an Accepted ADR.
 | `docs/decision-context-overview.md` | Problem space & product vision (North Star) | Only via extraction into constitution/ADRs; audited with `/drift-check` |
 | `specs/<feature>/` | Feature-scoped SDD artifacts | Yes, for that feature |
 | `docs/befunde-remediation-prompts.md` | Prompt library for remediation workflows | No — source material only; never cite as requirements in specs/plans/ADRs |
-| `docs/llm-wiki-*.md`, `docs/project-conversation.md` | Source material (absorbed) | No — never cite as requirements |
+| `docs/foundational/llm-wiki-*.md`, `docs/ideas/project-conversation.md` | Source material (absorbed) | No — never cite as requirements |
+| `docs/llm-wiki-pattern-conformance.md` | Conformance analysis: the agent instruction files against the LLM-Wiki pattern they came from | No — findings bind only once filed as issues and taken through the spec-kit workflow |
 | `dev-experience.md` | Personal learning log (German) | No — outside SDD; never cite in specs/plans/ADRs; updated via `/dev-log` |
 
 New documents require a declared reader (which process step consumes it?). If none
