@@ -242,7 +242,7 @@ internal static class HubHostComposition
                 logger: sp.GetRequiredService<ILogger<RemediationMessageTurnCoordinator>>()));
 
             var reconciler = new RestartReconciler(repository);
-            await reconciler.ReconcileRunningTasksAsync(contentPaths.TasksDir, contentPaths.LogPath);
+            await reconciler.ReconcileRunningTasksAsync(contentPaths.TasksDir);
             // T034: Executing remediation rows with no live process are failed the same
             // way, before RemediationRunCoordinator.InitializeAsync (below, after
             // app.Build()) pauses the queue for any surviving Authorized rows.

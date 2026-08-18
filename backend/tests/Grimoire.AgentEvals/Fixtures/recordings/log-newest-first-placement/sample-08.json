@@ -1,0 +1,292 @@
+{
+  "schema_version": 1,
+  "sample": 8,
+  "task_id": "capture-log-newest-first-placement-08-f903e58a4b2e4aa58eef06a1d21919c6",
+  "model": "claude-haiku-4-5",
+  "turns": [
+    {
+      "turn": 1,
+      "system_prompt_sha256": "sha256:912c5a2708942f8718015cb69e9cbbdd30e820daba7d40ea735881491ce7eb20",
+      "conversation": [
+        {
+          "role": "user",
+          "content_sha256": "sha256:2c7a701ae409c7d5744f004bffd96f36960485eed44e1dd47ce308fe44f689d5"
+        }
+      ],
+      "tool_names": [
+        "list_files",
+        "read_file",
+        "write_file"
+      ],
+      "stop_reason": "tool_use",
+      "tool_uses": [
+        {
+          "tool_use_id": "toolu_01WAxbVq4XXjXHXjwXfnuLhA",
+          "tool_name": "read_file",
+          "input_json": "{\u0022path\u0022:\u0022index.md\u0022}"
+        },
+        {
+          "tool_use_id": "toolu_01MZUxGn6csjCi7WJudp8BQv",
+          "tool_name": "list_files",
+          "input_json": "{\u0022path\u0022:\u0022.\u0022}"
+        }
+      ],
+      "assistant_text": "I\u0027ll start by exploring the wiki to understand its current state, then integrate this source about bloom filters.",
+      "input_tokens": 5772,
+      "output_tokens": 112
+    },
+    {
+      "turn": 2,
+      "system_prompt_sha256": "sha256:912c5a2708942f8718015cb69e9cbbdd30e820daba7d40ea735881491ce7eb20",
+      "conversation": [
+        {
+          "role": "user",
+          "content_sha256": "sha256:2c7a701ae409c7d5744f004bffd96f36960485eed44e1dd47ce308fe44f689d5"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:f58b0cc2ed5a3f4fb231b927653d7be14505a2729000e4ac9dab384d4bd9594a"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:5dd03b60a9cd0dea567726dda82f046ccfac0bb0440d92ec889686ffe1ee117c"
+        }
+      ],
+      "tool_names": [
+        "list_files",
+        "read_file",
+        "write_file"
+      ],
+      "stop_reason": "tool_use",
+      "tool_uses": [
+        {
+          "tool_use_id": "toolu_011j1MeDmoJK7AQzXu8R21Nx",
+          "tool_name": "read_file",
+          "input_json": "{\u0022path\u0022:\u0022log.md\u0022}"
+        }
+      ],
+      "assistant_text": "Let me also check the log file:",
+      "input_tokens": 5963,
+      "output_tokens": 64
+    },
+    {
+      "turn": 3,
+      "system_prompt_sha256": "sha256:912c5a2708942f8718015cb69e9cbbdd30e820daba7d40ea735881491ce7eb20",
+      "conversation": [
+        {
+          "role": "user",
+          "content_sha256": "sha256:2c7a701ae409c7d5744f004bffd96f36960485eed44e1dd47ce308fe44f689d5"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:f58b0cc2ed5a3f4fb231b927653d7be14505a2729000e4ac9dab384d4bd9594a"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:5dd03b60a9cd0dea567726dda82f046ccfac0bb0440d92ec889686ffe1ee117c"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:f8a3008449e686a5cc74cb3f23af95fbd0ce5a39555ec163390652ca96ac9a3e"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:a7587175bdbdae9331a4898ec9794dc4034fb6f4acb63b7eb58d7eecc3a4443e"
+        }
+      ],
+      "tool_names": [
+        "list_files",
+        "read_file",
+        "write_file"
+      ],
+      "stop_reason": "tool_use",
+      "tool_uses": [
+        {
+          "tool_use_id": "toolu_01PLbxezZv1dcDPKwXp46MsT",
+          "tool_name": "write_file",
+          "input_json": "{\u0022path\u0022:\u0022concepts/bloom-filter.md\u0022,\u0022content\u0022:\u0022---\\ntype: Concept\\ntitle: Bloom Filter\\ndescription: A probabilistic data structure for space-efficient set-membership testing with tunable false-positive rates.\\ntimestamp: 2026-01-05T00:00:00Z\\ntags:\\n  - concept/data-structures\\n  - concept/probabilistic-algorithms\\nconfidence: medium\\nconfidence_reason: \\u0022Single authoritative source; no contradicting sources encountered.\\u0022\\n---\\n\\nA **bloom filter** is a probabilistic set-membership structure that provides a time- and space-efficient way to test whether an element is a member of a set.\\n\\n## How it works\\n\\nA bloom filter uses:\\n\\n- A **bit array** of fixed size\\n- **k independent hash functions** that map elements to positions in the array\\n\\nTo test membership, an element is hashed by all k functions, and the corresponding bit positions are checked. If all bits are set to 1, the element is *possibly present*; if any bit is 0, the element is *definitely not present*.\\n\\n## Properties\\n\\n### Certainty and false positives\\n\\n- **Definite negative:** If a membership query returns false, the element is guaranteed not to be in the set.\\n- **Possible positive:** If a membership query returns true, the element *might* be in the set, but there is a tunable false-positive rate depending on the size of the bit array and the number of hash functions.\\n\\n### Limitations\\n\\n**Enumeration:** A bloom filter cannot enumerate its members\\u2014there is no way to recover or list the original elements.\\n\\n**Deletion:** In its basic form, a bloom filter cannot support deletion. Removing an element would require clearing the bit positions corresponding to its hash values, but this could break membership testing for other elements that happen to hash to the same positions.\\n\\n## Citations\\n\\n[^1]: Source reference: eval://log-newest-first-placement/sample-08\\n\u0022}"
+        }
+      ],
+      "assistant_text": "The wiki exists but is in a nascent state\u2014only one page has been created so far. The index shows \u0022No pages yet,\u0022 which is incorrect since a page was created; I\u0027ll need to update the index once I finish.\n\nNow I\u0027ll create a concept page for **bloom filter**, as this is an abstract data structure concept, not a tool or technology per se.",
+      "input_tokens": 6087,
+      "output_tokens": 571
+    },
+    {
+      "turn": 4,
+      "system_prompt_sha256": "sha256:912c5a2708942f8718015cb69e9cbbdd30e820daba7d40ea735881491ce7eb20",
+      "conversation": [
+        {
+          "role": "user",
+          "content_sha256": "sha256:2c7a701ae409c7d5744f004bffd96f36960485eed44e1dd47ce308fe44f689d5"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:f58b0cc2ed5a3f4fb231b927653d7be14505a2729000e4ac9dab384d4bd9594a"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:5dd03b60a9cd0dea567726dda82f046ccfac0bb0440d92ec889686ffe1ee117c"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:f8a3008449e686a5cc74cb3f23af95fbd0ce5a39555ec163390652ca96ac9a3e"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:a7587175bdbdae9331a4898ec9794dc4034fb6f4acb63b7eb58d7eecc3a4443e"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:0f3eeefd2922ef01dfaeecf5db094d99a2980bccfce5bf4b1e505d548cf44f34"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:600582e4ba2f71c8bfbffab2d2f9d34ff83eb08a7ffdb193a5539fa338bd663e"
+        }
+      ],
+      "tool_names": [
+        "list_files",
+        "read_file",
+        "write_file"
+      ],
+      "stop_reason": "tool_use",
+      "tool_uses": [
+        {
+          "tool_use_id": "toolu_01QHytmhJsKdeX1a11NtZUNC",
+          "tool_name": "write_file",
+          "input_json": "{\u0022path\u0022:\u0022index.md\u0022,\u0022content\u0022:\u0022# Wiki Index\\n\\n## Concepts\\n\\n- [Bloom Filter](concepts/bloom-filter.md) \\u2014 A probabilistic data structure for space-efficient set-membership testing with tunable false-positive rates. \\u2014 1 Quelle\\n\u0022}"
+        }
+      ],
+      "assistant_text": "Now I\u0027ll update the index to add this new page:",
+      "input_tokens": 6679,
+      "output_tokens": 136
+    },
+    {
+      "turn": 5,
+      "system_prompt_sha256": "sha256:912c5a2708942f8718015cb69e9cbbdd30e820daba7d40ea735881491ce7eb20",
+      "conversation": [
+        {
+          "role": "user",
+          "content_sha256": "sha256:2c7a701ae409c7d5744f004bffd96f36960485eed44e1dd47ce308fe44f689d5"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:f58b0cc2ed5a3f4fb231b927653d7be14505a2729000e4ac9dab384d4bd9594a"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:5dd03b60a9cd0dea567726dda82f046ccfac0bb0440d92ec889686ffe1ee117c"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:f8a3008449e686a5cc74cb3f23af95fbd0ce5a39555ec163390652ca96ac9a3e"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:a7587175bdbdae9331a4898ec9794dc4034fb6f4acb63b7eb58d7eecc3a4443e"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:0f3eeefd2922ef01dfaeecf5db094d99a2980bccfce5bf4b1e505d548cf44f34"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:600582e4ba2f71c8bfbffab2d2f9d34ff83eb08a7ffdb193a5539fa338bd663e"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:6d74ef1d6222fdcf5b8a8e936e5132064da6dbe200dd094693e5fe6c67a3b3e3"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:2f793a22ac7061d2b0bd1605bac55563f818b7da739abe2af15896261f784bd8"
+        }
+      ],
+      "tool_names": [
+        "list_files",
+        "read_file",
+        "write_file"
+      ],
+      "stop_reason": "tool_use",
+      "tool_uses": [
+        {
+          "tool_use_id": "toolu_01QuLME7BusZopYYhBPRmwWr",
+          "tool_name": "write_file",
+          "input_json": "{\u0022path\u0022:\u0022log.md\u0022,\u0022content\u0022:\u0022## [2026-01-05] ingest | created bloom-filter\\n\\nCreated [[concepts/bloom-filter]] as a new concept page covering probabilistic set-membership testing, false-positive rates, and the basic structure\\u0027s limitations on deletion. Task: capture-log-newest-first-placement-08-f903e58a4b2e4aa58eef06a1d21919c6.\\n\\n## [2026-01-05] ingest | created write-ahead-logging\\n\\nCreated [[concepts/write-ahead-logging]] from source \\u0022durability-notes.md\\u0022. Task: task-seed-001.\\n\u0022}"
+        }
+      ],
+      "assistant_text": "Finally, I\u0027ll update the log with this new entry. The source reference indicates I should place the newest entry first:",
+      "input_tokens": 6832,
+      "output_tokens": 234
+    },
+    {
+      "turn": 6,
+      "system_prompt_sha256": "sha256:912c5a2708942f8718015cb69e9cbbdd30e820daba7d40ea735881491ce7eb20",
+      "conversation": [
+        {
+          "role": "user",
+          "content_sha256": "sha256:2c7a701ae409c7d5744f004bffd96f36960485eed44e1dd47ce308fe44f689d5"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:f58b0cc2ed5a3f4fb231b927653d7be14505a2729000e4ac9dab384d4bd9594a"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:5dd03b60a9cd0dea567726dda82f046ccfac0bb0440d92ec889686ffe1ee117c"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:f8a3008449e686a5cc74cb3f23af95fbd0ce5a39555ec163390652ca96ac9a3e"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:a7587175bdbdae9331a4898ec9794dc4034fb6f4acb63b7eb58d7eecc3a4443e"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:0f3eeefd2922ef01dfaeecf5db094d99a2980bccfce5bf4b1e505d548cf44f34"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:600582e4ba2f71c8bfbffab2d2f9d34ff83eb08a7ffdb193a5539fa338bd663e"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:6d74ef1d6222fdcf5b8a8e936e5132064da6dbe200dd094693e5fe6c67a3b3e3"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:2f793a22ac7061d2b0bd1605bac55563f818b7da739abe2af15896261f784bd8"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:c28983634d5963b889ce533538a4fe0f396b3b0c1e3d66437c3b28dcac9c464c"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:dbfcc14828f33ce91291383a88223933e52f35bf392af9ea332e46dec6166825"
+        }
+      ],
+      "tool_names": [
+        "list_files",
+        "read_file",
+        "write_file"
+      ],
+      "stop_reason": "end_turn",
+      "tool_uses": [],
+      "assistant_text": "## Summary\n\n**Created:** \u0060concepts/bloom-filter.md\u0060 \u2014 a new Concept page covering bloom filters as a probabilistic data structure for set-membership testing. The page distills the source\u0027s key insights:\n\n- The probabilistic nature: definite negatives, tunable false-positive rates\n- The mechanics: bit array \u002B k hash functions\n- Core limitations: no enumeration, no deletion support in basic form\n\n**Updated:** \u0060index.md\u0060 to add the new bloom-filter concept to the Concepts section with a 1-source status marker.\n\n**Updated:** \u0060log.md\u0060 with a new entry at the top (newest-first), following the prepend-only convention. The new entry documents the creation of the bloom-filter page and includes the task ID.\n\n**Confidence:** \u0060medium\u0060 \u2014 the source is a single, clear authoritative description, but there is no corroboration from multiple sources yet.\n\n**No conflicts or uncertainties.** The source is a factual, well-scoped technical description with no instruction-like content.",
+      "input_tokens": 7083,
+      "output_tokens": 232
+    }
+  ],
+  "outcome": {
+    "status": "completed",
+    "checks": {
+      "completed": true,
+      "seeded_entry_preserved_as_suffix": true,
+      "exactly_one_new_entry": true,
+      "new_entry_has_paragraph": true
+    }
+  }
+}

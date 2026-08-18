@@ -1,0 +1,365 @@
+{
+  "schema_version": 1,
+  "sample": 10,
+  "task_id": "capture-log-no-day-grouping-10-342ce393d1464497a9237ebe63433c6f",
+  "model": "claude-haiku-4-5",
+  "turns": [
+    {
+      "turn": 1,
+      "system_prompt_sha256": "sha256:912c5a2708942f8718015cb69e9cbbdd30e820daba7d40ea735881491ce7eb20",
+      "conversation": [
+        {
+          "role": "user",
+          "content_sha256": "sha256:33ac6b71079d34350daaaf5ebbc56126936e54bd89a0b7095f674510483e364c"
+        }
+      ],
+      "tool_names": [
+        "list_files",
+        "read_file",
+        "write_file"
+      ],
+      "stop_reason": "tool_use",
+      "tool_uses": [
+        {
+          "tool_use_id": "toolu_01WvWrVDkaUMdqdY8KaQV9J6",
+          "tool_name": "read_file",
+          "input_json": "{\u0022path\u0022:\u0022index.md\u0022}"
+        },
+        {
+          "tool_use_id": "toolu_01Po2TsB94tHXBZKk44AwQEt",
+          "tool_name": "list_files",
+          "input_json": "{\u0022path\u0022:\u0022.\u0022}"
+        }
+      ],
+      "assistant_text": "I\u0027ll start by exploring the wiki to understand its current state and then integrate this source about consistent hashing.",
+      "input_tokens": 5763,
+      "output_tokens": 113
+    },
+    {
+      "turn": 2,
+      "system_prompt_sha256": "sha256:912c5a2708942f8718015cb69e9cbbdd30e820daba7d40ea735881491ce7eb20",
+      "conversation": [
+        {
+          "role": "user",
+          "content_sha256": "sha256:33ac6b71079d34350daaaf5ebbc56126936e54bd89a0b7095f674510483e364c"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:b90aaa075847d157c047ea090d39f0d60dfe54005704e962894b1d426c62e8f7"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:2add9ca5cf4782c13b73dfca1dd94de3d5330da8ca49c663842e6acbd4a5eb5e"
+        }
+      ],
+      "tool_names": [
+        "list_files",
+        "read_file",
+        "write_file"
+      ],
+      "stop_reason": "tool_use",
+      "tool_uses": [
+        {
+          "tool_use_id": "toolu_01AJcqUyLMiv8ooHnyDc5jx6",
+          "tool_name": "read_file",
+          "input_json": "{\u0022path\u0022:\u0022log.md\u0022}"
+        }
+      ],
+      "assistant_text": "Good. The wiki exists but has no content yet. Let me check the log to see if there\u0027s any history:",
+      "input_tokens": 5955,
+      "output_tokens": 80
+    },
+    {
+      "turn": 3,
+      "system_prompt_sha256": "sha256:912c5a2708942f8718015cb69e9cbbdd30e820daba7d40ea735881491ce7eb20",
+      "conversation": [
+        {
+          "role": "user",
+          "content_sha256": "sha256:33ac6b71079d34350daaaf5ebbc56126936e54bd89a0b7095f674510483e364c"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:b90aaa075847d157c047ea090d39f0d60dfe54005704e962894b1d426c62e8f7"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:2add9ca5cf4782c13b73dfca1dd94de3d5330da8ca49c663842e6acbd4a5eb5e"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:1f21bd5efcd33fcfa720869ee8bbb3fe7141dc19aa97fd62d67f108b1d6ef539"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:72cf746a1bdfcf1b6db523376c8d5ff9f39ec108bf308a4f494f7a9741b2dc27"
+        }
+      ],
+      "tool_names": [
+        "list_files",
+        "read_file",
+        "write_file"
+      ],
+      "stop_reason": "tool_use",
+      "tool_uses": [
+        {
+          "tool_use_id": "toolu_017oQ9rAhhBhahgSsd5PaVDi",
+          "tool_name": "write_file",
+          "input_json": "{\u0022path\u0022:\u0022concepts/consistent-hashing.md\u0022,\u0022content\u0022:\u0022---\\ntype: Concept\\ntitle: Consistent Hashing\\ndescription: A technique that maps cache keys and nodes onto a circular keyspace to minimize reshuffling when nodes are added or removed.\\ntimestamp: 2026-08-17T00:00:00Z\\ntags:\\n  - concept/ConsistentHashing\\n  - pattern/Distributed-Systems\\n  - tech/Caching\\nconfidence: medium\\nconfidence_reason: \\u0022Single clear source explaining the core mechanism and virtual nodes optimization.\\u0022\\n---\\n\\nConsistent hashing maps both cache keys and cache nodes onto the same circular keyspace. When a node is added to or removed from the system, only the keys that fall between the new/removed node and its neighbour are remapped, rather than reshuffling the entire keyspace. This property makes consistent hashing particularly valuable for distributed caching systems.\\n\\n## Virtual Nodes\\n\\nIn a small cluster, the physical distribution of nodes around the hash ring can create significant load imbalance. Virtual nodes address this by assigning each physical node multiple positions on the ring. This even distribution reduces the variance in how keys are distributed across the cache, improving throughput and cache hit rates.\\n\\n## Citations\\n\\n[^1]: Source: eval://log-no-day-grouping/sample-10\\n\u0022}"
+        }
+      ],
+      "assistant_text": "Interesting\u2014the log shows a past entry, but the index is empty and there\u0027s no corresponding \u0060concepts/write-ahead-logging.md\u0060 file. This suggests either a state mismatch or I\u0027m in a fresh wiki state. Either way, I should proceed with integrating the current source.\n\nThe source describes **consistent hashing**, which is a fundamental concept in distributed systems and caching. This is a clear candidate for a concept page. Let me create it:",
+      "input_tokens": 6095,
+      "output_tokens": 455
+    },
+    {
+      "turn": 4,
+      "system_prompt_sha256": "sha256:912c5a2708942f8718015cb69e9cbbdd30e820daba7d40ea735881491ce7eb20",
+      "conversation": [
+        {
+          "role": "user",
+          "content_sha256": "sha256:33ac6b71079d34350daaaf5ebbc56126936e54bd89a0b7095f674510483e364c"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:b90aaa075847d157c047ea090d39f0d60dfe54005704e962894b1d426c62e8f7"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:2add9ca5cf4782c13b73dfca1dd94de3d5330da8ca49c663842e6acbd4a5eb5e"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:1f21bd5efcd33fcfa720869ee8bbb3fe7141dc19aa97fd62d67f108b1d6ef539"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:72cf746a1bdfcf1b6db523376c8d5ff9f39ec108bf308a4f494f7a9741b2dc27"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:0b13beaf305c20312451dd93899ccada1eac7cf8b7c1eed5c19c3567247e1875"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:f580911d4cd47d5d03535062076f59286e740e715aba3cd6709bb45fcd1465e8"
+        }
+      ],
+      "tool_names": [
+        "list_files",
+        "read_file",
+        "write_file"
+      ],
+      "stop_reason": "tool_use",
+      "tool_uses": [
+        {
+          "tool_use_id": "toolu_016fqLyQvMDUxLB17RENK2T5",
+          "tool_name": "write_file",
+          "input_json": "{\u0022path\u0022:\u0022index.md\u0022,\u0022content\u0022:\u0022# Wiki Index\\n\\n## Concepts\\n\\n- [Consistent Hashing](concepts/consistent-hashing.md) \\u2014 A technique that maps cache keys and nodes onto a circular keyspace to minimize reshuffling when nodes are added or removed \\u2014 1 Quelle\\n\u0022}"
+        }
+      ],
+      "assistant_text": "Now I\u0027ll update the index to include this new page:",
+      "input_tokens": 6572,
+      "output_tokens": 142
+    },
+    {
+      "turn": 5,
+      "system_prompt_sha256": "sha256:912c5a2708942f8718015cb69e9cbbdd30e820daba7d40ea735881491ce7eb20",
+      "conversation": [
+        {
+          "role": "user",
+          "content_sha256": "sha256:33ac6b71079d34350daaaf5ebbc56126936e54bd89a0b7095f674510483e364c"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:b90aaa075847d157c047ea090d39f0d60dfe54005704e962894b1d426c62e8f7"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:2add9ca5cf4782c13b73dfca1dd94de3d5330da8ca49c663842e6acbd4a5eb5e"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:1f21bd5efcd33fcfa720869ee8bbb3fe7141dc19aa97fd62d67f108b1d6ef539"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:72cf746a1bdfcf1b6db523376c8d5ff9f39ec108bf308a4f494f7a9741b2dc27"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:0b13beaf305c20312451dd93899ccada1eac7cf8b7c1eed5c19c3567247e1875"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:f580911d4cd47d5d03535062076f59286e740e715aba3cd6709bb45fcd1465e8"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:3501a915e04f4e479c13ea497d4391b9d9de34aecd3e1d2a72c3f2c082bbd5ca"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:b485b61ecf4e349bb4f2fc89cf92706efeef97ae7f29e4977ef8c9d0e802ee4b"
+        }
+      ],
+      "tool_names": [
+        "list_files",
+        "read_file",
+        "write_file"
+      ],
+      "stop_reason": "tool_use",
+      "tool_uses": [
+        {
+          "tool_use_id": "toolu_019o5wvr4DhLRFEN8cBpPCy6",
+          "tool_name": "read_file",
+          "input_json": "{\u0022path\u0022:\u0022log.md\u0022}"
+        }
+      ],
+      "assistant_text": "Now I\u0027ll add an entry to the log. First, let me read the current log to preserve it:",
+      "input_tokens": 6731,
+      "output_tokens": 78
+    },
+    {
+      "turn": 6,
+      "system_prompt_sha256": "sha256:912c5a2708942f8718015cb69e9cbbdd30e820daba7d40ea735881491ce7eb20",
+      "conversation": [
+        {
+          "role": "user",
+          "content_sha256": "sha256:33ac6b71079d34350daaaf5ebbc56126936e54bd89a0b7095f674510483e364c"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:b90aaa075847d157c047ea090d39f0d60dfe54005704e962894b1d426c62e8f7"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:2add9ca5cf4782c13b73dfca1dd94de3d5330da8ca49c663842e6acbd4a5eb5e"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:1f21bd5efcd33fcfa720869ee8bbb3fe7141dc19aa97fd62d67f108b1d6ef539"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:72cf746a1bdfcf1b6db523376c8d5ff9f39ec108bf308a4f494f7a9741b2dc27"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:0b13beaf305c20312451dd93899ccada1eac7cf8b7c1eed5c19c3567247e1875"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:f580911d4cd47d5d03535062076f59286e740e715aba3cd6709bb45fcd1465e8"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:3501a915e04f4e479c13ea497d4391b9d9de34aecd3e1d2a72c3f2c082bbd5ca"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:b485b61ecf4e349bb4f2fc89cf92706efeef97ae7f29e4977ef8c9d0e802ee4b"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:cd5328fe97d537ba2681046ee0a166c2cc75dc1fa5c289296ef7dca5d2f680e0"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:b47cc39e6c856424ce716871ae35204e8ce80666f683ffc076136f6b0ba0f670"
+        }
+      ],
+      "tool_names": [
+        "list_files",
+        "read_file",
+        "write_file"
+      ],
+      "stop_reason": "tool_use",
+      "tool_uses": [
+        {
+          "tool_use_id": "toolu_01KdwLLCh6V8QnTAYPCZVTxZ",
+          "tool_name": "write_file",
+          "input_json": "{\u0022path\u0022:\u0022log.md\u0022,\u0022content\u0022:\u0022## [2026-08-17] ingest | created consistent-hashing\\n\\nCreated [[concepts/consistent-hashing]] covering the circular keyspace distribution pattern and virtual node optimization technique. Task: capture-log-no-day-grouping-10-342ce393d1464497a9237ebe63433c6f.\\n\\n## [2026-08-17] ingest | created write-ahead-logging\\n\\nCreated [[concepts/write-ahead-logging]] from source \\u0022durability-notes.md\\u0022. Task: task-seed-001.\\n\u0022}"
+        }
+      ],
+      "input_tokens": 6869,
+      "output_tokens": 193
+    },
+    {
+      "turn": 7,
+      "system_prompt_sha256": "sha256:912c5a2708942f8718015cb69e9cbbdd30e820daba7d40ea735881491ce7eb20",
+      "conversation": [
+        {
+          "role": "user",
+          "content_sha256": "sha256:33ac6b71079d34350daaaf5ebbc56126936e54bd89a0b7095f674510483e364c"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:b90aaa075847d157c047ea090d39f0d60dfe54005704e962894b1d426c62e8f7"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:2add9ca5cf4782c13b73dfca1dd94de3d5330da8ca49c663842e6acbd4a5eb5e"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:1f21bd5efcd33fcfa720869ee8bbb3fe7141dc19aa97fd62d67f108b1d6ef539"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:72cf746a1bdfcf1b6db523376c8d5ff9f39ec108bf308a4f494f7a9741b2dc27"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:0b13beaf305c20312451dd93899ccada1eac7cf8b7c1eed5c19c3567247e1875"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:f580911d4cd47d5d03535062076f59286e740e715aba3cd6709bb45fcd1465e8"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:3501a915e04f4e479c13ea497d4391b9d9de34aecd3e1d2a72c3f2c082bbd5ca"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:b485b61ecf4e349bb4f2fc89cf92706efeef97ae7f29e4977ef8c9d0e802ee4b"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:cd5328fe97d537ba2681046ee0a166c2cc75dc1fa5c289296ef7dca5d2f680e0"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:b47cc39e6c856424ce716871ae35204e8ce80666f683ffc076136f6b0ba0f670"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:7b780c86d495dd51d9ed171f1eb7b35b1b6dc51d12e577d69c461531c31b0075"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:37f3808df3bab323957d16a74c0e95858b38b64b44d01330669504f0297fec65"
+        }
+      ],
+      "tool_names": [
+        "list_files",
+        "read_file",
+        "write_file"
+      ],
+      "stop_reason": "end_turn",
+      "tool_uses": [],
+      "assistant_text": "## Summary\n\n**Created:** \u0060concepts/consistent-hashing.md\u0060\n\nI created a single Concept page covering consistent hashing, the core distribution technique described in the source. The page explains:\n- The circular keyspace mapping and minimal reshuffling property\n- Virtual nodes as the optimization technique for load balancing in small clusters\n\n**Updated:** \u0060index.md\u0060 and \u0060log.md\u0060\n\nI added the new page to the index under a \u0022Concepts\u0022 section with a one-source status marker, and prepended a log entry documenting the creation.\n\n**No uncertainties or contradictions.** The source is a clear, focused technical explanation with no claims that contradict existing wiki content. Confidence is medium: single clear source with no corroboration, but the explanation is self-contained and technically sound.",
+      "input_tokens": 7079,
+      "output_tokens": 177
+    }
+  ],
+  "outcome": {
+    "status": "completed",
+    "checks": {
+      "completed": true,
+      "seeded_section_byte_unchanged": true,
+      "heading_count_grew_by_exactly_one": true,
+      "separate_complete_entry_on_top": true
+    }
+  }
+}

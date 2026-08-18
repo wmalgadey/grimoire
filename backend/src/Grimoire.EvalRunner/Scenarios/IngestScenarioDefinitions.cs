@@ -219,6 +219,50 @@ public static class IngestScenarioDefinitions
         ScorerId: "catalog-description-specificity",
         JudgeScored: true);
 
+    /// <summary>
+    /// 025-agent-owned-log SC-005: a run that changed the wiki writes exactly one entry, at
+    /// the top of the log, over the pre-existing content preserved as an unchanged suffix.
+    /// Placement and cardinality are mechanically checkable, so this needs no judge — the
+    /// "accurately describes what changed" half of SC-005 is already covered by
+    /// <see cref="LogParagraphSpecificity"/>, which is deliberately left untouched.
+    /// </summary>
+    public static readonly ScenarioDefinition LogNewestFirstPlacement = new(
+        Id: "log-newest-first-placement",
+        FixtureName: "log-seeded-entry",
+        Threshold: 0.90,
+        RequiresNoOutOfScopeWrites: false,
+        FixedSamples: [],
+        RepeatedSourceContent:
+            "A bloom filter is a probabilistic set-membership structure: it answers \"definitely not " +
+            "present\" with certainty and \"possibly present\" with a tunable false-positive rate, using " +
+            "a bit array and k independent hash functions. It cannot enumerate its members and, in its " +
+            "basic form, cannot support deletion — removing a set bit could break membership for some " +
+            "other element that happens to hash to it.",
+        SystemPromptAppendix: null,
+        ScorerId: "log-newest-first-placement",
+        JudgeScored: false);
+
+    /// <summary>
+    /// 025-agent-owned-log SC-007: an action logged on a date that already carries an entry
+    /// produces a separate complete entry with its own date heading, leaving the earlier
+    /// entry's section byte-unchanged. See the fixture's README for the re-seed caveat.
+    /// </summary>
+    public static readonly ScenarioDefinition LogNoDayGrouping = new(
+        Id: "log-no-day-grouping",
+        FixtureName: "log-same-day-entry",
+        Threshold: 0.90,
+        RequiresNoOutOfScopeWrites: false,
+        FixedSamples: [],
+        RepeatedSourceContent:
+            "A consistent hash ring maps both cache keys and cache nodes onto the same circular " +
+            "keyspace, so adding or removing a node only remaps the keys that fall between it and its " +
+            "neighbour instead of reshuffling the entire keyspace. Virtual nodes — several ring " +
+            "positions per physical node — even out the load imbalance that a small number of nodes " +
+            "would otherwise produce.",
+        SystemPromptAppendix: null,
+        ScorerId: "log-no-day-grouping",
+        JudgeScored: false);
+
     public static readonly IReadOnlyList<ScenarioDefinition> All =
     [
         UpdateOverDuplicate,
@@ -229,6 +273,8 @@ public static class IngestScenarioDefinitions
         SteeringAdoption,
         LogParagraphSpecificity,
         CatalogDescriptionSpecificity,
+        LogNewestFirstPlacement,
+        LogNoDayGrouping,
     ];
 
     public static ScenarioDefinition? Find(string scenarioId)

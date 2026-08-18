@@ -162,6 +162,22 @@ public static class QueryScenarioDefinitions
         ],
         ScorerId: "query-synthesis-decline-edit-request");
 
+    /// <summary>
+    /// 025-agent-owned-log SC-006: a routine lookup turn that writes no page must write no
+    /// activity-log entry either — the changes-only criterion (FR-007). Runs against a
+    /// fixture whose <c>log.md</c> is seeded, so the scorer can assert the file came
+    /// through the turn byte-for-byte unchanged rather than merely absent.
+    /// </summary>
+    public static readonly QueryScenarioDefinition LogChangesOnly = new(
+        Id: "log-changes-only",
+        FixtureName: "query-log-seeded",
+        Threshold: 0.90,
+        FixedTurnSequences:
+        [
+            ["What does the Credential Scoping page say about where the Anthropic API key is injected?"],
+        ],
+        ScorerId: "log-changes-only");
+
     public static readonly IReadOnlyList<QueryScenarioDefinition> All =
     [
         GroundingCovered,
@@ -171,6 +187,7 @@ public static class QueryScenarioDefinitions
         SynthesisCreated,
         SynthesisDeclinedRoutine,
         SynthesisDeclineEditRequest,
+        LogChangesOnly,
     ];
 
     public static QueryScenarioDefinition? Find(string scenarioId)

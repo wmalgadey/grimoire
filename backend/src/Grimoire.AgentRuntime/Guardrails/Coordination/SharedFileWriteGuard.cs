@@ -23,7 +23,7 @@ public sealed record WriteGuardDecision(bool IsAllowed, string? DenialReason, ID
     /// <c>write_coordination_timeout</c>, or, since ADR-016 (013-lint-agent):
     /// <c>frontmatter_only_target_missing</c>, <c>frontmatter_only_malformed_document</c>,
     /// <c>frontmatter_only_body_changed</c>; or, since ADR-017
-    /// (014-wiki-storage-restructure): <c>log_entry_not_appended</c>,
+    /// (014-wiki-storage-restructure, amended by ADR-028): <c>log_entry_not_prepended</c>,
     /// <c>log_entry_malformed_heading</c>, <c>log_entry_missing_paragraph</c>, or (US4)
     /// <c>catalog_entry_malformed</c>.
     /// </param>
@@ -49,8 +49,10 @@ public sealed record WriteGuardDecision(bool IsAllowed, string? DenialReason, ID
 /// </summary>
 public sealed class SharedFileWriteGuard
 {
-    // ADR-017 (014-wiki-storage-restructure): the appended tail's first non-blank line
-    // must be a "[DATE] TYPE | SUMMARY" heading — contracts/log-and-catalog-entry-format.md.
+    // ADR-017 (014-wiki-storage-restructure), amended by ADR-028 (025-agent-owned-log):
+    // the prepended head's first non-blank line must be a "[DATE] TYPE | SUMMARY" heading
+    // — the pattern itself is unchanged (FR-008), only which slice it is applied to.
+    // contracts/activity-log-write-contract.md §3 R2.
     private static readonly Regex LogHeadingPattern =
         new(@"^## \[\d{4}-\d{2}-\d{2}\] .+ \| .+$", RegexOptions.Compiled);
 
@@ -253,22 +255,28 @@ public sealed class SharedFileWriteGuard
     }
 
     /// <summary>
-    /// ADR-017 (014-wiki-storage-restructure): the log.md structural shape check —
-    /// append-only (FR-011), then heading pattern, then a following non-blank paragraph
-    /// (contracts/log-and-catalog-entry-format.md). Pure string/regex operation over
-    /// content already resident in memory (no I/O, no judgment about whether a given
-    /// SUMMARY/paragraph is good — Constitution Principle V). Returns the denial reason,
-    /// or <c>null</c> if the proposed content conforms.
+    /// ADR-017, amended by ADR-028 (025-agent-owned-log): the log.md structural shape
+    /// check — prepend-only (FR-003, FR-004), then heading pattern, then a following
+    /// non-blank paragraph (contracts/activity-log-write-contract.md). The current
+    /// content must be an unchanged <em>suffix</em> of the proposed content, so a new
+    /// entry lands at the top and every existing entry survives byte-for-byte below it;
+    /// the checks then run over the prepended <em>head</em>. Empty current content
+    /// (missing or zero-length file) satisfies the rule trivially, so the first agent
+    /// write creates the file (FR-010).
+    ///
+    /// Pure string/regex operation over content already resident in memory (no I/O, no
+    /// judgment about whether a given SUMMARY/paragraph is good — Constitution Principle
+    /// V). Returns the denial reason, or <c>null</c> if the proposed content conforms.
     /// </summary>
     internal static string? ValidateLogEntryFormat(string currentContent, string proposedContent)
     {
-        if (!proposedContent.StartsWith(currentContent, StringComparison.Ordinal))
+        if (!proposedContent.EndsWith(currentContent, StringComparison.Ordinal))
         {
-            return "log_entry_not_appended";
+            return "log_entry_not_prepended";
         }
 
-        var tail = proposedContent[currentContent.Length..];
-        var lines = tail.Split('\n');
+        var head = proposedContent[..^currentContent.Length];
+        var lines = head.Split('\n');
 
         var i = 0;
         while (i < lines.Length && string.IsNullOrWhiteSpace(lines[i]))

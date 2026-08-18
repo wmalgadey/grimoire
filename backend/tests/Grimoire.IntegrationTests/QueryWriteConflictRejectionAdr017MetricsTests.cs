@@ -17,7 +17,7 @@ namespace Grimoire.IntegrationTests;
 public class QueryWriteConflictRejectionAdr017MetricsTests
 {
     [Theory]
-    [InlineData("log_entry_not_appended")]
+    [InlineData("log_entry_not_prepended")]
     [InlineData("log_entry_malformed_heading")]
     [InlineData("log_entry_missing_paragraph")]
     [InlineData("catalog_entry_malformed")]
@@ -48,7 +48,7 @@ public class QueryWriteConflictRejectionAdr017MetricsTests
             var indexPath = Path.Combine(wikiRoot, "index.md");
             var (targetPath, relativePath, initialContent, proposedContent) = expectedReason switch
             {
-                "log_entry_not_appended" => (
+                "log_entry_not_prepended" => (
                     logPath, "log.md",
                     "## [2026-07-01] query | completed\n\nEarlier entry. Ref: turn-000.\n",
                     "## [2026-07-01] query | rewritten\n\nRewritten entry. Ref: turn-000.\n"),
@@ -59,7 +59,7 @@ public class QueryWriteConflictRejectionAdr017MetricsTests
                 "log_entry_missing_paragraph" => (
                     logPath, "log.md",
                     "",
-                    "## [2026-07-30] query | completed (backstop)\n\n"),
+                    "## [2026-07-30] query | completed\n\n"),
                 "catalog_entry_malformed" => (
                     indexPath, "index.md",
                     "# Wiki Index\n\n## Concepts\n\n- [Circuit Breaker](concepts/circuit-breaker.md) — Beschreibt Muster gegen Kaskadenausfälle — 3 Quellen\n",

@@ -4,6 +4,18 @@ status: accepted
 
 # ADR-017: Structural Format Enforcement for `log.md` and `index.md` Entries
 
+> **Amended by [ADR-028](ADR-028-agent-owned-activity-log-prepend-ordering.md)**:
+> the `log.md` half of the mechanism below is inverted from *append-only* to
+> *prepend-only* — the current content must be an unchanged **suffix** of the proposed
+> content, not an unchanged prefix — and the denial reason `log_entry_not_appended` is
+> renamed `log_entry_not_prepended`. The heading-pattern check, the following-paragraph
+> check, the check's position in the evaluation order, the `guardrails.format_validate`
+> span, and the entire `index.md` catalog-entry half are unchanged. The final mechanism
+> bullet below — the `WikiLogAppender` harness backstop that "generates content that always
+> satisfies this check by construction" — is retired with the backstop itself; the check now
+> exists exclusively for agent-authored writes. Read the `log.md` bullets below with that
+> inversion applied; everything else this ADR decided stands.
+
 ## Context and Problem Statement
 
 Feature 014 (`specs/014-wiki-storage-restructure/spec.md`) requires every `log.md`

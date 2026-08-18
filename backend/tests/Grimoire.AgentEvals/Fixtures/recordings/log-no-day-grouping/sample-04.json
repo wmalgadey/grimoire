@@ -1,0 +1,458 @@
+{
+  "schema_version": 1,
+  "sample": 4,
+  "task_id": "capture-log-no-day-grouping-04-a09a811c32094e418ac3b700b57c5aca",
+  "model": "claude-haiku-4-5",
+  "turns": [
+    {
+      "turn": 1,
+      "system_prompt_sha256": "sha256:912c5a2708942f8718015cb69e9cbbdd30e820daba7d40ea735881491ce7eb20",
+      "conversation": [
+        {
+          "role": "user",
+          "content_sha256": "sha256:6ee4eb02d62f50a3efcf385cc5a2b2d9e7f26c34e1f6fd7775f900f7bb92416f"
+        }
+      ],
+      "tool_names": [
+        "list_files",
+        "read_file",
+        "write_file"
+      ],
+      "stop_reason": "tool_use",
+      "tool_uses": [
+        {
+          "tool_use_id": "toolu_01RhpEBV3QgE8jHHpHgkzCZN",
+          "tool_name": "read_file",
+          "input_json": "{\u0022path\u0022:\u0022index.md\u0022}"
+        },
+        {
+          "tool_use_id": "toolu_01MNRCyz3dQJWGZuBXrVQGwq",
+          "tool_name": "list_files",
+          "input_json": "{\u0022path\u0022:\u0022.\u0022}"
+        }
+      ],
+      "assistant_text": "I\u0027ll start by exploring the wiki to understand its current state, then integrate this source about consistent hashing.",
+      "input_tokens": 5765,
+      "output_tokens": 113
+    },
+    {
+      "turn": 2,
+      "system_prompt_sha256": "sha256:912c5a2708942f8718015cb69e9cbbdd30e820daba7d40ea735881491ce7eb20",
+      "conversation": [
+        {
+          "role": "user",
+          "content_sha256": "sha256:6ee4eb02d62f50a3efcf385cc5a2b2d9e7f26c34e1f6fd7775f900f7bb92416f"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:a9d234d647c1b979621fa30fdb36ee0015701639514049caf4f00696662fccb5"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:9ebdb0380917e7bd13ac92bb728e2bdcaf5c30622ff114fbdd576d6237cf050c"
+        }
+      ],
+      "tool_names": [
+        "list_files",
+        "read_file",
+        "write_file"
+      ],
+      "stop_reason": "tool_use",
+      "tool_uses": [
+        {
+          "tool_use_id": "toolu_01UYqUfVT1PcdoqifPHhcmz5",
+          "tool_name": "read_file",
+          "input_json": "{\u0022path\u0022:\u0022log.md\u0022}"
+        }
+      ],
+      "assistant_text": "The wiki is empty (only \u0060index.md\u0060 and \u0060log.md\u0060 exist). Let me check the log to confirm:",
+      "input_tokens": 5957,
+      "output_tokens": 83
+    },
+    {
+      "turn": 3,
+      "system_prompt_sha256": "sha256:912c5a2708942f8718015cb69e9cbbdd30e820daba7d40ea735881491ce7eb20",
+      "conversation": [
+        {
+          "role": "user",
+          "content_sha256": "sha256:6ee4eb02d62f50a3efcf385cc5a2b2d9e7f26c34e1f6fd7775f900f7bb92416f"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:a9d234d647c1b979621fa30fdb36ee0015701639514049caf4f00696662fccb5"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:9ebdb0380917e7bd13ac92bb728e2bdcaf5c30622ff114fbdd576d6237cf050c"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:26b33a73af7b47a4cb3525274a2e322f6ab96ce0678272ad95d94763e004cf20"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:36cc719b49b6e5a62f9eacd9e3b6be89c1f641c4a260709eeff3487633e7d5cd"
+        }
+      ],
+      "tool_names": [
+        "list_files",
+        "read_file",
+        "write_file"
+      ],
+      "stop_reason": "tool_use",
+      "tool_uses": [
+        {
+          "tool_use_id": "toolu_01DAMe1qxeQ193V4ZJwHs3jV",
+          "tool_name": "list_files",
+          "input_json": "{\u0022path\u0022:\u0022concepts\u0022}"
+        }
+      ],
+      "assistant_text": "Interesting\u2014the log contains an entry, but the index says \u0022No pages yet\u0022, and listing the root only shows the two metadata files. This suggests the wiki structure has not been fully set up yet. \n\nLet me check if the folders exist:",
+      "input_tokens": 6100,
+      "output_tokens": 106
+    },
+    {
+      "turn": 4,
+      "system_prompt_sha256": "sha256:912c5a2708942f8718015cb69e9cbbdd30e820daba7d40ea735881491ce7eb20",
+      "conversation": [
+        {
+          "role": "user",
+          "content_sha256": "sha256:6ee4eb02d62f50a3efcf385cc5a2b2d9e7f26c34e1f6fd7775f900f7bb92416f"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:a9d234d647c1b979621fa30fdb36ee0015701639514049caf4f00696662fccb5"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:9ebdb0380917e7bd13ac92bb728e2bdcaf5c30622ff114fbdd576d6237cf050c"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:26b33a73af7b47a4cb3525274a2e322f6ab96ce0678272ad95d94763e004cf20"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:36cc719b49b6e5a62f9eacd9e3b6be89c1f641c4a260709eeff3487633e7d5cd"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:2f66178ff67b43f8a6c330a5a57e0fac1d30d940edc21645b2078bdfeeb97867"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:22e0868b098f2842cfda6152689cd40646740df268904ce88bc81a9a5eea2f0f"
+        }
+      ],
+      "tool_names": [
+        "list_files",
+        "read_file",
+        "write_file"
+      ],
+      "stop_reason": "tool_use",
+      "tool_uses": [
+        {
+          "tool_use_id": "toolu_01W4LgcdPvPpchzP8TFPjFd3",
+          "tool_name": "write_file",
+          "input_json": "{\u0022path\u0022:\u0022concepts/consistent-hashing.md\u0022,\u0022content\u0022:\u0022---\\ntype: Concept\\ntitle: Consistent Hashing\\ndescription: A distributed hashing scheme that minimizes key remapping when cluster membership changes.\\ntimestamp: 2026-08-17T00:00:00Z\\ntags:\\n  - pattern/Distributed-Systems\\n  - concept/Hashing\\n  - concept/Caching\\nconfidence: medium\\nconfidence_reason: \\u0022Single source; consistent hashing is a well-established pattern in distributed systems, but no corroborating sources provided.\\u0022\\n---\\n\\n## Overview\\n\\nConsistent hashing is a distributed hashing technique used in distributed caches, load balancers, and peer-to-peer systems. It maps both cache keys and cache nodes onto the same circular keyspace, allowing efficient cluster membership changes.\\n\\n## Key Property: Minimal Key Remapping\\n\\nThe defining characteristic of consistent hashing is that adding or removing a node only remaps the keys that fall between the changed node and its neighbour. This contrasts with naive modular hashing, which would reshuffle the entire keyspace when cluster size changes\\u2014a catastrophic problem for cache coherency and efficiency.\\n\\n## Virtual Nodes\\n\\nA small number of physical nodes on the ring creates uneven load distribution. **Virtual nodes** address this by assigning several ring positions to each physical node, smoothing out the load imbalance and improving cache utilization across the cluster.\\n\\n## Citations\\n\\n[^1]: Distributed systems caching and cluster membership concepts (source: eval://log-no-day-grouping/sample-04)\\n\u0022}"
+        }
+      ],
+      "assistant_text": "The folder doesn\u0027t exist yet. The log entry references a page that was never created. This is a bootstrapping scenario\u2014I\u0027m the first real ingest to this wiki.\n\nNow, examining the source: it describes **consistent hashing**, a pattern used in distributed systems for cache management and distributed data structures. This is a well-established computer science concept.\n\n**Decision:**\n- Create a new page in \u0060concepts/consistent-hashing.md\u0060 (this is a pattern/concept, not a technology or tool)\n- Update \u0060index.md\u0060 to list this new page\n- Add a log entry documenting the creation\n\nLet me create the page:",
+      "input_tokens": 6231,
+      "output_tokens": 553
+    },
+    {
+      "turn": 5,
+      "system_prompt_sha256": "sha256:912c5a2708942f8718015cb69e9cbbdd30e820daba7d40ea735881491ce7eb20",
+      "conversation": [
+        {
+          "role": "user",
+          "content_sha256": "sha256:6ee4eb02d62f50a3efcf385cc5a2b2d9e7f26c34e1f6fd7775f900f7bb92416f"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:a9d234d647c1b979621fa30fdb36ee0015701639514049caf4f00696662fccb5"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:9ebdb0380917e7bd13ac92bb728e2bdcaf5c30622ff114fbdd576d6237cf050c"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:26b33a73af7b47a4cb3525274a2e322f6ab96ce0678272ad95d94763e004cf20"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:36cc719b49b6e5a62f9eacd9e3b6be89c1f641c4a260709eeff3487633e7d5cd"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:2f66178ff67b43f8a6c330a5a57e0fac1d30d940edc21645b2078bdfeeb97867"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:22e0868b098f2842cfda6152689cd40646740df268904ce88bc81a9a5eea2f0f"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:88867cfaf99c3c37393fe9d2701173825f6c3f497399c451a6d0be5c52aaff98"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:a8928a41ba4be24ce45e7c8c66b4b10a78b11a0b94c8639352406d6a7d6b013b"
+        }
+      ],
+      "tool_names": [
+        "list_files",
+        "read_file",
+        "write_file"
+      ],
+      "stop_reason": "tool_use",
+      "tool_uses": [
+        {
+          "tool_use_id": "toolu_01BgbsSgdkhMYqzJTfSnG7Gh",
+          "tool_name": "write_file",
+          "input_json": "{\u0022path\u0022:\u0022index.md\u0022,\u0022content\u0022:\u0022# Wiki Index\\n\\n## Concepts\\n\\n- [Consistent Hashing](concepts/consistent-hashing.md) \\u2014 Distributed hashing scheme minimizing key remapping on cluster membership changes \\u2014 1 source\\n\u0022}"
+        }
+      ],
+      "assistant_text": "Now update the index:",
+      "input_tokens": 6806,
+      "output_tokens": 123
+    },
+    {
+      "turn": 6,
+      "system_prompt_sha256": "sha256:912c5a2708942f8718015cb69e9cbbdd30e820daba7d40ea735881491ce7eb20",
+      "conversation": [
+        {
+          "role": "user",
+          "content_sha256": "sha256:6ee4eb02d62f50a3efcf385cc5a2b2d9e7f26c34e1f6fd7775f900f7bb92416f"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:a9d234d647c1b979621fa30fdb36ee0015701639514049caf4f00696662fccb5"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:9ebdb0380917e7bd13ac92bb728e2bdcaf5c30622ff114fbdd576d6237cf050c"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:26b33a73af7b47a4cb3525274a2e322f6ab96ce0678272ad95d94763e004cf20"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:36cc719b49b6e5a62f9eacd9e3b6be89c1f641c4a260709eeff3487633e7d5cd"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:2f66178ff67b43f8a6c330a5a57e0fac1d30d940edc21645b2078bdfeeb97867"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:22e0868b098f2842cfda6152689cd40646740df268904ce88bc81a9a5eea2f0f"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:88867cfaf99c3c37393fe9d2701173825f6c3f497399c451a6d0be5c52aaff98"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:a8928a41ba4be24ce45e7c8c66b4b10a78b11a0b94c8639352406d6a7d6b013b"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:44db6c06a166f1d2ff6a99a000b5b48295af8609c8735fe1cc033825353206f5"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:011281ea35c5938533a1b45d9db29a45f75d92d4c07d48e41ca8d433edd4a8e4"
+        }
+      ],
+      "tool_names": [
+        "list_files",
+        "read_file",
+        "write_file"
+      ],
+      "stop_reason": "tool_use",
+      "tool_uses": [
+        {
+          "tool_use_id": "toolu_01RcVcdjuCRASPFFKVyH4MW8",
+          "tool_name": "write_file",
+          "input_json": "{\u0022path\u0022:\u0022log.md\u0022,\u0022content\u0022:\u0022## [2026-08-17] ingest | created consistent-hashing\\n\\nCreated [[concepts/consistent-hashing]] documenting consistent hashing as a distributed systems pattern. The page covers the core mechanism (mapping keys and nodes to a circular keyspace to minimize remapping), the virtual nodes optimization, and the load-balancing benefits. Task: capture-log-no-day-grouping-04-a09a811c32094e418ac3b700b57c5aca.\\n\\n## [2026-08-17] ingest | created write-ahead-logging\\n\\nCreated [[concepts/write-ahead-logging]] from source \\u0022durability-notes.md\\u0022. Task: task-seed-001.\\n\u0022}"
+        }
+      ],
+      "assistant_text": "Now update the log. I need to prepend my new entry to the existing log:",
+      "input_tokens": 6946,
+      "output_tokens": 246
+    },
+    {
+      "turn": 7,
+      "system_prompt_sha256": "sha256:912c5a2708942f8718015cb69e9cbbdd30e820daba7d40ea735881491ce7eb20",
+      "conversation": [
+        {
+          "role": "user",
+          "content_sha256": "sha256:6ee4eb02d62f50a3efcf385cc5a2b2d9e7f26c34e1f6fd7775f900f7bb92416f"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:a9d234d647c1b979621fa30fdb36ee0015701639514049caf4f00696662fccb5"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:9ebdb0380917e7bd13ac92bb728e2bdcaf5c30622ff114fbdd576d6237cf050c"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:26b33a73af7b47a4cb3525274a2e322f6ab96ce0678272ad95d94763e004cf20"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:36cc719b49b6e5a62f9eacd9e3b6be89c1f641c4a260709eeff3487633e7d5cd"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:2f66178ff67b43f8a6c330a5a57e0fac1d30d940edc21645b2078bdfeeb97867"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:22e0868b098f2842cfda6152689cd40646740df268904ce88bc81a9a5eea2f0f"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:88867cfaf99c3c37393fe9d2701173825f6c3f497399c451a6d0be5c52aaff98"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:a8928a41ba4be24ce45e7c8c66b4b10a78b11a0b94c8639352406d6a7d6b013b"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:44db6c06a166f1d2ff6a99a000b5b48295af8609c8735fe1cc033825353206f5"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:011281ea35c5938533a1b45d9db29a45f75d92d4c07d48e41ca8d433edd4a8e4"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:0f922cbdb461cc49654ebd5f73416d010b25d72df6505206f3f9ff9fd095e132"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:d12a9cebbc7de71bf01b5eea11d2619ebdb5311dbed5813fef52ea9901c1a455"
+        }
+      ],
+      "tool_names": [
+        "list_files",
+        "read_file",
+        "write_file"
+      ],
+      "stop_reason": "tool_use",
+      "tool_uses": [
+        {
+          "tool_use_id": "toolu_015zU3GReecngWd6q2TNcryi",
+          "tool_name": "read_file",
+          "input_json": "{\u0022path\u0022:\u0022concepts/consistent-hashing.md\u0022}"
+        },
+        {
+          "tool_use_id": "toolu_0144Ydm1sRuxR4VcZUhrVWiE",
+          "tool_name": "read_file",
+          "input_json": "{\u0022path\u0022:\u0022index.md\u0022}"
+        },
+        {
+          "tool_use_id": "toolu_01TJGrNiX9jVZEZ7UkNGvhUZ",
+          "tool_name": "read_file",
+          "input_json": "{\u0022path\u0022:\u0022log.md\u0022}"
+        }
+      ],
+      "assistant_text": "Perfect. Let me verify the changes by reading what was written:",
+      "input_tokens": 7209,
+      "output_tokens": 150
+    },
+    {
+      "turn": 8,
+      "system_prompt_sha256": "sha256:912c5a2708942f8718015cb69e9cbbdd30e820daba7d40ea735881491ce7eb20",
+      "conversation": [
+        {
+          "role": "user",
+          "content_sha256": "sha256:6ee4eb02d62f50a3efcf385cc5a2b2d9e7f26c34e1f6fd7775f900f7bb92416f"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:a9d234d647c1b979621fa30fdb36ee0015701639514049caf4f00696662fccb5"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:9ebdb0380917e7bd13ac92bb728e2bdcaf5c30622ff114fbdd576d6237cf050c"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:26b33a73af7b47a4cb3525274a2e322f6ab96ce0678272ad95d94763e004cf20"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:36cc719b49b6e5a62f9eacd9e3b6be89c1f641c4a260709eeff3487633e7d5cd"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:2f66178ff67b43f8a6c330a5a57e0fac1d30d940edc21645b2078bdfeeb97867"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:22e0868b098f2842cfda6152689cd40646740df268904ce88bc81a9a5eea2f0f"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:88867cfaf99c3c37393fe9d2701173825f6c3f497399c451a6d0be5c52aaff98"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:a8928a41ba4be24ce45e7c8c66b4b10a78b11a0b94c8639352406d6a7d6b013b"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:44db6c06a166f1d2ff6a99a000b5b48295af8609c8735fe1cc033825353206f5"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:011281ea35c5938533a1b45d9db29a45f75d92d4c07d48e41ca8d433edd4a8e4"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:0f922cbdb461cc49654ebd5f73416d010b25d72df6505206f3f9ff9fd095e132"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:d12a9cebbc7de71bf01b5eea11d2619ebdb5311dbed5813fef52ea9901c1a455"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:cbfbb41daaab85bdbf05a04c8c26656e76d771fbca117f87df00945e7c939f5d"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:c2df8b73d49ac880176f35782eaf49a2c2230d8221f690ee946f7c08b8d881cd"
+        }
+      ],
+      "tool_names": [
+        "list_files",
+        "read_file",
+        "write_file"
+      ],
+      "stop_reason": "end_turn",
+      "tool_uses": [],
+      "assistant_text": "## Summary\n\n**Actions taken:**\n\n1. **Created \u0060concepts/consistent-hashing.md\u0060** \u2014 A new Concept page documenting consistent hashing, a distributed systems pattern. The page covers:\n   - The core mechanism: mapping both keys and nodes to a circular keyspace\n   - The key benefit: adding/removing nodes only remaps keys between the changed node and its neighbour (not the entire keyspace)\n   - Virtual nodes: an optimization that assigns multiple ring positions per physical node to balance load distribution\n\n2. **Updated \u0060index.md\u0060** \u2014 Added a new entry under a \u0022Concepts\u0022 heading linking to the new page with a one-line description and source-count marker (1 source).\n\n3. **Updated \u0060log.md\u0060** \u2014 Prepended a new log entry documenting the creation of the consistent-hashing page. The entry includes the task ID and a brief description of what was created.\n\n**Confidence assessment:** \u0060medium\u0060 \u2014 The source is a single, authoritative-sounding explanation of a well-established distributed systems pattern, but no secondary sources are cited. The pattern itself is widely documented in academic literature and production systems, but this particular source stands alone.\n\n**No uncertainties or conflicts:** The source content is factual and unambiguous. No existing pages were superseded or contradicted.",
+      "input_tokens": 7985,
+      "output_tokens": 291
+    }
+  ],
+  "outcome": {
+    "status": "completed",
+    "checks": {
+      "completed": true,
+      "seeded_section_byte_unchanged": true,
+      "heading_count_grew_by_exactly_one": true,
+      "separate_complete_entry_on_top": true
+    }
+  }
+}

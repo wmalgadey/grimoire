@@ -11,8 +11,11 @@ public static class IngestAgentLogEvents
     private static readonly EventId ToolAllowedEvent = new(3, "ingest.tool.allowed");
     private static readonly EventId ToolDeniedEvent = new(4, "ingest.tool.denied");
     private static readonly EventId RunRolledBackEvent = new(5, "ingest.run.rolled_back");
-    // EventId 6 ("ingest.log.backstop_appended") retired (014-wiki-storage-restructure R5):
-    // replaced by the shared wiki.log.backstop_appended event (Grimoire.AgentRuntime.WikiLog.WikiLogEvents).
+    // EventId 6 ("ingest.log.backstop_appended") retired (014-wiki-storage-restructure R5),
+    // then its shared successor wiki.log.backstop_appended retired too
+    // (025-agent-owned-log, ADR-028) along with the backstop that emitted it. The
+    // activity log is agent-authored; the harness reports only that a run changed the
+    // wiki without logging it (wiki.log.change_not_logged, WikiLogEvents).
     private static readonly EventId AgentCompletedEvent = new(7, "ingest.agent.completed");
     private static readonly EventId AgentCapExceededEvent = new(8, "ingest.agent.cap_exceeded");
     private static readonly EventId UserPromptResolvedEvent = new(9, "ingest.agent.user_prompt_resolved");

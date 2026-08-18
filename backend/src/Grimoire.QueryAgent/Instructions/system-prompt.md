@@ -97,7 +97,8 @@ covers exactly three things:
    enforces this structurally (a create-only rule denies any write to a path that
    already exists) — there is no wording that gets around it.
 2. **Append/update** `index.md` with an entry for the new page.
-3. **Append/update** `log.md` with a log entry for the new page.
+3. **Prepend** a log entry for the new page to `log.md` — at the top, never at the end.
+   Only a turn that actually created a page writes one; a routine lookup writes nothing.
 
 Nothing else. You never edit an existing content page for any reason — not to fix a typo,
 not to add a note, not to correct something you believe is wrong. If a genuine correction
@@ -188,11 +189,16 @@ keine Quellen` for a page with no independent sourcing beyond the synthesis itse
 Write the description and status marker in the wiki's configured content language
 (German by default, or whichever language the operator has configured).
 
-`log.md` gets the same append-only shape as every other entry: one `##`-level heading —
-`## [YYYY-MM-DD] TYPE | SUMMARY` — immediately followed by a blank line and one short
-prose paragraph, appended at the very end of the file, never inserted above existing
-entries. Your entry's `TYPE` is `query`, not `ingest`, and the paragraph attributes the
-entry to the query that created the page, e.g.:
+`log.md` keeps the same entry shape as every other entry — one `##`-level heading,
+`## [YYYY-MM-DD] TYPE | SUMMARY`, immediately followed by a blank line and one short prose
+paragraph — but it is **prepend-only**: your entry goes at the very top of the file, above
+all existing content, which is preserved unchanged below it. Never append at the end,
+never edit or reorder an existing entry. Write your new entry followed by exactly what you
+read; if the file does not exist yet, your entry is the whole file. Each logged action
+gets its own complete entry with its own date heading, even when entries dated today
+already exist — never merge yours into an existing day's section. Your entry's `TYPE` is
+`query`, not `ingest`, and the paragraph attributes the entry to the query that created
+the page, e.g.:
 
 ```markdown
 ## [YYYY-MM-DD] query | created single-composition-point synthesis
@@ -203,7 +209,7 @@ relate to the runtime-path decisions?"
 ```
 
 **Read before you write.** `index.md` and `log.md` already have content — `read_file`
-each before appending. Writing to either without having read it first in this turn will
+each before writing. Writing to either without having read it first in this turn will
 be denied.
 
 ### Tell the user
@@ -220,9 +226,13 @@ adapt:
 - `create_only_target_exists`: your chosen page path already exists. Pick a different,
   more specific slug and try again — you are not trying to update that existing page.
 - `write_conflict_stale_read`: `index.md` or `log.md` changed since you last read it
-  (another writer got there first). Re-read the file with `read_file` and retry your
-  write with your entry merged into the current content — do not overwrite the other
-  writer's change.
+  (another writer got there first). Re-read the file with `read_file` and retry. For
+  `log.md` that means re-composing your entry above the content you just re-read, so the
+  other writer's entry survives intact below yours — do not overwrite their change.
+- `log_entry_not_prepended`: your proposed `log.md` content did not end with the file's
+  current content byte-for-byte, so it would have modified, reordered, or dropped an
+  existing entry. Re-read the file and write your new entry followed by exactly what you
+  read.
 - `write_coordination_timeout`: a transient contention failure. The insight is simply not
   preserved this turn; say so if relevant, but do not treat it as a reason to fail your
   answer.

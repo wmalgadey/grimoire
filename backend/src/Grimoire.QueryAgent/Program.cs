@@ -44,14 +44,7 @@ using var runSpan = QueryAgentTracing.StartRunActivity(options.TurnId);
 
 var conversationInput = await ReadConversationInputAsync();
 
-// New — Query has no backstop before 014-wiki-storage-restructure (R5): most turns are
-// routine lookups that touch nothing, so EnsureLogEntryAsync is only invoked when this
-// turn actually created a Synthesis Page (see QueryIntentHandler.ExecuteAsync/
-// DescribeUnhandledFailureAsync) — "for a completed action" (FR-010), not every turn.
-var logAppender = new WikiLogAppender(
-    QueryAgentTracing.ActivitySource, QueryAgentMetrics.Meter, loggerFactory.CreateLogger<WikiLogAppender>());
-
-var intent = new QueryIntentHandler(profile, options, conversationInput, runEvents, logAppender, loggerFactory, logger);
+var intent = new QueryIntentHandler(profile, options, conversationInput, runEvents, loggerFactory, logger);
 
 return await new AgentHost(profile).RunAsync(
     new AgentHostRun(
@@ -101,8 +94,8 @@ internal sealed class QueryIntentHandler : IAgentIntentHandler
     private readonly QueryCliOptions _options;
     private readonly QueryConversationInput _conversationInput;
     private readonly RunEventEmitter _runEvents;
-    private readonly WikiLogAppender _logAppender;
     private readonly ILoggerFactory _loggerFactory;
+    private readonly WikiLogCoverageObserver _coverageObserver;
     private readonly ILogger _logger;
 
     private GuardedToolExecutor? _executor;
@@ -112,7 +105,6 @@ internal sealed class QueryIntentHandler : IAgentIntentHandler
         QueryCliOptions options,
         QueryConversationInput conversationInput,
         RunEventEmitter runEvents,
-        WikiLogAppender logAppender,
         ILoggerFactory loggerFactory,
         ILogger logger)
     {
@@ -120,8 +112,11 @@ internal sealed class QueryIntentHandler : IAgentIntentHandler
         _options = options;
         _conversationInput = conversationInput;
         _runEvents = runEvents;
-        _logAppender = logAppender;
         _loggerFactory = loggerFactory;
+        _coverageObserver = new WikiLogCoverageObserver(
+            QueryAgentTracing.ActivitySource,
+            QueryAgentMetrics.Meter,
+            loggerFactory.CreateLogger<WikiLogCoverageObserver>());
         _logger = logger;
     }
 
@@ -191,16 +186,11 @@ internal sealed class QueryIntentHandler : IAgentIntentHandler
         // the artifact, and the Hub now records the turn into the Conversation Record. The
         // stdin/scaffold contract is untouched (ADR-012 fingerprints must not drift).
 
-        // 014-wiki-storage-restructure (R5, FR-010): only turns that actually created a
-        // Synthesis Page are "a completed action" needing a log.md entry — most turns are
-        // routine lookups that touch nothing (system-prompt.md Step 6), so the backstop
-        // must not fire unconditionally the way Ingest's does.
-        if (executor.CreatedPaths.Count > 0)
-        {
-            await _logAppender.EnsureLogEntryAsync(
-                _options.LogPath, "query", "completed", TruncatePrompt(_conversationInput.Prompt), _options.TurnId,
-                forceAppend: false, CancellationToken.None);
-        }
+        // 025-agent-owned-log (FR-012a): evaluated once at run end. Query has no run-level
+        // span at completion (ADR-014 removed the finalize span), so wiki_log.coverage_check
+        // is root-parented; correlation is carried by task_id_or_run_id in both agents.
+        // Writes nothing — it only reads the executor's own record of allowed writes.
+        _coverageObserver.Observe(executor, "query", _options.TurnId);
 
         _runEvents.EmitCompleted(result.Narrative, new RunCompletionMetadata(
             SystemPromptSha256: instructions.SystemPrompt.Sha256,
@@ -227,15 +217,11 @@ internal sealed class QueryIntentHandler : IAgentIntentHandler
             reason = ErrorSanitizer.Sanitize(exception.Message, "Unknown query error.");
         }
 
-        // 014-wiki-storage-restructure (R5, FR-010): a backstop is only owed once this
-        // turn actually created a Synthesis Page — if the failure happened before any
-        // write (the common case, since most turns write nothing), there is no
-        // "completed action" for the fallback entry to describe.
-        if (_executor is { CreatedPaths.Count: > 0 })
+        // A turn that changed wiki content before failing is worth reporting; _executor is
+        // null when the failure preceded its construction, leaving nothing to observe.
+        if (_executor is not null)
         {
-            await _logAppender.EnsureLogEntryAsync(
-                _options.LogPath, "query", "failed", TruncatePrompt(_conversationInput.Prompt), _options.TurnId,
-                forceAppend: true, CancellationToken.None);
+            _coverageObserver.Observe(_executor, "query", _options.TurnId);
         }
 
         return reason;

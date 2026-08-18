@@ -66,7 +66,14 @@ public sealed class RestartReconciler
         return executing.Count;
     }
 
-    public async Task<int> ReconcileRunningTasksAsync(string tasksDir, string logPath, CancellationToken cancellationToken = default)
+    /// <summary>
+    /// 025-agent-owned-log (ADR-028, FR-001): reconciliation records the interrupted
+    /// task's failure in its task artifact and the operational status history, and writes
+    /// nothing to the wiki. The activity log is agent-authored wiki content (Constitution
+    /// Principle V); the harness-composed entry this method used to append is deleted, and
+    /// with it the <c>logPath</c> parameter that existed only to locate it.
+    /// </summary>
+    public async Task<int> ReconcileRunningTasksAsync(string tasksDir, CancellationToken cancellationToken = default)
     {
         var running = await _repository.GetByStatusAsync("running", cancellationToken);
         foreach (var state in running)
@@ -74,10 +81,9 @@ public sealed class RestartReconciler
             var reason = "Hub restarted while task was running.";
 
             await UpdateTaskArtifactAsync(tasksDir, state.TaskId, reason, cancellationToken);
-            await AppendReconciliationLogAsync(logPath, state.TaskId, cancellationToken);
 
-            // Delete the stale row after durable writes succeed; task artifact + log.md are
-            // the permanent record (ADR-003). Deleting last keeps the row retryable if either
+            // Delete the stale row after the durable write succeeds; the task artifact is
+            // the permanent record (ADR-003). Deleting last keeps the row retryable if the
             // write above fails on a transient IO error.
             await _repository.DeleteAsync(state.TaskId, cancellationToken);
 
@@ -112,24 +118,6 @@ public sealed class RestartReconciler
         text = ReplaceOrAppendFrontmatterValue(text, "pages_touched", "[]");
 
         await File.WriteAllTextAsync(taskPath, text, cancellationToken);
-    }
-
-    /// <summary>
-    /// 014-wiki-storage-restructure (ADR-017, FR-007/FR-008/FR-011): this is a plain
-    /// direct-file-I/O write outside the guarded tool boundary (Hub-owned operational
-    /// recovery, not an agent tool call), so ADR-017's structural check never runs
-    /// against it — but SC-003's "any agent or the backstop" guarantee still requires the
-    /// same heading-plus-paragraph shape as every other log.md entry
-    /// (contracts/log-and-catalog-entry-format.md), so this composes the line by hand in
-    /// that shape rather than the pre-014 single pipe-delimited line.
-    /// </summary>
-    private static async Task AppendReconciliationLogAsync(string logPath, string taskId, CancellationToken cancellationToken)
-    {
-        var date = DateTime.UtcNow.ToString("yyyy-MM-dd");
-        var paragraph =
-            $"Harness backstop entry: this task was still running when the Hub restarted, so it was reconciled as failed on startup. Task: {taskId}.";
-        var line = $"## [{date}] ingest | failed (reconciled on startup){Environment.NewLine}{Environment.NewLine}{paragraph}{Environment.NewLine}";
-        await File.AppendAllTextAsync(logPath, line, cancellationToken);
     }
 
     private static string ReplaceOrAppendFrontmatterValue(string content, string key, string value)

@@ -10,17 +10,19 @@ using Grimoire.Domain.Guardrails;
 namespace Grimoire.IntegrationTests;
 
 /// <summary>
-/// T028 (014-wiki-storage-restructure, US3, ADR-017): <see cref="SharedFileWriteGuard"/>'s
-/// new log.md format-validation step — append-only, then heading shape
+/// 025-agent-owned-log T011 (ADR-028, amending ADR-017): <see cref="SharedFileWriteGuard"/>'s
+/// log.md format-validation step — <b>prepend-only</b>, then heading shape
 /// (<c>## [DATE] TYPE | SUMMARY</c>), then a following non-blank paragraph
-/// (contracts/log-and-catalog-entry-format.md) — hermetic against a real temp
-/// filesystem, mirroring <c>SharedFileWriteGuardFrontmatterOnlyTests</c>'s idiom for
-/// ADR-016. Written before T036 lands (Red half of ADR-017's probe): every deny-path
-/// test here fails until <see cref="SharedFileWriteGuard.EvaluateWriteAsync(string, WriteMode, string, CancellationToken)"/>
-/// gains the format check. Deliberately agent-agnostic throughout (including the trace
-/// span test below, which uses a private test-local <see cref="ActivitySource"/> rather
-/// than any single agent's frozen tracing identity) — ADR-017's check applies uniformly
-/// to whichever agent process's <c>GuardedToolExecutor</c> reaches it.
+/// (contracts/activity-log-write-contract.md) — hermetic against a real temp filesystem,
+/// mirroring <c>SharedFileWriteGuardFrontmatterOnlyTests</c>'s idiom for ADR-016.
+///
+/// These cover Feature-Scoped Invariant FSI-1 the way Constitution Principle III requires:
+/// classicist, state-based assertions over the real guard's returned decision and the real
+/// bytes on disk — never by reflecting over the guard's shape. Deliberately agent-agnostic
+/// throughout (including the trace span test below, which uses a private test-local
+/// <see cref="ActivitySource"/> rather than any single agent's frozen tracing identity) —
+/// the check applies uniformly to whichever agent process's <c>GuardedToolExecutor</c>
+/// reaches it.
 /// </summary>
 [Collection("HubActivityListenerObservability")]
 public class LogEntryFormatEnforcementTests
@@ -28,31 +30,226 @@ public class LogEntryFormatEnforcementTests
     private static readonly ActivitySource TestActivitySource = new("LogEntryFormatEnforcementTests");
 
     private const string ConformingEntry =
-        "## [2026-07-30] ingest | completed (backstop)\n\nHarness backstop entry for source \"source.md\". Ref: task-001.\n";
+        "## [2026-07-30] ingest | created retrieval-patterns\n\nCreated [[concepts/retrieval-patterns]] from source \"source.md\". Task: task-001.\n";
+
+    private const string ExistingEntry =
+        "## [2026-07-01] query | created single-composition-point\n\nEarlier entry. Ref: turn-000.\n";
 
     private static SharedFileWriteGuard NewGuard(string writeLocksDir, string logPath, ActivitySource? activitySource = null) =>
         new(writeLocksDir, backoffCap: TimeSpan.FromMilliseconds(500), logPath: logPath, activitySource: activitySource);
 
+    /// <summary>FR-003, SC-004: the new entry goes on top and the prior bytes survive as an exact suffix.</summary>
     [Fact]
-    public async Task WellFormedAppend_ToExistingLog_Allows()
+    public async Task WellFormedPrepend_ToExistingLog_Allows_AndKeepsPriorContentAsSuffix()
     {
         var root = CreateTempDir();
         try
         {
             var logPath = Path.Combine(root, "wiki", "log.md");
             Directory.CreateDirectory(Path.GetDirectoryName(logPath)!);
-            const string existing = "## [2026-07-01] query | completed (backstop)\n\nEarlier entry. Ref: turn-000.\n";
+            await File.WriteAllTextAsync(logPath, ExistingEntry);
+
+            var guard = NewGuard(Path.Combine(root, "write-locks"), logPath);
+            guard.OnReadFile(logPath, ExistingEntry);
+
+            var proposed = ConformingEntry + ExistingEntry;
+
+            var decision = await guard.EvaluateWriteAsync(logPath, WriteMode.ReadWrite, proposed, CancellationToken.None);
+
+            Assert.True(decision.IsAllowed);
+            await File.WriteAllTextAsync(logPath, proposed);
+            guard.OnWriteCommitted(logPath, proposed);
+            decision.LockHandle!.Dispose();
+
+            var committed = await File.ReadAllTextAsync(logPath);
+            Assert.StartsWith(ConformingEntry, committed, StringComparison.Ordinal);
+            Assert.EndsWith(ExistingEntry, committed, StringComparison.Ordinal);
+        }
+        finally
+        {
+            Directory.Delete(root, recursive: true);
+        }
+    }
+
+    /// <summary>
+    /// FR-004, SC-001: the shape this feature replaced. Appending the new entry after the
+    /// existing content — legal until ADR-028 — is now the canonical denial case.
+    /// </summary>
+    [Fact]
+    public async Task OldAppendShape_Denies_LogEntryNotPrepended_AndLeavesFileUnchanged()
+    {
+        var root = CreateTempDir();
+        try
+        {
+            var logPath = Path.Combine(root, "wiki", "log.md");
+            Directory.CreateDirectory(Path.GetDirectoryName(logPath)!);
+            await File.WriteAllTextAsync(logPath, ExistingEntry);
+
+            var guard = NewGuard(Path.Combine(root, "write-locks"), logPath);
+            guard.OnReadFile(logPath, ExistingEntry);
+
+            var proposed = ExistingEntry + ConformingEntry;
+
+            var decision = await guard.EvaluateWriteAsync(logPath, WriteMode.ReadWrite, proposed, CancellationToken.None);
+
+            Assert.False(decision.IsAllowed);
+            Assert.Equal("log_entry_not_prepended", decision.DenialReason);
+            Assert.Null(decision.LockHandle);
+            Assert.Equal(ExistingEntry, await File.ReadAllTextAsync(logPath));
+        }
+        finally
+        {
+            Directory.Delete(root, recursive: true);
+        }
+    }
+
+    /// <summary>FR-010, SC-004: a zero-byte file is a valid base, not a violation.</summary>
+    [Fact]
+    public async Task WellFormedFirstEntry_ToEmptyLog_Allows()
+    {
+        var root = CreateTempDir();
+        try
+        {
+            var logPath = Path.Combine(root, "wiki", "log.md");
+            Directory.CreateDirectory(Path.GetDirectoryName(logPath)!);
+            await File.WriteAllTextAsync(logPath, string.Empty);
+
+            var guard = NewGuard(Path.Combine(root, "write-locks"), logPath);
+            guard.OnReadFile(logPath, string.Empty);
+
+            var decision = await guard.EvaluateWriteAsync(logPath, WriteMode.ReadWrite, ConformingEntry, CancellationToken.None);
+
+            Assert.True(decision.IsAllowed);
+            decision.LockHandle!.Dispose();
+        }
+        finally
+        {
+            Directory.Delete(root, recursive: true);
+        }
+    }
+
+    /// <summary>FR-005, SC-001: removing an existing entry is not a prepend.</summary>
+    [Fact]
+    public async Task PrependThatDropsAnExistingEntry_Denies_LogEntryNotPrepended()
+    {
+        var root = CreateTempDir();
+        try
+        {
+            var logPath = Path.Combine(root, "wiki", "log.md");
+            Directory.CreateDirectory(Path.GetDirectoryName(logPath)!);
+            var existing = ExistingEntry + "## [2026-06-01] ingest | created older\n\nOldest entry. Task: task-000.\n";
             await File.WriteAllTextAsync(logPath, existing);
 
             var guard = NewGuard(Path.Combine(root, "write-locks"), logPath);
             guard.OnReadFile(logPath, existing);
 
-            var proposed = existing + ConformingEntry;
+            // Keeps only the first existing entry below the new one — the oldest is dropped.
+            var proposed = ConformingEntry + ExistingEntry;
+
+            var decision = await guard.EvaluateWriteAsync(logPath, WriteMode.ReadWrite, proposed, CancellationToken.None);
+
+            Assert.False(decision.IsAllowed);
+            Assert.Equal("log_entry_not_prepended", decision.DenialReason);
+            Assert.Equal(existing, await File.ReadAllTextAsync(logPath));
+        }
+        finally
+        {
+            Directory.Delete(root, recursive: true);
+        }
+    }
+
+    /// <summary>FR-005, SC-001: reordering existing entries is not a prepend either.</summary>
+    [Fact]
+    public async Task PrependThatReordersExistingEntries_Denies_LogEntryNotPrepended()
+    {
+        var root = CreateTempDir();
+        try
+        {
+            var logPath = Path.Combine(root, "wiki", "log.md");
+            Directory.CreateDirectory(Path.GetDirectoryName(logPath)!);
+            const string older = "## [2026-06-01] ingest | created older\n\nOldest entry. Task: task-000.\n";
+            var existing = ExistingEntry + older;
+            await File.WriteAllTextAsync(logPath, existing);
+
+            var guard = NewGuard(Path.Combine(root, "write-locks"), logPath);
+            guard.OnReadFile(logPath, existing);
+
+            var proposed = ConformingEntry + older + ExistingEntry;
+
+            var decision = await guard.EvaluateWriteAsync(logPath, WriteMode.ReadWrite, proposed, CancellationToken.None);
+
+            Assert.False(decision.IsAllowed);
+            Assert.Equal("log_entry_not_prepended", decision.DenialReason);
+            Assert.Equal(existing, await File.ReadAllTextAsync(logPath));
+        }
+        finally
+        {
+            Directory.Delete(root, recursive: true);
+        }
+    }
+
+    /// <summary>
+    /// Edge case: a prepend that also "fixes" an existing entry. The current content is no
+    /// longer an exact suffix, so it is denied even though a conforming entry was added.
+    /// </summary>
+    [Fact]
+    public async Task PrependThatAlsoEditsExistingContent_Denies_LogEntryNotPrepended()
+    {
+        var root = CreateTempDir();
+        try
+        {
+            var logPath = Path.Combine(root, "wiki", "log.md");
+            Directory.CreateDirectory(Path.GetDirectoryName(logPath)!);
+            await File.WriteAllTextAsync(logPath, ExistingEntry);
+
+            var guard = NewGuard(Path.Combine(root, "write-locks"), logPath);
+            guard.OnReadFile(logPath, ExistingEntry);
+
+            var proposed = ConformingEntry
+                + ExistingEntry.Replace("Earlier entry", "Corrected entry", StringComparison.Ordinal);
+
+            var decision = await guard.EvaluateWriteAsync(logPath, WriteMode.ReadWrite, proposed, CancellationToken.None);
+
+            Assert.False(decision.IsAllowed);
+            Assert.Equal("log_entry_not_prepended", decision.DenialReason);
+            Assert.Equal(ExistingEntry, await File.ReadAllTextAsync(logPath));
+        }
+        finally
+        {
+            Directory.Delete(root, recursive: true);
+        }
+    }
+
+    /// <summary>
+    /// FR-006, FR-009, SC-003: a same-day second entry is an ordinary prepend, and two
+    /// entries may carry byte-identical headings. The harness has no "day section" concept.
+    /// </summary>
+    [Fact]
+    public async Task SameDayAndDuplicateHeadingPrepends_AreAllowed_AndBothRemainLocatable()
+    {
+        var root = CreateTempDir();
+        try
+        {
+            var logPath = Path.Combine(root, "wiki", "log.md");
+            Directory.CreateDirectory(Path.GetDirectoryName(logPath)!);
+            await File.WriteAllTextAsync(logPath, ConformingEntry);
+
+            var guard = NewGuard(Path.Combine(root, "write-locks"), logPath);
+            guard.OnReadFile(logPath, ConformingEntry);
+
+            // Byte-identical heading, same date — nothing treats the heading as a key.
+            var proposed = ConformingEntry + ConformingEntry;
 
             var decision = await guard.EvaluateWriteAsync(logPath, WriteMode.ReadWrite, proposed, CancellationToken.None);
 
             Assert.True(decision.IsAllowed);
+            await File.WriteAllTextAsync(logPath, proposed);
+            guard.OnWriteCommitted(logPath, proposed);
             decision.LockHandle!.Dispose();
+
+            var committed = await File.ReadAllTextAsync(logPath);
+            var matches = Regex.Matches(committed, @"^## \[\d{4}-\d{2}-\d{2}\] .+ \| .+$", RegexOptions.Multiline);
+            Assert.Equal(2, matches.Count);
         }
         finally
         {
@@ -82,30 +279,91 @@ public class LogEntryFormatEnforcementTests
     }
 
     [Fact]
-    public async Task NonAppendWrite_Denies_LogEntryNotAppended()
+    public async Task InPlaceRewrite_Denies_LogEntryNotPrepended()
     {
         var root = CreateTempDir();
         try
         {
             var logPath = Path.Combine(root, "wiki", "log.md");
             Directory.CreateDirectory(Path.GetDirectoryName(logPath)!);
-            const string existing = "## [2026-07-01] query | completed (backstop)\n\nEarlier entry. Ref: turn-000.\n";
-            await File.WriteAllTextAsync(logPath, existing);
+            await File.WriteAllTextAsync(logPath, ExistingEntry);
 
             var guard = NewGuard(Path.Combine(root, "write-locks"), logPath);
-            guard.OnReadFile(logPath, existing);
+            guard.OnReadFile(logPath, ExistingEntry);
 
-            // Rewrites the existing entry's text instead of extending it — not an append.
-            var proposed = existing.Replace("Earlier entry", "Rewritten entry", StringComparison.Ordinal);
+            // Rewrites the existing entry's text instead of prepending to it.
+            var proposed = ExistingEntry.Replace("Earlier entry", "Rewritten entry", StringComparison.Ordinal);
 
             var decision = await guard.EvaluateWriteAsync(logPath, WriteMode.ReadWrite, proposed, CancellationToken.None);
 
             Assert.False(decision.IsAllowed);
-            Assert.Equal("log_entry_not_appended", decision.DenialReason);
+            Assert.Equal("log_entry_not_prepended", decision.DenialReason);
             Assert.Null(decision.LockHandle);
 
             // Nothing was applied — the on-disk file is untouched.
-            Assert.Equal(existing, await File.ReadAllTextAsync(logPath));
+            Assert.Equal(ExistingEntry, await File.ReadAllTextAsync(logPath));
+        }
+        finally
+        {
+            Directory.Delete(root, recursive: true);
+        }
+    }
+
+    /// <summary>
+    /// Edge case: a head of pure whitespace above intact existing content satisfies the
+    /// prepend rule but carries no entry, so the heading check rejects it.
+    /// </summary>
+    [Fact]
+    public async Task WhitespaceOnlyPrepend_Denies_LogEntryMalformedHeading()
+    {
+        var root = CreateTempDir();
+        try
+        {
+            var logPath = Path.Combine(root, "wiki", "log.md");
+            Directory.CreateDirectory(Path.GetDirectoryName(logPath)!);
+            await File.WriteAllTextAsync(logPath, ExistingEntry);
+
+            var guard = NewGuard(Path.Combine(root, "write-locks"), logPath);
+            guard.OnReadFile(logPath, ExistingEntry);
+
+            var proposed = "\n\n" + ExistingEntry;
+
+            var decision = await guard.EvaluateWriteAsync(logPath, WriteMode.ReadWrite, proposed, CancellationToken.None);
+
+            Assert.False(decision.IsAllowed);
+            Assert.Equal("log_entry_malformed_heading", decision.DenialReason);
+            Assert.Equal(ExistingEntry, await File.ReadAllTextAsync(logPath));
+        }
+        finally
+        {
+            Directory.Delete(root, recursive: true);
+        }
+    }
+
+    /// <summary>
+    /// Edge case: a conforming heading prepended with no paragraph before the existing
+    /// content resumes is rejected within the head, not excused by the content below.
+    /// </summary>
+    [Fact]
+    public async Task HeadingOnlyPrepend_AboveExistingContent_Denies_LogEntryMissingParagraph()
+    {
+        var root = CreateTempDir();
+        try
+        {
+            var logPath = Path.Combine(root, "wiki", "log.md");
+            Directory.CreateDirectory(Path.GetDirectoryName(logPath)!);
+            await File.WriteAllTextAsync(logPath, ExistingEntry);
+
+            var guard = NewGuard(Path.Combine(root, "write-locks"), logPath);
+            guard.OnReadFile(logPath, ExistingEntry);
+
+            var proposed = "## [2026-07-30] ingest | created retrieval-patterns\n\n" + ExistingEntry;
+
+            var decision = await guard.EvaluateWriteAsync(logPath, WriteMode.ReadWrite, proposed, CancellationToken.None);
+
+            Assert.False(decision.IsAllowed);
+            Assert.Equal("log_entry_missing_paragraph", decision.DenialReason);
+            Assert.Equal(ExistingEntry, await File.ReadAllTextAsync(logPath));
         }
         finally
         {
@@ -211,7 +469,7 @@ public class LogEntryFormatEnforcementTests
             var guard = NewGuard(Path.Combine(root, "write-locks"), logPath);
             guard.OnReadFile(logPath, existing);
 
-            var proposed = "## [2026-07-30] ingest | completed (backstop)\n\n";
+            var proposed = "## [2026-07-30] ingest | completed\n\n";
 
             var decision = await guard.EvaluateWriteAsync(logPath, WriteMode.ReadWrite, proposed, CancellationToken.None);
 
@@ -238,7 +496,7 @@ public class LogEntryFormatEnforcementTests
             var guard = NewGuard(Path.Combine(root, "write-locks"), logPath);
             guard.OnReadFile(logPath, existing);
 
-            var proposed = "## [2026-07-30] ingest | completed (backstop)\n\n   \n";
+            var proposed = "## [2026-07-30] ingest | completed\n\n   \n";
 
             var decision = await guard.EvaluateWriteAsync(logPath, WriteMode.ReadWrite, proposed, CancellationToken.None);
 
@@ -276,13 +534,12 @@ public class LogEntryFormatEnforcementTests
     }
 
     /// <summary>
-    /// T063 (014-wiki-storage-restructure, /speckit-analyze finding G1): SC-004 — every
-    /// entry appended to <c>log.md</c>, whether agent-written (via the guard, as every
-    /// other test in this file exercises) or backstop-written (via
-    /// <see cref="WikiLogAppender"/> directly, which never goes through the guard — see
-    /// its own doc comment), remains locatable by searching the file for the heading
-    /// pattern. plan.md's Test Strategy names this multi-entry regex-search assertion for
-    /// SC-004 but, until this task, no test implemented it.
+    /// 025-agent-owned-log SC-003/FR-009 (was 014's SC-004): every entry in
+    /// <c>log.md</c> remains locatable by searching the file for the heading pattern,
+    /// however many entries accumulate. Every entry is now agent-written through the
+    /// guard — the backstop that wrote a third entry directly is deleted (FR-001,
+    /// FR-002), so this test's third entry is a third guarded prepend rather than a
+    /// harness append.
     /// </summary>
     [Fact]
     public async Task MultiEntryLog_EveryEntryLocatableByHeadingPattern()
@@ -304,19 +561,19 @@ public class LogEntryFormatEnforcementTests
             guard.OnWriteCommitted(logPath, firstEntry);
             firstDecision.LockHandle!.Dispose();
 
-            var afterSecond = firstEntry + "## [2026-07-29] query | completed\n\nAgent-authored entry two. Ref: turn-002.\n";
+            var afterSecond = "## [2026-07-29] query | completed\n\nAgent-authored entry two. Ref: turn-002.\n" + firstEntry;
             var secondDecision = await guard.EvaluateWriteAsync(logPath, WriteMode.ReadWrite, afterSecond, CancellationToken.None);
             Assert.True(secondDecision.IsAllowed);
             await File.WriteAllTextAsync(logPath, afterSecond);
             guard.OnWriteCommitted(logPath, afterSecond);
             secondDecision.LockHandle!.Dispose();
 
-            // The backstop appends directly (WikiLogAppender writes via File.AppendAllTextAsync,
-            // not through the guard — see WikiLogAppender's own doc comment), the same as it
-            // does in production when an agent's run fails or omits its own entry.
-            var appender = new WikiLogAppender(new ActivitySource("MultiEntryLogTest"), new Meter("MultiEntryLogTest"));
-            await appender.AppendAsync(
-                logPath, "ingest", "failed", "source.md", "Detail text.", "task-003", CancellationToken.None);
+            var afterThird = "## [2026-07-30] ingest | superseded\n\nAgent-authored entry three. Ref: task-003.\n" + afterSecond;
+            var thirdDecision = await guard.EvaluateWriteAsync(logPath, WriteMode.ReadWrite, afterThird, CancellationToken.None);
+            Assert.True(thirdDecision.IsAllowed);
+            await File.WriteAllTextAsync(logPath, afterThird);
+            guard.OnWriteCommitted(logPath, afterThird);
+            thirdDecision.LockHandle!.Dispose();
 
             var content = await File.ReadAllTextAsync(logPath);
             var matches = Regex.Matches(content, @"^## \[\d{4}-\d{2}-\d{2}\] .+ \| .+$", RegexOptions.Multiline);
@@ -407,6 +664,80 @@ public class LogEntryFormatEnforcementTests
             Assert.Equal("log", GetTag(formatSpan, "target"));
             Assert.Equal("denied", GetTag(formatSpan, "outcome"));
             Assert.Equal("log_entry_malformed_heading", GetTag(formatSpan, "reason"));
+        }
+        finally
+        {
+            Directory.Delete(root, recursive: true);
+        }
+    }
+
+    /// <summary>
+    /// 025-agent-owned-log T013 (FR-004, SC-001): the <c>guardrails.format_validate</c>
+    /// span is unchanged in name, parentage, and attribute set — only the <c>reason</c>
+    /// value it carries on an ordering denial changes, from <c>log_entry_not_appended</c>
+    /// to <c>log_entry_not_prepended</c>. Asserted through the real executor and guard, on
+    /// the shape this feature made illegal: appending the new entry after the existing
+    /// content.
+    /// </summary>
+    [Fact]
+    public async Task FormatValidateSpan_OnOrderingDenial_CarriesLogEntryNotPrependedReason()
+    {
+        var activities = new ConcurrentBag<Activity>();
+        using var listener = new ActivityListener
+        {
+            // Literal name, not TestActivitySource.Name: this lambda can run while the
+            // class's static initializer is still constructing that very field.
+            ShouldListenTo = src => src.Name == "LogEntryFormatEnforcementTests",
+            Sample = (ref ActivityCreationOptions<ActivityContext> _) => ActivitySamplingResult.AllDataAndRecorded,
+            ActivityStopped = activities.Add
+        };
+        ActivitySource.AddActivityListener(listener);
+
+        var root = CreateTempDir();
+        try
+        {
+            var wikiDir = Path.Combine(root, "wiki");
+            Directory.CreateDirectory(wikiDir);
+            var logPath = Path.Combine(wikiDir, "log.md");
+            await File.WriteAllTextAsync(logPath, ExistingEntry);
+
+            var policy = new SafetyPolicy(
+                root,
+                readPrefixes: [wikiDir + Path.DirectorySeparatorChar],
+                writePrefixes: [wikiDir + Path.DirectorySeparatorChar]);
+            var journal = new WriteJournal();
+            var executor = new GuardedToolExecutor(
+                policy, journal, root, taskId: "task-format-span-prepend",
+                writeLocksDir: Path.Combine(root, "write-locks"),
+                logPath: logPath,
+                activitySource: TestActivitySource);
+
+            Activity? ambient;
+            using (ambient = TestActivitySource.StartActivity("test.ambient"))
+            {
+                await executor.ExecuteAsync("read_file", """{"path": "wiki/log.md"}""", turn: 1, CancellationToken.None);
+
+                // The old append shape: existing content first, new entry at the end.
+                var appended = System.Text.Json.JsonSerializer.Serialize(ExistingEntry + ConformingEntry);
+                var result = await executor.ExecuteAsync(
+                    "write_file",
+                    $$"""{"path": "wiki/log.md", "content": {{appended}}}""",
+                    turn: 2,
+                    CancellationToken.None);
+
+                Assert.True(result.IsError);
+            }
+
+            var thisTrace = activities.Where(a => a.TraceId == ambient!.TraceId).ToList();
+            var formatSpan = thisTrace.Single(a => a.OperationName == "guardrails.format_validate");
+
+            Assert.Equal(logPath, GetTag(formatSpan, "path"));
+            Assert.Equal("log", GetTag(formatSpan, "target"));
+            Assert.Equal("denied", GetTag(formatSpan, "outcome"));
+            Assert.Equal("log_entry_not_prepended", GetTag(formatSpan, "reason"));
+
+            // The denial left the file untouched.
+            Assert.Equal(ExistingEntry, await File.ReadAllTextAsync(logPath));
         }
         finally
         {

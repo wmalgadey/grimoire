@@ -41,8 +41,9 @@ After every write:
 - Update `index.md` to list any newly created pages. Existing entries that were
   updated do not need a new index entry, but update the summary if it no longer reflects
   the page's current content. See Catalog Upkeep below for the exact entry format.
-- At run end, append one entry to `log.md` — see Ingest Log Upkeep below for the exact
-  heading-plus-paragraph shape and why it must go at the end of the file, not the top.
+- If this run changed wiki content, add one entry at the **top** of `log.md` — see Ingest
+  Log Upkeep below for the exact heading-plus-paragraph shape and why it must go at the
+  top of the file, not the end. A run that changed nothing writes no entry at all.
 
 If supersession occurred, also note it in the log entry.
 
@@ -138,7 +139,7 @@ create it, but only when none of the existing folders fits.
 ```text
 <wiki root>/
 ├── index.md              # the catalog — every page, linked by root-relative path
-├── log.md                # the append-only activity log
+├── log.md                # the activity log — newest entry first
 ├── tech/                 # Technologies, platforms (Kubernetes, Quarkus, …)
 ├── tools/                # Tools, CLIs, SaaS products
 ├── concepts/             # Abstract concepts, patterns, ideas
@@ -314,10 +315,21 @@ Keep the body current:
 
 ## Ingest Log (log.md) Upkeep
 
-`log.md` records ingest history and is **append-only**: every entry — yours or the
-harness backstop's — is added after all existing content, at the very end of the file.
-Never insert a new entry above existing ones and never edit an existing entry; the
-guarded write boundary structurally enforces this (a non-append write is denied).
+`log.md` is the wiki's own record of what changed, and it is yours alone — no part of the
+harness ever writes it. It is **prepend-only**: your new entry goes above all existing
+content, and every byte already in the file is preserved unchanged below it. Never edit,
+reorder, or remove an existing entry; the guarded write boundary structurally enforces
+this (a write whose proposed content does not end with the current content byte-for-byte
+is denied `log_entry_not_prepended`).
+
+To add an entry, read `log.md`, then write your new entry followed by exactly what you
+read. If the file does not exist yet, your entry is the whole file — that is a normal
+first write, not an error.
+
+**Log only real changes.** Write an entry when this run created, updated, or superseded a
+page, or updated `index.md`. A run that only answered a question, produced no writes, or
+failed before changing anything writes no entry. An empty log is the correct outcome for
+a run that changed nothing.
 
 Every entry is one `##`-level heading, immediately followed by a blank line and one
 short prose paragraph:
@@ -336,12 +348,13 @@ created/updated/superseded and the source reference. Task: <task_id>.>
 - `SUMMARY` is a short phrase (e.g. `updated retrieval-patterns, created hybrid-search`)
   — not a restatement of the paragraph, and not a re-encoded field list.
 - The paragraph carries all the detail that used to live in the heading: which pages
-  changed and why, the source reference, and — always — a `Task: <task_id>` reference,
-  so the harness backstop can tell your entry already covers this run and skip
-  appending its own.
+  changed and why, the source reference, and — always — a `Task: <task_id>` reference.
 
-For a failed run the harness appends its own minimal fallback entry in the same shape;
-you do not need to handle that case.
+**One action, one complete entry.** Each logged action produces its own entry with its
+own date heading, even when the file already contains entries dated today. Do not merge
+your entry into an existing day's section, do not add a bullet under an earlier heading,
+and do not extend an earlier entry's paragraph. Two entries may carry byte-identical
+headings; that is expected and correct. There is no such thing as a "day section" here.
 
 ## Contradiction Marking
 

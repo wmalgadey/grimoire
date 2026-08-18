@@ -50,6 +50,16 @@ public class IngestReplayEvalTests
     public Task SC007_CatalogDescriptionSpecificity_ReplaysAtThreshold()
         => AssertScenarioAsync(IngestScenarioDefinitions.CatalogDescriptionSpecificity);
 
+    // 025-agent-owned-log: the two Ingest-side agent-judgment criteria. SC-005's
+    // "accurately describes what changed" half stays with LogParagraphSpecificity above.
+    [Fact]
+    public Task SC005_LogNewestFirstPlacement_ReplaysAtThreshold()
+        => AssertScenarioAsync(IngestScenarioDefinitions.LogNewestFirstPlacement);
+
+    [Fact]
+    public Task SC007_LogNoDayGrouping_ReplaysAtThreshold()
+        => AssertScenarioAsync(IngestScenarioDefinitions.LogNoDayGrouping);
+
     private static async Task AssertScenarioAsync(ScenarioDefinition scenario)
     {
         var paths = EvalPaths.Discover();
