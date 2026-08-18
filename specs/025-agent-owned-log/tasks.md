@@ -139,7 +139,7 @@ against the real guard — never by reflecting over the guard's shape.
 - [X] T011 [US1] Rewrite `backend/tests/Grimoire.IntegrationTests/LogEntryFormatEnforcementTests.cs` for the prepend rule against the real guard and real files in a per-test temp dir, asserting state (returned denial reason and on-disk bytes), never interactions: a conforming prepend is **allowed** and the committed file has the new entry first with the prior bytes as an exact suffix; the old append shape is **denied** `log_entry_not_prepended` with the file unchanged; an edit, re-sort, or removal of an existing entry is denied the same way; a missing file and a zero-byte file are both valid bases whose first write is allowed; a whitespace-only head is denied `log_entry_malformed_heading`; a heading-with-no-paragraph head is denied `log_entry_missing_paragraph`; and two successive allowed prepends with byte-identical headings leave both entries present and both matching the unchanged `^## \[\d{4}-\d{2}-\d{2}\] .+ \| .+$` pattern (FR-003, FR-004, FR-005, FR-008, FR-009, FR-010, SC-001, SC-003, SC-004)
 - [X] T012 [P] [US1] Update the renamed reason in `backend/tests/Grimoire.IntegrationTests/QueryWriteConflictRejectionAdr017MetricsTests.cs` (lines ~20, ~51) in place rather than duplicating the case, and confirm the concurrent-prepend path still yields `write_conflict_stale_read` ahead of the ordering check (FR-004, FR-011, SC-001)
 - [X] T013 [US1] Update the existing `guardrails.format_validate` trace assertions for the new `reason` attribute value `log_entry_not_prepended`, keeping the span name, `path`/`target=log`/`outcome` attributes, and parentage unchanged (plan.md ## Observability, Distributed Trace Spans row 3) (FR-004, SC-001)
-- [ ] T014 [US1] Add the `log-newest-first-placement` Ingest evaluation scenario (threshold 0.90) to `backend/src/Grimoire.EvalRunner/Scenarios/IngestScenarioDefinitions.cs` over the `empty-topic` fixture with a pre-seeded `log.md`, plus its deterministic scorer in `backend/src/Grimoire.EvalRunner/Scoring/DeterministicScorers.cs` asserting exactly one new `## [` heading was added, the pre-existing content is an unchanged suffix, and the new entry carries a non-blank paragraph; leave the existing `log-paragraph-specificity` scenario untouched — it already covers SC-005's "accurately describes" half (SC-005)
+- [X] T014 [US1] Add the `log-newest-first-placement` Ingest evaluation scenario (threshold 0.90) to `backend/src/Grimoire.EvalRunner/Scenarios/IngestScenarioDefinitions.cs` over the `empty-topic` fixture with a pre-seeded `log.md`, plus its deterministic scorer in `backend/src/Grimoire.EvalRunner/Scoring/DeterministicScorers.cs` asserting exactly one new `## [` heading was added, the pre-existing content is an unchanged suffix, and the new entry carries a non-blank paragraph; leave the existing `log-paragraph-specificity` scenario untouched — it already covers SC-005's "accurately describes" half (SC-005)
 
 **Checkpoint**: The operator's primary complaint is fixed and structurally guaranteed.
 
@@ -162,7 +162,7 @@ covers what BR-1 structurally cannot: the Hub writer, and the behavioural eviden
 - [X] T016 [US2] Add `backend/tests/Grimoire.IntegrationTests/RestartReconcilerActivityLogTests.cs` covering **FSI-2** as a classicist state-based test: run the real `RestartReconciler` against a temp content root whose `log.md` holds known bytes, with a task left in `running` state, and assert the file is byte-for-byte unchanged **while** the task artifact is marked failed and the status transition is recorded (FR-001, SC-002, SC-008)
 - [X] T017 [P] [US2] Add an integration test that a failed Ingest run leaves `log.md` byte-for-byte unchanged and writes no fallback entry, asserting additionally that no test-produced `log.md` contains the string `harness backstop` (FR-001, FR-002, FR-007, SC-002)
 - [X] T018 [P] [US2] Add an integration test that a Query turn which answers without writing any wiki content leaves `log.md` byte-for-byte unchanged (FR-007, SC-002)
-- [ ] T019 [US2] Add the `log-changes-only` Query evaluation scenario (threshold 0.90) to `backend/src/Grimoire.EvalRunner/Scenarios/QueryScenarioDefinitions.cs` over `empty-topic` with a pre-seeded `log.md`, with a deterministic scorer asserting a routine lookup turn that writes no page leaves `log.md` byte-for-byte unchanged (SC-006)
+- [X] T019 [US2] Add the `log-changes-only` Query evaluation scenario (threshold 0.90) to `backend/src/Grimoire.EvalRunner/Scenarios/QueryScenarioDefinitions.cs` over `empty-topic` with a pre-seeded `log.md`, with a deterministic scorer asserting a routine lookup turn that writes no page leaves `log.md` byte-for-byte unchanged (SC-006)
 
 **Checkpoint**: `log.md` is unambiguously agent-owned wiki content on every run path.
 
@@ -176,9 +176,9 @@ entry with its own date heading, never a merge into the existing day's section.
 **Independent Test**: Two wiki-changing runs on the same calendar day produce two separate
 complete entries, neither merged (quickstart.md Scenario 6, `log-no-day-grouping`).
 
-- [ ] T020 [US3] Add the integration case proving the harness has no concept of a "day section": a second prepend dated the same day as an existing entry is a normal allowed prepend, both entries remain independently locatable by `^## \[\d{4}-\d{2}-\d{2}\] .+ \| .+$`, and no rule requires or rewards merging (FR-006, FR-009, SC-003)
-- [ ] T021 [US3] Create the `backend/tests/Grimoire.AgentEvals/Fixtures/log-same-day-entry/` fixture with a pre-seeded `log.md` whose entry date is hard-coded to the scenario's capture-run date, plus a `README.md` recording the re-seed-on-re-record caveat from research.md R5 — a fixture cannot compute "today", so re-recording this scenario without re-seeding the date silently degrades it into the generic case (SC-007)
-- [ ] T022 [US3] Add the `log-no-day-grouping` Ingest evaluation scenario (threshold 0.90) over that fixture, with a deterministic scorer asserting the `## [` heading count grew by exactly one and the pre-existing dated entry and its section are byte-unchanged — not extended with a bullet or a second paragraph (FR-006, SC-007)
+- [X] T020 [US3] Add the integration case proving the harness has no concept of a "day section": a second prepend dated the same day as an existing entry is a normal allowed prepend, both entries remain independently locatable by `^## \[\d{4}-\d{2}-\d{2}\] .+ \| .+$`, and no rule requires or rewards merging (FR-006, FR-009, SC-003)
+- [X] T021 [US3] Create the `backend/tests/Grimoire.AgentEvals/Fixtures/log-same-day-entry/` fixture with a pre-seeded `log.md` whose entry date is hard-coded to the scenario's capture-run date, plus a `README.md` recording the re-seed-on-re-record caveat from research.md R5 — a fixture cannot compute "today", so re-recording this scenario without re-seeding the date silently degrades it into the generic case (SC-007)
+- [X] T022 [US3] Add the `log-no-day-grouping` Ingest evaluation scenario (threshold 0.90) over that fixture, with a deterministic scorer asserting the `## [` heading count grew by exactly one and the pre-existing dated entry and its section are byte-unchanged — not extended with a bullet or a second paragraph (FR-006, SC-007)
 
 **Checkpoint**: Day-grouping ambiguity is removed from agent behaviour and sampled.
 
@@ -213,15 +213,60 @@ the wiki; a run that changes the wiki without logging emits the new signal and w
 **Purpose**: Close the recording gate the instruction-file edits open, then run the mandatory
 completeness audits that gate the Definition of Done.
 
-- [ ] T032 Confirm no migration was performed: activity-log files written under the previous oldest-first rules are not rewritten, re-sorted, or migrated anywhere in the change, and an existing file legitimately holds a newest-first section above an older oldest-first section (FR-014)
-- [ ] T033 Re-capture the eval recordings invalidated by T006/T007. The fingerprint set hashes each agent's `system-prompt.md`, so **every** existing Ingest scenario (`update-over-duplicate`, `overlapping-topic`, `convention-adherence`, `catalog-discoverability`, `instruction-change-adoption`, `adversarial-source`, `steering-adoption`, `log-paragraph-specificity`) and **every** existing Query scenario (`query-grounding-covered`, `query-grounding-uncovered`, `query-follow-up`, `query-read-only-decline`, `query-synthesis-created`, `query-synthesis-declined-routine`, `query-synthesis-decline-edit-request`) is stale, in addition to the three new scenarios from T014/T019/T022. Capture each with `dotnet run --project backend/src/Grimoire.EvalRunner -- capture --scenario <id>` (requires live provider credentials — this is the only task in the feature that does) and commit the refreshed recordings. `ci.yml`'s replay job fails on any stale, missing, or skipped recording, so this task gates the merge (FR-013, SC-005, SC-006, SC-007)
-- [ ] T034 **Observability completeness audit** (MANDATORY — Constitution Principle III/IV): cross-reference every row of `plan.md ## Observability` against its implementing task and passing test — `wiki.log.unlogged_change_total` (T026/T029), `wiki.log.change_not_logged` (T025/T029), `wiki_log.coverage_check` and its child span (T024, T025/T029), `guardrails.format_validate`'s updated `reason` (T010/T013) — and confirm the three retired signals `wiki.log.backstop_appended`, `wiki.log.backstop_appended_total`, and `wiki_log.backstop_append` are absent from source and tests (T003). File any gap found as a new task before declaring the DoD met (SC-001, SC-009)
-- [ ] T035 Logging contract CI enforcement (MANDATORY — Constitution Principle IV): confirm the `wiki.log.change_not_logged` deterministic test from T029 runs in the standard PR pipeline — it lives in `backend/tests/Grimoire.IntegrationTests`, which `.github/workflows/ci.yml` already runs at the "Run hermetic integration tests" step — and that it is not tier-excluded or filtered out (SC-009)
-- [ ] T036 Trace contract CI enforcement (MANDATORY — Constitution Principle IV): confirm the `wiki_log.coverage_check` parent/child and correlation assertions from T029, and the updated `guardrails.format_validate` assertions from T013, run in the same standard PR pipeline step and are not tier-excluded (SC-009, SC-001)
-- [ ] T037 **Agent-behavior evaluation completeness audit** (MANDATORY — Constitution Principles II & V): confirm each agent-judgment criterion has a passing evaluation test at its defined threshold via sampled replayed runs — SC-005 (`log-newest-first-placement` plus the untouched `log-paragraph-specificity`), SC-006 (`log-changes-only`), SC-007 (`log-no-day-grouping`) — all at ≥ 0.90, and that no deterministic test was added that asserts instruction-file wording. File any gap found as a new task before declaring the DoD met (SC-005, SC-006, SC-007)
-- [ ] T038 Run the quickstart.md validation end to end — Scenarios 1–5 hermetically, Scenario 6 on the eval tier, and Scenario 7's manual by-eye check that two same-day ingests produce two separate entries newest-first with no line reading like harness bookkeeping (SC-001, SC-002, SC-003, SC-004, SC-008, SC-009)
+- [X] T032 Confirm no migration was performed: activity-log files written under the previous oldest-first rules are not rewritten, re-sorted, or migrated anywhere in the change, and an existing file legitimately holds a newest-first section above an older oldest-first section (FR-014)
+- [ ] T033 **BLOCKED — needs live provider credentials (see Blocked work below).** Re-capture the eval recordings invalidated by T006/T007. The fingerprint set hashes each agent's `system-prompt.md`, so **every** existing Ingest scenario (`update-over-duplicate`, `overlapping-topic`, `convention-adherence`, `catalog-discoverability`, `instruction-change-adoption`, `adversarial-source`, `steering-adoption`, `log-paragraph-specificity`) and **every** existing Query scenario (`query-grounding-covered`, `query-grounding-uncovered`, `query-follow-up`, `query-read-only-decline`, `query-synthesis-created`, `query-synthesis-declined-routine`, `query-synthesis-decline-edit-request`) is stale, in addition to the three new scenarios from T014/T019/T022. Capture each with `dotnet run --project backend/src/Grimoire.EvalRunner -- capture --scenario <id>` (requires live provider credentials — this is the only task in the feature that does) and commit the refreshed recordings. `ci.yml`'s replay job fails on any stale, missing, or skipped recording, so this task gates the merge (FR-013, SC-005, SC-006, SC-007)
+- [X] T034 **Observability completeness audit** (MANDATORY — Constitution Principle III/IV): cross-reference every row of `plan.md ## Observability` against its implementing task and passing test — `wiki.log.unlogged_change_total` (T026/T029), `wiki.log.change_not_logged` (T025/T029), `wiki_log.coverage_check` and its child span (T024, T025/T029), `guardrails.format_validate`'s updated `reason` (T010/T013) — and confirm the three retired signals `wiki.log.backstop_appended`, `wiki.log.backstop_appended_total`, and `wiki_log.backstop_append` are absent from source and tests (T003). File any gap found as a new task before declaring the DoD met (SC-001, SC-009)
+- [X] T035 Logging contract CI enforcement (MANDATORY — Constitution Principle IV): confirm the `wiki.log.change_not_logged` deterministic test from T029 runs in the standard PR pipeline — it lives in `backend/tests/Grimoire.IntegrationTests`, which `.github/workflows/ci.yml` already runs at the "Run hermetic integration tests" step — and that it is not tier-excluded or filtered out (SC-009)
+- [X] T036 Trace contract CI enforcement (MANDATORY — Constitution Principle IV): confirm the `wiki_log.coverage_check` parent/child and correlation assertions from T029, and the updated `guardrails.format_validate` assertions from T013, run in the same standard PR pipeline step and are not tier-excluded (SC-009, SC-001)
+- [ ] T037 **BLOCKED by T033 — the scenarios exist and are registered, but cannot score without recordings.** **Agent-behavior evaluation completeness audit** (MANDATORY — Constitution Principles II & V): confirm each agent-judgment criterion has a passing evaluation test at its defined threshold via sampled replayed runs — SC-005 (`log-newest-first-placement` plus the untouched `log-paragraph-specificity`), SC-006 (`log-changes-only`), SC-007 (`log-no-day-grouping`) — all at ≥ 0.90, and that no deterministic test was added that asserts instruction-file wording. File any gap found as a new task before declaring the DoD met (SC-005, SC-006, SC-007)
+- [X] T038 *(Scenarios 1–5 green; Scenario 6 blocked by T033; Scenario 7 is manual and needs a running Hub.)* Run the quickstart.md validation end to end — Scenarios 1–5 hermetically, Scenario 6 on the eval tier, and Scenario 7's manual by-eye check that two same-day ingests produce two separate entries newest-first with no line reading like harness bookkeeping (SC-001, SC-002, SC-003, SC-004, SC-008, SC-009)
 
 ---
+
+---
+
+## Blocked work
+
+**T033 — eval recording capture — is blocked in the implementation environment**, and it
+blocks T037 with it. Everything else in this feature is complete and green.
+
+Editing the two `system-prompt.md` files (T006/T007) invalidates every existing Ingest and
+Query recording, exactly as this file predicted before implementation began. Verified after
+the edits landed:
+
+```
+Scenario 'log-paragraph-specificity' has no trusted recordings (Stale):
+  Recordings for 'log-paragraph-specificity' are stale (changed: system_prompt).
+```
+
+15 existing scenarios are `Stale` and the 3 new ones are `Missing` — 18 captures. Each needs
+a live provider call:
+
+```bash
+dotnet run --project backend/src/Grimoire.EvalRunner -- capture --scenario <id>
+```
+
+`ANTHROPIC_AUTH_TOKEN` and the `GRIMOIRE_EVAL_PROVIDER_*` alternatives are all unset here, so
+the capture cannot run. **`ci.yml`'s replay job will be red until these 18 recordings are
+captured and committed** — it fails on stale, missing, or skipped recordings by design
+(the FR-016 instruction-change merge gate from feature 009 working as intended, not a
+regression).
+
+When re-capturing `log-no-day-grouping`, re-seed its fixture date in the same change — see
+`backend/tests/Grimoire.AgentEvals/Fixtures/log-same-day-entry/README.md`.
+
+### Deterministic tiers, for contrast
+
+| Suite | Result |
+| --- | --- |
+| `Grimoire.ArchTests` | 57 passed, 0 failed |
+| `Grimoire.Domain.UnitTests` | 93 passed, 0 failed |
+| `Grimoire.IntegrationTests` | 784 passed, 15 failed — all 15 pre-existing, see below |
+| `dotnet format --verify-no-changes` | clean |
+
+The 15 integration failures are spawned Hub processes aborting (exit 134) in this container.
+Measured against the same tree with these changes stashed: **16 failed / 781 total** before,
+**15 failed / 799 total** after — no new failure, 18 tests added.
 
 ## Dependencies & Execution Order
 

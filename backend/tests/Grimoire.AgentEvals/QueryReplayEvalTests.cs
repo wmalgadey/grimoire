@@ -55,6 +55,11 @@ public class QueryReplayEvalTests
     public Task SC008_SynthesisDeclineEditRequest_ReplaysAtThreshold()
         => AssertScenarioAsync(QueryScenarioDefinitions.SynthesisDeclineEditRequest);
 
+    // 025-agent-owned-log SC-006: a routine lookup writes no activity-log entry.
+    [Fact]
+    public Task SC006_LogChangesOnly_ReplaysAtThreshold()
+        => AssertScenarioAsync(QueryScenarioDefinitions.LogChangesOnly);
+
     private static async Task AssertScenarioAsync(QueryScenarioDefinition scenario)
     {
         var paths = EvalPaths.Discover();

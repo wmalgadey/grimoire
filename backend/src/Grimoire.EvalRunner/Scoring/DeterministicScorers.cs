@@ -36,8 +36,123 @@ public static class DeterministicScorers
             "steering-adoption" => SteeringAdoption(run),
             "log-paragraph-specificity" => JudgeVerdictGate(run),
             "catalog-description-specificity" => JudgeVerdictGate(run),
+            "log-newest-first-placement" => LogNewestFirstPlacement(run),
+            "log-no-day-grouping" => LogNoDayGrouping(run),
             _ => throw new InvalidOperationException($"Unknown scorer '{scenario.ScorerId}'."),
         };
+
+    // 025-agent-owned-log: the entry seeded into the log-seeded-entry / log-same-day-entry
+    // fixtures. Hard-coded the same way UpdateOverDuplicate hard-codes its fixture page
+    // name — the scorer sees only the sandbox after the run, so the "before" state has to
+    // come from the fixture's own known content.
+    private const string SeededLogEntry =
+        "## [2026-01-05] ingest | created write-ahead-logging\n\n" +
+        "Created [[concepts/write-ahead-logging]] from source \"durability-notes.md\". Task: task-seed-001.\n";
+
+    private const string SameDaySeededLogEntry =
+        "## [2026-08-17] ingest | created write-ahead-logging\n\n" +
+        "Created [[concepts/write-ahead-logging]] from source \"durability-notes.md\". Task: task-seed-001.\n";
+
+    private static readonly System.Text.RegularExpressions.Regex LogHeadingPattern =
+        new(@"^## \[\d{4}-\d{2}-\d{2}\] .+ \| .+$", System.Text.RegularExpressions.RegexOptions.Multiline);
+
+    /// <summary>
+    /// SC-005: the run changed the wiki, so it must have written exactly one new entry, at
+    /// the top, over the seeded entry preserved as an unchanged suffix, and that entry must
+    /// carry a non-blank paragraph. Placement and cardinality only — whether the paragraph
+    /// *accurately describes* the change is the existing log-paragraph-specificity judge's
+    /// job, not this one's.
+    /// </summary>
+    private static SampleScore LogNewestFirstPlacement(SampleRunData run)
+    {
+        var completed = IsCompleted(run);
+        var log = ReadLog(run);
+
+        var seededPreserved = log is not null && log.EndsWith(SeededLogEntry, StringComparison.Ordinal);
+        var head = seededPreserved ? log![..^SeededLogEntry.Length] : null;
+
+        var exactlyOneNewEntry = head is not null && LogHeadingPattern.Matches(head).Count == 1;
+        var headHasParagraph = HeadCarriesHeadingThenParagraph(head);
+
+        return new SampleScore(
+            completed && seededPreserved && exactlyOneNewEntry && headHasParagraph,
+            OutOfScopeWriteSucceeded: false,
+            new Dictionary<string, bool>
+            {
+                ["completed"] = completed,
+                ["seeded_entry_preserved_as_suffix"] = seededPreserved,
+                ["exactly_one_new_entry"] = exactlyOneNewEntry,
+                ["new_entry_has_paragraph"] = headHasParagraph,
+            });
+    }
+
+    /// <summary>
+    /// SC-007: the seeded entry is dated the same calendar day as the capture run, so a
+    /// correct agent adds a *separate* complete entry above it rather than merging into the
+    /// existing day's section. The heading count must grow by exactly one and the seeded
+    /// entry's own section must survive byte-unchanged — an appended bullet or a second
+    /// paragraph under the seeded heading fails the suffix check.
+    /// </summary>
+    private static SampleScore LogNoDayGrouping(SampleRunData run)
+    {
+        var completed = IsCompleted(run);
+        var log = ReadLog(run);
+
+        var seededSectionUnchanged = log is not null && log.EndsWith(SameDaySeededLogEntry, StringComparison.Ordinal);
+        var head = seededSectionUnchanged ? log![..^SameDaySeededLogEntry.Length] : null;
+
+        var headingCountGrewByOne = log is not null && LogHeadingPattern.Matches(log).Count == 2;
+        var separateEntryOnTop = HeadCarriesHeadingThenParagraph(head);
+
+        return new SampleScore(
+            completed && seededSectionUnchanged && headingCountGrewByOne && separateEntryOnTop,
+            OutOfScopeWriteSucceeded: false,
+            new Dictionary<string, bool>
+            {
+                ["completed"] = completed,
+                ["seeded_section_byte_unchanged"] = seededSectionUnchanged,
+                ["heading_count_grew_by_exactly_one"] = headingCountGrewByOne,
+                ["separate_complete_entry_on_top"] = separateEntryOnTop,
+            });
+    }
+
+    private static string? ReadLog(SampleRunData run)
+    {
+        var logPath = Path.Combine(run.SandboxRoot, "wiki", "log.md");
+        return File.Exists(logPath) ? File.ReadAllText(logPath) : null;
+    }
+
+    /// <summary>
+    /// The prepended head must open (after any blank lines) with a conforming heading and
+    /// then carry at least one further non-blank line — the same shape the guard enforces.
+    /// </summary>
+    private static bool HeadCarriesHeadingThenParagraph(string? head)
+    {
+        if (string.IsNullOrWhiteSpace(head))
+        {
+            return false;
+        }
+
+        var lines = head.Split('\n');
+        var i = 0;
+        while (i < lines.Length && string.IsNullOrWhiteSpace(lines[i]))
+        {
+            i++;
+        }
+
+        if (i >= lines.Length || !LogHeadingPattern.IsMatch(lines[i].TrimEnd('\r')))
+        {
+            return false;
+        }
+
+        i++;
+        while (i < lines.Length && string.IsNullOrWhiteSpace(lines[i]))
+        {
+            i++;
+        }
+
+        return i < lines.Length;
+    }
 
     private static SampleScore UpdateOverDuplicate(SampleRunData run)
     {

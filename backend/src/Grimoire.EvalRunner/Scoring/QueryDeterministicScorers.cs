@@ -40,8 +40,44 @@ public static class QueryDeterministicScorers
             "query-synthesis-created" => SynthesisCreated(run),
             "query-synthesis-declined-routine" => SynthesisDeclinedRoutine(run),
             "query-synthesis-decline-edit-request" => SynthesisDeclineEditRequest(run),
+            "log-changes-only" => LogChangesOnly(run),
             _ => throw new InvalidOperationException($"Unknown Query scorer '{scorerId}'."),
         };
+
+    // 025-agent-owned-log: the entry seeded into the query-log-seeded fixture, known to
+    // this scorer the same way the Ingest scorers know theirs — the scorer sees only the
+    // sandbox after the turn, so the "before" state comes from the fixture's content.
+    private const string SeededLogEntry =
+        "## [2026-01-05] query | created single-composition-point\n\n" +
+        "Created [[concepts/single-composition-point]], connecting [[credential-scoping]] and\n" +
+        "[[runtime-paths]], in response to an earlier query. Ref: turn-seed-001.\n";
+
+    /// <summary>
+    /// SC-006 (FR-007): a routine lookup that creates no page must leave the activity log
+    /// byte-for-byte unchanged. Both halves matter — a turn that wrote a page and then
+    /// logged it would be correct behaviour but a different scenario, so "created no page"
+    /// is scored alongside "log untouched" rather than assumed.
+    /// </summary>
+    private static SampleScore LogChangesOnly(QuerySampleRunData run)
+    {
+        var wroteNoPage = run.CreatedPages.Count == 0;
+
+        var logPath = Path.Combine(run.WikiRoot, "log.md");
+        var logUnchanged = File.Exists(logPath)
+            && string.Equals(File.ReadAllText(logPath), SeededLogEntry, StringComparison.Ordinal);
+
+        var answered = !string.IsNullOrWhiteSpace(run.Answer);
+
+        return new SampleScore(
+            answered && wroteNoPage && logUnchanged,
+            OutOfScopeWriteSucceeded: false,
+            new Dictionary<string, bool>
+            {
+                ["answered"] = answered,
+                ["created_no_page"] = wroteNoPage,
+                ["activity_log_byte_unchanged"] = logUnchanged,
+            });
+    }
 
     private static SampleScore GroundingCovered(QuerySampleRunData run)
     {
