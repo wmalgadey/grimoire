@@ -29,10 +29,15 @@ public class RestartReconcilerActivityLogTests
     {
         var root = Path.Combine(Path.GetTempPath(), $"reconciler-log-{Guid.NewGuid():N}");
         var tasksDir = Path.Combine(root, "tasks");
+        var wikiDir = Path.Combine(root, "wiki");
         Directory.CreateDirectory(tasksDir);
+        Directory.CreateDirectory(wikiDir);
         try
         {
-            var logPath = Path.Combine(root, "log.md");
+            // <WikiDir>/log.md is where GrimoirePathResolver puts the activity log, so that
+            // is where this seeds it: the reconciler no longer takes a log path, and a
+            // regression that reintroduced the write would resolve it exactly here.
+            var logPath = Path.Combine(wikiDir, "log.md");
             await File.WriteAllTextAsync(logPath, SeededLog);
             var seededBytes = await File.ReadAllBytesAsync(logPath);
 
@@ -88,10 +93,12 @@ public class RestartReconcilerActivityLogTests
     {
         var root = Path.Combine(Path.GetTempPath(), $"reconciler-log-{Guid.NewGuid():N}");
         var tasksDir = Path.Combine(root, "tasks");
+        var wikiDir = Path.Combine(root, "wiki");
         Directory.CreateDirectory(tasksDir);
+        Directory.CreateDirectory(wikiDir);
         try
         {
-            var logPath = Path.Combine(root, "log.md");
+            var logPath = Path.Combine(wikiDir, "log.md");
 
             const string taskId = "task-reconcile-002";
             await File.WriteAllTextAsync(
@@ -113,6 +120,10 @@ public class RestartReconcilerActivityLogTests
             await reconciler.ReconcileRunningTasksAsync(tasksDir);
 
             Assert.False(File.Exists(logPath));
+
+            // Not just "no log.md": the wiki directory is untouched, so a reconciler that
+            // wrote its reconciliation note anywhere else in the wiki fails here too.
+            Assert.Empty(Directory.EnumerateFileSystemEntries(wikiDir));
         }
         finally
         {
