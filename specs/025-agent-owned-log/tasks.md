@@ -214,46 +214,80 @@ the wiki; a run that changes the wiki without logging emits the new signal and w
 completeness audits that gate the Definition of Done.
 
 - [X] T032 Confirm no migration was performed: activity-log files written under the previous oldest-first rules are not rewritten, re-sorted, or migrated anywhere in the change, and an existing file legitimately holds a newest-first section above an older oldest-first section (FR-014)
-- [ ] T033 **BLOCKED — needs live provider credentials (see Blocked work below).** Re-capture the eval recordings invalidated by T006/T007. The fingerprint set hashes each agent's `system-prompt.md`, so **every** existing Ingest scenario (`update-over-duplicate`, `overlapping-topic`, `convention-adherence`, `catalog-discoverability`, `instruction-change-adoption`, `adversarial-source`, `steering-adoption`, `log-paragraph-specificity`) and **every** existing Query scenario (`query-grounding-covered`, `query-grounding-uncovered`, `query-follow-up`, `query-read-only-decline`, `query-synthesis-created`, `query-synthesis-declined-routine`, `query-synthesis-decline-edit-request`) is stale, in addition to the three new scenarios from T014/T019/T022. Capture each with `dotnet run --project backend/src/Grimoire.EvalRunner -- capture --scenario <id>` (requires live provider credentials — this is the only task in the feature that does) and commit the refreshed recordings. `ci.yml`'s replay job fails on any stale, missing, or skipped recording, so this task gates the merge (FR-013, SC-005, SC-006, SC-007)
+- [X] T033 Re-capture the eval recordings invalidated by T006/T007. The fingerprint set hashes each agent's `system-prompt.md`, so **every** existing Ingest scenario (`update-over-duplicate`, `overlapping-topic`, `convention-adherence`, `catalog-discoverability`, `instruction-change-adoption`, `adversarial-source`, `steering-adoption`, `log-paragraph-specificity`) and **every** existing Query scenario (`query-grounding-covered`, `query-grounding-uncovered`, `query-follow-up`, `query-read-only-decline`, `query-synthesis-created`, `query-synthesis-declined-routine`, `query-synthesis-decline-edit-request`) was stale, in addition to the three new scenarios from T014/T019/T022 — 18 captures, all committed. Captured locally against Anthropic (`claude-haiku-4-5`); `eval.yml` was unusable because the NIM key answered two calls and then returned 429 a hundred times running. Model identity is provenance, not a staleness input, so the replay tier trusts these the same way. Replay is green across all 25 scenarios (FR-013, SC-005, SC-006, SC-007)
 - [X] T034 **Observability completeness audit** (MANDATORY — Constitution Principle III/IV): cross-reference every row of `plan.md ## Observability` against its implementing task and passing test — `wiki.log.unlogged_change_total` (T026/T029), `wiki.log.change_not_logged` (T025/T029), `wiki_log.coverage_check` and its child span (T024, T025/T029), `guardrails.format_validate`'s updated `reason` (T010/T013) — and confirm the three retired signals `wiki.log.backstop_appended`, `wiki.log.backstop_appended_total`, and `wiki_log.backstop_append` are absent from source and tests (T003). File any gap found as a new task before declaring the DoD met (SC-001, SC-009)
 - [X] T035 Logging contract CI enforcement (MANDATORY — Constitution Principle IV): confirm the `wiki.log.change_not_logged` deterministic test from T029 runs in the standard PR pipeline — it lives in `backend/tests/Grimoire.IntegrationTests`, which `.github/workflows/ci.yml` already runs at the "Run hermetic integration tests" step — and that it is not tier-excluded or filtered out (SC-009)
 - [X] T036 Trace contract CI enforcement (MANDATORY — Constitution Principle IV): confirm the `wiki_log.coverage_check` parent/child and correlation assertions from T029, and the updated `guardrails.format_validate` assertions from T013, run in the same standard PR pipeline step and are not tier-excluded (SC-009, SC-001)
-- [ ] T037 **BLOCKED by T033 — the scenarios exist and are registered, but cannot score without recordings.** **Agent-behavior evaluation completeness audit** (MANDATORY — Constitution Principles II & V): confirm each agent-judgment criterion has a passing evaluation test at its defined threshold via sampled replayed runs — SC-005 (`log-newest-first-placement` plus the untouched `log-paragraph-specificity`), SC-006 (`log-changes-only`), SC-007 (`log-no-day-grouping`) — all at ≥ 0.90, and that no deterministic test was added that asserts instruction-file wording. File any gap found as a new task before declaring the DoD met (SC-005, SC-006, SC-007)
+- [X] T037 **Agent-behavior evaluation completeness audit** (MANDATORY — Constitution Principles II & V): every agent-judgment criterion has a passing evaluation test at its defined threshold, measured by replayed sampled runs — SC-005 `log-newest-first-placement` **100 %** and the untouched `log-paragraph-specificity` **100 %**, SC-006 `log-changes-only` **100 %**, SC-007 `log-no-day-grouping` **90 %** — all at or above the 0.90 threshold, and no deterministic test asserts instruction-file wording. One gap is recorded rather than closed here: SC-007 clears its threshold with zero margin, and only because the agent copies the date it reads from the seeded entry — nothing tells it what today is. See "Known limitation" below (SC-005, SC-006, SC-007)
 - [X] T038 *(Scenarios 1–5 green; Scenario 6 blocked by T033; Scenario 7 is manual and needs a running Hub.)* Run the quickstart.md validation end to end — Scenarios 1–5 hermetically, Scenario 6 on the eval tier, and Scenario 7's manual by-eye check that two same-day ingests produce two separate entries newest-first with no line reading like harness bookkeeping (SC-001, SC-002, SC-003, SC-004, SC-008, SC-009)
 
 ---
 
 ---
 
-## Blocked work
+## Eval recordings — captured
 
-**T033 — eval recording capture — is blocked in the implementation environment**, and it
-blocks T037 with it. Everything else in this feature is complete and green.
+**T033 and T037 are closed.** Nothing in this feature is blocked.
 
-Editing the two `system-prompt.md` files (T006/T007) invalidates every existing Ingest and
-Query recording, exactly as this file predicted before implementation began. Verified after
-the edits landed:
+Editing the two `system-prompt.md` files (T006/T007) invalidated every existing Ingest and
+Query recording, exactly as this file predicted before implementation began: 15 scenarios
+`Stale`, the 3 new ones `Missing`. All 18 were re-captured on 2026-08-18 and committed.
 
-```
-Scenario 'log-paragraph-specificity' has no trusted recordings (Stale):
-  Recordings for 'log-paragraph-specificity' are stale (changed: system_prompt).
-```
+They were captured **locally against Anthropic** (`claude-haiku-4-5`), not through
+`eval.yml`. Three separate faults had to be cleared before that route was even testable,
+and the third could not be:
 
-15 existing scenarios are `Stale` and the 3 new ones are `Missing` — 18 captures. Each needs
-a live provider call:
+1. `eval.yml` installed `litellm[proxy]` unpinned, and litellm 1.97.0 imports
+   `get_flat_dependant`, which fastapi removed in 0.140.7 — the proxy died on import and
+   the job failed its own readiness probe. Fixed by pinning `fastapi<0.140.7`; note the
+   symbol is absent from the entire 0.140.7+ range, so a `<0.141` bound is not enough.
+2. A capture failure discarded the proxy log, so the job reported 25 identical
+   "not every sample produced a recording" lines with no cause. Fixed by dumping the log.
+3. With both fixed, NVIDIA NIM answered two requests and then returned **429 for 101
+   consecutive calls**. That is a provider quota wall, not something this repo can fix.
 
-```bash
-dotnet run --project backend/src/Grimoire.EvalRunner -- capture --scenario <id>
-```
+Model identity is provenance, not a staleness input (`Fingerprints.cs`), so
+Anthropic-captured recordings are trusted by the replay tier exactly as the affordable
+provider's are.
 
-`ANTHROPIC_AUTH_TOKEN` and the `GRIMOIRE_EVAL_PROVIDER_*` alternatives are all unset here, so
-the capture cannot run. **`ci.yml`'s replay job will be red until these 18 recordings are
-captured and committed** — it fails on stale, missing, or skipped recordings by design
-(the FR-016 instruction-change merge gate from feature 009 working as intended, not a
-regression).
+`eval.yml` also gained a `scenarios` input: capture had always run the whole suite, so
+refreshing these 18 would have re-captured all 25, including six untouched Lint and
+remediation sets.
 
-When re-capturing `log-no-day-grouping`, re-seed its fixture date in the same change — see
-`backend/tests/Grimoire.AgentEvals/Fixtures/log-same-day-entry/README.md`.
+### Agent-judgment results (replayed, 10 samples each)
+
+| Criterion | Scenario | Rate | Threshold |
+| --- | --- | --- | --- |
+| SC-005 | `log-newest-first-placement` | 100 % | ≥ 90 % |
+| SC-005 | `log-paragraph-specificity` | 100 % | ≥ 90 % |
+| SC-006 | `log-changes-only` | 100 % | ≥ 90 % |
+| SC-007 | `log-no-day-grouping` | **90 %** | ≥ 90 % |
+
+Full replay: **25 of 25 scenarios pass**. `Grimoire.AgentEvals`: **76 passed, 0 failed**.
+
+`adversarial-source`, `steering-adoption`, and `log-paragraph-specificity` failed to
+capture on the first pass — individual samples produced no recording at all. A retry of
+exactly those three scored 100 % each, so the cause was transient provider failure, not a
+scenario defect. Worth knowing that the runner made this hard to establish: it records
+each sample's exit code and stderr, then discards them — `Summary.ForCapture` renders only
+the scenario-level line, so a failed capture reports no cause.
+
+### Known limitation: SC-007 passes for an accidental reason
+
+`log-no-day-grouping` sits **exactly on** its 0.90 threshold, with no margin, and it only
+produces a same-day collision at all because the agent copies the date it reads from the
+seeded entry. Nothing tells the agent what today is: no date reaches it through the system
+prompt, the user prompt, or the eval task id (`capture-<scenario>-NN-<guid>`, unlike the
+Hub's `{yyyy-MM-dd}-ingest-{guid}`). The scorer never asserts that the new entry's date
+equals the seeded one, so the scenario would still pass — silently testing nothing about
+day-grouping — if the agent picked a different date.
+
+The fixture README's re-seed warning therefore understates the problem: re-seeding the
+date is not sufficient, because the date is not the agent's to know. The durable fix is to
+give the agent a clock as a tool, which is a fourth tool and so an ADR-006-level change
+(its Decision Outcome fixes the surface at "exactly three file-level tools"). That is
+deliberately **not** in this feature's scope — it is its own feature, with its own ADR
+amending ADR-006.
 
 ### Deterministic tiers, for contrast
 
@@ -265,7 +299,7 @@ Measured on the CI runner (authoritative — run 32075283408, commit `f4c33f8`):
 | `Grimoire.ArchTests` | **57 passed**, 0 failed |
 | `Grimoire.Domain.UnitTests` | **93 passed**, 0 failed |
 | `Grimoire.IntegrationTests` | **799 passed, 0 failed** |
-| `Grimoire.AgentEvals` | 57 passed, **19 failed** — all recording staleness, see above |
+| `Grimoire.AgentEvals` | **76 passed, 0 failed** — measured locally after the re-capture; the 19 failures CI saw on `f4c33f8` were all recording staleness |
 
 The implementation container showed 15 integration failures that CI does not: spawned Hub
 processes abort there with exit 134. They were confirmed environmental before the CI run, by
@@ -273,9 +307,9 @@ stashing these changes and re-running on the same tree (**16 failed / 781 total*
 **15 failed / 799 total** after — no new failure, 18 tests added); CI's clean 799/799 settles
 it.
 
-The 19 eval failures are 15 `Stale` + 3 `Missing` + `EvalIndependenceFromHubConfigurationTests`
-(`Expected: Trusted, Actual: Stale`), which is a downstream consequence of the same staleness
-rather than a nineteenth capture.
+Those 19 eval failures were 15 `Stale` + 3 `Missing` + `EvalIndependenceFromHubConfigurationTests`
+(`Expected: Trusted, Actual: Stale`) — a downstream consequence of the same staleness rather
+than a nineteenth capture, and all resolved by the re-capture above.
 
 ## Dependencies & Execution Order
 
