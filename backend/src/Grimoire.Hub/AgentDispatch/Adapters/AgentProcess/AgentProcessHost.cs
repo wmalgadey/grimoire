@@ -598,6 +598,32 @@ public sealed class AgentProcessHost : IAgentProcessLauncher
         }
     }
 
+    /// <summary>
+    /// The Ingest variables' own idiom, which #122's fourth variable made worth naming: the
+    /// secrets file wins, an unset one falls back to whatever the Hub's own environment
+    /// carries, and the key is scrubbed before being re-injected so nothing survives that
+    /// neither source asked for (ADR-004). Only Ingest inherits this way — Query's and
+    /// Lint's variables deliberately do not.
+    /// </summary>
+    private static void ApplyInheritableOverride(
+        IDictionary<string, string> env,
+        IDictionary<string, string> baseEnv,
+        string name,
+        string? explicitValue,
+        bool announce = false)
+    {
+        var effective = !string.IsNullOrWhiteSpace(explicitValue)
+            ? explicitValue
+            : (baseEnv.TryGetValue(name, out var inherited) ? inherited : null);
+
+        ApplyOptionalOverride(env, name, effective);
+
+        if (announce && env.ContainsKey(name))
+        {
+            Console.WriteLine($"Using {name}={env[name]} for Ingest agent process.");
+        }
+    }
+
     /// Exposed internally so tests can assert both guarantees without spawning a real process.
     /// </summary>
     public static Dictionary<string, string> BuildChildEnvironment(
@@ -617,39 +643,10 @@ public sealed class AgentProcessHost : IAgentProcessLauncher
             env["ANTHROPIC_AUTH_TOKEN"] = authToken;
         }
 
-        var effectiveModel = !string.IsNullOrWhiteSpace(ingestModel)
-            ? ingestModel
-            : (baseEnv.TryGetValue("GRIMOIRE_INGEST_MODEL", out var inheritedModel) ? inheritedModel : null);
-        env.Remove("GRIMOIRE_INGEST_MODEL");
-        if (!string.IsNullOrWhiteSpace(effectiveModel))
-        {
-            Console.WriteLine($"Using GRIMOIRE_INGEST_MODEL={effectiveModel} for Ingest agent process.");
-            env["GRIMOIRE_INGEST_MODEL"] = effectiveModel;
-        }
-
-        var effectiveBaseUrl = !string.IsNullOrWhiteSpace(ingestBaseUrl)
-            ? ingestBaseUrl
-            : (baseEnv.TryGetValue("GRIMOIRE_INGEST_BASE_URL", out var inheritedBaseUrl) ? inheritedBaseUrl : null);
-        env.Remove("GRIMOIRE_INGEST_BASE_URL");
-        if (!string.IsNullOrWhiteSpace(effectiveBaseUrl))
-        {
-            Console.WriteLine($"Using GRIMOIRE_INGEST_BASE_URL={effectiveBaseUrl} for Ingest agent process.");
-            env["GRIMOIRE_INGEST_BASE_URL"] = effectiveBaseUrl;
-        }
-
-        var effectiveTokenCap = !string.IsNullOrWhiteSpace(ingestTokenCap)
-            ? ingestTokenCap
-            : (baseEnv.TryGetValue("GRIMOIRE_INGEST_TOKEN_CAP", out var inheritedTokenCap) ? inheritedTokenCap : null);
-        env.Remove("GRIMOIRE_INGEST_TOKEN_CAP");
-        if (!string.IsNullOrWhiteSpace(effectiveTokenCap))
-        {
-            env["GRIMOIRE_INGEST_TOKEN_CAP"] = effectiveTokenCap;
-        }
-
-        var effectiveMaxOutputTokens = !string.IsNullOrWhiteSpace(ingestMaxOutputTokens)
-            ? ingestMaxOutputTokens
-            : (baseEnv.TryGetValue("GRIMOIRE_INGEST_MAX_OUTPUT_TOKENS", out var inheritedMax) ? inheritedMax : null);
-        ApplyOptionalOverride(env, "GRIMOIRE_INGEST_MAX_OUTPUT_TOKENS", effectiveMaxOutputTokens);
+        ApplyInheritableOverride(env, baseEnv, "GRIMOIRE_INGEST_MODEL", ingestModel, announce: true);
+        ApplyInheritableOverride(env, baseEnv, "GRIMOIRE_INGEST_BASE_URL", ingestBaseUrl, announce: true);
+        ApplyInheritableOverride(env, baseEnv, "GRIMOIRE_INGEST_TOKEN_CAP", ingestTokenCap);
+        ApplyInheritableOverride(env, baseEnv, "GRIMOIRE_INGEST_MAX_OUTPUT_TOKENS", ingestMaxOutputTokens);
 
         env.Remove("TRACEPARENT");
         env.Remove("TRACESTATE");
