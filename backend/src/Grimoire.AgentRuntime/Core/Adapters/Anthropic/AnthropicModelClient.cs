@@ -501,59 +501,98 @@ public sealed class AnthropicModelClient : IModelClient
         return contentBlocks;
     }
 
-    private class LoggingHandler : DelegatingHandler
+    /// <summary>
+    /// #123: per-request diagnostics for the provider call.
+    /// <para>
+    /// The <c>Information</c> line is the transaction — method, URL, status. The bodies are
+    /// <c>Debug</c>, and are not even read unless <c>Debug</c> is enabled: at default levels
+    /// this used to duplicate the system prompt, the whole conversation, every ingested
+    /// source document, and every page body the agent wrote into the process log on every
+    /// turn — and since the conversation is re-sent in full each turn, the log grew
+    /// quadratically over a run that may take up to 50 of them. Ingested sources are
+    /// untrusted external documents that may be private; ADR-004 scopes the credential
+    /// carefully and the payload deserved the same care.
+    /// </para>
+    /// <para>
+    /// This is a debugging aid, not the project's observability surface — that is ADR-005's
+    /// spans, metrics, and structured events, none of which run through here. For a full,
+    /// durable record of what crossed the port, <c>GRIMOIRE_MODEL_CAPTURE_PATH</c> is the
+    /// purpose-built path (ADR-012).
+    /// </para>
+    /// </summary>
+    private sealed class LoggingHandler : DelegatingHandler
     {
-        private ILogger<AnthropicModelClient> _logger;
+        private readonly ILogger<AnthropicModelClient>? _logger;
 
-        public LoggingHandler(ILogger<AnthropicModelClient> logger)
+        public LoggingHandler(ILogger<AnthropicModelClient>? logger)
         {
-            this._logger = logger;
+            _logger = logger;
         }
 
-        protected override HttpResponseMessage Send(HttpRequestMessage request, CancellationToken cancellationToken)
+        private bool BodiesWanted => _logger?.IsEnabled(LogLevel.Debug) == true;
+
+        protected override HttpResponseMessage Send(
+            HttpRequestMessage request, CancellationToken cancellationToken)
         {
             _logger?.LogInformation("Anthropic request: {Method} {Url}", request.Method, request.RequestUri);
 
-            if (request.Content != null)
+            if (BodiesWanted && request.Content is not null)
             {
-                var requestBody = request.Content.ReadAsStringAsync(cancellationToken).GetAwaiter().GetResult();
-                _logger?.LogInformation("Anthropic request body: {RequestBody}", requestBody);
+                LogRequestBody(request.Content.ReadAsStringAsync(cancellationToken).GetAwaiter().GetResult());
             }
 
             var response = base.Send(request, cancellationToken);
 
             _logger?.LogInformation("Anthropic response: {StatusCode}", response.StatusCode);
 
-            if (response.Content != null)
+            if (BodiesWanted && ShouldReadResponseBody(response))
             {
-                var responseBody = response.Content.ReadAsStringAsync(cancellationToken).GetAwaiter().GetResult();
-                _logger?.LogInformation("Anthropic response body: {ResponseBody}", responseBody);
+                LogResponseBody(response.Content.ReadAsStringAsync(cancellationToken).GetAwaiter().GetResult());
             }
 
             return response;
         }
 
-        override protected async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+        protected override async Task<HttpResponseMessage> SendAsync(
+            HttpRequestMessage request, CancellationToken cancellationToken)
         {
             _logger?.LogInformation("Anthropic request: {Method} {Url}", request.Method, request.RequestUri);
 
-            if (request.Content != null)
+            if (BodiesWanted && request.Content is not null)
             {
-                var requestBody = await request.Content.ReadAsStringAsync(cancellationToken);
-                _logger?.LogInformation("Anthropic request body: {RequestBody}", requestBody);
+                LogRequestBody(await request.Content.ReadAsStringAsync(cancellationToken));
             }
 
             var response = await base.SendAsync(request, cancellationToken);
 
             _logger?.LogInformation("Anthropic response: {StatusCode}", response.StatusCode);
 
-            if (response.Content != null)
+            if (BodiesWanted && ShouldReadResponseBody(response))
             {
-                var responseBody = await response.Content.ReadAsStringAsync(cancellationToken);
-                _logger?.LogInformation("Anthropic response body: {ResponseBody}", responseBody);
+                LogResponseBody(await response.Content.ReadAsStringAsync(cancellationToken));
             }
 
             return response;
         }
+
+        /// <summary>
+        /// A streamed response is never read here. Buffering an <c>text/event-stream</c>
+        /// body to a string waits for the stream to finish, which is precisely the delay
+        /// Query's streaming exists to avoid (ADR-011 SC-003) — turning on a log level must
+        /// not change how the product behaves. The turns are recoverable in full through
+        /// <c>GRIMOIRE_MODEL_CAPTURE_PATH</c> instead.
+        /// </summary>
+        private static bool ShouldReadResponseBody(HttpResponseMessage response)
+            => response.Content is not null
+                && !string.Equals(
+                    response.Content.Headers.ContentType?.MediaType,
+                    "text/event-stream",
+                    StringComparison.OrdinalIgnoreCase);
+
+        private void LogRequestBody(string body)
+            => _logger?.LogDebug("Anthropic request body: {RequestBody}", body);
+
+        private void LogResponseBody(string body)
+            => _logger?.LogDebug("Anthropic response body: {ResponseBody}", body);
     }
 }

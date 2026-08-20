@@ -27,14 +27,19 @@ public sealed class FakeAnthropicEndpoint : IAsyncDisposable
     private readonly List<string> _requests = [];
     private readonly Lock _gate = new();
     private readonly Func<int, (HttpStatusCode Status, string Body)> _respond;
+    private readonly string _contentType;
     private int _requestCount;
 
     private FakeAnthropicEndpoint(
-        WebApplication app, string baseUrl, Func<int, (HttpStatusCode, string)> respond)
+        WebApplication app,
+        string baseUrl,
+        Func<int, (HttpStatusCode, string)> respond,
+        string contentType)
     {
         _app = app;
         BaseUrl = baseUrl;
         _respond = respond;
+        _contentType = contentType;
     }
 
     /// <summary>The listener's base URL, for <c>GRIMOIRE_&lt;AGENT&gt;_BASE_URL</c>.</summary>
@@ -47,15 +52,17 @@ public sealed class FakeAnthropicEndpoint : IAsyncDisposable
     }
 
     /// <summary>Answers every request with the same status and body.</summary>
-    public static Task<FakeAnthropicEndpoint> StartAsync(HttpStatusCode status, string body)
-        => StartAsync(_ => (status, body));
+    public static Task<FakeAnthropicEndpoint> StartAsync(
+        HttpStatusCode status, string body, string contentType = "application/json")
+        => StartAsync(_ => (status, body), contentType);
 
     /// <summary>
     /// Answers request <em>n</em> (zero-based) with whatever <paramref name="respond"/>
     /// returns for it — for tests that need the first call to differ from the retries.
     /// </summary>
     public static async Task<FakeAnthropicEndpoint> StartAsync(
-        Func<int, (HttpStatusCode Status, string Body)> respond)
+        Func<int, (HttpStatusCode Status, string Body)> respond,
+        string contentType = "application/json")
     {
         var builder = WebApplication.CreateSlimBuilder();
         builder.Logging.ClearProviders();
@@ -72,7 +79,7 @@ public sealed class FakeAnthropicEndpoint : IAsyncDisposable
                 await new StreamReader(context.Request.Body).ReadToEndAsync());
 
             context.Response.StatusCode = (int)status;
-            context.Response.ContentType = "application/json";
+            context.Response.ContentType = endpoint.ContentTypeForResponses;
             await context.Response.WriteAsync(body);
         });
 
@@ -80,9 +87,11 @@ public sealed class FakeAnthropicEndpoint : IAsyncDisposable
 
         var address = app.Services.GetRequiredService<IServer>()
             .Features.Get<IServerAddressesFeature>()!.Addresses.First();
-        endpoint = new FakeAnthropicEndpoint(app, address, respond);
+        endpoint = new FakeAnthropicEndpoint(app, address, respond, contentType);
         return endpoint;
     }
+
+    private string ContentTypeForResponses => _contentType;
 
     private (HttpStatusCode Status, string Body) RecordAndResolve(string requestBody)
     {
@@ -138,6 +147,58 @@ public sealed class FakeAnthropicEndpoint : IAsyncDisposable
             ["stop_details"] = stopDetails,
             ["usage"] = new { input_tokens = 11, output_tokens = 7 },
         });
+    }
+
+    /// <summary>
+    /// The streaming counterpart of <see cref="MessageBody"/>: the SSE event sequence the
+    /// Messages API sends when the request is streamed, as
+    /// <c>text/event-stream</c>. Serve it with
+    /// <c>StartAsync(status, StreamingMessageBody(...), StreamingContentType)</c>.
+    /// </summary>
+    public const string StreamingContentType = "text/event-stream";
+
+    /// <summary>One complete streamed turn: a single text block, then a clean stop.</summary>
+    public static string StreamingMessageBody(string text, string stopReason = "end_turn")
+    {
+        static string Event(string name, object payload)
+            => $"event: {name}\ndata: {System.Text.Json.JsonSerializer.Serialize(payload)}\n\n";
+
+        return
+            Event("message_start", new
+            {
+                type = "message_start",
+                message = new
+                {
+                    id = "msg_fake",
+                    type = "message",
+                    role = "assistant",
+                    model = "fake-model",
+                    content = Array.Empty<object>(),
+                    stop_reason = (string?)null,
+                    stop_sequence = (string?)null,
+                    usage = new { input_tokens = 11, output_tokens = 0 },
+                },
+            }) +
+            Event("content_block_start", new
+            {
+                type = "content_block_start",
+                index = 0,
+                content_block = new { type = "text", text = "" },
+            }) +
+            Event("content_block_delta", new
+            {
+                type = "content_block_delta",
+                index = 0,
+                delta = new { type = "text_delta", text },
+            }) +
+            Event("content_block_stop", new { type = "content_block_stop", index = 0 }) +
+            Event("message_delta", new
+            {
+                type = "message_delta",
+                delta = new { stop_reason = stopReason, stop_sequence = (string?)null },
+                usage = new { output_tokens = 7 },
+            }) +
+            Event("message_stop", new { type = "message_stop" });
     }
 
     public async ValueTask DisposeAsync()
