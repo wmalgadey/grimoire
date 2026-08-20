@@ -131,7 +131,8 @@ public sealed class AnthropicModelClient : IModelClient
             ToolUseRequests: toolUseRequests,
             StopReason: ModelStopReasonContract.FromRawValue(response.StopReason),
             InputTokens: (int)(response.Usage?.InputTokens ?? 0),
-            OutputTokens: (int)(response.Usage?.OutputTokens ?? 0));
+            OutputTokens: (int)(response.Usage?.OutputTokens ?? 0),
+            Refusal: MapRefusalDetails(response.StopDetails));
     }
 
     /// <summary>
@@ -174,6 +175,7 @@ public sealed class AnthropicModelClient : IModelClient
         private readonly SortedDictionary<long, (string Id, string Name, StringBuilder Json)> _toolBlocksByIndex = new();
         private string? _assistantText;
         private ModelStopReason _stopReason = ModelStopReason.Unknown;
+        private ModelRefusalDetails? _refusal;
         private int _inputTokens;
         private int _outputTokens;
 
@@ -195,6 +197,7 @@ public sealed class AnthropicModelClient : IModelClient
             else if (streamEvent.TryPickDelta(out var messageDelta))
             {
                 _stopReason = ModelStopReasonContract.FromRawValue(messageDelta.Delta.StopReason);
+                _refusal = MapRefusalDetails(messageDelta.Delta.StopDetails);
                 _outputTokens = (int)messageDelta.Usage.OutputTokens;
             }
         }
@@ -223,7 +226,28 @@ public sealed class AnthropicModelClient : IModelClient
                 .ToList(),
             StopReason: _stopReason,
             InputTokens: _inputTokens,
-            OutputTokens: _outputTokens);
+            OutputTokens: _outputTokens,
+            Refusal: _refusal);
+    }
+
+    /// <summary>
+    /// #119: maps the provider's <c>stop_details</c> — the <c>category</c>/<c>explanation</c>
+    /// that accompany <c>stop_reason: "refusal"</c> — into the port's own
+    /// <see cref="ModelRefusalDetails"/>, so the SDK type stays inside this namespace
+    /// (ADR-010 containment) while the reason travels with the turn. Returns <c>null</c>
+    /// for every non-refusal turn, which is what the provider sends there.
+    /// </summary>
+    private static ModelRefusalDetails? MapRefusalDetails(RefusalStopDetails? stopDetails)
+    {
+        if (stopDetails is null)
+        {
+            return null;
+        }
+
+        var category = stopDetails.Category?.Raw();
+        return new ModelRefusalDetails(
+            string.IsNullOrWhiteSpace(category) ? null : category,
+            string.IsNullOrWhiteSpace(stopDetails.Explanation) ? null : stopDetails.Explanation);
     }
 
     /// <summary>
@@ -258,7 +282,7 @@ public sealed class AnthropicModelClient : IModelClient
             text += $": {providerMessage}";
         }
 
-        return new ModelApiException(SingleLineCapped(text), status, errorType, exception);
+        return new ModelApiException(OperatorFacingText.SingleLineCapped(text), status, errorType, exception);
     }
 
     /// <summary>
@@ -298,21 +322,6 @@ public sealed class AnthropicModelClient : IModelClient
         {
             return (null, null);
         }
-    }
-
-    /// <summary>
-    /// Both artifact writers persist only <c>failure_reason.Split('\n')[0]</c>, so a
-    /// multi-line provider message would silently lose everything after its first line;
-    /// the cap keeps a pathologically long body out of the frontmatter.
-    /// </summary>
-    private const int MaxProviderErrorLength = 500;
-
-    private static string SingleLineCapped(string text)
-    {
-        var singleLine = text.Replace("\r\n", " ").Replace('\n', ' ').Replace('\r', ' ').Trim();
-        return singleLine.Length <= MaxProviderErrorLength
-            ? singleLine
-            : singleLine[..MaxProviderErrorLength] + "…";
     }
 
     private static List<ToolUnion> BuildTools(IReadOnlyList<ToolDefinition> tools)

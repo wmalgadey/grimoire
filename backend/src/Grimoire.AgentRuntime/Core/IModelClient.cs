@@ -102,6 +102,16 @@ public static class ModelStopReasonContract
 }
 
 /// <summary>
+/// The provider's own account of why it declined a request: the <c>stop_details</c> that
+/// accompany <c>stop_reason: "refusal"</c>. A refusal is a normal HTTP 200 outcome, not a
+/// transport or protocol error, and it is the one class of model rejection that arrives
+/// with a machine-readable reason — so the reason is carried on the turn rather than
+/// dropped, and reaches the operator the way a provider error already does (#119).
+/// Both fields are optional: the provider may send a refusal with no details at all.
+/// </summary>
+public sealed record ModelRefusalDetails(string? Category, string? Explanation);
+
+/// <summary>
 /// One turn response from the model.
 /// <see cref="StopReason"/> is always a normalized enum value with protocol
 /// conversion handled by <see cref="ModelStopReasonContract"/>.
@@ -111,7 +121,8 @@ public sealed record ModelTurn(
     IReadOnlyList<ToolUseRequest> ToolUseRequests,
     ModelStopReason StopReason,
     int InputTokens,
-    int OutputTokens);
+    int OutputTokens,
+    ModelRefusalDetails? Refusal = null);
 
 /// <summary>
 /// One message in the conversation history, representing either a user turn
@@ -217,4 +228,57 @@ public sealed class ModelApiException : Exception
 
     /// <summary>The provider's own error classification (e.g. <c>invalid_request_error</c>), when it sent one.</summary>
     public string? ErrorType { get; }
+}
+
+/// <summary>
+/// #119: the model declined the request. This is a documented, successful-transport
+/// outcome (HTTP 200 with <c>stop_reason: "refusal"</c>), not a malformed protocol
+/// response — the loop used to report it as an unexpected stop reason, which pointed an
+/// operator at the harness instead of at the safety classifier that actually declined.
+/// <para>
+/// <see cref="Exception.Message"/> is the operator-facing text, composed by
+/// <see cref="FromDetails"/> and shaped by
+/// <see cref="OperatorFacingText.SingleLineCapped"/> exactly as
+/// <see cref="ModelApiException"/>'s is, so it reaches the board card, the task detail,
+/// and the status history through the same unhandled-failure path.
+/// </para>
+/// </summary>
+public sealed class ModelRefusalException : Exception
+{
+    public ModelRefusalException(string message, string? category, string? explanation)
+        : base(message)
+    {
+        Category = category;
+        Explanation = explanation;
+    }
+
+    /// <summary>The provider's refusal category, when it sent one.</summary>
+    public string? Category { get; }
+
+    /// <summary>The provider's own explanation of the refusal, when it sent one.</summary>
+    public string? Explanation { get; }
+
+    /// <summary>
+    /// Composes the operator-facing refusal message from whatever the provider sent.
+    /// The <c>Model refusal</c> prefix mirrors <c>Model API error</c> so the two model
+    /// rejection classes read as siblings in a status history; the turn number tells an
+    /// operator whether the refusal hit the source document on the first turn or
+    /// something the run built up to.
+    /// </summary>
+    public static ModelRefusalException FromDetails(ModelRefusalDetails? details, int turn)
+    {
+        var text = "Model refusal";
+        if (!string.IsNullOrWhiteSpace(details?.Category))
+        {
+            text += $" ({details.Category})";
+        }
+
+        text += $" on turn {turn}";
+        text += !string.IsNullOrWhiteSpace(details?.Explanation)
+            ? $": {details.Explanation}"
+            : ": the provider's safety classifier declined the request and sent no explanation.";
+
+        return new ModelRefusalException(
+            OperatorFacingText.SingleLineCapped(text), details?.Category, details?.Explanation);
+    }
 }
