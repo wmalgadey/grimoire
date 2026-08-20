@@ -88,6 +88,9 @@ public static class EvalProviderResolver
     /// value, and sk-ant-shaped tokens.
     /// </summary>
     public static string SanitizeErrorText(string message)
+        => SanitizeErrorText(message, Environment.GetEnvironmentVariable);
+
+    public static string SanitizeErrorText(string message, Func<string, string?> getEnvironmentVariable)
     {
         if (string.IsNullOrWhiteSpace(message))
         {
@@ -96,13 +99,13 @@ public static class EvalProviderResolver
 
         var sanitized = message;
 
-        var anthropicToken = Environment.GetEnvironmentVariable("ANTHROPIC_AUTH_TOKEN");
+        var anthropicToken = getEnvironmentVariable("ANTHROPIC_AUTH_TOKEN");
         if (!string.IsNullOrWhiteSpace(anthropicToken))
         {
             sanitized = sanitized.Replace(anthropicToken, "[REDACTED]", StringComparison.Ordinal);
         }
 
-        var providerApiKey = Environment.GetEnvironmentVariable("GRIMOIRE_EVAL_PROVIDER_API_KEY");
+        var providerApiKey = getEnvironmentVariable("GRIMOIRE_EVAL_PROVIDER_API_KEY");
         if (!string.IsNullOrWhiteSpace(providerApiKey))
         {
             sanitized = sanitized.Replace(providerApiKey, "[REDACTED]", StringComparison.Ordinal);

@@ -50,14 +50,24 @@ public sealed class AgentProcessInvoker
     ];
 
     private readonly string _agentDllPath;
+    private readonly Func<string, string?> _getEnvironmentVariable;
 
     public AgentProcessInvoker(string agentDllPath)
+        : this(agentDllPath, Environment.GetEnvironmentVariable)
+    {
+    }
+
+    public AgentProcessInvoker(string agentDllPath, Func<string, string?> getEnvironmentVariable)
     {
         _agentDllPath = agentDllPath;
+        _getEnvironmentVariable = getEnvironmentVariable;
     }
 
     public static AgentProcessInvoker ForRepo(EvalPaths paths)
         => new(ResolveAgentDllPath(paths.RepoRoot));
+
+    public static AgentProcessInvoker ForRepo(EvalPaths paths, Func<string, string?> getEnvironmentVariable)
+        => new(ResolveAgentDllPath(paths.RepoRoot), getEnvironmentVariable);
 
     /// <summary>
     /// The agent must be launched from its OWN build output (where its deps.json resolves
@@ -148,11 +158,11 @@ public sealed class AgentProcessInvoker
                     startInfo.Environment["GRIMOIRE_INGEST_BASE_URL"] = mode.Provider.BaseUrl!;
                     startInfo.Environment["GRIMOIRE_INGEST_MODEL"] = mode.Provider.Model!;
                     startInfo.Environment["ANTHROPIC_AUTH_TOKEN"] =
-                        Environment.GetEnvironmentVariable("GRIMOIRE_EVAL_PROVIDER_API_KEY") ?? string.Empty;
+                        _getEnvironmentVariable("GRIMOIRE_EVAL_PROVIDER_API_KEY") ?? string.Empty;
                     break;
                 case ProviderKind.Anthropic:
                     startInfo.Environment["ANTHROPIC_AUTH_TOKEN"] =
-                        Environment.GetEnvironmentVariable("ANTHROPIC_AUTH_TOKEN") ?? string.Empty;
+                        _getEnvironmentVariable("ANTHROPIC_AUTH_TOKEN") ?? string.Empty;
                     if (mode.Provider.Model is not null)
                     {
                         startInfo.Environment["GRIMOIRE_INGEST_MODEL"] = mode.Provider.Model;
@@ -204,11 +214,11 @@ public sealed class AgentProcessInvoker
         startInfo.ArgumentList.Add(value);
     }
 
-    private static string SafeResult(Task<string> task)
+    private string SafeResult(Task<string> task)
     {
         try
         {
-            return EvalProviderResolver.SanitizeErrorText(task.GetAwaiter().GetResult());
+            return EvalProviderResolver.SanitizeErrorText(task.GetAwaiter().GetResult(), _getEnvironmentVariable);
         }
         catch
         {

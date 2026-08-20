@@ -16,17 +16,13 @@ namespace Grimoire.AgentEvals;
 [Trait("Tier", "Fast")]
 public class ReplayContractTests : IDisposable
 {
-    private static readonly string[] ProviderEnvKeys =
-    [
-        "ANTHROPIC_AUTH_TOKEN",
-        "GRIMOIRE_EVAL_PROVIDER_BASE_URL",
-        "GRIMOIRE_EVAL_PROVIDER_MODEL",
-        "GRIMOIRE_EVAL_PROVIDER_API_KEY",
-        "GRIMOIRE_INGEST_BASE_URL",
-        "GRIMOIRE_INGEST_MODEL",
-    ];
+    // SC-001: replay must work with zero provider configuration. Expressed as an
+    // injected empty environment rather than by nulling process-wide variables (#121):
+    // every provider-credential read on the replay path goes through this function,
+    // and the spawned child gets no provider variable regardless, because
+    // AgentProcessInvoker scrubs them from the child environment by construction.
+    private static readonly Func<string, string?> EmptyEnvironment = _ => null;
 
-    private readonly Dictionary<string, string?> _savedEnv;
     private readonly string _recordingsRoot;
     private readonly EvalPaths _paths;
     private readonly RecordingStore _store;
@@ -34,27 +30,14 @@ public class ReplayContractTests : IDisposable
 
     public ReplayContractTests()
     {
-        // SC-001: replay must work with zero provider configuration — run every test
-        // in this class with all provider variables unset.
-        _savedEnv = ProviderEnvKeys.ToDictionary(k => k, Environment.GetEnvironmentVariable, StringComparer.Ordinal);
-        foreach (var key in ProviderEnvKeys)
-        {
-            Environment.SetEnvironmentVariable(key, null);
-        }
-
         _recordingsRoot = Path.Combine(Path.GetTempPath(), "grimoire-replay-contract", Guid.NewGuid().ToString("N"));
         _paths = EvalPaths.Discover();
-        _store = new RecordingStore(_recordingsRoot);
-        _pipeline = new ReplayPipeline(_store, _paths, AgentProcessInvoker.ForRepo(_paths), NullLogger.Instance);
+        _store = new RecordingStore(_recordingsRoot, EmptyEnvironment);
+        _pipeline = new ReplayPipeline(_store, _paths, AgentProcessInvoker.ForRepo(_paths, EmptyEnvironment), NullLogger.Instance);
     }
 
     public void Dispose()
     {
-        foreach (var (key, value) in _savedEnv)
-        {
-            Environment.SetEnvironmentVariable(key, value);
-        }
-
         try
         {
             Directory.Delete(_recordingsRoot, recursive: true);

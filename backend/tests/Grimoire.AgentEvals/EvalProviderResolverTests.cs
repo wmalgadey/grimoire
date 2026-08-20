@@ -130,4 +130,4 @@ public class EvalProviderResolverTests
 // T016 (US1)'s EvalCredentialRedactionTests.SanitizeErrorText_RedactsConfiguredAffordableProviderApiKey
 // was removed (constitution v1.9.0 "Test what we own"): it was a strict subset — one
 // credential source — of CaptureHygieneTests.SanitizeErrorText_RedactsBothCredentialSources,
-// which covers both sources and already carries the env-mutation collection cost.
+// which covers both sources (via an injected environment since #121).
