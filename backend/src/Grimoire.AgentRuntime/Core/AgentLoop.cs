@@ -149,38 +149,7 @@ public sealed class AgentLoop
             _instrumentation.RecordModelTokens(turn.InputTokens, turn.OutputTokens);
             _instrumentation.RecordModelToolRequests(turn.ToolUseRequests.Count, stopReason);
 
-            var runTotalTokens = totalInputTokens + totalOutputTokens;
-
-            // Context guard (#107): this turn's InputTokens is the live conversation size —
-            // the whole conversation is re-sent on every request — so it is compared
-            // directly against the window-sized cap, never summed across turns.
-            if (turn.InputTokens > _contextTokenCap)
-            {
-                _instrumentation.RecordAgentTurns(turnsUsed, "failed");
-                throw new AgentLoopCapException(
-                    $"Context cap exceeded: context {turn.InputTokens}, run total {runTotalTokens}, cap {_contextTokenCap}, turn {turnsUsed} of {_turnCap}. Rolled back.",
-                    cap: "context",
-                    turnsUsed: turnsUsed,
-                    turnCap: _turnCap,
-                    capValue: _contextTokenCap,
-                    contextTokens: turn.InputTokens,
-                    runTotalTokens: runTotalTokens);
-            }
-
-            // Spend cap (#107): the per-run billed total, where summing is the correct
-            // arithmetic for the "this run must not bill more than N tokens" meaning.
-            if (runTotalTokens > _spendTokenCap)
-            {
-                _instrumentation.RecordAgentTurns(turnsUsed, "failed");
-                throw new AgentLoopCapException(
-                    $"Spend cap exceeded: run total {runTotalTokens} (input {totalInputTokens}, output {totalOutputTokens}), context {turn.InputTokens}, cap {_spendTokenCap}, turn {turnsUsed} of {_turnCap}. Rolled back.",
-                    cap: "spend",
-                    turnsUsed: turnsUsed,
-                    turnCap: _turnCap,
-                    capValue: _spendTokenCap,
-                    contextTokens: turn.InputTokens,
-                    runTotalTokens: runTotalTokens);
-            }
+            EnforceTokenCaps(turn.InputTokens, totalInputTokens, totalOutputTokens, turnsUsed);
 
             // Append assistant turn to conversation.
             var assistantBlocks = BuildAssistantContentBlocks(turn);
@@ -251,6 +220,44 @@ public sealed class AgentLoop
             {
                 conversation.Add(new ConversationMessage("user", toolResultBlocks));
             }
+        }
+    }
+
+    /// <summary>
+    /// The two token limits from #107. Context guard: this turn's InputTokens is the
+    /// live conversation size — the whole conversation is re-sent on every request — so
+    /// it is compared directly against the window-sized cap, never summed across turns.
+    /// Spend cap: the per-run billed total, where summing is the correct arithmetic for
+    /// the "this run must not bill more than N tokens" meaning.
+    /// </summary>
+    private void EnforceTokenCaps(int contextTokens, int totalInputTokens, int totalOutputTokens, int turnsUsed)
+    {
+        var runTotalTokens = totalInputTokens + totalOutputTokens;
+
+        if (contextTokens > _contextTokenCap)
+        {
+            _instrumentation.RecordAgentTurns(turnsUsed, "failed");
+            throw new AgentLoopCapException(
+                $"Context cap exceeded: context {contextTokens}, run total {runTotalTokens}, cap {_contextTokenCap}, turn {turnsUsed} of {_turnCap}. Rolled back.",
+                cap: "context",
+                turnsUsed: turnsUsed,
+                turnCap: _turnCap,
+                capValue: _contextTokenCap,
+                contextTokens: contextTokens,
+                runTotalTokens: runTotalTokens);
+        }
+
+        if (runTotalTokens > _spendTokenCap)
+        {
+            _instrumentation.RecordAgentTurns(turnsUsed, "failed");
+            throw new AgentLoopCapException(
+                $"Spend cap exceeded: run total {runTotalTokens} (input {totalInputTokens}, output {totalOutputTokens}), context {contextTokens}, cap {_spendTokenCap}, turn {turnsUsed} of {_turnCap}. Rolled back.",
+                cap: "spend",
+                turnsUsed: turnsUsed,
+                turnCap: _turnCap,
+                capValue: _spendTokenCap,
+                contextTokens: contextTokens,
+                runTotalTokens: runTotalTokens);
         }
     }
 
