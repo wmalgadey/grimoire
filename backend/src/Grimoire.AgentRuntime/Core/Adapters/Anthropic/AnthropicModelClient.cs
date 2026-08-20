@@ -18,7 +18,22 @@ namespace Grimoire.AgentRuntime.Core.Adapters.Anthropic;
 /// </summary>
 public sealed class AnthropicModelClient : IModelClient
 {
-    private const string DefaultModel = "claude-opus-4-8";
+    /// <summary>
+    /// #122: the per-request output ceiling, when the agent's own variable does not set
+    /// one. It is an <em>enforced</em> cap the model is unaware of — hitting it truncates
+    /// the response mid-thought, which comes back as <c>stop_reason: max_tokens</c> and
+    /// costs another turn against the turn cap, and for a <c>write_file</c> carrying a
+    /// large page the truncated body is still a syntactically valid tool call.
+    /// <para>
+    /// The value it replaces was the literal <c>8096</c>, which is not a round number in
+    /// any base and reads as a typo for this one. It is deliberately left at the same
+    /// order of magnitude: raising it is a question about what the configured model can
+    /// actually emit, which is the tier decision in #117, not something to settle by
+    /// widening a default underneath every agent at once. What changes here is that an
+    /// operator who needs more can now say so per agent without a code change.
+    /// </para>
+    /// </summary>
+    public const int DefaultMaxOutputTokens = 8192;
 
     /// <summary>
     /// #120: who acts on a retryable rejection, decided here rather than left to the SDK's
@@ -43,10 +58,13 @@ public sealed class AnthropicModelClient : IModelClient
     private IReadOnlyList<ToolDefinition>? _cachedToolSource;
     private List<ToolUnion>? _cachedTools;
 
+    private readonly long _maxOutputTokens;
+
     public AnthropicModelClient(
         ILogger<AnthropicModelClient> logger = null!,
         string modelEnvVar = "GRIMOIRE_INGEST_MODEL",
-        string baseUrlEnvVar = "GRIMOIRE_INGEST_BASE_URL")
+        string baseUrlEnvVar = "GRIMOIRE_INGEST_BASE_URL",
+        string maxOutputTokensEnvVar = "GRIMOIRE_INGEST_MAX_OUTPUT_TOKENS")
     {
         var baseUrl = Environment.GetEnvironmentVariable(baseUrlEnvVar);
 
@@ -63,9 +81,65 @@ public sealed class AnthropicModelClient : IModelClient
                 Handlers = [new LoggingHandler(logger)],
             };
 
-        ModelId = Environment.GetEnvironmentVariable(modelEnvVar) ?? DefaultModel;
+        ModelId = ResolveModelId(modelEnvVar);
+        _maxOutputTokens = ResolveMaxOutputTokens(maxOutputTokensEnvVar, logger);
 
-        logger?.LogInformation("AnthropicModelClient initialized with model {ModelId} and base URL {BaseUrl}.", ModelId, _client.BaseUrl);
+        logger?.LogInformation(
+            "AnthropicModelClient initialized with model {ModelId}, base URL {BaseUrl}, and max output tokens {MaxOutputTokens}.",
+            ModelId, _client.BaseUrl, _maxOutputTokens);
+    }
+
+    /// <summary>
+    /// #117 FR-001: the model id is resolved from configuration, and from nothing else.
+    /// <para>
+    /// This used to fall back to a <c>claude-opus-4-8</c> literal — a different tier than
+    /// the one <c>.env-example</c> configures, silently, and per-agent: because the three
+    /// variables do not inherit from one another, an operator who set only
+    /// <c>GRIMOIRE_INGEST_MODEL</c> left Query and Lint running a model nobody chose, at a
+    /// price nobody agreed to, with nothing in the logs saying so. A fallback that is
+    /// wrong in a way no one can see is worse than no fallback, so there is none: an unset
+    /// variable fails the run at composition, naming the variable to set.
+    /// </para>
+    /// </summary>
+    private static string ResolveModelId(string modelEnvVar)
+    {
+        var configured = Environment.GetEnvironmentVariable(modelEnvVar);
+        if (string.IsNullOrWhiteSpace(configured))
+        {
+            throw new InvalidOperationException(
+                $"{modelEnvVar} is not set. Each agent resolves its own model from its own " +
+                "variable and inherits from no other (ADR-004); there is no code-level " +
+                "default, so that an unset variable cannot silently run a model and a price " +
+                "tier nobody chose. Set it in the Hub's .env file — see .env-example.");
+        }
+
+        return configured.Trim();
+    }
+
+    /// <summary>
+    /// #122: the output ceiling, per agent, from the agent's own variable. A value that is
+    /// not a positive integer falls back to <see cref="DefaultMaxOutputTokens"/> with a
+    /// warning rather than failing the run — unlike the model id, a mistyped ceiling has a
+    /// safe reading, and the run is still one the operator wants to happen.
+    /// </summary>
+    private static long ResolveMaxOutputTokens(
+        string maxOutputTokensEnvVar, ILogger<AnthropicModelClient>? logger)
+    {
+        var raw = Environment.GetEnvironmentVariable(maxOutputTokensEnvVar);
+        if (string.IsNullOrWhiteSpace(raw))
+        {
+            return DefaultMaxOutputTokens;
+        }
+
+        if (long.TryParse(raw, out var parsed) && parsed > 0)
+        {
+            return parsed;
+        }
+
+        logger?.LogWarning(
+            "{EnvVar} is set to '{Value}', which is not a positive integer; using {Default} instead.",
+            maxOutputTokensEnvVar, raw, DefaultMaxOutputTokens);
+        return DefaultMaxOutputTokens;
     }
 
     public string ModelId { get; }
@@ -102,7 +176,7 @@ public sealed class AnthropicModelClient : IModelClient
         var createParams = new MessageCreateParams
         {
             Model = ModelId,
-            MaxTokens = 8096,
+            MaxTokens = _maxOutputTokens,
             System = systemPrompt,
             Messages = messages,
             Tools = toolsList,

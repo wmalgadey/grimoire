@@ -46,6 +46,34 @@ public class CredentialScopingTests
         Assert.Equal("sk-ant-from-file", childEnv["ANTHROPIC_AUTH_TOKEN"]);
     }
 
+    /// <summary>
+    /// #122: the output ceiling joins the per-agent variables ADR-004 scopes, so it obeys
+    /// the same rule the model and base-url variables do — the child gets what the secrets
+    /// file says, and a value that only exists in the Hub's own environment does not leak
+    /// into an agent whose <c>.env</c> is silent about it.
+    /// </summary>
+    [Fact]
+    public void Dispatcher_InjectsTheOutputCeiling_FromTheSecretsFile()
+    {
+        var childEnv = AgentProcessHost.BuildChildEnvironment(
+            new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase) { ["PATH"] = "/usr/bin" },
+            authToken: "sk-ant-from-file",
+            ingestMaxOutputTokens: "32000");
+
+        Assert.Equal("32000", childEnv["GRIMOIRE_INGEST_MAX_OUTPUT_TOKENS"]);
+    }
+
+    [Fact]
+    public void Dispatcher_OmitsTheOutputCeiling_WhenTheSecretsFileConfiguresNone()
+    {
+        var childEnv = AgentProcessHost.BuildChildEnvironment(
+            new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase) { ["PATH"] = "/usr/bin" },
+            authToken: "sk-ant-from-file");
+
+        Assert.False(childEnv.ContainsKey("GRIMOIRE_INGEST_MAX_OUTPUT_TOKENS"),
+            "An unconfigured ceiling must leave the agent on the adapter's own default.");
+    }
+
     [Fact]
     public void LocalSecretsLoader_ReadsToken_FromFile_NotFromEnvironment()
     {

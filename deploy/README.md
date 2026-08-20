@@ -53,9 +53,19 @@ Truncate in place instead — `cat new-env > .env` — or recreate the container
 Each agent reads its **own** model variable — `GRIMOIRE_INGEST_MODEL`,
 `GRIMOIRE_QUERY_MODEL`, `GRIMOIRE_LINT_MODEL`. ADR-004 keeps their scopes independent, and
 that independence goes further than it first looks: they do not inherit from one another,
-and an unset one does not quietly borrow a sibling's value. It falls back to
-`AnthropicModelClient`'s hardcoded default. Setting only `GRIMOIRE_INGEST_MODEL` therefore
-leaves Query and Lint on a model nobody chose.
+and an unset one does not quietly borrow a sibling's value.
+
+Set all three. There is no code-level default any more: an agent whose variable is unset
+fails its runs at startup with a message naming the variable, rather than falling back to a
+hardcoded model id — which used to mean that setting only `GRIMOIRE_INGEST_MODEL` left Query
+and Lint running a model nobody chose, at a price nobody agreed to, with nothing in the logs
+saying so.
+
+Each agent also has an optional `GRIMOIRE_<AGENT>_MAX_OUTPUT_TOKENS`, the ceiling on what
+the model may emit in one turn. Leave it unset to take the adapter's default. Raise it for
+an agent that writes long pages — a turn that hits the ceiling is truncated mid-thought and
+comes back as `max_tokens`, costing another turn — but keep it inside what the configured
+model can actually emit, or the provider rejects the request outright.
 
 Getting that model wrong does not present as a configuration error. An OAuth-style
 credential — `sk-ant-oat…`, as opposed to a classic `sk-ant-api…` key — answers a request

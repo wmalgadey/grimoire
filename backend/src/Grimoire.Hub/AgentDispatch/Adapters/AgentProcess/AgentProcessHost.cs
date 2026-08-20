@@ -210,6 +210,7 @@ public sealed class AgentProcessHost : IAgentProcessLauncher
         var authToken = _secretsLoader.GetAnthropicAuthToken();
         var lintModel = _secretsLoader.GetLintModel();
         var lintBaseUrl = _secretsLoader.GetLintBase();
+        var lintMaxOutputTokens = _secretsLoader.GetLintMaxOutputTokens();
 
         var baseEnv = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
         foreach (var (key, value) in startInfo.Environment)
@@ -218,7 +219,8 @@ public sealed class AgentProcessHost : IAgentProcessLauncher
                 baseEnv[key] = value;
         }
 
-        var childEnv = BuildLintChildEnvironment(baseEnv, authToken, lintBaseUrl, lintModel, Activity.Current);
+        var childEnv = BuildLintChildEnvironment(
+            baseEnv, authToken, lintBaseUrl, lintModel, lintMaxOutputTokens, Activity.Current);
         startInfo.Environment.Clear();
         foreach (var (key, value) in childEnv)
         {
@@ -276,6 +278,7 @@ public sealed class AgentProcessHost : IAgentProcessLauncher
         var authToken = _secretsLoader.GetAnthropicAuthToken();
         var lintModel = _secretsLoader.GetLintModel();
         var lintBaseUrl = _secretsLoader.GetLintBase();
+        var lintMaxOutputTokens = _secretsLoader.GetLintMaxOutputTokens();
 
         var baseEnv = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
         foreach (var (key, value) in startInfo.Environment)
@@ -284,7 +287,8 @@ public sealed class AgentProcessHost : IAgentProcessLauncher
                 baseEnv[key] = value;
         }
 
-        var childEnv = BuildLintChildEnvironment(baseEnv, authToken, lintBaseUrl, lintModel, Activity.Current);
+        var childEnv = BuildLintChildEnvironment(
+            baseEnv, authToken, lintBaseUrl, lintModel, lintMaxOutputTokens, Activity.Current);
         startInfo.Environment.Clear();
         foreach (var (key, value) in childEnv)
         {
@@ -323,6 +327,7 @@ public sealed class AgentProcessHost : IAgentProcessLauncher
         var authToken = _secretsLoader.GetAnthropicAuthToken();
         var lintModel = _secretsLoader.GetLintModel();
         var lintBaseUrl = _secretsLoader.GetLintBase();
+        var lintMaxOutputTokens = _secretsLoader.GetLintMaxOutputTokens();
 
         var baseEnv = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
         foreach (var (key, value) in startInfo.Environment)
@@ -331,7 +336,8 @@ public sealed class AgentProcessHost : IAgentProcessLauncher
                 baseEnv[key] = value;
         }
 
-        var childEnv = BuildLintChildEnvironment(baseEnv, authToken, lintBaseUrl, lintModel, Activity.Current);
+        var childEnv = BuildLintChildEnvironment(
+            baseEnv, authToken, lintBaseUrl, lintModel, lintMaxOutputTokens, Activity.Current);
         startInfo.Environment.Clear();
         foreach (var (key, value) in childEnv)
         {
@@ -352,6 +358,7 @@ public sealed class AgentProcessHost : IAgentProcessLauncher
         string? authToken,
         string? lintBaseUrl,
         string? lintModel,
+        string? lintMaxOutputTokens,
         Activity? currentActivity)
     {
         var env = new Dictionary<string, string>(baseEnv, StringComparer.OrdinalIgnoreCase);
@@ -373,6 +380,8 @@ public sealed class AgentProcessHost : IAgentProcessLauncher
         {
             env["GRIMOIRE_LINT_BASE_URL"] = lintBaseUrl;
         }
+
+        ApplyOptionalOverride(env, "GRIMOIRE_LINT_MAX_OUTPUT_TOKENS", lintMaxOutputTokens);
 
         env.Remove("TRACEPARENT");
         env.Remove("TRACESTATE");
@@ -421,6 +430,7 @@ public sealed class AgentProcessHost : IAgentProcessLauncher
         var authToken = _secretsLoader.GetAnthropicAuthToken();
         var queryModel = _secretsLoader.GetQueryModel();
         var queryBaseUrl = _secretsLoader.GetQueryBase();
+        var queryMaxOutputTokens = _secretsLoader.GetQueryMaxOutputTokens();
 
         var baseEnv = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
         foreach (var (key, value) in startInfo.Environment)
@@ -429,7 +439,8 @@ public sealed class AgentProcessHost : IAgentProcessLauncher
                 baseEnv[key] = value;
         }
 
-        var childEnv = BuildQueryChildEnvironment(baseEnv, authToken, queryBaseUrl, queryModel, Activity.Current);
+        var childEnv = BuildQueryChildEnvironment(
+            baseEnv, authToken, queryBaseUrl, queryModel, queryMaxOutputTokens, Activity.Current);
         startInfo.Environment.Clear();
         foreach (var (key, value) in childEnv)
         {
@@ -450,6 +461,7 @@ public sealed class AgentProcessHost : IAgentProcessLauncher
         string? authToken,
         string? queryBaseUrl,
         string? queryModel,
+        string? queryMaxOutputTokens,
         Activity? currentActivity)
     {
         var env = new Dictionary<string, string>(baseEnv, StringComparer.OrdinalIgnoreCase);
@@ -471,6 +483,8 @@ public sealed class AgentProcessHost : IAgentProcessLauncher
         {
             env["GRIMOIRE_QUERY_BASE_URL"] = queryBaseUrl;
         }
+
+        ApplyOptionalOverride(env, "GRIMOIRE_QUERY_MAX_OUTPUT_TOKENS", queryMaxOutputTokens);
 
         env.Remove("TRACEPARENT");
         env.Remove("TRACESTATE");
@@ -538,6 +552,7 @@ public sealed class AgentProcessHost : IAgentProcessLauncher
         var ingestModel = _secretsLoader.GetIngestModel();
         var ingestBaseUrl = _secretsLoader.GetIngestBase();
         var ingestTokenCap = _secretsLoader.GetIngestTokenCap();
+        var ingestMaxOutputTokens = _secretsLoader.GetIngestMaxOutputTokens();
         // Build the child env by stripping credential keys from the parent env copy and
         // re-injecting only what was explicitly loaded from the secrets file (ADR-004).
         // Convert ProcessStartInfo.Environment (nullable values) to a non-nullable dict first.
@@ -548,7 +563,9 @@ public sealed class AgentProcessHost : IAgentProcessLauncher
                 baseEnv[key] = value;
         }
 
-        var childEnv = BuildChildEnvironment(baseEnv, authToken, ingestBaseUrl, ingestModel, ingestTokenCap, Activity.Current);
+        var childEnv = BuildChildEnvironment(
+            baseEnv, authToken, ingestBaseUrl, ingestModel, ingestTokenCap, ingestMaxOutputTokens,
+            Activity.Current);
         startInfo.Environment.Clear();
         foreach (var (key, value) in childEnv)
         {
@@ -565,6 +582,22 @@ public sealed class AgentProcessHost : IAgentProcessLauncher
     /// Also propagates the current W3C trace context (<paramref name="currentActivity"/>, typically
     /// the Hub's `hub.ingest_run.trigger` span) via `TRACEPARENT`/`TRACESTATE`, so the Ingest agent
     /// process can parent its own root span to it (Constitution IV: end-to-end trace chain).
+    /// <summary>
+    /// #122: sets an optional per-agent override, or removes it outright when the operator
+    /// configured none — so a variable left over in the Hub's own environment cannot leak
+    /// into an agent whose <c>.env</c> says nothing about it, the same way the model and
+    /// base-url variables are scrubbed before being re-injected (ADR-004).
+    /// </summary>
+    private static void ApplyOptionalOverride(
+        IDictionary<string, string> env, string name, string? value)
+    {
+        env.Remove(name);
+        if (!string.IsNullOrWhiteSpace(value))
+        {
+            env[name] = value;
+        }
+    }
+
     /// Exposed internally so tests can assert both guarantees without spawning a real process.
     /// </summary>
     public static Dictionary<string, string> BuildChildEnvironment(
@@ -573,6 +606,7 @@ public sealed class AgentProcessHost : IAgentProcessLauncher
         string? ingestBaseUrl = null,
         string? ingestModel = null,
         string? ingestTokenCap = null,
+        string? ingestMaxOutputTokens = null,
         Activity? currentActivity = null)
     {
         var env = new Dictionary<string, string>(baseEnv, StringComparer.OrdinalIgnoreCase);
@@ -611,6 +645,11 @@ public sealed class AgentProcessHost : IAgentProcessLauncher
         {
             env["GRIMOIRE_INGEST_TOKEN_CAP"] = effectiveTokenCap;
         }
+
+        var effectiveMaxOutputTokens = !string.IsNullOrWhiteSpace(ingestMaxOutputTokens)
+            ? ingestMaxOutputTokens
+            : (baseEnv.TryGetValue("GRIMOIRE_INGEST_MAX_OUTPUT_TOKENS", out var inheritedMax) ? inheritedMax : null);
+        ApplyOptionalOverride(env, "GRIMOIRE_INGEST_MAX_OUTPUT_TOKENS", effectiveMaxOutputTokens);
 
         env.Remove("TRACEPARENT");
         env.Remove("TRACESTATE");

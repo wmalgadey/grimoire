@@ -134,7 +134,9 @@ public class IngestModelProviderErrorReportingTests
                 // provider is a .env line, exactly as an operator would redirect it.
                 var envPath = Path.Combine(fixture.Root, ".env");
                 await File.WriteAllTextAsync(envPath,
-                    $"ANTHROPIC_AUTH_TOKEN=sk-ant-api03-testtoken\nGRIMOIRE_INGEST_BASE_URL={providerBaseUrl}\n");
+                    "ANTHROPIC_AUTH_TOKEN=sk-ant-api03-testtoken\n" +
+                    "GRIMOIRE_INGEST_MODEL=fake-model\n" +
+                    $"GRIMOIRE_INGEST_BASE_URL={providerBaseUrl}\n");
 
                 var sourcePath = Path.Combine(fixture.Root, "source.md");
                 await File.WriteAllTextAsync(sourcePath, "# Provider Error Fixture\n\nBody text.\n");
