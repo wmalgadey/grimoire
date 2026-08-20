@@ -128,11 +128,15 @@ public class ModelProviderErrorClassificationTests
             modelEnvVar: scope.ModelEnvVar,
             baseUrlEnvVar: scope.BaseUrlEnvVar);
 
+        // Non-null means "stream this turn" (ADR-011 R2) — the two paths catch a provider
+        // rejection at different places, so which one runs is what this switches.
+        Action<string>? onTextDelta = streaming ? _ => { } : null;
+
         return await client.NextTurnAsync(
             "You are a test agent.",
             [new ConversationMessage("user", "Do the task.")],
             ToolRegistry.Default.Tools,
             CancellationToken.None,
-            onTextDelta: streaming ? _ => { } : null);
+            onTextDelta);
     }
 }
