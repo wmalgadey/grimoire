@@ -31,10 +31,17 @@ public sealed class RecordingStore
     public const string ManifestFileName = "manifest.json";
 
     private readonly string _root;
+    private readonly Func<string, string?> _getEnvironmentVariable;
 
     public RecordingStore(string root)
+        : this(root, Environment.GetEnvironmentVariable)
+    {
+    }
+
+    public RecordingStore(string root, Func<string, string?> getEnvironmentVariable)
     {
         _root = root;
+        _getEnvironmentVariable = getEnvironmentVariable;
     }
 
     public string Root => _root;
@@ -70,12 +77,12 @@ public sealed class RecordingStore
     /// Write-time credential scan (spec 009 FR-011): a recording that contains the value
     /// of either configured provider credential is rejected before it can reach the store.
     /// </summary>
-    private static void RejectCredentialMaterial(string path)
+    private void RejectCredentialMaterial(string path)
     {
         var content = File.ReadAllText(path);
         foreach (var variable in (string[])["ANTHROPIC_AUTH_TOKEN", "GRIMOIRE_EVAL_PROVIDER_API_KEY"])
         {
-            var secret = Environment.GetEnvironmentVariable(variable);
+            var secret = _getEnvironmentVariable(variable);
             if (!string.IsNullOrWhiteSpace(secret) && content.Contains(secret, StringComparison.Ordinal))
             {
                 File.Delete(path);

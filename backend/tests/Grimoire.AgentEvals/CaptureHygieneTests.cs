@@ -13,41 +13,21 @@ namespace Grimoire.AgentEvals;
 /// recordings containing the configured key (FR-011), and an unreachable provider
 /// endpoint yields an actionable connectivity outcome with nothing stored (successor of
 /// 007's live-connectivity test; the CLI maps this to exit 2) — never a judgment score.
+/// Provider configuration is injected per test (#121): these tests never touch the
+/// process environment, so they cannot race with classes running in parallel.
 /// </summary>
 [Trait("Tier", "Fast")]
 public class CaptureHygieneTests : IDisposable
 {
-    private static readonly string[] ProviderEnvKeys =
-    [
-        "ANTHROPIC_AUTH_TOKEN",
-        "GRIMOIRE_EVAL_PROVIDER_BASE_URL",
-        "GRIMOIRE_EVAL_PROVIDER_MODEL",
-        "GRIMOIRE_EVAL_PROVIDER_API_KEY",
-        "GRIMOIRE_INGEST_BASE_URL",
-        "GRIMOIRE_INGEST_MODEL",
-    ];
-
-    private readonly Dictionary<string, string?> _savedEnv;
     private readonly string _recordingsRoot;
 
     public CaptureHygieneTests()
     {
-        _savedEnv = ProviderEnvKeys.ToDictionary(k => k, Environment.GetEnvironmentVariable, StringComparer.Ordinal);
-        foreach (var key in ProviderEnvKeys)
-        {
-            Environment.SetEnvironmentVariable(key, null);
-        }
-
         _recordingsRoot = Path.Combine(Path.GetTempPath(), "grimoire-capture-hygiene", Guid.NewGuid().ToString("N"));
     }
 
     public void Dispose()
     {
-        foreach (var (key, value) in _savedEnv)
-        {
-            Environment.SetEnvironmentVariable(key, value);
-        }
-
         try
         {
             Directory.Delete(_recordingsRoot, recursive: true);
@@ -62,9 +42,8 @@ public class CaptureHygieneTests : IDisposable
     public void RecordingStore_RejectsRecordingContainingTheConfiguredCredential()
     {
         const string fakeKey = "nvapi-hygiene-probe-key-0123456789";
-        Environment.SetEnvironmentVariable("GRIMOIRE_EVAL_PROVIDER_API_KEY", fakeKey);
 
-        var store = new RecordingStore(_recordingsRoot);
+        var store = new RecordingStore(_recordingsRoot, Env(("GRIMOIRE_EVAL_PROVIDER_API_KEY", fakeKey)));
         var leakySample = new RecordedSample(
             SchemaVersion: RecordingSerialization.CurrentSchemaVersion,
             Sample: 1,
@@ -96,15 +75,16 @@ public class CaptureHygieneTests : IDisposable
     {
         // Nothing listens on port 1 — the child agent's provider call is refused
         // immediately; the run stays hermetic.
-        Environment.SetEnvironmentVariable("GRIMOIRE_EVAL_PROVIDER_BASE_URL", "http://localhost:1");
-        Environment.SetEnvironmentVariable("GRIMOIRE_EVAL_PROVIDER_MODEL", "nvidia-model");
-        Environment.SetEnvironmentVariable("GRIMOIRE_EVAL_PROVIDER_API_KEY", "fake-affordable-key");
+        var env = Env(
+            ("GRIMOIRE_EVAL_PROVIDER_BASE_URL", "http://localhost:1"),
+            ("GRIMOIRE_EVAL_PROVIDER_MODEL", "nvidia-model"),
+            ("GRIMOIRE_EVAL_PROVIDER_API_KEY", "fake-affordable-key"));
 
-        var gate = EvalProviderResolver.Resolve();
+        var gate = EvalProviderResolver.Resolve(env);
 
         var paths = EvalPaths.Discover();
-        var store = new RecordingStore(_recordingsRoot);
-        var pipeline = new CapturePipeline(store, paths, AgentProcessInvoker.ForRepo(paths), NullLogger.Instance);
+        var store = new RecordingStore(_recordingsRoot, env);
+        var pipeline = new CapturePipeline(store, paths, AgentProcessInvoker.ForRepo(paths, env), NullLogger.Instance);
 
         var result = await pipeline.RunScenarioAsync(
             IngestScenarioDefinitions.ConventionAdherence, gate.Configuration, requestedSampleCount: 1, CancellationToken.None);
@@ -120,14 +100,20 @@ public class CaptureHygieneTests : IDisposable
     [Fact]
     public void SanitizeErrorText_RedactsBothCredentialSources()
     {
-        Environment.SetEnvironmentVariable("GRIMOIRE_EVAL_PROVIDER_API_KEY", "nvapi-redaction-probe");
-        Environment.SetEnvironmentVariable("ANTHROPIC_AUTH_TOKEN", "sk-ant-redaction-probe");
-
         var sanitized = EvalProviderResolver.SanitizeErrorText(
-            "failure with nvapi-redaction-probe and sk-ant-redaction-probe embedded");
+            "failure with nvapi-redaction-probe and sk-ant-redaction-probe embedded",
+            Env(
+                ("GRIMOIRE_EVAL_PROVIDER_API_KEY", "nvapi-redaction-probe"),
+                ("ANTHROPIC_AUTH_TOKEN", "sk-ant-redaction-probe")));
 
         Assert.DoesNotContain("nvapi-redaction-probe", sanitized, StringComparison.Ordinal);
         Assert.DoesNotContain("sk-ant-redaction-probe", sanitized, StringComparison.Ordinal);
         Assert.Contains("[REDACTED]", sanitized, StringComparison.Ordinal);
+    }
+
+    private static Func<string, string?> Env(params (string Key, string Value)[] entries)
+    {
+        var map = entries.ToDictionary(e => e.Key, e => e.Value, StringComparer.Ordinal);
+        return key => map.TryGetValue(key, out var value) ? value : null;
     }
 }
