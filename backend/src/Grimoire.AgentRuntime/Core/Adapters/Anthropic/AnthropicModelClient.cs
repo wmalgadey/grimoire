@@ -450,6 +450,13 @@ public sealed class AnthropicModelClient : IModelClient
                 Name = t.Name,
                 Description = t.Description,
                 InputSchema = schema,
+                // #127: strict tool use — the provider validates tool_use.input against the
+                // schema before sending it, so a mis-shaped input never costs us a turn
+                // against the turn cap and never produces a denial record that describes a
+                // model slip rather than a policy decision. It constrains shape only:
+                // whether the action is *allowed* remains GuardedToolExecutor's to decide,
+                // deny-by-default, at the moment the tool is invoked (Principle V).
+                Strict = true,
             });
         }
 
