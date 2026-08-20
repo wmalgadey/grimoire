@@ -18,9 +18,9 @@ public class ReplayContractTests : IDisposable
 {
     // SC-001: replay must work with zero provider configuration. Expressed as an
     // injected empty environment rather than by nulling process-wide variables (#121):
-    // every env read on the replay path goes through this function, and the spawned
-    // child gets no provider variable regardless, because AgentProcessInvoker scrubs
-    // them from the child environment by construction.
+    // every provider-credential read on the replay path goes through this function,
+    // and the spawned child gets no provider variable regardless, because
+    // AgentProcessInvoker scrubs them from the child environment by construction.
     private static readonly Func<string, string?> EmptyEnvironment = _ => null;
 
     private readonly string _recordingsRoot;
