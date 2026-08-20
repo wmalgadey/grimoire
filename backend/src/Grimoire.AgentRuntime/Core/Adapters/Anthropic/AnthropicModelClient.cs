@@ -20,6 +20,22 @@ public sealed class AnthropicModelClient : IModelClient
 {
     private const string DefaultModel = "claude-opus-4-8";
 
+    /// <summary>
+    /// #120: who acts on a retryable rejection, decided here rather than left to the SDK's
+    /// unstated default. The <em>short</em> case — a burst 429 while the Hub dispatches
+    /// several agents at once, a momentary 5xx — is absorbed inside the call by the SDK's
+    /// own bounded retry, which is the only layer that can retry a single turn without
+    /// re-running the whole task. Anything that outlives those attempts becomes a failed
+    /// run carrying <see cref="ModelApiException.IsRetryable"/>, and re-entering the task
+    /// is ADR-025's business, not the adapter's.
+    /// <para>
+    /// Bounded deliberately low: an OAuth credential answers a request for a model it is
+    /// not entitled to with a 429 that no amount of waiting fixes (see deploy/README.md),
+    /// so a generous retry budget would spend real time on a doomed request.
+    /// </para>
+    /// </summary>
+    private const int MaxProviderRetries = 2;
+
     private readonly AnthropicClient _client;
 
     // Tool definitions are static per run; cache the SDK conversion instead of
@@ -37,11 +53,13 @@ public sealed class AnthropicModelClient : IModelClient
         _client = string.IsNullOrWhiteSpace(baseUrl)
             ? new AnthropicClient()
             {
+                MaxRetries = MaxProviderRetries,
                 Handlers = [new LoggingHandler(logger)],
             }
             : new AnthropicClient()
             {
                 BaseUrl = baseUrl,
+                MaxRetries = MaxProviderRetries,
                 Handlers = [new LoggingHandler(logger)],
             };
 
@@ -271,19 +289,40 @@ public sealed class AnthropicModelClient : IModelClient
     {
         var status = (int)exception.StatusCode;
         var (errorType, providerMessage) = ParseProviderError(exception.ResponseBody);
+        var isRetryable = IsRetryable(exception);
 
         var text = $"Model API error {status}";
+        var qualifiers = new List<string>(2);
         if (!string.IsNullOrWhiteSpace(errorType))
         {
-            text += $" ({errorType})";
+            qualifiers.Add(errorType);
         }
+        // The classification goes ahead of the provider's own text, which the cap may
+        // truncate — an operator has to be able to read "retryable" off a failure whose
+        // explanation ran long.
+        qualifiers.Add(isRetryable ? "retryable" : "terminal");
+        text += $" ({string.Join(", ", qualifiers)})";
+
         if (!string.IsNullOrWhiteSpace(providerMessage))
         {
             text += $": {providerMessage}";
         }
 
-        return new ModelApiException(OperatorFacingText.SingleLineCapped(text), status, errorType, exception);
+        return new ModelApiException(
+            OperatorFacingText.SingleLineCapped(text), status, errorType, isRetryable, exception);
     }
+
+    /// <summary>
+    /// #120: separates a rejected <em>request</em> from a rejecting <em>condition</em>.
+    /// The SDK already types the distinction, so the typed exceptions are the primary
+    /// signal; the status check behind them covers
+    /// <see cref="AnthropicUnexpectedStatusCodeException"/>, which the SDK raises for
+    /// statuses it has no dedicated type for.
+    /// </summary>
+    private static bool IsRetryable(AnthropicApiException exception)
+        => exception is AnthropicRateLimitException or Anthropic5xxException
+            || (int)exception.StatusCode == 429
+            || (int)exception.StatusCode >= 500;
 
     /// <summary>
     /// Reads the provider's error envelope (<c>{"type":"error","error":{"type":…,"message":…}}</c>),

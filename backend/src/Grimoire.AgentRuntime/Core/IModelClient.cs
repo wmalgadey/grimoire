@@ -216,11 +216,17 @@ public sealed record ToolDefinition(string Name, string Description, string Inpu
 /// </summary>
 public sealed class ModelApiException : Exception
 {
-    public ModelApiException(string message, int statusCode, string? errorType, Exception? innerException = null)
+    public ModelApiException(
+        string message,
+        int statusCode,
+        string? errorType,
+        bool isRetryable = false,
+        Exception? innerException = null)
         : base(message, innerException)
     {
         StatusCode = statusCode;
         ErrorType = errorType;
+        IsRetryable = isRetryable;
     }
 
     /// <summary>HTTP status the provider answered with.</summary>
@@ -228,6 +234,22 @@ public sealed class ModelApiException : Exception
 
     /// <summary>The provider's own error classification (e.g. <c>invalid_request_error</c>), when it sent one.</summary>
     public string? ErrorType { get; }
+
+    /// <summary>
+    /// #120: whether the rejection describes a <em>condition</em> (rate limiting, a
+    /// transient provider fault) rather than a <em>request</em> the provider will never
+    /// accept. The status code was always carried here, but nothing read it, so a 429 and
+    /// a 503 failed a run exactly as permanently as a malformed 400 — the work discarded
+    /// and the journal rolled back for something whose correct answer is "wait".
+    /// <para>
+    /// Retryable does not mean retried: the adapter's own bounded SDK retry has already
+    /// been spent by the time this is thrown. What the flag buys is an honest failure —
+    /// it is composed into <see cref="Exception.Message"/>, so an operator reading the
+    /// card can tell "come back to this" from "this will never work", and a future
+    /// automatic re-entry (ADR-025) has a signal to branch on instead of a bare status.
+    /// </para>
+    /// </summary>
+    public bool IsRetryable { get; }
 }
 
 /// <summary>
