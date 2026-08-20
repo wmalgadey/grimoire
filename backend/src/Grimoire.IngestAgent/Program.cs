@@ -238,11 +238,11 @@ internal sealed class IngestIntentHandler : IAgentIntentHandler
             logPath: _options.LogPath,
             indexPath: _options.IndexPath,
             activitySource: IngestAgentTracing.ActivitySource);
-        var tokenCap = ResolveTokenCapFromEnvironment();
+        var spendCap = ResolveSpendCapFromEnvironment();
         var loop = new AgentLoop(
             _modelClient!,
             _executor,
-            tokenCap: tokenCap,
+            spendTokenCap: spendCap,
             eventEmitter: _runEvents,
             registry: _profile.ToolRegistry,
             instrumentation: new IngestAgentLoopInstrumentation());
@@ -426,15 +426,18 @@ internal sealed class IngestIntentHandler : IAgentIntentHandler
         }
     }
 
-    private static int ResolveTokenCapFromEnvironment()
+    private static int ResolveSpendCapFromEnvironment()
     {
-        var raw = Environment.GetEnvironmentVariable("GRIMOIRE_INGEST_TOKEN_CAP");
+        // GRIMOIRE_INGEST_SPEND_CAP is the canonical name (#107: the summed per-run
+        // limit is a spend cap, not a context cap); GRIMOIRE_INGEST_TOKEN_CAP stays as
+        // the legacy alias the Hub explicitly forwards (AgentProcessHost).
+        var raw = Environment.GetEnvironmentVariable("GRIMOIRE_INGEST_SPEND_CAP");
         if (string.IsNullOrWhiteSpace(raw))
-            return 200_000;
+            raw = Environment.GetEnvironmentVariable("GRIMOIRE_INGEST_TOKEN_CAP");
 
         if (int.TryParse(raw, out var parsed) && parsed > 0)
             return parsed;
 
-        return 200_000;
+        return AgentLoop.DefaultSpendTokenCap;
     }
 }

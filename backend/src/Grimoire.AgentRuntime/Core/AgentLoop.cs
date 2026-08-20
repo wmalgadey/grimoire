@@ -9,19 +9,28 @@ namespace Grimoire.AgentRuntime.Core;
 /// injection framing) wrapping the effective user prompt — the scaffold is not
 /// user-editable (FR-008). Loops NextTurnAsync → dispatch each tool_use through
 /// GuardedToolExecutor → return tool_results until end_turn or cap breach
-/// (turn/token cap ⇒ run failure).
+/// (turn cap, context guard, or spend cap ⇒ run failure, see #107). The context guard
+/// checks the current turn's <c>InputTokens</c> — with the Messages API that value is
+/// the whole conversation as re-sent for this request, i.e. the live context size. The
+/// spend cap checks the per-run billed total, where summing across turns is the correct
+/// arithmetic; summing under a single window-sized "token cap" double-counted the
+/// conversation once per turn.
 /// </summary>
 public sealed class AgentLoop
 {
-    private const int DefaultTurnCap = 50;
-    private const int DefaultTokenCap = 200_000;
+    public const int DefaultTurnCap = 50;
+    /// <summary>Context guard default — the context-window size of the models in use.</summary>
+    public const int DefaultContextTokenCap = 200_000;
+    /// <summary>Spend cap default — per-run billed total (input + output across all turns).</summary>
+    public const int DefaultSpendTokenCap = 1_000_000;
     private static readonly string ContinuePrompt =
         $"Continue the task.";
 
     private readonly IModelClient _modelClient;
     private readonly GuardedToolExecutor _executor;
     private readonly int _turnCap;
-    private readonly int _tokenCap;
+    private readonly int _contextTokenCap;
+    private readonly int _spendTokenCap;
     private readonly RunEventEmitter? _eventEmitter;
     private readonly ToolRegistry _registry;
     private readonly IAgentLoopInstrumentation _instrumentation;
@@ -31,7 +40,8 @@ public sealed class AgentLoop
         IModelClient modelClient,
         GuardedToolExecutor executor,
         int turnCap = DefaultTurnCap,
-        int tokenCap = DefaultTokenCap,
+        int contextTokenCap = DefaultContextTokenCap,
+        int spendTokenCap = DefaultSpendTokenCap,
         RunEventEmitter? eventEmitter = null,
         ToolRegistry? registry = null,
         IAgentLoopInstrumentation? instrumentation = null,
@@ -40,7 +50,8 @@ public sealed class AgentLoop
         _modelClient = modelClient;
         _executor = executor;
         _turnCap = turnCap;
-        _tokenCap = tokenCap;
+        _contextTokenCap = contextTokenCap;
+        _spendTokenCap = spendTokenCap;
         _eventEmitter = eventEmitter;
         _registry = registry ?? ToolRegistry.Default;
         _instrumentation = instrumentation ?? NullAgentLoopInstrumentation.Instance;
@@ -92,6 +103,7 @@ public sealed class AgentLoop
         int turnsUsed = 0;
         int totalInputTokens = 0;
         int totalOutputTokens = 0;
+        int lastContextTokens = 0;
         int toolCallsTotal = 0;
         var toolCallsByName = new Dictionary<string, int>(StringComparer.Ordinal);
 
@@ -101,9 +113,13 @@ public sealed class AgentLoop
             {
                 _instrumentation.RecordAgentTurns(turnsUsed, "failed");
                 throw new AgentLoopCapException(
-                    $"Turn cap of {_turnCap} exceeded. Rolled back.",
+                    $"Turn cap exceeded: context {lastContextTokens}, run total {totalInputTokens + totalOutputTokens}, cap {_turnCap} turns, turn {turnsUsed} of {_turnCap}. Rolled back.",
                     cap: "turns",
-                    turnsUsed: turnsUsed);
+                    turnsUsed: turnsUsed,
+                    turnCap: _turnCap,
+                    capValue: _turnCap,
+                    contextTokens: lastContextTokens,
+                    runTotalTokens: totalInputTokens + totalOutputTokens);
             }
 
             // The span stays open across tool dispatch below so every per-agent
@@ -122,6 +138,7 @@ public sealed class AgentLoop
             turnsUsed++;
             totalInputTokens += turn.InputTokens;
             totalOutputTokens += turn.OutputTokens;
+            lastContextTokens = turn.InputTokens;
 
             // Loop-activity event (ADR-008): counters and the current loop action only.
             _eventEmitter?.EmitActivity(turnsUsed, toolCallsTotal, toolCallsByName, "model_turn");
@@ -132,14 +149,7 @@ public sealed class AgentLoop
             _instrumentation.RecordModelTokens(turn.InputTokens, turn.OutputTokens);
             _instrumentation.RecordModelToolRequests(turn.ToolUseRequests.Count, stopReason);
 
-            if (totalInputTokens + totalOutputTokens > _tokenCap)
-            {
-                _instrumentation.RecordAgentTurns(turnsUsed, "failed");
-                throw new AgentLoopCapException(
-                    $"Token cap of {_tokenCap} exceeded. Rolled back.",
-                    cap: "tokens",
-                    turnsUsed: turnsUsed);
-            }
+            EnforceTokenCaps(turn.InputTokens, totalInputTokens, totalOutputTokens, turnsUsed);
 
             // Append assistant turn to conversation.
             var assistantBlocks = BuildAssistantContentBlocks(turn);
@@ -213,6 +223,44 @@ public sealed class AgentLoop
         }
     }
 
+    /// <summary>
+    /// The two token limits from #107. Context guard: this turn's InputTokens is the
+    /// live conversation size — the whole conversation is re-sent on every request — so
+    /// it is compared directly against the window-sized cap, never summed across turns.
+    /// Spend cap: the per-run billed total, where summing is the correct arithmetic for
+    /// the "this run must not bill more than N tokens" meaning.
+    /// </summary>
+    private void EnforceTokenCaps(int contextTokens, int totalInputTokens, int totalOutputTokens, int turnsUsed)
+    {
+        var runTotalTokens = totalInputTokens + totalOutputTokens;
+
+        if (contextTokens > _contextTokenCap)
+        {
+            _instrumentation.RecordAgentTurns(turnsUsed, "failed");
+            throw new AgentLoopCapException(
+                $"Context cap exceeded: context {contextTokens}, run total {runTotalTokens}, cap {_contextTokenCap}, turn {turnsUsed} of {_turnCap}. Rolled back.",
+                cap: "context",
+                turnsUsed: turnsUsed,
+                turnCap: _turnCap,
+                capValue: _contextTokenCap,
+                contextTokens: contextTokens,
+                runTotalTokens: runTotalTokens);
+        }
+
+        if (runTotalTokens > _spendTokenCap)
+        {
+            _instrumentation.RecordAgentTurns(turnsUsed, "failed");
+            throw new AgentLoopCapException(
+                $"Spend cap exceeded: run total {runTotalTokens} (input {totalInputTokens}, output {totalOutputTokens}), context {contextTokens}, cap {_spendTokenCap}, turn {turnsUsed} of {_turnCap}. Rolled back.",
+                cap: "spend",
+                turnsUsed: turnsUsed,
+                turnCap: _turnCap,
+                capValue: _spendTokenCap,
+                contextTokens: contextTokens,
+                runTotalTokens: runTotalTokens);
+        }
+    }
+
     private static string BuildUserMessage(string taskId, string sourceRef, string userPrompt, string sourceContent)
     {
         return $"""
@@ -257,16 +305,41 @@ public sealed record AgentLoopResult(
     int TotalInputTokens,
     int TotalOutputTokens);
 
-/// <summary>Thrown when the turn or token cap is exceeded.</summary>
+/// <summary>
+/// Thrown when a loop limit is exceeded: the turn cap, the context guard (the live
+/// conversation outgrew the model window), or the spend cap (the run billed more than
+/// its budget). Carries the observed numbers (#107) so the failure reason, terminal
+/// event, and run read model can report them; <see cref="Exception.Message"/> stays
+/// single-line because artifact writers persist only its first line.
+/// </summary>
 public sealed class AgentLoopCapException : Exception
 {
+    /// <summary>Which limit fired: "turns", "context", or "spend".</summary>
     public string Cap { get; }
     public int TurnsUsed { get; }
+    public int TurnCap { get; }
+    /// <summary>The configured value of the limit that fired.</summary>
+    public int CapValue { get; }
+    /// <summary>The last observed live conversation size (the turn's InputTokens).</summary>
+    public int ContextTokens { get; }
+    /// <summary>Billed input + output tokens across the whole run.</summary>
+    public int RunTotalTokens { get; }
 
-    public AgentLoopCapException(string message, string cap, int turnsUsed)
+    public AgentLoopCapException(
+        string message,
+        string cap,
+        int turnsUsed,
+        int turnCap,
+        int capValue,
+        int contextTokens,
+        int runTotalTokens)
         : base(message)
     {
         Cap = cap;
         TurnsUsed = turnsUsed;
+        TurnCap = turnCap;
+        CapValue = capValue;
+        ContextTokens = contextTokens;
+        RunTotalTokens = runTotalTokens;
     }
 }
