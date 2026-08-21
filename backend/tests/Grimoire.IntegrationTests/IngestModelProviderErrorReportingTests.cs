@@ -6,11 +6,6 @@ using Grimoire.Hub.AgentDispatch.Adapters.AgentProcess;
 using Grimoire.Hub.IngestDispatch;
 using Grimoire.IntegrationTests.Fakes;
 using Grimoire.IntegrationTests.TestSupport;
-using Microsoft.AspNetCore.Builder;
-using Microsoft.AspNetCore.Hosting;
-using Microsoft.AspNetCore.Hosting.Server;
-using Microsoft.AspNetCore.Hosting.Server.Features;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -35,16 +30,13 @@ public class IngestModelProviderErrorReportingTests
 {
     private const string ProviderDetail = "max_tokens: 8096 > 4096, which is the maximum allowed";
 
-    private static string ProviderShapedBody(string message) => JsonSerializer.Serialize(new
-    {
-        type = "error",
-        error = new { type = "invalid_request_error", message },
-    });
+    private static string ProviderShapedBody(string message)
+        => FakeAnthropicEndpoint.ErrorBody("invalid_request_error", message);
 
     [Fact]
     public async Task ProviderRejection_RecordsTheProviderMessage_OnEventArtifactAndDetail()
     {
-        await using var provider = await FakeProviderEndpoint.StartAsync(
+        await using var provider = await FakeAnthropicEndpoint.StartAsync(
             HttpStatusCode.BadRequest, ProviderShapedBody(ProviderDetail));
 
         using var run = await RealIngestAgentRun.ExecuteAsync(provider.BaseUrl);
@@ -71,7 +63,7 @@ public class IngestModelProviderErrorReportingTests
     [Fact]
     public async Task ProviderRejection_WithAnUnparseableBody_StillRecordsTheStatus()
     {
-        await using var provider = await FakeProviderEndpoint.StartAsync(
+        await using var provider = await FakeAnthropicEndpoint.StartAsync(
             HttpStatusCode.BadRequest, "<html><body>Bad Request</body></html>");
 
         using var run = await RealIngestAgentRun.ExecuteAsync(provider.BaseUrl);
@@ -90,7 +82,7 @@ public class IngestModelProviderErrorReportingTests
         // richer message must not become a new way for a credential echoed by the provider
         // to land in a task artifact.
         const string leaked = "sk-ant-api03-AAAABBBBCCCCDDDD";
-        await using var provider = await FakeProviderEndpoint.StartAsync(
+        await using var provider = await FakeAnthropicEndpoint.StartAsync(
             HttpStatusCode.BadRequest,
             ProviderShapedBody($"invalid x-api-key: {leaked} was rejected"));
 
@@ -99,51 +91,6 @@ public class IngestModelProviderErrorReportingTests
         Assert.DoesNotContain(leaked, run.ArtifactFailureReason);
         Assert.DoesNotContain(leaked, run.FailedEventReason);
         Assert.Contains("[REDACTED]", run.ArtifactFailureReason);
-    }
-
-    /// <summary>
-    /// A real Kestrel listener standing in for the model provider — the adapter talks actual
-    /// HTTP to it, so the SDK's own status/body handling is exercised rather than simulated.
-    /// </summary>
-    private sealed class FakeProviderEndpoint : IAsyncDisposable
-    {
-        private readonly WebApplication _app;
-
-        private FakeProviderEndpoint(WebApplication app, string baseUrl)
-        {
-            _app = app;
-            BaseUrl = baseUrl;
-        }
-
-        public string BaseUrl { get; }
-
-        public static async Task<FakeProviderEndpoint> StartAsync(HttpStatusCode status, string body)
-        {
-            var builder = WebApplication.CreateSlimBuilder();
-            builder.Logging.ClearProviders();
-            builder.WebHost.UseSetting("urls", "http://127.0.0.1:0");
-
-            var app = builder.Build();
-            // Catch-all: whatever path the SDK composes under the base URL answers the same.
-            app.Run(async context =>
-            {
-                context.Response.StatusCode = (int)status;
-                context.Response.ContentType = "application/json";
-                await context.Response.WriteAsync(body);
-            });
-
-            await app.StartAsync();
-
-            var address = app.Services.GetRequiredService<IServer>()
-                .Features.Get<IServerAddressesFeature>()!.Addresses.First();
-            return new FakeProviderEndpoint(app, address);
-        }
-
-        public async ValueTask DisposeAsync()
-        {
-            await _app.StopAsync();
-            await _app.DisposeAsync();
-        }
     }
 
     /// <summary>
@@ -187,7 +134,9 @@ public class IngestModelProviderErrorReportingTests
                 // provider is a .env line, exactly as an operator would redirect it.
                 var envPath = Path.Combine(fixture.Root, ".env");
                 await File.WriteAllTextAsync(envPath,
-                    $"ANTHROPIC_AUTH_TOKEN=sk-ant-api03-testtoken\nGRIMOIRE_INGEST_BASE_URL={providerBaseUrl}\n");
+                    "ANTHROPIC_AUTH_TOKEN=sk-ant-api03-testtoken\n" +
+                    "GRIMOIRE_INGEST_MODEL=fake-model\n" +
+                    $"GRIMOIRE_INGEST_BASE_URL={providerBaseUrl}\n");
 
                 var sourcePath = Path.Combine(fixture.Root, "source.md");
                 await File.WriteAllTextAsync(sourcePath, "# Provider Error Fixture\n\nBody text.\n");

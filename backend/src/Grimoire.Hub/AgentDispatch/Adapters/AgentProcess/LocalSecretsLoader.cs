@@ -25,15 +25,27 @@ public sealed class LocalSecretsLoader
 
     internal string? GetIngestBase() => ReadEnvVar("GRIMOIRE_INGEST_BASE_URL");
 
+    /// <summary>
+    /// #122: Ingest's per-request output ceiling, if the operator set one. Null leaves the
+    /// adapter on its own default — the ceiling is optional in a way the model id is not.
+    /// </summary>
+    public string? GetIngestMaxOutputTokens() => ReadEnvVar("GRIMOIRE_INGEST_MAX_OUTPUT_TOKENS");
+
     /// <summary>Query's own model override (ADR-004 applied to 008-query-agent), independent of Ingest's.</summary>
     public string? GetQueryModel() => ReadEnvVar("GRIMOIRE_QUERY_MODEL");
 
     internal string? GetQueryBase() => ReadEnvVar("GRIMOIRE_QUERY_BASE_URL");
 
+    /// <summary>Query's own output ceiling (#122), independent of Ingest's and Lint's.</summary>
+    public string? GetQueryMaxOutputTokens() => ReadEnvVar("GRIMOIRE_QUERY_MAX_OUTPUT_TOKENS");
+
     /// <summary>Lint's own model override (ADR-004 applied to 013-lint-agent), independent of Ingest's/Query's.</summary>
     public string? GetLintModel() => ReadEnvVar("GRIMOIRE_LINT_MODEL");
 
     internal string? GetLintBase() => ReadEnvVar("GRIMOIRE_LINT_BASE_URL");
+
+    /// <summary>Lint's own output ceiling (#122), independent of Ingest's and Query's.</summary>
+    public string? GetLintMaxOutputTokens() => ReadEnvVar("GRIMOIRE_LINT_MAX_OUTPUT_TOKENS");
 
     private string? ReadEnvVar(string varName)
     {

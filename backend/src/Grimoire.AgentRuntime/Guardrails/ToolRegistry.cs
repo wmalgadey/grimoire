@@ -9,6 +9,15 @@ namespace Grimoire.AgentRuntime.Guardrails;
 /// support is rejected as unknown even if a hardcoded dispatch case for it exists, so an
 /// agent process configured with a read-only registry (e.g. Grimoire.QueryAgent) can
 /// never reach a write branch regardless of what the model requests.
+/// <para>
+/// #127: every schema declares <c>additionalProperties: false</c> alongside its
+/// <c>required</c> list, which is what strict tool use needs in order for the provider to
+/// guarantee that <c>tool_use.input</c> validates before it reaches us. That is a statement
+/// about the <em>shape</em> of a tool call and nothing more. Authorization stays entirely
+/// with <see cref="GuardedToolExecutor"/> and the policy (Principle V, deny-by-default at
+/// the tool boundary): a schema-valid <c>write_file</c> aimed at a forbidden path is still
+/// denied here, and the provider has no say in it.
+/// </para>
 /// </summary>
 public sealed class ToolRegistry
 {
@@ -28,7 +37,8 @@ public sealed class ToolRegistry
               "description": "Directory path relative to the repository root."
             }
           },
-          "required": ["path"]
+          "required": ["path"],
+          "additionalProperties": false
         }
         """);
 
@@ -44,7 +54,8 @@ public sealed class ToolRegistry
               "description": "File path relative to the repository root."
             }
           },
-          "required": ["path"]
+          "required": ["path"],
+          "additionalProperties": false
         }
         """);
 
@@ -64,7 +75,8 @@ public sealed class ToolRegistry
               "description": "Full new file content (UTF-8 markdown)."
             }
           },
-          "required": ["path", "content"]
+          "required": ["path", "content"],
+          "additionalProperties": false
         }
         """);
 

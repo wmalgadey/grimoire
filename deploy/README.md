@@ -53,21 +53,33 @@ Truncate in place instead — `cat new-env > .env` — or recreate the container
 Each agent reads its **own** model variable — `GRIMOIRE_INGEST_MODEL`,
 `GRIMOIRE_QUERY_MODEL`, `GRIMOIRE_LINT_MODEL`. ADR-004 keeps their scopes independent, and
 that independence goes further than it first looks: they do not inherit from one another,
-and an unset one does not quietly borrow a sibling's value. It falls back to
-`AnthropicModelClient`'s hardcoded default. Setting only `GRIMOIRE_INGEST_MODEL` therefore
-leaves Query and Lint on a model nobody chose.
+and an unset one does not quietly borrow a sibling's value.
+
+Set all three. There is no code-level default any more: an agent whose variable is unset
+fails its runs at startup with a message naming the variable, rather than falling back to a
+hardcoded model id — which used to mean that setting only `GRIMOIRE_INGEST_MODEL` left Query
+and Lint running a model nobody chose, at a price nobody agreed to, with nothing in the logs
+saying so.
+
+Each agent also has an optional `GRIMOIRE_<AGENT>_MAX_OUTPUT_TOKENS`, the ceiling on what
+the model may emit in one turn. Leave it unset to take the adapter's default. Raise it for
+an agent that writes long pages — a turn that hits the ceiling is truncated mid-thought and
+comes back as `max_tokens`, costing another turn — but keep it inside what the configured
+model can actually emit, or the provider rejects the request outright.
 
 Getting that model wrong does not present as a configuration error. An OAuth-style
 credential — `sk-ant-oat…`, as opposed to a classic `sk-ant-api…` key — answers a request
 for a model it is not entitled to with
 
 ```
-Model API error 429 (rate_limit_error): Error
+Model API error 429 (rate_limit_error, retryable): Error
 ```
 
 A rate limit, in other words, for a request that was never rate limited. Grimoire is
-reporting faithfully; the provider is what says almost nothing. Before going looking for
-load or backoff, check entitlement directly:
+reporting faithfully; the provider is what says almost nothing — including to us: the
+`retryable` label is read off the status code, so an entitlement gap wearing a 429 gets
+labelled retryable too, and waiting will not help it. Before going looking for load or
+backoff, check entitlement directly:
 
 ```bash
 curl -sS -D - -o /dev/null https://api.anthropic.com/v1/messages \
@@ -84,9 +96,14 @@ up there as a high number, an entitlement gap as a 429 carrying no such headers 
 401 for it and tells you nothing. Swap the model in that payload to map which ones the
 credential actually covers.
 
-Worth knowing before the first 429 rather than after it: nothing in the harness retries or
-backs off. The turn fails, the record is written with its `failure_reason`, and the run is
-over.
+Worth knowing before the first 429 rather than after it: the retrying that happens is
+bounded and lives inside a single turn. The model client asks the provider at most three
+times for one turn — the original request plus two retries — which absorbs a burst 429 from
+several agents dispatched at once, or a momentary 5xx. Anything that outlives those attempts
+fails the turn, and no layer above re-enters the task: the record is written with its
+`failure_reason`, the wiki writes are rolled back, and the run is over. `failure_reason`
+says which of the two kinds it was, `retryable` or `terminal`, so the failure is worth
+reading before deciding whether to resubmit.
 
 ## What runs
 

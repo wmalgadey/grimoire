@@ -144,7 +144,6 @@ public sealed class AgentLoop
             _eventEmitter?.EmitActivity(turnsUsed, toolCallsTotal, toolCallsByName, "model_turn");
 
             var stopReason = turn.StopReason;
-            var stopReasonLabel = stopReason.ToProtocolString();
 
             _instrumentation.RecordModelTokens(turn.InputTokens, turn.OutputTokens);
             _instrumentation.RecordModelToolRequests(turn.ToolUseRequests.Count, stopReason);
@@ -160,38 +159,20 @@ public sealed class AgentLoop
 
             if (turn.ToolUseRequests.Count == 0)
             {
-                switch (stopReason)
+                if (ClassifyNoToolTurn(turn, turnsUsed) == NoToolTurnOutcome.Complete)
                 {
-                    case ModelStopReason.ToolUse:
-                        _instrumentation.RecordNoToolTurn(stopReason, "invalid_tool_use");
-                        throw new InvalidOperationException(
-                            $"Model returned stop_reason={stopReasonLabel} but no tool_use blocks were parsed.");
+                    _instrumentation.RecordAgentTurns(turnsUsed, "completed");
+                    _eventEmitter?.EmitActivity(turnsUsed, toolCallsTotal, toolCallsByName, "finalizing");
 
-                    case ModelStopReason.EndTurn:
-                        // Run completes only on explicit end_turn (per contract).
-                        _instrumentation.RecordNoToolTurn(stopReason, "terminal");
-                        _instrumentation.RecordAgentTurns(turnsUsed, "completed");
-                        _eventEmitter?.EmitActivity(turnsUsed, toolCallsTotal, toolCallsByName, "finalizing");
-
-                        return new AgentLoopResult(
-                            Narrative: turn.AssistantText ?? string.Empty,
-                            TurnsUsed: turnsUsed,
-                            TotalInputTokens: totalInputTokens,
-                            TotalOutputTokens: totalOutputTokens);
-
-                    case ModelStopReason.MaxTokens or ModelStopReason.PauseTurn:
-                        // Non-terminal no-tool stop reasons require another turn.
-                        _instrumentation.RecordNoToolTurn(stopReason, "continue");
-                        conversation.Add(new ConversationMessage("user", [new ConversationTextBlock(ContinuePrompt)]));
-                        continue;
-
-                    default:
-                        _instrumentation.RecordNoToolTurn(stopReason, "invalid_stop_reason");
-                        throw new InvalidOperationException(
-                            $"Model returned unexpected stop_reason='{stopReasonLabel}' without tool_use blocks. " +
-                            $"Expected {ModelStopReason.EndTurn.ToProtocolString()} to complete, " +
-                            $"or {ModelStopReason.MaxTokens.ToProtocolString()}/{ModelStopReason.PauseTurn.ToProtocolString()} to continue.");
+                    return new AgentLoopResult(
+                        Narrative: turn.AssistantText ?? string.Empty,
+                        TurnsUsed: turnsUsed,
+                        TotalInputTokens: totalInputTokens,
+                        TotalOutputTokens: totalOutputTokens);
                 }
+
+                conversation.Add(new ConversationMessage("user", [new ConversationTextBlock(ContinuePrompt)]));
+                continue;
             }
 
             // Process tool calls and build tool_results user message.
@@ -220,6 +201,62 @@ public sealed class AgentLoop
             {
                 conversation.Add(new ConversationMessage("user", toolResultBlocks));
             }
+        }
+    }
+
+    /// <summary>What a turn that requested no tools means for the loop.</summary>
+    private enum NoToolTurnOutcome
+    {
+        /// <summary>The run is finished — the model ended its turn.</summary>
+        Complete,
+
+        /// <summary>The turn was cut short; the loop nudges the model and takes another.</summary>
+        Continue,
+    }
+
+    /// <summary>
+    /// Decides what a no-tool turn means, and throws for the ones that end the run badly.
+    /// Extracted from <see cref="RunAsync(string, IReadOnlyList{ConversationMessage}, string, CancellationToken)"/>
+    /// so the stop-reason contract reads on its own — and so the loop body stays under the
+    /// repository's complexity gate as stop reasons are given their own handling.
+    /// </summary>
+    private NoToolTurnOutcome ClassifyNoToolTurn(ModelTurn turn, int turnsUsed)
+    {
+        var stopReason = turn.StopReason;
+        var stopReasonLabel = stopReason.ToProtocolString();
+
+        switch (stopReason)
+        {
+            case ModelStopReason.EndTurn:
+                // Run completes only on explicit end_turn (per contract).
+                _instrumentation.RecordNoToolTurn(stopReason, "terminal");
+                return NoToolTurnOutcome.Complete;
+
+            case ModelStopReason.MaxTokens or ModelStopReason.PauseTurn:
+                // Non-terminal no-tool stop reasons require another turn.
+                _instrumentation.RecordNoToolTurn(stopReason, "continue");
+                return NoToolTurnOutcome.Continue;
+
+            case ModelStopReason.Refusal:
+                // #119: a refusal is a normal, documented outcome — the safety classifier
+                // declined — so the run fails with the provider's own reason rather than
+                // with "unexpected stop_reason", which described the harness. It is
+                // terminal: re-sending the same conversation would only be refused again.
+                _instrumentation.RecordNoToolTurn(stopReason, "refusal");
+                _instrumentation.RecordAgentTurns(turnsUsed, "failed");
+                throw ModelRefusalException.FromDetails(turn.Refusal, turnsUsed);
+
+            case ModelStopReason.ToolUse:
+                _instrumentation.RecordNoToolTurn(stopReason, "invalid_tool_use");
+                throw new InvalidOperationException(
+                    $"Model returned stop_reason={stopReasonLabel} but no tool_use blocks were parsed.");
+
+            default:
+                _instrumentation.RecordNoToolTurn(stopReason, "invalid_stop_reason");
+                throw new InvalidOperationException(
+                    $"Model returned unexpected stop_reason='{stopReasonLabel}' without tool_use blocks. " +
+                    $"Expected {ModelStopReason.EndTurn.ToProtocolString()} to complete, " +
+                    $"or {ModelStopReason.MaxTokens.ToProtocolString()}/{ModelStopReason.PauseTurn.ToProtocolString()} to continue.");
         }
     }
 

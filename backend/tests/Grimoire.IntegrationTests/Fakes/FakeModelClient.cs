@@ -99,6 +99,22 @@ public sealed class FakeModelClient : IModelClient
             InputTokens: 200,
             OutputTokens: 100);
 
+    /// <summary>
+    /// #119: a turn the provider refused — HTTP 200, <c>stop_reason: "refusal"</c>, no
+    /// tool_use blocks, and the <c>stop_details</c> the API sends with it. Pass nulls for
+    /// the refusal the provider sends with no details at all.
+    /// </summary>
+    public static ModelTurn RefusalTurn(string? category = "harmful_content", string? explanation = "The request was declined.")
+        => new(
+            AssistantText: null,
+            ToolUseRequests: [],
+            StopReason: ModelStopReason.Refusal,
+            InputTokens: 120,
+            OutputTokens: 0,
+            Refusal: category is null && explanation is null
+                ? null
+                : new ModelRefusalDetails(category, explanation));
+
     /// <summary>Creates a scripted tool-call turn for write_file.</summary>
     public static ModelTurn WriteFileTurn(string id, string path, string content)
         => ToolCallTurn(id, "write_file",

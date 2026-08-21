@@ -18,7 +18,38 @@ namespace Grimoire.AgentRuntime.Core.Adapters.Anthropic;
 /// </summary>
 public sealed class AnthropicModelClient : IModelClient
 {
-    private const string DefaultModel = "claude-opus-4-8";
+    /// <summary>
+    /// #122: the per-request output ceiling, when the agent's own variable does not set
+    /// one. It is an <em>enforced</em> cap the model is unaware of — hitting it truncates
+    /// the response mid-thought, which comes back as <c>stop_reason: max_tokens</c> and
+    /// costs another turn against the turn cap, and for a <c>write_file</c> carrying a
+    /// large page the truncated body is still a syntactically valid tool call.
+    /// <para>
+    /// The value it replaces was the literal <c>8096</c>, which is not a round number in
+    /// any base and reads as a typo for this one. It is deliberately left at the same
+    /// order of magnitude: raising it is a question about what the configured model can
+    /// actually emit, which is the tier decision in #117, not something to settle by
+    /// widening a default underneath every agent at once. What changes here is that an
+    /// operator who needs more can now say so per agent without a code change.
+    /// </para>
+    /// </summary>
+    public const int DefaultMaxOutputTokens = 8192;
+
+    /// <summary>
+    /// #120: who acts on a retryable rejection, decided here rather than left to the SDK's
+    /// unstated default. The <em>short</em> case — a burst 429 while the Hub dispatches
+    /// several agents at once, a momentary 5xx — is absorbed inside the call by the SDK's
+    /// own bounded retry, which is the only layer that can retry a single turn without
+    /// re-running the whole task. Anything that outlives those attempts becomes a failed
+    /// run carrying <see cref="ModelApiException.IsRetryable"/>, and re-entering the task
+    /// is ADR-025's business, not the adapter's.
+    /// <para>
+    /// Bounded deliberately low: an OAuth credential answers a request for a model it is
+    /// not entitled to with a 429 that no amount of waiting fixes (see deploy/README.md),
+    /// so a generous retry budget would spend real time on a doomed request.
+    /// </para>
+    /// </summary>
+    private const int MaxProviderRetries = 2;
 
     private readonly AnthropicClient _client;
 
@@ -27,27 +58,88 @@ public sealed class AnthropicModelClient : IModelClient
     private IReadOnlyList<ToolDefinition>? _cachedToolSource;
     private List<ToolUnion>? _cachedTools;
 
+    private readonly long _maxOutputTokens;
+
     public AnthropicModelClient(
         ILogger<AnthropicModelClient> logger = null!,
         string modelEnvVar = "GRIMOIRE_INGEST_MODEL",
-        string baseUrlEnvVar = "GRIMOIRE_INGEST_BASE_URL")
+        string baseUrlEnvVar = "GRIMOIRE_INGEST_BASE_URL",
+        string maxOutputTokensEnvVar = "GRIMOIRE_INGEST_MAX_OUTPUT_TOKENS")
     {
         var baseUrl = Environment.GetEnvironmentVariable(baseUrlEnvVar);
 
         _client = string.IsNullOrWhiteSpace(baseUrl)
             ? new AnthropicClient()
             {
+                MaxRetries = MaxProviderRetries,
                 Handlers = [new LoggingHandler(logger)],
             }
             : new AnthropicClient()
             {
                 BaseUrl = baseUrl,
+                MaxRetries = MaxProviderRetries,
                 Handlers = [new LoggingHandler(logger)],
             };
 
-        ModelId = Environment.GetEnvironmentVariable(modelEnvVar) ?? DefaultModel;
+        ModelId = ResolveModelId(modelEnvVar);
+        _maxOutputTokens = ResolveMaxOutputTokens(maxOutputTokensEnvVar, logger);
 
-        logger?.LogInformation("AnthropicModelClient initialized with model {ModelId} and base URL {BaseUrl}.", ModelId, _client.BaseUrl);
+        logger?.LogInformation(
+            "AnthropicModelClient initialized with model {ModelId}, base URL {BaseUrl}, and max output tokens {MaxOutputTokens}.",
+            ModelId, _client.BaseUrl, _maxOutputTokens);
+    }
+
+    /// <summary>
+    /// #117 FR-001: the model id is resolved from configuration, and from nothing else.
+    /// <para>
+    /// This used to fall back to a <c>claude-opus-4-8</c> literal — a different tier than
+    /// the one <c>.env-example</c> configures, silently, and per-agent: because the three
+    /// variables do not inherit from one another, an operator who set only
+    /// <c>GRIMOIRE_INGEST_MODEL</c> left Query and Lint running a model nobody chose, at a
+    /// price nobody agreed to, with nothing in the logs saying so. A fallback that is
+    /// wrong in a way no one can see is worse than no fallback, so there is none: an unset
+    /// variable fails the run at composition, naming the variable to set.
+    /// </para>
+    /// </summary>
+    private static string ResolveModelId(string modelEnvVar)
+    {
+        var configured = Environment.GetEnvironmentVariable(modelEnvVar);
+        if (string.IsNullOrWhiteSpace(configured))
+        {
+            throw new InvalidOperationException(
+                $"{modelEnvVar} is not set. Each agent resolves its own model from its own " +
+                "variable and inherits from no other (ADR-004); there is no code-level " +
+                "default, so that an unset variable cannot silently run a model and a price " +
+                "tier nobody chose. Set it in the Hub's .env file — see .env-example.");
+        }
+
+        return configured.Trim();
+    }
+
+    /// <summary>
+    /// #122: the output ceiling, per agent, from the agent's own variable. A value that is
+    /// not a positive integer falls back to <see cref="DefaultMaxOutputTokens"/> with a
+    /// warning rather than failing the run — unlike the model id, a mistyped ceiling has a
+    /// safe reading, and the run is still one the operator wants to happen.
+    /// </summary>
+    private static long ResolveMaxOutputTokens(
+        string maxOutputTokensEnvVar, ILogger<AnthropicModelClient>? logger)
+    {
+        var raw = Environment.GetEnvironmentVariable(maxOutputTokensEnvVar);
+        if (string.IsNullOrWhiteSpace(raw))
+        {
+            return DefaultMaxOutputTokens;
+        }
+
+        if (long.TryParse(raw, out var parsed) && parsed > 0)
+        {
+            return parsed;
+        }
+
+        logger?.LogWarning(
+            "{EnvVar} is set to '{Value}', which is not a positive integer; using {Default} instead.",
+            maxOutputTokensEnvVar, raw, DefaultMaxOutputTokens);
+        return DefaultMaxOutputTokens;
     }
 
     public string ModelId { get; }
@@ -84,7 +176,7 @@ public sealed class AnthropicModelClient : IModelClient
         var createParams = new MessageCreateParams
         {
             Model = ModelId,
-            MaxTokens = 8096,
+            MaxTokens = _maxOutputTokens,
             System = systemPrompt,
             Messages = messages,
             Tools = toolsList,
@@ -131,7 +223,8 @@ public sealed class AnthropicModelClient : IModelClient
             ToolUseRequests: toolUseRequests,
             StopReason: ModelStopReasonContract.FromRawValue(response.StopReason),
             InputTokens: (int)(response.Usage?.InputTokens ?? 0),
-            OutputTokens: (int)(response.Usage?.OutputTokens ?? 0));
+            OutputTokens: (int)(response.Usage?.OutputTokens ?? 0),
+            Refusal: MapRefusalDetails(response.StopDetails));
     }
 
     /// <summary>
@@ -174,6 +267,7 @@ public sealed class AnthropicModelClient : IModelClient
         private readonly SortedDictionary<long, (string Id, string Name, StringBuilder Json)> _toolBlocksByIndex = new();
         private string? _assistantText;
         private ModelStopReason _stopReason = ModelStopReason.Unknown;
+        private ModelRefusalDetails? _refusal;
         private int _inputTokens;
         private int _outputTokens;
 
@@ -195,6 +289,7 @@ public sealed class AnthropicModelClient : IModelClient
             else if (streamEvent.TryPickDelta(out var messageDelta))
             {
                 _stopReason = ModelStopReasonContract.FromRawValue(messageDelta.Delta.StopReason);
+                _refusal = MapRefusalDetails(messageDelta.Delta.StopDetails);
                 _outputTokens = (int)messageDelta.Usage.OutputTokens;
             }
         }
@@ -223,7 +318,28 @@ public sealed class AnthropicModelClient : IModelClient
                 .ToList(),
             StopReason: _stopReason,
             InputTokens: _inputTokens,
-            OutputTokens: _outputTokens);
+            OutputTokens: _outputTokens,
+            Refusal: _refusal);
+    }
+
+    /// <summary>
+    /// #119: maps the provider's <c>stop_details</c> — the <c>category</c>/<c>explanation</c>
+    /// that accompany <c>stop_reason: "refusal"</c> — into the port's own
+    /// <see cref="ModelRefusalDetails"/>, so the SDK type stays inside this namespace
+    /// (ADR-010 containment) while the reason travels with the turn. Returns <c>null</c>
+    /// for every non-refusal turn, which is what the provider sends there.
+    /// </summary>
+    private static ModelRefusalDetails? MapRefusalDetails(RefusalStopDetails? stopDetails)
+    {
+        if (stopDetails is null)
+        {
+            return null;
+        }
+
+        var category = stopDetails.Category?.Raw();
+        return new ModelRefusalDetails(
+            string.IsNullOrWhiteSpace(category) ? null : category,
+            string.IsNullOrWhiteSpace(stopDetails.Explanation) ? null : stopDetails.Explanation);
     }
 
     /// <summary>
@@ -247,19 +363,40 @@ public sealed class AnthropicModelClient : IModelClient
     {
         var status = (int)exception.StatusCode;
         var (errorType, providerMessage) = ParseProviderError(exception.ResponseBody);
+        var isRetryable = IsRetryable(exception);
 
         var text = $"Model API error {status}";
+        var qualifiers = new List<string>(2);
         if (!string.IsNullOrWhiteSpace(errorType))
         {
-            text += $" ({errorType})";
+            qualifiers.Add(errorType);
         }
+        // The classification goes ahead of the provider's own text, which the cap may
+        // truncate — an operator has to be able to read "retryable" off a failure whose
+        // explanation ran long.
+        qualifiers.Add(isRetryable ? "retryable" : "terminal");
+        text += $" ({string.Join(", ", qualifiers)})";
+
         if (!string.IsNullOrWhiteSpace(providerMessage))
         {
             text += $": {providerMessage}";
         }
 
-        return new ModelApiException(SingleLineCapped(text), status, errorType, exception);
+        return new ModelApiException(
+            OperatorFacingText.SingleLineCapped(text), status, errorType, isRetryable, exception);
     }
+
+    /// <summary>
+    /// #120: separates a rejected <em>request</em> from a rejecting <em>condition</em>.
+    /// The SDK already types the distinction, so the typed exceptions are the primary
+    /// signal; the status check behind them covers
+    /// <see cref="AnthropicUnexpectedStatusCodeException"/>, which the SDK raises for
+    /// statuses it has no dedicated type for.
+    /// </summary>
+    private static bool IsRetryable(AnthropicApiException exception)
+        => exception is AnthropicRateLimitException or Anthropic5xxException
+            || (int)exception.StatusCode == 429
+            || (int)exception.StatusCode >= 500;
 
     /// <summary>
     /// Reads the provider's error envelope (<c>{"type":"error","error":{"type":…,"message":…}}</c>),
@@ -300,21 +437,6 @@ public sealed class AnthropicModelClient : IModelClient
         }
     }
 
-    /// <summary>
-    /// Both artifact writers persist only <c>failure_reason.Split('\n')[0]</c>, so a
-    /// multi-line provider message would silently lose everything after its first line;
-    /// the cap keeps a pathologically long body out of the frontmatter.
-    /// </summary>
-    private const int MaxProviderErrorLength = 500;
-
-    private static string SingleLineCapped(string text)
-    {
-        var singleLine = text.Replace("\r\n", " ").Replace('\n', ' ').Replace('\r', ' ').Trim();
-        return singleLine.Length <= MaxProviderErrorLength
-            ? singleLine
-            : singleLine[..MaxProviderErrorLength] + "…";
-    }
-
     private static List<ToolUnion> BuildTools(IReadOnlyList<ToolDefinition> tools)
     {
         var toolsList = new List<ToolUnion>();
@@ -328,6 +450,13 @@ public sealed class AnthropicModelClient : IModelClient
                 Name = t.Name,
                 Description = t.Description,
                 InputSchema = schema,
+                // #127: strict tool use — the provider validates tool_use.input against the
+                // schema before sending it, so a mis-shaped input never costs us a turn
+                // against the turn cap and never produces a denial record that describes a
+                // model slip rather than a policy decision. It constrains shape only:
+                // whether the action is *allowed* remains GuardedToolExecutor's to decide,
+                // deny-by-default, at the moment the tool is invoked (Principle V).
+                Strict = true,
             });
         }
 
@@ -379,59 +508,98 @@ public sealed class AnthropicModelClient : IModelClient
         return contentBlocks;
     }
 
-    private class LoggingHandler : DelegatingHandler
+    /// <summary>
+    /// #123: per-request diagnostics for the provider call.
+    /// <para>
+    /// The <c>Information</c> line is the transaction — method, URL, status. The bodies are
+    /// <c>Debug</c>, and are not even read unless <c>Debug</c> is enabled: at default levels
+    /// this used to duplicate the system prompt, the whole conversation, every ingested
+    /// source document, and every page body the agent wrote into the process log on every
+    /// turn — and since the conversation is re-sent in full each turn, the log grew
+    /// quadratically over a run that may take up to 50 of them. Ingested sources are
+    /// untrusted external documents that may be private; ADR-004 scopes the credential
+    /// carefully and the payload deserved the same care.
+    /// </para>
+    /// <para>
+    /// This is a debugging aid, not the project's observability surface — that is ADR-005's
+    /// spans, metrics, and structured events, none of which run through here. For a full,
+    /// durable record of what crossed the port, <c>GRIMOIRE_MODEL_CAPTURE_PATH</c> is the
+    /// purpose-built path (ADR-012).
+    /// </para>
+    /// </summary>
+    private sealed class LoggingHandler : DelegatingHandler
     {
-        private ILogger<AnthropicModelClient> _logger;
+        private readonly ILogger<AnthropicModelClient>? _logger;
 
-        public LoggingHandler(ILogger<AnthropicModelClient> logger)
+        public LoggingHandler(ILogger<AnthropicModelClient>? logger)
         {
-            this._logger = logger;
+            _logger = logger;
         }
 
-        protected override HttpResponseMessage Send(HttpRequestMessage request, CancellationToken cancellationToken)
+        private bool BodiesWanted => _logger?.IsEnabled(LogLevel.Debug) == true;
+
+        protected override HttpResponseMessage Send(
+            HttpRequestMessage request, CancellationToken cancellationToken)
         {
             _logger?.LogInformation("Anthropic request: {Method} {Url}", request.Method, request.RequestUri);
 
-            if (request.Content != null)
+            if (BodiesWanted && request.Content is not null)
             {
-                var requestBody = request.Content.ReadAsStringAsync(cancellationToken).GetAwaiter().GetResult();
-                _logger?.LogInformation("Anthropic request body: {RequestBody}", requestBody);
+                LogRequestBody(request.Content.ReadAsStringAsync(cancellationToken).GetAwaiter().GetResult());
             }
 
             var response = base.Send(request, cancellationToken);
 
             _logger?.LogInformation("Anthropic response: {StatusCode}", response.StatusCode);
 
-            if (response.Content != null)
+            if (BodiesWanted && ShouldReadResponseBody(response))
             {
-                var responseBody = response.Content.ReadAsStringAsync(cancellationToken).GetAwaiter().GetResult();
-                _logger?.LogInformation("Anthropic response body: {ResponseBody}", responseBody);
+                LogResponseBody(response.Content.ReadAsStringAsync(cancellationToken).GetAwaiter().GetResult());
             }
 
             return response;
         }
 
-        override protected async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+        protected override async Task<HttpResponseMessage> SendAsync(
+            HttpRequestMessage request, CancellationToken cancellationToken)
         {
             _logger?.LogInformation("Anthropic request: {Method} {Url}", request.Method, request.RequestUri);
 
-            if (request.Content != null)
+            if (BodiesWanted && request.Content is not null)
             {
-                var requestBody = await request.Content.ReadAsStringAsync(cancellationToken);
-                _logger?.LogInformation("Anthropic request body: {RequestBody}", requestBody);
+                LogRequestBody(await request.Content.ReadAsStringAsync(cancellationToken));
             }
 
             var response = await base.SendAsync(request, cancellationToken);
 
             _logger?.LogInformation("Anthropic response: {StatusCode}", response.StatusCode);
 
-            if (response.Content != null)
+            if (BodiesWanted && ShouldReadResponseBody(response))
             {
-                var responseBody = await response.Content.ReadAsStringAsync(cancellationToken);
-                _logger?.LogInformation("Anthropic response body: {ResponseBody}", responseBody);
+                LogResponseBody(await response.Content.ReadAsStringAsync(cancellationToken));
             }
 
             return response;
         }
+
+        /// <summary>
+        /// A streamed response is never read here. Buffering an <c>text/event-stream</c>
+        /// body to a string waits for the stream to finish, which is precisely the delay
+        /// Query's streaming exists to avoid (ADR-011 SC-003) — turning on a log level must
+        /// not change how the product behaves. The turns are recoverable in full through
+        /// <c>GRIMOIRE_MODEL_CAPTURE_PATH</c> instead.
+        /// </summary>
+        private static bool ShouldReadResponseBody(HttpResponseMessage response)
+            => response.Content is not null
+                && !string.Equals(
+                    response.Content.Headers.ContentType?.MediaType,
+                    "text/event-stream",
+                    StringComparison.OrdinalIgnoreCase);
+
+        private void LogRequestBody(string body)
+            => _logger?.LogDebug("Anthropic request body: {RequestBody}", body);
+
+        private void LogResponseBody(string body)
+            => _logger?.LogDebug("Anthropic response body: {ResponseBody}", body);
     }
 }

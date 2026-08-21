@@ -27,7 +27,8 @@ var profile = new AgentProfile(
     {
         InstructionDocument.SystemPrompt,
     },
-    ModelEnvVarNames: new ModelEnvVarNames("GRIMOIRE_QUERY_MODEL", "GRIMOIRE_QUERY_BASE_URL"));
+    ModelEnvVarNames: new ModelEnvVarNames(
+        "GRIMOIRE_QUERY_MODEL", "GRIMOIRE_QUERY_BASE_URL", "GRIMOIRE_QUERY_MAX_OUTPUT_TOKENS"));
 
 using var telemetry = AgentTelemetryBootstrap.Build(profile.ServiceName, profile.ActivitySourceName, profile.MeterName);
 var loggerFactory = telemetry.LoggerFactory;

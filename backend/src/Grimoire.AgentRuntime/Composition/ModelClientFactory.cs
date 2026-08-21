@@ -6,13 +6,19 @@ using Microsoft.Extensions.Logging;
 namespace Grimoire.AgentRuntime.Composition;
 
 /// <summary>
-/// The per-agent model/base-url environment-variable names (ADR-004 credential/model
-/// scoping): Ingest keeps the adapter defaults (GRIMOIRE_INGEST_MODEL /
-/// GRIMOIRE_INGEST_BASE_URL), Query supplies GRIMOIRE_QUERY_MODEL /
-/// GRIMOIRE_QUERY_BASE_URL. A frozen profile input — consolidation must not merge the
-/// two agents' credential/config scopes.
+/// The per-agent model/base-url/output-ceiling environment-variable names (ADR-004
+/// credential/model scoping): Ingest keeps the adapter defaults (GRIMOIRE_INGEST_MODEL /
+/// GRIMOIRE_INGEST_BASE_URL / GRIMOIRE_INGEST_MAX_OUTPUT_TOKENS), Query and Lint supply
+/// their own GRIMOIRE_QUERY_* and GRIMOIRE_LINT_* names. A frozen profile input —
+/// consolidation must not merge the agents' credential/config scopes. The output ceiling
+/// (#122) joins the set because it is per-agent for the same reason the model is: what
+/// Query needs to emit for one answer and what Ingest needs for a full wiki page are not
+/// the same number, and neither is a property of the code.
 /// </summary>
-public sealed record ModelEnvVarNames(string ModelEnvVar, string BaseUrlEnvVar);
+public sealed record ModelEnvVarNames(
+    string ModelEnvVar,
+    string BaseUrlEnvVar,
+    string MaxOutputTokensEnvVar);
 
 /// <summary>
 /// The single implementation of ADR-012's composition-root model-adapter selection
@@ -45,7 +51,8 @@ public static class ModelClientFactory
         var liveClient = new AnthropicModelClient(
             loggerFactory.CreateLogger<AnthropicModelClient>(),
             modelEnvVar: modelEnvVarNames.ModelEnvVar,
-            baseUrlEnvVar: modelEnvVarNames.BaseUrlEnvVar);
+            baseUrlEnvVar: modelEnvVarNames.BaseUrlEnvVar,
+            maxOutputTokensEnvVar: modelEnvVarNames.MaxOutputTokensEnvVar);
         return string.IsNullOrWhiteSpace(capturePath)
             ? liveClient
             : new TurnCaptureModelClient(liveClient, capturePath);
