@@ -183,10 +183,18 @@
 		window.addEventListener('pagehide', handlePageHide);
 
 		void client.start();
+
+		// Unregistered from onMount's own cleanup, not from onDestroy (#93). onMount never
+		// runs on the server, so this cleanup never does either — while onDestroy does, and
+		// an unguarded `window` there threw during SSR and made the route unreachable by
+		// URL. That is currently unreachable because `ssr = false` in +layout.ts turned the
+		// app into a declared SPA, but the pairing is what makes it safe on its own terms:
+		// deploy/README.md keeps adapter-node open as a future, and this should not become
+		// a 500 again if SSR ever comes back.
+		return () => window.removeEventListener('pagehide', handlePageHide);
 	});
 
 	onDestroy(() => {
-		window.removeEventListener('pagehide', handlePageHide);
 		void client?.stop();
 	});
 </script>
