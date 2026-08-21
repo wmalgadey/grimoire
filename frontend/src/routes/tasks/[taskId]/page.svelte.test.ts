@@ -419,14 +419,18 @@ test.each(['completed', 'failed'] as const)(
 			.element(screen.getByTestId('task-run-detail-summary'))
 			.toHaveTextContent('Run detail');
 
-		// Still in the document, inside the disclosure — collapsed, not discarded.
-		const history = screen.getByTestId('status-history-path').elements();
-		expect(history).toHaveLength(1);
-		expect(disclosure.element().contains(history[0])).toBe(true);
+		// Both regions, not just the first: a regression that left Agent activity outside the
+		// disclosure would still put terminal progress reporting above the task record.
+		// Still in the document either way — collapsed, not discarded.
+		for (const testId of ['status-history-path', 'task-activity-empty']) {
+			const region = screen.getByTestId(testId).elements();
+			expect(region).toHaveLength(1);
+			expect(disclosure.element().contains(region[0])).toBe(true);
+		}
 	}
 );
 
-test.each(['received', 'queued', 'running'] as const)(
+test.each(['received', 'converting', 'queued', 'running'] as const)(
 	'leaves run detail open and undecorated while a %s task is still in flight',
 	async (status) => {
 		getTaskRecordMock.mockResolvedValue({ status: 'ok', record: record() });
