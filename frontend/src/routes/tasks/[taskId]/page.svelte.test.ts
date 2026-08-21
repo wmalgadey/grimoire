@@ -266,8 +266,12 @@ test('surfaces connection staleness via the shared ConnectionStatusIndicator', a
 
 // ── 023 T011 (US1, FR-006/SC-004) ──────────────────────────────────────────────────
 
+// #129: rendered for a task still in flight. The assertion here is about *ordering*, and on a
+// terminal task the history now sits inside a collapsed disclosure where `toBeVisible` is false
+// by design — that case is covered below, asserting the content is collapsed rather than dropped.
 test('renders the ordered status history for the task', async () => {
 	getTaskRecordMock.mockResolvedValue({ status: 'ok', record: record() });
+	getTaskDetailMock.mockResolvedValue(detail({ status: 'running' }));
 
 	const screen = await render(Page, { data: { taskId: 'task-1' }, params: { taskId: 'task-1' } });
 
@@ -390,6 +394,52 @@ test.each(['completed', 'failed'] as const)(
 		const empty = screen.getByTestId('task-activity-empty');
 		await expect.element(empty).toHaveTextContent('This run has finished');
 		await expect.element(empty).not.toHaveTextContent('No agent has picked this up');
+	}
+);
+
+// #129 direction 1: both regions report on a run in progress, so on a finished task they are
+// the whole upper half of the page describing work that is already over — above the record the
+// agent actually wrote. They collapse behind a disclosure once the task is terminal.
+test.each(['completed', 'failed'] as const)(
+	'puts run detail behind a collapsed disclosure for a %s task',
+	async (status) => {
+		getTaskRecordMock.mockResolvedValue({ status: 'ok', record: record() });
+		getTaskDetailMock.mockResolvedValue(detail({ status }));
+
+		const screen = await render(Page, {
+			data: { taskId: 'task-1' },
+			params: { taskId: 'task-1' }
+		});
+
+		const disclosure = screen.getByTestId('task-run-detail');
+		await expect.element(disclosure).toBeInTheDocument();
+		// Collapsed, not removed: the detail stays one click away rather than being dropped.
+		expect(disclosure.element().hasAttribute('open')).toBe(false);
+		await expect
+			.element(screen.getByTestId('task-run-detail-summary'))
+			.toHaveTextContent('Run detail');
+
+		// Still in the document, inside the disclosure — collapsed, not discarded.
+		const history = screen.getByTestId('status-history-path').elements();
+		expect(history).toHaveLength(1);
+		expect(disclosure.element().contains(history[0])).toBe(true);
+	}
+);
+
+test.each(['received', 'queued', 'running'] as const)(
+	'leaves run detail open and undecorated while a %s task is still in flight',
+	async (status) => {
+		getTaskRecordMock.mockResolvedValue({ status: 'ok', record: record() });
+		getTaskDetailMock.mockResolvedValue(detail({ status }));
+
+		const screen = await render(Page, {
+			data: { taskId: 'task-1' },
+			params: { taskId: 'task-1' }
+		});
+
+		// Progress is the point before the task is terminal, so there is nothing to collapse.
+		expect(screen.getByTestId('task-run-detail').elements()).toHaveLength(0);
+		await expect.element(screen.getByTestId('task-activity-empty')).toBeVisible();
 	}
 );
 

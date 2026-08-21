@@ -113,6 +113,9 @@
 	// a task an agent just finished is simply false; it is only true before dispatch. The
 	// counters themselves are not recoverable here (nothing persists them — that half of the
 	// issue pairs with #135); what this can do is stop claiming the run never happened.
+	const isTerminalStatus = (status: LifecycleStage | undefined) =>
+		status === 'completed' || status === 'failed';
+
 	const activityEmptyTextFor = (status: LifecycleStage | undefined) =>
 		status === 'completed' || status === 'failed'
 			? 'This run has finished. Turn and tool-call counts are only kept while an agent is running, so they are not available now — the task record below is what it produced.'
@@ -285,51 +288,76 @@
 			</div>
 		{/if}
 	{:else if loaded}
-		<div class="flex flex-wrap items-stretch border-t border-slate-200">
-			<div class="flex min-w-72 flex-[1.15] flex-col gap-3 border-r border-slate-200 px-6 py-5">
-				{#if detail && (detail.statusHistory?.length ?? 0) > 0}
-					<StatusHistoryPath entries={detail.statusHistory ?? []} />
-				{:else}
-					<h2 class="text-xs font-semibold tracking-wider text-slate-600 uppercase">
-						Status history
-					</h2>
-					<p class="max-w-[34ch] text-sm text-slate-500" data-testid="task-history-empty">
-						Nothing has happened yet beyond the submission. Stages appear here as the task moves.
-					</p>
-				{/if}
-			</div>
-
-			<div class="flex min-w-72 flex-1 flex-col gap-3 px-6 py-5">
-				<h2 class="text-xs font-semibold tracking-wider text-slate-600 uppercase">
-					Agent activity
-				</h2>
-				{#if detail?.runActivity}
-					<!-- 004 FR-018: loop mechanics only — turns, tool calls and the current action are
-					     what the Hub publishes. The design also sketches the wiki pages the agent
-					     wrote; no endpoint reports them today, so nothing stands in for them here.
-					     TODO(backend): expose pages touched per task (the guarded write tool already
-					     knows them) and this region gains the "Wrote / Writing" list from the design. -->
-					<div class="flex gap-5 text-sm text-slate-700" data-testid="task-activity-counts">
-						<span>{detail.runActivity.modelTurns} model turns</span>
-						<span>{detail.runActivity.toolCalls} tool calls</span>
-					</div>
-					{#if detail.runActivity.currentAction}
-						<p class="text-sm text-slate-500" data-testid="task-activity-current">
-							{detail.runActivity.currentAction}
+		{#snippet runDetail()}
+			<div class="flex flex-wrap items-stretch">
+				<div class="flex min-w-72 flex-[1.15] flex-col gap-3 border-r border-slate-200 px-6 py-5">
+					{#if detail && (detail.statusHistory?.length ?? 0) > 0}
+						<StatusHistoryPath entries={detail.statusHistory ?? []} />
+					{:else}
+						<h2 class="text-xs font-semibold tracking-wider text-slate-600 uppercase">
+							Status history
+						</h2>
+						<p class="max-w-[34ch] text-sm text-slate-500" data-testid="task-history-empty">
+							Nothing has happened yet beyond the submission. Stages appear here as the task moves.
 						</p>
 					{/if}
-					<div class="flex flex-col gap-1 rounded-lg bg-slate-50 p-3" data-testid="task-tool-calls">
-						{#each Object.entries(detail.runActivity.toolCallsByName) as [name, count] (name)}
-							<span class="font-mono text-xs text-slate-600">{name} ×{count}</span>
-						{/each}
-					</div>
-				{:else}
-					<p class="max-w-[34ch] text-sm text-slate-500" data-testid="task-activity-empty">
-						{activityEmptyTextFor(detail?.status)}
-					</p>
-				{/if}
+				</div>
+
+				<div class="flex min-w-72 flex-1 flex-col gap-3 px-6 py-5">
+					<h2 class="text-xs font-semibold tracking-wider text-slate-600 uppercase">
+						Agent activity
+					</h2>
+					{#if detail?.runActivity}
+						<!-- 004 FR-018: loop mechanics only — turns, tool calls and the current action are
+						     what the Hub publishes. The design also sketches the wiki pages the agent
+						     wrote; no endpoint reports them today, so nothing stands in for them here.
+						     TODO(backend): expose pages touched per task (the guarded write tool already
+						     knows them) and this region gains the "Wrote / Writing" list from the design. -->
+						<div class="flex gap-5 text-sm text-slate-700" data-testid="task-activity-counts">
+							<span>{detail.runActivity.modelTurns} model turns</span>
+							<span>{detail.runActivity.toolCalls} tool calls</span>
+						</div>
+						{#if detail.runActivity.currentAction}
+							<p class="text-sm text-slate-500" data-testid="task-activity-current">
+								{detail.runActivity.currentAction}
+							</p>
+						{/if}
+						<div
+							class="flex flex-col gap-1 rounded-lg bg-slate-50 p-3"
+							data-testid="task-tool-calls"
+						>
+							{#each Object.entries(detail.runActivity.toolCallsByName) as [name, count] (name)}
+								<span class="font-mono text-xs text-slate-600">{name} ×{count}</span>
+							{/each}
+						</div>
+					{:else}
+						<p class="max-w-[34ch] text-sm text-slate-500" data-testid="task-activity-empty">
+							{activityEmptyTextFor(detail?.status)}
+						</p>
+					{/if}
+				</div>
 			</div>
-		</div>
+		{/snippet}
+
+		<!-- #129 (direction 1): both regions describe a run *in progress* — the activity
+		     counters only exist while the agent process is alive, and the status path is
+		     live-progress framing. On a finished task that is the whole upper half of the
+		     page reporting on work that is already over, above the thing that actually
+		     matters. Collapsed behind a disclosure once the task is terminal, so the task
+		     record leads and the run detail is one line away for anyone who wants it. -->
+		{#if isTerminalStatus(detail?.status)}
+			<details class="border-t border-slate-200" data-testid="task-run-detail">
+				<summary
+					class="cursor-pointer px-6 py-3 text-xs font-semibold tracking-wider text-slate-600 uppercase hover:bg-slate-50"
+					data-testid="task-run-detail-summary">Run detail</summary
+				>
+				{@render runDetail()}
+			</details>
+		{:else}
+			<div class="border-t border-slate-200">
+				{@render runDetail()}
+			</div>
+		{/if}
 
 		<section class="flex flex-col gap-3 border-t border-slate-200 px-6 py-5">
 			<h2 class="text-xs font-semibold tracking-wider text-slate-600 uppercase">Task record</h2>
