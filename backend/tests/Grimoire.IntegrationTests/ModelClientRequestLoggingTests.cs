@@ -47,10 +47,16 @@ public class ModelClientRequestLoggingTests
 
         await NextTurnAsync(logger, marker);
 
-        var bodyEntry = Assert.Single(
+        var requestBodyEntry = Assert.Single(
             logger.Entries.Where(e => e.Message.Contains("Anthropic request body", StringComparison.Ordinal)));
-        Assert.Equal(LogLevel.Debug, bodyEntry.Level);
-        Assert.Contains(marker, bodyEntry.Message, StringComparison.Ordinal);
+        Assert.Equal(LogLevel.Debug, requestBodyEntry.Level);
+        Assert.Contains(marker, requestBodyEntry.Message, StringComparison.Ordinal);
+
+        // Both directions, named separately: the sweep below is satisfied by an empty set,
+        // so on its own it would still pass if the response body stopped being logged at all.
+        var responseBodyEntry = Assert.Single(
+            logger.Entries.Where(e => e.Message.Contains("Anthropic response body", StringComparison.Ordinal)));
+        Assert.Equal(LogLevel.Debug, responseBodyEntry.Level);
 
         Assert.All(
             logger.Entries.Where(e => e.Message.Contains("body", StringComparison.OrdinalIgnoreCase)),
