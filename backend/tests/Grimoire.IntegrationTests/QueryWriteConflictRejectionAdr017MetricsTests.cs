@@ -14,6 +14,7 @@ namespace Grimoire.IntegrationTests;
 /// <see cref="IToolCallInstrumentation.RecordWriteConflictRejected"/> —
 /// <c>catalog_entry_malformed</c> was missing — fixed alongside this test.
 /// </summary>
+[Collection("HubActivityListenerObservability")]
 public class QueryWriteConflictRejectionAdr017MetricsTests
 {
     [Theory]

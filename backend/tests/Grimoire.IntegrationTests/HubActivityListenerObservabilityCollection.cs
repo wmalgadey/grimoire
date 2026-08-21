@@ -20,6 +20,18 @@ namespace Grimoire.IntegrationTests;
 /// process-wide-listener hazard for <c>Grimoire.Hub</c> spans and ASP.NET Core hosting
 /// instrumentation. <c>IngestAgentObservabilityListeners</c> remains untouched and
 /// independent; a class needs at most one of the two collections.
+///
+/// <para>
+/// The same hazard applies to a process-wide
+/// <see cref="System.Diagnostics.Metrics.MeterListener"/>, and it bit in CI on 2026-08-21:
+/// <c>QueryWriteConflictObservabilityTests</c> listens to the <c>Grimoire.QueryAgent</c>
+/// meter's <c>wiki.write_conflict.rejections_total</c> counter and asserted
+/// <c>Assert.Single</c> over every measurement it saw, while
+/// <c>CatalogEntryFormatEnforcementTests</c> — already in this collection — emitted
+/// <c>catalog_entry_malformed</c> on that very counter from a parallel collection. The
+/// listener saw two measurements and the run went red on a PR that touched neither test.
+/// Any class registering a raw listener on that shared meter belongs here too.
+/// </para>
 /// </summary>
 [CollectionDefinition("HubActivityListenerObservability", DisableParallelization = true)]
 public sealed class HubActivityListenerObservabilityCollection;
