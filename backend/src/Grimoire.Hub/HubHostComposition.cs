@@ -141,7 +141,7 @@ internal static class HubHostComposition
             builder.Services.AddSingleton(new LocalSecretsLoader(resolvedPaths.SecretsFilePath));
             builder.Services.AddSingleton<AgentProcessHost>(sp => new AgentProcessHost(
                 sp.GetRequiredService<LocalSecretsLoader>(), resolvedPaths.Ingest.WorkerPath, resolvedPaths.Query.WorkerPath,
-                resolvedPaths.Lint.WorkerPath));
+                resolvedPaths.Lint.WorkerPath, sp.GetRequiredService<ILogger<AgentProcessHost>>()));
             builder.Services.AddSingleton<IAgentProcessLauncher>(sp => sp.GetRequiredService<AgentProcessHost>());
             builder.Services.AddSingleton<IngestRunCoordinator>(sp => new IngestRunCoordinator(
                 sp.GetRequiredService<OperationalStateRepository>(),

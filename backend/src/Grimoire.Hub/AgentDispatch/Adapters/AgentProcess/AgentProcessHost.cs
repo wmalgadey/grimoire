@@ -1,4 +1,6 @@
 using System.Diagnostics;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using Grimoire.Hub.IngestDispatch;
 using Grimoire.Hub.LintDispatch;
 using Grimoire.Hub.QueryDispatch;
@@ -21,6 +23,7 @@ public sealed class AgentProcessHost : IAgentProcessLauncher
     private readonly string _ingestAgentWorkerPath;
     private readonly string _queryAgentWorkerPath;
     private readonly string _lintAgentWorkerPath;
+    private readonly ILogger _logger;
 
     /// <summary>
     /// <paramref name="ingestAgentWorkerPath"/>, <paramref name="queryAgentWorkerPath"/> and
@@ -37,13 +40,23 @@ public sealed class AgentProcessHost : IAgentProcessLauncher
         LocalSecretsLoader secretsLoader,
         string ingestAgentWorkerPath,
         string queryAgentWorkerPath,
-        string lintAgentWorkerPath)
+        string lintAgentWorkerPath,
+        ILogger<AgentProcessHost>? logger = null)
     {
         _secretsLoader = secretsLoader;
         _ingestAgentWorkerPath = ingestAgentWorkerPath;
         _queryAgentWorkerPath = queryAgentWorkerPath;
         _lintAgentWorkerPath = lintAgentWorkerPath;
+        _logger = logger ?? NullLogger<AgentProcessHost>.Instance;
     }
+
+    /// <summary>
+    /// #61 — the <c>agent</c> field of the environment-override log events, and the only
+    /// thing that differs between the three otherwise identical env builds.
+    /// </summary>
+    public const string IngestAgentName = "ingest";
+    public const string QueryAgentName = "query";
+    public const string LintAgentName = "lint";
 
     public async Task<IAgentProcessHandle> StartAsync(IngestAgentRequest request, CancellationToken cancellationToken = default)
     {
@@ -220,7 +233,7 @@ public sealed class AgentProcessHost : IAgentProcessLauncher
         }
 
         var childEnv = BuildLintChildEnvironment(
-            baseEnv, authToken, lintBaseUrl, lintModel, lintMaxOutputTokens, Activity.Current);
+            baseEnv, authToken, lintBaseUrl, lintModel, lintMaxOutputTokens, Activity.Current, _logger);
         startInfo.Environment.Clear();
         foreach (var (key, value) in childEnv)
         {
@@ -288,7 +301,7 @@ public sealed class AgentProcessHost : IAgentProcessLauncher
         }
 
         var childEnv = BuildLintChildEnvironment(
-            baseEnv, authToken, lintBaseUrl, lintModel, lintMaxOutputTokens, Activity.Current);
+            baseEnv, authToken, lintBaseUrl, lintModel, lintMaxOutputTokens, Activity.Current, _logger);
         startInfo.Environment.Clear();
         foreach (var (key, value) in childEnv)
         {
@@ -337,7 +350,7 @@ public sealed class AgentProcessHost : IAgentProcessLauncher
         }
 
         var childEnv = BuildLintChildEnvironment(
-            baseEnv, authToken, lintBaseUrl, lintModel, lintMaxOutputTokens, Activity.Current);
+            baseEnv, authToken, lintBaseUrl, lintModel, lintMaxOutputTokens, Activity.Current, _logger);
         startInfo.Environment.Clear();
         foreach (var (key, value) in childEnv)
         {
@@ -351,15 +364,17 @@ public sealed class AgentProcessHost : IAgentProcessLauncher
     /// Lint's own credential/model-scoping (ADR-004) and trace-propagation (Constitution
     /// IV) env-var build — parallels <see cref="BuildQueryChildEnvironment"/> but with
     /// <c>GRIMOIRE_LINT_*</c> names so Lint's env stays independent of Ingest's/Query's,
-    /// even though all three read the same <c>ANTHROPIC_AUTH_TOKEN</c> secret.
+    /// even though all three read the same <c>ANTHROPIC_AUTH_TOKEN</c> secret. Exposed
+    /// so tests can assert the precedence rule without spawning a real process.
     /// </summary>
-    private static Dictionary<string, string> BuildLintChildEnvironment(
+    public static Dictionary<string, string> BuildLintChildEnvironment(
         IDictionary<string, string> baseEnv,
         string? authToken,
-        string? lintBaseUrl,
-        string? lintModel,
-        string? lintMaxOutputTokens,
-        Activity? currentActivity)
+        string? lintBaseUrl = null,
+        string? lintModel = null,
+        string? lintMaxOutputTokens = null,
+        Activity? currentActivity = null,
+        ILogger? logger = null)
     {
         var env = new Dictionary<string, string>(baseEnv, StringComparer.OrdinalIgnoreCase);
         env.Remove("ANTHROPIC_API_KEY");
@@ -369,19 +384,9 @@ public sealed class AgentProcessHost : IAgentProcessLauncher
             env["ANTHROPIC_AUTH_TOKEN"] = authToken;
         }
 
-        env.Remove("GRIMOIRE_LINT_MODEL");
-        if (!string.IsNullOrWhiteSpace(lintModel))
-        {
-            env["GRIMOIRE_LINT_MODEL"] = lintModel;
-        }
-
-        env.Remove("GRIMOIRE_LINT_BASE_URL");
-        if (!string.IsNullOrWhiteSpace(lintBaseUrl))
-        {
-            env["GRIMOIRE_LINT_BASE_URL"] = lintBaseUrl;
-        }
-
-        ApplyOptionalOverride(env, "GRIMOIRE_LINT_MAX_OUTPUT_TOKENS", lintMaxOutputTokens);
+        ApplyInheritableOverride(env, baseEnv, "GRIMOIRE_LINT_MODEL", lintModel, LintAgentName, logger);
+        ApplyInheritableOverride(env, baseEnv, "GRIMOIRE_LINT_BASE_URL", lintBaseUrl, LintAgentName, logger);
+        ApplyInheritableOverride(env, baseEnv, "GRIMOIRE_LINT_MAX_OUTPUT_TOKENS", lintMaxOutputTokens, LintAgentName, logger);
 
         env.Remove("TRACEPARENT");
         env.Remove("TRACESTATE");
@@ -440,7 +445,7 @@ public sealed class AgentProcessHost : IAgentProcessLauncher
         }
 
         var childEnv = BuildQueryChildEnvironment(
-            baseEnv, authToken, queryBaseUrl, queryModel, queryMaxOutputTokens, Activity.Current);
+            baseEnv, authToken, queryBaseUrl, queryModel, queryMaxOutputTokens, Activity.Current, _logger);
         startInfo.Environment.Clear();
         foreach (var (key, value) in childEnv)
         {
@@ -454,15 +459,17 @@ public sealed class AgentProcessHost : IAgentProcessLauncher
     /// Query's own credential/model-scoping (ADR-004) and trace-propagation (Constitution
     /// IV) env-var build — parallels <see cref="BuildChildEnvironment"/> but with
     /// <c>GRIMOIRE_QUERY_*</c> names so Query's env stays independent of Ingest's, even
-    /// though both read the same <c>ANTHROPIC_AUTH_TOKEN</c> secret.
+    /// though both read the same <c>ANTHROPIC_AUTH_TOKEN</c> secret. Exposed so tests can
+    /// assert the precedence rule without spawning a real process.
     /// </summary>
-    private static Dictionary<string, string> BuildQueryChildEnvironment(
+    public static Dictionary<string, string> BuildQueryChildEnvironment(
         IDictionary<string, string> baseEnv,
         string? authToken,
-        string? queryBaseUrl,
-        string? queryModel,
-        string? queryMaxOutputTokens,
-        Activity? currentActivity)
+        string? queryBaseUrl = null,
+        string? queryModel = null,
+        string? queryMaxOutputTokens = null,
+        Activity? currentActivity = null,
+        ILogger? logger = null)
     {
         var env = new Dictionary<string, string>(baseEnv, StringComparer.OrdinalIgnoreCase);
         env.Remove("ANTHROPIC_API_KEY");
@@ -472,19 +479,9 @@ public sealed class AgentProcessHost : IAgentProcessLauncher
             env["ANTHROPIC_AUTH_TOKEN"] = authToken;
         }
 
-        env.Remove("GRIMOIRE_QUERY_MODEL");
-        if (!string.IsNullOrWhiteSpace(queryModel))
-        {
-            env["GRIMOIRE_QUERY_MODEL"] = queryModel;
-        }
-
-        env.Remove("GRIMOIRE_QUERY_BASE_URL");
-        if (!string.IsNullOrWhiteSpace(queryBaseUrl))
-        {
-            env["GRIMOIRE_QUERY_BASE_URL"] = queryBaseUrl;
-        }
-
-        ApplyOptionalOverride(env, "GRIMOIRE_QUERY_MAX_OUTPUT_TOKENS", queryMaxOutputTokens);
+        ApplyInheritableOverride(env, baseEnv, "GRIMOIRE_QUERY_MODEL", queryModel, QueryAgentName, logger);
+        ApplyInheritableOverride(env, baseEnv, "GRIMOIRE_QUERY_BASE_URL", queryBaseUrl, QueryAgentName, logger);
+        ApplyInheritableOverride(env, baseEnv, "GRIMOIRE_QUERY_MAX_OUTPUT_TOKENS", queryMaxOutputTokens, QueryAgentName, logger);
 
         env.Remove("TRACEPARENT");
         env.Remove("TRACESTATE");
@@ -565,7 +562,7 @@ public sealed class AgentProcessHost : IAgentProcessLauncher
 
         var childEnv = BuildChildEnvironment(
             baseEnv, authToken, ingestBaseUrl, ingestModel, ingestTokenCap, ingestMaxOutputTokens,
-            Activity.Current);
+            Activity.Current, _logger);
         startInfo.Environment.Clear();
         foreach (var (key, value) in childEnv)
         {
@@ -592,28 +589,55 @@ public sealed class AgentProcessHost : IAgentProcessLauncher
     }
 
     /// <summary>
-    /// The Ingest variables' own idiom, which #122's fourth variable made worth naming: the
+    /// #61 — the one precedence rule every agent's <c>GRIMOIRE_*</c> variables obey: the
     /// secrets file wins, an unset one falls back to whatever the Hub's own environment
     /// carries, and the key is scrubbed before being re-injected so nothing survives that
-    /// neither source asked for (ADR-004). Only Ingest inherits this way — Query's and
-    /// Lint's variables deliberately do not.
+    /// neither source asked for (ADR-004). This used to be Ingest's idiom alone — Query's
+    /// and Lint's variables discarded the inherited value unconditionally, so the same
+    /// <c>GRIMOIRE_*_BASE_URL</c> in a shell or a launch profile reached one agent and not
+    /// the other two, with no warning either way.
+    ///
+    /// <para>
+    /// Nothing is dropped silently any more: the value that reaches the agent is logged
+    /// with the source it came from, and an inherited value that lost to the secrets file
+    /// says so (<see cref="AgentEnvironmentLogEvents"/>).
+    /// </para>
     /// </summary>
     private static void ApplyInheritableOverride(
         IDictionary<string, string> env,
         IDictionary<string, string> baseEnv,
         string name,
         string? explicitValue,
-        bool announce = false)
+        string agent,
+        ILogger? logger)
     {
-        var effective = !string.IsNullOrWhiteSpace(explicitValue)
-            ? explicitValue
-            : (baseEnv.TryGetValue(name, out var inherited) ? inherited : null);
+        var hasExplicit = !string.IsNullOrWhiteSpace(explicitValue);
+        var hasInherited = baseEnv.TryGetValue(name, out var inherited) && !string.IsNullOrWhiteSpace(inherited);
+
+        var effective = hasExplicit ? explicitValue : (hasInherited ? inherited : null);
 
         ApplyOptionalOverride(env, name, effective);
 
-        if (announce && env.ContainsKey(name))
+        if (logger is null || !env.TryGetValue(name, out var applied))
         {
-            Console.WriteLine($"Using {name}={env[name]} for Ingest agent process.");
+            return;
+        }
+
+        AgentEnvironmentLogEvents.LogOverrideApplied(
+            logger,
+            agent,
+            name,
+            hasExplicit ? AgentEnvironmentLogEvents.SecretsFileSource : AgentEnvironmentLogEvents.ProcessEnvSource,
+            applied);
+
+        if (hasExplicit && hasInherited)
+        {
+            AgentEnvironmentLogEvents.LogOverrideSuperseded(
+                logger,
+                agent,
+                name,
+                AgentEnvironmentLogEvents.ProcessEnvSource,
+                AgentEnvironmentLogEvents.SecretsFileSource);
         }
     }
 
@@ -633,7 +657,8 @@ public sealed class AgentProcessHost : IAgentProcessLauncher
         string? ingestModel = null,
         string? ingestTokenCap = null,
         string? ingestMaxOutputTokens = null,
-        Activity? currentActivity = null)
+        Activity? currentActivity = null,
+        ILogger? logger = null)
     {
         var env = new Dictionary<string, string>(baseEnv, StringComparer.OrdinalIgnoreCase);
         env.Remove("ANTHROPIC_API_KEY");
@@ -643,10 +668,10 @@ public sealed class AgentProcessHost : IAgentProcessLauncher
             env["ANTHROPIC_AUTH_TOKEN"] = authToken;
         }
 
-        ApplyInheritableOverride(env, baseEnv, "GRIMOIRE_INGEST_MODEL", ingestModel, announce: true);
-        ApplyInheritableOverride(env, baseEnv, "GRIMOIRE_INGEST_BASE_URL", ingestBaseUrl, announce: true);
-        ApplyInheritableOverride(env, baseEnv, "GRIMOIRE_INGEST_TOKEN_CAP", ingestTokenCap);
-        ApplyInheritableOverride(env, baseEnv, "GRIMOIRE_INGEST_MAX_OUTPUT_TOKENS", ingestMaxOutputTokens);
+        ApplyInheritableOverride(env, baseEnv, "GRIMOIRE_INGEST_MODEL", ingestModel, IngestAgentName, logger);
+        ApplyInheritableOverride(env, baseEnv, "GRIMOIRE_INGEST_BASE_URL", ingestBaseUrl, IngestAgentName, logger);
+        ApplyInheritableOverride(env, baseEnv, "GRIMOIRE_INGEST_TOKEN_CAP", ingestTokenCap, IngestAgentName, logger);
+        ApplyInheritableOverride(env, baseEnv, "GRIMOIRE_INGEST_MAX_OUTPUT_TOKENS", ingestMaxOutputTokens, IngestAgentName, logger);
 
         env.Remove("TRACEPARENT");
         env.Remove("TRACESTATE");
