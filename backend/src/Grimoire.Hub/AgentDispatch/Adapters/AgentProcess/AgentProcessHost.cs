@@ -576,13 +576,6 @@ public sealed class AgentProcessHost : IAgentProcessLauncher
     }
 
     /// <summary>
-    /// Builds the child-process environment from <paramref name="baseEnv"/> by removing
-    /// both legacy and current Anthropic credential keys, then re-injecting only if a
-    /// non-null <paramref name="authToken"/> was loaded from the secrets file (ADR-004).
-    /// Also propagates the current W3C trace context (<paramref name="currentActivity"/>, typically
-    /// the Hub's `hub.ingest_run.trigger` span) via `TRACEPARENT`/`TRACESTATE`, so the Ingest agent
-    /// process can parent its own root span to it (Constitution IV: end-to-end trace chain).
-    /// <summary>
     /// #122: sets an optional per-agent override, or removes it outright when the operator
     /// configured none — so a variable left over in the Hub's own environment cannot leak
     /// into an agent whose <c>.env</c> says nothing about it, the same way the model and
@@ -624,6 +617,13 @@ public sealed class AgentProcessHost : IAgentProcessLauncher
         }
     }
 
+    /// <summary>
+    /// Builds the child-process environment from <paramref name="baseEnv"/> by removing
+    /// both legacy and current Anthropic credential keys, then re-injecting only if a
+    /// non-null <paramref name="authToken"/> was loaded from the secrets file (ADR-004).
+    /// Also propagates the current W3C trace context (<paramref name="currentActivity"/>, typically
+    /// the Hub's `hub.ingest_run.trigger` span) via `TRACEPARENT`/`TRACESTATE`, so the Ingest agent
+    /// process can parent its own root span to it (Constitution IV: end-to-end trace chain).
     /// Exposed internally so tests can assert both guarantees without spawning a real process.
     /// </summary>
     public static Dictionary<string, string> BuildChildEnvironment(
