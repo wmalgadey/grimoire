@@ -39,6 +39,90 @@ public class AgentEnvironmentPrecedenceTests
         { "lint", "GRIMOIRE_LINT_MODEL", "GRIMOIRE_LINT_BASE_URL" },
     };
 
+    /// <summary>
+    /// Every variable the precedence rule now governs, not just the two the first version of
+    /// this file happened to name. The rule changed the caps too, so a regression that
+    /// dropped or reversed one of them stayed green while the model/base-url matrix passed.
+    /// Each row is (agent, variable, the builder argument that carries it).
+    /// </summary>
+    public static TheoryData<string, string> EveryGovernedVariable => new()
+    {
+        { "ingest", "GRIMOIRE_INGEST_MODEL" },
+        { "ingest", "GRIMOIRE_INGEST_BASE_URL" },
+        { "ingest", "GRIMOIRE_INGEST_MAX_OUTPUT_TOKENS" },
+        { "ingest", "GRIMOIRE_INGEST_SPEND_CAP" },
+        { "query", "GRIMOIRE_QUERY_MODEL" },
+        { "query", "GRIMOIRE_QUERY_BASE_URL" },
+        { "query", "GRIMOIRE_QUERY_MAX_OUTPUT_TOKENS" },
+        { "lint", "GRIMOIRE_LINT_MODEL" },
+        { "lint", "GRIMOIRE_LINT_BASE_URL" },
+        { "lint", "GRIMOIRE_LINT_MAX_OUTPUT_TOKENS" },
+    };
+
+    /// <summary>
+    /// Builds the child env with <paramref name="variable"/> supplied by the secrets file, or
+    /// with the secrets file silent about it when <paramref name="value"/> is null — which is
+    /// the whole point of two of the three cases below, and what the first version of this
+    /// helper got wrong by routing the value unconditionally.
+    /// </summary>
+    private static Dictionary<string, string> BuildWithSecretsValue(
+        string agent, string variable, string? value, IDictionary<string, string> baseEnv, ILogger? logger = null)
+        => agent switch
+        {
+            "ingest" => AgentProcessHost.BuildChildEnvironment(
+                baseEnv,
+                authToken: null,
+                ingestBaseUrl: value is not null && variable.EndsWith("BASE_URL", StringComparison.Ordinal) ? value : null,
+                ingestModel: value is not null && variable.EndsWith("MODEL", StringComparison.Ordinal) ? value : null,
+                ingestTokenCap: null,
+                ingestMaxOutputTokens: value is not null && variable.EndsWith("MAX_OUTPUT_TOKENS", StringComparison.Ordinal) ? value : null,
+                logger: logger,
+                ingestSpendCap: value is not null && variable.EndsWith("SPEND_CAP", StringComparison.Ordinal) ? value : null),
+            "query" => AgentProcessHost.BuildQueryChildEnvironment(
+                baseEnv,
+                authToken: null,
+                queryBaseUrl: value is not null && variable.EndsWith("BASE_URL", StringComparison.Ordinal) ? value : null,
+                queryModel: value is not null && variable.EndsWith("MODEL", StringComparison.Ordinal) ? value : null,
+                queryMaxOutputTokens: value is not null && variable.EndsWith("MAX_OUTPUT_TOKENS", StringComparison.Ordinal) ? value : null,
+                logger: logger),
+            "lint" => AgentProcessHost.BuildLintChildEnvironment(
+                baseEnv,
+                authToken: null,
+                lintBaseUrl: value is not null && variable.EndsWith("BASE_URL", StringComparison.Ordinal) ? value : null,
+                lintModel: value is not null && variable.EndsWith("MODEL", StringComparison.Ordinal) ? value : null,
+                lintMaxOutputTokens: value is not null && variable.EndsWith("MAX_OUTPUT_TOKENS", StringComparison.Ordinal) ? value : null,
+                logger: logger),
+            _ => throw new ArgumentOutOfRangeException(nameof(agent), agent, "unknown agent"),
+        };
+
+    [Theory]
+    [MemberData(nameof(EveryGovernedVariable))]
+    public void EveryGovernedVariable_InheritsWhenTheSecretsFileIsSilent(string agent, string variable)
+    {
+        var childEnv = BuildWithSecretsValue(agent, variable, value: null, BaseEnv((variable, "inherited-value")));
+
+        Assert.Equal("inherited-value", childEnv[variable]);
+    }
+
+    [Theory]
+    [MemberData(nameof(EveryGovernedVariable))]
+    public void EveryGovernedVariable_LetsTheSecretsFileWin(string agent, string variable)
+    {
+        var childEnv = BuildWithSecretsValue(
+            agent, variable, value: "secrets-file-value", BaseEnv((variable, "inherited-value")));
+
+        Assert.Equal("secrets-file-value", childEnv[variable]);
+    }
+
+    [Theory]
+    [MemberData(nameof(EveryGovernedVariable))]
+    public void EveryGovernedVariable_IsAbsentWhenNeitherSourceSetsIt(string agent, string variable)
+    {
+        var childEnv = BuildWithSecretsValue(agent, variable, value: null, BaseEnv());
+
+        Assert.False(childEnv.ContainsKey(variable), $"{variable} must not appear when neither source set it.");
+    }
+
     private static Dictionary<string, string> Build(
         string agent,
         IDictionary<string, string> baseEnv,
@@ -70,10 +154,18 @@ public class AgentEnvironmentPrecedenceTests
     [MemberData(nameof(Agents))]
     public void TheSecretsFileWins_OverAValueTheHubEnvironmentAlsoCarries(string agent, string modelVar, string baseUrlVar)
     {
-        var childEnv = Build(agent, BaseEnv((modelVar, InheritedModel)), model: SecretsFileModel);
+        // Both variables are inherited *and* both are set by the secrets file, so each one
+        // exercises the winner branch. Supplying only the model left the base-url assertion
+        // proving nothing but absence: a regression that reversed precedence for base URL
+        // alone would still have passed.
+        var childEnv = Build(
+            agent,
+            BaseEnv((modelVar, InheritedModel), (baseUrlVar, "http://inherited.invalid")),
+            model: SecretsFileModel,
+            baseUrl: "http://from-the-secrets-file.invalid");
 
         Assert.Equal(SecretsFileModel, childEnv[modelVar]);
-        Assert.False(childEnv.ContainsKey(baseUrlVar));
+        Assert.Equal("http://from-the-secrets-file.invalid", childEnv[baseUrlVar]);
     }
 
     [Theory]
@@ -135,6 +227,60 @@ public class AgentEnvironmentPrecedenceTests
 
         Assert.Empty(quiet.Entries.Where(e =>
             e.EventName == "agent.env.override_superseded" && e.Fields["variable"]?.ToString() == baseUrlVar));
+    }
+
+    // ── The spend cap, which answers to two names ────────────────────────────────────
+
+    /// <summary>
+    /// The agent reads <c>GRIMOIRE_INGEST_SPEND_CAP</c> before the legacy
+    /// <c>GRIMOIRE_INGEST_TOKEN_CAP</c> (<c>Grimoire.IngestAgent/Program.cs</c>). Handling
+    /// only the alias in the Hub left the canonical key unscrubbed, so it travelled through
+    /// from the Hub's own environment and beat the secrets file — the precedence rule broken
+    /// for the one variable with two names.
+    /// </summary>
+    [Fact]
+    public void TheSecretsFileCap_Wins_OverACanonicalSpendCapInTheHubEnvironment()
+    {
+        var childEnv = AgentProcessHost.BuildChildEnvironment(
+            BaseEnv(("GRIMOIRE_INGEST_SPEND_CAP", "200")),
+            authToken: null,
+            ingestTokenCap: "100");
+
+        Assert.Equal("100", childEnv["GRIMOIRE_INGEST_SPEND_CAP"]);
+        Assert.False(
+            childEnv.ContainsKey("GRIMOIRE_INGEST_TOKEN_CAP"),
+            "The legacy alias must not travel alongside the canonical name — the agent would see both.");
+    }
+
+    /// <summary>A secrets file setting the canonical name was previously never read at all.</summary>
+    [Fact]
+    public void TheSecretsFileCanSetTheCanonicalCapName()
+    {
+        var childEnv = AgentProcessHost.BuildChildEnvironment(
+            BaseEnv(), authToken: null, ingestSpendCap: "250000");
+
+        Assert.Equal("250000", childEnv["GRIMOIRE_INGEST_SPEND_CAP"]);
+    }
+
+    /// <summary>Where the secrets file sets both, the canonical name wins.</summary>
+    [Fact]
+    public void TheCanonicalCapName_WinsOverTheLegacyAlias_WithinTheSecretsFile()
+    {
+        var childEnv = AgentProcessHost.BuildChildEnvironment(
+            BaseEnv(), authToken: null, ingestTokenCap: "100", ingestSpendCap: "250000");
+
+        Assert.Equal("250000", childEnv["GRIMOIRE_INGEST_SPEND_CAP"]);
+    }
+
+    /// <summary>The legacy alias still works as an input, and is normalised to the canonical name.</summary>
+    [Fact]
+    public void TheLegacyAlias_IsStillAccepted_AndForwardedUnderTheCanonicalName()
+    {
+        var inherited = AgentProcessHost.BuildChildEnvironment(
+            BaseEnv(("GRIMOIRE_INGEST_TOKEN_CAP", "777")), authToken: null);
+
+        Assert.Equal("777", inherited["GRIMOIRE_INGEST_SPEND_CAP"]);
+        Assert.False(inherited.ContainsKey("GRIMOIRE_INGEST_TOKEN_CAP"));
     }
 
     /// <summary>
