@@ -58,10 +58,13 @@ Chosen option: **Option 1.**
 - Harness-authored text inside a `user` turn is delimited by
   `<harness-instruction>...</harness-instruction>`. That marker, and nothing else in a
   user turn, denotes text the harness wrote.
-- The block is **self-describing**: it states in the same turn that its contents come
-  from the harness rather than from a source document, so it carries its own meaning for
-  callers that send no scaffold. It is not a convention the agent has to have been told
-  about beforehand.
+- The block is **self-describing**: it states, *inside the delimiters*, that its contents
+  come from the harness rather than from a source document, so it carries its own meaning
+  for callers that send no scaffold. It is not a convention the agent has to have been
+  told about beforehand.
+- **All** harness-authored steering text goes inside the marker — the explanation
+  included. An explanation sitting beside the block would be undelimited harness prose in
+  the user channel, which is the defect this decision removes, reintroduced one line down.
 - The marker is harness-owned scaffold in the ADR-007 sense: it lives in harness code, no
   submission input can remove or alter it, and it is not part of any instruction file.
 - The conversation vocabulary is unchanged — a marked block is still a `user` message —
@@ -78,7 +81,9 @@ or layering constraint. The rule it does introduce is a **Feature-Scoped Invaria
 - *Harness-authored steering text reaching the agent is delimited and self-describing.*
   Verified by a classicist, state-based integration test that runs the loop through a
   continuation turn and asserts on the conversation the model client actually receives —
-  never by reflecting over the constant or the type's shape. It is scoped to the loop's
+  never by reflecting over the constant or the type's shape. The test asserts both halves:
+  what the harness said is inside the marker, and nothing outside it is anything but
+  whitespace. It is scoped to the loop's
   current steering surface and is expected to be edited when that surface grows, which is
   a single-file amendment rather than a broken guard.
 

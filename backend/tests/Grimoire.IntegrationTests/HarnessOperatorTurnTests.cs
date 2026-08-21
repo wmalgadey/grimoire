@@ -47,6 +47,33 @@ public class HarnessOperatorTurnTests
             last.ContentBlocks.OfType<ConversationTextBlock>().Select(static block => block.Text));
     }
 
+    private const string Open = "<" + AgentLoop.HarnessInstructionTag + ">";
+    private const string Close = "</" + AgentLoop.HarnessInstructionTag + ">";
+
+    /// <summary>
+    /// The text the marker encloses, and — as the second element — whatever the turn carries
+    /// outside it. The property under test is about both halves: what the harness said has to
+    /// be inside, and nothing of the harness's may be left outside.
+    ///
+    /// <para>
+    /// Bound to the outermost pair, because the enclosed text names the tags when it explains
+    /// them: the first inner mention would otherwise close the block early and hide the rest
+    /// of the harness's own words from the assertion.
+    /// </para>
+    /// </summary>
+    private static (string Inside, string Outside) SplitOnMarker(string turn)
+    {
+        var open = turn.IndexOf(Open, StringComparison.Ordinal);
+        var close = turn.LastIndexOf(Close, StringComparison.Ordinal);
+        Assert.True(open >= 0, $"No {Open} in the harness turn: {turn}");
+        Assert.True(close > open, $"No {Close} after {Open} in the harness turn: {turn}");
+
+        var contentStart = open + Open.Length;
+        return (
+            turn[contentStart..close],
+            turn[..open] + turn[(close + Close.Length)..]);
+    }
+
     [Fact]
     public async Task TheHarnessSteeringMessage_ArrivesInsideItsOwnMarker_NotAsBareUserText()
     {
@@ -66,17 +93,17 @@ public class HarnessOperatorTurnTests
                 cancellationToken: CancellationToken.None);
 
             Assert.Equal(2, model.CallCount);
-            var continuation = LastUserText(model.Calls[1]);
+            var (inside, outside) = SplitOnMarker(LastUserText(model.Calls[1]));
 
-            Assert.Contains($"<{AgentLoop.HarnessInstructionTag}>", continuation, StringComparison.Ordinal);
-            Assert.Contains($"</{AgentLoop.HarnessInstructionTag}>", continuation, StringComparison.Ordinal);
-            Assert.Contains("Continue the task.", continuation, StringComparison.Ordinal);
+            // Inside the marker, not merely somewhere in the same turn.
+            Assert.Contains("Continue the task.", inside, StringComparison.Ordinal);
 
-            // The instruction is inside the marker, not merely somewhere in the same turn.
-            var open = continuation.IndexOf($"<{AgentLoop.HarnessInstructionTag}>", StringComparison.Ordinal);
-            var close = continuation.IndexOf($"</{AgentLoop.HarnessInstructionTag}>", StringComparison.Ordinal);
-            var instruction = continuation.IndexOf("Continue the task.", StringComparison.Ordinal);
-            Assert.InRange(instruction, open, close);
+            // And nothing of the harness's is left outside it: an explanation or a future
+            // steering line sitting one line below the block would be undelimited harness
+            // prose in the user channel, which is the defect this delimiter removes.
+            Assert.True(
+                string.IsNullOrWhiteSpace(outside),
+                $"Harness-authored text outside the marker: [{outside}]");
         }
         finally
         {
@@ -108,10 +135,13 @@ public class HarnessOperatorTurnTests
                 taskId: "task-harness-turn",
                 cancellationToken: CancellationToken.None);
 
-            var continuation = LastUserText(model.Calls[1]);
+            var (inside, outside) = SplitOnMarker(LastUserText(model.Calls[1]));
 
-            Assert.Contains("harness", continuation, StringComparison.OrdinalIgnoreCase);
-            Assert.Contains("not from any source document", continuation, StringComparison.Ordinal);
+            Assert.Contains("harness", inside, StringComparison.OrdinalIgnoreCase);
+            Assert.Contains("not from any source document", inside, StringComparison.Ordinal);
+            Assert.True(
+                string.IsNullOrWhiteSpace(outside),
+                $"The self-description must be inside the marker, not beside it: [{outside}]");
         }
         finally
         {
