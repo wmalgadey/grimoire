@@ -24,6 +24,83 @@ jeder neue Eintrag wird oben angefügt, ältere Einträge rücken nach unten.
 
 ## Timeline
 
+### [2026-08-21] Setup | Deployment auf den aibot-Server, mit eigener CLI
+
+In den letzten Sessions habe ich dafür gesorgt, dass ich meine Entwicklung schnell auf
+meinem aibot-Server testen kann. Der Grund ist banal: Ich bin bald im Urlaub und möchte
+dann gerne per Claude Code Web weiterentwickeln, nicht auf meinem Server oder Mac.
+
+Deployment hat auch super funktioniert, und ich habe jetzt eine eigene CLI, mit der ich
+
+- das geclonte Git-Repo aktuell halten,
+- das Image bauen,
+- und auch neue Branches testen kann.
+
+Alles wie gewünscht.
+
+Was ich daraus mitnehme: Solange Deployen und Testen nur vom Mac aus oder per SSH auf dem
+Server geht, hängt der ganze Flow an einem Gerät. Mit der CLI ist der Server die
+Testumgebung, und vorne reicht dann irgendein Browser. Das ist eigentlich weniger eine
+Deployment-Sache als eine Voraussetzung dafür, überhaupt ortsunabhängig weiterarbeiten
+zu können — und das hätte ich besser gemacht, bevor der Urlaub in Sichtweite war und
+nicht erst kurz davor.
+
+---
+
+### [2026-08-21] Process | Triage-Map als Issue (#133) und "Waves"
+
+Parallel dazu habe ich mich um die Issue-Triage gekümmert und Meilensteine angelegt.
+Claude hat eine Triage-Map als Issue (#133) angelegt und alles, was bisher aufgefallen
+ist, in die Meilensteine sortiert bzw. "Waves" definiert, die man umsetzen kann.
+
+Der Unterschied zum Labeln aus dem Juli: Labels beantworten "was ist offen?", aber nicht
+"was zuerst?". Mit den Waves hat das Board jetzt eine Reihenfolge, und ich muss die nicht
+jedes Mal neu im Kopf zusammenbauen, wenn ich schaue, was als Nächstes drankommt.
+
+Dass die Map selbst ein Issue ist und kein Dokument unter `docs/`, ist dabei der halbe
+Trick. Sie liegt da, wo ich sowieso hinschaue, und wird zusammen mit den Issues gepflegt.
+Ein Übersichtsdokument im Repo wäre nach zwei Wochen wieder das, was die alten
+`tasks.md`-Reste waren.
+
+---
+
+### [2026-08-21] Insight | Nicht jeder Fix braucht SDD
+
+Bisher waren das alles Fixes, die nicht per SDD umgesetzt wurden, und ich bin da auch ganz
+froh drüber. Es waren alles "nervige" Dinge, die mit SDD wahrscheinlich Stunden gedauert
+hätten. Die Codeänderungen sind nicht so aufwändig, wie sich gezeigt hat.
+
+Und das ist für mich die eigentliche Erkenntnis: SDD lohnt sich da, wo die *Entscheidung*
+teuer ist — Struktur, Boundaries, Verhalten des Agenten. Wo die Änderung selbst kleiner
+ist als ihr Spec, ist der ganze Zyklus nur Zeremonie. Die Constitution schreibt den
+Workflow ja für "feature work" vor, nicht für jede Zeile, die ich anfasse. Ich hatte nur
+bisher im Kopf, dass alles durch den Trichter muss.
+
+Aufpassen muss ich trotzdem: Die Grenze zwischen "nerviger Fix" und "das war eigentlich
+ein Feature" verschiebt sich gerne im Nachhinein, und dann steht Code im Repo, zu dem es
+keinen Spec gibt. Genau dafür sind die Labels aus der Triage da — `quick-fix` ist eine
+bewusste Entscheidung, kein Vorbeischleichen.
+
+---
+
+### [2026-08-21] Insight | Vorne Specs, hinten der SDD-Cycle
+
+Parallel bespreche ich meine Ideen und versuche herauszufinden, wie ich das Tool für mich
+besser nutzbar mache. Ich zahle schon genug für die KI-Abos und möchte sie daher auch
+optimal nutzen — eben auch fürs Wissensmanagement. Quasi parallel nur an den Specs/Issues
+zu arbeiten, gefällt mir ganz gut.
+
+So in etwa stelle ich mir das auch im Team vor: Specs ausarbeiten anstatt Code umzusetzen.
+Im Hintergrund permanent der SDD-Cycle, im Vordergrund parallel Specs entwickeln.
+
+Das ist ehrlich gesagt eine ziemliche Umstellung im Kopf. Meine Zeit geht dann nicht mehr
+in "wie schreibe ich das", sondern in "was genau will ich eigentlich" — und die
+Umsetzung läuft nebenher. Ob das im Team wirklich trägt, weiß ich noch nicht; für mich
+alleine fühlt es sich gerade nach der besseren Nutzung des Abos an, als dem LLM beim
+Tippen zuzuschauen.
+
+---
+
 ### [2026-08-16] Process | GitHub-Backlog statt Doku-Übersicht
 
 Mehr und mehr Issues lege ich als Backlog in GitHub an. Das macht Sinn, da die Docs im
