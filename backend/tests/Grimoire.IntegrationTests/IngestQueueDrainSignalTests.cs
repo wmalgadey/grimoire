@@ -29,11 +29,19 @@ public sealed class IngestQueueDrainSignalTests
     /// <para>
     /// The handoff window this guards is shorter than any sleep worth writing — polling it
     /// even at 1ms misses the interleaving entirely — so the observer samples as tightly as
-    /// it can, on <b>its own dedicated thread</b>
-    /// (<see cref="TaskCreationOptions.LongRunning"/>) rather than from the thread pool.
-    /// That distinction is not incidental: an unthrottled pool-based poll starves whatever
-    /// xUnit is running in parallel and makes neighbouring timing-sensitive tests fail,
-    /// which is a self-inflicted flake rather than a finding.
+    /// it can, on <b>its own thread</b> rather than from the thread pool. That distinction
+    /// is not incidental: an unthrottled pool-based poll starves whatever xUnit is running
+    /// in parallel and makes neighbouring timing-sensitive tests fail, which is a
+    /// self-inflicted flake rather than a finding.
+    /// </para>
+    ///
+    /// <para>
+    /// Hence an explicit <see cref="Thread"/> blocking on each probe, and not
+    /// <c>Task.Factory.StartNew(async …, TaskCreationOptions.LongRunning)</c>: with an
+    /// async delegate only the code before the first <c>await</c> runs on the dedicated
+    /// thread, and every continuation after it lands back on the pool — which is the very
+    /// thing being avoided. The test still awaits rather than <c>Join</c>s, so waiting for
+    /// the poller does not tie up a pool thread either.
     /// </para>
     ///
     /// <para>
@@ -66,17 +74,30 @@ public sealed class IngestQueueDrainSignalTests
         await harness.Coordinator.ResumeAsync();
 
         using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(30));
-        await await Task.Factory.StartNew(
-            async () =>
+        var drained = new TaskCompletionSource();
+        var poller = new Thread(() =>
+        {
+            try
             {
-                while (!await harness.Coordinator.IsQueueDrainedAsync(timeout.Token))
+                while (!harness.Coordinator.IsQueueDrainedAsync(timeout.Token).GetAwaiter().GetResult())
                 {
                     timeout.Token.ThrowIfCancellationRequested();
                 }
-            },
-            timeout.Token,
-            TaskCreationOptions.LongRunning,
-            TaskScheduler.Default);
+
+                drained.SetResult();
+            }
+            catch (Exception ex)
+            {
+                drained.SetException(ex);
+            }
+        })
+        {
+            IsBackground = true,
+            Name = "ingest-drain-signal-poller",
+        };
+
+        poller.Start();
+        await drained.Task;
 
         // The launcher only records a request when a run actually started, so a task
         // missing here is one the drain signal ran ahead of.

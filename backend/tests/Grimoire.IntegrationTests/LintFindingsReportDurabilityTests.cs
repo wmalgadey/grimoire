@@ -37,12 +37,17 @@ public sealed class LintFindingsReportDurabilityTests
         var runId = acceptedBody.RootElement.GetProperty("runId").GetString();
         Assert.False(string.IsNullOrWhiteSpace(runId));
 
+        // Throttled deliberately. Unlike the ingest queue-drain window, the gap this guards
+        // spans a lifecycle broadcast and a file write, so a millisecond between polls still
+        // lands inside it — while an unthrottled loop would issue tens of thousands of HTTP
+        // requests over the timeout if a regression left the run `running`, starving the
+        // tests running alongside it.
         using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(30));
         string status;
         bool hasFindingsReport;
         while (true)
         {
-            timeout.Token.ThrowIfCancellationRequested();
+            await Task.Delay(TimeSpan.FromMilliseconds(1), timeout.Token);
 
             var runResponse = await client.GetAsync($"/api/lint-runs/{runId}", timeout.Token);
             using var runBody = JsonDocument.Parse(await runResponse.Content.ReadAsStringAsync(timeout.Token));
