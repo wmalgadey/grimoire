@@ -36,7 +36,11 @@ public class StrictToolUseTests
 
         var tools = await SentToolsAsync(provider, ToolRegistry.Default.Tools);
 
-        Assert.Equal(3, tools.Count);
+        // Deliberately not a count: the claim is "every offered tool", and a bare
+        // cardinality would break the next time the registry legitimately grows without
+        // catching anything (Constitution III). That the wire carries exactly the tools the
+        // registry declared, in its order, is the sibling test's job.
+        Assert.NotEmpty(tools);
         Assert.All(tools, tool =>
         {
             Assert.True(tool.GetProperty("strict").GetBoolean());
@@ -47,7 +51,7 @@ public class StrictToolUseTests
     }
 
     [Fact]
-    public async Task TheToolNamesAndOrderOnTheWire_AreTheRegistrysOwn()
+    public async Task TheToolNamesAndOrderOnTheWire_MatchTheRegistryDeclaration()
     {
         // The tool list the model sees is the registry's declaration (ADR-011 R3/R11) —
         // strict changes how an input is validated, never which tools are offered.
