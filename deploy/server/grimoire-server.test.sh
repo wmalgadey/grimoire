@@ -68,6 +68,57 @@ for case in "${version_cases[@]}"; do
   assert_equals "$actual" "$expected" "version_at_least $have >= $want"
 done
 
+# --- semver_identifier: a branch name has to survive being put in a version string.
+
+identifier_cases=(
+  "claude/frontend-batch-harness-wv1asv claude-frontend-batch-harness-wv1asv"
+  "main main"
+  "pr/95 pr-95"
+  "feat/a_b.c feat-a-b-c"
+  "--leading-and-trailing-- leading-and-trailing"
+  "release/v1.2.3 release-v1-2-3"
+)
+for case in "${identifier_cases[@]}"; do
+  read -r raw expected <<<"$case"
+  assert_equals "$(semver_identifier "$raw")" "$expected" "semver_identifier $raw"
+done
+
+# --- format_image_version: the cases #158 had to decide, each pinned to its answer.
+
+# The ordinary deployment: tag, branch, commits since the tag. The branch is the fact
+# `git describe`'s 0.0.26-31-gcd913e4 left out.
+assert_equals "$(format_image_version 0.0.26 claude/frontend-batch-harness-wv1asv 31)" \
+  "0.0.26-claude-frontend-batch-harness-wv1asv.31" "format_image_version on a branch"
+
+# `main` is not special-cased to GitVersion.yml's empty label — this string marks a
+# deployment, not a release.
+assert_equals "$(format_image_version 0.0.26 main 31)" "0.0.26-main.31" "format_image_version on main"
+
+# A pull request head reads as itself.
+assert_equals "$(format_image_version 0.0.26 pr/95 4)" "0.0.26-pr-95.4" "format_image_version on a pr head"
+
+# Exactly on the tag: `0.0.26-main.0` would be a prerelease *of* 0.0.26 and would sort
+# before the release it actually is.
+assert_equals "$(format_image_version 0.0.26 main 0)" "0.0.26" "format_image_version exactly on the tag"
+
+# `--force` with local changes: the one signal that happened, kept as build metadata so it
+# does not change how the version sorts.
+assert_equals "$(format_image_version 0.0.26 main 31 dirty)" "0.0.26-main.31+dirty" \
+  "format_image_version on a dirty tree"
+assert_equals "$(format_image_version 0.0.26 main 0 dirty)" "0.0.26+dirty" \
+  "format_image_version on a dirty tree at the tag"
+
+# `rollback` re-deploys a bare sha, so the label is not a branch name at all. An all-digit
+# sha must not become a numeric identifier with leading zeros — that is not valid SemVer.
+assert_equals "$(format_image_version 0.0.26 cd913e4a1b2c3d4e5f60718293a4b5c6d7e8f900 12)" \
+  "0.0.26-gcd913e4a1b2c.12" "format_image_version on a rollback sha"
+assert_equals "$(format_image_version 0.0.26 0012345678901234567890123456789012345678 12)" \
+  "0.0.26-g001234567890.12" "format_image_version on an all-digit sha"
+
+# A label with nothing usable in it still produces a parseable version.
+assert_equals "$(format_image_version 0.0.26 "///" 7)" "0.0.26-unknown.7" \
+  "format_image_version on a label with no usable characters"
+
 # --- Deployment state survives a round trip, subject line and all.
 
 work="$(mktemp -d)"

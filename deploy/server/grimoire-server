@@ -31,7 +31,7 @@ MIN_COMPOSE_VERSION="2.24.0" # `!override` in the server compose overlay
 #
 # It versions the tool, never the stack it deploys — `status` and `version` report that
 # separately, from the deployment record and the checkout.
-GRIMOIRE_SERVER_VERSION="1.0.0"
+GRIMOIRE_SERVER_VERSION="1.1.0"
 
 # --- Output ------------------------------------------------------------------------
 # Progress goes to stderr so that a helper's stdout is only ever its value.
@@ -211,13 +211,79 @@ overlay_file() {
   printf '%s\n' "$overlay"
 }
 
+# Maps a string onto a SemVer prerelease identifier, which allows only [0-9A-Za-z-] with
+# `.` as the separator: every other character becomes `-`, runs collapse, and the ends are
+# trimmed. Without this `claude/frontend-batch-harness-wv1asv` would put a slash in the
+# version and break any consumer that parses it.
+semver_identifier() {
+  local out="${1//[^0-9A-Za-z-]/-}"
+  while [[ "$out" == *--* ]]; do out="${out//--/-}"; done
+  out="${out#-}"
+  printf '%s\n' "${out%-}"
+}
+
+# The version string itself, from the four facts that identify a deployment — latest tag,
+# branch, commits since the tag, and whether the tree was clean. Split out from
+# `image_version` so the shape is testable without standing up a git checkout.
+#
+#   0.0.26-claude-frontend-batch-harness-wv1asv.31
+#   └ tag ┘ └──────────── branch ─────────────┘ └┘ commits since the tag
+#
+# `main` gets the same shape (`0.0.26-main.31`) rather than GitVersion.yml's empty label:
+# this string marks a deployment, not a release, and uniformity is worth more here than
+# agreement with a config that does not run on this path.
+format_image_version() {
+  local tag="$1" label="$2" count="$3" dirty="${4:-}" branch meta=""
+  [[ -z "$dirty" ]] || meta="+dirty"
+
+  # Exactly on the tag: `0.0.26-main.0` is a *prerelease of* 0.0.26 and sorts before the
+  # release it in fact is. The bare tag is the honest answer; a dirty tree at the tag keeps
+  # the marker as build metadata, which does not affect ordering.
+  if [[ "$count" == 0 ]]; then
+    printf '%s%s\n' "$tag" "$meta"
+    return
+  fi
+
+  branch="$(semver_identifier "$label")"
+
+  # `rollback` re-deploys a bare sha, so the label is 40 hex characters rather than a
+  # branch. Prefixed the way `git describe` prefixes an abbreviated commit — it reads as a
+  # commit, and it keeps an all-digit sha from becoming a numeric identifier with leading
+  # zeros, which is not valid SemVer.
+  if [[ "$branch" =~ ^[0-9a-f]{7,40}$ ]]; then
+    branch="g${branch:0:12}"
+  fi
+  [[ -n "$branch" ]] || branch="unknown"
+
+  printf '%s-%s.%s%s\n' "$tag" "$branch" "$count" "$meta"
+}
+
 # What the image build stamps into the Hub's InformationalVersion. GitVersion computes the
 # version from the git history (ADR-027) and cannot run inside the image build — the build
 # context excludes .git (see .dockerignore) — so the version travels in as a build argument
-# and `git describe` is the most this host can honestly say about the commit it is
-# building. Falls back rather than failing: an unversioned image still deploys.
+# and this host computes it from its own checkout. Falls back rather than failing: an
+# unversioned image still deploys.
+#
+# `git describe` used to be that argument, and its `0.0.26-31-gcd913e4` left out the one
+# fact an operator wants from a deployment marker — which branch is live — while reading
+# enough like a GitVersion prerelease to be mistaken for one. The label is passed in
+# because only `deploy` knows what is being deployed; every other caller falls back to the
+# ref the deployment record names, and then to the checked-out commit.
 image_version() {
-  git -C "$1" describe --tags --always --dirty 2>/dev/null || printf '0.0.0-unknown\n'
+  local repo="$1" label="${2:-}" tag count dirty=""
+
+  tag="$(git -C "$repo" describe --tags --abbrev=0 2>/dev/null)" || tag=""
+  [[ -n "$tag" ]] || {
+    printf '0.0.0-unknown\n'
+    return
+  }
+
+  count="$(git -C "$repo" rev-list --count "$tag..HEAD" 2>/dev/null || printf '0')"
+  [[ -z "$(git -C "$repo" status --porcelain 2>/dev/null)" ]] || dirty="dirty"
+  [[ -n "$label" ]] || label="$(state_get ref)"
+  [[ -n "$label" ]] || label="$(git -C "$repo" rev-parse HEAD 2>/dev/null || printf '')"
+
+  format_image_version "$tag" "$label" "$count" "$dirty"
 }
 
 compose() {
@@ -578,6 +644,14 @@ cmd_deploy() {
   subject="$(git -C "$repo" log -1 --format=%s "$sha")"
   log "Deploying $label — $(short "$sha") $subject"
   git -C "$repo" checkout --detach --quiet "$sha"
+
+  # #158 — the only place the branch being deployed is known, so the version is built here
+  # and exported; `compose`'s `${GRIMOIRE_VERSION:-...}` default then picks it up untouched
+  # and every other `compose` call site keeps working. After the checkout, so the commit
+  # count is the deployed commit's.
+  GRIMOIRE_VERSION="$(image_version "$repo" "$label")"
+  export GRIMOIRE_VERSION
+  info "version   $GRIMOIRE_VERSION"
 
   log "Building images (the SDK, Bun and agent builds all run — first build takes a while)"
   compose "$repo" build

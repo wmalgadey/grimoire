@@ -279,12 +279,38 @@ exception, and what stamps everything else). The commit it was copied from, the 
 and the deployed commit are all recorded rather than inferred, and any of the four can be
 out of step with the others — which is exactly why they are printed separately.
 
-The stack has a version of its own: `deploy` passes `git describe` of the commit it is
-building into the image, and the Hub prints it under its logo:
+The stack has a version of its own: `deploy` builds it from the checkout and passes it
+into the image, and the Hub prints it under its logo and answers with it on
+`GET /api/version`:
 
 ```console
-$ docker compose exec hub dotnet /app/Grimoire.Hub.dll --help
+$ curl -s http://127.0.0.1:8080/api/version
+{"version":"0.0.26-claude-frontend-batch-harness-wv1asv.31"}
 ```
+
+```
+0.0.26-claude-frontend-batch-harness-wv1asv.31
+└ tag ┘ └──────────── branch ─────────────┘ └┘ commits since the tag
+```
+
+The branch and the commit count are dot-separated SemVer prerelease identifiers, so the
+string parses and sorts as a prerelease of the next release — and it happens to match the
+shape GitVersion would produce for the same branch, without GitVersion running here (the
+image build has no `.git`, which is the whole reason the version travels in as a build
+argument). Characters SemVer does not allow in an identifier become `-`, so
+`claude/frontend-batch-harness-wv1asv` deploys as `claude-frontend-batch-harness-wv1asv`.
+
+Four cases are decided rather than left to chance:
+
+| Case | Version |
+| --- | --- |
+| On a branch, some commits past the tag | `0.0.26-main.31` — `main` is not special-cased to an empty label; this marks a deployment, not a release |
+| Exactly on the tag | `0.0.26` — `0.0.26-main.0` would sort *before* the release it in fact is |
+| `--force` with local changes | `0.0.26-main.31+dirty` — build metadata, so it does not affect ordering |
+| `rollback`, which re-deploys a bare sha | `0.0.26-g<short sha>.31` — there is no branch to name |
+
+With no tags in the checkout at all the version is `0.0.0-unknown`: an unversioned image
+still deploys.
 
 ### What a deployment checks before it believes itself
 
@@ -334,7 +360,7 @@ All of it is environment, all of it optional:
 | `GRIMOIRE_DASHBOARD_PORT` | `18888` | telemetry dashboard port |
 | `GRIMOIRE_HEALTH_TIMEOUT` | `180` | seconds to wait for the stack to answer |
 | `GRIMOIRE_LOG_LINES` | `100` | lines `logs` tails |
-| `GRIMOIRE_VERSION` | `git describe` of the checkout | the version stamped into the image (ADR-027); set it to override what a deployed Hub reports for itself |
+| `GRIMOIRE_VERSION` | `<tag>-<branch>.<commits>` for the deployed ref | the version stamped into the image (ADR-027); set it to override what a deployed Hub reports for itself |
 | `GRIMOIRE_TAILSCALE_SERVICE` | unset | tailnet service to advertise, e.g. `svc:grimoire`; unset turns the feature off |
 | `GRIMOIRE_TAILSCALE_PORT` | `443` | HTTPS port of the service endpoint; rejected before an image build if it is not a port |
 | `GRIMOIRE_TAILSCALE_DOMAIN` | derived | overrides the derived `<service>.<tailnet>.ts.net` |
@@ -371,8 +397,9 @@ All of it is environment, all of it optional:
 ```
 
 Covers what this script itself decides — ref-specification parsing, the Compose version
-gate, the deployment state file, the overlay seeding rule, and the tailnet service name,
-port and URL it derives from the environment — and runs in
+gate, the deployment state file, the overlay seeding rule, the deployed image's version
+string, and the tailnet service name, port and URL it derives from the environment — and
+runs in
 `.github/workflows/deploy-smoke.yml`. It starts no containers, runs no `tailscale`, and
 reaches no network: whether `tailscale serve` then works is tailscale's contract, not
 this script's.
