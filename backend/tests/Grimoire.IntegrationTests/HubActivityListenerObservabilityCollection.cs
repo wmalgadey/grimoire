@@ -32,6 +32,22 @@ namespace Grimoire.IntegrationTests;
 /// listener saw two measurements and the run went red on a PR that touched neither test.
 /// Any class registering a raw listener on that shared meter belongs here too.
 /// </para>
+///
+/// <para>
+/// #152 swept the remaining <see cref="System.Diagnostics.Metrics.MeterListener"/> classes.
+/// Membership here is <em>not</em> the default outcome of that audit: a class whose
+/// assertions are containment-based ("this measurement occurred at least once") already
+/// tolerates a parallel emitter, and adding it would only serialize the suite for nothing —
+/// <c>IngestObservabilityMetricsTests</c>, <c>IngestSubmissionMetricsTests</c>,
+/// <c>LintMetricsTests</c>, <c>PathMetricsContractTests</c>,
+/// <c>QueryConversationMetricsTests</c>, <c>QueryConversationRecordDurabilityTests</c>,
+/// <c>QueryConversationRecordFailClosedTests</c> and <c>QueryLifecycleMetricsTests</c> all
+/// stay out deliberately. What belongs here is a class that asserts over the
+/// <em>unfiltered</em> stream — <c>Assert.Single</c>, <c>Assert.Empty</c>, or a running
+/// total — on an instrument carrying no tag it could filter by instead. Where such a tag
+/// does exist, scoping the assertion to it is the better fix on Principle II grounds:
+/// serializing makes the assertion pass, scoping makes it mean something.
+/// </para>
 /// </summary>
 [CollectionDefinition("HubActivityListenerObservability", DisableParallelization = true)]
 public sealed class HubActivityListenerObservabilityCollection;
