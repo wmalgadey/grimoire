@@ -18,8 +18,18 @@ public sealed class LocalSecretsLoader
     public string? GetIngestModel() => ReadEnvVar("GRIMOIRE_INGEST_MODEL");
 
     /// <summary>
+    /// Returns the ingest loop spend cap override if set in the .env file, or null if the
+    /// agent default should be used. <c>GRIMOIRE_INGEST_SPEND_CAP</c> is the canonical name
+    /// (#107); <see cref="GetIngestTokenCap"/> reads the legacy alias, and the two are
+    /// resolved as one setting in <c>AgentProcessHost</c> (#61) — before that, this name was
+    /// the one the agent actually prefers and the only one the secrets file could not set.
+    /// </summary>
+    public string? GetIngestSpendCap() => ReadEnvVar("GRIMOIRE_INGEST_SPEND_CAP");
+
+    /// <summary>
     /// Returns the ingest loop token cap override if set in the .env file, or null
-    /// if the agent default should be used.
+    /// if the agent default should be used. Legacy alias of
+    /// <see cref="GetIngestSpendCap"/>; the canonical name wins where both are set.
     /// </summary>
     public string? GetIngestTokenCap() => ReadEnvVar("GRIMOIRE_INGEST_TOKEN_CAP");
 

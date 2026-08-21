@@ -430,8 +430,10 @@ internal sealed class IngestIntentHandler : IAgentIntentHandler
     private static int ResolveSpendCapFromEnvironment()
     {
         // GRIMOIRE_INGEST_SPEND_CAP is the canonical name (#107: the summed per-run
-        // limit is a spend cap, not a context cap); GRIMOIRE_INGEST_TOKEN_CAP stays as
-        // the legacy alias the Hub explicitly forwards (AgentProcessHost).
+        // limit is a spend cap, not a context cap). The Hub now resolves the canonical
+        // name and the GRIMOIRE_INGEST_TOKEN_CAP alias as one setting and forwards only
+        // the canonical one (#61, AgentProcessHost), so the fallback below is for a
+        // directly-launched agent — the Hub never sends both.
         var raw = Environment.GetEnvironmentVariable("GRIMOIRE_INGEST_SPEND_CAP");
         if (string.IsNullOrWhiteSpace(raw))
             raw = Environment.GetEnvironmentVariable("GRIMOIRE_INGEST_TOKEN_CAP");

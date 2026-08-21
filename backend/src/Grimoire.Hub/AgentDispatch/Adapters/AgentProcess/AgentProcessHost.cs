@@ -549,6 +549,7 @@ public sealed class AgentProcessHost : IAgentProcessLauncher
         var ingestModel = _secretsLoader.GetIngestModel();
         var ingestBaseUrl = _secretsLoader.GetIngestBase();
         var ingestTokenCap = _secretsLoader.GetIngestTokenCap();
+        var ingestSpendCap = _secretsLoader.GetIngestSpendCap();
         var ingestMaxOutputTokens = _secretsLoader.GetIngestMaxOutputTokens();
         // Build the child env by stripping credential keys from the parent env copy and
         // re-injecting only what was explicitly loaded from the secrets file (ADR-004).
@@ -562,7 +563,7 @@ public sealed class AgentProcessHost : IAgentProcessLauncher
 
         var childEnv = BuildChildEnvironment(
             baseEnv, authToken, ingestBaseUrl, ingestModel, ingestTokenCap, ingestMaxOutputTokens,
-            Activity.Current, _logger);
+            Activity.Current, _logger, ingestSpendCap);
         startInfo.Environment.Clear();
         foreach (var (key, value) in childEnv)
         {
@@ -603,6 +604,47 @@ public sealed class AgentProcessHost : IAgentProcessLauncher
     /// says so (<see cref="AgentEnvironmentLogEvents"/>).
     /// </para>
     /// </summary>
+    /// <summary>
+    /// #61 — the same rule for a setting that answers to two names. Ingest's per-run spend
+    /// limit is <c>GRIMOIRE_INGEST_SPEND_CAP</c> canonically and
+    /// <c>GRIMOIRE_INGEST_TOKEN_CAP</c> by legacy alias, and the agent reads the canonical
+    /// one first. Handling only the alias here left the canonical key unscrubbed and
+    /// unloadable: a <c>SPEND_CAP</c> in the Hub's own environment travelled through
+    /// untouched and beat the secrets file's <c>TOKEN_CAP</c>, and a secrets file setting
+    /// the canonical name was never read at all — the precedence rule this method exists to
+    /// enforce, broken for the one variable that answers to two names.
+    ///
+    /// <para>
+    /// Both names are scrubbed and the winner is re-emitted under the canonical one, so the
+    /// child sees exactly one of them and the alias stops travelling past this boundary.
+    /// </para>
+    /// </summary>
+    private static void ApplyInheritableAliasOverride(
+        IDictionary<string, string> env,
+        IDictionary<string, string> baseEnv,
+        string canonicalName,
+        string legacyName,
+        string? explicitCanonical,
+        string? explicitLegacy,
+        string agent,
+        ILogger? logger)
+    {
+        var explicitValue = !string.IsNullOrWhiteSpace(explicitCanonical) ? explicitCanonical : explicitLegacy;
+
+        var inherited = Inherited(baseEnv, canonicalName) ?? Inherited(baseEnv, legacyName);
+        var aliasEnv = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        if (inherited is not null)
+        {
+            aliasEnv[canonicalName] = inherited;
+        }
+
+        env.Remove(legacyName);
+        ApplyInheritableOverride(env, aliasEnv, canonicalName, explicitValue, agent, logger);
+    }
+
+    private static string? Inherited(IDictionary<string, string> baseEnv, string name)
+        => baseEnv.TryGetValue(name, out var value) && !string.IsNullOrWhiteSpace(value) ? value : null;
+
     private static void ApplyInheritableOverride(
         IDictionary<string, string> env,
         IDictionary<string, string> baseEnv,
@@ -658,7 +700,8 @@ public sealed class AgentProcessHost : IAgentProcessLauncher
         string? ingestTokenCap = null,
         string? ingestMaxOutputTokens = null,
         Activity? currentActivity = null,
-        ILogger? logger = null)
+        ILogger? logger = null,
+        string? ingestSpendCap = null)
     {
         var env = new Dictionary<string, string>(baseEnv, StringComparer.OrdinalIgnoreCase);
         env.Remove("ANTHROPIC_API_KEY");
@@ -670,7 +713,13 @@ public sealed class AgentProcessHost : IAgentProcessLauncher
 
         ApplyInheritableOverride(env, baseEnv, "GRIMOIRE_INGEST_MODEL", ingestModel, IngestAgentName, logger);
         ApplyInheritableOverride(env, baseEnv, "GRIMOIRE_INGEST_BASE_URL", ingestBaseUrl, IngestAgentName, logger);
-        ApplyInheritableOverride(env, baseEnv, "GRIMOIRE_INGEST_TOKEN_CAP", ingestTokenCap, IngestAgentName, logger);
+        ApplyInheritableAliasOverride(
+            env, baseEnv,
+            canonicalName: "GRIMOIRE_INGEST_SPEND_CAP",
+            legacyName: "GRIMOIRE_INGEST_TOKEN_CAP",
+            explicitCanonical: ingestSpendCap,
+            explicitLegacy: ingestTokenCap,
+            IngestAgentName, logger);
         ApplyInheritableOverride(env, baseEnv, "GRIMOIRE_INGEST_MAX_OUTPUT_TOKENS", ingestMaxOutputTokens, IngestAgentName, logger);
 
         env.Remove("TRACEPARENT");
