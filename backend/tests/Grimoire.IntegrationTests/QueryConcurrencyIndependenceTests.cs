@@ -2,6 +2,7 @@ using System.Net;
 using System.Net.Http.Json;
 using Grimoire.IntegrationTests.Fakes;
 using Microsoft.AspNetCore.TestHost;
+using Microsoft.Extensions.Time.Testing;
 
 namespace Grimoire.IntegrationTests;
 
@@ -22,12 +23,24 @@ public class QueryConcurrencyIndependenceTests
     /// 600ms simulated Ingest run) that proved the opposite. The go-silent launcher removes
     /// the race outright: the Ingest run starts, emits `started`, and then stays silent, so
     /// it holds the slot for the whole test with no duration to outrun.
+    ///
+    /// <para>
+    /// The clock is frozen for the same reason the other go-silent tests freeze theirs: a
+    /// silent run is exactly what the liveness watchdog exists to catch, and on
+    /// <see cref="TimeProvider.System"/> it fires 60s later — after this test has finished
+    /// — terminating the run, writing state and scheduling a reactivation against the
+    /// fixture's already-disposed temp root, in the middle of whatever else the suite is
+    /// running by then. A <see cref="FakeTimeProvider"/> that is never advanced holds the
+    /// slot open for the test and lets nothing fire afterwards.
+    /// </para>
     /// </summary>
     [Fact]
     public async Task QuerySubmission_IsAcceptedAndDispatched_WhileIngestStillHoldsItsRunSlot()
     {
         var sharedLauncher = new FakeAgentProcessLauncher { GoSilentIngestLaunches = 1 };
-        using var ingestFixture = new IngestSubmissionPipelineFixture(launcher: sharedLauncher);
+        using var ingestFixture = new IngestSubmissionPipelineFixture(
+            launcher: sharedLauncher,
+            timeProvider: new FakeTimeProvider(new DateTimeOffset(2026, 8, 21, 7, 0, 0, TimeSpan.Zero)));
         using var queryHost = await QueryTurnSubmissionApiTests.BuildHostAsync(sharedLauncher, root: QueryTurnSubmissionApiTests.CreateTempRoot());
         var queryClient = queryHost.GetTestClient();
 
