@@ -8,6 +8,13 @@ status: accepted
 > argument and a policy-prefix anchor from ADR-009's path configuration; the instruction
 > surface (system prompt, default user prompt, policy) this ADR defines is unchanged.
 
+> **Amended by [ADR-029](ADR-029-harness-operator-turn-delimiter.md)**: names a third
+> kind of harness-authored text — the *harness operator turn*, a steering message the
+> agent loop sends mid-conversation — and delimits it with
+> `<harness-instruction>...</harness-instruction>` inside the user channel; the
+> instruction surface (system prompt, default user prompt, policy) this ADR defines is
+> unchanged, as is the rule that the scaffold stays in harness code.
+
 > **Amended by [ADR-022](ADR-022-minimal-directory-configuration-surface.md)**:
 > instruction files now live as agent-project sources
 > (`backend/src/Grimoire.*Agent/Instructions/`), copied to the configured `AgentDir` by
