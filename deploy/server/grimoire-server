@@ -253,6 +253,17 @@ format_image_version() {
   if [[ "$branch" =~ ^[0-9a-f]{7,40}$ ]]; then
     branch="g${branch:0:12}"
   fi
+
+  # SemVer §9: an all-digit prerelease identifier is a *numeric* one, and a numeric
+  # identifier must not carry leading zeros. A branch literally named `001` — this
+  # repository numbers its feature branches, so it is not far-fetched — would otherwise
+  # produce `0.0.26-001.31`, which no SemVer parser accepts. Prefixing makes it an
+  # alphanumeric identifier and keeps the label itself readable. `0` and `42` are valid
+  # numeric identifiers and are left exactly as they are.
+  if [[ "$branch" =~ ^0[0-9]+$ ]]; then
+    branch="ref-$branch"
+  fi
+
   [[ -n "$branch" ]] || branch="unknown"
 
   printf '%s-%s.%s%s\n' "$tag" "$branch" "$count" "$meta"

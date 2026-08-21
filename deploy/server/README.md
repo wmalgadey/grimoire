@@ -308,6 +308,7 @@ Four cases are decided rather than left to chance:
 | Exactly on the tag | `0.0.26` — `0.0.26-main.0` would sort *before* the release it in fact is |
 | `--force` with local changes | `0.0.26-main.31+dirty` — build metadata, so it does not affect ordering |
 | `rollback`, which re-deploys a bare sha | `0.0.26-g<short sha>.31` — there is no branch to name |
+| An all-digit branch name with a leading zero, e.g. `001` | `0.0.26-ref-001.31` — SemVer forbids leading zeros on a numeric identifier; `0` and `42` are valid and stay as they are |
 
 With no tags in the checkout at all the version is `0.0.0-unknown`: an unversioned image
 still deploys.

@@ -119,6 +119,38 @@ assert_equals "$(format_image_version 0.0.26 00123456789012345678901234567890123
 assert_equals "$(format_image_version 0.0.26 "///" 7)" "0.0.26-unknown.7" \
   "format_image_version on a label with no usable characters"
 
+# An all-digit prerelease identifier is a *numeric* one, and SemVer §9 forbids leading
+# zeros on those. This repository numbers its feature branches, so a branch named `001` is
+# not far-fetched, and `0.0.26-001.31` parses nowhere. `0` and `42` are valid numeric
+# identifiers and must be left alone rather than swept up by the same rule.
+assert_equals "$(format_image_version 0.0.26 001 31)" "0.0.26-ref-001.31" \
+  "format_image_version on an all-digit label with leading zeros"
+assert_equals "$(format_image_version 0.0.26 0 31)" "0.0.26-0.31" \
+  "format_image_version on a bare zero label"
+assert_equals "$(format_image_version 0.0.26 42 31)" "0.0.26-42.31" \
+  "format_image_version on an all-digit label without leading zeros"
+
+# --- The property behind every case above: whatever comes out, a SemVer parser accepts it.
+#
+# The enumerated cases pin the shapes we chose; this pins the reason we chose them. A future
+# label class nobody thought of (the `001` case was one) fails here rather than reaching a
+# consumer that parses the version.
+
+semver_re='^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(-((0|[1-9][0-9]*|[0-9]*[A-Za-z-][0-9A-Za-z-]*)(\.(0|[1-9][0-9]*|[0-9]*[A-Za-z-][0-9A-Za-z-]*))*))?(\+([0-9A-Za-z-]+(\.[0-9A-Za-z-]+)*))?$'
+
+assert_semver() {
+  local value="$1" what="$2"
+  [[ "$value" =~ $semver_re ]] || fail "$what: [$value] is not valid SemVer"
+}
+
+for label in main "claude/frontend-batch-harness-wv1asv" pr/95 001 0 42 007 "release/v1.2.3" \
+  "///" "feat/a_b.c" cd913e4a1b2c3d4e5f60718293a4b5c6d7e8f900 0012345678901234567890123456789012345678; do
+  for count in 0 1 31; do
+    assert_semver "$(format_image_version 0.0.26 "$label" "$count")" "format_image_version $label/$count"
+    assert_semver "$(format_image_version 0.0.26 "$label" "$count" dirty)" "format_image_version $label/$count dirty"
+  done
+done
+
 # --- Deployment state survives a round trip, subject line and all.
 
 work="$(mktemp -d)"
