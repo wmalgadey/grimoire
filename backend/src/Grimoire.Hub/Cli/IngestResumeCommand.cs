@@ -84,34 +84,42 @@ public sealed class IngestResumeCommand : AsyncCommand<IngestResumeSettings>
     }
 
     /// <summary>
-    /// Polls the coordinator's in-memory/durable-queue state (mirrors
-    /// <see cref="IngestRunCoordinator.TryStartNextAsync"/>'s own slot/queue check) until
-    /// no task is running and none remain queued — the whole-queue-drained signal this
-    /// command supervises, as opposed to <c>ingest-retrigger</c>'s single-task terminal
-    /// wait.
+    /// Polls <see cref="IngestRunCoordinator.IsQueueDrainedAsync"/> until the queue is
+    /// idle — the whole-queue-drained signal this command supervises, as opposed to
+    /// <c>ingest-retrigger</c>'s single-task terminal wait.
+    ///
+    /// <para>
+    /// The coordinator evaluates both halves of that question under its own slot lock, and
+    /// that is load-bearing rather than tidiness: reading <c>RunningTaskId</c> and the
+    /// queue separately from here let the two observations interleave with the handoff
+    /// between one run and the next, so the command could report the queue drained while
+    /// the last task was still starting (#146).
+    /// </para>
     /// </summary>
     private async Task WaitForQueueDrainAsync(CancellationToken cancellationToken)
     {
-        while (true)
+        while (!await _coordinator.IsQueueDrainedAsync(cancellationToken))
         {
-            if (_coordinator.RunningTaskId is null &&
-                (await _coordinator.GetQueuePositionsAsync(cancellationToken)).Count == 0)
-            {
-                return;
-            }
-
             await Task.Delay(PollInterval, cancellationToken);
         }
     }
 
     /// <summary>
-    /// Reads each tracked task's final Task Artifact-backed column (once the queue has
-    /// drained, every tracked task has reached one of the two ingest terminal states)
-    /// to produce the processed/failed counts contracts/cli-commands.md "ingest-resume"
-    /// requires. A task whose projection is unexpectedly unreadable or not (yet)
-    /// "completed" counts as failed — the queue-drain wait above already guarantees every
-    /// tracked task left the running/queued state, so this is a defensive fallback, not
-    /// the expected path.
+    /// Reads each tracked task's final Task Artifact-backed column to produce the
+    /// processed/failed counts contracts/cli-commands.md "ingest-resume" requires. A task
+    /// whose projection is unreadable or not "completed" counts as failed.
+    ///
+    /// <para>
+    /// That branch is reachable, and describing it as unreachable is what made #146 look
+    /// intentional. The drain wait above proves every tracked task left the running/queued
+    /// state; it does not prove the Hub finished its own terminal bookkeeping. On the
+    /// success path the agent writes its `completed` artifact before emitting the terminal
+    /// event, so the projection is durable well before the slot is released — but a run the
+    /// Hub itself failed (liveness exhaustion) has its failure artifact written after the
+    /// release, so its projection may still read `running` here. It counts as failed
+    /// either way, which is the right outcome; the count does not depend on winning that
+    /// race, and no other tracked task can be mid-flight (IsQueueDrainedAsync).
+    /// </para>
     /// </summary>
     private async Task<(int Processed, int Failed)> TallyOutcomesAsync(
         IReadOnlySet<string> trackedTaskIds, CancellationToken cancellationToken)
