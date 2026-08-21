@@ -353,46 +353,12 @@ public sealed class LintRunCoordinator
         var completedAt = _timeProvider.GetUtcNow();
         var outcome = status.ToString().ToLowerInvariant();
 
-        // A failed run (incl. liveness failure) never produced a final narrative — the
-        // report is still persisted, clearly marked partial (spec edge case: "What
-        // happens when a lint run dies or hangs?").
-        var partial = status == LintRunStatus.Failed;
-        var effectiveNarrative = narrative ?? $"Run failed before completion. Reason: {failureReason ?? "unknown"}.";
-        var findingsCount = FindingsNarrativeStats.CountFindings(effectiveNarrative);
-
-        // #146: written BEFORE the terminal transition and the lifecycle broadcast below,
+        // #146: persisted BEFORE the terminal transition and the lifecycle broadcast below,
         // for the same reason T022 materializes proposed actions there — a run that reports
         // `completed` must already have the artifact a caller will immediately ask for.
-        // Written afterwards, `GET /api/lint-runs/{id}` could answer `completed` while
-        // `GET /api/lint-runs/{id}/findings` still 404'd, which is what reddened the CLI/HTTP
-        // parity test. A write failure is logged and does not block the transition: a run
-        // that cannot persist its report must still reach a terminal state rather than hang.
-        var report = new FindingsReport(
-            RunId: runId,
-            TriggeredAt: run.TriggeredAt,
-            CompletedAt: completedAt,
-            OutcomeState: outcome,
-            FailureReason: failureReason,
-            Partial: partial,
-            InstructionFilePath: systemPromptSha256 is null ? null : "agents/lint/system-prompt.md",
-            InstructionFileSha256: systemPromptSha256,
-            DeniedActions: deniedActions,
-            InboundLinksRefreshed: touchedPaths.Count,
-            Narrative: effectiveNarrative);
-
-        try
-        {
-            using var writeSpan = HubTracing.ActivitySource.StartActivity("hub.lint.write_findings_report");
-            writeSpan?.SetTag("run_id", runId);
-
-            var path = await _reportStore.WriteAsync(report, CancellationToken.None);
-            writeSpan?.SetTag("path", path);
-            run.SetFindingsReportPath(path);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Failed to write Findings Report for lint run {RunId}.", runId);
-        }
+        var effectiveNarrative = await PersistFindingsReportAsync(
+            run, outcome, status, failureReason, narrative, systemPromptSha256, deniedActions, touchedPaths, completedAt);
+        var findingsCount = FindingsNarrativeStats.CountFindings(effectiveNarrative);
 
         if (!run.TryTransitionTo(status, failureReason, completedAt))
         {
@@ -442,6 +408,67 @@ public sealed class LintRunCoordinator
                 runId, fromStatus: "running", toStatus: outcome, failureReason, CancellationToken.None);
         }
 
+    }
+
+    /// <summary>
+    /// Builds and persists the run's Findings Report, and stamps its path on the run.
+    /// Returns the narrative actually written, which the caller also reports on (findings
+    /// count, per-category metrics) — so the report and the telemetry can never describe
+    /// different text.
+    ///
+    /// <para>
+    /// Called before the terminal transition (#146): a run that answers `completed` must
+    /// already have the report <c>GET /api/lint-runs/{id}/findings</c> will be asked for.
+    /// A write failure is logged rather than thrown, deliberately — a run that cannot
+    /// persist its report must still reach a terminal state instead of hanging — so the
+    /// caller must not assume <c>FindingsReportPath</c> is set on return.
+    /// </para>
+    /// </summary>
+    private async Task<string> PersistFindingsReportAsync(
+        LintRunState run,
+        string outcome,
+        LintRunStatus status,
+        string? failureReason,
+        string? narrative,
+        string? systemPromptSha256,
+        IReadOnlyList<FindingsDeniedAction> deniedActions,
+        IReadOnlyList<string> touchedPaths,
+        DateTimeOffset completedAt)
+    {
+        // A failed run (incl. liveness failure) never produced a final narrative — the
+        // report is still persisted, clearly marked partial (spec edge case: "What
+        // happens when a lint run dies or hangs?").
+        var partial = status == LintRunStatus.Failed;
+        var effectiveNarrative = narrative ?? $"Run failed before completion. Reason: {failureReason ?? "unknown"}.";
+
+        var report = new FindingsReport(
+            RunId: run.RunId,
+            TriggeredAt: run.TriggeredAt,
+            CompletedAt: completedAt,
+            OutcomeState: outcome,
+            FailureReason: failureReason,
+            Partial: partial,
+            InstructionFilePath: systemPromptSha256 is null ? null : "agents/lint/system-prompt.md",
+            InstructionFileSha256: systemPromptSha256,
+            DeniedActions: deniedActions,
+            InboundLinksRefreshed: touchedPaths.Count,
+            Narrative: effectiveNarrative);
+
+        try
+        {
+            using var writeSpan = HubTracing.ActivitySource.StartActivity("hub.lint.write_findings_report");
+            writeSpan?.SetTag("run_id", run.RunId);
+
+            var path = await _reportStore.WriteAsync(report, CancellationToken.None);
+            writeSpan?.SetTag("path", path);
+            run.SetFindingsReportPath(path);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to write Findings Report for lint run {RunId}.", run.RunId);
+        }
+
+        return effectiveNarrative;
     }
 
     /// <summary>
