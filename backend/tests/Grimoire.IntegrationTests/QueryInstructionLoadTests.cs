@@ -97,11 +97,12 @@ public class QueryInstructionLoadTests
         var resolvedPaths = QueryTurnSubmissionApiTests.BuildResolvedPaths(root);
         var recordPath = resolvedPaths.ConversationRecordPathFor("c-fail");
         await PollAsync.WaitAsync(
-            () => File.Exists(recordPath),
+            () => File.Exists(recordPath)
+                  && Grimoire.Hub.QueryConversations.ConversationRecordFormat.Parse(File.ReadAllText(recordPath))
+                      is Grimoire.Hub.QueryConversations.ConversationRecordParseResult.Parsed { Turns.Count: >= 1 },
             TimeSpan.FromSeconds(5),
-            $"Expected the Conversation Record at '{recordPath}' to exist within 5s.");
+            $"Expected the Conversation Record at '{recordPath}' to parse with at least one turn within 5s.");
 
-        Assert.True(File.Exists(recordPath));
         var record = await File.ReadAllTextAsync(recordPath);
         var parsed = Assert.IsType<Grimoire.Hub.QueryConversations.ConversationRecordParseResult.Parsed>(
             Grimoire.Hub.QueryConversations.ConversationRecordFormat.Parse(record));
