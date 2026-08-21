@@ -114,6 +114,35 @@ public sealed class IngestRunCoordinator
     public Task<bool> IsQueuePausedAsync(CancellationToken cancellationToken = default)
         => _repository.GetFlagAsync(QueuePausedFlag, cancellationToken);
 
+    /// <summary>
+    /// Whether the queue is fully idle — no run holds the agent slot and nothing is
+    /// queued — evaluated as ONE decision under <c>_slotLock</c>.
+    ///
+    /// <para>
+    /// Reading <see cref="RunningTaskId"/> and <see cref="GetQueuePositionsAsync"/>
+    /// separately is NOT equivalent and must not be used as a drain signal (#146).
+    /// <see cref="TryStartNextAsync"/> removes the next task's queued row and assigns the
+    /// slot inside the same lock, so an unsynchronized reader can interleave between the
+    /// two: it sees the slot still free (the previous run released it) and then sees the
+    /// row already gone (the next run claimed it), and concludes the queue drained at the
+    /// exact moment the next task is starting. That reported a completed two-task run as
+    /// "1 processed, 1 failed".
+    /// </para>
+    /// </summary>
+    public async Task<bool> IsQueueDrainedAsync(CancellationToken cancellationToken = default)
+    {
+        await _slotLock.WaitAsync(cancellationToken);
+        try
+        {
+            return _runningTaskId is null
+                && (await _repository.GetQueuedAsync(cancellationToken)).Count == 0;
+        }
+        finally
+        {
+            _slotLock.Release();
+        }
+    }
+
     /// <summary>FIFO position (1-based) of a queued task, or null when not queued.</summary>
     public async Task<IReadOnlyDictionary<string, int>> GetQueuePositionsAsync(CancellationToken cancellationToken = default)
     {

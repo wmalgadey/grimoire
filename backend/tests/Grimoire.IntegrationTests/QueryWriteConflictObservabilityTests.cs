@@ -16,6 +16,7 @@ namespace Grimoire.IntegrationTests;
 /// <c>out_of_scope</c> policy-scope denial (that reason already has its own established
 /// signal via <see cref="IToolCallInstrumentation.RecordDenied"/>).
 /// </summary>
+[Collection("HubActivityListenerObservability")]
 public class QueryWriteConflictObservabilityTests
 {
     [Fact]
