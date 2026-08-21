@@ -146,9 +146,11 @@ public class QueryInterruptionTests
         var paths = QueryTurnSubmissionApiTests.BuildResolvedPaths(root);
         var recordPath = paths.ConversationRecordPathFor("c-interrupt-record");
         await PollAsync.WaitAsync(
-            () => File.Exists(recordPath),
+            () => File.Exists(recordPath)
+                  && Grimoire.Hub.QueryConversations.ConversationRecordFormat.Parse(File.ReadAllText(recordPath))
+                      is Grimoire.Hub.QueryConversations.ConversationRecordParseResult.Parsed { Turns.Count: >= 1 },
             TimeSpan.FromSeconds(5),
-            $"Expected the Conversation Record at '{recordPath}' to exist within 5s.");
+            $"Expected the Conversation Record at '{recordPath}' to parse with at least one turn within 5s.");
 
         // 019-fast-test-tier (ADR-021 R4): letting the liveness watchdog fire well past its
         // window IS the behavior under test (supervision must not append a second block for
