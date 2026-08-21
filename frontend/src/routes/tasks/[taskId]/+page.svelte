@@ -117,7 +117,7 @@
 		status === 'completed' || status === 'failed';
 
 	const activityEmptyTextFor = (status: LifecycleStage | undefined) =>
-		status === 'completed' || status === 'failed'
+		isTerminalStatus(status)
 			? 'This run has finished. Turn and tool-call counts are only kept while an agent is running, so they are not available now — the task record below is what it produced.'
 			: status === 'running'
 				? 'The agent has started; turns and tool calls appear here as it reports them.'
