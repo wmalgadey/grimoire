@@ -275,7 +275,7 @@ public sealed class IngestRunCoordinator
         }
 
         var manifest = await _sourceArtifactStore.TryReadMetadataAsync(taskId, cancellationToken);
-        return KanbanBoardProjectionStore.ResolveTitle(taskId, manifest);
+        return KanbanBoardProjectionStore.ResolveTitle(taskId, manifest, existing?.Title);
     }
 
     /// <summary>Starts the next queued task iff the slot is free and the queue is not paused (FIFO).</summary>

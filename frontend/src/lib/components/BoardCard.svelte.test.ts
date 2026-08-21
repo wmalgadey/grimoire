@@ -29,6 +29,18 @@ test('shows the human label as the card text with the raw id beneath it', async 
 	await expect.element(screen.getByTestId('board-card-id')).toHaveTextContent('ing-1');
 });
 
+// #130: when the label chain falls all the way through, the title *is* the task id, and the
+// card printed that same string twice — which reads as broken rather than as "not known yet".
+test('prints the id once when it is also the label', async () => {
+	const screen = await render(BoardCard, {
+		item: ingest({ title: 'ing-1' }),
+		onOpen: () => {}
+	});
+
+	await expect.element(screen.getByTestId('board-card-title')).toHaveTextContent('ing-1');
+	expect(screen.getByTestId('board-card-id').elements()).toHaveLength(0);
+});
+
 test('a queued card states its position, a running card its loop activity', async () => {
 	const queued = await render(BoardCard, {
 		item: ingest({ status: 'queued', queuePosition: 2 }),
