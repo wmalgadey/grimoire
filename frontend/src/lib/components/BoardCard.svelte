@@ -53,9 +53,15 @@
 		>
 	</span>
 
-	<span class="truncate font-mono text-xs text-slate-400" data-testid="board-card-id"
-		>{item.id}</span
-	>
+	<!-- #130: the id line is suppressed when it is the title, so the last-resort case degrades
+	     to one line instead of printing the same string twice and reading as broken. A task
+	     only falls all the way through the label chain now if it has no manifest and no
+	     submitted filename or URL either. -->
+	{#if item.title !== item.id}
+		<span class="truncate font-mono text-xs text-slate-400" data-testid="board-card-id"
+			>{item.id}</span
+		>
+	{/if}
 
 	{#if item.note}
 		<span class="text-xs text-slate-500" data-testid="board-card-note">{item.note}</span>

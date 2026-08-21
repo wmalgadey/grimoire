@@ -82,7 +82,18 @@ public sealed class IngestSubmissionPipeline
 
         var promptSource = input.UserPrompt is null ? "default" : "custom";
         var effectiveSteps = ConvertStepRegistry.ResolveEffective(KindLabel(input.Kind), input.ConvertSteps);
-        var context = new PipelineContext(taskId, taskArtifactPath, submittedAt, promptSource, input.UserPrompt, effectiveSteps);
+
+        // 023 T020 (FR-003/FR-001): what the operator actually submitted. Built here rather
+        // than at conversion time (#130) — the label chain has nothing but the task id until
+        // the manifest exists, so a card was id-labelled for the whole `received` +
+        // `converting` window and permanently if conversion failed. It is known at
+        // acceptance; the first artifact write below now carries it.
+        var submission = input.Kind == IngestSubmissionKind.Url
+            ? new SourceSubmissionMetadata(SourceUrl: input.Url)
+            : new SourceSubmissionMetadata(OriginalFileName: input.FileName);
+
+        var context = new PipelineContext(
+            taskId, taskArtifactPath, submittedAt, promptSource, input.UserPrompt, effectiveSteps, submission);
 
         await WriteStageAsync(context, "received", null, null, null,
             $"Ingest submission received ({KindLabel(input.Kind)}).", cancellationToken);
@@ -122,13 +133,9 @@ public sealed class IngestSubmissionPipeline
             var conversionStarted = Stopwatch.GetTimestamp();
             var markItDownEnabled = ApplyConvertConfig(context, ConvertStepRegistry.MarkItDown);
 
-            // 023 T020 (FR-003/FR-001): what the operator actually submitted. The uploaded
-            // filename was previously discarded after extension sniffing and the URL was
-            // never persisted at all — both are recorded in the manifest so the label chain
-            // and the source link have something to fall back to.
-            var submission = input.Kind == IngestSubmissionKind.Url
-                ? new SourceSubmissionMetadata(SourceUrl: input.Url)
-                : new SourceSubmissionMetadata(OriginalFileName: input.FileName);
+            // Recorded in the manifest too, so the label chain and the source link still have
+            // it once conversion has written one.
+            var submission = context.Submission;
 
             var artifactSet = input.Kind switch
             {
@@ -323,11 +330,12 @@ public sealed class IngestSubmissionPipeline
         PipelineContext context, string status, string? sourceRef, string? originalRef, string? failureReason, string narrative, CancellationToken cancellationToken)
     {
         // 023 T045 (FR-003): mirror the label the board and detail views resolve, through the
-        // one chain that owns it. Before conversion has written a manifest (the `received` and
-        // `converting` writes) the chain legitimately falls back to the task id; the extracted
-        // heading appears from `queued` onward.
+        // one chain that owns it. Before conversion has written a manifest the chain falls
+        // back to what the operator submitted (#130) — the filename or the URL — rather than
+        // to the task id; the extracted heading supersedes it from `queued` onward.
         var manifest = await _sourceArtifactStore.TryReadMetadataAsync(context.TaskId, cancellationToken);
-        var title = KanbanBoardProjectionStore.ResolveTitle(context.TaskId, manifest);
+        var submitted = context.Submission.OriginalFileName ?? context.Submission.SourceUrl;
+        var title = KanbanBoardProjectionStore.ResolveTitle(context.TaskId, manifest, submitted);
 
         var document = new HubTaskArtifactDocument(
             TaskId: context.TaskId,
@@ -373,5 +381,6 @@ public sealed class IngestSubmissionPipeline
         DateTimeOffset SubmittedAt,
         string PromptSource,
         string? UserPrompt,
-        IReadOnlyDictionary<string, bool> ConvertSteps);
+        IReadOnlyDictionary<string, bool> ConvertSteps,
+        SourceSubmissionMetadata Submission);
 }

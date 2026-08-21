@@ -371,6 +371,28 @@ test('shows agent activity when the Hub reports it, and says so when it does not
 		.toHaveTextContent('No agent has picked this up');
 });
 
+// #129: the same empty state is reached by a completed or failed task, because run activity
+// lives in the coordinator's memory and is dropped at the terminal transition — so the panel
+// was telling someone looking at a task an agent had just finished that no agent ever picked
+// it up. The counters are not recoverable here (persisting them is the other half of the
+// issue, paired with #135); what the view owns is not claiming the run never happened.
+test.each(['completed', 'failed'] as const)(
+	'does not claim a %s task was never picked up when its run activity is gone',
+	async (status) => {
+		getTaskRecordMock.mockResolvedValue({ status: 'ok', record: record() });
+		getTaskDetailMock.mockResolvedValue(detail({ status, runActivity: null }));
+
+		const screen = await render(Page, {
+			data: { taskId: 'task-1' },
+			params: { taskId: 'task-1' }
+		});
+
+		const empty = screen.getByTestId('task-activity-empty');
+		await expect.element(empty).toHaveTextContent('This run has finished');
+		await expect.element(empty).not.toHaveTextContent('No agent has picked this up');
+	}
+);
+
 // ── 023 T033 (US5, FR-010..FR-012, SC-007) ─────────────────────────────────────────
 
 test('shows a Restart button only when the task is failed', async () => {

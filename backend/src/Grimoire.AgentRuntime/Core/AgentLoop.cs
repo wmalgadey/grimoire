@@ -99,6 +99,7 @@ public sealed class AgentLoop
         CancellationToken cancellationToken)
     {
         var conversation = new List<ConversationMessage>(initialConversation);
+        var answerStream = new TurnBoundaryTextStream(_onTextDelta);
 
         int turnsUsed = 0;
         int totalInputTokens = 0;
@@ -128,7 +129,7 @@ public sealed class AgentLoop
             using var span = _instrumentation.StartModelTurnActivity(taskId, turnsUsed + 1);
 
             var turn = await _modelClient.NextTurnAsync(
-                systemPrompt, conversation, _registry.Tools, cancellationToken, _onTextDelta);
+                systemPrompt, conversation, _registry.Tools, cancellationToken, answerStream.Write);
 
             span?.SetTag("stop_reason", turn.StopReason.ToProtocolString());
             span?.SetTag("tool_request_count", turn.ToolUseRequests.Count);
@@ -171,9 +172,14 @@ public sealed class AgentLoop
                         TotalOutputTokens: totalOutputTokens);
                 }
 
+                answerStream.EndTurn();
                 conversation.Add(new ConversationMessage("user", [new ConversationTextBlock(ContinuePrompt)]));
                 continue;
             }
+
+            // A turn that called tools has typically written a sentence or two of prose
+            // first, and the next turn's prose then starts exactly where it stopped (#131).
+            answerStream.EndTurn();
 
             // Process tool calls and build tool_results user message.
 
@@ -202,6 +208,58 @@ public sealed class AgentLoop
                 conversation.Add(new ConversationMessage("user", toolResultBlocks));
             }
         }
+    }
+
+    /// <summary>
+    /// Wraps the run's text-delta callback so consecutive model turns do not run together
+    /// (#131). Every turn of the loop streams its assistant text through the same callback
+    /// and the loop emitted nothing between them, so a turn that ended in tool calls after
+    /// writing "…searching the wiki now." was followed immediately by "I found three pages",
+    /// with no space, let alone a paragraph break. The Hub appends chunks verbatim and stores
+    /// the accumulation as the answer, so the same run-together string was the live view, the
+    /// recorded conversation, and the markdown that got re-rendered afterwards — where a
+    /// heading or list opening a later turn lost its block structure entirely.
+    ///
+    /// <para>
+    /// The separator is emitted lazily: <see cref="EndTurn"/> only arms it, and it is written
+    /// immediately before the next turn's first delta. That is what keeps it out of both ends
+    /// of the answer — a run whose later turns produce no prose at all ends exactly where its
+    /// text ended, with no trailing blank line, and the first turn is never preceded by one.
+    /// </para>
+    ///
+    /// <para>
+    /// This marks a boundary in text the agent already wrote; it never edits, trims or
+    /// summarises it (Principle V). Whether intermediate turn prose belongs in the recorded
+    /// answer at all is a separate question this deliberately does not answer — keeping
+    /// everything and marking nothing was the one option that read badly in both modes.
+    /// </para>
+    /// </summary>
+    private sealed class TurnBoundaryTextStream(Action<string>? onTextDelta)
+    {
+        private const string TurnSeparator = "\n\n";
+
+        private bool _wroteText;
+        private bool _boundaryPending;
+
+        public void Write(string text)
+        {
+            if (onTextDelta is null || string.IsNullOrEmpty(text))
+            {
+                return;
+            }
+
+            if (_boundaryPending && _wroteText)
+            {
+                onTextDelta(TurnSeparator);
+            }
+
+            _boundaryPending = false;
+            _wroteText = true;
+            onTextDelta(text);
+        }
+
+        /// <summary>Arms a separator, to be written only if a later turn produces more text.</summary>
+        public void EndTurn() => _boundaryPending = true;
     }
 
     /// <summary>What a turn that requested no tools means for the loop.</summary>

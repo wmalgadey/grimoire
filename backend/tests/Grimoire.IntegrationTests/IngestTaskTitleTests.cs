@@ -200,12 +200,20 @@ public class IngestTaskTitleTests
     }
 
     /// <summary>
-    /// A fetch that fails before the manifest exists leaves the chain with nothing but the
-    /// task id — and the artifact the Hub writes for that failure must say so too, rather
-    /// than carrying an empty label.
+    /// A fetch that fails before the manifest exists still has the URL the operator
+    /// submitted, and keeps it (#130). This assertion was previously the task id, on the
+    /// reasoning that a failed conversion leaves the chain with nothing — but the chain was
+    /// only ever missing it because the submitted metadata was not written until conversion
+    /// succeeded. A permanently id-labelled failed task is the case #130 was filed about.
+    ///
+    /// <para>
+    /// The genuine last resort is still covered, by
+    /// <see cref="TaskWithoutAManifest_FallsBackToTheTaskId"/>: an artifact with neither a
+    /// manifest nor any submitted label behind it.
+    /// </para>
     /// </summary>
     [Fact]
-    public async Task TaskArtifact_WithoutAManifest_CarriesTheTaskIdFallback()
+    public async Task TaskArtifact_WhenConversionFailsBeforeAManifest_KeepsTheSubmittedUrl()
     {
         // The fixture's default URL handler answers 404, so conversion fails before
         // PersistNormalizedAsync ever writes a manifest.
@@ -217,8 +225,8 @@ public class IngestTaskTitleTests
             IngestSubmissionKind.Url, "https://example.test/missing", null, null, null));
         await fixture.WaitForPublishedEventAsync(taskId, e => e.ToStatus == "failed");
 
-        Assert.Equal(taskId, await ArtifactTitleAsync(fixture, taskId));
-        Assert.Equal(taskId, await DetailTitleAsync(client, taskId));
+        Assert.Equal("https://example.test/missing", await ArtifactTitleAsync(fixture, taskId));
+        Assert.Equal("https://example.test/missing", await DetailTitleAsync(client, taskId));
     }
 
     /// <summary>
@@ -252,9 +260,18 @@ public class IngestTaskTitleTests
 
     /// <summary>
     /// The first <c>received</c> write happens before conversion has produced any normalized
-    /// markdown, so there is no manifest and therefore no extracted heading yet. Falling back
-    /// to the task id at that stage is correct behavior, not a defect — the extracted heading
-    /// appears from <c>queued</c> onward, once the manifest exists.
+    /// markdown, so there is no manifest and therefore no extracted heading yet — but there
+    /// is the URL the operator submitted, and that is what labels the task until the heading
+    /// supersedes it from <c>queued</c> onward (#130).
+    ///
+    /// <para>
+    /// This assertion used to be the task id, described here as "correct behavior, not a
+    /// defect". It was neither: for a URL that window covers an outbound fetch plus a
+    /// markitdown run — the most visible phase of the task's life — and the card showed the
+    /// id twice, as its own title and as its id line. What this test really protects is the
+    /// *ordering*, which is unchanged: whatever labels the task early, the extracted heading
+    /// wins once it exists.
+    /// </para>
     /// </summary>
     [Fact]
     public async Task TaskArtifact_BeforeConversion_FallsBackBelowTheExtractedHeading()
@@ -270,7 +287,7 @@ public class IngestTaskTitleTests
 
         // Held at `converting`: the fetch is blocked, so no manifest exists yet.
         await fixture.WaitForStatusAsync(taskId, s => s == "converting");
-        Assert.Equal(taskId, await ArtifactTitleAsync(fixture, taskId));
+        Assert.Equal("https://example.test/late", await ArtifactTitleAsync(fixture, taskId));
 
         gate.Release();
 

@@ -107,6 +107,19 @@
 		failed: 'Failed'
 	};
 
+	// #129: run activity is in-memory in the coordinator and dropped at the terminal
+	// transition, so `runActivity` is null for every completed or failed task — not only for
+	// one no agent ever picked up. Saying "no agent has picked this up" to someone looking at
+	// a task an agent just finished is simply false; it is only true before dispatch. The
+	// counters themselves are not recoverable here (nothing persists them — that half of the
+	// issue pairs with #135); what this can do is stop claiming the run never happened.
+	const activityEmptyTextFor = (status: LifecycleStage | undefined) =>
+		status === 'completed' || status === 'failed'
+			? 'This run has finished. Turn and tool-call counts are only kept while an agent is running, so they are not available now — the task record below is what it produced.'
+			: status === 'running'
+				? 'The agent has started; turns and tool calls appear here as it reports them.'
+				: 'No agent has picked this up yet, so there are no turns or tool calls to show.';
+
 	const statusClasses: Record<LifecycleStage, string> = {
 		received: 'bg-slate-100 text-slate-700',
 		converting: 'bg-amber-100 text-amber-800',
@@ -312,7 +325,7 @@
 					</div>
 				{:else}
 					<p class="max-w-[34ch] text-sm text-slate-500" data-testid="task-activity-empty">
-						No agent has picked this up, so there are no turns or tool calls to show.
+						{activityEmptyTextFor(detail?.status)}
 					</p>
 				{/if}
 			</div>
