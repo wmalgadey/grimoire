@@ -76,9 +76,10 @@ the finding. A human authorizing a remediation is a workflow step, not the momen
 agent acquires authority.
 
 **Independent Test**: Have Lint write a page body during a survey run, and separately
-have an authorized remediation execution do the same. Both succeed, and both are refused
-the things no scope reaches (reserved files, and whatever FR-021 settles about creating
-or deleting pages).
+have an authorized remediation execution do the same. Both succeed, both may create or
+delete a page and write the index and activity log (FR-016a, FR-021a), and both are
+refused only what FR-021 puts genuinely out of reach: anything outside the wiki content
+root.
 
 **Acceptance Scenarios**:
 
@@ -90,10 +91,10 @@ or deleting pages).
 3. **Given** any Lint run in either mode, **When** it attempts to write anything outside the
    wiki content root, **Then** the write is denied and recorded with a reason, and the run
    continues with its allowed actions.
-5. **Given** a Lint run that has just deleted a page, **When** it removes that page's entry from
+4. **Given** a Lint run that has just deleted a page, **When** it removes that page's entry from
    the index and records the deletion in the activity log, **Then** both writes are allowed and
    both are held to the same format rules any other agent's writes to those files are.
-4. **Given** any Lint run, **When** it finishes, **Then** the task artifact records the
+5. **Given** any Lint run, **When** it finishes, **Then** the task artifact records the
    identity (version and hash) of the policy that governed it.
 
 ---
@@ -404,6 +405,9 @@ Submit a batch containing a write and confirm it is rejected.
   update is expected at `/speckit-plan` — not an amendment. Note that ADR-016's own
   `frontmatter-only` write mode may still be worth keeping in the policy model even when no
   Lint policy uses it.
-- **ADR-018** — remediation authorization and execution: the source of the authorization this
-  feature derives a write grant from.
+- **ADR-018** — remediation authorization and execution: authorization gates whether a
+  proposed remediation *runs*, not what write authority the run holds — the run's scope is
+  the same one every Lint run holds (FR-014). This feature does not derive a scoped write
+  grant from the authorization; it is worth stating plainly here so `/speckit-plan` does not
+  reintroduce grant-scoping.
 - Replaces issues **#64** (remediation write access) and **#150** (guarded search and batching).
