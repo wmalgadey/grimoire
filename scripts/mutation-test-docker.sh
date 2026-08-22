@@ -4,11 +4,19 @@
 #
 #   ./scripts/mutation-test-docker.sh --group all
 #   ./scripts/mutation-test-docker.sh --only hub
+#   ./scripts/mutation-test-docker.sh --no-cache --group all   # rebuild the image from scratch
 #
-# The image (scripts/mutation-test.Dockerfile) is built on first use and reused after
-# that; --rebuild forces it. Building it takes a few minutes and about 3 GB — it carries
-# the .NET SDK, markitdown, Bun and a Playwright Chromium, because the run needs the real
-# versions of all four (Constitution Principle II: real infrastructure, no doubles).
+# The image (scripts/mutation-test.Dockerfile) carries the .NET SDK, markitdown, Bun and a
+# Playwright Chromium, because the run needs the real versions of all four (Constitution
+# Principle II: real infrastructure, no doubles). The first build takes a few minutes and
+# about 3 GB.
+#
+# `docker build` runs on every invocation rather than only when the image is missing. That
+# is not wasted work: with the layer cache warm and nothing changed it finishes in about a
+# second, and when frontend/bun.lock moves it rebuilds exactly the layer that pins the
+# Playwright browser to the lockfile's version. An "is the image there?" check would
+# instead keep serving an image built for the dependency set of an older checkout.
+# --no-cache forces the whole thing from scratch.
 #
 # Two mounts matter:
 #   $PWD -> /repo          the checkout itself, so reports land in docs/reports/mutation/
@@ -39,16 +47,14 @@ fi
 
 image="${MUTATION_IMAGE:-grimoire-mutation}"
 
-rebuild=0
+build_args=()
 args=()
 for arg in "$@"; do
-  if [ "$arg" = "--rebuild" ]; then rebuild=1; else args+=("$arg"); fi
+  if [ "$arg" = "--no-cache" ]; then build_args+=(--no-cache); else args+=("$arg"); fi
 done
 
-if [ "$rebuild" -eq 1 ] || ! docker image inspect "$image" >/dev/null 2>&1; then
-  echo "==> building $image (first run takes a few minutes)"
-  docker build -f scripts/mutation-test.Dockerfile -t "$image" .
-fi
+echo "==> building $image (cached unless the repository's dependency pins moved)"
+docker build "${build_args[@]}" -f scripts/mutation-test.Dockerfile -t "$image" .
 
 # Kept outside the repository so a run leaves no untracked files behind, and reused across
 # runs so the package restore happens once. Same idea as scripts/probe-models.sh.

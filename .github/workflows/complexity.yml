@@ -47,6 +47,12 @@ jobs:
       - name: Self-test compute_codebase_metrics.py (pytest)
         run: python3 -m pytest scripts/ci/test_compute_codebase_metrics.py -v
 
+      # Mutation testing itself is not a CI gate (it takes hours and gates nothing), but
+      # the script that turns its reports into the page people actually read is ordinary
+      # code, and this job is already where scripts/ self-tests run.
+      - name: Self-test mutation-report-index.py (pytest)
+        run: python3 -m pytest scripts/test_mutation_report_index.py -v
+
       - name: Analyze PR head
         # --csv exits 0 even when functions exceed the threshold; -i -1 additionally
         # ignores the warning count. Gating happens in the delta step, not here.

@@ -99,8 +99,10 @@ differently sized: measured on four cores, the fast group takes about four minut
 frontend about seven, while `hub` alone — 6582 mutants against the 801-test integration
 suite, which starts real hosts and spawns real agent processes — extrapolates to some
 seventeen hours from a measured 368-mutant subset. Raise `MUTATION_CONCURRENCY` on a bigger
-machine; the cost scales down close to linearly. Targets are independent and a finished one is
-skipped next time, so an interrupted run resumes by being started again.
+machine; the cost scales down close to linearly. Targets are independent, and one already
+measured against the current tree is skipped next time — so an interrupted run resumes by
+being started again, while an edited or rebased one re-runs rather than reporting a score
+from a different checkout.
 
 Two things the tool cannot see, both by construction. `Grimoire.ArchTests` is not a target:
 its rules assert dependency direction, so mutating production code to see whether they go
