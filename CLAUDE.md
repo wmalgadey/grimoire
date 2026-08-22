@@ -87,6 +87,25 @@ Once implementation is under way this decision is effectively spent: retro-split
 that has already been reviewed discards the review rather than shortening it. Decide
 before, not after.
 
+**A requirements change discovered mid-stack still goes through `/speckit-clarify` on the
+spec layer — never as a direct edit on a downstream layer.** Planning or tasks work
+routinely surfaces a real problem with what the spec asks for (an eval criterion that
+implies a corpus far larger than anything else in the repo, a success criterion nothing
+downstream can actually gate on). The fix belongs in the spec, and the *only* sanctioned
+way to change what a spec requires post-creation is `/speckit-clarify`, run on the branch
+that owns `spec.md` — not a direct edit made in reaction to the planning feedback, however
+correct the resulting text is, and never a patch applied only to `plan.md`/`tasks.md` on a
+layer above while `spec.md` still describes the old requirement. Feature 026 did this
+wrong once: a plan-phase finding was pushed straight into `spec.md` as a raw edit, which
+made spec.md and the layers above agree with each other but skipped the mechanism that
+makes a requirements change visible as a decision (a dated `## Clarifications` entry,
+Recommended/options framing, a checklist re-validation) rather than an untracked rewrite.
+Once the spec layer is corrected through `/speckit-clarify`, every layer above it is
+rebased onto the new spec commit and its own `/speckit-plan` or `/speckit-tasks` output is
+regenerated against that corrected base — not hand-patched to match. A stack's whole point
+is that each layer is honest about what it was built from; a layer whose plan or tasks
+quietly know something the spec doesn't say yet defeats that.
+
 **Between features: triage the board.** When a feature reaches its Definition of Done and
 its final PR merges, run the [`issue-triage`](.claude/skills/issue-triage/SKILL.md) skill
 before choosing the next unit of work. The pinned triage map issue is the durable state;
