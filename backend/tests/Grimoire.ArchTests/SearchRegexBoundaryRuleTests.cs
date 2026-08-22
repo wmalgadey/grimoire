@@ -30,7 +30,25 @@ namespace Grimoire.ArchTests;
 /// </summary>
 public class SearchRegexBoundaryRuleTests
 {
-    private const string RegexCtorPrefix = "System.Text.RegularExpressions.Regex::.ctor";
+    // Every Regex entry point that can construct/compile a pattern: the constructor and the
+    // static convenience methods, each of which has a (..., RegexOptions, TimeSpan) overload
+    // that must be the one used — matches Copilot's finding that scanning newobj alone would
+    // miss e.g. a bare Regex.IsMatch(input, pattern) call. Expected parameter count is the
+    // bounded overload's own count: 3 for the constructor (pattern, options, timeout), 4 for
+    // the static methods (an extra leading "input"/"count" argument).
+    private static readonly Dictionary<string, int> _regexEntryPoints = new(StringComparer.Ordinal)
+    {
+        ["System.Text.RegularExpressions.Regex::.ctor"] = 3,
+        ["System.Text.RegularExpressions.Regex::IsMatch"] = 4,
+        ["System.Text.RegularExpressions.Regex::Match"] = 4,
+        ["System.Text.RegularExpressions.Regex::Matches"] = 4,
+        // Replace's bounded overload carries an extra "replacement" string between pattern
+        // and options: (input, pattern, replacement, options, timeout).
+        ["System.Text.RegularExpressions.Regex::Replace"] = 5,
+        ["System.Text.RegularExpressions.Regex::Split"] = 4,
+    };
+
+    private const string InfiniteMatchTimeoutGetter = "System.Text.RegularExpressions.Regex::get_InfiniteMatchTimeout";
 
     // RegexOptions.NonBacktracking (System.Text.RegularExpressions.RegexOptions), a plain
     // enum flag value, stable across target frameworks.
@@ -62,42 +80,50 @@ public class SearchRegexBoundaryRuleTests
                     for (var i = 0; i < instructions.Count; i++)
                     {
                         var instruction = instructions[i];
-                        if (instruction.OpCode != OpCodes.Newobj)
+                        if (instruction.OpCode != OpCodes.Newobj && instruction.OpCode != OpCodes.Call)
                             continue;
 
                         if (instruction.Operand is not MethodReference callee)
                             continue;
 
                         var callSig = $"{callee.DeclaringType.FullName}::{callee.Name}";
-                        if (!callSig.StartsWith(RegexCtorPrefix, StringComparison.Ordinal))
+                        if (!_regexEntryPoints.TryGetValue(callSig, out var expectedParameterCount))
                             continue;
 
                         constructionSitesFound++;
                         var site = $"{type.FullName}.{method.Name}";
 
-                        if (callee.Parameters.Count != 3)
+                        if (callee.Parameters.Count != expectedParameterCount)
                         {
-                            violations.Add($"{site}: Regex constructed with {callee.Parameters.Count} argument(s) " +
-                                "instead of the (pattern, options, timeout) 3-argument overload");
+                            violations.Add($"{site}: {callSig} called with {callee.Parameters.Count} argument(s) " +
+                                $"instead of its bounded {expectedParameterCount}-argument (..., options, timeout) overload");
                             continue;
                         }
 
-                        // Stack order for `new Regex(pattern, options, timeout)`: pattern is
-                        // pushed first, then options, then timeout, then newobj. When options
-                        // and timeout are each single-instruction pushes (a constant and a
-                        // static-field read respectively — the shape this rule requires),
-                        // the options push is exactly two instructions before newobj.
+                        // Stack order puts every argument in declaration order, options
+                        // second-to-last and timeout last, regardless of how many arguments
+                        // precede them. When options and timeout are each single-instruction
+                        // pushes (a constant and a static-field/property read respectively —
+                        // the shape this rule requires), the options push is exactly two
+                        // instructions before the call/newobj.
                         if (i < 2 || !TryDecodeLdcI4(instructions[i - 2], out var optionsValue))
                         {
-                            violations.Add($"{site}: Regex options argument is not a simple constant load " +
+                            violations.Add($"{site}: {callSig}'s options argument is not a simple constant load " +
                                 "immediately preceding the timeout argument — cannot verify NonBacktracking");
                             continue;
                         }
 
                         if ((optionsValue & NonBacktrackingFlag) == 0)
                         {
-                            violations.Add($"{site}: Regex constructed with options value {optionsValue}, " +
+                            violations.Add($"{site}: {callSig} called with options value {optionsValue}, " +
                                 "missing RegexOptions.NonBacktracking");
+                        }
+
+                        if (instructions[i - 1].Operand is MethodReference timeoutCallee &&
+                            string.Equals($"{timeoutCallee.DeclaringType.FullName}::{timeoutCallee.Name}", InfiniteMatchTimeoutGetter, StringComparison.Ordinal))
+                        {
+                            violations.Add($"{site}: {callSig} called with Regex.InfiniteMatchTimeout — " +
+                                "removes the finite backstop ADR-030 R2/R5 requires");
                         }
                     }
                 }

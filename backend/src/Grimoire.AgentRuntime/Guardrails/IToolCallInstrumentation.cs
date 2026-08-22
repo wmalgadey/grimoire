@@ -89,10 +89,22 @@ public interface IToolCallInstrumentation
     /// was unsupported (e.g. lookaround) or exceeded the size bound (ADR-030 R2/R5).</summary>
     void LogSearchPatternRejected(string taskId, string reason, int patternLength, int turn) { }
 
-    /// <summary>plan.md's <c>guardrails.search_scan</c> span, child of <c>*_agent.tool_call</c>
-    /// (ADR-030 R1/R2). Caller sets <c>pattern_length</c>/<c>path_prefix</c>/
-    /// <c>files_scanned</c>/<c>matches</c>/<c>truncated</c>/<c>outcome</c> once the scan
-    /// completes, mirroring <see cref="StartAcquireWriteLockActivity"/>'s contract.</summary>
+    /// <summary>plan.md's <c>guardrails.search_scan</c> span, declared a child of
+    /// <c>*_agent.tool_call</c> (ADR-030 R1/R2). Caller sets <c>pattern_length</c>/
+    /// <c>path_prefix</c>/<c>files_scanned</c>/<c>matches</c>/<c>truncated</c>/<c>outcome</c>
+    /// once the scan completes.
+    ///
+    /// <b>Open question for the implementing phase (Phase 3, T029):</b> unlike
+    /// <see cref="StartAcquireWriteLockActivity"/> — which fires during write dispatch,
+    /// genuinely before <see cref="RecordAllowed"/>/<see cref="RecordDenied"/> creates that
+    /// turn's <c>tool_call</c> span — a call to this method during dispatch has no live
+    /// <c>tool_call</c> span to parent to: <c>RecordAllowed</c>/<c>RecordDenied</c> both
+    /// create and dispose it internally, and only after dispatch returns. The implementing
+    /// phase must either keep a tool-call-scoped activity open across dispatch, or accept
+    /// and document a different actual parent (most likely <c>*_agent.model_turn</c>,
+    /// mirroring <see cref="StartBatchActivity"/>) — this declared parenting is not yet
+    /// achievable with <see cref="GuardedToolExecutor"/>'s current call shape.
+    /// </summary>
     Activity? StartSearchScanActivity(string taskId, int turn) => null;
 
     /// <summary>plan.md's <c>wiki.read.invocations_total</c> counter, labelled by
@@ -128,9 +140,16 @@ public interface IToolCallInstrumentation
     /// deletion was restored during rollback (ADR-031 R4).</summary>
     void LogPageDeleteRolledBack(string taskId, string path, int turn) { }
 
-    /// <summary>plan.md's <c>guardrails.delete_file</c> span, child of
+    /// <summary>plan.md's <c>guardrails.delete_file</c> span, declared a child of
     /// <c>*_agent.tool_call</c> (ADR-031 R3/R4). Caller sets <c>journaled</c>/
-    /// <c>outcome</c> once the deletion (and any journal write) completes.</summary>
+    /// <c>outcome</c> once the deletion (and any journal write) completes.
+    ///
+    /// Shares <see cref="StartSearchScanActivity"/>'s open question for the implementing
+    /// phase (Phase 4, T045): this declared parenting is not achievable until dispatch keeps
+    /// a tool-call-scoped activity open across the delete operation, since
+    /// <c>RecordAllowed</c>/<c>RecordDenied</c> currently create and dispose that span only
+    /// after dispatch returns.
+    /// </summary>
     Activity? StartDeleteFileActivity(string taskId, string path, int turn) => null;
 }
 

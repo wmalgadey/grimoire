@@ -68,6 +68,36 @@ public class LintLogEventTests
         AssertEvent(logger.Entries, "wiki.write_lock.timeout", LogLevel.Warning, ["task_id", "path", "wait_ms"]);
     }
 
+    [Fact]
+    public void GuardedRetrievalEvents_EmitExpectedNamesLevelsAndFields()
+    {
+        // 026-guarded-tool-surface (T014, ADR-030/ADR-031): registered ahead of the story
+        // phases that emit them from real dispatch (Phase 3 search, Phase 4 delete, Phase 6
+        // batch) — this pins the event contract now so a typo in a field/event name is
+        // caught here, not three layers later when the first real call site lands.
+        var logger = new CaptureLogger<LintLogEventTests>();
+
+        LintAgentLogEvents.LogSearchTruncated(logger, runId: "run-1", patternLength: 12, cap: 200, turn: 3);
+        LintAgentLogEvents.LogSearchTimedOut(logger, runId: "run-1", budgetMs: 2000, filesScanned: 400, turn: 3);
+        LintAgentLogEvents.LogSearchPatternRejected(logger, runId: "run-1", reason: "lookaround_unsupported", patternLength: 12, turn: 3);
+        LintAgentLogEvents.LogBatchRejected(logger, runId: "run-1", reason: "tool_not_allowed_in_batch", callCount: 5, turn: 4);
+        LintAgentLogEvents.LogPageDeleted(logger, runId: "run-1", path: "/wiki/tech/stale.md", turn: 5);
+        LintAgentLogEvents.LogPageDeleteRolledBack(logger, runId: "run-1", path: "/wiki/tech/stale.md", turn: 6);
+
+        AssertEvent(logger.Entries, "wiki.search.truncated", LogLevel.Warning,
+            ["task_id", "run_id", "agent", "pattern_length", "cap", "turn"]);
+        AssertEvent(logger.Entries, "wiki.search.timed_out", LogLevel.Warning,
+            ["task_id", "run_id", "agent", "budget_ms", "files_scanned", "turn"]);
+        AssertEvent(logger.Entries, "wiki.search.pattern_rejected", LogLevel.Warning,
+            ["task_id", "run_id", "agent", "reason", "pattern_length", "turn"]);
+        AssertEvent(logger.Entries, "wiki.batch.rejected", LogLevel.Warning,
+            ["task_id", "run_id", "agent", "reason", "call_count", "turn"]);
+        AssertEvent(logger.Entries, "wiki.page.deleted", LogLevel.Information,
+            ["task_id", "run_id", "agent", "path", "turn"]);
+        AssertEvent(logger.Entries, "wiki.page.delete_rolled_back", LogLevel.Warning,
+            ["task_id", "run_id", "agent", "path", "turn"]);
+    }
+
     private static void AssertEvent(
         List<CaptureLoggerEntry> entries,
         string eventName,

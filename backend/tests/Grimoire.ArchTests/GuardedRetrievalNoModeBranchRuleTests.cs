@@ -41,11 +41,25 @@ public class GuardedRetrievalNoModeBranchRuleTests
     // than the sibling write-boundary rules' write-method lists on purpose — this rule is
     // about retrieval reach, not every filesystem API (Constitution Principle II "Test what
     // we own").
+    // Deliberately excludes File.ReadAllText(Async)/ReadAllBytes(Async): those are already
+    // legitimately called elsewhere in this assembly for unrelated reasons (PolicyLoader,
+    // SystemPromptLoader, WriteJournal, SharedFileWriteGuard, the Replay adapter's
+    // RecordingSchema) — including them here would flag pre-existing, correctly-placed code
+    // as a boundary violation (Constitution Principle II "Test what we own": this rule
+    // protects search/batch's retrieval reach, not every file-content read in the
+    // assembly). Directory.GetFiles/GetDirectories are safe to add: verified (by direct
+    // grep) that only GuardedToolExecutor — the one exempted type — calls them today.
     private static readonly string[] _retrievalEnumerationMethods =
     [
         "System.IO.Directory::EnumerateFiles",
         "System.IO.Directory::EnumerateFileSystemEntries",
+        "System.IO.Directory::EnumerateDirectories",
+        "System.IO.Directory::GetFiles",
+        "System.IO.Directory::GetDirectories",
+        "System.IO.Directory::GetFileSystemEntries",
         "System.IO.File::ReadLines",
+        "System.IO.File::ReadAllLines",
+        "System.IO.File::ReadAllLinesAsync",
     ];
 
     [Fact]
@@ -107,6 +121,7 @@ public class GuardedRetrievalNoModeBranchRuleTests
         };
 
         var failures = new List<string>();
+        var foundCoordinatorTypeNames = new HashSet<string>(StringComparer.Ordinal);
 
         foreach (var module in assembly.Modules)
         {
@@ -119,7 +134,9 @@ public class GuardedRetrievalNoModeBranchRuleTests
                     .ToList();
 
                 if (matchingTypes.Count == 0)
-                    continue; // Loaded from a different module of the same assembly, or not yet found here.
+                    continue; // Present in a different module of the same assembly — checked below.
+
+                foundCoordinatorTypeNames.Add(coordinatorTypeName);
 
                 var policyPathGetters = new HashSet<string>(StringComparer.Ordinal);
 
@@ -153,6 +170,16 @@ public class GuardedRetrievalNoModeBranchRuleTests
                         "over the write scope is exactly the split ADR-031 R1 rejected.");
                 }
             }
+        }
+
+        // A rename, removal, or move of any of the three coordinators would otherwise let
+        // this rule pass vacuously without checking the invariant it exists for.
+        foreach (var expectedTypeName in coordinatorTypeNames)
+        {
+            Assert.True(
+                foundCoordinatorTypeNames.Contains(expectedTypeName),
+                $"ADR-031 R1: expected coordinator type '{expectedTypeName}' was not found in " +
+                "Grimoire.Hub — this rule cannot check the no-mode-branch invariant on a type it cannot locate.");
         }
 
         Assert.True(

@@ -96,19 +96,25 @@ public static class LintAgentLogEvents
     }
 
     // ── 026-guarded-tool-surface (ADR-030/ADR-031) ──────────────────────────────────────
+    // plan.md ## Observability lists `agent` as a mandatory field on all six of these new
+    // events (unlike the five pre-existing ones above, which plan.md does not require it
+    // on and which this feature does not retrofit) — a constant here, since Lint is the
+    // only agent that will ever construct these calls.
+    private const string Agent = "lint";
 
     public static void LogSearchTruncated(ILogger logger, string runId, int patternLength, int cap, int turn)
     {
         using var span = StartLogEventSpan("wiki.search.truncated", "Warning");
         span?.SetTag("task_id", runId);
         span?.SetTag("run_id", runId);
+        span?.SetTag("agent", Agent);
         span?.SetTag("pattern_length", patternLength);
         span?.SetTag("cap", cap);
         span?.SetTag("turn", turn);
 
         logger.LogWarning(SearchTruncatedEvent,
-            "Search result cap reached. task_id={task_id} run_id={run_id} pattern_length={pattern_length} cap={cap} turn={turn}",
-            runId, runId, patternLength, cap, turn);
+            "Search result cap reached. task_id={task_id} run_id={run_id} agent={agent} pattern_length={pattern_length} cap={cap} turn={turn}",
+            runId, runId, Agent, patternLength, cap, turn);
     }
 
     public static void LogSearchTimedOut(ILogger logger, string runId, double budgetMs, int filesScanned, int turn)
@@ -116,13 +122,14 @@ public static class LintAgentLogEvents
         using var span = StartLogEventSpan("wiki.search.timed_out", "Warning");
         span?.SetTag("task_id", runId);
         span?.SetTag("run_id", runId);
+        span?.SetTag("agent", Agent);
         span?.SetTag("budget_ms", budgetMs);
         span?.SetTag("files_scanned", filesScanned);
         span?.SetTag("turn", turn);
 
         logger.LogWarning(SearchTimedOutEvent,
-            "Search time budget exhausted mid-scan. task_id={task_id} run_id={run_id} budget_ms={budget_ms} files_scanned={files_scanned} turn={turn}",
-            runId, runId, budgetMs, filesScanned, turn);
+            "Search time budget exhausted mid-scan. task_id={task_id} run_id={run_id} agent={agent} budget_ms={budget_ms} files_scanned={files_scanned} turn={turn}",
+            runId, runId, Agent, budgetMs, filesScanned, turn);
     }
 
     public static void LogSearchPatternRejected(ILogger logger, string runId, string reason, int patternLength, int turn)
@@ -130,13 +137,14 @@ public static class LintAgentLogEvents
         using var span = StartLogEventSpan("wiki.search.pattern_rejected", "Warning");
         span?.SetTag("task_id", runId);
         span?.SetTag("run_id", runId);
+        span?.SetTag("agent", Agent);
         span?.SetTag("reason", reason);
         span?.SetTag("pattern_length", patternLength);
         span?.SetTag("turn", turn);
 
         logger.LogWarning(SearchPatternRejectedEvent,
-            "Search pattern rejected. task_id={task_id} run_id={run_id} reason={reason} pattern_length={pattern_length} turn={turn}",
-            runId, runId, reason, patternLength, turn);
+            "Search pattern rejected. task_id={task_id} run_id={run_id} agent={agent} reason={reason} pattern_length={pattern_length} turn={turn}",
+            runId, runId, Agent, reason, patternLength, turn);
     }
 
     public static void LogBatchRejected(ILogger logger, string runId, string reason, int callCount, int turn)
@@ -144,13 +152,14 @@ public static class LintAgentLogEvents
         using var span = StartLogEventSpan("wiki.batch.rejected", "Warning");
         span?.SetTag("task_id", runId);
         span?.SetTag("run_id", runId);
+        span?.SetTag("agent", Agent);
         span?.SetTag("reason", reason);
         span?.SetTag("call_count", callCount);
         span?.SetTag("turn", turn);
 
         logger.LogWarning(BatchRejectedEvent,
-            "Batch call rejected. task_id={task_id} run_id={run_id} reason={reason} call_count={call_count} turn={turn}",
-            runId, runId, reason, callCount, turn);
+            "Batch call rejected. task_id={task_id} run_id={run_id} agent={agent} reason={reason} call_count={call_count} turn={turn}",
+            runId, runId, Agent, reason, callCount, turn);
     }
 
     public static void LogPageDeleted(ILogger logger, string runId, string path, int turn)
@@ -158,12 +167,13 @@ public static class LintAgentLogEvents
         using var span = StartLogEventSpan("wiki.page.deleted", "Information");
         span?.SetTag("task_id", runId);
         span?.SetTag("run_id", runId);
+        span?.SetTag("agent", Agent);
         span?.SetTag("path", path);
         span?.SetTag("turn", turn);
 
         logger.LogInformation(PageDeletedEvent,
-            "Page deleted through the guarded boundary. task_id={task_id} run_id={run_id} path={path} turn={turn}",
-            runId, runId, path, turn);
+            "Page deleted through the guarded boundary. task_id={task_id} run_id={run_id} agent={agent} path={path} turn={turn}",
+            runId, runId, Agent, path, turn);
     }
 
     public static void LogPageDeleteRolledBack(ILogger logger, string runId, string path, int turn)
@@ -171,12 +181,13 @@ public static class LintAgentLogEvents
         using var span = StartLogEventSpan("wiki.page.delete_rolled_back", "Warning");
         span?.SetTag("task_id", runId);
         span?.SetTag("run_id", runId);
+        span?.SetTag("agent", Agent);
         span?.SetTag("path", path);
         span?.SetTag("turn", turn);
 
         logger.LogWarning(PageDeleteRolledBackEvent,
-            "Journaled deletion restored during rollback. task_id={task_id} run_id={run_id} path={path} turn={turn}",
-            runId, runId, path, turn);
+            "Journaled deletion restored during rollback. task_id={task_id} run_id={run_id} agent={agent} path={path} turn={turn}",
+            runId, runId, Agent, path, turn);
     }
 
     private static Activity? StartLogEventSpan(string eventName, string level)

@@ -48,6 +48,9 @@ public class WikiDeletionGuardedBoundaryRuleTests
     [
         "System.IO.File::Delete",
         "System.IO.Directory::Delete",
+        "System.IO.FileInfo::Delete",
+        "System.IO.DirectoryInfo::Delete",
+        "System.IO.FileSystemInfo::Delete",
     ];
 
     [Fact]

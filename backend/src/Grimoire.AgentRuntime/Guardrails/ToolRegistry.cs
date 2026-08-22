@@ -55,17 +55,19 @@ public sealed class ToolRegistry
         """);
 
     /// <summary>
-    /// ADR-030 R3 (026-guarded-tool-surface): unchanged default (whole-file read, byte for
-    /// byte) with <c>offset</c>/<c>limit</c>/<c>frontmatter_only</c> now optional — omitting
-    /// all three is exactly today's behavior, including setting the write-coordination
-    /// baseline. Supplying any of them makes the read partial, which must never set that
-    /// baseline (FR-010).
+    /// Unchanged in this layer. ADR-030 R3 (026-guarded-tool-surface, T048) will add optional
+    /// <c>offset</c>/<c>limit</c>/<c>frontmatter_only</c> parameters here once
+    /// <c>GuardedToolExecutor</c>'s dispatch actually implements ranged reads — advertising
+    /// them earlier would offer the model a capability that silently does nothing (the
+    /// dispatch layer would keep returning the whole file and setting the compare-and-swap
+    /// baseline regardless of what the schema promises), the same "shipped surface without
+    /// matching implementation" problem this layer's own CI-caught findings already
+    /// identified for <c>search_files</c>/<c>batch</c>/<c>delete_file</c> — fixed here the
+    /// same way, by not exposing it yet.
     /// </summary>
     public static readonly ToolDefinition ReadFileDefinition = new(
         Name: ReadFile,
-        Description: "Read the content of a file inside the allowed read scope. With no other " +
-            "parameters, returns the whole file. 'offset'/'limit' return a line range " +
-            "(sed -n 'X,Yp'); 'frontmatter_only' returns just the frontmatter block.",
+        Description: "Read the full content of a file inside the allowed read scope.",
         InputSchemaJson: """
         {
           "type": "object",
@@ -73,18 +75,6 @@ public sealed class ToolRegistry
             "path": {
               "type": "string",
               "description": "File path relative to the repository root."
-            },
-            "offset": {
-              "type": "integer",
-              "description": "1-based first line to return."
-            },
-            "limit": {
-              "type": "integer",
-              "description": "Maximum number of lines to return."
-            },
-            "frontmatter_only": {
-              "type": "boolean",
-              "description": "Return only the frontmatter block. Default false."
             }
           },
           "required": ["path"],

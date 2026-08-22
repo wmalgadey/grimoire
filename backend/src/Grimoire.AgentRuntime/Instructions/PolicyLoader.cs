@@ -97,7 +97,19 @@ public sealed class PolicyLoader
             return new PolicyLoadFailure($"Policy file '{policyPath}': {ex.Message}");
         }
 
-        var deleteRules = ResolveAndNormalizeDeleteRules(schema.Delete ?? []);
+        IReadOnlyList<DeleteRule> deleteRules;
+        try
+        {
+            deleteRules = ResolveAndNormalizeDeleteRules(schema.Delete ?? []);
+        }
+        catch (Exception ex)
+        {
+            // Fail-closed (matches the write-rule branch's contract): a malformed
+            // excludePrefixes entry (e.g. a path with invalid characters) must produce a
+            // PolicyLoadFailure, never an unhandled exception that could crash the run
+            // before any wiki change instead of denying it cleanly.
+            return new PolicyLoadFailure($"Policy file '{policyPath}': malformed delete-rule prefix: {ex.Message}");
+        }
 
         var policy = new SafetyPolicy(_wikiRoot, readPrefixes, writeRules, deleteRules);
 
