@@ -13,6 +13,7 @@
 ### Session 2026-08-22
 
 - Q: When a human authorizes a remediation task, how much of the wiki should that task's execution run be allowed to write? → A: Wiki-wide read-write for the duration of the authorized execution run (option C) — the grant is not scoped to the authorized target page.
+- Q: Should the search tool match a literal string, or a regular expression? → A: Regular expression, with grep-compatible semantics — derived from the stated rule rather than chosen directly. The rule: the agent should have every capability it would have with a shell, confined to this wiki, so the guarded tools should mimic the shell tools it would otherwise reach for. `grep` takes a regex, so the search tool does too. Bounds (non-backtracking engine, timeout, result cap) are the resource limits any grep deployment has, not a reason to offer a weaker pattern language.
 - Q: Should the Lint agent also be able to write the two reserved files — the wiki index and the activity log? → A: Yes (option A). Full access includes them; the exclusion in today's Lint policy goes away. Ingest already writes both, and the format rules for each (ADR-017 entry format, ADR-028 prepend ordering) are enforced independently of which agent writes them.
 - Q: Should a Lint run be able to create new pages and delete existing ones, or only edit pages that already exist? → A: Full access — create, edit and delete (option C). The `frontmatter-only` limit was an implementation detail on the way to 1.0, not a designed boundary. Lint already acts on the wiki when it judges action is warranted; a remediation task is what it raises when it decides to leave an action to the user, not a permission it must obtain. Git history is the safety net for destructive change. Verbatim, as recorded: *"der lint agent hat vollen zugriff auf das wiki (der frontmatter only zugriff war nur ein implementierungsdetail auf dem weg zu Verision 1.0). der lint agent kann änderungen auch schon durchführen wenn er es für notwendig sieht. dinge, die er dem benutzer als \"aktion\" überlässt sollen als remediation tasks im ui angezeigt werden. […] we still have git as a major safety net"*
 - Q: Should the survey scope and the execution scope live in two separate policy files, or in one file that declares both? → A: Neither — they are not separated at all. Lint and remediation are the same agent performing the same action; the human in the loop is a workflow step, not a permission boundary, and the agent has already judged what the wiki needs. One scope governs both modes. Combined with the answer above, this supersedes ADR-016's frontmatter-only decision rather than amending it: the unattended survey run holds the same wiki-wide write scope as an authorized remediation execution.
@@ -53,6 +54,9 @@ being requested rather than the whole wiki being read.
 4. **Given** a search over a scope that contains a file the read policy excludes, **When**
    the pattern matches inside that file, **Then** the location is absent from the results —
    search can never surface a path the agent could not already read.
+5. **Given** a regular expression the engine will not accept — oversized, or requiring
+   backtracking it does not support — **When** the agent issues it, **Then** it receives a
+   denial naming the reason, and the run continues.
 
 ---
 
@@ -210,10 +214,12 @@ Submit a batch containing a write and confirm it is rejected.
 - **FR-006**: A search MUST be bounded in execution time; exceeding the bound MUST be
   reported to the agent as an incomplete search, never as "no matches" and never as a
   failed run.
-- **FR-007**: The pattern language MUST be [NEEDS CLARIFICATION: literal substring matching,
-  or a bounded regular-expression syntax? Regular expressions make frontmatter-field checks
-  (#42, #109) cheap to express but require an explicit complexity and timeout bound; literal
-  matching needs neither but cannot express "pages whose `inbound_links` field is absent".]
+- **FR-007**: The pattern MUST be a regular expression, with the semantics a `grep` user would
+  expect — including a case-insensitive option. This is what makes structural frontmatter checks
+  (#42, #109) expressible as one search rather than as reading every page.
+- **FR-007a**: The regex MUST be evaluated by an engine that cannot backtrack catastrophically,
+  and MUST carry a pattern-size bound. A pattern the engine cannot accept MUST come back as a
+  recorded denial naming why, never as a hung run or a silent empty result.
 - **FR-008**: The agent MUST be able to read a bounded slice of a page — its frontmatter, or
   a range of lines — instead of the whole page.
 - **FR-009**: Reading a whole page MUST remain the default behavior when no slice is
@@ -265,6 +271,21 @@ Submit a batch containing a write and confirm it is rejected.
 - **FR-021a**: Page creation and deletion MUST be permitted in both modes. Neither is gated
   on a human authorization: a remediation task is what the agent raises when it decides an
   action belongs to the user, not a permission it must acquire before acting.
+
+**Shape of the tool surface**
+
+- **FR-024**: The guarded tools MUST mimic the shell tools an agent would otherwise reach for,
+  in both semantics and option naming: search behaves as `grep -rn` does, the ranged read as
+  `sed -n 'X,Yp'` or `head` does, listing as `ls`/`find` does. Where a familiar tool's behavior
+  and a bespoke design disagree, the familiar one wins.
+- **FR-025**: The reason is that the agent arrives already fluent in these tools, so a
+  shell-shaped surface needs no instruction-file explanation and invites fewer malformed calls.
+  A capability that cannot be expressed in a shell-tool idiom is a signal to reconsider the
+  capability, not to invent an idiom.
+- **FR-026**: Mimicry stops at the boundary: these are guarded tools that behave like shell
+  tools, never shell access. What a real shell would additionally offer — arbitrary commands,
+  pipes to other binaries, anything outside the wiki content root — stays out of reach, and the
+  guarded boundary is precisely the difference (FR-022).
 
 **Boundary**
 
@@ -352,8 +373,9 @@ Submit a batch containing a write and confirm it is rejected.
 - The human authorization step itself — who may authorize, and how — is unchanged as a
   workflow. What changes is that it is no longer also a permission boundary: it gates whether
   a proposed remediation runs, not what a run is permitted to write.
-- No new infrastructure, no new external system, and no shell or process-execution
-  capability for the agent.
+- No new infrastructure, no new external system, and no shell or process-execution capability
+  for the agent. The tools imitate shell tools; they do not provide one. Confining the agent to
+  this wiki is the whole reason the imitation exists rather than the real thing.
 - Git history is the standing safety net for destructive change: the wiki is a git-tracked
   working tree, so a bad edit or deletion is recoverable outside the harness. This is why the
   scope can be full without the harness adding a confirmation or soft-delete mechanism of its

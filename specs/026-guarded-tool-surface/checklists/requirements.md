@@ -13,7 +13,7 @@
 
 ## Requirement Completeness
 
-- [ ] No [NEEDS CLARIFICATION] markers remain
+- [x] No [NEEDS CLARIFICATION] markers remain
 - [x] Requirements are testable and unambiguous
 - [x] Success criteria are measurable
 - [x] Success criteria are technology-agnostic (no implementation details)
@@ -42,10 +42,23 @@
 
 ## Notes
 
-- Three [NEEDS CLARIFICATION] markers are deliberate and carried per the feature request:
-  FR-007 (search pattern language), FR-016 (write-grant width, including the
-  no-target-page case), FR-017 (survey-vs-execution policy split mechanism).
-  These are the three open questions issue #159 names; they are scope-shaping and were
-  explicitly not to be resolved by guessing. Resolve via `/speckit-clarify` or the
-  questions posed at the end of `/speckit-specify` before `/speckit-plan`.
-- Items marked incomplete require spec updates before `/speckit-clarify` or `/speckit-plan`
+- All items pass as of the `/speckit-clarify` session on 2026-08-22. The three original
+  [NEEDS CLARIFICATION] markers are resolved, plus two more the session surfaced:
+
+  | # | Question | Answer |
+  |---|----------|--------|
+  | 1 | Width of the remediation write grant | Wiki-wide for the run, not scoped to the authorized page |
+  | 2 | Survey vs. execution policy split | No split — one scope, one policy, both modes |
+  | 3 | Page creation and deletion | Permitted; git history is the safety net |
+  | 4 | Access to the index and activity log | Included; only the content root bounds the scope |
+  | 5 | Search pattern language | Regex with grep semantics, from the "mimic the shell tools" rule |
+
+- **Scope grew materially during clarification.** The spec now supersedes ADR-016 rather than
+  amending it: `frontmatter-only` is removed in both modes, so the Lint agent holds full
+  authority over wiki content in an unattended survey run. `/speckit-plan` inherits a
+  superseding-ADR obligation with bidirectional status links and a `docs/adr/index.md` update
+  (Principle III "ADR Status Maintenance").
+- **Deferred to `/speckit-plan`, deliberately, as documented defaults rather than open
+  questions**: the search result cap, the search timeout value, the maximum batch size, and the
+  regex pattern-size bound. FR-005/FR-006/FR-007a require each to exist and be observable; none
+  of them names a number, and the plan must.
