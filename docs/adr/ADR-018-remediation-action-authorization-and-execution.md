@@ -4,6 +4,12 @@ status: accepted
 
 # ADR-018: Human-Authorized Remediation Action Execution
 
+> **Amended by [ADR-031](ADR-031-lint-full-wiki-write-scope.md)**: human authorization remains
+> the gate on whether a proposed remediation *runs*, and this ADR's state machine is unchanged.
+> It is no longer also the moment the agent acquires write authority — Lint holds the same
+> scope in an unattended survey run. A remediation task is what the agent raises when it
+> decides to leave an action to the user, not a permission it must obtain before acting.
+
 ## Context and Problem Statement
 
 Feature 015 (`specs/015-lint-board-parity/spec.md`) turns lint from a passive report
