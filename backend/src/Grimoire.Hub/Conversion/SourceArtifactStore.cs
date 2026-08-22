@@ -192,6 +192,16 @@ public sealed class SourceArtifactStore
         }
     }
 
+    /// <summary>
+    /// Reads the manifest sidecar, or returns null when there is not (yet) a readable one.
+    /// <para>
+    /// "Not yet readable" and "not there" are deliberately the same answer. Six call sites read
+    /// this — three of them endpoint handlers serving the board and detail views — and all of
+    /// them already treat null as "conversion has not produced a manifest", which is exactly
+    /// what a half-written manifest means. Surfacing the partial state as an exception instead
+    /// turned a routine board poll during the conversion window into a 500.
+    /// </para>
+    /// </summary>
     public async Task<SourceArtifactSet?> TryReadMetadataAsync(string taskId, CancellationToken cancellationToken = default)
     {
         var metadataPath = MetadataPathFor(taskId);
@@ -200,15 +210,53 @@ public sealed class SourceArtifactStore
             return null;
         }
 
-        await using var stream = File.OpenRead(metadataPath);
-        return await JsonSerializer.DeserializeAsync<SourceArtifactSet>(stream, cancellationToken: cancellationToken);
+        try
+        {
+            await using var stream = File.OpenRead(metadataPath);
+            return await JsonSerializer.DeserializeAsync<SourceArtifactSet>(stream, cancellationToken: cancellationToken);
+        }
+        catch (IOException)
+        {
+            // Held exclusively by the writer, or vanished between the Exists check and the open.
+            return null;
+        }
+        catch (JsonException)
+        {
+            // Truncated or otherwise incomplete content.
+            return null;
+        }
     }
 
+    /// <summary>
+    /// Writes the manifest sidecar atomically: serialize to a temporary file alongside it, then
+    /// move it into place. `File.Create` truncates in place and holds the handle exclusively for
+    /// the duration of serialization, so a concurrent reader saw either a locked file or a
+    /// partially written one. A move is atomic on both supported platforms, so a reader now sees
+    /// the previous manifest or the new one, never a half of either.
+    /// </summary>
     private async Task WriteMetadataAsync(string taskId, SourceArtifactSet set, CancellationToken cancellationToken)
     {
         var metadataPath = MetadataPathFor(taskId);
-        await using var stream = File.Create(metadataPath);
-        await JsonSerializer.SerializeAsync(stream, set, cancellationToken: cancellationToken);
+        var tempPath = $"{metadataPath}.{Guid.NewGuid():n}.tmp";
+
+        try
+        {
+            await using (var stream = File.Create(tempPath))
+            {
+                await JsonSerializer.SerializeAsync(stream, set, cancellationToken: cancellationToken);
+            }
+
+            File.Move(tempPath, metadataPath, overwrite: true);
+        }
+        catch
+        {
+            if (File.Exists(tempPath))
+            {
+                File.Delete(tempPath);
+            }
+
+            throw;
+        }
     }
 
     private string MetadataPathFor(string taskId) => Path.Combine(_paths.OriginalsDir, $"{taskId}.manifest.json");
