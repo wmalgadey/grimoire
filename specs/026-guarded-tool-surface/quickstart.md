@@ -64,12 +64,16 @@ dotnet run --project backend/src/Grimoire.EvalRunner -- replay --scenario lint-a
 | Criterion | Threshold |
 |---|---|
 | SC-011 survey completes under the context guard | ≥ 90% of sampled runs |
-| SC-012 searches are scoped, not unbounded sweeps | ≥ 90% of sampled searches |
 | SC-013 authorized body edits address the proposal | ≥ 90% of sampled remediations |
-| SC-014 median content tokens read | ≥ 50% below the pre-feature baseline |
 
-**Capture the SC-014 baseline before implementation starts** (research.md D9). Measured
-afterwards it is a reconstruction, not a baseline.
+Two scenarios, both on the generated `lint-at-scale` fixture (SC-013 reuses
+`lint-seeded-defects` directly). SC-012 and SC-014 are deliberately not gates — see plan.md
+"Eval scope".
+
+**SC-014 is now a one-off measurement, not an eval.** Read
+`wiki.read.invocations_total{shape}` before and after, and record the numbers in the
+implementation PR. Capture the "before" side before implementation starts (research.md D9) —
+measured afterwards it is a reconstruction, not a baseline.
 
 SC-013 carries extra weight: it is what replaces ADR-016's deleted structural guarantee. If it
 cannot be made to hold, the right response is to revisit ADR-031, not to lower the threshold.
@@ -79,5 +83,5 @@ cannot be made to hold, the right response is to revisit ADR-031, not to lower t
 - Three Boundary Rules structurally enforced, each Red/Green probed
 - SC-001..SC-010 plus SC-005a/SC-005b green as hermetic integration tests
 - Every Observability row emitted and asserted through the production composition root
-- SC-011..SC-014 at threshold
+- SC-011 and SC-013 at threshold; the SC-014 before/after numbers recorded in the PR
 - `docs/adr/index.md` and the five amended ADR headers consistent with ADR-030/031

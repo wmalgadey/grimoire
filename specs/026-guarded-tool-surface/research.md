@@ -91,11 +91,35 @@ converting a silent no-op into an outage. Retaining an unused vocabulary word is
 failure mode. ADR-031 R5 records that it is unused *by design* so a future reader does not
 read its absence from policies as a bug.
 
-## D9 — Baseline capture for SC-014
+## D9 — Baseline capture for SC-014, and why it is not an eval
 
-**Decision**: capture the pre-feature median content-tokens-read on the eval fixture **before**
-implementation starts.
+**Decision**: SC-014 is measured once, from `wiki.read.invocations_total{shape}`, and the
+before/after numbers are recorded in the implementation PR. It is **not** a recurring eval
+scenario. The "before" side is captured before implementation starts.
 
-**Rationale**: SC-014 is a ≥ 50% reduction against a baseline. Measured after the fact, the
-baseline is a reconstruction. This is a task ordering constraint, not a design decision, and it
-belongs in the first implementation phase.
+**Rationale**: a ≥ 50% reduction against a baseline is a measurement, not a judgment call, and
+the metric already reports it exactly. Wrapping it in a recorded-replay scenario would add
+capture cost, recordings to re-baseline, and a CI gate — without telling us anything the
+counter does not. Measured after the fact the baseline is a reconstruction, so the ordering
+constraint stands and belongs in the first implementation phase.
+
+## D10 — Two eval scenarios, and a generated fixture rather than a corpus
+
+**Decision**: this feature adds two eval scenarios (SC-011, SC-013) on a `lint-at-scale`
+fixture whose filler pages are **generated at fixture-build time**, with the eval config
+lowering the context budget so the fixture exceeds it.
+
+**Rationale**: the first draft of this plan proposed four criteria and a "≥600-page sampled
+wiki". Existing fixtures in this repo hold 1–9 markdown files, so that would have been roughly
+70× the largest one, and would have taken Lint from 5 eval scenarios to 9. Neither was
+necessary. The property SC-011 tests is "the agent narrows instead of reading everything",
+which reproduces wherever the wiki exceeds the budget — absolute size is irrelevant, so the
+budget can move instead of the corpus.
+
+SC-012 was cut because it measures means rather than ends and would pin *how* the agent
+retrieves. SC-013 is retained regardless of how far eval scope shrinks: it is the only
+assurance left behind ADR-016's superseded structural guarantee.
+
+**Not decided here**: whether the project should cap eval-suite growth in general. Principle II
+mandates percentage thresholds for agent-judgment criteria, so a different shape — a small set
+of named scenarios that must pass — is a constitution amendment. That belongs to #136.
