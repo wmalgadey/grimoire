@@ -10,10 +10,16 @@ insensitive — ADR files' YAML frontmatter uses lowercase, e.g. `status: accept
 table uses Title Case for readability, not a distinct value). When an ADR supersedes or
 amends another, both status headers carry the link (`Supersedes ADR-NNN` /
 `Superseded by ADR-NNN`, or `Amends ADR-NNN` / `Amended by ADR-NNN`) — see the individual
-ADR files for the authoritative header; this table mirrors it. None of the relationships
-below fully retires an ADR's core decision (each is scoped — "in part", "this section
-only", a single table row) — every ADR therefore stays `Accepted`; the chain columns
-qualify what still applies.
+ADR files for the authoritative header; this table mirrors it. Most relationships below are
+scoped — "in part", "this section only", a single table row — and leave the amended ADR
+`Accepted`, with the chain columns qualifying what still applies.
+
+**ADR-016 is the one exception, and the first of its kind here.** ADR-031 retires its core
+decision outright rather than scoping it: Lint no longer runs under a `frontmatter-only`
+write scope in any mode. Its status is therefore `Superseded`, not `Accepted`. (The
+`WriteMode.FrontmatterOnly` value ADR-016 introduced into the policy model is retained by
+ADR-031 R5 so existing operator policy files keep loading — a retained mechanism, not a
+surviving decision.)
 
 An ADR may also **extend** another: it builds on that decision without replacing any part
 of it. `Extends` is listed in the chain columns for context but is not a supersede/amend
@@ -28,19 +34,19 @@ relationships exist.
 | [ADR-003](ADR-003-domain-operational-state-persistence.md) | Domain vs. Operational State Persistence | Accepted | — | Superseded in part by ADR-009 |
 | [ADR-004](ADR-004-credential-scoping.md) | Credential Scoping for the LLM API Key | Accepted | — | Amended by ADR-009 |
 | [ADR-005](ADR-005-observability-backend.md) | Observability Backend (Local and CI) | Accepted | — | — |
-| [ADR-006](ADR-006-agent-tool-loop-guarded-boundary.md) | Agent Tool-Use Loop and Guarded Tool Boundary | Accepted | — | Amended by ADR-009 |
+| [ADR-006](ADR-006-agent-tool-loop-guarded-boundary.md) | Agent Tool-Use Loop and Guarded Tool Boundary | Accepted | — | Amended by ADR-009, ADR-030 (tool surface widened past three tools), ADR-031 (write journal covers deletion) |
 | [ADR-007](ADR-007-agent-instruction-surface.md) | Agent Instruction Surface — Single System Prompt and Versioned Default User Prompt | Accepted | — | Amended by ADR-009, ADR-022, ADR-029 (harness operator turns only) |
 | [ADR-008](ADR-008-agent-event-channel-run-supervision.md) | Agent Event Channel, Run Supervision, and Persistent Run Queue | Accepted | Amends ADR-002 | Amended by ADR-009, ADR-025 |
 | [ADR-009](ADR-009-runtime-path-configuration.md) | Explicit Runtime Path Configuration and Consolidated Data Directory | Accepted | Supersedes ADR-003 (in part); amends ADR-002, ADR-004, ADR-006, ADR-007, ADR-008 | Superseded in part by ADR-022 |
 | [ADR-010](ADR-010-hexagonal-ports-adapter-namespaces.md) | Hexagonal Ports and Adapter Namespaces for External Systems | Accepted | — | Amended by ADR-011 (`IModelClient` port row only) |
-| [ADR-011](ADR-011-query-agent-shared-runtime-and-concurrency-model.md) | Shared Agent Runtime, Streaming, and Query Concurrency Model | Accepted | Amends ADR-010 | Amended by ADR-013 (packaging only); superseded in part by ADR-014 ("Persistence and conversation context" section), ADR-015 ("Query is structurally write-free" framing) |
+| [ADR-011](ADR-011-query-agent-shared-runtime-and-concurrency-model.md) | Shared Agent Runtime, Streaming, and Query Concurrency Model | Accepted | Amends ADR-010 | Amended by ADR-013 (packaging only), ADR-030 (registry gains tool definitions); superseded in part by ADR-014 ("Persistence and conversation context" section), ADR-015 ("Query is structurally write-free" framing) |
 | [ADR-012](ADR-012-eval-runner-recorded-replay.md) | Standalone Eval Runner and Recorded-Replay at the Model Port | Accepted | — | Amended by ADR-022 |
 | [ADR-013](ADR-013-unified-agent-platform-packaging-and-naming.md) | Unified Agent Platform Packaging and Agent-Artifact Naming Convention | Accepted | Amends ADR-011 (packaging / runtime-sharing aspects only) | — |
 | [ADR-014](ADR-014-query-conversation-records.md) | Query Conversation Records and Record-Sourced Follow-Up Context | Accepted | Supersedes ADR-011 ("Persistence and conversation context" section only) | — |
 | [ADR-015](ADR-015-query-write-scope-and-wiki-write-coordination.md) | Query Agent Write Scope and Cross-Process Wiki Write Coordination | Accepted | Supersedes ADR-011 ("Query is structurally write-free" framing only) | — |
-| [ADR-016](ADR-016-lint-write-scope-frontmatter-only-enforcement.md) | Lint Write Scope — Structural Frontmatter-Only Enforcement | Accepted | Extends ADR-015 (no supersession) | — |
-| [ADR-017](ADR-017-log-and-catalog-entry-format-enforcement.md) | Structural Format Enforcement for `log.md` and `index.md` Entries | Accepted | Extends ADR-006, ADR-015, ADR-016 (no supersession) | Amended by ADR-028 (`log.md` ordering only) |
-| [ADR-018](ADR-018-remediation-action-authorization-and-execution.md) | Human-Authorized Remediation Action Execution | Accepted | — | — |
+| [ADR-016](ADR-016-lint-write-scope-frontmatter-only-enforcement.md) | Lint Write Scope — Structural Frontmatter-Only Enforcement | **Superseded** | Extends ADR-015 (no supersession) | **Superseded by ADR-031** (decision fully retired; `FrontmatterOnly` mode retained in the model) |
+| [ADR-017](ADR-017-log-and-catalog-entry-format-enforcement.md) | Structural Format Enforcement for `log.md` and `index.md` Entries | Accepted | Extends ADR-006, ADR-015, ADR-016 (no supersession) | Amended by ADR-028 (`log.md` ordering only), ADR-031 (rules now bind Lint's writes to both files) |
+| [ADR-018](ADR-018-remediation-action-authorization-and-execution.md) | Human-Authorized Remediation Action Execution | Accepted | — | Amended by ADR-031 (authorization gates the run, no longer the write authority) |
 | [ADR-019](ADR-019-devcontainer-host-runtime-and-credential-access.md) | Devcontainer Host Container-Runtime and Credential Access | Accepted | — | Amended by ADR-022 |
 | [ADR-020](ADR-020-hub-cli-command-surface.md) | Hub CLI Command Surface — Framework, Dispatch, and In-Process Blocking Execution | Accepted | — | Amended by ADR-022, ADR-023 |
 | [ADR-021](ADR-021-test-tier-taxonomy-and-deterministic-wait-enforcement.md) | Backend Test Tier Taxonomy, Deterministic-Wait Convention, and Suite Concurrency Levers | Accepted | — | — |
@@ -52,6 +58,8 @@ relationships exist.
 | [ADR-027](ADR-027-gitversion-github-flow.md) | Version Numbers Computed by GitVersion, Branching by GitHub Flow | Accepted | — | — |
 | [ADR-028](ADR-028-agent-owned-activity-log-prepend-ordering.md) | Agent-Owned Activity Log — Prepend-Only Ordering and Removal of Harness Authorship | Accepted | Amends ADR-017 (`log.md` ordering and backstop bullet only) | — |
 | [ADR-029](ADR-029-harness-operator-turn-delimiter.md) | Harness Operator Turns Are Delimited Inside the User Channel | Accepted | Amends ADR-007 (adds the harness operator turn to the instruction surface) | — |
+| [ADR-030](ADR-030-guarded-retrieval-tool-surface.md) | Guarded Retrieval Tools — Search, Ranged Read, and Read-Only Batch | Accepted | Amends ADR-006 (tool surface), ADR-011 (registry) | — |
+| [ADR-031](ADR-031-lint-full-wiki-write-scope.md) | Lint Holds Full Authority Over Wiki Content, in Both Modes | Accepted | Supersedes ADR-016; amends ADR-017, ADR-018, ADR-006 (journal covers deletion) | — |
 
 ## Maintenance
 

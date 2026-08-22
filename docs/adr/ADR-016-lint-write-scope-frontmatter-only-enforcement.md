@@ -1,8 +1,16 @@
 ---
-status: accepted
+status: superseded
 ---
 
 # ADR-016: Lint Write Scope — Structural Frontmatter-Only Enforcement
+
+> **Superseded by [ADR-031](ADR-031-lint-full-wiki-write-scope.md)**: Lint no longer runs
+> under a `frontmatter-only` write scope, in either the survey run or remediation execution.
+> The limit is removed rather than narrowed — it was scaffolding on the way to 1.0, not a
+> designed boundary, and the spec-013 success criterion this ADR was written to back has been
+> deliberately changed. The `WriteMode.FrontmatterOnly` value this ADR introduced into the
+> policy model is **retained** (ADR-031 R5) so existing operator policy files keep loading;
+> what is superseded is the decision that Lint runs under it.
 
 ## Context and Problem Statement
 
