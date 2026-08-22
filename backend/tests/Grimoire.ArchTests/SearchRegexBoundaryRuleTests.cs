@@ -102,14 +102,25 @@ public class SearchRegexBoundaryRuleTests
 
                         // Stack order puts every argument in declaration order, options
                         // second-to-last and timeout last, regardless of how many arguments
-                        // precede them. When options and timeout are each single-instruction
-                        // pushes (a constant and a static-field/property read respectively —
-                        // the shape this rule requires), the options push is exactly two
-                        // instructions before the call/newobj.
-                        if (i < 2 || !TryDecodeLdcI4(instructions[i - 2], out var optionsValue))
+                        // precede them. The timeout argument is not always a single
+                        // instruction — e.g. a field load compiles to `ldarg.0; ldfld` — so
+                        // its boundary is found structurally (via ECMA-335 stack-behaviour
+                        // push/pop counts per instruction) rather than assumed to be exactly
+                        // one instruction before the call.
+                        var timeoutArgStart = FindArgumentStart(instructions, i - 1);
+                        if (timeoutArgStart <= 0)
+                        {
+                            violations.Add($"{site}: {callSig}'s timeout argument could not be resolved " +
+                                "structurally — cannot verify NonBacktracking");
+                            continue;
+                        }
+
+                        var optionsArgIndex = timeoutArgStart - 1;
+                        var optionsArgStart = FindArgumentStart(instructions, optionsArgIndex);
+                        if (optionsArgStart != optionsArgIndex || !TryDecodeLdcI4(instructions[optionsArgIndex], out var optionsValue))
                         {
                             violations.Add($"{site}: {callSig}'s options argument is not a simple constant load " +
-                                "immediately preceding the timeout argument — cannot verify NonBacktracking");
+                                "— cannot verify NonBacktracking");
                             continue;
                         }
 
@@ -119,11 +130,15 @@ public class SearchRegexBoundaryRuleTests
                                 "missing RegexOptions.NonBacktracking");
                         }
 
-                        if (instructions[i - 1].Operand is MethodReference timeoutCallee &&
-                            string.Equals($"{timeoutCallee.DeclaringType.FullName}::{timeoutCallee.Name}", InfiniteMatchTimeoutGetter, StringComparison.Ordinal))
+                        for (var timeoutIdx = timeoutArgStart; timeoutIdx <= i - 1; timeoutIdx++)
                         {
-                            violations.Add($"{site}: {callSig} called with Regex.InfiniteMatchTimeout — " +
-                                "removes the finite backstop ADR-030 R2/R5 requires");
+                            if (instructions[timeoutIdx].Operand is MethodReference timeoutCallee &&
+                                string.Equals($"{timeoutCallee.DeclaringType.FullName}::{timeoutCallee.Name}", InfiniteMatchTimeoutGetter, StringComparison.Ordinal))
+                            {
+                                violations.Add($"{site}: {callSig} called with Regex.InfiniteMatchTimeout — " +
+                                    "removes the finite backstop ADR-030 R2/R5 requires");
+                                break;
+                            }
                         }
                     }
                 }
@@ -140,6 +155,93 @@ public class SearchRegexBoundaryRuleTests
         // — informational only, so a future reader of a failing run sees whether any
         // construction sites were found at all.
         _ = constructionSitesFound;
+    }
+
+    /// <summary>
+    /// Finds the first instruction of the argument expression whose last instruction is
+    /// <paramref name="lastInstructionIndex"/>, using only ECMA-335 stack-behaviour push/pop
+    /// counts — no assumption about how many IL instructions any one argument compiles to.
+    /// Relies on a structural property of verifiable CIL: evaluating one argument expression
+    /// nets exactly one value pushed relative to the stack depth at its own start, and never
+    /// dips below that starting depth along the way (an argument's own instructions cannot
+    /// consume values that were pushed for a prior argument). So scanning backward from the
+    /// argument's last instruction, tracking the relative depth `relDepth` (1 at the end,
+    /// working back to 0), the first point where `relDepth` reaches exactly 0 is the
+    /// argument's first instruction.
+    /// </summary>
+    private static int FindArgumentStart(IList<Instruction> instructions, int lastInstructionIndex)
+    {
+        var relDepth = 1;
+        for (var index = lastInstructionIndex; index >= 0; index--)
+        {
+            var netEffect = GetPushCount(instructions[index]) - GetPopCount(instructions[index]);
+            relDepth -= netEffect;
+            if (relDepth == 0)
+                return index;
+        }
+
+        return -1;
+    }
+
+    private static int GetPushCount(Instruction instruction)
+    {
+        switch (instruction.OpCode.StackBehaviourPush)
+        {
+            case StackBehaviour.Push0:
+                return 0;
+            case StackBehaviour.Push1:
+            case StackBehaviour.Pushi:
+            case StackBehaviour.Pushi8:
+            case StackBehaviour.Pushr4:
+            case StackBehaviour.Pushr8:
+            case StackBehaviour.Pushref:
+                return 1;
+            case StackBehaviour.Push1_push1:
+                return 2;
+            case StackBehaviour.Varpush:
+                // call/callvirt: pushes 1 iff the callee has a non-void return (newobj is
+                // its own Push1 case above — it always pushes exactly the constructed object).
+                return instruction.Operand is MethodReference { ReturnType.MetadataType: not MetadataType.Void }
+                    ? 1
+                    : 0;
+            default:
+                return 0;
+        }
+    }
+
+    private static int GetPopCount(Instruction instruction)
+    {
+        switch (instruction.OpCode.StackBehaviourPop)
+        {
+            case StackBehaviour.Pop0:
+                return 0;
+            case StackBehaviour.Pop1:
+            case StackBehaviour.Popi:
+            case StackBehaviour.Popref:
+                return 1;
+            case StackBehaviour.Pop1_pop1:
+            case StackBehaviour.Popi_pop1:
+            case StackBehaviour.Popi_popi:
+            case StackBehaviour.Popi_popi8:
+            case StackBehaviour.Popi_popr4:
+            case StackBehaviour.Popi_popr8:
+            case StackBehaviour.Popref_pop1:
+            case StackBehaviour.Popref_popi:
+                return 2;
+            case StackBehaviour.Popi_popi_popi:
+            case StackBehaviour.Popref_popi_popi:
+            case StackBehaviour.Popref_popi_popi8:
+            case StackBehaviour.Popref_popi_popr4:
+            case StackBehaviour.Popref_popi_popr8:
+            case StackBehaviour.Popref_popi_popref:
+                return 3;
+            case StackBehaviour.Varpop:
+                return instruction.Operand is MethodReference method
+                    ? method.Parameters.Count + (instruction.OpCode.Code != Code.Newobj && method.HasThis ? 1 : 0)
+                    : 0;
+            default:
+                return 0;
+        }
     }
 
     private static bool TryDecodeLdcI4(Instruction instruction, out int value)

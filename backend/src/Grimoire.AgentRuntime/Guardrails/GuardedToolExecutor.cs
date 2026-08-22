@@ -474,16 +474,20 @@ public sealed class GuardedToolExecutor
 
         var outcome = scan.Truncated ? "truncated" : scan.TimedOut ? "timed_out" : "completed";
         _instrumentation.RecordSearchInvocation(_taskId, outcome, scan.Matches.Count, scan.FilesScanned, turn);
+        EmitSearchScanTags(scanActivity, pattern.Length, hasPathPrefix ? relativePathPrefix : ".", scan, outcome);
 
+        return BuildSearchResult(scan, pattern.Length, cap, turn);
+    }
+
+    private void EmitSearchScanTags(Activity? scanActivity, int patternLength, string pathPrefix, SearchScanResult scan, string outcome)
+    {
         scanActivity?.SetTag("task_id", _taskId);
-        scanActivity?.SetTag("pattern_length", pattern.Length);
-        scanActivity?.SetTag("path_prefix", hasPathPrefix ? relativePathPrefix : ".");
+        scanActivity?.SetTag("pattern_length", patternLength);
+        scanActivity?.SetTag("path_prefix", pathPrefix);
         scanActivity?.SetTag("files_scanned", scan.FilesScanned);
         scanActivity?.SetTag("matches", scan.Matches.Count);
         scanActivity?.SetTag("truncated", scan.Truncated);
         scanActivity?.SetTag("outcome", outcome);
-
-        return BuildSearchResult(scan, pattern.Length, cap, turn);
     }
 
     /// <summary>
