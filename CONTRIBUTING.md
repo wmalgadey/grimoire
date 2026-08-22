@@ -111,9 +111,11 @@ red measures nothing. Neither is agent behavior — what an agent decides lives 
 describe the deterministic harness only; the evaluation suite remains the only check on
 the other half.
 
-It is not a CI gate. A mutation-score threshold is a cross-cutting quality convention and
-per Principle III would need an accepted ADR first, so every config sets `break: 0` and
-reports rather than fails.
+It is not a CI gate, and deliberately not on its way to becoming one. This is a tool
+somebody runs by hand every so often to see where the suite is thin: it binds nothing,
+gates nothing and sets no threshold, so there is no decision here for an ADR to record —
+every config sets `break: 0` and reports rather than fails. Turning a score into a merge
+criterion would be the change that needs one.
 
 ### Writing new backend tests
 

@@ -45,9 +45,10 @@
 # commit, a rebase, an edit — and it re-runs instead of reporting yesterday's score under
 # today's name.
 #
-# NOT A CI GATE. A mutation-score threshold is a cross-cutting quality convention and per
-# Constitution Principle III would need an accepted ADR first. Every config here sets
-# break: 0 deliberately, so a low score reports rather than fails.
+# NOT A CI GATE, and not on its way to becoming one — this runs by hand every so often, to
+# see where the suite is thin. It binds nothing and sets no threshold, so there is no
+# decision for an ADR to record; every config sets break: 0 and reports rather than fails.
+# Turning a score into a merge criterion is the change that would need one.
 set -eo pipefail
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
