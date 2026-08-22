@@ -566,7 +566,7 @@ public sealed class GuardedToolExecutor
 
             filesScanned++;
 
-            var (fileTruncated, fileTimedOut) = ScanOneFile(candidateFile, regex, cap, stopwatch, matches);
+            var (fileTruncated, fileTimedOut) = ScanOneFile(candidateFile, regex, cap, stopwatch, matches, cancellationToken);
             truncated |= fileTruncated;
             timedOut |= fileTimedOut;
 
@@ -591,21 +591,41 @@ public sealed class GuardedToolExecutor
             return [ResolvePhysicalPathInRepository(searchRoot)];
         }
 
-        if (Directory.Exists(searchRoot))
+        if (!Directory.Exists(searchRoot))
         {
-            return Directory.EnumerateFiles(searchRoot, "*", SearchOption.AllDirectories).Select(ResolvePhysicalPathInRepository);
+            return [];
         }
 
-        return [];
+        // Directory.EnumerateFiles is lazily evaluated and can throw mid-walk — e.g. a
+        // permission-denied subdirectory partway through the tree — so materialize it
+        // defensively here rather than letting the exception propagate out of a `foreach`
+        // in the caller. Whatever was already collected before the failure stays usable;
+        // the walk just stops early (spec.md Edge Cases: a search "must not corrupt or
+        // blow up the result").
+        var candidates = new List<string>();
+        try
+        {
+            foreach (var file in Directory.EnumerateFiles(searchRoot, "*", SearchOption.AllDirectories))
+            {
+                candidates.Add(ResolvePhysicalPathInRepository(file));
+            }
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+        }
+
+        return candidates;
     }
 
-    private (bool Truncated, bool TimedOut) ScanOneFile(string candidateFile, Regex regex, int cap, Stopwatch stopwatch, List<string> matches)
+    private (bool Truncated, bool TimedOut) ScanOneFile(
+        string candidateFile, Regex regex, int cap, Stopwatch stopwatch, List<string> matches, CancellationToken cancellationToken)
     {
         var lineNumber = 0;
         try
         {
             foreach (var line in File.ReadLines(candidateFile))
             {
+                cancellationToken.ThrowIfCancellationRequested();
                 lineNumber++;
 
                 if (stopwatch.Elapsed >= _searchTimeBudget)
@@ -637,10 +657,10 @@ public sealed class GuardedToolExecutor
                 }
             }
         }
-        catch (IOException)
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
-            // Unreadable (binary, locked, deleted mid-scan) — skip this file rather than
-            // fail the whole search.
+            // Unreadable (binary, locked, permission-denied, deleted mid-scan) — skip
+            // this file rather than fail the whole search.
         }
 
         return (Truncated: false, TimedOut: false);

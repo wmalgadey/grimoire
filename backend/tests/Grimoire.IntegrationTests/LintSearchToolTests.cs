@@ -165,8 +165,7 @@ public class LintSearchToolTests
             Assert.False(result.IsError);
             var matchLines = result.Content.Split('\n').Count(l => l.Contains("many-matches.md", StringComparison.Ordinal));
             Assert.Equal(3, matchLines);
-            Assert.Contains("[truncated:", result.Content, StringComparison.Ordinal);
-            Assert.Contains("3", result.Content, StringComparison.Ordinal);
+            Assert.Contains("[truncated: showing the first 3 matches]", result.Content, StringComparison.Ordinal);
         }
         finally
         {
