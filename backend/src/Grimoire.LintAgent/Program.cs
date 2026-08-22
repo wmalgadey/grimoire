@@ -692,14 +692,3 @@ internal sealed class MessageTurnIntentHandler : IAgentIntentHandler
         return Task.FromResult(ErrorSanitizer.Sanitize(exception.Message, "Unknown message-turn error."));
     }
 }
-
-namespace Grimoire.LintAgent
-{
-    // T001 RED PROBE (026-guarded-tool-surface): a deliberate File.Delete call from outside
-    // Grimoire.AgentRuntime.Guardrails — to be reverted immediately after CI confirms
-    // WikiDeletionGuardedBoundaryRuleTests fails naming this violation.
-    internal static class WikiDeletionRedProbe
-    {
-        internal static void DeleteDirectly(string path) => System.IO.File.Delete(path);
-    }
-}
