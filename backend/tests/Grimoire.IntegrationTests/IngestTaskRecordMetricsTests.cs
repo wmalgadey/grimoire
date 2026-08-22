@@ -10,7 +10,18 @@ namespace Grimoire.IntegrationTests;
 /// ## Observability > Business Metrics): hub.task_record_reads_total increments with the
 /// correct outcome label per read path, hub.task_record_change_events_total increments
 /// once per debounced publish.
+///
+/// <para>
+/// #152 — both instruments are Hub-wide and carry no test-identifying tag
+/// (<c>hub.task_record_reads_total</c> has only <c>outcome</c>, and
+/// <c>hub.task_record_change_events_total</c> has none at all), so the assertions below —
+/// <c>Assert.Single</c> over the whole measurement stream, and a running total across two
+/// publishes — can only be made meaningful by keeping other emitters out of the process
+/// while they run. Scoping by tag, the better fix where a tag exists, is not available
+/// here. See <see cref="HubActivityListenerObservabilityCollection"/>.
+/// </para>
 /// </summary>
+[Collection("HubActivityListenerObservability")]
 public class IngestTaskRecordMetricsTests
 {
     [Theory]

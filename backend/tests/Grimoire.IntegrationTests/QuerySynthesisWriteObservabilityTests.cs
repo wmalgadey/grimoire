@@ -14,7 +14,17 @@ namespace Grimoire.IntegrationTests;
 /// (plan.md ## Observability) on a successful create-only write; confirms neither fires
 /// for an <c>index.md</c>/<c>log.md</c> write (not a create-only target) or a denied
 /// write.
+///
+/// <para>
+/// #152 — <c>wiki.query.synthesis_pages_created_total</c> is emitted untagged
+/// (<c>QueryAgentMetrics.RecordSynthesisPageCreated</c>), so the exactly-once and
+/// never-fired assertions below read the whole process's measurement stream and any other
+/// test creating a Synthesis Page concurrently would falsify them. With no tag to filter
+/// on, serialization is the only available lever. See
+/// <see cref="HubActivityListenerObservabilityCollection"/>.
+/// </para>
 /// </summary>
+[Collection("HubActivityListenerObservability")]
 public class QuerySynthesisWriteObservabilityTests
 {
     [Fact]
