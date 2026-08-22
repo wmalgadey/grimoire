@@ -164,7 +164,7 @@ Submit a batch containing a write and confirm it is rejected.
   decides, and search inherits that decision rather than making its own.
 - A remediation task authorized without a target page recorded — under FR-016 this no longer
   changes what the run may write, but the recorded run must still show that no target was
-  named, so an operator reviewing the change can tell intent from authority.
+  named, so the run's own record stays an accurate account of what it set out to do.
 - The page an authorization named is deleted, renamed, or already changed between
   authorization and execution.
 - A remediation execution and a survey run touching the same page at the same time — the
