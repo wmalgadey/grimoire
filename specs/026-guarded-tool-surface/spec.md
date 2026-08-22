@@ -17,6 +17,7 @@
 - Q: Should the Lint agent also be able to write the two reserved files — the wiki index and the activity log? → A: Yes (option A). Full access includes them; the exclusion in today's Lint policy goes away. Ingest already writes both, and the format rules for each (ADR-017 entry format, ADR-028 prepend ordering) are enforced independently of which agent writes them.
 - Q: Should a Lint run be able to create new pages and delete existing ones, or only edit pages that already exist? → A: Full access — create, edit and delete (option C). The `frontmatter-only` limit was an implementation detail on the way to 1.0, not a designed boundary. Lint already acts on the wiki when it judges action is warranted; a remediation task is what it raises when it decides to leave an action to the user, not a permission it must obtain. Git history is the safety net for destructive change. Verbatim, as recorded: *"der lint agent hat vollen zugriff auf das wiki (der frontmatter only zugriff war nur ein implementierungsdetail auf dem weg zu Verision 1.0). der lint agent kann änderungen auch schon durchführen wenn er es für notwendig sieht. dinge, die er dem benutzer als \"aktion\" überlässt sollen als remediation tasks im ui angezeigt werden. […] we still have git as a major safety net"*
 - Q: Should the survey scope and the execution scope live in two separate policy files, or in one file that declares both? → A: Neither — they are not separated at all. Lint and remediation are the same agent performing the same action; the human in the loop is a workflow step, not a permission boundary, and the agent has already judged what the wiki needs. One scope governs both modes. Combined with the answer above, this supersedes ADR-016's frontmatter-only decision rather than amending it: the unattended survey run holds the same wiki-wide write scope as an authorized remediation execution.
+- Q: Should the four agent-judgment eval scenarios (SC-011–SC-014) stay as four gating criteria, or should the suite be reduced? → A: Reduced (option A). SC-011 is reworded to drop the "≥600-page" fixture requirement — the property under test is "wiki exceeds the context guard," satisfiable by lowering the eval budget rather than growing a corpus, which as drafted would have been ~70x the largest existing fixture in this repo. SC-012 and SC-014 are withdrawn as gating criteria (numbers retained, with a withdrawal note, so existing cross-references stay resolvable): SC-012 measured means rather than ends (SC-011 already tests the outcome); SC-014 is a measurement a metric already reports directly, not a judgment call. Decided earlier in this session, restated here through /speckit-clarify because a requirements change belongs in a clarify session, not a raw edit made in reaction to planning-phase feedback — the same rule this session now records for the process itself (see dev-experience.md / CLAUDE.md on stacked-PR delivery).
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -345,15 +346,22 @@ Submit a batch containing a write and confirm it is rejected.
 
 **Agent-judgment evaluation thresholds**
 
-- **SC-011**: On a wiki of at least six hundred pages, ≥ 90% of sampled Lint survey runs
-  complete their survey while the total page content they read stays under the run's context
-  guard — i.e. the agent narrows with search and slices instead of reading the wiki.
-- **SC-012**: ≥ 90% of sampled searches the agent issues are scoped (a pattern narrow enough
-  or a path prefix present) rather than an unbounded sweep that immediately truncates.
+- **SC-011**: On a wiki larger than the run's context guard, ≥ 90% of sampled Lint survey runs
+  complete their survey while the total page content they read stays under that guard — i.e.
+  the agent narrows with search and slices instead of reading the wiki.
 - **SC-013**: ≥ 90% of sampled authorized body-edit remediations produce a page change that
   a reviewer scores as addressing the authorized proposal.
-- **SC-014**: Median content tokens read per Lint survey run on the same fixture drops by
-  ≥ 50% against the pre-feature baseline.
+
+**Withdrawn 2026-08-22, numbers retained so references stay resolvable:**
+
+- **SC-012** *(withdrawn)*: "≥ 90% of sampled searches are scoped rather than unbounded
+  sweeps." Measured means rather than ends. SC-011 already tests the outcome, and pinning
+  *how* the agent retrieves would ossify agent behaviour for no added assurance.
+- **SC-014** *(withdrawn as a criterion)*: "median content tokens read drops ≥ 50% against the
+  pre-feature baseline." This is a measurement, not a judgment: `wiki.read.invocations_total`
+  by read shape reports it directly. It is expected to hold and the before/after numbers are
+  recorded in the implementation PR, but it gates nothing — a criterion the feature must *meet*
+  is different from an effect it should *have*.
 
 ## Assumptions
 
