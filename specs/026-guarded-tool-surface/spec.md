@@ -13,6 +13,7 @@
 ### Session 2026-08-22
 
 - Q: When a human authorizes a remediation task, how much of the wiki should that task's execution run be allowed to write? → A: Wiki-wide read-write for the duration of the authorized execution run (option C) — the grant is not scoped to the authorized target page.
+- Q: Should the Lint agent also be able to write the two reserved files — the wiki index and the activity log? → A: Yes (option A). Full access includes them; the exclusion in today's Lint policy goes away. Ingest already writes both, and the format rules for each (ADR-017 entry format, ADR-028 prepend ordering) are enforced independently of which agent writes them.
 - Q: Should a Lint run be able to create new pages and delete existing ones, or only edit pages that already exist? → A: Full access — create, edit and delete (option C). The `frontmatter-only` limit was an implementation detail on the way to 1.0, not a designed boundary. Lint already acts on the wiki when it judges action is warranted; a remediation task is what it raises when it decides to leave an action to the user, not a permission it must obtain. Git history is the safety net for destructive change. Verbatim, as recorded: *"der lint agent hat vollen zugriff auf das wiki (der frontmatter only zugriff war nur ein implementierungsdetail auf dem weg zu Verision 1.0). der lint agent kann änderungen auch schon durchführen wenn er es für notwendig sieht. dinge, die er dem benutzer als \"aktion\" überlässt sollen als remediation tasks im ui angezeigt werden. […] we still have git as a major safety net"*
 - Q: Should the survey scope and the execution scope live in two separate policy files, or in one file that declares both? → A: Neither — they are not separated at all. Lint and remediation are the same agent performing the same action; the human in the loop is a workflow step, not a permission boundary, and the agent has already judged what the wiki needs. One scope governs both modes. Combined with the answer above, this supersedes ADR-016's frontmatter-only decision rather than amending it: the unattended survey run holds the same wiki-wide write scope as an authorized remediation execution.
 
@@ -82,9 +83,12 @@ or deleting pages).
 2. **Given** a Lint survey run with no human in the loop, **When** the agent writes a page
    body, **Then** the write is allowed on exactly the same terms as in an execution run —
    there is no narrower survey-only scope.
-3. **Given** any Lint run in either mode, **When** it attempts to write a reserved file or
-   anything outside the wiki content root, **Then** the write is denied and recorded with a
-   reason, and the run continues with its allowed actions.
+3. **Given** any Lint run in either mode, **When** it attempts to write anything outside the
+   wiki content root, **Then** the write is denied and recorded with a reason, and the run
+   continues with its allowed actions.
+5. **Given** a Lint run that has just deleted a page, **When** it removes that page's entry from
+   the index and records the deletion in the activity log, **Then** both writes are allowed and
+   both are held to the same format rules any other agent's writes to those files are.
 4. **Given** any Lint run, **When** it finishes, **Then** the task artifact records the
    identity (version and hash) of the policy that governed it.
 
@@ -172,8 +176,11 @@ Submit a batch containing a write and confirm it is rejected.
 - A page is deleted while other pages still link to it — the harness does not decide what to
   do about the dangling links; whether to repoint, remove or leave them is the agent's
   judgment, and the deletion is not blocked on it.
-- A page is created or deleted while the catalog and activity log still describe the old page
-  set — see FR-016a on what a Lint run may write.
+- A page is created or deleted and the catalog or activity log is not updated to match —
+  reconciling them is now within the agent's power (FR-016a) and therefore within its judgment;
+  the harness does not enforce that the index agrees with the page set.
+- Lint and Ingest write the index or the activity log at the same time — the existing
+  cross-process coordination is now load-bearing for two more files than it was.
 - A run deletes a page and then fails — the journal must restore it (FR-015a).
 - A remediation execution and a survey run touching the same page at the same time — now
   that both hold the same write scope this is more likely, not less; the existing
@@ -238,8 +245,13 @@ Submit a batch containing a write and confirm it is rejected.
   page a remediation authorization named. The recorded target page remains a hint about
   intent, never a boundary the harness enforces, and a task authorized without one runs
   under the same scope as one that names a page.
-- **FR-016a**: The scope MUST still exclude what no scope reaches: the reserved index and
-  activity-log files, and anything outside the wiki content root.
+- **FR-016a**: The scope MUST include the wiki index and the activity log. Lint's current
+  exclusion of these two files is removed: an agent that can create and delete pages must be
+  able to keep the catalog honest and record what it did. The only remaining boundary is the
+  wiki content root itself — anything outside it stays denied.
+- **FR-016b**: Admitting Lint to those two files MUST NOT relax the format rules that govern
+  them. Whatever enforcement applies to the index's catalog entries and the activity log's
+  prepend ordering applies identically regardless of which agent is writing.
 - **FR-017**: There MUST be exactly one Lint policy artifact, shared by the survey run and
   both remediation execution paths. No per-mode policy file, mode selector, or scope overlay
   may be introduced: the absence of a split is the decision, not an unimplemented detail.
@@ -273,7 +285,8 @@ Submit a batch containing a write and confirm it is rejected.
 - **Read-only batch**: a group of read calls submitted and answered together; carries no
   authority of its own, only the sum of its members' individual evaluations.
 - **Write scope**: the single write authority every Lint run holds, in either mode — full
-  authority over pages across the wiki content root: create, edit, delete.
+  authority over everything inside the wiki content root: create, edit and delete pages, and
+  write the index and activity log.
 - **Policy identity**: the version and hash recorded on a run, identifying which revision of
   the shared scope governed it.
 
@@ -292,8 +305,10 @@ Submit a batch containing a write and confirm it is rejected.
 - **SC-004**: For 100% of write attempts, the decision is identical in a survey run and in a
   remediation execution run given the same path and the same content — mode never changes the
   outcome.
-- **SC-005**: 100% of writes attempted outside the scope in force — anything outside the wiki
-  content root, and whatever FR-016a excludes — are denied and recorded, in either mode.
+- **SC-005**: 100% of writes attempted outside the wiki content root are denied and recorded,
+  in either mode.
+- **SC-005b**: 100% of Lint writes to the index and the activity log are held to the same format
+  rules as any other agent's writes to those files.
 - **SC-005a**: 100% of pages deleted by a run that subsequently fails are restored by the
   rollback journal.
 - **SC-006**: 100% of remediation tasks whose proposal targets page content run under a scope
@@ -322,7 +337,8 @@ Submit a batch containing a write and confirm it is rejected.
 
 - The existing cross-process write lock and compare-and-swap coordination is reused
   unchanged; this feature adds no second coordination mechanism.
-- The reserved index and activity log files keep their current exclusions in every scope.
+- The index and activity log are no longer excluded for Lint. Their exclusion for any other
+  agent is untouched by this feature — this widens Lint's scope, not the policy model's defaults.
 - Search reads the same content root that reading already reaches, and inherits the run's
   read policy rather than declaring a scope of its own.
 - Fail-closed handling of a missing or unparseable policy is retained as-is. No new policy
