@@ -78,6 +78,41 @@ executable and is the slow, deliberately opt-in tier; the merge gate (`ci.yml`) 
 runs it, and the unfiltered `Grimoire.AgentEvals` project run above covers both the Fast
 and SlowEval classes in one invocation, exactly as it always has.
 
+### Mutation testing (on demand)
+
+`./scripts/mutation-test.sh` runs [Stryker](https://stryker-mutator.io/) over the backend
+and the frontend and writes an HTML report per target into `docs/reports/mutation/`, with
+an index page over all of them. Coverage says a line ran; a surviving mutant says the
+suite would not notice if that line were wrong — the more useful question when the tests
+are the safety net for a harness whose behavior lives in agent instructions.
+
+```bash
+./scripts/mutation-test.sh                 # fast group: guardrail policy + state machine
+./scripts/mutation-test.sh --list          # every target and the groups it belongs to
+./scripts/mutation-test.sh --only hub      # one target
+./scripts/mutation-test.sh --group all     # everything — hours, see below
+./scripts/mutation-test-docker.sh --group all   # the same, on a host with only a container runtime
+```
+
+Cost scales with (mutants x test time), not with test time, so the groups are very
+differently sized: measured on four cores, the fast group takes about four minutes and the
+frontend about seven, while `hub` alone — 6582 mutants against the 801-test integration
+suite, which starts real hosts and spawns real agent processes — extrapolates to some
+seventeen hours from a measured 368-mutant subset. Raise `MUTATION_CONCURRENCY` on a bigger
+machine; the cost scales down close to linearly. Targets are independent and a finished one is
+skipped next time, so an interrupted run resumes by being started again.
+
+Two things the tool cannot see, both by construction. `Grimoire.ArchTests` is not a target:
+its rules assert dependency direction, so mutating production code to see whether they go
+red measures nothing. Neither is agent behavior — what an agent decides lives in
+`system-prompt.md`, and Stryker mutates code, not prompts (Principle V). Mutation scores
+describe the deterministic harness only; the evaluation suite remains the only check on
+the other half.
+
+It is not a CI gate. A mutation-score threshold is a cross-cutting quality convention and
+per Principle III would need an accepted ADR first, so every config sets `break: 0` and
+reports rather than fails.
+
 ### Writing new backend tests
 
 - Write tests TDD-style against expected system behavior, not after the fact against
