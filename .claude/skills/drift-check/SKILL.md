@@ -1,6 +1,6 @@
 ---
 name: drift-check
-description: Audit the current implementation and active specs against docs/decision-context-overview.md (product vision and problem space) and the constitution to detect drift early and route findings into constitution/ADR amendments. Use when the user asks for a drift check or vision alignment, or before starting a new spec.
+description: Audit the current implementation and active specs against docs/foundational/decision-context-overview.md (product vision and problem space) and the constitution to detect drift early and route findings into constitution/ADR amendments. Use when the user asks for a drift check or vision alignment, or before starting a new spec.
 context: fork
 agent: general-purpose
 allowed-tools: Read, Grep, Glob, Bash
@@ -11,7 +11,7 @@ disable-model-invocation: true
 
 Feature specs are locally consistent; drift is only visible against the product
 vision. This skill compares code and active specs with
-`docs/decision-context-overview.md` and `.specify/memory/constitution.md`, and routes
+`docs/foundational/decision-context-overview.md` and `.specify/memory/constitution.md`, and routes
 every finding into the SDD process. **Assessment only — propose, never apply changes.**
 
 ## User Input
@@ -25,7 +25,7 @@ You **MUST** consider the user input before proceeding (if not empty).
 ## Procedure
 
 1. **Read the reference documents in full**:
-   - `docs/decision-context-overview.md` — especially §0: North Star Outcomes, The
+   - `docs/foundational/decision-context-overview.md` — especially §0: North Star Outcomes, The
      Agentic Boundary, Autonomy Ladder, Scale & Usage Assumptions, What This Is Not.
    - `.specify/memory/constitution.md` — all principles, especially II (testing split)
      and V (Agentic Core & Deterministic Harness).
@@ -75,7 +75,7 @@ For each finding report:
    - (a) → fix task against code or the active spec.
    - (b) → constitution amendment (`/speckit-constitution`) or new ADR, so the vision
      statement gains enforcement.
-   - (c) → update `docs/decision-context-overview.md` (only if reality is the desired
+   - (c) → update `docs/foundational/decision-context-overview.md` (only if reality is the desired
      state — otherwise it is drift, not staleness).
 
 End with a one-line verdict (aligned / drifting) and the single most important action.
