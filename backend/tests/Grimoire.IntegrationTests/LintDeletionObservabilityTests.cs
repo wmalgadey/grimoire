@@ -99,6 +99,67 @@ public class LintDeletionObservabilityTests
         }
     }
 
+    // ── Copilot review (PR #176): a policy-allowed delete of an already-gone file must
+    // still be visible to instrumentation — RecordAllowed and the span were previously
+    // skipped entirely on the not-found path, unlike read_file/list_files' established
+    // behavior of recording allowed regardless of existence.
+
+    [Fact]
+    public async Task DeleteFileSpan_StillOpens_ForAPolicyAllowedTarget_ThatNoLongerExists()
+    {
+        var activities = new ConcurrentQueue<Activity>();
+        using var listener = new ActivityListener
+        {
+            ShouldListenTo = src => src.Name == "Grimoire.LintAgent",
+            Sample = (ref ActivityCreationOptions<ActivityContext> _) => ActivitySamplingResult.AllDataAndRecorded,
+            ActivityStopped = activity => activities.Enqueue(activity),
+        };
+        ActivitySource.AddActivityListener(listener);
+
+        var root = Path.Combine(Path.GetTempPath(), $"lint-deletion-observability-notfound-{Guid.NewGuid():N}");
+        var wikiDir = Path.Combine(root, "wiki");
+        Directory.CreateDirectory(wikiDir);
+
+        try
+        {
+            var policy = new SafetyPolicy(
+                wikiDir,
+                readPrefixes: [wikiDir + Path.DirectorySeparatorChar],
+                writeRules: [new WriteRule(wikiDir + Path.DirectorySeparatorChar, WriteMode.ReadWrite)],
+                deleteRules: [new DeleteRule(wikiDir + Path.DirectorySeparatorChar)]);
+            var executor = new GuardedToolExecutor(
+                policy, new WriteJournal(), wikiDir, taskId: "run-delete-obs-notfound",
+                registry: FullScopeRegistry,
+                instrumentation: new LintToolCallInstrumentation(Microsoft.Extensions.Logging.Abstractions.NullLogger.Instance));
+
+            using (LintAgentTracing.StartRunActivity("run-delete-obs-notfound"))
+            {
+                var result = await executor.ExecuteAsync(
+                    ToolRegistry.DeleteFile,
+                    """{"path": "tech/never-existed.md"}""",
+                    turn: 1, CancellationToken.None);
+
+                Assert.True(result.IsError);
+            }
+
+            var deleteSpan = Assert.Single(activities.Where(a => a.OperationName == "guardrails.delete_file"));
+            Assert.Equal("run-delete-obs-notfound", GetTag(deleteSpan, "task_id"));
+            Assert.Equal("not_found", GetTag(deleteSpan, "outcome"));
+            Assert.Equal("False", GetTag(deleteSpan, "journaled"));
+
+            // Policy allowed it (no denial recorded) even though nothing was deleted.
+            Assert.Empty(executor.Denials);
+            Assert.Empty(executor.DeletedPaths);
+        }
+        finally
+        {
+            if (Directory.Exists(root))
+            {
+                Directory.Delete(root, recursive: true);
+            }
+        }
+    }
+
     private static string GetTag(Activity activity, string tagName)
         => activity.TagObjects.FirstOrDefault(tag => tag.Key == tagName).Value?.ToString() ?? string.Empty;
 }

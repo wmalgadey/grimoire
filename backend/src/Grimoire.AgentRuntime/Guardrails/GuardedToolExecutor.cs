@@ -456,12 +456,18 @@ public sealed class GuardedToolExecutor
             return RecordDenial(ToolRegistry.DeleteFile, relativePath, canonical, policyResult.DenialReason!, turn);
         }
 
+        // Recorded allowed, and the span opened, before the existence check — mirroring
+        // read_file/list_files, so a policy-allowed attempt against an already-gone file
+        // is still visible to the tool-call span/metric rather than silently invisible.
+        _instrumentation.RecordAllowed(_taskId, ToolRegistry.DeleteFile, canonical, turn);
+        using var deleteActivity = _instrumentation.StartDeleteFileActivity(_taskId, canonical, turn);
+
         if (!File.Exists(canonical))
         {
+            deleteActivity?.SetTag("journaled", false);
+            deleteActivity?.SetTag("outcome", "not_found");
             return new ToolExecutionResult(true, $"File not found: {relativePath}");
         }
-
-        using var deleteActivity = _instrumentation.StartDeleteFileActivity(_taskId, canonical, turn);
 
         // Journal before removal: the recorded prior content is what a later rollback in
         // this run restores the file from.
@@ -470,7 +476,6 @@ public sealed class GuardedToolExecutor
 
         _touchedPaths.Add(canonical);
         _deletedPaths.Add((canonical, turn));
-        _instrumentation.RecordAllowed(_taskId, ToolRegistry.DeleteFile, canonical, turn);
         _instrumentation.RecordDeletion(_taskId, "applied", turn);
         _instrumentation.LogPageDeleted(_taskId, canonical, turn);
 
