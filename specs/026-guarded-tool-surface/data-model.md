@@ -70,12 +70,20 @@ recorded discriminator and the `shape` metric label.
 ## BatchRequest — new
 
 **`BatchRequest(IReadOnlyList<BatchCall> Calls)`**, `BatchCall(string Tool, string InputJson)`.
+`InputJson` is the serialized form of the `input` object each batch member carries on the
+wire (contracts/guarded-tool-surface.md) — the schema's `input` is a JSON object, and
+`InputJson` is that object serialized to a string for internal dispatch, not a second,
+string-typed wire field.
 
 | Rule | Behavior on violation |
 |---|---|
-| `Tool` ∈ {`list_files`, `read_file`, `search_files`} | Whole batch rejected, `reason=write_in_batch` |
+| `Tool` ∈ {`list_files`, `read_file`, `search_files`} | Whole batch rejected, `reason=tool_not_allowed_in_batch` |
 | No nested `batch` | Whole batch rejected, `reason=nested_batch` |
 | `Calls.Count` ≤ 20 | Whole batch rejected, `reason=too_many_calls` |
+
+`tool_not_allowed_in_batch` (not `write_in_batch`) because the rule is an allowlist, not a
+write-specific check: it rejects `delete_file` and any other forbidden tool name exactly as
+it rejects a write.
 
 Rejection happens **before any member executes**. Each member that does run is policy-evaluated
 and recorded individually.

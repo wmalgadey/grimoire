@@ -16,10 +16,7 @@ scoped — "in part", "this section only", a single table row — and leave the 
 
 **ADR-016 is the one exception, and the first of its kind here.** ADR-031 retires its core
 decision outright rather than scoping it: Lint no longer runs under a `frontmatter-only`
-write scope in any mode. Its status is therefore `Superseded`, not `Accepted`. (The
-`WriteMode.FrontmatterOnly` value ADR-016 introduced into the policy model is retained by
-ADR-031 R5 so existing operator policy files keep loading — a retained mechanism, not a
-surviving decision.)
+write scope in any mode. Its status is therefore `Superseded`, not `Accepted`.
 
 An ADR may also **extend** another: it builds on that decision without replacing any part
 of it. `Extends` is listed in the chain columns for context but is not a supersede/amend
