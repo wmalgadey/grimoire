@@ -8,6 +8,12 @@
 
 **Input**: User description: "The guarded tool and policy surface Lint needs (GitHub issue #159, milestone 1.0.0, replaces #64 and #150). Two limits of the current guarded surface bite at once. (1) Retrieval: Lint works through `list_files`, `read_file`, `write_file` only. `read_file` returns whole files and there is no search, so \"which pages mention X\" means reading the whole wiki — 633 pages / ~400k tokens, over the 200k context guard (#108). Handing the agent a shell is exactly what the guarded boundary exists to prevent. Wanted: a `search_files` tool (pattern + optional path prefix -> path, line number, matching line, capped) executed through `GuardedToolExecutor` against the same read policy so it can never surface a path the agent could not already read; a ranged `read_file` (offset/limit, or frontmatter-only), possibly the bigger win; and a `batch` form for read-only calls to spend fewer model turns, with writes excluded. (2) Write scope: the Lint policy is `frontmatter-only` and is shared between the survey run and remediation execution — `RemediationRunCoordinator` and `RemediationMessageTurnCoordinator` both pass `_paths.Lint.PolicyPath` — so an authorized remediation proposal that needs a body edit dead-ends after a human authorizes it, and the policy cannot be widened for execution without also widening the survey run. Decided 2026-08-21: an authorized remediation task gets write access to the content it was authorized to change. Open questions to carry into the spec as clarifications rather than resolve now: how wide the write grant is (TargetPath already travels on the execution request, so a grant scoped to the authorized page is available and much smaller than a wiki-wide one); whether search is regex or literal (regex makes frontmatter checks cheap for #42/#109 but needs complexity and timeout bounds); and the survey-vs-execution policy split. Sequencing is already decided by the owner: this lands ahead of #108, not inside it — #108's spec gets to assume these tools exist. Same layer, same ADRs — ADR-011 (tool contract) and ADR-016 (Lint's write scope) — so one spec, one ADR pass, one eval re-capture."
 
+## Clarifications
+
+### Session 2026-08-22
+
+- Q: When a human authorizes a remediation task, how much of the wiki should that task's execution run be allowed to write? → A: Wiki-wide read-write for the duration of the authorized execution run (option C) — the grant is not scoped to the authorized target page.
+
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - Find the pages that mention something, without reading the wiki (Priority: P1)
@@ -57,9 +63,9 @@ human's authorization must instead carry write access to the content it authoriz
 while the survey run itself keeps its frontmatter-only limit exactly as it is.
 
 **Why this priority**: It closes a loop that is currently broken end-to-end — a human acts
-and nothing can happen — and the governing decision was already made on 2026-08-21, so
-only its scope is open. It is contained: it changes what an authorized execution may write
-and nothing about what the survey may write.
+and nothing can happen. Its scope was settled on 2026-08-22 (wiki-wide for an authorized
+execution run), and it stays contained in the sense that matters: it changes what an
+authorized execution may write and nothing about what the survey may write.
 
 **Independent Test**: Author a remediation proposal that requires a body edit, authorize
 it, and let it execute. The page body changes, and the same body edit attempted during a
@@ -72,9 +78,10 @@ survey run is still denied and recorded.
 2. **Given** a Lint survey run (not a remediation execution), **When** the agent attempts a
    write that changes a page body, **Then** the write is denied and recorded with a reason —
    unchanged from today.
-3. **Given** an authorized remediation execution, **When** it attempts a body write to a
-   page outside the grant its authorization carries, **Then** the write is denied and
-   recorded with a reason, and the run continues with its allowed actions.
+3. **Given** an authorized remediation execution, **When** it attempts to write a reserved
+   file, create a new page, or delete one, **Then** the write is denied and recorded with a
+   reason, and the run continues with its allowed actions — the grant widens body edits to
+   existing pages, nothing else.
 4. **Given** an authorized remediation execution, **When** its run finishes, **Then** the
    task artifact records the identity (version and hash) of the policy that actually
    governed it, distinguishable from the survey policy.
@@ -155,8 +162,9 @@ Submit a batch containing a write and confirm it is rejected.
   already does.
 - A search matching inside a reserved file (the index and activity log) — the read policy
   decides, and search inherits that decision rather than making its own.
-- A remediation task authorized without a target page recorded — the authorization carries
-  no page to scope a grant to. See the clarification on grant width below.
+- A remediation task authorized without a target page recorded — under FR-016 this no longer
+  changes what the run may write, but the recorded run must still show that no target was
+  named, so an operator reviewing the change can tell intent from authority.
 - The page an authorization named is deleted, renamed, or already changed between
   authorization and execution.
 - A remediation execution and a survey run touching the same page at the same time — the
@@ -211,12 +219,15 @@ Submit a batch containing a write and confirm it is rejected.
   changes a page body during a survey run MUST be denied and recorded with a reason.
 - **FR-015**: A remediation execution run acting on a human-authorized task MUST be able to
   write the content it was authorized to change, including page bodies.
-- **FR-016**: The scope of that write grant MUST be [NEEDS CLARIFICATION: limited to the
-  single page the authorization named, or wiki-wide for the duration of the execution run?
-  The authorized target page already travels on the execution request, so a per-page grant
-  is available; it is also optional and agent-authored, so a task authorized without a
-  target page needs a defined outcome — deny body writes and fall back to frontmatter-only,
-  or refuse to dispatch the execution at all.]
+- **FR-016**: The write grant MUST cover the whole wiki content scope for the duration of an
+  authorized execution run — it is NOT scoped to the page the authorization named. A task
+  authorized without a recorded target page therefore executes under the same grant as one
+  that names a page; the target page remains a hint about intent, never a boundary the
+  harness enforces.
+- **FR-016a**: The grant MUST still exclude what no scope may reach: the reserved index and
+  activity-log files, anything outside the wiki content root, and — per FR-021 — page
+  creation and deletion. "Wiki-wide" means every existing content page is writable, not that
+  the run may add or remove pages.
 - **FR-017**: The survey scope and the execution scope MUST be independently changeable: an
   operator MUST be able to widen or narrow one without altering the other. The mechanism
   MUST be [NEEDS CLARIFICATION: two separate versioned policy artifacts the operator
@@ -253,8 +264,9 @@ Submit a batch containing a write and confirm it is rejected.
   authority of its own, only the sum of its members' individual evaluations.
 - **Survey scope**: the write authority a Lint survey run holds — frontmatter of existing
   pages, excluding the reserved index and activity log.
-- **Execution grant**: the write authority an authorized remediation execution run holds,
-  derived from what a human authorized.
+- **Execution grant**: the write authority an authorized remediation execution run holds —
+  body edits to any existing content page, bounded by the reserved-file exclusions and by
+  the standing prohibition on creating or deleting pages.
 - **Policy identity**: the version and hash recorded on a run, identifying which scope
   governed it.
 
@@ -272,8 +284,9 @@ Submit a batch containing a write and confirm it is rejected.
   and 100% of truncated or time-bounded results are explicitly marked as incomplete.
 - **SC-004**: 100% of body-changing writes attempted during a Lint survey run are denied and
   recorded — the guarantee ADR-016 already makes, unchanged.
-- **SC-005**: 100% of body-changing writes attempted by a remediation execution outside the
-  grant in force are denied and recorded.
+- **SC-005**: 100% of writes attempted by a remediation execution outside the grant in force
+  — reserved files, page creation, page deletion, anything outside the wiki content root —
+  are denied and recorded.
 - **SC-006**: 100% of authorized remediation tasks whose proposal targets page content have
   a write scope in force that permits that change — no authorized task is blocked by the
   survey run's frontmatter-only limit.
