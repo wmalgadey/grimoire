@@ -39,9 +39,11 @@
 #                                                         measured 368-mutant subset
 #
 # The backend group is an overnight job on a small machine. Raise MUTATION_CONCURRENCY on
-# a big one — the cost scales down close to linearly. Targets are independent and a
-# completed target is skipped on the next invocation, so an interrupted run resumes by
-# being started again.
+# a big one — the cost scales down close to linearly. Targets are independent, and one
+# already measured against the current tree is skipped on the next invocation, so an
+# interrupted run resumes by being started again. Change anything the run measures — a
+# commit, a rebase, an edit — and it re-runs instead of reporting yesterday's score under
+# today's name.
 #
 # NOT A CI GATE. A mutation-score threshold is a cross-cutting quality convention and per
 # Constitution Principle III would need an accepted ADR first. Every config here sets
@@ -111,6 +113,19 @@ while [ $# -gt 0 ]; do
   esac
 done
 
+sha256() { command -v sha256sum >/dev/null && sha256sum || shasum -a 256; }
+
+# What a report is a report *of*. A target is only resumable while the tree it was measured
+# against is unchanged: after a checkout, a rebase, or an edit, the presence of a report
+# says nothing about the current code, and skipping on presence alone would put a score
+# from another commit on the index page under today's name.
+fingerprint() {
+  {
+    git rev-parse HEAD 2>/dev/null || echo "no-git"
+    git status --porcelain=v1 2>/dev/null
+  } | sha256 | cut -d' ' -f1
+}
+
 cores="$( (command -v nproc >/dev/null && nproc) || sysctl -n hw.ncpu 2>/dev/null || echo 4)"
 concurrency="${MUTATION_CONCURRENCY:-$(( cores / 2 > 0 ? cores / 2 : 1 ))}"
 # The frontend lane defaults lower than the .NET one on purpose: every Stryker worker
@@ -151,14 +166,22 @@ if [ -n "$(printf '%s\n' "${selected[@]}" | grep '|dotnet|' || true)" ]; then
   dotnet tool restore
 fi
 
+current_fingerprint="$(fingerprint)"
 declare -a failed=()
+declare -a suspect=()
 for line in "${selected[@]}"; do
   IFS='|' read -r name lane dir project extra <<<"$line"
   target_out="$OUT_DIR/$name"
 
-  if [ "$force" -eq 0 ] && [ -n "$(find "$target_out" -name 'mutation-report.json' 2>/dev/null)" ]; then
-    echo "==> $name — skipped, report exists (--force to re-run)"
-    continue
+  if [ -n "$(find "$target_out" -name 'mutation-report.json' 2>/dev/null)" ]; then
+    if [ "$force" -eq 1 ]; then
+      : # asked for explicitly
+    elif [ "$(cat "$target_out/fingerprint" 2>/dev/null)" = "$current_fingerprint" ]; then
+      echo "==> $name — skipped, already measured against this tree (--force to re-run)"
+      continue
+    else
+      echo "==> $name — report is from a different tree, re-running"
+    fi
   fi
 
   echo "==> $name  ($lane, $dir)"
@@ -177,12 +200,29 @@ for line in "${selected[@]}"; do
         --skip-version-check \
         "${extra_args[@]}" ) 2>&1 | tee "$target_out/run.log" || failed+=("$name")
   else
-    # Empty inside the container wrapper, where node_modules is a fresh anonymous volume
-    # rather than the host's platform-specific install; a no-op on a developer machine.
-    [ -d "$dir/node_modules/@stryker-mutator" ] || ( cd "$dir" && bun install --frozen-lockfile )
+    # Unconditional: inside the container wrapper node_modules is a cache directory that
+    # outlives the checkout, so "the directory is there" does not mean "it matches the
+    # lockfile in front of me". `bun install --frozen-lockfile` is a fast no-op when it
+    # already does, and the only thing that notices a dependency bump when it does not.
+    ( cd "$dir" && bun install --frozen-lockfile )
     ( cd "$dir" && bunx stryker run \
         --concurrency "$frontend_concurrency" \
         "${extra_args[@]}" ) 2>&1 | tee "$target_out/run.log" || failed+=("$name")
+  fi
+
+  if [ -n "$(find "$target_out" -name 'mutation-report.json' 2>/dev/null)" ]; then
+    echo "$current_fingerprint" > "$target_out/fingerprint"
+  fi
+
+  # A test that was already red before Stryker touched anything takes its mutants with it:
+  # they are reported as "only covered by failing tests" and silently leave the score,
+  # which then looks like an ordinary number. The runs deliberately do not abort on this
+  # (break-on-initial-test-failure stays off, so one flaky test cannot end a seventeen-hour
+  # run), so the score has to be labelled instead of trusted.
+  if grep -q "only covered by failing tests" "$target_out/run.log" 2>/dev/null; then
+    echo "    WARNING: $name had failing tests in its baseline run — its score covers fewer"
+    echo "             mutants than it claims. Fix the suite and re-run with --force."
+    suspect+=("$name")
   fi
 
   echo "    $name finished after $(( (SECONDS - started) / 60 )) min"
@@ -190,6 +230,10 @@ for line in "${selected[@]}"; do
 done
 
 python3 scripts/mutation-report-index.py "$OUT_DIR"
+
+if [ "${#suspect[@]}" -gt 0 ]; then
+  echo "Scores measured against a failing baseline: ${suspect[*]}" >&2
+fi
 
 if [ "${#failed[@]}" -gt 0 ]; then
   echo "Targets that did not complete: ${failed[*]}" >&2

@@ -48,21 +48,27 @@ RUN set -eux; \
 
 # The frontend's `client` Vitest project drives a real Chromium through Playwright, so the
 # browser and its system libraries belong in the image — the same
-# `playwright install --with-deps chromium` that CI and the devcontainer run. The version
-# is read out of frontend/package.json instead of repeated here: the browser build has to
-# match the Playwright the tests import, and one of the two being edited alone is exactly
-# the failure this avoids.
+# `playwright install --with-deps chromium` that CI and the devcontainer run.
+#
+# The version comes out of bun.lock, not package.json: Playwright pins each release to one
+# browser revision, so installing the range's lower bound (^1.60.0 -> 1.60.0) while the
+# lockfile resolves 1.61.1 downloads a build the tests will then fail to find. Reading the
+# lockfile also makes the layer cache do the right thing — bumping the dependency
+# invalidates this step by itself, which is why scripts/mutation-test-docker.sh always
+# calls `docker build` rather than only when the image is absent.
 #
 # PLAYWRIGHT_BROWSERS_PATH puts the browser somewhere every user can read: the container
 # runs as the invoking user, not root, and the default location under /root would be
 # unreachable. frontend/vite.config.ts already honors this variable.
 ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
-COPY frontend/package.json /tmp/frontend-package.json
+COPY frontend/bun.lock /tmp/bun.lock
 RUN set -eux; \
-    version="$(bun -e 'const p=require("/tmp/frontend-package.json");console.log((p.devDependencies.playwright).replace(/^[^0-9]*/,""))')"; \
+    version="$(grep -oE '"playwright@[0-9]+\.[0-9]+\.[0-9]+"' /tmp/bun.lock | head -1 | tr -d '"' | cut -d@ -f2)"; \
+    test -n "$version"; \
+    echo "installing Playwright browsers for playwright@$version (from bun.lock)"; \
     bunx "playwright@${version}" install --with-deps chromium; \
     chmod -R a+rX /ms-playwright; \
-    rm -f /tmp/frontend-package.json
+    rm -f /tmp/bun.lock
 
 # dotnet writes its first-run marker, the NuGet cache and the local tool payloads under
 # $HOME; the wrapper mounts a writable cache there, so the container needs no home of its
