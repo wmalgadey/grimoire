@@ -13,6 +13,7 @@
 ### Session 2026-08-22
 
 - Q: When a human authorizes a remediation task, how much of the wiki should that task's execution run be allowed to write? → A: Wiki-wide read-write for the duration of the authorized execution run (option C) — the grant is not scoped to the authorized target page.
+- Q: Should a Lint run be able to create new pages and delete existing ones, or only edit pages that already exist? → A: Full access — create, edit and delete (option C). The `frontmatter-only` limit was an implementation detail on the way to 1.0, not a designed boundary. Lint already acts on the wiki when it judges action is warranted; a remediation task is what it raises when it decides to leave an action to the user, not a permission it must obtain. Git history is the safety net for destructive change. Verbatim, as recorded: *"der lint agent hat vollen zugriff auf das wiki (der frontmatter only zugriff war nur ein implementierungsdetail auf dem weg zu Verision 1.0). der lint agent kann änderungen auch schon durchführen wenn er es für notwendig sieht. dinge, die er dem benutzer als \"aktion\" überlässt sollen als remediation tasks im ui angezeigt werden. […] we still have git as a major safety net"*
 - Q: Should the survey scope and the execution scope live in two separate policy files, or in one file that declares both? → A: Neither — they are not separated at all. Lint and remediation are the same agent performing the same action; the human in the loop is a workflow step, not a permission boundary, and the agent has already judged what the wiki needs. One scope governs both modes. Combined with the answer above, this supersedes ADR-016's frontmatter-only decision rather than amending it: the unattended survey run holds the same wiki-wide write scope as an authorized remediation execution.
 
 ## User Scenarios & Testing *(mandatory)*
@@ -168,6 +169,12 @@ Submit a batch containing a write and confirm it is rejected.
   named, so the run's own record stays an accurate account of what it set out to do.
 - The page an authorization named is deleted, renamed, or already changed between
   authorization and execution.
+- A page is deleted while other pages still link to it — the harness does not decide what to
+  do about the dangling links; whether to repoint, remove or leave them is the agent's
+  judgment, and the deletion is not blocked on it.
+- A page is created or deleted while the catalog and activity log still describe the old page
+  set — see FR-016a on what a Lint run may write.
+- A run deletes a page and then fails — the journal must restore it (FR-015a).
 - A remediation execution and a survey run touching the same page at the same time — now
   that both hold the same write scope this is more likely, not less; the existing
   cross-process coordination decides the outcome and this feature adds no second mechanism.
@@ -220,9 +227,13 @@ Submit a batch containing a write and confirm it is rejected.
   execution. The harness MUST NOT distinguish the two modes when deciding what a write may
   touch; a write allowed in one is allowed in the other, and a write denied in one is denied
   in the other.
-- **FR-015**: That scope MUST permit writing page content, not only frontmatter — this is
-  what the `frontmatter-only` limit in force today prevents, and it is the limit this
-  feature removes.
+- **FR-015**: That scope MUST give the agent full authority over wiki content: editing a
+  page's frontmatter or body, creating a page, and deleting one. The `frontmatter-only`
+  limit in force today is removed, not narrowed — it was scaffolding on the way to 1.0
+  rather than a designed boundary.
+- **FR-015a**: A deletion MUST be journaled with the deleted content so that a failed run
+  restores it, on the same terms as the existing write journal restores an overwritten
+  page. Deletion MUST NOT be the one action a rollback cannot undo.
 - **FR-016**: The scope MUST cover the whole wiki content root — it is NOT narrowed to the
   page a remediation authorization named. The recorded target page remains a hint about
   intent, never a boundary the harness enforces, and a task authorized without one runs
@@ -239,11 +250,9 @@ Submit a batch containing a write and confirm it is rejected.
 - **FR-020**: A missing or unparseable policy MUST fail the run before any wiki change is
   made.
 - **FR-021**: Widening the write scope MUST NOT widen the read scope.
-- **FR-021a**: Page creation and deletion MUST be [NEEDS CLARIFICATION: permitted or withheld?
-  Today Lint can do neither, because `frontmatter-only` requires the target to already exist.
-  "The agent maintains the wiki and should do what the wiki needs" argues a fix that requires
-  splitting a page or retiring a superseded one should be able to; against that, creation and
-  deletion are the two actions no Lint run has ever been able to take, and no eval covers them.]
+- **FR-021a**: Page creation and deletion MUST be permitted in both modes. Neither is gated
+  on a human authorization: a remediation task is what the agent raises when it decides an
+  action belongs to the user, not a permission it must acquire before acting.
 
 **Boundary**
 
@@ -263,8 +272,8 @@ Submit a batch containing a write and confirm it is rejected.
   range — distinct from a whole-page read in whether it can serve as a write baseline.
 - **Read-only batch**: a group of read calls submitted and answered together; carries no
   authority of its own, only the sum of its members' individual evaluations.
-- **Write scope**: the single write authority every Lint run holds, in either mode — page
-  content across the wiki content root, excluding the reserved index and activity log.
+- **Write scope**: the single write authority every Lint run holds, in either mode — full
+  authority over pages across the wiki content root: create, edit, delete.
 - **Policy identity**: the version and hash recorded on a run, identifying which revision of
   the shared scope governed it.
 
@@ -283,8 +292,10 @@ Submit a batch containing a write and confirm it is rejected.
 - **SC-004**: For 100% of write attempts, the decision is identical in a survey run and in a
   remediation execution run given the same path and the same content — mode never changes the
   outcome.
-- **SC-005**: 100% of writes attempted outside the scope in force — reserved files, anything
-  outside the wiki content root — are denied and recorded, in either mode.
+- **SC-005**: 100% of writes attempted outside the scope in force — anything outside the wiki
+  content root, and whatever FR-016a excludes — are denied and recorded, in either mode.
+- **SC-005a**: 100% of pages deleted by a run that subsequently fails are restored by the
+  rollback journal.
 - **SC-006**: 100% of remediation tasks whose proposal targets page content run under a scope
   that permits that change — no task is blocked by a frontmatter-only limit.
 - **SC-007**: 100% of batches containing a write are rejected without performing any of
@@ -327,6 +338,13 @@ Submit a batch containing a write and confirm it is rejected.
   a proposed remediation runs, not what a run is permitted to write.
 - No new infrastructure, no new external system, and no shell or process-execution
   capability for the agent.
+- Git history is the standing safety net for destructive change: the wiki is a git-tracked
+  working tree, so a bad edit or deletion is recoverable outside the harness. This is why the
+  scope can be full without the harness adding a confirmation or soft-delete mechanism of its
+  own — but it is a recovery path a human takes, not one the harness automates.
+- Remediation tasks remain the agent's way of handing an action to the user. Removing the
+  permission dimension does not remove the workflow: what changes is why a task exists (the
+  agent chose to defer) rather than what it unlocks (authority the agent lacked).
 - One recorded-eval re-capture covers the instruction-file changes this feature requires,
   per the existing recorded-replay eval approach. Lint's instruction file will need to carry
   the judgment that the removed policy limit used to enforce mechanically — when a body edit
