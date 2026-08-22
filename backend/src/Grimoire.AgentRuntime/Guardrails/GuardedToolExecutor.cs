@@ -3,6 +3,7 @@ using Grimoire.AgentRuntime.Guardrails.Coordination;
 using System.Diagnostics;
 using System.Text;
 using System.Text.Json;
+using System.Text.RegularExpressions;
 
 namespace Grimoire.AgentRuntime.Guardrails;
 
@@ -29,6 +30,26 @@ public sealed class GuardedToolExecutor
     // ConcurrentWikiWriteIntegrityTests' multi-writer contention scenario (T036/T039).
     // Wiki markdown files carry no BOM by convention either way.
     private static readonly Encoding Utf8NoBom = new UTF8Encoding(encoderShouldEmitUTF8Identifier: false);
+
+    // ── search_files bounds (026-guarded-tool-surface, ADR-030 R2/R5) ──────────────────
+    // Single source of truth for the four documented defaults (research.md D2-D5). Kept as
+    // compile-time constants deliberately: SearchRegexBoundaryRuleTests decodes the options
+    // argument straight off the IL, which only works when it is a literal, not a value
+    // computed at runtime.
+    private const RegexOptions SearchRegexOptions = RegexOptions.NonBacktracking;
+    private const int SearchDefaultResultCap = 200;
+    private const int SearchHardResultCeiling = 1000;
+    private const int SearchMaxPatternLength = 1000;
+
+    // research.md D3: one documented "search time budget" bound, reused for both purposes
+    // it serves — the Regex constructor's own per-match timeout (never a hung run on one
+    // pathological line) and the wall-clock budget for the whole multi-file scan. An
+    // instance field (not another const) so tests can override it via the constructor —
+    // mirroring writeLockBackoffCap's rationale below — while staying a single-instruction
+    // load (ldfld) at the Regex construction call site, which is all
+    // SearchRegexBoundaryRuleTests' IL scan requires of it.
+    private static readonly TimeSpan DefaultSearchTimeBudget = TimeSpan.FromSeconds(2);
+    private readonly TimeSpan _searchTimeBudget;
 
     private readonly SafetyPolicy _policy;
     private readonly WriteJournal _journal;
@@ -80,6 +101,13 @@ public sealed class GuardedToolExecutor
     /// <paramref name="logPath"/>/<paramref name="indexPath"/> format checks. <c>null</c>
     /// (the default) emits no span.
     /// </param>
+    /// <param name="searchTimeBudget">
+    /// 026-guarded-tool-surface (ADR-030 R2/R5): overrides <c>search_files</c>' default
+    /// 2-second time budget (both the Regex match timeout and the overall multi-file scan
+    /// budget). Exists so deterministic tests can force the <c>wiki.search.timed_out</c>
+    /// path without a multi-second wait, mirroring <paramref name="writeLockBackoffCap"/>;
+    /// production callers leave this <c>null</c>.
+    /// </param>
     public GuardedToolExecutor(
         SafetyPolicy policy,
         WriteJournal journal,
@@ -91,7 +119,8 @@ public sealed class GuardedToolExecutor
         TimeSpan? writeLockBackoffCap = null,
         string? logPath = null,
         string? indexPath = null,
-        ActivitySource? activitySource = null)
+        ActivitySource? activitySource = null,
+        TimeSpan? searchTimeBudget = null)
     {
         _policy = policy;
         _journal = journal;
@@ -99,6 +128,7 @@ public sealed class GuardedToolExecutor
         _taskId = taskId ?? string.Empty;
         _registry = registry ?? ToolRegistry.Default;
         _instrumentation = instrumentation ?? NullToolCallInstrumentation.Instance;
+        _searchTimeBudget = searchTimeBudget ?? DefaultSearchTimeBudget;
         _canonicalLogPath = logPath is not null ? Canonicalize(logPath) : null;
         var canonicalIndexPath = indexPath is not null ? Canonicalize(indexPath) : null;
         _writeGuard = writeLocksDir is not null
@@ -173,6 +203,8 @@ public sealed class GuardedToolExecutor
                 return await ExecuteReadFileAsync(inputJson, turn, cancellationToken);
             case ToolRegistry.WriteFile:
                 return await ExecuteWriteFileAsync(inputJson, turn, cancellationToken);
+            case ToolRegistry.SearchFiles:
+                return await ExecuteSearchFilesAsync(inputJson, turn, cancellationToken);
             default:
                 return new ToolExecutionResult(true, $"Unknown tool: {toolName}");
         }
@@ -387,6 +419,216 @@ public sealed class GuardedToolExecutor
         return new ToolExecutionResult(false, $"Written: {relativePath}");
     }
 
+    // ── search_files ─────────────────────────────────────────────────────────────
+    // ADR-030 R1/R2 (026-guarded-tool-surface): mimics `grep -rn`. Every candidate file is
+    // evaluated against the read policy before it is opened (T016) — a denied match is
+    // omitted silently, never reported, because reporting it would itself disclose that the
+    // path exists. A denial is recorded only for the search's own `path` root, exactly like
+    // list_files/read_file (T017).
+
+    private async Task<ToolExecutionResult> ExecuteSearchFilesAsync(
+        string inputJson, int turn, CancellationToken cancellationToken)
+    {
+        // Every candidate file is read synchronously (File.ReadLines, for lazy line-by-line
+        // scanning under the time budget below) — no genuine async I/O in this dispatch, but
+        // the signature stays Task<ToolExecutionResult> to match every sibling dispatch
+        // method's shape.
+        await Task.CompletedTask;
+
+        if (!TryGetStringProperty(inputJson, "pattern", out var pattern) || pattern.Length == 0)
+        {
+            return new ToolExecutionResult(true, "Missing required property: pattern");
+        }
+
+        if (pattern.Length > SearchMaxPatternLength)
+        {
+            return RecordSearchPatternRejected(pattern, "pattern_too_long", turn);
+        }
+
+        // ignore_case is folded into the pattern itself (an inline `(?i)` modifier) rather
+        // than into the RegexOptions argument, so that argument stays the literal constant
+        // SearchRegexOptions at every call site (T020) — SearchRegexBoundaryRuleTests
+        // verifies the NonBacktracking bit by decoding a compile-time constant off the IL,
+        // which a runtime-computed `SearchRegexOptions | (ignoreCase ? ... : ...)` would defeat.
+        var ignoreCase = TryGetBoolProperty(inputJson, "ignore_case", out var ignoreCaseValue) && ignoreCaseValue;
+        var effectivePattern = ignoreCase ? "(?i)" + pattern : pattern;
+
+        Regex regex;
+        try
+        {
+            regex = new Regex(effectivePattern, SearchRegexOptions, _searchTimeBudget);
+        }
+        catch (NotSupportedException)
+        {
+            // The NonBacktracking engine rejects constructs it cannot run without
+            // backtracking (lookaround, backreferences) at construction time (ADR-030 R2).
+            return RecordSearchPatternRejected(pattern, "unsupported_syntax", turn);
+        }
+        catch (ArgumentException)
+        {
+            return RecordSearchPatternRejected(pattern, "invalid_pattern", turn);
+        }
+
+        var hasPathPrefix = TryGetStringProperty(inputJson, "path", out var relativePathPrefix) &&
+            !string.IsNullOrWhiteSpace(relativePathPrefix);
+        var searchRoot = hasPathPrefix ? Canonicalize(relativePathPrefix) : _repositoryRoot;
+
+        var rootPolicyResult = _policy.Evaluate(searchRoot, isWrite: false);
+        if (!rootPolicyResult.IsAllowed)
+        {
+            var denial = RecordDenial(ToolRegistry.SearchFiles, hasPathPrefix ? relativePathPrefix : ".", searchRoot, rootPolicyResult.DenialReason!, turn);
+            _instrumentation.RecordSearchInvocation(_taskId, "denied", matchesReturned: 0, filesScanned: 0, turn);
+            return denial;
+        }
+
+        _instrumentation.RecordAllowed(_taskId, ToolRegistry.SearchFiles, searchRoot, turn);
+
+        var requestedMaxResults = TryGetIntProperty(inputJson, "max_results", out var maxResultsValue)
+            ? maxResultsValue
+            : SearchDefaultResultCap;
+        var cap = Math.Clamp(requestedMaxResults, 1, SearchHardResultCeiling);
+
+        using var scanActivity = _instrumentation.StartSearchScanActivity(_taskId, turn);
+
+        var matches = new List<string>();
+        var filesScanned = 0;
+        var truncated = false;
+        var timedOut = false;
+        var stopwatch = Stopwatch.StartNew();
+
+        // `path` may name a single file or a directory to recurse into (contracts/
+        // guarded-tool-surface.md: "directory or file prefix").
+        IEnumerable<string> candidateFiles = File.Exists(searchRoot)
+            ? [ResolvePhysicalPathInRepository(searchRoot)]
+            : Directory.Exists(searchRoot)
+                ? Directory.EnumerateFiles(searchRoot, "*", SearchOption.AllDirectories).Select(ResolvePhysicalPathInRepository)
+                : [];
+
+        {
+            var orderedCandidateFiles = candidateFiles.OrderBy(f => f, StringComparer.Ordinal);
+
+            foreach (var candidateFile in orderedCandidateFiles)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+
+                if (stopwatch.Elapsed >= _searchTimeBudget)
+                {
+                    timedOut = true;
+                    break;
+                }
+
+                // T016 (ADR-030 R1): evaluated per candidate path against the read policy —
+                // a denied file is skipped, never reported as a denial.
+                if (!_policy.Evaluate(candidateFile, isWrite: false).IsAllowed)
+                {
+                    continue;
+                }
+
+                filesScanned++;
+
+                var lineNumber = 0;
+                try
+                {
+                    foreach (var line in File.ReadLines(candidateFile))
+                    {
+                        lineNumber++;
+
+                        if (stopwatch.Elapsed >= _searchTimeBudget)
+                        {
+                            timedOut = true;
+                            break;
+                        }
+
+                        bool isMatch;
+                        try
+                        {
+                            isMatch = regex.IsMatch(line);
+                        }
+                        catch (RegexMatchTimeoutException)
+                        {
+                            timedOut = true;
+                            break;
+                        }
+
+                        if (!isMatch)
+                        {
+                            continue;
+                        }
+
+                        var relativeMatchPath = Path.GetRelativePath(_repositoryRoot, candidateFile).Replace('\\', '/');
+                        matches.Add($"{relativeMatchPath}:{lineNumber}:{line}");
+
+                        if (matches.Count >= cap)
+                        {
+                            truncated = true;
+                            break;
+                        }
+                    }
+                }
+                catch (IOException)
+                {
+                    // Unreadable (binary, locked, deleted mid-scan) — skip this file rather
+                    // than fail the whole search.
+                }
+
+                if (truncated || timedOut)
+                {
+                    break;
+                }
+            }
+        }
+
+        stopwatch.Stop();
+
+        var outcome = truncated ? "truncated" : timedOut ? "timed_out" : "completed";
+        _instrumentation.RecordSearchInvocation(_taskId, outcome, matches.Count, filesScanned, turn);
+
+        scanActivity?.SetTag("task_id", _taskId);
+        scanActivity?.SetTag("pattern_length", pattern.Length);
+        scanActivity?.SetTag("path_prefix", hasPathPrefix ? relativePathPrefix : ".");
+        scanActivity?.SetTag("files_scanned", filesScanned);
+        scanActivity?.SetTag("matches", matches.Count);
+        scanActivity?.SetTag("truncated", truncated);
+        scanActivity?.SetTag("outcome", outcome);
+
+        var result = new StringBuilder();
+        foreach (var match in matches)
+        {
+            result.AppendLine(match);
+        }
+
+        if (truncated)
+        {
+            _instrumentation.LogSearchTruncated(_taskId, pattern.Length, cap, turn);
+            result.AppendLine($"[truncated: showing the first {cap} matches]");
+        }
+        else if (timedOut)
+        {
+            _instrumentation.LogSearchTimedOut(_taskId, _searchTimeBudget.TotalMilliseconds, filesScanned, turn);
+            result.AppendLine($"[incomplete: search time budget exceeded after scanning {filesScanned} file(s)]");
+        }
+
+        if (matches.Count == 0 && !timedOut)
+        {
+            return new ToolExecutionResult(false, "No matches found.");
+        }
+
+        return new ToolExecutionResult(false, result.ToString().TrimEnd());
+    }
+
+    private ToolExecutionResult RecordSearchPatternRejected(string pattern, string reason, int turn)
+    {
+        var record = new DeniedActionRecord(ToolRegistry.SearchFiles, pattern, pattern, reason, turn);
+        _denials.Add(record);
+
+        _instrumentation.RecordSearchInvocation(_taskId, "pattern_rejected", matchesReturned: 0, filesScanned: 0, turn);
+        _instrumentation.LogSearchPatternRejected(_taskId, reason, pattern.Length, turn);
+
+        return new ToolExecutionResult(
+            true,
+            $"denied: {reason}. This action is outside the safety policy; continue with your remaining allowed work.");
+    }
+
     // ── helpers ──────────────────────────────────────────────────────────────────
 
     private ToolExecutionResult RecordDenial(string action, string requestedTarget, string canonicalTarget, string reason, int turn)
@@ -507,6 +749,42 @@ public sealed class GuardedToolExecutor
         catch (JsonException) { }
 
         value = string.Empty;
+        return false;
+    }
+
+    private static bool TryGetIntProperty(string json, string propertyName, out int value)
+    {
+        try
+        {
+            using var doc = JsonDocument.Parse(json);
+            if (doc.RootElement.TryGetProperty(propertyName, out var prop) &&
+                prop.ValueKind == JsonValueKind.Number &&
+                prop.TryGetInt32(out value))
+            {
+                return true;
+            }
+        }
+        catch (JsonException) { }
+
+        value = 0;
+        return false;
+    }
+
+    private static bool TryGetBoolProperty(string json, string propertyName, out bool value)
+    {
+        try
+        {
+            using var doc = JsonDocument.Parse(json);
+            if (doc.RootElement.TryGetProperty(propertyName, out var prop) &&
+                (prop.ValueKind == JsonValueKind.True || prop.ValueKind == JsonValueKind.False))
+            {
+                value = prop.GetBoolean();
+                return true;
+            }
+        }
+        catch (JsonException) { }
+
+        value = false;
         return false;
     }
 }

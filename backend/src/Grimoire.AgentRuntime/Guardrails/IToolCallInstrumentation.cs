@@ -89,21 +89,21 @@ public interface IToolCallInstrumentation
     /// was unsupported (e.g. lookaround) or exceeded the size bound (ADR-030 R2/R5).</summary>
     void LogSearchPatternRejected(string taskId, string reason, int patternLength, int turn) { }
 
-    /// <summary>plan.md's <c>guardrails.search_scan</c> span, declared a child of
-    /// <c>*_agent.tool_call</c> (ADR-030 R1/R2). Caller sets <c>pattern_length</c>/
-    /// <c>path_prefix</c>/<c>files_scanned</c>/<c>matches</c>/<c>truncated</c>/<c>outcome</c>
-    /// once the scan completes.
+    /// <summary>plan.md's <c>guardrails.search_scan</c> span. Caller sets
+    /// <c>pattern_length</c>/<c>path_prefix</c>/<c>files_scanned</c>/<c>matches</c>/
+    /// <c>truncated</c>/<c>outcome</c> once the scan completes.
     ///
-    /// <b>Open question for the implementing phase (Phase 3, T029):</b> unlike
-    /// <see cref="StartAcquireWriteLockActivity"/> — which fires during write dispatch,
-    /// genuinely before <see cref="RecordAllowed"/>/<see cref="RecordDenied"/> creates that
-    /// turn's <c>tool_call</c> span — a call to this method during dispatch has no live
-    /// <c>tool_call</c> span to parent to: <c>RecordAllowed</c>/<c>RecordDenied</c> both
-    /// create and dispose it internally, and only after dispatch returns. The implementing
-    /// phase must either keep a tool-call-scoped activity open across dispatch, or accept
-    /// and document a different actual parent (most likely <c>*_agent.model_turn</c>,
-    /// mirroring <see cref="StartBatchActivity"/>) — this declared parenting is not yet
-    /// achievable with <see cref="GuardedToolExecutor"/>'s current call shape.
+    /// <b>Resolved during T029 implementation:</b> plan.md originally declared this a child
+    /// of <c>*_agent.tool_call</c>, but that span is only created by
+    /// <see cref="RecordAllowed"/>/<see cref="RecordDenied"/> — both create and dispose it
+    /// internally, only after dispatch returns — so it is never live when a call to this
+    /// method would need to parent to it. <c>AgentLoop</c>'s own turn loop confirms the
+    /// actual ambient span during dispatch: its <c>*_agent.model_turn</c> activity is kept
+    /// open with a <c>using</c> across the entire tool-dispatch call
+    /// (<c>AgentLoop.cs</c>: "The span stays open across tool dispatch below so every
+    /// per-agent tool-call span ... is a child of this model turn"). The actual, achievable
+    /// parent is therefore <c>*_agent.model_turn</c> — matching <see cref="StartBatchActivity"/>'s
+    /// already-correct declared parent — not <c>*_agent.tool_call</c>.
     /// </summary>
     Activity? StartSearchScanActivity(string taskId, int turn) => null;
 
@@ -140,15 +140,14 @@ public interface IToolCallInstrumentation
     /// deletion was restored during rollback (ADR-031 R4).</summary>
     void LogPageDeleteRolledBack(string taskId, string path, int turn) { }
 
-    /// <summary>plan.md's <c>guardrails.delete_file</c> span, declared a child of
-    /// <c>*_agent.tool_call</c> (ADR-031 R3/R4). Caller sets <c>journaled</c>/
+    /// <summary>plan.md's <c>guardrails.delete_file</c> span. Caller sets <c>journaled</c>/
     /// <c>outcome</c> once the deletion (and any journal write) completes.
     ///
-    /// Shares <see cref="StartSearchScanActivity"/>'s open question for the implementing
-    /// phase (Phase 4, T045): this declared parenting is not achievable until dispatch keeps
-    /// a tool-call-scoped activity open across the delete operation, since
-    /// <c>RecordAllowed</c>/<c>RecordDenied</c> currently create and dispose that span only
-    /// after dispatch returns.
+    /// Shares <see cref="StartSearchScanActivity"/>'s resolved parenting finding: the actual
+    /// ambient span during dispatch is <c>*_agent.model_turn</c> (kept open by
+    /// <c>AgentLoop</c> across the whole tool-dispatch call), not <c>*_agent.tool_call</c>
+    /// (only live after <c>RecordAllowed</c>/<c>RecordDenied</c> return). Phase 4 (T045)
+    /// should declare and implement this span as a child of <c>*_agent.model_turn</c>.
     /// </summary>
     Activity? StartDeleteFileActivity(string taskId, string path, int turn) => null;
 }
