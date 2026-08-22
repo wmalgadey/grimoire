@@ -58,6 +58,11 @@
   authority over wiki content in an unattended survey run. `/speckit-plan` inherits a
   superseding-ADR obligation with bidirectional status links and a `docs/adr/index.md` update
   (Principle III "ADR Status Maintenance").
+- **Eval scope reduced 2026-08-22 (owner review)**: SC-012 and SC-014 withdrawn as criteria,
+  leaving two agent-judgment criteria (SC-011, SC-013). Their numbers are retained in spec.md
+  with a withdrawal note so existing references resolve. This keeps the Definition of Done
+  satisfiable — it requires an evaluation test for *every* agent-judgment criterion in the
+  spec, so a criterion the plan does not evaluate must not remain one.
 - **Deferred to `/speckit-plan`, deliberately, as documented defaults rather than open
   questions**: the search result cap, the search timeout value, the maximum batch size, and the
   regex pattern-size bound. FR-005/FR-006/FR-007a require each to exist and be observable; none
