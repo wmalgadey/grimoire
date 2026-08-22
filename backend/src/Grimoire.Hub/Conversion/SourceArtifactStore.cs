@@ -212,7 +212,13 @@ public sealed class SourceArtifactStore
 
         try
         {
-            await using var stream = File.OpenRead(metadataPath);
+            // Not File.OpenRead: that asks for FileShare.Read, which on Windows keeps the
+            // writer's File.Move from replacing the manifest underneath an open reader — the
+            // same race, moved to the writer. Permitting ReadWrite|Delete lets the atomic
+            // replacement proceed while this read is in flight.
+            await using var stream = new FileStream(
+                metadataPath, FileMode.Open, FileAccess.Read,
+                FileShare.ReadWrite | FileShare.Delete);
             return await JsonSerializer.DeserializeAsync<SourceArtifactSet>(stream, cancellationToken: cancellationToken);
         }
         catch (IOException)
@@ -228,16 +234,23 @@ public sealed class SourceArtifactStore
     }
 
     /// <summary>
-    /// Writes the manifest sidecar atomically: serialize to a temporary file alongside it, then
-    /// move it into place. `File.Create` truncates in place and holds the handle exclusively for
-    /// the duration of serialization, so a concurrent reader saw either a locked file or a
-    /// partially written one. A move is atomic on both supported platforms, so a reader now sees
-    /// the previous manifest or the new one, never a half of either.
+    /// Writes the manifest sidecar atomically: serialize to a sibling temp file, then rename it
+    /// over the target. `File.Create` truncates in place and holds the handle exclusively while
+    /// serialization runs, so a concurrent reader saw either a locked file or a partially written
+    /// one. An atomic rename guarantees every reader sees the whole previous manifest or the whole
+    /// new one.
+    /// <para>
+    /// Same shape, same reason, and the same temp-name convention as
+    /// <see cref="Grimoire.Hub.IngestTaskArtifact.HubTaskArtifactWriter"/>, which already does this
+    /// for the task-artifact files the board reads. The manifest sidecar the board reads alongside
+    /// them was simply missed at the time.
+    /// </para>
     /// </summary>
     private async Task WriteMetadataAsync(string taskId, SourceArtifactSet set, CancellationToken cancellationToken)
     {
         var metadataPath = MetadataPathFor(taskId);
-        var tempPath = $"{metadataPath}.{Guid.NewGuid():n}.tmp";
+        var tempPath = Path.Combine(
+            _paths.OriginalsDir, $".{Path.GetFileName(metadataPath)}.{Guid.NewGuid():N}.tmp");
 
         try
         {
@@ -252,7 +265,7 @@ public sealed class SourceArtifactStore
         {
             if (File.Exists(tempPath))
             {
-                File.Delete(tempPath);
+                try { File.Delete(tempPath); } catch { /* best-effort cleanup */ }
             }
 
             throw;
