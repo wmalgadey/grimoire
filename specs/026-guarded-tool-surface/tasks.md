@@ -35,9 +35,9 @@ classicist behavioural test in its own phase — never here.
 **⚠️ NON-NEGOTIABLE**: no feature implementation begins until Phase 0 is complete, each rule
 Red/Green probed and the probe result recorded in the commit message.
 
-- [ ] T001 [P] Boundary Rule — no wiki deletion outside the guarded tool layer (ADR-031 R3, FR-022): NetArchTest rule in `backend/tests/Grimoire.ArchTests/` asserting `File.Delete`/`Directory.Delete` are reachable only from `Grimoire.AgentRuntime.Guardrails` and the harness-record namespaces. Red/Green probe: add a class calling `File.Delete` from `Grimoire.LintAgent`, confirm red, delete it, confirm green
-- [ ] T002 [P] Boundary Rule — search regex is always non-backtracking and bounded (ADR-030 R2, FR-007a): NetArchTest/IL rule in `backend/tests/Grimoire.ArchTests/` asserting every `Regex` construction reachable from the search implementation passes `RegexOptions.NonBacktracking` and a match timeout. Red/Green probe: construct a plain `Regex` in the search path, confirm red, revert, confirm green
-- [ ] T003 [P] Boundary Rule — guarded-only filesystem reach and no run-mode branch, in `backend/tests/Grimoire.ArchTests/` (ADR-030 R1/R4, ADR-031 R1, FR-014, FR-022): NetArchTest rule asserting search/batch/delete filesystem APIs are reachable only from `GuardedToolExecutor`, and that no type in `Grimoire.Hub.LintDispatch` or `Grimoire.Hub.RemediationTasks` selects a policy path by run mode. Red/Green probe: add a mode-conditional policy path in `RemediationRunCoordinator`, confirm red, revert, confirm green
+- [X] T001 [P] Boundary Rule — no wiki deletion outside the guarded tool layer (ADR-031 R3, FR-022): NetArchTest rule in `backend/tests/Grimoire.ArchTests/` asserting `File.Delete`/`Directory.Delete` are reachable only from `Grimoire.AgentRuntime.Guardrails` and the harness-record namespaces. Red/Green probe: add a class calling `File.Delete` from `Grimoire.LintAgent`, confirm red, delete it, confirm green
+- [X] T002 [P] Boundary Rule — search regex is always non-backtracking and bounded (ADR-030 R2, FR-007a): NetArchTest/IL rule in `backend/tests/Grimoire.ArchTests/` asserting every `Regex` construction reachable from the search implementation passes `RegexOptions.NonBacktracking` and a match timeout. Red/Green probe: construct a plain `Regex` in the search path, confirm red, revert, confirm green
+- [X] T003 [P] Boundary Rule — guarded-only filesystem reach and no run-mode branch, in `backend/tests/Grimoire.ArchTests/` (ADR-030 R1/R4, ADR-031 R1, FR-014, FR-022): NetArchTest rule asserting search/batch/delete filesystem APIs are reachable only from `GuardedToolExecutor`, and that no type in `Grimoire.Hub.LintDispatch` or `Grimoire.Hub.RemediationTasks` selects a policy path by run mode. Red/Green probe: add a mode-conditional policy path in `RemediationRunCoordinator`, confirm red, revert, confirm green
 
 **Checkpoint**: boundaries guarded. Feature code may begin.
 
@@ -47,9 +47,9 @@ Red/Green probed and the probe result recorded in the commit message.
 
 **Purpose**: measurements and fixtures that must exist before the code they measure.
 
-- [ ] T004 Capture the pre-feature baseline for the SC-014 measurement (research.md D9): record median content tokens read per Lint survey run on the eval fixture, into `specs/026-guarded-tool-surface/baseline.md`. **Must run before any Phase 2 task** — measured afterwards it is a reconstruction, not a baseline
-- [ ] T005 [P] Build the `lint-at-scale` fixture generator in `backend/tests/Grimoire.AgentEvals/Fixtures/` (SC-011): extends `lint-seeded-defects` with filler pages generated at build time. No corpus is authored or committed (plan.md § Eval scope)
-- [ ] T006 [P] Add the eval-config context-budget lever in `backend/src/Grimoire.EvalRunner/Scenarios/LintScenarioDefinitions.cs` (SC-011): lets a small generated fixture exceed the guard, so fixture size stays irrelevant to the property under test
+- [ ] T004 Capture the pre-feature baseline for the SC-014 measurement (research.md D9): record median content tokens read per Lint survey run on the eval fixture, into `specs/026-guarded-tool-surface/baseline.md`. **Must run before any Phase 2 task** — measured afterwards it is a reconstruction, not a baseline. **Deferred** (layer 04 PR #174): needs a live model call this environment has no credentials for; moves to the layer that bundles the eval recapture (Phase N)
+- [ ] T005 [P] Build the `lint-at-scale` fixture generator in `backend/tests/Grimoire.AgentEvals/Fixtures/` (SC-011): extends `lint-seeded-defects` with filler pages generated at build time. No corpus is authored or committed (plan.md § Eval scope). **Deferred** (layer 04 PR #174): its only consumer is T066 (Phase N)
+- [ ] T006 [P] Add the eval-config context-budget lever in `backend/src/Grimoire.EvalRunner/Scenarios/LintScenarioDefinitions.cs` (SC-011): lets a small generated fixture exceed the guard, so fixture size stays irrelevant to the property under test. **Deferred** (layer 04 PR #174): same reason as T005
 
 ---
 
@@ -59,14 +59,14 @@ Red/Green probed and the probe result recorded in the commit message.
 
 **⚠️ CRITICAL**: blocks all of Phase 3–6.
 
-- [ ] T007 Add the `Delete` scope and `DeleteRule` record to `backend/src/Grimoire.Domain/Guardrails/SafetyPolicy.cs` (FR-021, ADR-031 R3, data-model.md): deny-by-default, canonicalized path matching, no mode variants
-- [ ] T008 Teach `PolicyLoader` (`backend/src/Grimoire.AgentRuntime/Instructions/PolicyLoader.cs`) the `delete` scope and keep `"frontmatter-only"` a recognized write mode (FR-020, ADR-031 R5): an unknown mode string still fails closed; a policy declaring `frontmatter-only` must still load
-- [ ] T009 Rewrite `backend/src/Grimoire.LintAgent/Instructions/policy.json` to version 2 (FR-014, FR-015, FR-016, FR-016a): one `read-write` rule on `.` with no `excludePrefixes`, plus a `delete` scope on `.`
-- [ ] T010 Assert Ingest and Query policies declare no `delete` scope, in `backend/tests/Grimoire.IntegrationTests/` (FR-021, research.md D6): the guard against deletion leaking to an agent that already holds `read-write` on the content root
-- [ ] T011 Add `search_files`, `batch` and `delete_file` definitions plus `read_file` range parameters to `backend/src/Grimoire.AgentRuntime/Guardrails/ToolRegistry.cs` (FR-001, FR-002, FR-008, FR-011, FR-024), each schema declaring `additionalProperties: false` per contracts/guarded-tool-surface.md
-- [ ] T012 Declare the new tools in `backend/src/Grimoire.LintAgent/LintToolRegistry.cs` only (FR-022, ADR-030 R6): Ingest and Query registries unchanged
-- [ ] T013 Extend `backend/src/Grimoire.AgentRuntime/Guardrails/IToolCallInstrumentation.cs` with the search, batch, read-shape and deletion signals (plan.md § Observability), each defaulted no-op so agents that do not use them need no adapter
-- [ ] T014 Register the new metrics, log events and spans in the **production** composition root, `backend/src/Grimoire.LintAgent/LintAgentTracing.cs` (Principle IV): contract tests must read them from the real telemetry registration, sampler and exporter — never a test-only `ActivitySource` or always-on sampler
+- [X] T007 Add the `Delete` scope and `DeleteRule` record to `backend/src/Grimoire.Domain/Guardrails/SafetyPolicy.cs` (FR-021, ADR-031 R3, data-model.md): deny-by-default, canonicalized path matching, no mode variants
+- [X] T008 Teach `PolicyLoader` (`backend/src/Grimoire.AgentRuntime/Instructions/PolicyLoader.cs`) the `delete` scope and keep `"frontmatter-only"` a recognized write mode (FR-020, ADR-031 R5): an unknown mode string still fails closed; a policy declaring `frontmatter-only` must still load
+- [ ] T009 Rewrite `backend/src/Grimoire.LintAgent/Instructions/policy.json` to version 2 (FR-014, FR-015, FR-016, FR-016a): one `read-write` rule on `.` with no `excludePrefixes`, plus a `delete` scope on `.`. **Deferred** (layer 04 PR #174): bumping this file alone made every existing recorded-replay eval scenario for Lint/Remediation stale (ADR-012's policy-content fingerprint); moves to the layer that bundles the eval recapture (Phase N). The `Delete`/`DeleteRule` mechanism (T007/T008) already landed and is unaffected.
+- [X] T010 Assert Ingest and Query policies declare no `delete` scope, in `backend/tests/Grimoire.IntegrationTests/` (FR-021, research.md D6): the guard against deletion leaking to an agent that already holds `read-write` on the content root
+- [X] T011 Add `search_files`, `batch` and `delete_file` definitions plus `read_file` range parameters to `backend/src/Grimoire.AgentRuntime/Guardrails/ToolRegistry.cs` (FR-001, FR-002, FR-008, FR-011, FR-024), each schema declaring `additionalProperties: false` per contracts/guarded-tool-surface.md
+- [ ] T012 Declare the new tools in `backend/src/Grimoire.LintAgent/LintToolRegistry.cs` only (FR-022, ADR-030 R6): Ingest and Query registries unchanged. **Deferred** (layer 04 PR #174): `ReplayModelClient` fingerprints the tool-name list offered each turn independently of policy content, so declaring these tools here alone also stales every existing eval recording; moves to the layer that bundles the eval recapture (Phase N). The `ToolRegistry` definitions themselves (T011) already landed and are inert until declared.
+- [X] T013 Extend `backend/src/Grimoire.AgentRuntime/Guardrails/IToolCallInstrumentation.cs` with the search, batch, read-shape and deletion signals (plan.md § Observability), each defaulted no-op so agents that do not use them need no adapter
+- [X] T014 Register the new metrics, log events and spans in the **production** composition root, `backend/src/Grimoire.LintAgent/LintAgentTracing.cs` (Principle IV): contract tests must read them from the real telemetry registration, sampler and exporter — never a test-only `ActivitySource` or always-on sampler
 
 **Checkpoint**: foundation ready; stories may proceed.
 
@@ -81,23 +81,23 @@ larger than its context guard.
 completes, findings reference those pages, and recorded tool calls show search rather than a
 whole-wiki read.
 
-- [ ] T015 [US1] Implement `search_files` dispatch in `backend/src/Grimoire.AgentRuntime/Guardrails/GuardedToolExecutor.cs` (FR-001, FR-002): pattern + optional path prefix → `path:line:text`
-- [ ] T016 [US1] Evaluate the read policy per candidate path before opening it, in `backend/src/Grimoire.AgentRuntime/Guardrails/GuardedToolExecutor.cs` (FR-003, SC-001): a denied path is **omitted silently**, never reported — reporting it would disclose the path
-- [ ] T017 [US1] Record a denial for an out-of-scope search root and continue the run, in `backend/src/Grimoire.AgentRuntime/Guardrails/GuardedToolExecutor.cs` (FR-004, SC-002)
-- [ ] T018 [US1] Enforce the result cap with an explicit truncation marker, in `backend/src/Grimoire.AgentRuntime/Guardrails/GuardedToolExecutor.cs` (FR-005, SC-003): default 200, `max_results` may lower it, hard ceiling 1000 (ADR-030 R5)
-- [ ] T019 [US1] Enforce the search time budget, returning partial results with an incomplete marker, in `backend/src/Grimoire.AgentRuntime/Guardrails/GuardedToolExecutor.cs` (FR-006, SC-003): never "no matches", never a failed run
-- [ ] T020 [US1] Build the regex with `RegexOptions.NonBacktracking` and a match timeout, and enforce the 1000-character pattern bound, in `backend/src/Grimoire.AgentRuntime/Guardrails/GuardedToolExecutor.cs` (FR-007, FR-007a, ADR-030 R2)
-- [ ] T021 [US1] Reject an unsupported or oversized pattern as a recorded denial naming the reason, in `backend/src/Grimoire.AgentRuntime/Guardrails/GuardedToolExecutor.cs` (FR-007a, SC-002)
-- [ ] T022 [P] [US1] Test: a match inside a read-denied path is absent from results and no denial names it (SC-001) in `backend/tests/Grimoire.IntegrationTests/`
-- [ ] T023 [P] [US1] Test in `backend/tests/Grimoire.IntegrationTests/LintSearchToolTests.cs`: traversal and symlink search roots canonicalize before policy evaluation (FR-003, SC-001)
-- [ ] T024 [P] [US1] Test in `backend/tests/Grimoire.IntegrationTests/LintSearchToolTests.cs`: cap reached → truncation signalled; budget exhausted → incomplete signalled (SC-003)
-- [ ] T025 [P] [US1] Test in `backend/tests/Grimoire.IntegrationTests/LintSearchToolTests.cs`: lookaround pattern and >1000-char pattern each produce a recorded denial, run continues (FR-007a, SC-002)
-- [ ] T026 [P] [US1] Feature-Scoped Invariant test in `backend/tests/Grimoire.IntegrationTests/LintSearchToolTests.cs`: the four documented defaults are observable through behaviour, not reflection (ADR-030 R5, SC-003) — a 201st match truncates, a 1001 `max_results` clamps
-- [ ] T027 [US1] Emit `wiki.search.invocations_total`, `wiki.search.matches_returned`, `wiki.search.files_scanned` from `backend/src/Grimoire.AgentRuntime/Guardrails/GuardedToolExecutor.cs` (plan.md § Observability)
-- [ ] T028 [US1] Emit `wiki.search.truncated`, `wiki.search.timed_out`, `wiki.search.pattern_rejected` log events with their mandatory fields, from `backend/src/Grimoire.AgentRuntime/Guardrails/GuardedToolExecutor.cs` (plan.md § Observability)
-- [ ] T029 [US1] Create the `guardrails.search_scan` span as a child of `lint_agent.tool_call`, in `backend/src/Grimoire.AgentRuntime/Guardrails/GuardedToolExecutor.cs`, with its declared attributes (plan.md § Observability)
-- [ ] T030 [P] [US1] Deterministic test in `backend/tests/Grimoire.IntegrationTests/LintSearchObservabilityTests.cs`: the three search log events assert name, level and every mandatory field, read from the production composition root (Principle IV)
-- [ ] T031 [P] [US1] Deterministic test in `backend/tests/Grimoire.IntegrationTests/LintSearchObservabilityTests.cs`: `guardrails.search_scan` name, parent linkage and `task_id` correlation, read from the production composition root (Principle IV)
+- [X] T015 [US1] Implement `search_files` dispatch in `backend/src/Grimoire.AgentRuntime/Guardrails/GuardedToolExecutor.cs` (FR-001, FR-002): pattern + optional path prefix → `path:line:text`
+- [X] T016 [US1] Evaluate the read policy per candidate path before opening it, in `backend/src/Grimoire.AgentRuntime/Guardrails/GuardedToolExecutor.cs` (FR-003, SC-001): a denied path is **omitted silently**, never reported — reporting it would disclose the path
+- [X] T017 [US1] Record a denial for an out-of-scope search root and continue the run, in `backend/src/Grimoire.AgentRuntime/Guardrails/GuardedToolExecutor.cs` (FR-004, SC-002)
+- [X] T018 [US1] Enforce the result cap with an explicit truncation marker, in `backend/src/Grimoire.AgentRuntime/Guardrails/GuardedToolExecutor.cs` (FR-005, SC-003): default 200, `max_results` may lower it, hard ceiling 1000 (ADR-030 R5)
+- [X] T019 [US1] Enforce the search time budget, returning partial results with an incomplete marker, in `backend/src/Grimoire.AgentRuntime/Guardrails/GuardedToolExecutor.cs` (FR-006, SC-003): never "no matches", never a failed run
+- [X] T020 [US1] Build the regex with `RegexOptions.NonBacktracking` and a match timeout, and enforce the 1000-character pattern bound, in `backend/src/Grimoire.AgentRuntime/Guardrails/GuardedToolExecutor.cs` (FR-007, FR-007a, ADR-030 R2)
+- [X] T021 [US1] Reject an unsupported or oversized pattern as a recorded denial naming the reason, in `backend/src/Grimoire.AgentRuntime/Guardrails/GuardedToolExecutor.cs` (FR-007a, SC-002)
+- [X] T022 [P] [US1] Test: a match inside a read-denied path is absent from results and no denial names it (SC-001) in `backend/tests/Grimoire.IntegrationTests/`
+- [X] T023 [P] [US1] Test in `backend/tests/Grimoire.IntegrationTests/LintSearchToolTests.cs`: traversal and symlink search roots canonicalize before policy evaluation (FR-003, SC-001)
+- [X] T024 [P] [US1] Test in `backend/tests/Grimoire.IntegrationTests/LintSearchToolTests.cs`: cap reached → truncation signalled; budget exhausted → incomplete signalled (SC-003)
+- [X] T025 [P] [US1] Test in `backend/tests/Grimoire.IntegrationTests/LintSearchToolTests.cs`: lookaround pattern and >1000-char pattern each produce a recorded denial, run continues (FR-007a, SC-002)
+- [X] T026 [P] [US1] Feature-Scoped Invariant test in `backend/tests/Grimoire.IntegrationTests/LintSearchToolTests.cs`: the four documented defaults are observable through behaviour, not reflection (ADR-030 R5, SC-003) — a 201st match truncates, a 1001 `max_results` clamps
+- [X] T027 [US1] Emit `wiki.search.invocations_total`, `wiki.search.matches_returned`, `wiki.search.files_scanned` from `backend/src/Grimoire.AgentRuntime/Guardrails/GuardedToolExecutor.cs` (plan.md § Observability)
+- [X] T028 [US1] Emit `wiki.search.truncated`, `wiki.search.timed_out`, `wiki.search.pattern_rejected` log events with their mandatory fields, from `backend/src/Grimoire.AgentRuntime/Guardrails/GuardedToolExecutor.cs` (plan.md § Observability)
+- [X] T029 [US1] Create the `guardrails.search_scan` span as a child of `lint_agent.tool_call`, in `backend/src/Grimoire.AgentRuntime/Guardrails/GuardedToolExecutor.cs`, with its declared attributes (plan.md § Observability)
+- [X] T030 [P] [US1] Deterministic test in `backend/tests/Grimoire.IntegrationTests/LintSearchObservabilityTests.cs`: the three search log events assert name, level and every mandatory field, read from the production composition root (Principle IV)
+- [X] T031 [P] [US1] Deterministic test in `backend/tests/Grimoire.IntegrationTests/LintSearchObservabilityTests.cs`: `guardrails.search_scan` name, parent linkage and `task_id` correlation, read from the production composition root (Principle IV)
 
 **Checkpoint**: Lint can find without reading. MVP deliverable.
 
