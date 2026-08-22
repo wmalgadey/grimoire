@@ -1,0 +1,23 @@
+{
+	"$schema": "./node_modules/@stryker-mutator/core/schema/stryker-schema.json",
+	"testRunner": "vitest",
+	"vitest": {
+		"configFile": "vite.config.ts"
+	},
+	"mutate": ["src/**/*.ts", "!src/**/*.test.ts", "!src/**/*.spec.ts", "!src/**/*.d.ts"],
+	"reporters": ["html", "json", "clear-text", "progress"],
+	"htmlReporter": {
+		"fileName": "../docs/reports/mutation/frontend/mutation-report.html"
+	},
+	"jsonReporter": {
+		"fileName": "../docs/reports/mutation/frontend/mutation-report.json"
+	},
+	"thresholds": {
+		"high": 90,
+		"low": 80,
+		"break": null
+	},
+	"tempDirName": ".stryker-tmp",
+	"cleanTempDir": true,
+	"timeoutMS": 60000
+}

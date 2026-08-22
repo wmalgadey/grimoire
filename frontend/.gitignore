@@ -7,6 +7,11 @@ node_modules
 .wrangler
 /.svelte-kit
 /build
+# Stryker's sandbox copy of the project (scripts/mutation-test.sh). Listed here and not
+# only in the repository-root .gitignore because eslint.config.js reads this file for its
+# ignore list, and prettier picks it up too — without it a leftover sandbox makes the lint
+# gate fail on copies of files that already passed it.
+/.stryker-tmp
 
 # OS
 .DS_Store
