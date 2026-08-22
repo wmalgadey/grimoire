@@ -3,6 +3,7 @@ using Grimoire.AgentRuntime.Guardrails.Coordination;
 using System.Diagnostics;
 using System.Text;
 using System.Text.Json;
+using System.Text.RegularExpressions;
 
 namespace Grimoire.AgentRuntime.Guardrails;
 
@@ -38,6 +39,11 @@ public sealed class GuardedToolExecutor
     private readonly IToolCallInstrumentation _instrumentation;
     private readonly SharedFileWriteGuard? _writeGuard;
     private readonly string? _canonicalLogPath;
+
+    // T002 RED PROBE (026-guarded-tool-surface): a plain, non-bounded Regex construction —
+    // to be reverted immediately after CI confirms SearchRegexBoundaryRuleTests fails
+    // naming this violation.
+    private static readonly Regex RedProbeRegex = new(".*");
     private readonly List<DeniedActionRecord> _denials = [];
     private readonly List<string> _touchedPaths = [];
     private readonly List<string> _createdPaths = [];

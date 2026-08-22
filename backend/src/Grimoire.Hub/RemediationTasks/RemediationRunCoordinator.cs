@@ -29,6 +29,11 @@ namespace Grimoire.Hub.RemediationTasks;
 /// </summary>
 public sealed class RemediationRunCoordinator
 {
+    // T003 RED PROBE (026-guarded-tool-surface): a second, differently-named PolicyPath
+    // source — to be reverted immediately after CI confirms GuardedRetrievalNoModeBranchRuleTests
+    // fails naming this violation.
+    private string ExecutionPolicyPath => _paths.Lint.PolicyPath;
+
     private readonly OperationalStateRepository _repository;
     private readonly AgentDispatch.IAgentProcessLauncher _launcher;
     private readonly RemediationLifecyclePublisher _publisher;
@@ -192,6 +197,11 @@ public sealed class RemediationRunCoordinator
             attachedContext = RemediationTaskRecordContext.BuildAttachedContext(parsed.Entries);
         }
 
+        // T003 RED PROBE (026-guarded-tool-surface): deliberate mode-conditional policy
+        // path, to be reverted immediately after CI confirms GuardedRetrievalNoModeBranchRuleTests
+        // fails naming this violation.
+        var probePolicyPath = attachedContext is null ? ExecutionPolicyPath : _paths.Lint.PolicyPath;
+
         var request = new RemediationExecutionAgentRequest(
             TaskId: row.TaskId,
             RunId: row.RunId,
@@ -200,7 +210,7 @@ public sealed class RemediationRunCoordinator
             TargetPath: row.TargetPath,
             WikiRoot: _paths.WikiDir,
             SystemPromptPath: _paths.Lint.SystemPromptPath,
-            PolicyPath: _paths.Lint.PolicyPath,
+            PolicyPath: probePolicyPath,
             WriteLocksDir: _paths.WriteLocksDir,
             AttachedContext: attachedContext);
 
