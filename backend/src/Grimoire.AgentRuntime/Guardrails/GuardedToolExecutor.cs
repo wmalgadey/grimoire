@@ -454,12 +454,22 @@ public sealed class GuardedToolExecutor
             !string.IsNullOrWhiteSpace(relativePathPrefix);
         var searchRoot = hasPathPrefix ? Canonicalize(relativePathPrefix) : _repositoryRoot;
 
-        var rootPolicyResult = _policy.Evaluate(searchRoot, isWrite: false);
-        if (!rootPolicyResult.IsAllowed)
+        // ADR-030 R1: "A denial is recorded only for the search's own path argument when
+        // that root is out of scope." A default (whole-repository) search has no such
+        // argument to be out of scope — every candidate file is filtered silently below
+        // instead (ScanCandidateFiles), never as a top-level denial. Gating the default
+        // search on a root-level policy check would wrongly deny any search whose read
+        // scope is narrower than the repository root, even though per-file filtering
+        // already makes that search incapable of widening the read scope.
+        if (hasPathPrefix)
         {
-            var denial = RecordDenial(ToolRegistry.SearchFiles, hasPathPrefix ? relativePathPrefix : ".", searchRoot, rootPolicyResult.DenialReason!, turn);
-            _instrumentation.RecordSearchInvocation(_taskId, "denied", matchesReturned: 0, filesScanned: 0, turn);
-            return denial;
+            var rootPolicyResult = _policy.Evaluate(searchRoot, isWrite: false);
+            if (!rootPolicyResult.IsAllowed)
+            {
+                var denial = RecordDenial(ToolRegistry.SearchFiles, relativePathPrefix, searchRoot, rootPolicyResult.DenialReason!, turn);
+                _instrumentation.RecordSearchInvocation(_taskId, "denied", matchesReturned: 0, filesScanned: 0, turn);
+                return denial;
+            }
         }
 
         _instrumentation.RecordAllowed(_taskId, ToolRegistry.SearchFiles, searchRoot, turn);
