@@ -17,7 +17,14 @@ for them, so they say nothing about the suite. Watch the CompileError count anyw
 triggers Stryker's Safe Mode, which drops *every* mutant in the affected method, and a
 target with a large one is scored on less code than it looks.
 
-Usage: python3 scripts/mutation-report-index.py docs/reports/mutation
+Two renderings, one arithmetic: the HTML page a developer opens after a full manual run,
+and — with --markdown — the PR comment .github/workflows/mutation.yml maintains for the
+fast tier. Keeping them in one script is the point; a second implementation of the score
+is a second number to disagree with.
+
+Usage:
+    python3 scripts/mutation-report-index.py docs/reports/mutation
+    python3 scripts/mutation-report-index.py docs/reports/mutation --markdown --commit abc1234
 """
 
 from __future__ import annotations
@@ -77,8 +84,73 @@ def band(score: float | None, thresholds: dict | None = None) -> str:
     return "high" if score >= high else "low" if score >= low else "poor"
 
 
+MARKDOWN_MARKER = "<!-- grimoire-mutation-report -->"
+
+
+def render_markdown(targets: list[dict], worst: list[dict], commit: str | None) -> str:
+    """The PR-comment body — same shape as scripts/ci/format-complexity-report's."""
+    overall = sum(t["counts"]["Killed"] + t["counts"]["Timeout"] for t in targets)
+    scored = sum(t["scored"] for t in targets)
+    survived = sum(t["counts"]["Survived"] for t in targets)
+    uncovered = sum(t["counts"]["NoCoverage"] for t in targets)
+
+    lines = [
+        MARKDOWN_MARKER,
+        "## Mutation Report",
+        "",
+        f"**{100.0 * overall / scored:.1f} %** of {scored} scored mutants killed · "
+        f"**{survived}** survived · **{uncovered}** not covered by any test"
+        if scored
+        else "No mutant was scored — every one of them was a compile error or filtered out.",
+        "",
+        "A survivor is a mutation no test noticed: a line the suite runs without asserting "
+        "anything about.",
+        "",
+        "| Target | Score | Killed | Survived | No cov. | Scored |",
+        "|---|--:|--:|--:|--:|--:|",
+    ]
+    for t in targets:
+        score = "—" if t["score"] is None else f"{t['score']:.1f} %"
+        lines.append(
+            f"| `{t['name']}` | {score} | {t['counts']['Killed'] + t['counts']['Timeout']} "
+            f"| {t['counts']['Survived']} | {t['counts']['NoCoverage']} | {t['scored']} |"
+        )
+
+    if worst:
+        lines += [
+            "",
+            "<details>",
+            "<summary>Files with unkilled mutants</summary>",
+            "",
+            "| File | Survived | Score |",
+            "|---|--:|--:|",
+        ]
+        for f in worst:
+            path = f["path"].split("/src/")[-1].replace("|", "\\|")
+            lines.append(f"| `{path}` | {f['survived']} | {f['score']:.1f} % |")
+        lines += ["", "</details>"]
+
+    lines += [
+        "",
+        "_Fast tier only — the guardrail policy and the remediation state machine. The Hub, "
+        "the agent runtimes and the frontend take hours and are measured by hand "
+        "(`./scripts/mutation-test.sh --group all`, see CONTRIBUTING.md). This is a report, "
+        "not a gate: no score fails this job._",
+    ]
+    if commit:
+        lines[-1] = lines[-1][:-1] + f" Measured on commit `{commit[:7]}`._"
+    return "\n".join(lines) + "\n"
+
+
 def main(argv: list[str]) -> int:
-    root = Path(argv[1] if len(argv) > 1 else "docs/reports/mutation")
+    args = [a for a in argv[1:] if not a.startswith("--")]
+    markdown = "--markdown" in argv
+    commit = None
+    if "--commit" in argv:
+        commit = argv[argv.index("--commit") + 1]
+        args = [a for a in args if a != commit]
+
+    root = Path(args[0] if args else "docs/reports/mutation")
     if not root.is_dir():
         print(f"{root} does not exist — nothing to index.", file=sys.stderr)
         return 1
@@ -102,6 +174,10 @@ def main(argv: list[str]) -> int:
         (f | {"target": t["name"], "thresholds": t["thresholds"]} for t in targets for f in t["files"]),
         key=lambda f: (-f["survived"], f["score"]),
     )[:20]
+
+    if markdown:
+        sys.stdout.write(render_markdown(targets, [f for f in worst if f["survived"]], commit))
+        return 0
 
     rows = "\n".join(
         f"""      <tr>

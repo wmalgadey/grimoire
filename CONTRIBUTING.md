@@ -111,11 +111,17 @@ red measures nothing. Neither is agent behavior — what an agent decides lives 
 describe the deterministic harness only; the evaluation suite remains the only check on
 the other half.
 
-It is not a CI gate, and deliberately not on its way to becoming one. This is a tool
-somebody runs by hand every so often to see where the suite is thin: it binds nothing,
-gates nothing and sets no threshold, so there is no decision here for an ADR to record —
-every config sets `break: 0` and reports rather than fails. Turning a score into a merge
-criterion would be the change that needs one.
+**In CI: the fast tier only, and only when it can move.** `.github/workflows/mutation.yml`
+runs the two .NET unit-test targets and maintains a single PR comment with their score —
+created once, updated in place, the same shape as the complexity report — on pull requests
+that touch what those targets mutate, and not at all on the ones that cannot change the
+number. Nothing else fits: the Hub takes hours, and the frontend needs Bun and a Chromium
+installed before it can start. Those stay manual.
+
+It is not a gate, and deliberately not on its way to becoming one. It binds nothing and
+sets no threshold, so there is no decision here for an ADR to record — every config sets
+`break: 0`, so no score can fail a job. Turning one into a merge criterion would be the
+change that needs an ADR.
 
 ### Writing new backend tests
 

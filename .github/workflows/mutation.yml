@@ -1,0 +1,108 @@
+name: Mutation Report
+
+# Maintains one PR comment with the fast tier's mutation score — the same create-once,
+# update-in-place shape as the complexity report, located via the marker
+# scripts/mutation-report-index.py emits.
+#
+# Only the fast tier runs here, and only when the pull request touches something it
+# actually mutates. That is the whole design constraint: mutation testing costs
+# (mutants x test time), so the Hub's 6582 mutants against the integration suite are a
+# seventeen-hour job and the frontend needs Bun and a Chromium installed before it can
+# start. Both stay manual (CONTRIBUTING.md, "Mutation testing"). What is left is two .NET
+# unit-test targets that finish in about a minute each.
+#
+# This job reports. It is not a gate: every Stryker config sets break: 0, so no score can
+# fail it, and nothing here is a merge criterion.
+
+on:
+  pull_request:
+    paths:
+      # Exactly what the fast tier mutates, plus the tests that do the killing and the
+      # tooling that produces the number. A pull request outside these paths cannot move
+      # the score, so the job does not run at all rather than running to say "unchanged".
+      - 'backend/src/Grimoire.Domain/**'
+      - 'backend/src/Grimoire.Hub/RemediationTasks/RemediationActionTask.cs'
+      - 'backend/tests/Grimoire.Domain.UnitTests/**'
+      - '.config/dotnet-tools.json'
+      - 'scripts/mutation-test.sh'
+      - 'scripts/mutation-report-index.py'
+      - '.github/workflows/mutation.yml'
+
+permissions:
+  contents: read
+  pull-requests: write
+
+concurrency:
+  group: mutation-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+env:
+  DOTNET_NOLOGO: true
+  # GitHub's standard runner has four cores; the default (half of them) leaves two idle
+  # on a job whose whole point is to be short.
+  MUTATION_CONCURRENCY: "4"
+
+jobs:
+  mutation:
+    name: Mutation Report (fast tier)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          # The build stamps its version from the git history (ADR-027), and GitVersion
+          # fails on a shallow clone rather than guessing.
+          fetch-depth: 0
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Run the fast-tier mutation targets
+        run: ./scripts/mutation-test.sh --group fast
+
+      - name: Format report
+        run: |
+          python3 scripts/mutation-report-index.py docs/reports/mutation \
+            --markdown --commit "${{ github.event.pull_request.head.sha }}" \
+            > mutation-report.md
+          cat mutation-report.md >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Create or update PR comment
+        # Skipped for PRs from forks: their GITHUB_TOKEN is read-only, so the job summary
+        # above is the only output there.
+        if: github.event.pull_request.head.repo.full_name == github.repository
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const marker = '<!-- grimoire-mutation-report -->';
+            const body = fs.readFileSync('mutation-report.md', 'utf8');
+
+            const comments = await github.paginate(github.rest.issues.listComments, {
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              per_page: 100,
+            });
+            const existing = comments.find((comment) => comment.body?.includes(marker));
+
+            if (existing) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: existing.id,
+                body,
+              });
+              core.info(`Updated mutation comment ${existing.id}.`);
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body,
+              });
+              core.info('Created mutation comment.');
+            }

@@ -45,10 +45,11 @@
 # commit, a rebase, an edit — and it re-runs instead of reporting yesterday's score under
 # today's name.
 #
-# NOT A CI GATE, and not on its way to becoming one — this runs by hand every so often, to
-# see where the suite is thin. It binds nothing and sets no threshold, so there is no
-# decision for an ADR to record; every config sets break: 0 and reports rather than fails.
-# Turning a score into a merge criterion is the change that would need one.
+# NOT A GATE. .github/workflows/mutation.yml runs the fast group on pull requests that
+# touch what it mutates and posts the score as a PR comment; every other group runs by
+# hand, because none of them fits in a pull request's lifetime. Either way nothing here
+# binds anything: every config sets break: 0, so no score fails a job. Turning one into a
+# merge criterion is the change that would need an ADR.
 set -eo pipefail
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"

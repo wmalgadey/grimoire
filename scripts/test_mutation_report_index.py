@@ -92,6 +92,27 @@ def test_file_paths_are_escaped(tmp_path):
     assert "&lt;script&gt;.cs" in html
 
 
+def test_markdown_carries_the_marker_the_workflow_looks_for(tmp_path, capsys):
+    # .github/workflows/mutation.yml finds its own comment by this marker; without it the
+    # job posts a new comment on every push instead of updating the one it owns.
+    write(tmp_path, "domain", report(["Killed", "Survived"]))
+    assert index.main(["prog", str(tmp_path), "--markdown", "--commit", "abc1234def"]) == 0
+    out = capsys.readouterr().out
+    assert out.startswith(index.MARKDOWN_MARKER)
+    assert "`domain`" in out
+    assert "50.0 %" in out
+    assert "abc1234" in out and "abc1234def" not in out  # short sha
+    assert not (tmp_path / "index.html").exists()  # --markdown writes nothing to disk
+
+
+def test_markdown_survives_a_target_with_no_score(tmp_path, capsys):
+    write(tmp_path, "hub", report(["CompileError", "Ignored"]))
+    assert index.main(["prog", str(tmp_path), "--markdown"]) == 0
+    out = capsys.readouterr().out
+    assert "No mutant was scored" in out
+    assert "| — |" in out
+
+
 def test_an_empty_directory_is_an_error_not_an_empty_page(tmp_path):
     (tmp_path / "hub").mkdir()
     assert index.main(["prog", str(tmp_path)]) == 1
