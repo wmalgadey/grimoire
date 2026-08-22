@@ -97,7 +97,9 @@ public sealed class PolicyLoader
             return new PolicyLoadFailure($"Policy file '{policyPath}': {ex.Message}");
         }
 
-        var policy = new SafetyPolicy(_wikiRoot, readPrefixes, writeRules);
+        var deleteRules = ResolveAndNormalizeDeleteRules(schema.Delete ?? []);
+
+        var policy = new SafetyPolicy(_wikiRoot, readPrefixes, writeRules, deleteRules);
 
         var sha256 = Convert.ToHexStringLower(SHA256.HashData(fileBytes));
         var identity = new PolicyIdentity(policyPath, schema.Version, sha256);
@@ -162,6 +164,31 @@ public sealed class PolicyLoader
             writeRules.Add(new WriteRule(normalized, mode, excludePrefixes));
         }
         return writeRules;
+    }
+
+    /// <summary>
+    /// Resolves delete-scope rules (ADR-031 R3, 026-guarded-tool-surface): deny-by-default,
+    /// like read/write. Deliberately no <c>mode</c> handling — <see cref="DeleteRule"/> has
+    /// no variants, so <see cref="PolicyRuleSchema.Mode"/> is simply ignored for these rules
+    /// (a policy author who mistakenly writes a <c>mode</c> on a delete rule gets silent
+    /// disregard, matching how <c>mode</c> is already ignored on read rules).
+    /// </summary>
+    private IReadOnlyList<DeleteRule> ResolveAndNormalizeDeleteRules(IReadOnlyList<PolicyRuleSchema> rules)
+    {
+        var deleteRules = new List<DeleteRule>(rules.Count);
+        foreach (var rule in rules)
+        {
+            var normalized = NormalizeRulePrefix(rule);
+            if (normalized is null)
+                continue;
+
+            var excludePrefixes = (rule.ExcludePrefixes ?? [])
+                .Select(NormalizeExactPrefix)
+                .ToList();
+
+            deleteRules.Add(new DeleteRule(normalized, excludePrefixes));
+        }
+        return deleteRules;
     }
 
     /// <summary>
@@ -230,6 +257,10 @@ public sealed class PolicyLoader
         public string? DefaultDecision { get; set; }
         public IReadOnlyList<PolicyRuleSchema>? Read { get; set; }
         public IReadOnlyList<PolicyRuleSchema>? Write { get; set; }
+
+        /// <summary>ADR-031 R3 (026-guarded-tool-surface): deny-by-default, absent by
+        /// default. Only Lint's policy declares this scope.</summary>
+        public IReadOnlyList<PolicyRuleSchema>? Delete { get; set; }
     }
 
     private sealed class PolicyRuleSchema

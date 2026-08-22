@@ -25,6 +25,18 @@ public sealed class ToolRegistry
     public const string ReadFile = "read_file";
     public const string WriteFile = "write_file";
 
+    /// <summary>ADR-030 R1 (026-guarded-tool-surface): mimics <c>grep -rn</c>.</summary>
+    public const string SearchFiles = "search_files";
+
+    /// <summary>ADR-030 R4 (026-guarded-tool-surface): read-only calls evaluated and
+    /// recorded individually; a write, a delete, or a nested batch rejects the whole
+    /// call before any member executes.</summary>
+    public const string Batch = "batch";
+
+    /// <summary>ADR-031 R3 (026-guarded-tool-surface): mimics <c>rm</c>. Evaluated against
+    /// the <c>delete</c> scope, never the write scope.</summary>
+    public const string DeleteFile = "delete_file";
+
     public static readonly ToolDefinition ListFilesDefinition = new(
         Name: ListFiles,
         Description: "List files and directories under a path inside the allowed read scope.",
@@ -42,9 +54,18 @@ public sealed class ToolRegistry
         }
         """);
 
+    /// <summary>
+    /// ADR-030 R3 (026-guarded-tool-surface): unchanged default (whole-file read, byte for
+    /// byte) with <c>offset</c>/<c>limit</c>/<c>frontmatter_only</c> now optional — omitting
+    /// all three is exactly today's behavior, including setting the write-coordination
+    /// baseline. Supplying any of them makes the read partial, which must never set that
+    /// baseline (FR-010).
+    /// </summary>
     public static readonly ToolDefinition ReadFileDefinition = new(
         Name: ReadFile,
-        Description: "Read the full content of a file inside the allowed read scope.",
+        Description: "Read the content of a file inside the allowed read scope. With no other " +
+            "parameters, returns the whole file. 'offset'/'limit' return a line range " +
+            "(sed -n 'X,Yp'); 'frontmatter_only' returns just the frontmatter block.",
         InputSchemaJson: """
         {
           "type": "object",
@@ -52,6 +73,109 @@ public sealed class ToolRegistry
             "path": {
               "type": "string",
               "description": "File path relative to the repository root."
+            },
+            "offset": {
+              "type": "integer",
+              "description": "1-based first line to return."
+            },
+            "limit": {
+              "type": "integer",
+              "description": "Maximum number of lines to return."
+            },
+            "frontmatter_only": {
+              "type": "boolean",
+              "description": "Return only the frontmatter block. Default false."
+            }
+          },
+          "required": ["path"],
+          "additionalProperties": false
+        }
+        """);
+
+    /// <summary>ADR-030 R1 (026-guarded-tool-surface): mimics <c>grep -rn</c>. Every
+    /// candidate path is evaluated against the read policy before the file is opened; a
+    /// match in an out-of-scope file is omitted silently, never reported.</summary>
+    public static readonly ToolDefinition SearchFilesDefinition = new(
+        Name: SearchFiles,
+        Description: "Search file contents inside the allowed read scope for a regular " +
+            "expression, like 'grep -rn'. Non-backtracking syntax: no lookaround or " +
+            "backreferences.",
+        InputSchemaJson: """
+        {
+          "type": "object",
+          "properties": {
+            "pattern": {
+              "type": "string",
+              "description": "Regular expression. Non-backtracking syntax: no lookaround or backreferences."
+            },
+            "path": {
+              "type": "string",
+              "description": "Optional directory or file prefix to narrow the search, relative to the content root."
+            },
+            "ignore_case": {
+              "type": "boolean",
+              "description": "Case-insensitive matching. Default false."
+            },
+            "max_results": {
+              "type": "integer",
+              "description": "Cap on returned matches. Default 200, maximum 1000."
+            }
+          },
+          "required": ["pattern"],
+          "additionalProperties": false
+        }
+        """);
+
+    /// <summary>ADR-030 R4 (026-guarded-tool-surface): read-only calls only — the enum
+    /// makes a write unrepresentable at the schema level; the executor rejects one again at
+    /// runtime, because the schema is the provider's guarantee and the executor is
+    /// ours.</summary>
+    public static readonly ToolDefinition BatchDefinition = new(
+        Name: Batch,
+        Description: "Run several read-only calls (list_files, read_file, search_files) in " +
+            "one turn. Each is evaluated and recorded individually; a batch containing a " +
+            "write, a delete, or a nested batch runs nothing.",
+        InputSchemaJson: """
+        {
+          "type": "object",
+          "properties": {
+            "calls": {
+              "type": "array",
+              "maxItems": 20,
+              "items": {
+                "type": "object",
+                "properties": {
+                  "tool": {
+                    "type": "string",
+                    "enum": ["list_files", "read_file", "search_files"]
+                  },
+                  "input": {
+                    "type": "object"
+                  }
+                },
+                "required": ["tool", "input"],
+                "additionalProperties": false
+              }
+            }
+          },
+          "required": ["calls"],
+          "additionalProperties": false
+        }
+        """);
+
+    /// <summary>ADR-031 R3 (026-guarded-tool-surface): mimics <c>rm</c>. Evaluated against
+    /// the delete scope, never the write scope; journaled before removal so a later failure
+    /// in the same run restores it.</summary>
+    public static readonly ToolDefinition DeleteFileDefinition = new(
+        Name: DeleteFile,
+        Description: "Delete a file inside the allowed delete scope, like 'rm'.",
+        InputSchemaJson: """
+        {
+          "type": "object",
+          "properties": {
+            "path": {
+              "type": "string",
+              "description": "File to delete, relative to the content root."
             }
           },
           "required": ["path"],
