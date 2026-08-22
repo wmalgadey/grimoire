@@ -9,6 +9,18 @@ status: accepted
 > configuration (portable `policy.json` prefixes); the guarded tool-use loop and
 > deny-by-default policy model themselves are unchanged.
 
+> **Amended by [ADR-030](ADR-030-guarded-retrieval-tool-surface.md)**: the "exactly three
+> file-level tools" decision is widened to six — `search_files`, a read-only `batch`, and
+> optional range parameters on `read_file` are added, and
+> [ADR-031](ADR-031-lint-full-wiki-write-scope.md) adds `delete_file`. The guarded tool-use
+> loop, the deny-by-default policy model, the write journal, and the rule that content
+> semantics stay in instruction files are all unchanged; ADR-006 names adding a tool as the
+> sanctioned form of backend extension.
+>
+> **Amended by [ADR-031](ADR-031-lint-full-wiki-write-scope.md)**: the write journal gains
+> deletion — a journaled delete records the removed content so reverse-order rollback can
+> restore it.
+
 ## Context and Problem Statement
 
 Constitution v1.1.0 (Principle V) requires that all wiki-content judgment be exercised by
