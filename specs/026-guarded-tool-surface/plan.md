@@ -52,7 +52,7 @@ for the agent. Hermetic harness tests, no live LLM calls or API keys.
 | Principle | Assessment | Verdict |
 |---|---|---|
 | I — Domain architecture & hexagonal boundaries | No new external system. Search, ranged read and delete are filesystem operations, covered by the **persistence/local-filesystem exemption** — introducing a port to mock them would violate Principle II. Adapter containment unchanged; no infrastructure package moves. | PASS |
-| II — Pragmatic testing | Integration tests against the real filesystem in temp dirs. Doubles limited to the existing `IModelClient` port fake. No mocking framework. Success criteria split: SC-001..SC-010 deterministic, SC-011..SC-014 evaluation thresholds. | PASS |
+| II — Pragmatic testing | Integration tests against the real filesystem in temp dirs. Doubles limited to the existing `IModelClient` port fake. No mocking framework. Success criteria split: SC-001..SC-010 deterministic; SC-011 and SC-013 evaluation thresholds. SC-012/SC-014 are cut as gates — see "Eval scope" below. | PASS |
 | III — ADR-driven & test-enforced | ADR-030 and ADR-031 drafted and Accepted before `/speckit-tasks`, with bidirectional links on ADR-006/011/016/017/018 and an `index.md` update. Boundary Rules vs Feature-Scoped Invariants classified in each ADR. | PASS |
 | IV — Behavioral & observable | Observability section below enumerates metrics, log events and spans; each derives implementation + deterministic test + CI tasks. Contract tests must run against the production composition root, not a test-only provider. | PASS |
 | V — Agentic core & deterministic harness | The harness gains capability and keeps deciding permission only. **Removing `frontmatter-only` moves judgment in the correct direction**: a mechanical limit on what kind of edit is permissible was the harness deciding wiki content by proxy. What to search for, what to edit, whether to delete, and whether the index needs reconciling are all agent judgment. | PASS |
@@ -137,10 +137,32 @@ classicist behavioral tests in its own implementation phase, never by a reflecti
 | SC-009 policy identity recorded | Deterministic | Hermetic integration | Real filesystem | Any run | Assert version + hash in the task artifact |
 | SC-010 unparseable policy fails before any write | Deterministic | Hermetic integration | Real filesystem | Malformed policy file | Assert wiki unchanged |
 | SC-005b Lint writes to index/log held to format rules | Deterministic | Hermetic integration | Real filesystem | Malformed catalog entry from Lint | Reuses ADR-017 enforcement |
-| SC-011 survey stays under the context guard | Agent judgment | Recorded-replay evaluation, threshold ≥ 90% | Recorded LLM responses (ADR-012) | ≥600-page sampled wiki | Scorer sums content tokens read per run |
-| SC-012 searches are scoped, not unbounded sweeps | Agent judgment | Recorded-replay evaluation, threshold ≥ 90% | Recorded responses | Sampled survey runs | Scorer inspects issued patterns/prefixes |
-| SC-013 authorized body edits address the proposal | Agent judgment | Recorded-replay evaluation, threshold ≥ 90% | Recorded responses | Sampled authorized remediations | Adjudicated scorer; **this is what replaces ADR-016's structural guarantee** |
-| SC-014 median content tokens read drops ≥ 50% | Agent judgment | Evaluation against pre-feature baseline | Recorded responses | Same fixture before/after | Baseline captured before implementation begins |
+| SC-011 survey stays under the context guard | Agent judgment | Recorded-replay evaluation, threshold ≥ 90% | Recorded LLM responses (ADR-012) | `lint-at-scale` — the existing `lint-seeded-defects` wiki plus generated filler pages | Scorer sums content tokens read per run |
+| SC-013 authorized body edits address the proposal | Agent judgment | Recorded-replay evaluation, threshold ≥ 90% | Recorded responses | Reuses `lint-seeded-defects` | Adjudicated scorer; **this is what replaces ADR-016's structural guarantee** |
+| SC-012 searches are scoped, not unbounded sweeps | *Not evaluated* | — | — | — | **Cut.** Measures means, not ends: SC-011 already tests the outcome. A criterion that pins *how* the agent reaches it ossifies agent behaviour for no added assurance |
+| SC-014 median content tokens read drops ≥ 50% | *Not evaluated* | One-off measurement, recorded in the PR | — | Same fixture before/after | **Cut as a gate.** `wiki.read.invocations_total{shape}` answers this directly; a recurring eval adds recording cost without adding information the metric lacks |
+
+### Eval scope — two scenarios, no bespoke corpus
+
+This feature adds **two** eval scenarios, not four, and **no hand-authored fixture**. The
+reasoning is recorded here because the first draft of this plan got it wrong in a way worth
+naming: it proposed four criteria and a "≥600-page sampled wiki", which would have been roughly
+70× the largest fixture in the repo (existing fixtures hold 1–9 markdown files) and taken Lint
+from 5 eval scenarios to 9.
+
+- **Fixture**: `lint-at-scale` extends the existing `lint-seeded-defects` wiki with filler pages
+  **generated at fixture-build time**, and the eval configuration lowers the context budget so
+  the fixture exceeds it. The property under test is "narrows instead of reading everything",
+  which reproduces wherever wiki > budget — the absolute page count is irrelevant to it. No
+  corpus is authored or committed.
+- **SC-012 and SC-014 are cut** for the reasons in the table above. SC-014 survives as a
+  one-off before/after number recorded in the implementation PR, not as a CI gate.
+- **SC-013 is not negotiable down**: it is the only remaining assurance behind ADR-016's
+  superseded structural guarantee. If eval scope needs to shrink further, SC-011 goes first.
+
+A standing rule capping eval-suite growth is out of scope here and belongs to #136 — Principle
+II currently *mandates* percentage thresholds for agent-judgment criteria, so changing that
+shape is a constitution amendment, not a per-feature choice.
 
 **Composition-root rule (Principle IV).** Every observability contract test obtains its
 signals from the production telemetry registration, sampler and exporter pipeline — never a
@@ -238,7 +260,7 @@ backend/src/
 backend/tests/
 ├── Grimoire.ArchTests/                # Phase 0 boundary rules (3, each Red/Green probed)
 ├── Grimoire.IntegrationTests/         # SC-001..SC-010, SC-005a/b
-└── Grimoire.AgentEvals/               # SC-011..SC-014
+└── Grimoire.AgentEvals/               # SC-011, SC-013 (two scenarios; generated fixture)
 ```
 
 **Structure Decision**: the existing backend layout is unchanged. No new project, assembly or
