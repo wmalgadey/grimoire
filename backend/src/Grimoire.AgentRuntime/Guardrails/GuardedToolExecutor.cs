@@ -445,28 +445,9 @@ public sealed class GuardedToolExecutor
             return RecordSearchPatternRejected(pattern, "pattern_too_long", turn);
         }
 
-        // ignore_case is folded into the pattern itself (an inline `(?i)` modifier) rather
-        // than into the RegexOptions argument, so that argument stays the literal constant
-        // SearchRegexOptions at every call site (T020) — SearchRegexBoundaryRuleTests
-        // verifies the NonBacktracking bit by decoding a compile-time constant off the IL,
-        // which a runtime-computed `SearchRegexOptions | (ignoreCase ? ... : ...)` would defeat.
-        var ignoreCase = TryGetBoolProperty(inputJson, "ignore_case", out var ignoreCaseValue) && ignoreCaseValue;
-        var effectivePattern = ignoreCase ? "(?i)" + pattern : pattern;
-
-        Regex regex;
-        try
+        if (!TryBuildSearchRegex(inputJson, pattern, out var regex, out var rejectionReason))
         {
-            regex = new Regex(effectivePattern, SearchRegexOptions, _searchTimeBudget);
-        }
-        catch (NotSupportedException)
-        {
-            // The NonBacktracking engine rejects constructs it cannot run without
-            // backtracking (lookaround, backreferences) at construction time (ADR-030 R2).
-            return RecordSearchPatternRejected(pattern, "unsupported_syntax", turn);
-        }
-        catch (ArgumentException)
-        {
-            return RecordSearchPatternRejected(pattern, "invalid_pattern", turn);
+            return RecordSearchPatternRejected(pattern, rejectionReason!, turn);
         }
 
         var hasPathPrefix = TryGetStringProperty(inputJson, "path", out var relativePathPrefix) &&
@@ -489,126 +470,188 @@ public sealed class GuardedToolExecutor
         var cap = Math.Clamp(requestedMaxResults, 1, SearchHardResultCeiling);
 
         using var scanActivity = _instrumentation.StartSearchScanActivity(_taskId, turn);
+        var scan = ScanCandidateFiles(searchRoot, regex!, cap, cancellationToken);
 
+        var outcome = scan.Truncated ? "truncated" : scan.TimedOut ? "timed_out" : "completed";
+        _instrumentation.RecordSearchInvocation(_taskId, outcome, scan.Matches.Count, scan.FilesScanned, turn);
+
+        scanActivity?.SetTag("task_id", _taskId);
+        scanActivity?.SetTag("pattern_length", pattern.Length);
+        scanActivity?.SetTag("path_prefix", hasPathPrefix ? relativePathPrefix : ".");
+        scanActivity?.SetTag("files_scanned", scan.FilesScanned);
+        scanActivity?.SetTag("matches", scan.Matches.Count);
+        scanActivity?.SetTag("truncated", scan.Truncated);
+        scanActivity?.SetTag("outcome", outcome);
+
+        return BuildSearchResult(scan, pattern.Length, cap, turn);
+    }
+
+    /// <summary>
+    /// ignore_case is folded into the pattern itself (an inline <c>(?i)</c> modifier) rather
+    /// than into the RegexOptions argument, so that argument stays the literal constant
+    /// <see cref="SearchRegexOptions"/> at every call site (T020) —
+    /// SearchRegexBoundaryRuleTests verifies the NonBacktracking bit by decoding a
+    /// compile-time constant off the IL, which a runtime-computed
+    /// <c>SearchRegexOptions | (ignoreCase ? ... : ...)</c> would defeat.
+    /// </summary>
+    private bool TryBuildSearchRegex(string inputJson, string pattern, out Regex? regex, out string? rejectionReason)
+    {
+        var ignoreCase = TryGetBoolProperty(inputJson, "ignore_case", out var ignoreCaseValue) && ignoreCaseValue;
+        var effectivePattern = ignoreCase ? "(?i)" + pattern : pattern;
+
+        try
+        {
+            regex = new Regex(effectivePattern, SearchRegexOptions, _searchTimeBudget);
+            rejectionReason = null;
+            return true;
+        }
+        catch (NotSupportedException)
+        {
+            // The NonBacktracking engine rejects constructs it cannot run without
+            // backtracking (lookaround, backreferences) at construction time (ADR-030 R2).
+            regex = null;
+            rejectionReason = "unsupported_syntax";
+            return false;
+        }
+        catch (ArgumentException)
+        {
+            regex = null;
+            rejectionReason = "invalid_pattern";
+            return false;
+        }
+    }
+
+    private sealed record SearchScanResult(List<string> Matches, int FilesScanned, bool Truncated, bool TimedOut);
+
+    private SearchScanResult ScanCandidateFiles(string searchRoot, Regex regex, int cap, CancellationToken cancellationToken)
+    {
         var matches = new List<string>();
         var filesScanned = 0;
         var truncated = false;
         var timedOut = false;
         var stopwatch = Stopwatch.StartNew();
 
-        // `path` may name a single file or a directory to recurse into (contracts/
-        // guarded-tool-surface.md: "directory or file prefix").
-        IEnumerable<string> candidateFiles = File.Exists(searchRoot)
-            ? [ResolvePhysicalPathInRepository(searchRoot)]
-            : Directory.Exists(searchRoot)
-                ? Directory.EnumerateFiles(searchRoot, "*", SearchOption.AllDirectories).Select(ResolvePhysicalPathInRepository)
-                : [];
+        var candidateFiles = EnumerateSearchCandidates(searchRoot).OrderBy(f => f, StringComparer.Ordinal);
 
+        foreach (var candidateFile in candidateFiles)
         {
-            var orderedCandidateFiles = candidateFiles.OrderBy(f => f, StringComparer.Ordinal);
+            cancellationToken.ThrowIfCancellationRequested();
 
-            foreach (var candidateFile in orderedCandidateFiles)
+            if (stopwatch.Elapsed >= _searchTimeBudget)
             {
-                cancellationToken.ThrowIfCancellationRequested();
+                timedOut = true;
+                break;
+            }
 
-                if (stopwatch.Elapsed >= _searchTimeBudget)
-                {
-                    timedOut = true;
-                    break;
-                }
+            // T016 (ADR-030 R1): evaluated per candidate path against the read policy — a
+            // denied file is skipped, never reported as a denial.
+            if (!_policy.Evaluate(candidateFile, isWrite: false).IsAllowed)
+            {
+                continue;
+            }
 
-                // T016 (ADR-030 R1): evaluated per candidate path against the read policy —
-                // a denied file is skipped, never reported as a denial.
-                if (!_policy.Evaluate(candidateFile, isWrite: false).IsAllowed)
-                {
-                    continue;
-                }
+            filesScanned++;
 
-                filesScanned++;
+            var (fileTruncated, fileTimedOut) = ScanOneFile(candidateFile, regex, cap, stopwatch, matches);
+            truncated |= fileTruncated;
+            timedOut |= fileTimedOut;
 
-                var lineNumber = 0;
-                try
-                {
-                    foreach (var line in File.ReadLines(candidateFile))
-                    {
-                        lineNumber++;
-
-                        if (stopwatch.Elapsed >= _searchTimeBudget)
-                        {
-                            timedOut = true;
-                            break;
-                        }
-
-                        bool isMatch;
-                        try
-                        {
-                            isMatch = regex.IsMatch(line);
-                        }
-                        catch (RegexMatchTimeoutException)
-                        {
-                            timedOut = true;
-                            break;
-                        }
-
-                        if (!isMatch)
-                        {
-                            continue;
-                        }
-
-                        var relativeMatchPath = Path.GetRelativePath(_repositoryRoot, candidateFile).Replace('\\', '/');
-                        matches.Add($"{relativeMatchPath}:{lineNumber}:{line}");
-
-                        if (matches.Count >= cap)
-                        {
-                            truncated = true;
-                            break;
-                        }
-                    }
-                }
-                catch (IOException)
-                {
-                    // Unreadable (binary, locked, deleted mid-scan) — skip this file rather
-                    // than fail the whole search.
-                }
-
-                if (truncated || timedOut)
-                {
-                    break;
-                }
+            if (truncated || timedOut)
+            {
+                break;
             }
         }
 
         stopwatch.Stop();
+        return new SearchScanResult(matches, filesScanned, truncated, timedOut);
+    }
 
-        var outcome = truncated ? "truncated" : timedOut ? "timed_out" : "completed";
-        _instrumentation.RecordSearchInvocation(_taskId, outcome, matches.Count, filesScanned, turn);
+    /// <summary>
+    /// `path` may name a single file or a directory to recurse into (contracts/
+    /// guarded-tool-surface.md: "directory or file prefix").
+    /// </summary>
+    private IEnumerable<string> EnumerateSearchCandidates(string searchRoot)
+    {
+        if (File.Exists(searchRoot))
+        {
+            return [ResolvePhysicalPathInRepository(searchRoot)];
+        }
 
-        scanActivity?.SetTag("task_id", _taskId);
-        scanActivity?.SetTag("pattern_length", pattern.Length);
-        scanActivity?.SetTag("path_prefix", hasPathPrefix ? relativePathPrefix : ".");
-        scanActivity?.SetTag("files_scanned", filesScanned);
-        scanActivity?.SetTag("matches", matches.Count);
-        scanActivity?.SetTag("truncated", truncated);
-        scanActivity?.SetTag("outcome", outcome);
+        if (Directory.Exists(searchRoot))
+        {
+            return Directory.EnumerateFiles(searchRoot, "*", SearchOption.AllDirectories).Select(ResolvePhysicalPathInRepository);
+        }
 
+        return [];
+    }
+
+    private (bool Truncated, bool TimedOut) ScanOneFile(string candidateFile, Regex regex, int cap, Stopwatch stopwatch, List<string> matches)
+    {
+        var lineNumber = 0;
+        try
+        {
+            foreach (var line in File.ReadLines(candidateFile))
+            {
+                lineNumber++;
+
+                if (stopwatch.Elapsed >= _searchTimeBudget)
+                {
+                    return (Truncated: false, TimedOut: true);
+                }
+
+                bool isMatch;
+                try
+                {
+                    isMatch = regex.IsMatch(line);
+                }
+                catch (RegexMatchTimeoutException)
+                {
+                    return (Truncated: false, TimedOut: true);
+                }
+
+                if (!isMatch)
+                {
+                    continue;
+                }
+
+                var relativeMatchPath = Path.GetRelativePath(_repositoryRoot, candidateFile).Replace('\\', '/');
+                matches.Add($"{relativeMatchPath}:{lineNumber}:{line}");
+
+                if (matches.Count >= cap)
+                {
+                    return (Truncated: true, TimedOut: false);
+                }
+            }
+        }
+        catch (IOException)
+        {
+            // Unreadable (binary, locked, deleted mid-scan) — skip this file rather than
+            // fail the whole search.
+        }
+
+        return (Truncated: false, TimedOut: false);
+    }
+
+    private ToolExecutionResult BuildSearchResult(SearchScanResult scan, int patternLength, int cap, int turn)
+    {
         var result = new StringBuilder();
-        foreach (var match in matches)
+        foreach (var match in scan.Matches)
         {
             result.AppendLine(match);
         }
 
-        if (truncated)
+        if (scan.Truncated)
         {
-            _instrumentation.LogSearchTruncated(_taskId, pattern.Length, cap, turn);
+            _instrumentation.LogSearchTruncated(_taskId, patternLength, cap, turn);
             result.AppendLine($"[truncated: showing the first {cap} matches]");
         }
-        else if (timedOut)
+        else if (scan.TimedOut)
         {
-            _instrumentation.LogSearchTimedOut(_taskId, _searchTimeBudget.TotalMilliseconds, filesScanned, turn);
-            result.AppendLine($"[incomplete: search time budget exceeded after scanning {filesScanned} file(s)]");
+            _instrumentation.LogSearchTimedOut(_taskId, _searchTimeBudget.TotalMilliseconds, scan.FilesScanned, turn);
+            result.AppendLine($"[incomplete: search time budget exceeded after scanning {scan.FilesScanned} file(s)]");
         }
 
-        if (matches.Count == 0 && !timedOut)
+        if (scan.Matches.Count == 0 && !scan.TimedOut)
         {
             return new ToolExecutionResult(false, "No matches found.");
         }
