@@ -10,7 +10,8 @@ only.
   [`mutation-test-docker.sh`](mutation-test-docker.sh) runs the same thing in a container
   built from [`mutation-test.Dockerfile`](mutation-test.Dockerfile), for hosts without the
   .NET SDK and Bun; [`mutation-report-index.py`](mutation-report-index.py) builds the index
-  page over the individual reports.
+  page over the individual reports and the PR comment `.github/workflows/mutation.yml`
+  maintains for the fast tier.
 - [`ci/`](ci) — helpers the workflows in `.github/workflows/` call.
 - [`nim/`](nim) — the LiteLLM/NVIDIA NIM proxy used to run agent evals without an
   Anthropic subscription (`specs/007-eval-tests-nim-endpoint/quickstart.md`).
