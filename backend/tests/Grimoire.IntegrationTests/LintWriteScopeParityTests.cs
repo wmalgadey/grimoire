@@ -145,12 +145,20 @@ public class LintWriteScopeParityTests
                 writeLocksDir: Path.Combine(root, "write-locks"),
                 logPath: logPath);
 
+            // Establish the compare-and-swap read baseline first (ADR-015) — otherwise
+            // the write is denied write_conflict_stale_read before the write-lock guard
+            // ever reaches the log-format check this test means to exercise.
+            await executor.ExecuteAsync(
+                ToolRegistry.ReadFile,
+                JsonSerializer.Serialize(new { path = "log.md" }),
+                turn: 1, CancellationToken.None);
+
             // Rewrites the file instead of prepending to it — violates the append-only
             // invariant regardless of write mode.
             var result = await executor.ExecuteAsync(
                 ToolRegistry.WriteFile,
                 JsonSerializer.Serialize(new { path = "log.md", content = "## [2026-08-02] Replaced everything | Lint\n\nGone.\n" }),
-                turn: 1, CancellationToken.None);
+                turn: 2, CancellationToken.None);
 
             Assert.True(result.IsError);
             Assert.Equal("log_entry_not_prepended", Assert.Single(executor.Denials).Reason);
