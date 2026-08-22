@@ -62,6 +62,7 @@ public sealed class GuardedToolExecutor
     private readonly List<DeniedActionRecord> _denials = [];
     private readonly List<string> _touchedPaths = [];
     private readonly List<string> _createdPaths = [];
+    private readonly List<(string Path, int Turn)> _deletedPaths = [];
 
     /// <param name="writeLocksDir">
     /// ADR-015: base directory for cross-process write-coordination lock files. When
@@ -153,6 +154,15 @@ public sealed class GuardedToolExecutor
     public IReadOnlyList<string> CreatedPaths => _createdPaths;
 
     /// <summary>
+    /// ADR-031 R4 (026-guarded-tool-surface): paths this run successfully deleted, paired
+    /// with the turn each deletion happened on. The turn is carried because a later
+    /// rollback (triggered by run failure, after the turn loop has already ended) needs it
+    /// to correlate its <c>wiki.page.delete_rolled_back</c> log event back to the turn the
+    /// original deletion occurred on.
+    /// </summary>
+    public IReadOnlyList<(string Path, int Turn)> DeletedPaths => _deletedPaths;
+
+    /// <summary>
     /// 025-agent-owned-log (ADR-028, FR-012a): the run's allowed <em>wiki-content</em>
     /// writes — <see cref="TouchedPaths"/> minus the canonical activity-log path. Pure set
     /// arithmetic over the harness's own record of writes it allowed: no file is read, no
@@ -205,6 +215,8 @@ public sealed class GuardedToolExecutor
                 return await ExecuteWriteFileAsync(inputJson, turn, cancellationToken);
             case ToolRegistry.SearchFiles:
                 return await ExecuteSearchFilesAsync(inputJson, turn, cancellationToken);
+            case ToolRegistry.DeleteFile:
+                return await ExecuteDeleteFileAsync(inputJson, turn, cancellationToken);
             default:
                 return new ToolExecutionResult(true, $"Unknown tool: {toolName}");
         }
@@ -417,6 +429,55 @@ public sealed class GuardedToolExecutor
         }
 
         return new ToolExecutionResult(false, $"Written: {relativePath}");
+    }
+
+    // ── delete_file ──────────────────────────────────────────────────────────────
+    // ADR-031 R3/R4 (026-guarded-tool-surface): mimics `rm`. Evaluated against the
+    // **delete** scope (SafetyPolicy.EvaluateDelete), never the write scope — an agent
+    // whose policy grants read-write on a prefix gains no deletion from it (R3). Journaled
+    // before removal so a run that deletes and then fails restores it in the same
+    // reverse-order rollback that restores an overwrite (R4, data-model.md's rollback
+    // table: delete's prior state is the deleted content itself).
+
+    private async Task<ToolExecutionResult> ExecuteDeleteFileAsync(
+        string inputJson, int turn, CancellationToken cancellationToken)
+    {
+        if (!TryGetStringProperty(inputJson, "path", out var relativePath) ||
+            string.IsNullOrWhiteSpace(relativePath))
+        {
+            return new ToolExecutionResult(true, "Missing required property: path");
+        }
+
+        var canonical = Canonicalize(relativePath);
+        var policyResult = _policy.EvaluateDelete(canonical);
+
+        if (!policyResult.IsAllowed)
+        {
+            return RecordDenial(ToolRegistry.DeleteFile, relativePath, canonical, policyResult.DenialReason!, turn);
+        }
+
+        if (!File.Exists(canonical))
+        {
+            return new ToolExecutionResult(true, $"File not found: {relativePath}");
+        }
+
+        using var deleteActivity = _instrumentation.StartDeleteFileActivity(_taskId, canonical, turn);
+
+        // Journal before removal: the recorded prior content is what a later rollback in
+        // this run restores the file from.
+        await _journal.RecordAsync(canonical, cancellationToken);
+        File.Delete(canonical);
+
+        _touchedPaths.Add(canonical);
+        _deletedPaths.Add((canonical, turn));
+        _instrumentation.RecordAllowed(_taskId, ToolRegistry.DeleteFile, canonical, turn);
+        _instrumentation.RecordDeletion(_taskId, "applied", turn);
+        _instrumentation.LogPageDeleted(_taskId, canonical, turn);
+
+        deleteActivity?.SetTag("journaled", true);
+        deleteActivity?.SetTag("outcome", "applied");
+
+        return new ToolExecutionResult(false, $"Deleted: {relativePath}");
     }
 
     // ── search_files ─────────────────────────────────────────────────────────────

@@ -217,6 +217,10 @@ internal sealed class LintIntentHandler : IAgentIntentHandler
     private readonly RunEventEmitter _runEvents;
     private readonly ILoggerFactory _loggerFactory;
     private readonly ILogger _logger;
+    private readonly WriteJournal _journal = new();
+
+    private GuardedToolExecutor? _executor;
+    private LintToolCallInstrumentation? _toolInstrumentation;
 
     public LintIntentHandler(
         AgentProfile profile,
@@ -264,15 +268,16 @@ internal sealed class LintIntentHandler : IAgentIntentHandler
     {
         var modelClient = ModelClientFactory.Create(_loggerFactory, _profile.ModelEnvVarNames);
 
-        var journal = new WriteJournal();
+        _toolInstrumentation = new LintToolCallInstrumentation(_loggerFactory.CreateLogger<GuardedToolExecutor>());
         var executor = new GuardedToolExecutor(
             instructions.Policy.Policy,
-            journal,
+            _journal,
             _options.WikiRoot,
             taskId: _options.RunId,
             registry: _profile.ToolRegistry,
-            instrumentation: new LintToolCallInstrumentation(_loggerFactory.CreateLogger<GuardedToolExecutor>()),
+            instrumentation: _toolInstrumentation,
             writeLocksDir: _options.WriteLocksDir);
+        _executor = executor;
 
         var loop = new AgentLoop(
             modelClient,
@@ -319,13 +324,42 @@ internal sealed class LintIntentHandler : IAgentIntentHandler
         return 0;
     }
 
-    public Task<string> DescribeUnhandledFailureAsync(Exception exception, CancellationToken cancellationToken)
+    public async Task<string> DescribeUnhandledFailureAsync(Exception exception, CancellationToken cancellationToken)
     {
+        await RollbackDeletedPagesAsync(cancellationToken);
+
         if (exception is AgentLoopCapException capEx)
-            return Task.FromResult(capEx.Message);
+            return capEx.Message;
 
         _logger.LogError(exception, "Lint agent failed for run {RunId}.", _options.RunId);
-        return Task.FromResult(ErrorSanitizer.Sanitize(exception.Message, "Unknown lint error."));
+        return ErrorSanitizer.Sanitize(exception.Message, "Unknown lint error.");
+    }
+
+    /// <summary>
+    /// ADR-031 R4/FR-015a (026-guarded-tool-surface): a run that fails after deleting a
+    /// page must restore it. <see cref="WriteJournal.RollbackAsync"/> restores every
+    /// journaled write and deletion uniformly (it does not distinguish the two); only the
+    /// restored paths that were this run's own deletions get the
+    /// <c>wiki.page.delete_rolled_back</c> signal — plan.md declares no generic rollback
+    /// event for Lint, unlike Ingest's <c>ingest_agent.rollback</c>.
+    /// </summary>
+    private async Task RollbackDeletedPagesAsync(CancellationToken cancellationToken)
+    {
+        if (_executor is null || _toolInstrumentation is null)
+        {
+            return;
+        }
+
+        var outcomes = await _journal.RollbackAsync(cancellationToken);
+
+        foreach (var (path, turn) in _executor.DeletedPaths)
+        {
+            if (outcomes.TryGetValue(path, out var restored) && restored)
+            {
+                _toolInstrumentation.RecordDeletion(_options.RunId, "rolled_back", turn);
+                _toolInstrumentation.LogPageDeleteRolledBack(_options.RunId, path, turn);
+            }
+        }
     }
 }
 
@@ -358,6 +392,10 @@ internal sealed class RemediationExecutionIntentHandler : IAgentIntentHandler
     private readonly RunEventEmitter _runEvents;
     private readonly ILoggerFactory _loggerFactory;
     private readonly ILogger _logger;
+    private readonly WriteJournal _journal = new();
+
+    private GuardedToolExecutor? _executor;
+    private LintToolCallInstrumentation? _toolInstrumentation;
 
     public RemediationExecutionIntentHandler(
         AgentProfile profile,
@@ -405,15 +443,16 @@ internal sealed class RemediationExecutionIntentHandler : IAgentIntentHandler
     {
         var modelClient = ModelClientFactory.Create(_loggerFactory, _profile.ModelEnvVarNames);
 
-        var journal = new WriteJournal();
+        _toolInstrumentation = new LintToolCallInstrumentation(_loggerFactory.CreateLogger<GuardedToolExecutor>());
         var executor = new GuardedToolExecutor(
             instructions.Policy.Policy,
-            journal,
+            _journal,
             _options.WikiRoot,
             taskId: _options.TaskId,
             registry: _profile.ToolRegistry,
-            instrumentation: new LintToolCallInstrumentation(_loggerFactory.CreateLogger<GuardedToolExecutor>()),
+            instrumentation: _toolInstrumentation,
             writeLocksDir: _options.WriteLocksDir);
+        _executor = executor;
 
         var loop = new AgentLoop(
             modelClient,
@@ -512,13 +551,38 @@ internal sealed class RemediationExecutionIntentHandler : IAgentIntentHandler
         return 0;
     }
 
-    public Task<string> DescribeUnhandledFailureAsync(Exception exception, CancellationToken cancellationToken)
+    public async Task<string> DescribeUnhandledFailureAsync(Exception exception, CancellationToken cancellationToken)
     {
+        await RollbackDeletedPagesAsync(cancellationToken);
+
         if (exception is AgentLoopCapException capEx)
-            return Task.FromResult(capEx.Message);
+            return capEx.Message;
 
         _logger.LogError(exception, "Remediation-execution agent failed for task {TaskId}.", _options.TaskId);
-        return Task.FromResult(ErrorSanitizer.Sanitize(exception.Message, "Unknown remediation-execution error."));
+        return ErrorSanitizer.Sanitize(exception.Message, "Unknown remediation-execution error.");
+    }
+
+    /// <summary>
+    /// ADR-031 R4/FR-015a (026-guarded-tool-surface): mirrors
+    /// <c>LintIntentHandler.RollbackDeletedPagesAsync</c> — see its doc comment.
+    /// </summary>
+    private async Task RollbackDeletedPagesAsync(CancellationToken cancellationToken)
+    {
+        if (_executor is null || _toolInstrumentation is null)
+        {
+            return;
+        }
+
+        var outcomes = await _journal.RollbackAsync(cancellationToken);
+
+        foreach (var (path, turn) in _executor.DeletedPaths)
+        {
+            if (outcomes.TryGetValue(path, out var restored) && restored)
+            {
+                _toolInstrumentation.RecordDeletion(_options.TaskId, "rolled_back", turn);
+                _toolInstrumentation.LogPageDeleteRolledBack(_options.TaskId, path, turn);
+            }
+        }
     }
 }
 

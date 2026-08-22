@@ -146,8 +146,10 @@ public interface IToolCallInstrumentation
     /// Shares <see cref="StartSearchScanActivity"/>'s resolved parenting finding: the actual
     /// ambient span during dispatch is <c>*_agent.model_turn</c> (kept open by
     /// <c>AgentLoop</c> across the whole tool-dispatch call), not <c>*_agent.tool_call</c>
-    /// (only live after <c>RecordAllowed</c>/<c>RecordDenied</c> return). Phase 4 (T045)
-    /// should declare and implement this span as a child of <c>*_agent.model_turn</c>.
+    /// (only live after <c>RecordAllowed</c>/<c>RecordDenied</c> return). Implemented as a
+    /// child of <c>*_agent.model_turn</c> (T045; verified by
+    /// <c>LintDeletionObservabilityTests</c>' T047 span-parenting test), matching
+    /// <see cref="StartBatchActivity"/>'s already-correct declared parent.
     /// </summary>
     Activity? StartDeleteFileActivity(string taskId, string path, int turn) => null;
 }
