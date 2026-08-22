@@ -172,7 +172,7 @@ covering it will be rejected in review.
 
 Not every markdown file in this repo carries the same authority. Before citing or adding
 to a document, check its role in the Document Map in [`CLAUDE.md`](CLAUDE.md) — for
-example, `docs/decision-context-overview.md` is background/vision material, not a binding
+example, `docs/foundational/decision-context-overview.md` is background/vision material, not a binding
 requirement source; only the constitution and Accepted ADRs are binding.
 
 ## Codebase complexity badges
