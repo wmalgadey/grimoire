@@ -38,7 +38,7 @@
 - [x] Every added capability is specified as passing through the guarded tool boundary
       (FR-022) — no shell, no second boundary
 - [x] ADRs expected to be touched are named in Dependencies (ADR-006, ADR-011, ADR-015,
-      ADR-016 amendment, ADR-018) for the `/speckit-plan` ADR pass
+      ADR-016 — superseded, not amended — ADR-018) for the `/speckit-plan` ADR pass
 
 ## Notes
 
