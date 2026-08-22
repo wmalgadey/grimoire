@@ -29,7 +29,7 @@ relationships exist.
 | [ADR-004](ADR-004-credential-scoping.md) | Credential Scoping for the LLM API Key | Accepted | — | Amended by ADR-009 |
 | [ADR-005](ADR-005-observability-backend.md) | Observability Backend (Local and CI) | Accepted | — | — |
 | [ADR-006](ADR-006-agent-tool-loop-guarded-boundary.md) | Agent Tool-Use Loop and Guarded Tool Boundary | Accepted | — | Amended by ADR-009 |
-| [ADR-007](ADR-007-agent-instruction-surface.md) | Agent Instruction Surface — Single System Prompt and Versioned Default User Prompt | Accepted | — | Amended by ADR-009, ADR-022 |
+| [ADR-007](ADR-007-agent-instruction-surface.md) | Agent Instruction Surface — Single System Prompt and Versioned Default User Prompt | Accepted | — | Amended by ADR-009, ADR-022, ADR-029 (harness operator turns only) |
 | [ADR-008](ADR-008-agent-event-channel-run-supervision.md) | Agent Event Channel, Run Supervision, and Persistent Run Queue | Accepted | Amends ADR-002 | Amended by ADR-009, ADR-025 |
 | [ADR-009](ADR-009-runtime-path-configuration.md) | Explicit Runtime Path Configuration and Consolidated Data Directory | Accepted | Supersedes ADR-003 (in part); amends ADR-002, ADR-004, ADR-006, ADR-007, ADR-008 | Superseded in part by ADR-022 |
 | [ADR-010](ADR-010-hexagonal-ports-adapter-namespaces.md) | Hexagonal Ports and Adapter Namespaces for External Systems | Accepted | — | Amended by ADR-011 (`IModelClient` port row only) |
@@ -51,6 +51,7 @@ relationships exist.
 | [ADR-026](ADR-026-hub-api-error-contract-and-frontend-error-presentation.md) | Hub API Error Response Contract and Shared Frontend Error Presentation | Accepted | Extends ADR-020 (HTTP counterpart to the CLI failure contract), ADR-013 (registers `Grimoire.Hub.ApiErrors` in the N1 ownership map) — no supersession | — |
 | [ADR-027](ADR-027-gitversion-github-flow.md) | Version Numbers Computed by GitVersion, Branching by GitHub Flow | Accepted | — | — |
 | [ADR-028](ADR-028-agent-owned-activity-log-prepend-ordering.md) | Agent-Owned Activity Log — Prepend-Only Ordering and Removal of Harness Authorship | Accepted | Amends ADR-017 (`log.md` ordering and backstop bullet only) | — |
+| [ADR-029](ADR-029-harness-operator-turn-delimiter.md) | Harness Operator Turns Are Delimited Inside the User Channel | Accepted | Amends ADR-007 (adds the harness operator turn to the instruction surface) | — |
 
 ## Maintenance
 
