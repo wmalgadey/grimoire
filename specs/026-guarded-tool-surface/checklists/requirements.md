@@ -32,16 +32,22 @@
 ## Constitution Alignment (project-specific)
 
 - [x] Success criteria split per Principle II: deterministic harness guarantees at 100%
-      (SC-001..SC-010), agent-judgment outcomes as evaluation thresholds (SC-011..SC-014)
+      (SC-001..SC-010), agent-judgment outcomes as evaluation thresholds (SC-011, SC-013 —
+      SC-012/SC-014 withdrawn as criteria, 2026-08-22 clarify session)
 - [x] No wiki-content judgment specified as deterministic backend behavior (FR-023 states
       the boundary explicitly)
 - [x] Every added capability is specified as passing through the guarded tool boundary
       (FR-022) — no shell, no second boundary
 - [x] ADRs expected to be touched are named in Dependencies (ADR-006, ADR-011, ADR-015,
-      ADR-016 amendment, ADR-018) for the `/speckit-plan` ADR pass
+      ADR-016 — superseded, not amended — ADR-018) for the `/speckit-plan` ADR pass
 
 ## Notes
 
+- **Eval scope reduced 2026-08-22, via `/speckit-clarify`**: SC-012 and SC-014 withdrawn as
+  criteria, leaving two agent-judgment criteria (SC-011, SC-013). Their numbers are retained
+  in spec.md with a withdrawal note so existing references resolve. This keeps the Definition
+  of Done satisfiable — it requires an evaluation test for *every* agent-judgment criterion in
+  the spec, so a criterion the plan does not evaluate must not remain one.
 - All items pass as of the `/speckit-clarify` session on 2026-08-22. The three original
   [NEEDS CLARIFICATION] markers are resolved, plus two more the session surfaced:
 

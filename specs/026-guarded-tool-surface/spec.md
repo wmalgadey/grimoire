@@ -17,6 +17,7 @@
 - Q: Should the Lint agent also be able to write the two reserved files — the wiki index and the activity log? → A: Yes (option A). Full access includes them; the exclusion in today's Lint policy goes away. Ingest already writes both, and the format rules for each (ADR-017 entry format, ADR-028 prepend ordering) are enforced independently of which agent writes them.
 - Q: Should a Lint run be able to create new pages and delete existing ones, or only edit pages that already exist? → A: Full access — create, edit and delete (option C). The `frontmatter-only` limit was an implementation detail on the way to 1.0, not a designed boundary. Lint already acts on the wiki when it judges action is warranted; a remediation task is what it raises when it decides to leave an action to the user, not a permission it must obtain. Git history is the safety net for destructive change. Verbatim, as recorded: *"der lint agent hat vollen zugriff auf das wiki (der frontmatter only zugriff war nur ein implementierungsdetail auf dem weg zu Verision 1.0). der lint agent kann änderungen auch schon durchführen wenn er es für notwendig sieht. dinge, die er dem benutzer als \"aktion\" überlässt sollen als remediation tasks im ui angezeigt werden. […] we still have git as a major safety net"*
 - Q: Should the survey scope and the execution scope live in two separate policy files, or in one file that declares both? → A: Neither — they are not separated at all. Lint and remediation are the same agent performing the same action; the human in the loop is a workflow step, not a permission boundary, and the agent has already judged what the wiki needs. One scope governs both modes. Combined with the answer above, this supersedes ADR-016's frontmatter-only decision rather than amending it: the unattended survey run holds the same wiki-wide write scope as an authorized remediation execution.
+- Q: Should the four agent-judgment eval scenarios (SC-011–SC-014) stay as four gating criteria, or should the suite be reduced? → A: Reduced (option A). SC-011 is reworded to drop the "≥600-page" fixture requirement — the property under test is "wiki exceeds the context guard," satisfiable by lowering the eval budget rather than growing a corpus, which as drafted would have been ~70x the largest existing fixture in this repo. SC-012 and SC-014 are withdrawn as gating criteria (numbers retained, with a withdrawal note, so existing cross-references stay resolvable): SC-012 measured means rather than ends (SC-011 already tests the outcome); SC-014 is a measurement a metric already reports directly, not a judgment call. Decided earlier in this session, restated here through /speckit-clarify because a requirements change belongs in a clarify session, not a raw edit made in reaction to planning-phase feedback — the same rule this session now records for the process itself (see dev-experience.md / CLAUDE.md on stacked-PR delivery).
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -76,9 +77,10 @@ the finding. A human authorizing a remediation is a workflow step, not the momen
 agent acquires authority.
 
 **Independent Test**: Have Lint write a page body during a survey run, and separately
-have an authorized remediation execution do the same. Both succeed, and both are refused
-the things no scope reaches (reserved files, and whatever FR-021 settles about creating
-or deleting pages).
+have an authorized remediation execution do the same. Both succeed, both may create or
+delete a page and write the index and activity log (FR-016a, FR-021a), and both are
+refused only what FR-021 puts genuinely out of reach: anything outside the wiki content
+root.
 
 **Acceptance Scenarios**:
 
@@ -90,10 +92,10 @@ or deleting pages).
 3. **Given** any Lint run in either mode, **When** it attempts to write anything outside the
    wiki content root, **Then** the write is denied and recorded with a reason, and the run
    continues with its allowed actions.
-5. **Given** a Lint run that has just deleted a page, **When** it removes that page's entry from
+4. **Given** a Lint run that has just deleted a page, **When** it removes that page's entry from
    the index and records the deletion in the activity log, **Then** both writes are allowed and
    both are held to the same format rules any other agent's writes to those files are.
-4. **Given** any Lint run, **When** it finishes, **Then** the task artifact records the
+5. **Given** any Lint run, **When** it finishes, **Then** the task artifact records the
    identity (version and hash) of the policy that governed it.
 
 ---
@@ -411,6 +413,9 @@ Submit a batch containing a write and confirm it is rejected.
   update is expected at `/speckit-plan` — not an amendment. Note that ADR-016's own
   `frontmatter-only` write mode may still be worth keeping in the policy model even when no
   Lint policy uses it.
-- **ADR-018** — remediation authorization and execution: the source of the authorization this
-  feature derives a write grant from.
+- **ADR-018** — remediation authorization and execution: authorization gates whether a
+  proposed remediation *runs*, not what write authority the run holds — the run's scope is
+  the same one every Lint run holds (FR-014). This feature does not derive a scoped write
+  grant from the authorization; it is worth stating plainly here so `/speckit-plan` does not
+  reintroduce grant-scoping.
 - Replaces issues **#64** (remediation write access) and **#150** (guarded search and batching).
