@@ -55,15 +55,26 @@ public sealed class ToolRegistry
         """);
 
     /// <summary>
-    /// Unchanged in this layer. ADR-030 R3 (026-guarded-tool-surface, T048) will add optional
-    /// <c>offset</c>/<c>limit</c>/<c>frontmatter_only</c> parameters here once
-    /// <c>GuardedToolExecutor</c>'s dispatch actually implements ranged reads — advertising
-    /// them earlier would offer the model a capability that silently does nothing (the
-    /// dispatch layer would keep returning the whole file and setting the compare-and-swap
-    /// baseline regardless of what the schema promises), the same "shipped surface without
-    /// matching implementation" problem this layer's own CI-caught findings already
-    /// identified for <c>search_files</c>/<c>batch</c>/<c>delete_file</c> — fixed here the
-    /// same way, by not exposing it yet.
+    /// Unchanged, deliberately, even now that <c>GuardedToolExecutor</c>'s dispatch
+    /// implements ranged reads (T048/T049). <c>LintToolRegistry.Default</c> declares this
+    /// exact constant for <c>read_file</c> today, so widening its <c>InputSchemaJson</c>
+    /// here would immediately offer <c>offset</c>/<c>limit</c>/<c>frontmatter_only</c> to
+    /// the live Lint agent — a capability its <c>system-prompt.md</c> says nothing about
+    /// yet (that instruction-file update is T065, deferred to Phase N/layer 08 alongside
+    /// this feature's other agent-judgment work). Verified this is <em>not</em> an
+    /// eval-replay-fingerprint concern the way <c>search_files</c>/<c>batch</c>/
+    /// <c>delete_file</c>'s deferrals are: <c>ReplayModelClient</c> matches a recording by
+    /// <c>tool.Name</c> alone (<c>tools.Select(t => t.Name)</c>), never by schema content,
+    /// so changing this schema would not itself break any recorded-replay eval. The reason
+    /// to wait is simpler and still real: don't hand the live model a parameter its
+    /// instructions don't yet explain how to use.
+    /// <see cref="RangedReadFileDefinition"/> is the schema variant that advertises the new
+    /// parameters; only test registries and, once the recapture layer flips it for Lint
+    /// (alongside T065), <c>LintToolRegistry.Default</c> reference it. The dispatch logic
+    /// in <c>GuardedToolExecutor</c> does not care which definition advertised the call —
+    /// it parses whatever JSON properties are present — so nothing here gates correctness,
+    /// only what the provider's strict tool-use validation (#127) lets through in
+    /// production.
     /// </summary>
     public static readonly ToolDefinition ReadFileDefinition = new(
         Name: ReadFile,
@@ -75,6 +86,43 @@ public sealed class ToolRegistry
             "path": {
               "type": "string",
               "description": "File path relative to the repository root."
+            }
+          },
+          "required": ["path"],
+          "additionalProperties": false
+        }
+        """);
+
+    /// <summary>
+    /// ADR-030 R3 (026-guarded-tool-surface): the ranged-read-capable <c>read_file</c>
+    /// schema, offering the optional <c>offset</c>/<c>limit</c>/<c>frontmatter_only</c>
+    /// parameters T048/T049 implement in <c>GuardedToolExecutor</c>. Not yet referenced by
+    /// any production agent registry — see <see cref="ReadFileDefinition"/>'s doc comment
+    /// for why the switch waits for the eval-recapture layer.
+    /// </summary>
+    public static readonly ToolDefinition RangedReadFileDefinition = new(
+        Name: ReadFile,
+        Description: "Read a file inside the allowed read scope, in full or as a bounded " +
+            "slice: a 1-based line range (like 'sed -n' / 'head'), or just its frontmatter.",
+        InputSchemaJson: """
+        {
+          "type": "object",
+          "properties": {
+            "path": {
+              "type": "string",
+              "description": "File path relative to the repository root."
+            },
+            "offset": {
+              "type": "integer",
+              "description": "1-based first line to return. Omit for a whole-file read."
+            },
+            "limit": {
+              "type": "integer",
+              "description": "Maximum number of lines to return."
+            },
+            "frontmatter_only": {
+              "type": "boolean",
+              "description": "Return only the frontmatter block. Default false."
             }
           },
           "required": ["path"],

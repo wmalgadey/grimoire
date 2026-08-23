@@ -139,13 +139,13 @@ execution on identical terms; a delete followed by a run failure restores the pa
 **Independent Test**: frontmatter-only and line-range reads return exactly their slice; a
 partially read page cannot be overwritten.
 
-- [ ] T048 [US3] Implement `offset`/`limit`/`frontmatter_only` on `read_file` and the `ReadShape` discriminator, in `backend/src/Grimoire.AgentRuntime/Guardrails/GuardedToolExecutor.cs` (FR-008, data-model.md)
-- [ ] T049 [US3] Ensure a partial read never calls `SharedFileWriteGuard.OnReadFile`, in `backend/src/Grimoire.AgentRuntime/Guardrails/GuardedToolExecutor.cs` (FR-010, ADR-030 R3): only a full read may set the compare-and-swap baseline
-- [ ] T050 [P] [US3] Test in `backend/tests/Grimoire.IntegrationTests/LintRangedReadWriteGuardTests.cs`: a write to a page read only in part is rejected and recorded (SC-008) — the ADR-015 protection test
-- [ ] T051 [P] [US3] Test in `backend/tests/Grimoire.IntegrationTests/LintRangedReadWriteGuardTests.cs`: no range parameters → byte-for-byte today's whole-file read, baseline still set (FR-009)
-- [ ] T052 [P] [US3] Test in `backend/tests/Grimoire.IntegrationTests/LintRangedReadWriteGuardTests.cs`: a range beyond end-of-file returns partial/empty with an explicit EOF signal, not a failed run (FR-008)
-- [ ] T053 [US3] Emit `wiki.read.invocations_total` labelled by read shape, from `backend/src/Grimoire.AgentRuntime/Guardrails/GuardedToolExecutor.cs` (plan.md § Observability) — also the source for the SC-014 measurement
-- [ ] T054 [P] [US3] Deterministic test in `backend/tests/Grimoire.IntegrationTests/LintReadShapeObservabilityTests.cs`: the read-shape label is correct for full, range and frontmatter reads, from the production composition root (Principle IV)
+- [X] T048 [US3] Implement `offset`/`limit`/`frontmatter_only` on `read_file` and the `ReadShape` discriminator, in `backend/src/Grimoire.AgentRuntime/Guardrails/GuardedToolExecutor.cs` (FR-008, data-model.md) — schema stays on a new `ToolRegistry.RangedReadFileDefinition` constant, not the shared `ReadFileDefinition` every agent already declares (see that constant's doc comment); dispatch parses the fields regardless of which schema advertised the call
+- [X] T049 [US3] Ensure a partial read never calls `SharedFileWriteGuard.OnReadFile`, in `backend/src/Grimoire.AgentRuntime/Guardrails/GuardedToolExecutor.cs` (FR-010, ADR-030 R3): only a full read may set the compare-and-swap baseline
+- [X] T050 [P] [US3] Test in `backend/tests/Grimoire.IntegrationTests/LintRangedReadWriteGuardTests.cs`: a write to a page read only in part is rejected and recorded (SC-008) — the ADR-015 protection test
+- [X] T051 [P] [US3] Test in `backend/tests/Grimoire.IntegrationTests/LintRangedReadWriteGuardTests.cs`: no range parameters → byte-for-byte today's whole-file read, baseline still set (FR-009)
+- [X] T052 [P] [US3] Test in `backend/tests/Grimoire.IntegrationTests/LintRangedReadWriteGuardTests.cs`: a range beyond end-of-file returns partial/empty with an explicit EOF signal, not a failed run (FR-008)
+- [X] T053 [US3] Emit `wiki.read.invocations_total` labelled by read shape, from `backend/src/Grimoire.AgentRuntime/Guardrails/GuardedToolExecutor.cs` (plan.md § Observability) — also the source for the SC-014 measurement
+- [X] T054 [P] [US3] Deterministic test in `backend/tests/Grimoire.IntegrationTests/LintReadShapeObservabilityTests.cs`: the read-shape label is correct for full, range and frontmatter reads, from the production composition root (Principle IV)
 
 **Checkpoint**: retrieval is cheap per page as well as per wiki.
 
@@ -158,14 +158,14 @@ partially read page cannot be overwritten.
 **Independent Test**: a mixed allowed/denied batch returns all results with individual
 denials; a batch containing a write performs nothing.
 
-- [ ] T055 [US4] Implement `batch` dispatch accepting only `list_files`, `read_file`, `search_files`, in `backend/src/Grimoire.AgentRuntime/Guardrails/GuardedToolExecutor.cs` (FR-011, FR-012)
-- [ ] T056 [US4] Reject a batch containing a write, a delete, a nested batch, or more than 20 calls — before any member executes — in `backend/src/Grimoire.AgentRuntime/Guardrails/GuardedToolExecutor.cs` (FR-012, SC-007, ADR-030 R4/R5)
-- [ ] T057 [US4] Evaluate and record each member individually against the policy, in `backend/src/Grimoire.AgentRuntime/Guardrails/GuardedToolExecutor.cs` (FR-013, SC-002)
-- [ ] T058 [P] [US4] Test in `backend/tests/Grimoire.IntegrationTests/LintBatchToolTests.cs`: a batch with one write executes no member at all (SC-007)
-- [ ] T059 [P] [US4] Test in `backend/tests/Grimoire.IntegrationTests/LintBatchToolTests.cs`: a mixed batch returns allowed results plus an individual denial for the denied member (FR-013, SC-002)
-- [ ] T060 [US4] Emit `wiki.batch.invocations_total` and the `wiki.batch.rejected` log event with its mandatory fields, from `backend/src/Grimoire.AgentRuntime/Guardrails/GuardedToolExecutor.cs` (plan.md § Observability)
-- [ ] T061 [US4] Create the `guardrails.batch` span as a child of `lint_agent.model_turn`, in `backend/src/Grimoire.AgentRuntime/Guardrails/GuardedToolExecutor.cs`, with `call_count`/`denied_count` (plan.md § Observability)
-- [ ] T062 [P] [US4] Deterministic test in `backend/tests/Grimoire.IntegrationTests/LintBatchObservabilityTests.cs`: `wiki.batch.rejected` fields and the `guardrails.batch` span parent linkage, from the production composition root (Principle IV)
+- [X] T055 [US4] Implement `batch` dispatch accepting only `list_files`, `read_file`, `search_files`, in `backend/src/Grimoire.AgentRuntime/Guardrails/GuardedToolExecutor.cs` (FR-011, FR-012) — each member re-enters the same `ExecuteAsync` every top-level call goes through
+- [X] T056 [US4] Reject a batch containing a write, a delete, a nested batch, or more than 20 calls — before any member executes — in `backend/src/Grimoire.AgentRuntime/Guardrails/GuardedToolExecutor.cs` (FR-012, SC-007, ADR-030 R4/R5)
+- [X] T057 [US4] Evaluate and record each member individually against the policy, in `backend/src/Grimoire.AgentRuntime/Guardrails/GuardedToolExecutor.cs` (FR-013, SC-002)
+- [X] T058 [P] [US4] Test in `backend/tests/Grimoire.IntegrationTests/LintBatchToolTests.cs`: a batch with one write executes no member at all (SC-007)
+- [X] T059 [P] [US4] Test in `backend/tests/Grimoire.IntegrationTests/LintBatchToolTests.cs`: a mixed batch returns allowed results plus an individual denial for the denied member (FR-013, SC-002)
+- [X] T060 [US4] Emit `wiki.batch.invocations_total` and the `wiki.batch.rejected` log event with its mandatory fields, from `backend/src/Grimoire.AgentRuntime/Guardrails/GuardedToolExecutor.cs` (plan.md § Observability)
+- [X] T061 [US4] Create the `guardrails.batch` span as a child of `lint_agent.model_turn`, in `backend/src/Grimoire.AgentRuntime/Guardrails/GuardedToolExecutor.cs`, with `call_count`/`denied_count` (plan.md § Observability)
+- [X] T062 [P] [US4] Deterministic test in `backend/tests/Grimoire.IntegrationTests/LintBatchObservabilityTests.cs`: `wiki.batch.rejected` fields and the `guardrails.batch` span parent linkage, from the production composition root (Principle IV) — the log-event half was already covered by `LintLogEventTests`
 
 **Checkpoint**: full tool surface delivered.
 
@@ -242,11 +242,27 @@ Phase 0 → 1 → 2 → 3 (US1). At that point Lint can survey a wiki it current
 the outcome #108 is waiting on. US2 completes the remediation loop; US3 and US4 are cost
 refinements.
 
-### Open question carried from planning
+### Decision: `edit_file` declined for this feature
 
-**A partial write (`edit_file`, anchored `old_string`/`new_string`) is not in these tasks.**
-It was raised during planning and not settled. If adopted it would add one tool, an ADR-030
-rule, and roughly 4–6 tasks in Phase 5 — and it would remove the current asymmetry where a
-ranged read must be followed by a full read before any write, which blunts the token saving in
-exactly the edit path Lint uses most. Decide before layer 07 is cut; after that it is a
-retrofit.
+A partial write (`edit_file`, anchored `old_string`/`new_string`) was raised during planning
+and not settled; tasks.md flagged it as needing a decision before layer 07 was cut, since
+after that point adding it becomes a retrofit rather than a scoping choice.
+
+**Declined, not deferred.** Reasons:
+
+1. It is not required by any FR or SC in the accepted `spec.md`. Adding it now would mean
+   amending an already-accepted spec late in an eight-layer stack, not implementing what was
+   already scoped — exactly the kind of ad hoc, out-of-band feature growth the constitution's
+   Spec-Kit workflow exists to prevent.
+2. The token-cost problem it would solve is already substantially addressed by Phase 5's
+   ranged reads (T048–T052): the remaining asymmetry (a ranged read still requires a full
+   read before a write can follow) is a real but smaller residual cost, not the primary win.
+3. This environment has no live-model credentials (`ANTHROPIC_AUTH_TOKEN` unset), so even if
+   `edit_file` were added, its agent-judgment behavior (when a body edit is warranted vs. a
+   full rewrite) could not be evaluated here before layer 08's recapture — it would sit
+   undeclared in `LintToolRegistry.Default` exactly like `search_files`/`delete_file`/`batch`
+   already do, adding surface without adding anything this stack can currently verify.
+
+If a future feature wants `edit_file`, it goes through `/speckit-specify` on its own terms
+(a new FR, an ADR-030 amendment naming the tool and its scope rule) rather than being folded
+into this one after the fact.

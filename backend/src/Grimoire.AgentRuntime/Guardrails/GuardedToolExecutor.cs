@@ -51,6 +51,13 @@ public sealed class GuardedToolExecutor
     private static readonly TimeSpan DefaultSearchTimeBudget = TimeSpan.FromSeconds(2);
     private readonly TimeSpan _searchTimeBudget;
 
+    // ── batch bounds (026-guarded-tool-surface, ADR-030 R4/R5) ──────────────────────────
+    private const int BatchMaxCalls = 20;
+    private static readonly HashSet<string> BatchAllowedTools = new(StringComparer.Ordinal)
+    {
+        ToolRegistry.ListFiles, ToolRegistry.ReadFile, ToolRegistry.SearchFiles,
+    };
+
     private readonly SafetyPolicy _policy;
     private readonly WriteJournal _journal;
     private readonly string _repositoryRoot;
@@ -217,6 +224,8 @@ public sealed class GuardedToolExecutor
                 return await ExecuteSearchFilesAsync(inputJson, turn, cancellationToken);
             case ToolRegistry.DeleteFile:
                 return await ExecuteDeleteFileAsync(inputJson, turn, cancellationToken);
+            case ToolRegistry.Batch:
+                return await ExecuteBatchAsync(inputJson, turn, cancellationToken);
             default:
                 return new ToolExecutionResult(true, $"Unknown tool: {toolName}");
         }
@@ -262,6 +271,12 @@ public sealed class GuardedToolExecutor
     }
 
     // ── read_file ────────────────────────────────────────────────────────────────
+    // ADR-030 R3 (026-guarded-tool-surface, Feature-Scoped Invariant): optional
+    // offset/limit/frontmatter_only make a read partial. A partial read MUST NOT call
+    // _writeGuard.OnReadFile (T049) — feeding it a fragment would make a later stale-read
+    // conflict undetectable, silently licensing a whole-file overwrite off a slice the
+    // agent never actually saw in full. Omitting all three stays byte-for-byte today's
+    // whole-file read (FR-009), baseline included.
 
     private async Task<ToolExecutionResult> ExecuteReadFileAsync(
         string inputJson, int turn, CancellationToken cancellationToken)
@@ -288,8 +303,91 @@ public sealed class GuardedToolExecutor
         }
 
         var content = await File.ReadAllTextAsync(canonical, Encoding.UTF8, cancellationToken);
-        _writeGuard?.OnReadFile(canonical, content);
-        return new ToolExecutionResult(false, content);
+
+        var hasOffset = TryGetIntProperty(inputJson, "offset", out var offset);
+        var hasLimit = TryGetIntProperty(inputJson, "limit", out var limit);
+        var frontmatterOnly = TryGetBoolProperty(inputJson, "frontmatter_only", out var frontmatterOnlyValue) && frontmatterOnlyValue;
+
+        if (!hasOffset && !hasLimit && !frontmatterOnly)
+        {
+            _writeGuard?.OnReadFile(canonical, content);
+            _instrumentation.RecordReadInvocation(_taskId, "full", turn);
+            return new ToolExecutionResult(false, content);
+        }
+
+        if (frontmatterOnly)
+        {
+            _instrumentation.RecordReadInvocation(_taskId, "frontmatter", turn);
+            return new ToolExecutionResult(false, ExtractFrontmatter(content));
+        }
+
+        _instrumentation.RecordReadInvocation(_taskId, "range", turn);
+        return new ToolExecutionResult(false, ExtractLineRange(content, hasOffset ? offset : 1, hasLimit ? limit : null));
+    }
+
+    /// <summary>
+    /// "The frontmatter block" is the content between a leading document's first two
+    /// <c>---</c> delimiters (the same convention <c>TaskArtifactFrontmatter</c> parses).
+    /// A document with no frontmatter (no leading <c>---</c>, or no closing delimiter)
+    /// has none to return.
+    /// </summary>
+    private static string ExtractFrontmatter(string content)
+    {
+        if (!content.StartsWith("---", StringComparison.Ordinal))
+        {
+            return string.Empty;
+        }
+
+        var sections = content.Split("---", 3, StringSplitOptions.None);
+        return sections.Length < 3 ? string.Empty : sections[1].Trim();
+    }
+
+    /// <summary>
+    /// 1-based, inclusive-of-<paramref name="offset"/> line range, like <c>sed -n 'X,Yp'</c>.
+    /// An offset at or beyond the last line returns only the end-of-file marker (spec.md
+    /// Edge Cases: "an empty or partial result with an explicit end-of-file signal, not an
+    /// error that ends the run") — never <see cref="ToolExecutionResult.IsError"/>. A
+    /// <paramref name="limit"/> that would run past the last line is honored up to the last
+    /// line and the same marker is appended, since the request could not be satisfied in full.
+    /// </summary>
+    private static string ExtractLineRange(string content, int offset, int? limit)
+    {
+        var lines = SplitIntoLines(content);
+        var totalLines = lines.Length;
+        var startIndex = Math.Max(offset - 1, 0);
+
+        if (startIndex >= totalLines)
+        {
+            return $"[end of file: {totalLines} line(s) total]";
+        }
+
+        var available = totalLines - startIndex;
+        var reachedEnd = limit is null || limit.Value >= available;
+        var count = limit.HasValue ? Math.Min(limit.Value, available) : available;
+        var slice = string.Join('\n', lines.Skip(startIndex).Take(count));
+
+        return limit.HasValue && reachedEnd
+            ? $"{slice}\n[end of file: {totalLines} line(s) total]"
+            : slice;
+    }
+
+    /// <summary>
+    /// Splits on <c>\n</c> after normalizing <c>\r\n</c>, treating a single trailing
+    /// newline as terminating the last line rather than introducing an extra empty one —
+    /// matching how a line count is conventionally reported (an editor's line count, or
+    /// <c>wc -l</c> on a file ending in a newline), not <see cref="string.Split(char[])"/>'s
+    /// literal per-separator split.
+    /// </summary>
+    private static string[] SplitIntoLines(string content)
+    {
+        if (content.Length == 0)
+        {
+            return [];
+        }
+
+        var normalized = content.Replace("\r\n", "\n");
+        var trimmed = normalized.EndsWith('\n') ? normalized[..^1] : normalized;
+        return trimmed.Split('\n');
     }
 
     // ── write_file ───────────────────────────────────────────────────────────────
@@ -483,6 +581,132 @@ public sealed class GuardedToolExecutor
         deleteActivity?.SetTag("outcome", "applied");
 
         return new ToolExecutionResult(false, $"Deleted: {relativePath}");
+    }
+
+    // ── batch ────────────────────────────────────────────────────────────────────
+    // ADR-030 R4 (026-guarded-tool-surface): a batch admits only read-only tool names
+    // (list_files, read_file, search_files) — no write, no delete, no nested batch — and
+    // rejects wholesale, before any member executes, on any violation (T056). A batch that
+    // passes validation carries no authority of its own: each member is dispatched through
+    // the same ExecuteAsync entry point every top-level call goes through, so it is
+    // evaluated against the policy and recorded exactly as if the model had called it
+    // directly (T057) — RecordAllowed/RecordDenial fire per member, same as any other call.
+
+    private async Task<ToolExecutionResult> ExecuteBatchAsync(
+        string inputJson, int turn, CancellationToken cancellationToken)
+    {
+        if (!TryParseBatchCalls(inputJson, out var calls, out var parseError))
+        {
+            return new ToolExecutionResult(true, parseError!);
+        }
+
+        if (calls.Count > BatchMaxCalls)
+        {
+            return RecordBatchRejected("too_many_calls", calls.Count, turn);
+        }
+
+        foreach (var call in calls)
+        {
+            if (string.Equals(call.Tool, ToolRegistry.Batch, StringComparison.Ordinal))
+            {
+                return RecordBatchRejected("nested_batch", calls.Count, turn);
+            }
+
+            if (!BatchAllowedTools.Contains(call.Tool))
+            {
+                return RecordBatchRejected("tool_not_allowed_in_batch", calls.Count, turn);
+            }
+        }
+
+        _instrumentation.RecordAllowed(_taskId, ToolRegistry.Batch, $"{calls.Count} call(s)", turn);
+        using var batchActivity = _instrumentation.StartBatchActivity(_taskId, turn);
+
+        var results = new StringBuilder();
+        var deniedCount = 0;
+
+        for (var i = 0; i < calls.Count; i++)
+        {
+            var call = calls[i];
+            var memberResult = await ExecuteAsync(call.Tool, call.InputJson, turn, cancellationToken);
+            if (memberResult.IsError)
+            {
+                deniedCount++;
+            }
+
+            results.AppendLine($"[{i}] {call.Tool}: {(memberResult.IsError ? "denied" : "ok")}");
+            results.AppendLine(memberResult.Content);
+        }
+
+        _instrumentation.RecordBatchInvocation(_taskId, "completed", turn);
+        batchActivity?.SetTag("task_id", _taskId);
+        batchActivity?.SetTag("call_count", calls.Count);
+        batchActivity?.SetTag("denied_count", deniedCount);
+        batchActivity?.SetTag("outcome", "completed");
+
+        return new ToolExecutionResult(false, results.ToString().TrimEnd());
+    }
+
+    private sealed record BatchCallRequest(string Tool, string InputJson);
+
+    private static bool TryParseBatchCalls(string json, out List<BatchCallRequest> calls, out string? error)
+    {
+        calls = [];
+        error = null;
+
+        try
+        {
+            using var doc = JsonDocument.Parse(json);
+            if (!doc.RootElement.TryGetProperty("calls", out var callsElement) ||
+                callsElement.ValueKind != JsonValueKind.Array)
+            {
+                error = "Missing required property: calls";
+                return false;
+            }
+
+            foreach (var callElement in callsElement.EnumerateArray())
+            {
+                if (!callElement.TryGetProperty("tool", out var toolElement) ||
+                    toolElement.ValueKind != JsonValueKind.String)
+                {
+                    error = "Missing required property: calls[].tool";
+                    return false;
+                }
+
+                var inputJson = callElement.TryGetProperty("input", out var inputElement)
+                    ? inputElement.GetRawText()
+                    : "{}";
+
+                calls.Add(new BatchCallRequest(toolElement.GetString()!, inputJson));
+            }
+
+            return true;
+        }
+        catch (JsonException)
+        {
+            error = "Malformed input JSON";
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// A batch rejected wholesale, before any member executed. Bypasses
+    /// <see cref="RecordDenial"/>/<see cref="IToolCallInstrumentation.RecordDenied"/> in
+    /// favor of the dedicated <c>wiki.batch.invocations_total</c>/<c>wiki.batch.rejected</c>
+    /// signals — mirrors <see cref="RecordSearchPatternRejected"/>'s reasoning: this
+    /// rejection reason has its own established signal pair, not the generic denial one.
+    /// </summary>
+    private ToolExecutionResult RecordBatchRejected(string reason, int callCount, int turn)
+    {
+        var record = new DeniedActionRecord(ToolRegistry.Batch, callCount.ToString(), callCount.ToString(), reason, turn);
+        _denials.Add(record);
+
+        var outcome = reason == "too_many_calls" ? "rejected_size" : "rejected_write";
+        _instrumentation.RecordBatchInvocation(_taskId, outcome, turn);
+        _instrumentation.LogBatchRejected(_taskId, reason, callCount, turn);
+
+        return new ToolExecutionResult(
+            true,
+            $"denied: {reason}. This action is outside the safety policy; continue with your remaining allowed work.");
     }
 
     // ── search_files ─────────────────────────────────────────────────────────────
