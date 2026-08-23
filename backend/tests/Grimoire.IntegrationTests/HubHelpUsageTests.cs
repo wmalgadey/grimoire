@@ -366,7 +366,7 @@ public class HubHelpUsageTests
     }
 
     /// <summary>
-    /// Mirrors <see cref="Grimoire.EvalRunner.Workspace.AgentProcessInvoker.ResolveAgentDllPath"/>:
+    /// Mirrors <see cref="Grimoire.EvalRunner.Workspace.IngestAgentProcessInvoker.ResolveAgentDllPath"/>:
     /// the Hub must be launched from its OWN build output (where its deps.json/
     /// runtimeconfig.json resolve every ASP.NET Core dependency correctly), not a copy
     /// inside this test project's output directory.

@@ -13,7 +13,7 @@ namespace Grimoire.AgentEvals;
 /// <c>GrimoirePathResolver</c> reads to a nonexistent junk path, and removing the
 /// runtime agent directory (<c>.grimoire/agents</c>, populated by
 /// <c>PublishAgentRuntime</c>) entirely, yields identical sample counts and success rate
-/// to a normal run — because <see cref="AgentProcessInvoker.ForRepo"/> resolves the agent
+/// to a normal run — because <see cref="IngestAgentProcessInvoker.ForRepo"/> resolves the agent
 /// executable straight from the agent project's own build output
 /// (<c>backend/src/Grimoire.IngestAgent/bin/...</c>), never through the Hub-configured
 /// agent directory.
@@ -88,7 +88,7 @@ public class EvalIndependenceFromHubConfigurationTests
     private static async Task<ScenarioReplayResult> RunScenarioAsync(EvalPaths paths, ScenarioDefinition scenario)
     {
         var store = new RecordingStore(paths.RecordingsRoot);
-        var pipeline = new ReplayPipeline(store, paths, AgentProcessInvoker.ForRepo(paths), NullLogger.Instance);
+        var pipeline = new ReplayPipeline(store, paths, IngestAgentProcessInvoker.ForRepo(paths), NullLogger.Instance);
         return await pipeline.RunScenarioAsync(scenario, CancellationToken.None);
     }
 }

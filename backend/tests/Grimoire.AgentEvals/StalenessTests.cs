@@ -93,7 +93,7 @@ public class StalenessTests : IDisposable
 
         // The invoker resolves the agent from the REAL repo build output; the stale path
         // never spawns it, which is part of what this test asserts.
-        var pipeline = new ReplayPipeline(_store, _paths, AgentProcessInvoker.ForRepo(EvalPaths.Discover()), NullLogger.Instance);
+        var pipeline = new ReplayPipeline(_store, _paths, IngestAgentProcessInvoker.ForRepo(EvalPaths.Discover()), NullLogger.Instance);
         var result = await pipeline.RunScenarioAsync(IngestScenarioDefinitions.ConventionAdherence, CancellationToken.None);
 
         Assert.Equal(TrustStatus.Stale, result.TrustStatus);

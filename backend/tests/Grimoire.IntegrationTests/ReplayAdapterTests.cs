@@ -221,7 +221,7 @@ public class ReplayAdapterTests : IDisposable
             RedirectStandardError = true,
             UseShellExecute = false,
         };
-        startInfo.ArgumentList.Add(Grimoire.EvalRunner.Workspace.AgentProcessInvoker.ResolveAgentDllPath(
+        startInfo.ArgumentList.Add(Grimoire.EvalRunner.Workspace.IngestAgentProcessInvoker.ResolveAgentDllPath(
             Grimoire.EvalRunner.Workspace.EvalPaths.Discover().RepoRoot));
         foreach (var (name, value) in new[]
         {

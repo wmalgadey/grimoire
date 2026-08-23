@@ -20,7 +20,7 @@ public class ReplayContractTests : IDisposable
     // injected empty environment rather than by nulling process-wide variables (#121):
     // every provider-credential read on the replay path goes through this function,
     // and the spawned child gets no provider variable regardless, because
-    // AgentProcessInvoker scrubs them from the child environment by construction.
+    // IngestAgentProcessInvoker scrubs them from the child environment by construction.
     private static readonly Func<string, string?> EmptyEnvironment = _ => null;
 
     private readonly string _recordingsRoot;
@@ -33,7 +33,7 @@ public class ReplayContractTests : IDisposable
         _recordingsRoot = Path.Combine(Path.GetTempPath(), "grimoire-replay-contract", Guid.NewGuid().ToString("N"));
         _paths = EvalPaths.Discover();
         _store = new RecordingStore(_recordingsRoot, EmptyEnvironment);
-        _pipeline = new ReplayPipeline(_store, _paths, AgentProcessInvoker.ForRepo(_paths, EmptyEnvironment), NullLogger.Instance);
+        _pipeline = new ReplayPipeline(_store, _paths, IngestAgentProcessInvoker.ForRepo(_paths, EmptyEnvironment), NullLogger.Instance);
     }
 
     public void Dispose()

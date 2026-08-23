@@ -33,7 +33,7 @@ public sealed record AgentRunResult(int ExitCode, bool TimedOut, string StdErr);
 /// credentials enter only capture-mode child processes; replay-mode children get no
 /// credential at all. The only <see cref="Process"/> user in this assembly (ADR-012 C8).
 /// </summary>
-public sealed class AgentProcessInvoker
+public sealed class IngestAgentProcessInvoker
 {
     private static readonly string[] ScrubbedVariables =
     [
@@ -52,21 +52,21 @@ public sealed class AgentProcessInvoker
     private readonly string _agentDllPath;
     private readonly Func<string, string?> _getEnvironmentVariable;
 
-    public AgentProcessInvoker(string agentDllPath)
+    public IngestAgentProcessInvoker(string agentDllPath)
         : this(agentDllPath, Environment.GetEnvironmentVariable)
     {
     }
 
-    public AgentProcessInvoker(string agentDllPath, Func<string, string?> getEnvironmentVariable)
+    public IngestAgentProcessInvoker(string agentDllPath, Func<string, string?> getEnvironmentVariable)
     {
         _agentDllPath = agentDllPath;
         _getEnvironmentVariable = getEnvironmentVariable;
     }
 
-    public static AgentProcessInvoker ForRepo(EvalPaths paths)
+    public static IngestAgentProcessInvoker ForRepo(EvalPaths paths)
         => new(ResolveAgentDllPath(paths.RepoRoot));
 
-    public static AgentProcessInvoker ForRepo(EvalPaths paths, Func<string, string?> getEnvironmentVariable)
+    public static IngestAgentProcessInvoker ForRepo(EvalPaths paths, Func<string, string?> getEnvironmentVariable)
         => new(ResolveAgentDllPath(paths.RepoRoot), getEnvironmentVariable);
 
     /// <summary>

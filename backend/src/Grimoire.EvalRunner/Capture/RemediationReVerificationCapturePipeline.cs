@@ -44,14 +44,25 @@ public sealed class RemediationReVerificationCapturePipeline
     private readonly EvalPaths _paths;
     private readonly LintAgentProcessInvoker _invoker;
     private readonly ILogger _logger;
+    private readonly int _maxParallelSamples;
 
+    /// <param name="maxParallelSamples">
+    /// How many of the scenario's samples are captured concurrently (see
+    /// <see cref="CaptureParallelism"/>). Defaults to sequential capture; the composition
+    /// root passes what <c>--parallel</c> resolved to.
+    /// </param>
     public RemediationReVerificationCapturePipeline(
-        RecordingStore store, EvalPaths paths, LintAgentProcessInvoker invoker, ILogger logger)
+        RecordingStore store,
+        EvalPaths paths,
+        LintAgentProcessInvoker invoker,
+        ILogger logger,
+        int maxParallelSamples = CaptureParallelism.Sequential)
     {
         _store = store;
         _paths = paths;
         _invoker = invoker;
         _logger = logger;
+        _maxParallelSamples = maxParallelSamples;
     }
 
     public async Task<RemediationReVerificationCaptureScenarioResult> RunScenarioAsync(
@@ -66,80 +77,25 @@ public sealed class RemediationReVerificationCapturePipeline
         var sampleResults = new List<RemediationReVerificationCaptureSampleResult>();
         string? model = null;
 
-        for (var i = 0; i < requestedSampleCount; i++)
+        var slots = new RemediationSampleSlot[requestedSampleCount];
+        await Parallel.ForAsync(
+            0,
+            requestedSampleCount,
+            CaptureParallelism.Options(_maxParallelSamples, cancellationToken),
+            async (i, sampleToken) => slots[i] = await CaptureSampleAsync(
+                scenario, provider, providerLabel, fixtureWikiRoot, i + 1, sampleToken));
+
+        // Ordered assembly: samples complete in provider-response order, recordings are
+        // addressed by sample number.
+        foreach (var slot in slots)
         {
-            cancellationToken.ThrowIfCancellationRequested();
-            var sampleNumber = i + 1;
-            var runId = $"capture-{scenario.Id}-{sampleNumber:00}-{Guid.NewGuid():N}";
-
-            using var sandbox = QueryEvalSandbox.Create(fixtureWikiRoot, $"remediation-reverify-capture-{scenario.Id}-{sampleNumber:00}");
-            var wikiRoot = sandbox.WikiRoot;
-
-            var captureScratch = Path.Combine(Path.GetTempPath(), "grimoire-eval-runner", "capture-" + Guid.NewGuid().ToString("N"));
-            Directory.CreateDirectory(captureScratch);
-            var capturePath = Path.Combine(captureScratch, $"sample-{sampleNumber:00}.json");
-
-            try
+            sampleResults.Add(slot.Result);
+            if (slot.Recording is not null)
             {
-                using var span = EvalRunnerTelemetry.StartCaptureRun(runId, scenario.Id, providerLabel, provider.Model);
-
-                var run = await _invoker.RunRemediationExecutionAsync(
-                    runId, runId, wikiRoot, _paths, AgentModelMode.Capture(capturePath, provider), CaptureSampleBudget,
-                    sandbox.WriteLocksDir, scenario.ProposalTitle, scenario.ProposalDescription, scenario.ProposalTargetPath,
-                    cancellationToken);
-
-                if (run.TimedOut)
-                {
-                    EvalObservability.RecordSampleTimeout(
-                        _logger, $"{scenario.Id}-{sampleNumber}", providerLabel, provider.Model, CaptureSampleBudget.TotalSeconds);
-                    sampleResults.Add(new RemediationReVerificationCaptureSampleResult(
-                        sampleNumber, runId, Captured: false, Pass: null,
-                        Detail: $"Sample {sampleNumber} exceeded the {CaptureSampleBudget.TotalMinutes:0}min capture budget."));
-                    continue;
-                }
-
-                if (!File.Exists(capturePath))
-                {
-                    sampleResults.Add(new RemediationReVerificationCaptureSampleResult(
-                        sampleNumber, runId, Captured: false, Pass: null,
-                        Detail: $"Sample {sampleNumber} produced no captured run " +
-                            $"(exit {run.ExitCode}, completed={run.Completed}): {Truncate(run.StdErr)}"));
-                    continue;
-                }
-
-                var rawCapture = RecordingSerialization.Load(capturePath);
-                model ??= rawCapture.Model;
-
-                var score = RemediationReVerificationScorer.Score(
-                    scenario.ExpectedOutcome, new RemediationReVerificationSampleRunData(run.RemediationOutcome, run.Reason));
-
-                recordings.Add(rawCapture with
-                {
-                    Sample = sampleNumber,
-                    TaskId = runId,
-                    Outcome = new RecordedOutcome("completed", score.Checks),
-                });
-
-                sampleResults.Add(new RemediationReVerificationCaptureSampleResult(sampleNumber, runId, Captured: true, score.Pass, Detail: null));
-
-                EvalRunnerTelemetry.RecordRecordingCaptured(
-                    _logger, runId, scenario.Id, sampleNumber, rawCapture.Model,
-                    _store.SamplePath(scenario.Id, $"sample-{sampleNumber:00}.json"), providerLabel);
+                recordings.Add(slot.Recording);
             }
-            finally
-            {
-                try
-                {
-                    if (Directory.Exists(captureScratch))
-                    {
-                        Directory.Delete(captureScratch, recursive: true);
-                    }
-                }
-                catch
-                {
-                    // Best-effort scratch cleanup.
-                }
-            }
+
+            model ??= slot.Model;
         }
 
         var allCaptured = sampleResults.Count == requestedSampleCount && sampleResults.All(r => r.Captured);
@@ -158,6 +114,100 @@ public sealed class RemediationReVerificationCapturePipeline
 
         return new RemediationReVerificationCaptureScenarioResult(
             scenario.Id, model, scenario.Threshold, rate, rate >= scenario.Threshold, Stored: true, sampleResults, Detail: null);
+    }
+
+    /// <summary>
+    /// One sample, sharing nothing with its siblings: its own sandbox copy of the fixture
+    /// wiki, its own write-lock directory, its own scratch capture file and its own spawned
+    /// agent. That independence is what makes <see cref="CaptureParallelism"/> safe.
+    /// </summary>
+    private async Task<RemediationSampleSlot> CaptureSampleAsync(
+        RemediationReVerificationScenarioDefinition scenario,
+        ProviderConfiguration provider,
+        string providerLabel,
+        string fixtureWikiRoot,
+        int sampleNumber,
+        CancellationToken cancellationToken)
+    {
+        var runId = $"capture-{scenario.Id}-{sampleNumber:00}-{Guid.NewGuid():N}";
+
+        using var sandbox = QueryEvalSandbox.Create(fixtureWikiRoot, $"remediation-reverify-capture-{scenario.Id}-{sampleNumber:00}");
+        var wikiRoot = sandbox.WikiRoot;
+
+        var captureScratch = Path.Combine(Path.GetTempPath(), "grimoire-eval-runner", "capture-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(captureScratch);
+        var capturePath = Path.Combine(captureScratch, $"sample-{sampleNumber:00}.json");
+
+        try
+        {
+            using var span = EvalRunnerTelemetry.StartCaptureRun(runId, scenario.Id, providerLabel, provider.Model);
+
+            var run = await _invoker.RunRemediationExecutionAsync(
+                runId, runId, wikiRoot, _paths, AgentModelMode.Capture(capturePath, provider), CaptureSampleBudget,
+                sandbox.WriteLocksDir, scenario.ProposalTitle, scenario.ProposalDescription, scenario.ProposalTargetPath,
+                cancellationToken);
+
+            if (run.TimedOut)
+            {
+                EvalObservability.RecordSampleTimeout(
+                    _logger, $"{scenario.Id}-{sampleNumber}", providerLabel, provider.Model, CaptureSampleBudget.TotalSeconds);
+                return RemediationSampleSlot.Failed(new RemediationReVerificationCaptureSampleResult(
+                    sampleNumber, runId, Captured: false, Pass: null,
+                    Detail: $"Sample {sampleNumber} exceeded the {CaptureSampleBudget.TotalMinutes:0}min capture budget."));
+            }
+
+            if (!File.Exists(capturePath))
+            {
+                return RemediationSampleSlot.Failed(new RemediationReVerificationCaptureSampleResult(
+                    sampleNumber, runId, Captured: false, Pass: null,
+                    Detail: $"Sample {sampleNumber} produced no captured run " +
+                        $"(exit {run.ExitCode}, completed={run.Completed}): {Truncate(run.StdErr)}"));
+            }
+
+            var rawCapture = RecordingSerialization.Load(capturePath);
+
+            var score = RemediationReVerificationScorer.Score(
+                scenario.ExpectedOutcome, new RemediationReVerificationSampleRunData(run.RemediationOutcome, run.Reason));
+
+            var recording = rawCapture with
+            {
+                Sample = sampleNumber,
+                TaskId = runId,
+                Outcome = new RecordedOutcome("completed", score.Checks),
+            };
+
+            EvalRunnerTelemetry.RecordRecordingCaptured(
+                _logger, runId, scenario.Id, sampleNumber, rawCapture.Model,
+                _store.SamplePath(scenario.Id, $"sample-{sampleNumber:00}.json"), providerLabel);
+
+            return new RemediationSampleSlot(
+                new RemediationReVerificationCaptureSampleResult(sampleNumber, runId, Captured: true, score.Pass, Detail: null),
+                recording,
+                rawCapture.Model);
+        }
+        finally
+        {
+            try
+            {
+                if (Directory.Exists(captureScratch))
+                {
+                    Directory.Delete(captureScratch, recursive: true);
+                }
+            }
+            catch
+            {
+                // Best-effort scratch cleanup.
+            }
+        }
+    }
+
+    /// <summary>One sample's ordered outcome: its result row, the recording it produced (none
+    /// when the sample failed), and the model it reported.</summary>
+    private readonly record struct RemediationSampleSlot(
+        RemediationReVerificationCaptureSampleResult Result, RecordedSample? Recording, string? Model)
+    {
+        public static RemediationSampleSlot Failed(RemediationReVerificationCaptureSampleResult result)
+            => new(result, Recording: null, Model: null);
     }
 
     private static string Truncate(string text) => text.Length <= 300 ? text : text[..300];

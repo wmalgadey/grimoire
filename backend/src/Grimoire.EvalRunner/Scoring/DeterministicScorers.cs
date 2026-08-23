@@ -290,7 +290,7 @@ public static class DeterministicScorers
     /// SC-005/SC-007 (014-wiki-storage-restructure): shared deterministic half of
     /// <see cref="LogParagraphSpecificityScorer"/>/<see cref="CatalogDescriptionSpecificityScorer"/>
     /// — same "completed AND judge passed" gate <see cref="SteeringAdoption"/> uses; the
-    /// two scorers differ only in which judge prompt <see cref="Capture.CapturePipeline"/>
+    /// two scorers differ only in which judge prompt <see cref="Capture.IngestCapturePipeline"/>
     /// invokes to produce <see cref="SampleRunData.JudgeVerdict"/>, not in how the verdict
     /// gates the sample.
     /// </summary>

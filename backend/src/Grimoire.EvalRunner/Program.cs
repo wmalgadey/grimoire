@@ -30,7 +30,7 @@ var logger = loggerFactory.CreateLogger("Grimoire.EvalRunner");
 
 var paths = EvalPaths.Discover();
 var store = new RecordingStore(paths.RecordingsRoot);
-var invoker = AgentProcessInvoker.ForRepo(paths);
+var invoker = IngestAgentProcessInvoker.ForRepo(paths);
 var queryInvoker = QueryAgentProcessInvoker.ForRepo(paths);
 var lintInvoker = LintAgentProcessInvoker.ForRepo(paths);
 
@@ -183,13 +183,17 @@ switch (subcommand)
             }
 
             var sampleCount = options.Samples ?? IngestScenarioDefinitions.ResolveSampleCount();
-            var pipeline = new CapturePipeline(store, paths, invoker, logger, CreateJudgeClient);
+            var parallelSamples = options.Parallelism ?? CaptureParallelism.Default;
+            logger.LogInformation(
+                "Capturing up to {ParallelSamples} sample(s) of a scenario concurrently (--parallel).", parallelSamples);
+            var pipeline = new IngestCapturePipeline(store, paths, invoker, logger, CreateJudgeClient, parallelSamples);
             var results = new List<CaptureScenarioResult>();
-            var queryPipeline = new QueryCapturePipeline(store, paths, queryInvoker, logger);
+            var queryPipeline = new QueryCapturePipeline(store, paths, queryInvoker, logger, parallelSamples);
             var queryResults = new List<QueryCaptureScenarioResult>();
-            var lintPipeline = new LintCapturePipeline(store, paths, lintInvoker, logger);
+            var lintPipeline = new LintCapturePipeline(store, paths, lintInvoker, logger, parallelSamples);
             var lintResults = new List<Grimoire.EvalRunner.Capture.LintCaptureScenarioResult>();
-            var remediationPipeline = new Grimoire.EvalRunner.Capture.RemediationReVerificationCapturePipeline(store, paths, lintInvoker, logger);
+            var remediationPipeline = new Grimoire.EvalRunner.Capture.RemediationReVerificationCapturePipeline(
+                store, paths, lintInvoker, logger, parallelSamples);
             var remediationResults = new List<Grimoire.EvalRunner.Capture.RemediationReVerificationCaptureScenarioResult>();
             try
             {
@@ -353,10 +357,12 @@ static IModelClient CreateJudgeClient(ProviderConfiguration configuration)
 internal sealed record CliOptions(
     IReadOnlyList<string> Scenarios,
     int? Samples,
+    int? Parallelism,
     string? SummaryPath)
 {
     public const string Usage =
-        "Usage: Grimoire.EvalRunner <capture|replay|status> [--scenario <id>]... [--samples <n>] [--summary <path>]";
+        "Usage: Grimoire.EvalRunner <capture|replay|status> [--scenario <id>]... [--samples <n>] "
+        + "[--parallel <n>] [--summary <path>]";
 
     // Issue: a stray token used to be skipped silently AND — because the loop walked args
     // in fixed pairs — shifted every following option onto an odd index, where none of
@@ -383,6 +389,7 @@ internal sealed record CliOptions(
 
         var scenarios = new List<string>();
         int? samples = null;
+        int? parallelism = null;
         string? summaryPath = null;
 
         for (var i = 1; i < args.Length; i++)
@@ -421,17 +428,35 @@ internal sealed record CliOptions(
                     // there is nothing here the caller could have meant instead.
                     samples = Math.Clamp(parsed, 1, 20);
                     break;
+                case "--parallel":
+                    if (!int.TryParse(value, out var requestedParallelism))
+                    {
+                        return CliParseResult.Failed($"Option '--parallel' requires an integer, got '{value}'.");
+                    }
+
+                    // Unlike --samples, an out-of-range value is rejected rather than
+                    // clamped: nothing documents a clamp for this switch, and silently
+                    // running 16 concurrent agents for someone who typed 100 is exactly
+                    // the kind of quiet reinterpretation this parser exists to stop.
+                    if (requestedParallelism < CaptureParallelism.Sequential || requestedParallelism > CaptureParallelism.Max)
+                    {
+                        return CliParseResult.Failed(
+                            $"Option '--parallel' must be between {CaptureParallelism.Sequential} and {CaptureParallelism.Max}, got '{value}'.");
+                    }
+
+                    parallelism = requestedParallelism;
+                    break;
                 case "--summary":
                     summaryPath = value;
                     break;
             }
         }
 
-        return CliParseResult.Parsed(subcommand, new CliOptions(scenarios, samples, summaryPath));
+        return CliParseResult.Parsed(subcommand, new CliOptions(scenarios, samples, parallelism, summaryPath));
     }
 
     private static bool RequiresValue(string name)
-        => name is "--scenario" or "--samples" or "--summary";
+        => name is "--scenario" or "--samples" or "--parallel" or "--summary";
 }
 
 /// <summary>

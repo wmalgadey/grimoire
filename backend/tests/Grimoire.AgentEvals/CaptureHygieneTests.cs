@@ -84,7 +84,7 @@ public class CaptureHygieneTests : IDisposable
 
         var paths = EvalPaths.Discover();
         var store = new RecordingStore(_recordingsRoot, env);
-        var pipeline = new CapturePipeline(store, paths, AgentProcessInvoker.ForRepo(paths, env), NullLogger.Instance);
+        var pipeline = new IngestCapturePipeline(store, paths, IngestAgentProcessInvoker.ForRepo(paths, env), NullLogger.Instance);
 
         var result = await pipeline.RunScenarioAsync(
             IngestScenarioDefinitions.ConventionAdherence, gate.Configuration, requestedSampleCount: 1, CancellationToken.None);

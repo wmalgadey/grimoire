@@ -172,7 +172,7 @@ public class EvalRunnerCliArgumentTests : IDisposable
     }
 
     /// <summary>
-    /// Mirrors <see cref="AgentProcessInvoker.ResolveAgentDllPath"/>: the runner is launched
+    /// Mirrors <see cref="IngestAgentProcessInvoker.ResolveAgentDllPath"/>: the runner is launched
     /// from its OWN build output, never a copy in this test project's output directory.
     /// </summary>
     private static string ResolveEvalRunnerDllPath(string repoRoot)

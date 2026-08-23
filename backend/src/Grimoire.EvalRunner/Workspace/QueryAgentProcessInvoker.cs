@@ -32,7 +32,7 @@ public sealed record QueryAgentRunResult(
 
 /// <summary>
 /// Spawns the real <c>Grimoire.QueryAgent</c> executable per sample through its
-/// production CLI contract (ADR-011), mirroring <see cref="AgentProcessInvoker"/>'s
+/// production CLI contract (ADR-011), mirroring <see cref="IngestAgentProcessInvoker"/>'s
 /// relationship to Grimoire.IngestAgent (T097, 008-query-agent). The only
 /// <see cref="Process"/> user for Query in this assembly (ADR-012 C8).
 /// </summary>
@@ -62,7 +62,7 @@ public sealed class QueryAgentProcessInvoker
     public static QueryAgentProcessInvoker ForRepo(EvalPaths paths)
         => new(ResolveAgentDllPath(paths.RepoRoot));
 
-    /// <summary>Mirrors <see cref="AgentProcessInvoker.ResolveAgentDllPath"/> for Query's own build output.</summary>
+    /// <summary>Mirrors <see cref="IngestAgentProcessInvoker.ResolveAgentDllPath"/> for Query's own build output.</summary>
     public static string ResolveAgentDllPath(string repoRoot)
     {
         var separator = Path.DirectorySeparatorChar;

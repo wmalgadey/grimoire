@@ -20,10 +20,10 @@ public sealed class ReplayPipeline
 
     private readonly RecordingStore _store;
     private readonly EvalPaths _paths;
-    private readonly AgentProcessInvoker _invoker;
+    private readonly IngestAgentProcessInvoker _invoker;
     private readonly ILogger _logger;
 
-    public ReplayPipeline(RecordingStore store, EvalPaths paths, AgentProcessInvoker invoker, ILogger logger)
+    public ReplayPipeline(RecordingStore store, EvalPaths paths, IngestAgentProcessInvoker invoker, ILogger logger)
     {
         _store = store;
         _paths = paths;
@@ -60,7 +60,7 @@ public sealed class ReplayPipeline
         // 019-fast-test-tier (US4, FR-012/FR-013, ADR-021/ADR-011): the ~235 per-run agent-
         // process spawns were the dominant cost of the ~190s baseline (research.md R6) —
         // this is where the bulk of them live, one scenario's sample loop at a time. Each
-        // sample already gets its own isolated EvalWorkspace/recording/AgentProcessInvoker
+        // sample already gets its own isolated EvalWorkspace/recording/IngestAgentProcessInvoker
         // call (ReplaySampleAsync), so spawning them concurrently (bounded by
         // Environment.ProcessorCount, mirroring ADR-011's Query/Ingest concurrency model)
         // introduces no new isolation risk. Results are written into a fixed-size array by

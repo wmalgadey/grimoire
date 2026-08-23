@@ -19,7 +19,7 @@ namespace Grimoire.EvalRunner.Scoring;
 /// at replay, so recorded evaluation runs stay fully hermetic.
 ///
 /// Wired (T061) into <see cref="Grimoire.EvalRunner.Scenarios.IngestScenarioDefinitions.LogParagraphSpecificity"/>
-/// via <c>CapturePipeline.InvokeLogParagraphJudgeAsync</c>, which judges the most
+/// via <c>IngestCapturePipeline.InvokeLogParagraphJudgeAsync</c>, which judges the most
 /// recently appended <c>log.md</c> heading/paragraph against the sample's touched pages;
 /// <c>DeterministicScorers</c>' shared <c>JudgeVerdictGate</c> case reads the recorded
 /// verdict at replay (same shape as <c>SteeringAdoption</c>'s deterministic half).

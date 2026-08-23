@@ -64,7 +64,7 @@ public class IngestReplayEvalTests
     {
         var paths = EvalPaths.Discover();
         var store = new RecordingStore(paths.RecordingsRoot);
-        var pipeline = new ReplayPipeline(store, paths, AgentProcessInvoker.ForRepo(paths), NullLogger.Instance);
+        var pipeline = new ReplayPipeline(store, paths, IngestAgentProcessInvoker.ForRepo(paths), NullLogger.Instance);
 
         var result = await pipeline.RunScenarioAsync(scenario, CancellationToken.None);
 

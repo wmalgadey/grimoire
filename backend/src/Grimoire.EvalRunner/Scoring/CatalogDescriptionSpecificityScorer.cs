@@ -21,7 +21,7 @@ namespace Grimoire.EvalRunner.Scoring;
 /// recorded evaluation runs stay fully hermetic.
 ///
 /// Wired (T061) into <see cref="Grimoire.EvalRunner.Scenarios.IngestScenarioDefinitions.CatalogDescriptionSpecificity"/>
-/// via <c>CapturePipeline.InvokeCatalogDescriptionJudgeAsync</c>, which judges the most
+/// via <c>IngestCapturePipeline.InvokeCatalogDescriptionJudgeAsync</c>, which judges the most
 /// recently added <c>index.md</c> catalog line against the actual content of the article
 /// it links to; <c>DeterministicScorers</c>' shared <c>JudgeVerdictGate</c> case reads the
 /// recorded verdict at replay (same shape as <see cref="LogParagraphSpecificityScorer"/>).

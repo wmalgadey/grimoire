@@ -87,7 +87,7 @@ public sealed class LintAgentProcessInvoker
     public static LintAgentProcessInvoker ForRepo(EvalPaths paths)
         => new(ResolveAgentDllPath(paths.RepoRoot));
 
-    /// <summary>Mirrors <see cref="AgentProcessInvoker.ResolveAgentDllPath"/> for Lint's own build output.</summary>
+    /// <summary>Mirrors <see cref="IngestAgentProcessInvoker.ResolveAgentDllPath"/> for Lint's own build output.</summary>
     public static string ResolveAgentDllPath(string repoRoot)
     {
         var separator = Path.DirectorySeparatorChar;

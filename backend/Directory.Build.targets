@@ -40,7 +40,7 @@
 
     <!-- The WHOLE output is copied, not a selection: deps.json enumerates every assembly
          the app expects, so a partial copy fails at launch (the failure
-         Grimoire.EvalRunner's AgentProcessInvoker already documents). -->
+         Grimoire.EvalRunner's IngestAgentProcessInvoker already documents). -->
     <Copy SourceFiles="@(_GrimoireAgentBuildOutput)"
           DestinationFiles="@(_GrimoireAgentBuildOutput -> '$(_GrimoireAgentDestDir)%(RecursiveDir)%(Filename)%(Extension)')"
           SkipUnchangedFiles="false" />
