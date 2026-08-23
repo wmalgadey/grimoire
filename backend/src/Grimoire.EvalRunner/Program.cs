@@ -12,12 +12,16 @@ using Grimoire.AgentRuntime.Core;
 using Grimoire.AgentRuntime.Core.Adapters.Anthropic;
 using Microsoft.Extensions.Logging;
 
-var (subcommand, options) = CliOptions.Parse(args);
-if (subcommand is null)
+var parsed = CliOptions.Parse(args);
+if (parsed.Error is not null)
 {
-    Console.Error.WriteLine("Usage: Grimoire.EvalRunner <capture|replay|status> [--scenario <id>]... [--samples <n>] [--summary <path>]");
+    Console.Error.WriteLine(parsed.Error);
+    Console.Error.WriteLine(CliOptions.Usage);
     return 2;
 }
+
+var subcommand = parsed.Subcommand!;
+var options = parsed.Options!;
 
 using var loggerFactory = LoggerFactory.Create(builder => builder
     .SetMinimumLevel(LogLevel.Information)
@@ -34,13 +38,29 @@ var scenarios = ResolveScenarios(options.Scenarios);
 var queryScenarios = ResolveQueryScenarios(options.Scenarios);
 var lintScenarios = ResolveLintScenarios(options.Scenarios);
 var remediationScenarios = ResolveRemediationReVerificationScenarios(options.Scenarios);
-if (scenarios.Count == 0 && queryScenarios.Count == 0 && lintScenarios.Count == 0 && remediationScenarios.Count == 0)
+var knownScenarioIds = IngestScenarioDefinitions.All.Select(s => s.Id)
+    .Concat(QueryScenarioDefinitions.All.Select(s => s.Id))
+    .Concat(LintScenarioDefinitions.All.Select(s => s.Id))
+    .Concat(RemediationReVerificationScenarioDefinitions.All.Select(s => s.Id))
+    .ToList();
+
+// Each family's resolver drops the ids it does not own — that is how one flat --scenario
+// list feeds four families. It also used to swallow a typo: `--scenario lint-defcts-found`
+// simply ran nothing for Lint, and paired with a valid id it ran a SHORTER capture than
+// asked for, silently. An id no family knows is a wrong parameter, so it fails the run.
+var unknownScenarioIds = options.Scenarios
+    .Where(requested => !knownScenarioIds.Contains(requested, StringComparer.Ordinal))
+    .ToList();
+if (unknownScenarioIds.Count > 0)
 {
     Console.Error.WriteLine(
-        $"No matching scenarios. Known: {string.Join(", ", IngestScenarioDefinitions.All.Select(s => s.Id)
-            .Concat(QueryScenarioDefinitions.All.Select(s => s.Id))
-            .Concat(LintScenarioDefinitions.All.Select(s => s.Id))
-            .Concat(RemediationReVerificationScenarioDefinitions.All.Select(s => s.Id)))}");
+        $"Unknown scenario id(s): {string.Join(", ", unknownScenarioIds)}. Known: {string.Join(", ", knownScenarioIds)}");
+    return 2;
+}
+
+if (scenarios.Count == 0 && queryScenarios.Count == 0 && lintScenarios.Count == 0 && remediationScenarios.Count == 0)
+{
+    Console.Error.WriteLine($"No matching scenarios. Known: {string.Join(", ", knownScenarioIds)}");
     return 2;
 }
 
@@ -335,32 +355,95 @@ internal sealed record CliOptions(
     int? Samples,
     string? SummaryPath)
 {
-    public static (string? Subcommand, CliOptions Options) Parse(string[] args)
+    public const string Usage =
+        "Usage: Grimoire.EvalRunner <capture|replay|status> [--scenario <id>]... [--samples <n>] [--summary <path>]";
+
+    // Issue: a stray token used to be skipped silently AND — because the loop walked args
+    // in fixed pairs — shifted every following option onto an odd index, where none of
+    // them matched either. `capture --no-build --scenario lint-defects-found` therefore
+    // parsed as "no scenario filter at all", and an empty filter means EVERY scenario:
+    // one misplaced `dotnet run` flag turned a seven-scenario refresh into a live
+    // re-capture of the whole corpus against the provider. Nothing is worth silently
+    // ignoring here — every unrecognized or value-less argument now fails the run before
+    // a single provider call is made.
+    public static CliParseResult Parse(string[] args)
     {
-        string? subcommand = args.Length > 0 && !args[0].StartsWith("--", StringComparison.Ordinal)
+        if (args.Length == 0)
+        {
+            return CliParseResult.Failed("No subcommand given.");
+        }
+
+        var subcommand = !args[0].StartsWith("--", StringComparison.Ordinal)
             ? args[0].ToLowerInvariant()
             : null;
+        if (subcommand is null)
+        {
+            return CliParseResult.Failed($"Expected a subcommand as the first argument, got '{args[0]}'.");
+        }
 
         var scenarios = new List<string>();
         int? samples = null;
         string? summaryPath = null;
 
-        for (var i = subcommand is null ? 0 : 1; i < args.Length - 1; i += 2)
+        for (var i = 1; i < args.Length; i++)
         {
-            switch (args[i])
+            var name = args[i];
+            if (!RequiresValue(name))
+            {
+                return CliParseResult.Failed($"Unrecognized argument '{name}'.");
+            }
+
+            if (i + 1 >= args.Length)
+            {
+                return CliParseResult.Failed($"Option '{name}' requires a value.");
+            }
+
+            var value = args[++i];
+            if (value.StartsWith("--", StringComparison.Ordinal))
+            {
+                return CliParseResult.Failed($"Option '{name}' requires a value, but was followed by '{value}'.");
+            }
+
+            switch (name)
             {
                 case "--scenario":
-                    scenarios.Add(args[i + 1]);
+                    scenarios.Add(value);
                     break;
-                case "--samples" when int.TryParse(args[i + 1], out var parsed):
+                case "--samples":
+                    if (!int.TryParse(value, out var parsed))
+                    {
+                        return CliParseResult.Failed($"Option '--samples' requires an integer, got '{value}'.");
+                    }
+
+                    // Out-of-range values stay clamped rather than rejected: eval.yml
+                    // documents "clamped 1-20" as the contract for its own sample-count
+                    // input, and a number is a well-formed value — unlike the cases above,
+                    // there is nothing here the caller could have meant instead.
                     samples = Math.Clamp(parsed, 1, 20);
                     break;
                 case "--summary":
-                    summaryPath = args[i + 1];
+                    summaryPath = value;
                     break;
             }
         }
 
-        return (subcommand, new CliOptions(scenarios, samples, summaryPath));
+        return CliParseResult.Parsed(subcommand, new CliOptions(scenarios, samples, summaryPath));
     }
+
+    private static bool RequiresValue(string name)
+        => name is "--scenario" or "--samples" or "--summary";
+}
+
+/// <summary>
+/// Outcome of <see cref="CliOptions.Parse"/>: either a subcommand with its options, or the
+/// operator-facing reason the argument list was rejected. Carrying the reason (rather than
+/// returning a null subcommand) is what lets the composition root name the offending
+/// argument instead of printing bare usage.
+/// </summary>
+internal sealed record CliParseResult(string? Subcommand, CliOptions? Options, string? Error)
+{
+    public static CliParseResult Parsed(string subcommand, CliOptions options)
+        => new(subcommand, options, Error: null);
+
+    public static CliParseResult Failed(string error) => new(Subcommand: null, Options: null, error);
 }
