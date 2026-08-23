@@ -287,23 +287,9 @@ public sealed class GuardedToolExecutor
             return new ToolExecutionResult(true, "Missing required property: path");
         }
 
-        // Copilot review (PR #177): offset/limit are documented as 1-based/positive-count
-        // (data-model.md's ReadRequest, "1-based first line" / "maximum number of lines").
-        // Reject a non-positive value outright rather than silently coercing it (offset=0
-        // becoming line 1, limit=0 becoming an empty slice with no EOF marker) — the same
-        // "malformed input is a denial, not a reinterpretation" stance search_files already
-        // takes for an oversized pattern. Checked before canonicalization/policy, matching
-        // the missing-path check above: a shape error, not a policy decision.
-        var hasOffset = TryGetIntProperty(inputJson, "offset", out var offset);
-        if (hasOffset && offset < 1)
+        if (!TryParseReadRangeRequest(inputJson, out var range, out var rangeError))
         {
-            return new ToolExecutionResult(true, "Invalid property: offset must be a 1-based line number (>= 1).");
-        }
-
-        var hasLimit = TryGetIntProperty(inputJson, "limit", out var limit);
-        if (hasLimit && limit < 1)
-        {
-            return new ToolExecutionResult(true, "Invalid property: limit must be >= 1.");
+            return new ToolExecutionResult(true, rangeError!);
         }
 
         var canonical = Canonicalize(relativePath);
@@ -323,23 +309,57 @@ public sealed class GuardedToolExecutor
 
         var content = await File.ReadAllTextAsync(canonical, Encoding.UTF8, cancellationToken);
 
-        var frontmatterOnly = TryGetBoolProperty(inputJson, "frontmatter_only", out var frontmatterOnlyValue) && frontmatterOnlyValue;
-
-        if (!hasOffset && !hasLimit && !frontmatterOnly)
+        if (!range.HasOffset && !range.HasLimit && !range.FrontmatterOnly)
         {
             _writeGuard?.OnReadFile(canonical, content);
             _instrumentation.RecordReadInvocation(_taskId, "full", turn);
             return new ToolExecutionResult(false, content);
         }
 
-        if (frontmatterOnly)
+        if (range.FrontmatterOnly)
         {
             _instrumentation.RecordReadInvocation(_taskId, "frontmatter", turn);
             return new ToolExecutionResult(false, ExtractFrontmatter(content));
         }
 
         _instrumentation.RecordReadInvocation(_taskId, "range", turn);
-        return new ToolExecutionResult(false, ExtractLineRange(content, hasOffset ? offset : 1, hasLimit ? limit : null));
+        return new ToolExecutionResult(false, ExtractLineRange(content, range.HasOffset ? range.Offset : 1, range.HasLimit ? range.Limit : null));
+    }
+
+    private readonly record struct ReadRangeRequest(bool HasOffset, int Offset, bool HasLimit, int Limit, bool FrontmatterOnly);
+
+    /// <summary>
+    /// Copilot review (PR #177): offset/limit are documented as 1-based/positive-count
+    /// (data-model.md's ReadRequest, "1-based first line" / "maximum number of lines").
+    /// A non-positive value is rejected outright rather than silently coerced (offset=0
+    /// becoming line 1, limit=0 becoming an empty slice with no EOF marker) — the same
+    /// "malformed input is a denial, not a reinterpretation" stance search_files already
+    /// takes for an oversized pattern. Split out of <see cref="ExecuteReadFileAsync"/> to
+    /// keep that method's own cyclomatic complexity under the CI gate.
+    /// </summary>
+    private static bool TryParseReadRangeRequest(string inputJson, out ReadRangeRequest request, out string? error)
+    {
+        request = default;
+
+        var hasOffset = TryGetIntProperty(inputJson, "offset", out var offset);
+        if (hasOffset && offset < 1)
+        {
+            error = "Invalid property: offset must be a 1-based line number (>= 1).";
+            return false;
+        }
+
+        var hasLimit = TryGetIntProperty(inputJson, "limit", out var limit);
+        if (hasLimit && limit < 1)
+        {
+            error = "Invalid property: limit must be >= 1.";
+            return false;
+        }
+
+        var frontmatterOnly = TryGetBoolProperty(inputJson, "frontmatter_only", out var frontmatterOnlyValue) && frontmatterOnlyValue;
+
+        error = null;
+        request = new ReadRangeRequest(hasOffset, offset, hasLimit, limit, frontmatterOnly);
+        return true;
     }
 
     /// <summary>
