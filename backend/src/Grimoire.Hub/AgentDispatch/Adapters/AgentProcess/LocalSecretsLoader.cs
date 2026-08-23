@@ -57,6 +57,13 @@ public sealed class LocalSecretsLoader
     /// <summary>Lint's own output ceiling (#122), independent of Ingest's and Query's.</summary>
     public string? GetLintMaxOutputTokens() => ReadEnvVar("GRIMOIRE_LINT_MAX_OUTPUT_TOKENS");
 
+    /// <summary>
+    /// Lint's own per-run spend cap, independent of Ingest's. Single-named: unlike
+    /// <c>GRIMOIRE_INGEST_SPEND_CAP</c> this variable has no legacy alias to reconcile,
+    /// so it goes through the ordinary precedence rule rather than the alias one.
+    /// </summary>
+    public string? GetLintSpendCap() => ReadEnvVar("GRIMOIRE_LINT_SPEND_CAP");
+
     private string? ReadEnvVar(string varName)
     {
         if (!File.Exists(_envFilePath))

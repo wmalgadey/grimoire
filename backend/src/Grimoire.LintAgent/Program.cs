@@ -284,6 +284,7 @@ internal sealed class LintIntentHandler : IAgentIntentHandler
         var loop = new AgentLoop(
             modelClient,
             executor,
+            spendTokenCap: LintSpendCap.ResolveFromEnvironment(),
             registry: _profile.ToolRegistry,
             instrumentation: new LintAgentLoopInstrumentation());
 
@@ -463,6 +464,7 @@ internal sealed class RemediationExecutionIntentHandler : IAgentIntentHandler
         var loop = new AgentLoop(
             modelClient,
             executor,
+            spendTokenCap: LintSpendCap.ResolveFromEnvironment(),
             registry: _profile.ToolRegistry,
             instrumentation: new LintAgentLoopInstrumentation());
 
@@ -693,6 +695,7 @@ internal sealed class MessageTurnIntentHandler : IAgentIntentHandler
         var loop = new AgentLoop(
             modelClient,
             executor,
+            spendTokenCap: LintSpendCap.ResolveFromEnvironment(),
             registry: _profile.ToolRegistry,
             instrumentation: new LintAgentLoopInstrumentation());
 

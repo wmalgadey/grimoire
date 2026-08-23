@@ -224,6 +224,7 @@ public sealed class AgentProcessHost : IAgentProcessLauncher
         var lintModel = _secretsLoader.GetLintModel();
         var lintBaseUrl = _secretsLoader.GetLintBase();
         var lintMaxOutputTokens = _secretsLoader.GetLintMaxOutputTokens();
+        var lintSpendCap = _secretsLoader.GetLintSpendCap();
 
         var baseEnv = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
         foreach (var (key, value) in startInfo.Environment)
@@ -233,7 +234,7 @@ public sealed class AgentProcessHost : IAgentProcessLauncher
         }
 
         var childEnv = BuildLintChildEnvironment(
-            baseEnv, authToken, lintBaseUrl, lintModel, lintMaxOutputTokens, Activity.Current, _logger);
+            baseEnv, authToken, lintBaseUrl, lintModel, lintMaxOutputTokens, Activity.Current, _logger, lintSpendCap);
         startInfo.Environment.Clear();
         foreach (var (key, value) in childEnv)
         {
@@ -292,6 +293,7 @@ public sealed class AgentProcessHost : IAgentProcessLauncher
         var lintModel = _secretsLoader.GetLintModel();
         var lintBaseUrl = _secretsLoader.GetLintBase();
         var lintMaxOutputTokens = _secretsLoader.GetLintMaxOutputTokens();
+        var lintSpendCap = _secretsLoader.GetLintSpendCap();
 
         var baseEnv = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
         foreach (var (key, value) in startInfo.Environment)
@@ -301,7 +303,7 @@ public sealed class AgentProcessHost : IAgentProcessLauncher
         }
 
         var childEnv = BuildLintChildEnvironment(
-            baseEnv, authToken, lintBaseUrl, lintModel, lintMaxOutputTokens, Activity.Current, _logger);
+            baseEnv, authToken, lintBaseUrl, lintModel, lintMaxOutputTokens, Activity.Current, _logger, lintSpendCap);
         startInfo.Environment.Clear();
         foreach (var (key, value) in childEnv)
         {
@@ -341,6 +343,7 @@ public sealed class AgentProcessHost : IAgentProcessLauncher
         var lintModel = _secretsLoader.GetLintModel();
         var lintBaseUrl = _secretsLoader.GetLintBase();
         var lintMaxOutputTokens = _secretsLoader.GetLintMaxOutputTokens();
+        var lintSpendCap = _secretsLoader.GetLintSpendCap();
 
         var baseEnv = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
         foreach (var (key, value) in startInfo.Environment)
@@ -350,7 +353,7 @@ public sealed class AgentProcessHost : IAgentProcessLauncher
         }
 
         var childEnv = BuildLintChildEnvironment(
-            baseEnv, authToken, lintBaseUrl, lintModel, lintMaxOutputTokens, Activity.Current, _logger);
+            baseEnv, authToken, lintBaseUrl, lintModel, lintMaxOutputTokens, Activity.Current, _logger, lintSpendCap);
         startInfo.Environment.Clear();
         foreach (var (key, value) in childEnv)
         {
@@ -374,7 +377,8 @@ public sealed class AgentProcessHost : IAgentProcessLauncher
         string? lintModel = null,
         string? lintMaxOutputTokens = null,
         Activity? currentActivity = null,
-        ILogger? logger = null)
+        ILogger? logger = null,
+        string? lintSpendCap = null)
     {
         var env = new Dictionary<string, string>(baseEnv, StringComparer.OrdinalIgnoreCase);
         env.Remove("ANTHROPIC_API_KEY");
@@ -387,6 +391,7 @@ public sealed class AgentProcessHost : IAgentProcessLauncher
         ApplyInheritableOverride(env, baseEnv, "GRIMOIRE_LINT_MODEL", lintModel, LintAgentName, logger);
         ApplyInheritableOverride(env, baseEnv, "GRIMOIRE_LINT_BASE_URL", lintBaseUrl, LintAgentName, logger);
         ApplyInheritableOverride(env, baseEnv, "GRIMOIRE_LINT_MAX_OUTPUT_TOKENS", lintMaxOutputTokens, LintAgentName, logger);
+        ApplyInheritableOverride(env, baseEnv, "GRIMOIRE_LINT_SPEND_CAP", lintSpendCap, LintAgentName, logger);
 
         env.Remove("TRACEPARENT");
         env.Remove("TRACESTATE");
