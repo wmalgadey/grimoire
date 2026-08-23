@@ -38,7 +38,23 @@ public sealed record EvalPaths(string RepoRoot)
 
     public string FixturesRoot => Path.Combine(RepoRoot, "backend", "tests", "Grimoire.AgentEvals", "Fixtures");
 
-    public string FixtureWikiRoot(string fixtureName) => Path.Combine(FixturesRoot, fixtureName, "wiki");
+    /// <summary>
+    /// Resolves one fixture's wiki root, materializing it first if it is a generated
+    /// fixture (<see cref="LintAtScaleFixture"/>, T005). Generation is deterministic and
+    /// idempotent, and every consumer — capture, replay, and the staleness fingerprint —
+    /// reaches a fixture through this one method, so hooking it here is what guarantees no
+    /// caller can observe or hash a half-built tree. A committed fixture is unaffected:
+    /// the branch is taken only for the generated fixture's own name.
+    /// </summary>
+    public string FixtureWikiRoot(string fixtureName)
+    {
+        if (string.Equals(fixtureName, LintAtScaleFixture.FixtureName, StringComparison.Ordinal))
+        {
+            LintAtScaleFixture.Ensure(FixturesRoot);
+        }
+
+        return Path.Combine(FixturesRoot, fixtureName, "wiki");
+    }
 
     public string RecordingsRoot => Path.Combine(FixturesRoot, "recordings");
 

@@ -1,3 +1,4 @@
+using Grimoire.AgentRuntime.Core.Adapters.Replay;
 using Grimoire.EvalRunner.Recording;
 using Grimoire.EvalRunner.Scenarios;
 using Grimoire.EvalRunner.Scoring;
@@ -168,8 +169,23 @@ public sealed class LintReplayPipeline
                 scenario.Id, sampleNumber, manifest);
         }
 
+        // SC-011's budget half: how much page content this run actually read, reconstructed
+        // from the recorded read calls against the fixture (see ReadShapeAccounting for why
+        // this rather than peak input_tokens, and why nested batch reads count individually).
+        // Computed only where a scenario declares a budget — every other scenario would pay
+        // the file reads for a number nothing consumes.
+        var contentTokensRead = scenario.ContextBudgetTokens is null
+            ? null
+            : (int?)ReadShapeAccounting.Measure(recordingPath, fixtureWikiRoot).ContentTokens;
+
         var score = LintDeterministicScorers.Score(
-            scenario.ScorerId, new LintSampleRunData(run.Narrative ?? string.Empty, wikiRoot, run.ProposedActions));
+            scenario.ScorerId,
+            new LintSampleRunData(
+                run.Narrative ?? string.Empty,
+                wikiRoot,
+                run.ProposedActions,
+                contentTokensRead,
+                scenario.ContextBudgetTokens));
 
         return Finish(new LintReplaySampleResult(
             scenario.Id, sampleNumber, entry.TaskId, TrustStatus.Trusted, manifest.Model, manifest.CapturedAt, recordingPath,

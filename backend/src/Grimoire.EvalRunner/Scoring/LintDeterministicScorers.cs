@@ -15,7 +15,9 @@ namespace Grimoire.EvalRunner.Scoring;
 public sealed record LintSampleRunData(
     string Narrative,
     string WikiRoot,
-    IReadOnlyList<Workspace.RemediationProposalEntry>? ProposedActions = null)
+    IReadOnlyList<Workspace.RemediationProposalEntry>? ProposedActions = null,
+    int? ContentTokensRead = null,
+    int? ContextBudgetTokens = null)
 {
     /// <summary>Convenience constructor for scorers that only need the narrative (SC-005/SC-006/SC-007).</summary>
     public LintSampleRunData(string narrative) : this(narrative, string.Empty, null)
@@ -41,8 +43,54 @@ public static class LintDeterministicScorers
             "lint-metadata-proposals" => MetadataProposals(run),
             "lint-inbound-links-refreshed" => InboundLinksRefreshed(run),
             "lint-remediation-proposals-relevant" => RemediationProposalsRelevant(run),
+            "lint-at-scale-survey" => AtScaleSurvey(run),
             _ => throw new InvalidOperationException($"Unknown Lint scorer '{scorerId}'."),
         };
+
+    /// <summary>
+    /// SC-011 (026-guarded-tool-surface): on a wiki larger than the run's context guard,
+    /// the survey completes while the content read stays under that guard.
+    ///
+    /// <para>Both halves are required, and the reason both are is that either alone is
+    /// trivially satisfiable in the wrong direction: an agent that reads nothing stays well
+    /// under budget and finds nothing, and an agent that reads the whole wiki finds
+    /// everything and blows the budget. The scenario is only passed by narrowing that
+    /// preserved the survey.</para>
+    ///
+    /// <para>The defect half reuses <see cref="DefectsFound"/>'s checks unchanged — the
+    /// <c>lint-at-scale</c> fixture carries <c>lint-seeded-defects</c>' pages verbatim, so
+    /// "still a real survey" means the same thing here as it does there, and saying so once
+    /// keeps the two scenarios from drifting apart. The budget half compares the page content
+    /// the run actually read (<see cref="Recording.ReadShapeAccounting"/>) against the
+    /// scenario's declared budget — SC-011's own quantity, and the one
+    /// <c>specs/026-guarded-tool-surface/baseline.md</c> measures, so the eval and the
+    /// before/after record are denominated the same way.</para>
+    /// </summary>
+    private static SampleScore AtScaleSurvey(LintSampleRunData run)
+    {
+        if (run.ContextBudgetTokens is not { } budget)
+        {
+            throw new InvalidOperationException(
+                "Scorer 'lint-at-scale-survey' requires the scenario's ContextBudgetTokens (SC-011).");
+        }
+
+        if (run.ContentTokensRead is not { } contentRead)
+        {
+            throw new InvalidOperationException(
+                "Scorer 'lint-at-scale-survey' requires the sample's ContentTokensRead (SC-011).");
+        }
+
+        var defects = DefectsFound(run);
+        var withinBudget = contentRead <= budget;
+
+        var checks = new Dictionary<string, bool>(defects.Checks ?? new Dictionary<string, bool>())
+        {
+            ["survey_still_finds_defects"] = defects.Pass,
+            ["stayed_within_context_budget"] = withinBudget,
+        };
+
+        return new SampleScore(defects.Pass && withinBudget, false, checks);
+    }
 
     /// <summary>
     /// SC-005 (≥ 85% of seeded defects found, per category): checks that each of the six

@@ -171,8 +171,10 @@ public sealed class RemediationReVerificationReplayPipeline
                 scenario.Id, sampleNumber, manifest);
         }
 
-        var score = RemediationReVerificationScorer.Score(
-            scenario.ExpectedOutcome, new RemediationReVerificationSampleRunData(run.RemediationOutcome, run.Reason));
+        var sampleData = new RemediationReVerificationSampleRunData(run.RemediationOutcome, run.Reason, wikiRoot);
+        var score = scenario.ScorerId == RemediationReVerificationScorer.BodyEditScorerId
+            ? RemediationReVerificationScorer.ScoreBodyEdit(sampleData)
+            : RemediationReVerificationScorer.Score(scenario.ExpectedOutcome, sampleData);
 
         return Finish(new RemediationReVerificationReplaySampleResult(
             scenario.Id, sampleNumber, entry.TaskId, TrustStatus.Trusted, manifest.Model, manifest.CapturedAt, recordingPath,
