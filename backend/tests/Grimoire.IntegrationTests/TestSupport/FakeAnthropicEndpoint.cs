@@ -201,6 +201,59 @@ public sealed class FakeAnthropicEndpoint : IAsyncDisposable
             Event("message_stop", new { type = "message_stop" });
     }
 
+    /// <summary>
+    /// #173: the streaming shape a truncated tool call actually takes on the wire — a
+    /// <c>content_block_start</c> for the tool, one or more <c>input_json_delta</c> chunks
+    /// whose concatenation is <paramref name="rawInputJson"/> verbatim, then
+    /// <c>message_delta</c>/<c>message_stop</c> with no <c>content_block_stop</c> for that
+    /// block. That last part is deliberate: a stream cut at the output cap (or a dropped
+    /// connection) never emits the close event for the block it interrupted, so a caller
+    /// passing a syntactically incomplete <paramref name="rawInputJson"/> reproduces exactly
+    /// what the adapter receives in production, not an approximation of it.
+    /// </summary>
+    public static string StreamingToolUseBody(
+        string toolUseId, string toolName, string rawInputJson, string stopReason)
+    {
+        static string Event(string name, object payload)
+            => $"event: {name}\ndata: {System.Text.Json.JsonSerializer.Serialize(payload)}\n\n";
+
+        return
+            Event("message_start", new
+            {
+                type = "message_start",
+                message = new
+                {
+                    id = "msg_fake",
+                    type = "message",
+                    role = "assistant",
+                    model = "fake-model",
+                    content = Array.Empty<object>(),
+                    stop_reason = (string?)null,
+                    stop_sequence = (string?)null,
+                    usage = new { input_tokens = 11, output_tokens = 0 },
+                },
+            }) +
+            Event("content_block_start", new
+            {
+                type = "content_block_start",
+                index = 0,
+                content_block = new { type = "tool_use", id = toolUseId, name = toolName, input = new { } },
+            }) +
+            Event("content_block_delta", new
+            {
+                type = "content_block_delta",
+                index = 0,
+                delta = new { type = "input_json_delta", partial_json = rawInputJson },
+            }) +
+            Event("message_delta", new
+            {
+                type = "message_delta",
+                delta = new { stop_reason = stopReason, stop_sequence = (string?)null },
+                usage = new { output_tokens = 7 },
+            }) +
+            Event("message_stop", new { type = "message_stop" });
+    }
+
     public async ValueTask DisposeAsync()
     {
         await _app.StopAsync();

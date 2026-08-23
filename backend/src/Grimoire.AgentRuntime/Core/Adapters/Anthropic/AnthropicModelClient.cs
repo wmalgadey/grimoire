@@ -311,15 +311,39 @@ public sealed class AnthropicModelClient : IModelClient
         public ModelTurn ToModelTurn() => new(
             AssistantText: _assistantText,
             ToolUseRequests: _toolBlocksByIndex.Values
-                .Select(t => new ToolUseRequest(
-                    ToolUseId: t.Id,
-                    ToolName: t.Name,
-                    InputJson: t.Json.Length == 0 ? "{}" : t.Json.ToString()))
+                .Select(t => (t.Id, t.Name, InputJson: t.Json.Length == 0 ? "{}" : t.Json.ToString()))
+                .Where(t => IsCompleteToolInput(t.InputJson))
+                .Select(t => new ToolUseRequest(ToolUseId: t.Id, ToolName: t.Name, InputJson: t.InputJson))
                 .ToList(),
             StopReason: _stopReason,
             InputTokens: _inputTokens,
             OutputTokens: _outputTokens,
             Refusal: _refusal);
+
+        /// <summary>
+        /// #173: a turn cut short mid-tool-call (the output cap truncates the stream, or the
+        /// connection ends before <c>content_block_stop</c>) leaves an accumulated string that
+        /// is syntactically incomplete JSON — streaming has no signal for "this block never
+        /// closed" other than the text itself failing to parse. Dropping such a block here,
+        /// rather than handing it on as <see cref="ToolUseRequest.InputJson"/>, keeps the
+        /// harness invariant that a <see cref="ConversationToolUseBlock"/> is always valid
+        /// JSON, and lets the loop's existing no-tool-turn handling (<c>max_tokens</c> ⇒
+        /// continue) ask the model to reissue the call instead of the harness replaying a
+        /// truncated one on the next turn and crashing on re-serialization. Uses the exact
+        /// deserialization <see cref="BuildContentBlocks"/> performs on replay, so nothing can
+        /// pass here and still fail there.
+        /// </summary>
+        private static bool IsCompleteToolInput(string json)
+        {
+            try
+            {
+                return JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(json) is not null;
+            }
+            catch (JsonException)
+            {
+                return false;
+            }
+        }
     }
 
     /// <summary>
@@ -477,9 +501,25 @@ public sealed class AnthropicModelClient : IModelClient
                     break;
 
                 case ConversationToolUseBlock toolUseBlock:
-                    var inputMap = JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(toolUseBlock.InputJson)
-                        ?? throw new InvalidOperationException(
-                            $"Invalid tool_use input JSON for id '{toolUseBlock.ToolUseId}'.");
+                    Dictionary<string, JsonElement> inputMap;
+                    try
+                    {
+                        inputMap = JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(toolUseBlock.InputJson)
+                            ?? throw new InvalidOperationException(
+                                $"Tool call '{toolUseBlock.ToolName}' (id '{toolUseBlock.ToolUseId}') has no input.");
+                    }
+                    catch (JsonException ex)
+                    {
+                        // #173: this should be unreachable — StreamingTurn.ToModelTurn() and
+                        // the non-streaming path both guarantee InputJson is valid before it
+                        // ever reaches the conversation. If the invariant is ever broken
+                        // anyway (a corrupted replay capture, a future caller that skips the
+                        // guard), an operator needs to see which tool call and task broke it,
+                        // not a JSON parser's byte offset.
+                        throw new InvalidOperationException(
+                            $"Tool call '{toolUseBlock.ToolName}' (id '{toolUseBlock.ToolUseId}') has an " +
+                            "invalid input JSON payload and cannot be replayed to the provider.", ex);
+                    }
 
                     var anthropicToolUse = new ToolUseBlockParam
                     {
