@@ -141,7 +141,7 @@ public class ReplayAdapterTests : IDisposable
         var exception = await Assert.ThrowsAsync<InvalidOperationException>(() => capture.NextTurnAsync(
             "system prompt", [new ConversationMessage("user", "hello agent")], ToolStubs.Tools, CancellationToken.None));
 
-        Assert.Contains("cut off", exception.Message, StringComparison.Ordinal);
+        Assert.Contains("incomplete or invalid", exception.Message, StringComparison.Ordinal);
         Assert.False(File.Exists(capturePath), "A rejected turn must not be persisted.");
     }
 
@@ -181,7 +181,7 @@ public class ReplayAdapterTests : IDisposable
         var exception = await Assert.ThrowsAsync<InvalidOperationException>(() => capture.NextTurnAsync(
             "system prompt", secondConversation, ToolStubs.Tools, CancellationToken.None));
 
-        Assert.Contains("cut off", exception.Message, StringComparison.Ordinal);
+        Assert.Contains("incomplete or invalid", exception.Message, StringComparison.Ordinal);
         Assert.False(File.Exists(capturePath), "The stale complete-looking prefix must not survive a later rejection.");
     }
 
