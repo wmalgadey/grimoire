@@ -203,18 +203,21 @@ public sealed class FakeAnthropicEndpoint : IAsyncDisposable
 
     /// <summary>
     /// #173: the streaming shape a tool call takes on the wire — a
-    /// <c>content_block_start</c> for the tool, one or more <c>input_json_delta</c> chunks
-    /// whose concatenation is <paramref name="rawInputJson"/> verbatim, then
-    /// <c>message_delta</c>/<c>message_stop</c>. <paramref name="closeBlock"/> controls
-    /// whether a <c>content_block_stop</c> is emitted for that block before the message-level
-    /// events — the adapter now treats that event, not just JSON validity, as part of what
-    /// makes a streamed tool call complete (a stream cut at the output cap, or a dropped
-    /// connection, never emits the close event for the block it interrupted). Default
-    /// <c>false</c> reproduces a truncated call exactly as production receives one; pass
-    /// <c>true</c> for a genuinely complete streamed call.
+    /// <c>content_block_start</c> for the tool, then (when <paramref name="rawInputJson"/> is
+    /// non-null) one <c>input_json_delta</c> chunk carrying it verbatim, then
+    /// <c>message_delta</c>/<c>message_stop</c>. <paramref name="rawInputJson"/> being
+    /// <c>null</c> — as opposed to <c>""</c>, which still emits a delta, just an empty one —
+    /// reproduces a stream that ends before any <c>input_json_delta</c> was ever sent for
+    /// the block at all. <paramref name="closeBlock"/> controls whether a
+    /// <c>content_block_stop</c> is emitted for that block before the message-level events —
+    /// the adapter now treats that event, not just JSON validity, as part of what makes a
+    /// streamed tool call complete (a stream cut at the output cap, or a dropped connection,
+    /// never emits the close event for the block it interrupted). Default <c>false</c>
+    /// reproduces a truncated call exactly as production receives one; pass <c>true</c> for
+    /// a genuinely complete streamed call.
     /// </summary>
     public static string StreamingToolUseBody(
-        string toolUseId, string toolName, string rawInputJson, string stopReason, bool closeBlock = false)
+        string toolUseId, string toolName, string? rawInputJson, string stopReason, bool closeBlock = false)
     {
         static string Event(string name, object payload)
             => $"event: {name}\ndata: {System.Text.Json.JsonSerializer.Serialize(payload)}\n\n";
@@ -241,12 +244,12 @@ public sealed class FakeAnthropicEndpoint : IAsyncDisposable
                 index = 0,
                 content_block = new { type = "tool_use", id = toolUseId, name = toolName, input = new { } },
             }) +
-            Event("content_block_delta", new
+            (rawInputJson is null ? "" : Event("content_block_delta", new
             {
                 type = "content_block_delta",
                 index = 0,
                 delta = new { type = "input_json_delta", partial_json = rawInputJson },
-            }) +
+            })) +
             (closeBlock ? Event("content_block_stop", new { type = "content_block_stop", index = 0 }) : "") +
             Event("message_delta", new
             {

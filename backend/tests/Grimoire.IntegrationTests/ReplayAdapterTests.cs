@@ -119,6 +119,33 @@ public class ReplayAdapterTests : IDisposable
     }
 
     [Fact]
+    public async Task Capture_RejectsATurnWithAnIncompleteToolCall_RatherThanRecordingIt()
+    {
+        // #173 (Copilot review on #178): RecordedTurn has no field for
+        // ModelTurn.HasIncompleteToolCall, and ReplayModelClient always reconstructs it as
+        // false. Capturing this turn as-is would produce a recording that replays a
+        // different harness nudge than the live run actually took, diverging on the very
+        // next turn's conversation-hash check. Capture must fail outright instead of
+        // writing a recording it cannot faithfully replay.
+        var capturePath = Path.Combine(_scratch, "sample-incomplete.json");
+        var incompleteTurn = new ModelTurn(
+            AssistantText: null,
+            ToolUseRequests: [],
+            StopReason: ModelStopReason.MaxTokens,
+            InputTokens: 100,
+            OutputTokens: 50,
+            HasIncompleteToolCall: true);
+        var fake = new FakeModelClient([incompleteTurn]);
+        var capture = new TurnCaptureModelClient(fake, capturePath);
+
+        var exception = await Assert.ThrowsAsync<InvalidOperationException>(() => capture.NextTurnAsync(
+            "system prompt", [new ConversationMessage("user", "hello agent")], ToolStubs.Tools, CancellationToken.None));
+
+        Assert.Contains("cut off", exception.Message, StringComparison.Ordinal);
+        Assert.False(File.Exists(capturePath), "A rejected turn must not be persisted.");
+    }
+
+    [Fact]
     public void CaptureFile_IsSchemaValid_WithRequestHashesAndVerbatimResponses()
     {
         var capturePath = CaptureTwoTurnRecording(out _);

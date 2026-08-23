@@ -214,20 +214,14 @@ public sealed class AgentLoop
 
             if (turn.ToolUseRequests.Count == 0)
             {
-                if (ClassifyNoToolTurn(turn, turnsUsed) == NoToolTurnOutcome.Complete)
+                var noToolResult = HandleNoToolTurn(
+                    turn, turnsUsed, totalInputTokens, totalOutputTokens,
+                    toolCallsTotal, toolCallsByName, conversation, answerStream);
+                if (noToolResult is not null)
                 {
-                    _instrumentation.RecordAgentTurns(turnsUsed, "completed");
-                    _eventEmitter?.EmitActivity(turnsUsed, toolCallsTotal, toolCallsByName, "finalizing");
-
-                    return new AgentLoopResult(
-                        Narrative: turn.AssistantText ?? string.Empty,
-                        TurnsUsed: turnsUsed,
-                        TotalInputTokens: totalInputTokens,
-                        TotalOutputTokens: totalOutputTokens);
+                    return noToolResult;
                 }
 
-                answerStream.EndTurn();
-                conversation.Add(new ConversationMessage("user", [new ConversationTextBlock(ContinuePrompt)]));
                 continue;
             }
 
@@ -342,6 +336,57 @@ public sealed class AgentLoop
 
         /// <summary>The turn was cut short; the loop nudges the model and takes another.</summary>
         Continue,
+    }
+
+    /// <summary>
+    /// Handles a turn that carried no surviving tool call, appending the loop's
+    /// continuation message to <paramref name="conversation"/> and returning null so the
+    /// caller loops again — or, if the turn actually finished the run, the final result to
+    /// return from <c>RunAsync</c>. Extracted purely to keep that method's own branching
+    /// flat; every parameter here is state <c>RunAsync</c> already tracks.
+    /// <para>
+    /// #173: a dropped, incomplete tool call is checked <em>before</em>
+    /// <see cref="ClassifyNoToolTurn"/> and short-circuits it entirely. The accumulator's
+    /// own structural signal — a call was cut off — is authoritative regardless of what
+    /// <c>stop_reason</c> string happened to arrive with it (including one
+    /// <see cref="ClassifyNoToolTurn"/> would otherwise reject as unexpected, e.g. a
+    /// connection that ended before <c>message_delta</c>): the right move is always to
+    /// continue and ask for the call again, never to fail the run over a protocol nuance
+    /// sitting next to a plain truncation.
+    /// </para>
+    /// </summary>
+    private AgentLoopResult? HandleNoToolTurn(
+        ModelTurn turn,
+        int turnsUsed,
+        int totalInputTokens,
+        int totalOutputTokens,
+        int toolCallsTotal,
+        Dictionary<string, int> toolCallsByName,
+        List<ConversationMessage> conversation,
+        TurnBoundaryTextStream answerStream)
+    {
+        if (turn.HasIncompleteToolCall)
+        {
+            answerStream.EndTurn();
+            conversation.Add(new ConversationMessage("user", [new ConversationTextBlock(IncompleteToolCallPrompt)]));
+            return null;
+        }
+
+        if (ClassifyNoToolTurn(turn, turnsUsed) == NoToolTurnOutcome.Complete)
+        {
+            _instrumentation.RecordAgentTurns(turnsUsed, "completed");
+            _eventEmitter?.EmitActivity(turnsUsed, toolCallsTotal, toolCallsByName, "finalizing");
+
+            return new AgentLoopResult(
+                Narrative: turn.AssistantText ?? string.Empty,
+                TurnsUsed: turnsUsed,
+                TotalInputTokens: totalInputTokens,
+                TotalOutputTokens: totalOutputTokens);
+        }
+
+        answerStream.EndTurn();
+        conversation.Add(new ConversationMessage("user", [new ConversationTextBlock(ContinuePrompt)]));
+        return null;
     }
 
     /// <summary>

@@ -116,11 +116,13 @@ public class StreamingToolUseTruncationTests
         // A block the provider itself closed with zero deltas is a deliberate, complete
         // (if perhaps schema-invalid) call — content_block_stop is authoritative. Whether
         // an empty input satisfies the tool's schema is GuardedToolExecutor's question, not
-        // the accumulator's.
+        // the accumulator's. rawInputJson is null, not "", to actually omit
+        // content_block_delta entirely — an empty delta is a different wire shape, covered
+        // by the byte-exact truncation cases above.
         await using var provider = await FakeAnthropicEndpoint.StartAsync(
             HttpStatusCode.OK,
             FakeAnthropicEndpoint.StreamingToolUseBody(
-                "tool-1", "read_file", rawInputJson: "", stopReason: "tool_use", closeBlock: true),
+                "tool-1", "read_file", rawInputJson: null, stopReason: "tool_use", closeBlock: true),
             FakeAnthropicEndpoint.StreamingContentType);
 
         var turn = await NextTurnAgainstAsync(provider);
@@ -254,6 +256,52 @@ public class StreamingToolUseTruncationTests
                 lastMessage.ContentBlocks.OfType<ConversationTextBlock>(),
                 block => block.Text.Contains("cut off", StringComparison.Ordinal)
                     && block.Text.Contains($"<{AgentLoop.HarnessInstructionTag}>", StringComparison.Ordinal));
+        }
+        finally
+        {
+            try { Directory.Delete(root, recursive: true); } catch { /* best effort */ }
+        }
+    }
+
+    [Fact]
+    public async Task AgentLoop_ContinuesInsteadOfThrowing_WhenEveryToolCallInATurnWasDropped()
+    {
+        // Copilot review on #178: when every streamed tool call in a turn is dropped,
+        // ToolUseRequests is empty and the loop takes the no-tool path — where
+        // ClassifyNoToolTurn's stricter rules used to still apply, throwing immediately for
+        // a stop reason it doesn't otherwise expect no-tool (here Unknown, standing in for
+        // a connection that ended before message_delta ever arrived). HasIncompleteToolCall
+        // must short-circuit that before ClassifyNoToolTurn ever runs: continue and ask the
+        // model to reissue, exactly like the mixed-result case above.
+        var root = Path.Combine(Path.GetTempPath(), $"all-dropped-tool-calls-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(root);
+        try
+        {
+            var policy = new SafetyPolicy(root, readPrefixes: [], writePrefixes: []);
+            var executor = new GuardedToolExecutor(policy, new WriteJournal(), root);
+            var allDroppedTurn = new ModelTurn(
+                AssistantText: null,
+                ToolUseRequests: [],
+                StopReason: ModelStopReason.Unknown,
+                InputTokens: 100,
+                OutputTokens: 50,
+                HasIncompleteToolCall: true);
+            var fake = new FakeModelClient([allDroppedTurn, FakeModelClient.FinalTurn("Done.")]);
+            var loop = new AgentLoop(fake, executor);
+
+            var result = await loop.RunAsync(
+                "You are a test agent.",
+                [new ConversationMessage("user", "Do the task.")],
+                "task-all-dropped-tool-calls",
+                CancellationToken.None);
+
+            Assert.Equal("Done.", result.Narrative);
+            Assert.Equal(2, fake.CallCount);
+            var lastMessage = fake.Calls[1].Conversation[^1];
+            Assert.Equal("user", lastMessage.Role);
+            Assert.Contains(
+                lastMessage.ContentBlocks.OfType<ConversationTextBlock>(),
+                block => block.Text.Contains("cut off", StringComparison.Ordinal));
         }
         finally
         {
