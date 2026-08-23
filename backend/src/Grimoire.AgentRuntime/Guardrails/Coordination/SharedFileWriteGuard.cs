@@ -167,91 +167,122 @@ public sealed class SharedFileWriteGuard
             return WriteGuardDecision.Allowed(handle);
         }
 
+        var denialReason = await EvaluateExistingTargetChecksAsync(canonicalPath, mode, proposedContent, exists, cancellationToken);
+        if (denialReason is not null)
+        {
+            handle.Dispose();
+            return WriteGuardDecision.Denied(denialReason);
+        }
+
+        return WriteGuardDecision.Allowed(handle);
+    }
+
+    /// <summary>
+    /// The read-write/frontmatter-only half of <see cref="EvaluateWriteAsync(string, WriteMode, string, CancellationToken)"/>
+    /// — every check that only applies once create-only mode has been ruled out: the
+    /// frontmatter-only missing-target check, the compare-and-swap read-hash check
+    /// (ADR-015), the frontmatter/body-preservation check (ADR-016), and the log.md/
+    /// index.md format-validation checks (ADR-017). Returns the first denial reason
+    /// encountered, or <c>null</c> once every applicable check has passed — the caller
+    /// still owns disposing the lock handle on either outcome.
+    /// </summary>
+    private async Task<string?> EvaluateExistingTargetChecksAsync(
+        string canonicalPath, WriteMode mode, string proposedContent, bool exists, CancellationToken cancellationToken)
+    {
         // ADR-016: a frontmatter-only write always targets a page that already exists —
         // Lint never creates pages, so a missing target is denied before any content check.
         if (mode == WriteMode.FrontmatterOnly && !exists)
         {
-            handle.Dispose();
-            return WriteGuardDecision.Denied("frontmatter_only_target_missing");
+            return "frontmatter_only_target_missing";
         }
 
         byte[]? currentBytes = null;
         if (exists)
         {
             currentBytes = await File.ReadAllBytesAsync(canonicalPath, cancellationToken);
-            var currentHash = ComputeHash(currentBytes);
-            var expectedHash = _readHashes.GetValueOrDefault(canonicalPath);
 
-            if (expectedHash is null || !string.Equals(expectedHash, currentHash, StringComparison.Ordinal))
+            var casDenialReason = EvaluateCompareAndSwap(canonicalPath, currentBytes);
+            if (casDenialReason is not null)
             {
-                handle.Dispose();
-                return WriteGuardDecision.Denied("write_conflict_stale_read");
+                return casDenialReason;
             }
         }
 
         // ADR-016: the frontmatter-only body-preservation check composes with, not
-        // replaces, the compare-and-swap check above — both must pass. `exists` and
-        // `currentBytes` are guaranteed non-null here (denied above otherwise).
+        // replaces, the compare-and-swap check above — both must pass. `currentBytes` is
+        // guaranteed non-null here (denied above otherwise).
         if (mode == WriteMode.FrontmatterOnly)
         {
-            var currentContent = Encoding.UTF8.GetString(currentBytes!);
-
-            if (!TrySplitFrontmatter(currentContent, out var currentBody) ||
-                !TrySplitFrontmatter(proposedContent, out var proposedBody))
+            var frontmatterDenialReason = EvaluateFrontmatterPreservation(currentBytes!, proposedContent);
+            if (frontmatterDenialReason is not null)
             {
-                handle.Dispose();
-                return WriteGuardDecision.Denied("frontmatter_only_malformed_document");
-            }
-
-            if (!string.Equals(currentBody, proposedBody, StringComparison.Ordinal))
-            {
-                handle.Dispose();
-                return WriteGuardDecision.Denied("frontmatter_only_body_changed");
+                return frontmatterDenialReason;
             }
         }
+
+        var currentContent = exists ? Encoding.UTF8.GetString(currentBytes!) : string.Empty;
 
         // ADR-017 (014-wiki-storage-restructure): format-validation step, gated on the
-        // canonical target being log.md, run after every existing existence/CAS/WriteMode
+        // canonical target being log.md/index.md, run after every existence/CAS/WriteMode
         // check above and before the write is committed (contract §3 order). Composes
         // with, never replaces, the checks above.
-        if (_logPath is not null && string.Equals(canonicalPath, _logPath, StringComparison.Ordinal))
-        {
-            var currentContent = exists ? Encoding.UTF8.GetString(currentBytes!) : string.Empty;
-            var formatDenialReason = ValidateLogEntryFormat(currentContent, proposedContent);
+        return EvaluateFormatIfTarget(canonicalPath, _logPath, "log", currentContent, proposedContent, ValidateLogEntryFormat)
+            ?? EvaluateFormatIfTarget(canonicalPath, _indexPath, "index", currentContent, proposedContent, ValidateCatalogEntryFormat);
+    }
 
-            using var formatSpan = _activitySource?.StartActivity("guardrails.format_validate");
-            formatSpan?.SetTag("path", canonicalPath);
-            formatSpan?.SetTag("target", "log");
-            formatSpan?.SetTag("outcome", formatDenialReason is null ? "allowed" : "denied");
-            if (formatDenialReason is not null)
-            {
-                formatSpan?.SetTag("reason", formatDenialReason);
-                handle.Dispose();
-                return WriteGuardDecision.Denied(formatDenialReason);
-            }
+    private string? EvaluateCompareAndSwap(string canonicalPath, byte[] currentBytes)
+    {
+        var currentHash = ComputeHash(currentBytes);
+        var expectedHash = _readHashes.GetValueOrDefault(canonicalPath);
+
+        return expectedHash is null || !string.Equals(expectedHash, currentHash, StringComparison.Ordinal)
+            ? "write_conflict_stale_read"
+            : null;
+    }
+
+    private static string? EvaluateFrontmatterPreservation(byte[] currentBytes, string proposedContent)
+    {
+        var currentContent = Encoding.UTF8.GetString(currentBytes);
+
+        if (!TrySplitFrontmatter(currentContent, out var currentBody) ||
+            !TrySplitFrontmatter(proposedContent, out var proposedBody))
+        {
+            return "frontmatter_only_malformed_document";
         }
 
-        // ADR-017 (014-wiki-storage-restructure, US4): the same format-validation step,
-        // gated on the canonical target being index.md — the same guardrails.format_validate
-        // span shape as the log.md check above, distinguished only by target=index.
-        if (_indexPath is not null && string.Equals(canonicalPath, _indexPath, StringComparison.Ordinal))
-        {
-            var currentContent = exists ? Encoding.UTF8.GetString(currentBytes!) : string.Empty;
-            var formatDenialReason = ValidateCatalogEntryFormat(currentContent, proposedContent);
+        return string.Equals(currentBody, proposedBody, StringComparison.Ordinal)
+            ? null
+            : "frontmatter_only_body_changed";
+    }
 
-            using var formatSpan = _activitySource?.StartActivity("guardrails.format_validate");
-            formatSpan?.SetTag("path", canonicalPath);
-            formatSpan?.SetTag("target", "index");
-            formatSpan?.SetTag("outcome", formatDenialReason is null ? "allowed" : "denied");
-            if (formatDenialReason is not null)
-            {
-                formatSpan?.SetTag("reason", formatDenialReason);
-                handle.Dispose();
-                return WriteGuardDecision.Denied(formatDenialReason);
-            }
+    /// <summary>
+    /// Runs <paramref name="validate"/> and emits the <c>guardrails.format_validate</c>
+    /// span when <paramref name="canonicalPath"/> is <paramref name="targetPath"/> (either
+    /// <see cref="_logPath"/> or <see cref="_indexPath"/>) — a no-op returning <c>null</c>
+    /// otherwise. Shared by both the log.md and index.md format checks, distinguished only
+    /// by <paramref name="targetLabel"/>.
+    /// </summary>
+    private string? EvaluateFormatIfTarget(
+        string canonicalPath, string? targetPath, string targetLabel,
+        string currentContent, string proposedContent, Func<string, string, string?> validate)
+    {
+        if (targetPath is null || !string.Equals(canonicalPath, targetPath, StringComparison.Ordinal))
+        {
+            return null;
         }
 
-        return WriteGuardDecision.Allowed(handle);
+        var formatDenialReason = validate(currentContent, proposedContent);
+
+        using var formatSpan = _activitySource?.StartActivity("guardrails.format_validate");
+        formatSpan?.SetTag("path", canonicalPath);
+        formatSpan?.SetTag("target", targetLabel);
+        formatSpan?.SetTag("outcome", formatDenialReason is null ? "allowed" : "denied");
+        if (formatDenialReason is not null)
+        {
+            formatSpan?.SetTag("reason", formatDenialReason);
+        }
+
+        return formatDenialReason;
     }
 
     /// <summary>
