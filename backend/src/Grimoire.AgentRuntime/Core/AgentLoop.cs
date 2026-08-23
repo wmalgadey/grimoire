@@ -253,24 +253,33 @@ public sealed class AgentLoop
                     result.Content));
             }
 
-            if (toolResultBlocks.Count == 0)
-            {
-                conversation.Add(new ConversationMessage("user", [new ConversationTextBlock(ContinuePrompt)]));
-            }
-            else
-            {
-                // #173: a turn can carry both complete tool calls (dispatched above, results
-                // included) and one dropped for arriving incomplete (ModelTurn.ToModelTurn()).
-                // The dropped call has no other trace in the conversation, so it needs its own
-                // nudge alongside the results of the calls that did complete.
-                if (turn.HasIncompleteToolCall)
-                {
-                    toolResultBlocks.Add(new ConversationTextBlock(IncompleteToolCallPrompt));
-                }
-
-                conversation.Add(new ConversationMessage("user", toolResultBlocks));
-            }
+            conversation.Add(BuildToolResultsMessage(toolResultBlocks, turn.HasIncompleteToolCall));
         }
+    }
+
+    /// <summary>
+    /// Extracted from <see cref="RunAsync(string, IReadOnlyList{ConversationMessage}, string, CancellationToken)"/>
+    /// purely to keep that method's own branching flat — this one carries none of the loop's
+    /// state. A turn can carry both complete tool calls (dispatched by the caller, their
+    /// results already in <paramref name="toolResultBlocks"/>) and one dropped for arriving
+    /// incomplete (<c>ModelTurn.ToModelTurn()</c>, #173). The dropped call has no other trace
+    /// in the conversation, so it needs its own nudge alongside the results of the calls that
+    /// did complete.
+    /// </summary>
+    private static ConversationMessage BuildToolResultsMessage(
+        List<ConversationContentBlock> toolResultBlocks, bool hasIncompleteToolCall)
+    {
+        if (toolResultBlocks.Count == 0)
+        {
+            return new ConversationMessage("user", [new ConversationTextBlock(ContinuePrompt)]);
+        }
+
+        if (hasIncompleteToolCall)
+        {
+            toolResultBlocks.Add(new ConversationTextBlock(IncompleteToolCallPrompt));
+        }
+
+        return new ConversationMessage("user", toolResultBlocks);
     }
 
     /// <summary>
