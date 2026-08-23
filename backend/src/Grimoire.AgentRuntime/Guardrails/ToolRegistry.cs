@@ -171,15 +171,30 @@ public sealed class ToolRegistry
     public static readonly ToolDefinition BatchDefinition = new(
         Name: Batch,
         Description: "Run several read-only calls (list_files, read_file, search_files) in " +
-            "one turn. Each is evaluated and recorded individually; a batch containing a " +
-            "write, a delete, or a nested batch runs nothing.",
+            "one turn, at most 20. Each is evaluated and recorded individually; a batch " +
+            "containing a write, a delete, a nested batch, or more than 20 calls runs nothing.",
+        // `input` is the union of the three batchable tools' own parameters rather than a
+        // free-form object, for the same reason `maxItems` is absent below: the Anthropic
+        // tool-use API refuses a bare `{"type": "object"}` ("for 'object' type,
+        // 'additionalProperties' must be explicitly set to false"), and `additionalProperties:
+        // false` is only meaningful alongside the properties it is closing over. The executor
+        // still dispatches on the named tool and reads only the properties that tool takes, so
+        // this schema constrains what the provider will send without widening what is accepted.
+        //
+        // The 20-call cap is stated in the description and enforced by GuardedToolExecutor
+        // (`BatchMaxCalls`, denial reason `too_many_calls`) — deliberately NOT expressed as
+        // the `maxItems` keyword it naturally maps to, because the Anthropic tool-use API
+        // rejects the whole request when a custom tool's schema carries it: "For 'array'
+        // type, property 'maxItems' is not supported" (a 400 that fails the run before the
+        // first turn, not a per-call error). This surfaced the moment LintToolRegistry began
+        // declaring `batch` to a live provider (T012); the executor was already the
+        // authority on the limit, so nothing about enforcement changed with its removal.
         InputSchemaJson: """
         {
           "type": "object",
           "properties": {
             "calls": {
               "type": "array",
-              "maxItems": 20,
               "items": {
                 "type": "object",
                 "properties": {
@@ -188,7 +203,18 @@ public sealed class ToolRegistry
                     "enum": ["list_files", "read_file", "search_files"]
                   },
                   "input": {
-                    "type": "object"
+                    "type": "object",
+                    "description": "Arguments for the chosen tool, exactly as that tool takes them.",
+                    "properties": {
+                      "path": { "type": "string" },
+                      "pattern": { "type": "string" },
+                      "ignore_case": { "type": "boolean" },
+                      "max_results": { "type": "integer" },
+                      "offset": { "type": "integer" },
+                      "limit": { "type": "integer" },
+                      "frontmatter_only": { "type": "boolean" }
+                    },
+                    "additionalProperties": false
                   }
                 },
                 "required": ["tool", "input"],

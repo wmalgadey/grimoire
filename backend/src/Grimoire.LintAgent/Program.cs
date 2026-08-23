@@ -276,7 +276,9 @@ internal sealed class LintIntentHandler : IAgentIntentHandler
             taskId: _options.RunId,
             registry: _profile.ToolRegistry,
             instrumentation: _toolInstrumentation,
-            writeLocksDir: _options.WriteLocksDir);
+            writeLocksDir: _options.WriteLocksDir,
+            logPath: LintPaths.LogPath(_options.WikiRoot),
+            indexPath: LintPaths.IndexPath(_options.WikiRoot));
         _executor = executor;
 
         var loop = new AgentLoop(
@@ -305,9 +307,11 @@ internal sealed class LintIntentHandler : IAgentIntentHandler
         var (narrative, proposedActions) = ProposedActionsBlock.Extract(result.Narrative);
 
         // Mechanical reporting only (Constitution Principle V): the harness's own journal
-        // (GuardedToolExecutor.TouchedPaths) already recorded every frontmatter-only write
-        // this run performed — Lint's policy has exactly one write rule, so every touched
-        // path is an inbound-link refresh. Reused via the same generic
+        // (GuardedToolExecutor.TouchedPaths) already recorded every write this run
+        // performed. Under policy v1 that could only ever be an inbound-link refresh; since
+        // v2 (026-guarded-tool-surface, FR-015/FR-016a) a touched path may equally be a body
+        // edit, a new page, or an index/log reconciliation — the field's meaning, "paths
+        // this run wrote", is unchanged and still needs no interpretation here. Reused via the same generic
         // RunCompletionMetadata.CreatedArtifacts/createdPages wire field Query uses for its
         // created-pages report (ADR-015) — no new event-channel field needed for this
         // narrower, agent-agnostic "paths this run wrote" fact.
@@ -451,7 +455,9 @@ internal sealed class RemediationExecutionIntentHandler : IAgentIntentHandler
             taskId: _options.TaskId,
             registry: _profile.ToolRegistry,
             instrumentation: _toolInstrumentation,
-            writeLocksDir: _options.WriteLocksDir);
+            writeLocksDir: _options.WriteLocksDir,
+            logPath: LintPaths.LogPath(_options.WikiRoot),
+            indexPath: LintPaths.IndexPath(_options.WikiRoot));
         _executor = executor;
 
         var loop = new AgentLoop(
