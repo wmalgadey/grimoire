@@ -1,5 +1,6 @@
 using Grimoire.Hub.ApiErrors;
 using Grimoire.Hub.QueryDispatch;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 
 namespace Grimoire.Hub.QuerySubmission;
@@ -30,8 +31,8 @@ public static class QuerySubmissionEndpoints
     private static async Task<IResult> PostTurnAsync(
         string conversationId,
         QueryTurnSubmissionRequest? body,
-        QuerySubmissionValidator validator,
-        QueryRunCoordinator coordinator,
+        [FromServices] QuerySubmissionValidator validator,
+        [FromServices] QueryRunCoordinator coordinator,
         ILoggerFactory loggerFactory,
         CancellationToken cancellationToken)
     {
@@ -95,7 +96,7 @@ public static class QuerySubmissionEndpoints
         }
     }
 
-    private static Task<IResult> GetTurnAsync(string turnId, QueryRunCoordinator coordinator)
+    private static Task<IResult> GetTurnAsync(string turnId, [FromServices] QueryRunCoordinator coordinator)
     {
         var turn = coordinator.GetTurn(turnId);
         if (turn is null)
@@ -116,7 +117,7 @@ public static class QuerySubmissionEndpoints
     }
 
     private static async Task<IResult> PostInterruptAsync(
-        string turnId, QueryRunCoordinator coordinator, CancellationToken cancellationToken)
+        string turnId, [FromServices] QueryRunCoordinator coordinator, CancellationToken cancellationToken)
     {
         var turn = await coordinator.InterruptAsync(turnId, cancellationToken);
         if (turn is null)
