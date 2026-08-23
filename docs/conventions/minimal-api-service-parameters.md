@@ -57,8 +57,9 @@ IL-scan approach as the rest of `Grimoire.ArchTests` rather than a runtime check
 
 ## Exempt route/query/framework types
 
-Mirrored verbatim in the rule's `_exemptParameterTypeFullNames` fixture; any drift
-between this list and the fixture fails the build.
+Mirrored by hand in the rule's `_exemptParameterTypeFullNames` fixture — there is no
+automated assertion checking the two stay in sync (see "Adding a new well-known framework
+type" below); keep them consistent when editing either.
 
 | Type | Why it's exempt |
 | --- | --- |

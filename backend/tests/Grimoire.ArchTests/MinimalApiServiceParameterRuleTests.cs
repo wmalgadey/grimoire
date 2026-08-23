@@ -72,7 +72,7 @@ public class MinimalApiServiceParameterRuleTests
     private static readonly string[] _mappingMethodFirstParameterTypeNames = ["RouteGroupBuilder", "WebApplication"];
 
     [Fact]
-    public void EndpointHandlers_ServiceTypedParameters_CarryExplicitBindingAttribute()
+    public void EndpointHandlers_NonExemptParameters_CarryExplicitBindingAttribute()
     {
         var hubAssemblyPath = Path.Combine(AppContext.BaseDirectory, "Grimoire.Hub.dll");
         using var assembly = AssemblyDefinition.ReadAssembly(hubAssemblyPath);
@@ -98,12 +98,12 @@ public class MinimalApiServiceParameterRuleTests
         }
 
         Assert.True(violations.Count == 0,
-            "Minimal-API handler parameters below are DI-service types (not route/query/body/" +
-            "well-known-framework) without an explicit binding attribute. Without [FromServices], " +
-            "ASP.NET Core's service inference can silently land on [FromBody] instead depending on " +
-            "which host composes the DI container, throwing at route-matcher-build time for " +
-            "GET/DELETE endpoints (issue #59). Add [FromServices] (or the appropriate explicit " +
-            "attribute):\n" + string.Join("\n", violations));
+            "Minimal-API handler parameters below are not a recognized route/query/body/" +
+            "well-known-framework type and carry no explicit binding attribute — most likely a DI " +
+            "collaborator missing [FromServices]. Left unannotated, ASP.NET Core's service inference " +
+            "can silently land on [FromBody] instead depending on which host composes the DI " +
+            "container, throwing at route-matcher-build time for GET/DELETE endpoints (issue #59). " +
+            "Add [FromServices] (or the appropriate explicit attribute):\n" + string.Join("\n", violations));
     }
 
     /// <summary>
