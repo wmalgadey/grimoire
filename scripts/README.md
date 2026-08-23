@@ -12,6 +12,10 @@ only.
   .NET SDK and Bun; [`mutation-report-index.py`](mutation-report-index.py) builds the index
   page over the individual reports and the PR comment `.github/workflows/mutation.yml`
   maintains for the fast tier.
+- [`mutation-tests/`](mutation-tests) — the measurement harness behind the 2026-08-23
+  test-suite audit (issues #180, #181): per-test runtime from TRX, infrastructure
+  classification, tier inventory, test/production change coupling, and a scoped Stryker run
+  over the guardrail surface. Not a gate.
 - [`ci/`](ci) — helpers the workflows in `.github/workflows/` call.
 - [`nim/`](nim) — the LiteLLM/NVIDIA NIM proxy used to run agent evals without an
   Anthropic subscription (`specs/007-eval-tests-nim-endpoint/quickstart.md`).

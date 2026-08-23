@@ -63,6 +63,7 @@ TARGETS=(
   "remediation-state-machine|dotnet|backend/tests/Grimoire.Domain.UnitTests|Grimoire.Hub.csproj|--mutate **/RemediationTasks/RemediationActionTask.cs"
   "hub|dotnet|backend/tests/Grimoire.IntegrationTests|Grimoire.Hub.csproj|"
   "agent-runtime|dotnet|backend/tests/Grimoire.IntegrationTests|Grimoire.AgentRuntime.csproj|"
+  "agent-runtime-guardrails|dotnet|backend/tests/Grimoire.IntegrationTests|Grimoire.AgentRuntime.csproj|--mutate **/Guardrails/*.cs --mutate **/Guardrails/Coordination/*.cs"
   "ingest-agent|dotnet|backend/tests/Grimoire.IntegrationTests|Grimoire.IngestAgent.csproj|"
   "query-agent|dotnet|backend/tests/Grimoire.IntegrationTests|Grimoire.QueryAgent.csproj|"
   "lint-agent|dotnet|backend/tests/Grimoire.IntegrationTests|Grimoire.LintAgent.csproj|"
