@@ -15,10 +15,12 @@ namespace Grimoire.IntegrationTests;
 /// T035/T036/T038/T039 (026-guarded-tool-surface, US2, ADR-031 R1/R2): behavioral coverage
 /// for Lint's single, mode-independent write scope. Like <c>LintSearchToolTests</c>, this
 /// exercises <see cref="GuardedToolExecutor"/> directly against a locally-constructed
-/// policy shaped like the eventual policy.json v2 (one <c>read-write</c> rule on the
-/// content root, no <c>excludePrefixes</c>) — the real file stays v1 until the eval-
-/// recapture layer (see this feature's PR history for why), but the dispatch and policy
-/// logic are already complete and mode-independent by construction: nothing in
+/// policy shaped like policy.json v2 (one <c>read-write</c> rule on the content root, no
+/// <c>excludePrefixes</c>). The shipped file has since been flipped to v2 (T009) and
+/// <c>LintWriteScopeDenialTests</c> now asserts these same grants against it; this file
+/// keeps its local policy because its subject is mode-independence, which is a property of
+/// the dispatch path rather than of any one policy file. That independence holds by
+/// construction: nothing in
 /// <see cref="SafetyPolicy"/> or <see cref="GuardedToolExecutor"/> takes a "mode" parameter
 /// at all (ADR-031 R1's Phase 0 structural half, <c>GuardedRetrievalNoModeBranchRuleTests</c>/
 /// T003, already guards the coordinators; this file is R1's behavioral half).
