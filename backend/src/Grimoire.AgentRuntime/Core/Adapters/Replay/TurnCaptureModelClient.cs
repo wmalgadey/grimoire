@@ -59,7 +59,7 @@ public sealed class TurnCaptureModelClient : IModelClient
             }
 
             throw new InvalidOperationException(
-                $"Turn {_turns.Count + 1} had a tool call cut off mid-stream and cannot be captured " +
+                $"Turn {_turns.Count + 1} had an incomplete or invalid tool call and cannot be captured " +
                 "(recordings do not yet represent an incomplete tool call, and replaying one built " +
                 "without that context would diverge from this run). Re-run the capture.");
         }
