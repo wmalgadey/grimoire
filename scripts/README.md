@@ -12,6 +12,12 @@ only.
   .NET SDK and Bun; [`mutation-report-index.py`](mutation-report-index.py) builds the index
   page over the individual reports and the PR comment `.github/workflows/mutation.yml`
   maintains for the fast tier.
+- [`mutation-history.py`](mutation-history.py) — the durable record of those runs.
+  `mutation-test.sh` calls it for every completed target; it distils the report into a few
+  kilobytes under `docs/reports/mutation-history/` (tracked, unlike the reports themselves)
+  and compares two runs mutant by mutant. Read that directory's
+  [README](../docs/reports/mutation-history/README.md) before comparing two scores — issue
+  #181 is the worked example of why the percentages alone do not compare.
 - [`mutation-tests/`](mutation-tests) — the measurement harness behind the 2026-08-23
   test-suite audit (issues #180, #181): per-test runtime from TRX, infrastructure
   classification, tier inventory, test/production change coupling, and a scoped Stryker run

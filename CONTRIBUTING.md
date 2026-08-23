@@ -104,6 +104,24 @@ measured against the current tree is skipped next time — so an interrupted run
 being started again, while an edited or rebased one re-runs rather than reporting a score
 from a different checkout.
 
+**Comparing runs.** Each completed target is also recorded into
+`docs/reports/mutation-history/` — tracked in git, a few kilobytes per run, one entry per
+mutant rather than one number per target:
+
+```bash
+python3 scripts/mutation-history.py list
+python3 scripts/mutation-history.py compare agent-runtime-guardrails      # its last two runs
+python3 scripts/mutation-history.py compare domain --markdown             # paste into a PR
+```
+
+Do not compare two scores directly. Stryker's Safe Mode drops every mutant in a method
+where one failed to compile, so a target's denominator moves between runs and two
+percentages over different mutant sets are not a trend — issue #181 has the worked example
+(2.35 % and 1.38 % for unchanged sources). `compare` reports killed→survived and
+survived→killed over the mutants both runs share, and calls the drift out separately. That
+directory's README explains the identity scheme and which targets are cheap enough to
+iterate on.
+
 Two things the tool cannot see, both by construction. `Grimoire.ArchTests` is not a target:
 its rules assert dependency direction, so mutating production code to see whether they go
 red measures nothing. Neither is agent behavior — what an agent decides lives in

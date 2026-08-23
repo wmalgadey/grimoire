@@ -27,9 +27,14 @@ docs/reports/mutation/
 **The contents are gitignored**, deliberately: a single target's report is several
 megabytes of self-contained HTML and a full run is tens of them, none of it reviewable in
 a diff. To share a result, publish the HTML somewhere it can be served, or quote the
-numbers — do not commit the files. Removing the `docs/reports/mutation/` line from
-`.gitignore` is a one-line change if a snapshot is ever genuinely wanted; think about the
-repository size first.
+numbers — do not commit the files.
+
+What *is* committed is the record of each run, in
+[`mutation-history/`](mutation-history/README.md): one ledger line and one per-mutant
+snapshot per run, a few kilobytes each, written by `scripts/mutation-history.py` as part of
+every `mutation-test.sh` run. The split is the point. The report is how you read a run; the
+record is how a run survives the next one and becomes comparable to it. Issue #181 lost the
+first when the second overwrote it, and its two guardrail scores could never be reconciled.
 
 To read a report on a headless server, serve the directory rather than copying it around:
 

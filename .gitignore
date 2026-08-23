@@ -16,6 +16,13 @@ packages/
 # Mutation-testing output (Stryker.NET / StrykerJS) — see scripts/mutation-test.sh.
 # Generated reports are a local artefact, never a committed one: a full run writes tens of
 # megabytes of self-contained HTML. docs/reports/README.md explains how to get them.
+#
+# Note the trailing slash and the exact name: docs/reports/mutation-history/ is NOT covered
+# by this rule and is tracked on purpose. It holds the distilled record of each run — a
+# ledger line and a per-mutant snapshot, kilobytes, reviewable in a diff — which is the only
+# thing that survives the next run deleting the report directory. Widening this pattern to
+# docs/reports/mutation* would silently restore the failure mode of issue #181: two scores
+# for the same sources and no evidence left to reconcile them with.
 StrykerOutput/
 .stryker-tmp/
 docs/reports/mutation/

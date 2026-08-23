@@ -23,10 +23,17 @@
 # Environment:
 #   MUTATION_CONCURRENCY           parallel test runners for the .NET lane (default: nproc/2)
 #   MUTATION_FRONTEND_CONCURRENCY  same for the frontend lane (default: 2 — see below)
+#   MUTATION_HISTORY               0 to skip recording the run into the history store
 #
 # Output: docs/reports/mutation/<target>/ — one Stryker HTML report per target plus the
 # raw JSON, and docs/reports/mutation/index.html linking them with their scores. The
 # directory is gitignored: a full run writes tens of megabytes of generated HTML.
+#
+# Every completed target is also distilled into docs/reports/mutation-history/, which is
+# NOT gitignored — a few kilobytes per run recording each mutant's identity and status, so
+# a score survives the next run overwriting the report directory and two runs can actually
+# be compared (scripts/mutation-history.py, and see that directory's README for why
+# comparing the percentages alone is unsound). MUTATION_HISTORY=0 turns the recording off.
 #
 # HOW LONG. Mutation testing runs the covering tests once per mutant, so the cost is
 # (mutants x test time), not (test time). Measured on this repository, 4 cores:
@@ -213,8 +220,19 @@ for line in "${selected[@]}"; do
         "${extra_args[@]}" ) 2>&1 | tee "$target_out/run.log" || failed+=("$name")
   fi
 
+  elapsed=$(( SECONDS - started ))
+
   if [ -n "$(find "$target_out" -name 'mutation-report.json' 2>/dev/null)" ]; then
     echo "$current_fingerprint" > "$target_out/fingerprint"
+    # The report directory is transient — the next run of this target deletes it, and it is
+    # gitignored, so a score that is not distilled here is gone the moment anything is
+    # re-measured. That is not hypothetical: issue #181 has two guardrail scores for
+    # identical sources and no way to reconcile them, because the first run's JSON was
+    # overwritten by the second.
+    if [ "${MUTATION_HISTORY:-1}" != "0" ]; then
+      python3 scripts/mutation-history.py record "$target_out" \
+        --target "$name" --duration "$elapsed" || true
+    fi
   fi
 
   # A test that was already red before Stryker touched anything takes its mutants with it:
@@ -228,7 +246,7 @@ for line in "${selected[@]}"; do
     suspect+=("$name")
   fi
 
-  echo "    $name finished after $(( (SECONDS - started) / 60 )) min"
+  echo "    $name finished after $(( elapsed / 60 )) min"
   echo
 done
 

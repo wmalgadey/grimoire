@@ -26,6 +26,7 @@ on:
       - '.config/dotnet-tools.json'
       - 'scripts/mutation-test.sh'
       - 'scripts/mutation-report-index.py'
+      - 'scripts/mutation-history.py'
       - '.github/workflows/mutation.yml'
 
 permissions:
@@ -41,6 +42,11 @@ env:
   # GitHub's standard runner has four cores; the default (half of them) leaves two idle
   # on a job whose whole point is to be short.
   MUTATION_CONCURRENCY: "4"
+  # No history record from CI. docs/reports/mutation-history/ is committed, and a record per
+  # pull request would be repository weight nobody reads — the PR comment below is this
+  # job's output. Runs worth keeping are recorded by whoever ran them (that directory's
+  # README says which ones those are).
+  MUTATION_HISTORY: "0"
 
 jobs:
   mutation:

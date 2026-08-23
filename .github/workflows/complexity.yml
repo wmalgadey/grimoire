@@ -53,6 +53,9 @@ jobs:
       - name: Self-test mutation-report-index.py (pytest)
         run: python3 -m pytest scripts/test_mutation_report_index.py -v
 
+      - name: Self-test mutation-history.py (pytest)
+        run: python3 -m pytest scripts/test_mutation_history.py -v
+
       - name: Analyze PR head
         # --csv exits 0 even when functions exceed the threshold; -i -1 additionally
         # ignores the warning count. Gating happens in the delta step, not here.

@@ -38,6 +38,16 @@ from pathlib import Path
 SCORED = ("Killed", "Timeout", "Survived", "NoCoverage")
 
 
+def score(counts: "Counter[str]") -> float | None:
+    """Stryker's own score over a status histogram, or None when nothing was scored.
+
+    Kept as a named function because scripts/mutation-history.py needs the same
+    arithmetic: a second implementation would be a second number to disagree with.
+    """
+    scored = sum(counts[s] for s in SCORED)
+    return 100.0 * (counts["Killed"] + counts["Timeout"]) / scored if scored else None
+
+
 def pct(score: float | None) -> str:
     """A target whose mutants were all CompileError or Ignored has no score at all."""
     return "&mdash;" if score is None else f"{score:.1f}&thinsp;%"
@@ -60,11 +70,10 @@ def load(report: Path) -> dict:
                     "score": 100.0 * (per_file["Killed"] + per_file["Timeout"]) / scored,
                 }
             )
-    scored = sum(counts[s] for s in SCORED)
     return {
         "counts": counts,
-        "scored": scored,
-        "score": 100.0 * (counts["Killed"] + counts["Timeout"]) / scored if scored else None,
+        "scored": sum(counts[s] for s in SCORED),
+        "score": score(counts),
         "thresholds": data.get("thresholds") or {},
         "files": files,
     }
