@@ -146,6 +146,46 @@ public class ReplayAdapterTests : IDisposable
     }
 
     [Fact]
+    public async Task Capture_DeletesAnAlreadyPersistedPrefix_WhenALaterTurnHasAnIncompleteToolCall()
+    {
+        // Copilot review on #178: the file is rewritten after every successful turn, so by
+        // the time an incomplete tool call shows up on turn 2+, turn 1 is already on disk —
+        // a schema-valid, complete-looking recording that a pipeline checking only "does the
+        // sample file exist" would publish as a trustworthy (if shorter) sample. Rejecting
+        // just the offending turn isn't enough; the stale prefix has to go too.
+        var capturePath = Path.Combine(_scratch, "sample-multi-turn-incomplete.json");
+        var fake = new FakeModelClient(
+        [
+            FakeModelClient.WriteFileTurn("t1", "concepts/example.md", "content"),
+            new ModelTurn(
+                AssistantText: null,
+                ToolUseRequests: [],
+                StopReason: ModelStopReason.MaxTokens,
+                InputTokens: 100,
+                OutputTokens: 50,
+                HasIncompleteToolCall: true),
+        ]);
+        var capture = new TurnCaptureModelClient(fake, capturePath);
+
+        var firstConversation = new[] { new ConversationMessage("user", "hello agent") };
+        var turn1 = await capture.NextTurnAsync("system prompt", firstConversation, ToolStubs.Tools, CancellationToken.None);
+        Assert.True(File.Exists(capturePath), "The first, complete turn should have persisted a prefix.");
+
+        var secondConversation = new ConversationMessage[]
+        {
+            firstConversation[0],
+            new("assistant", [new ConversationToolUseBlock("t1", "write_file", turn1.ToolUseRequests[0].InputJson)]),
+            new("user", [new ConversationToolResultBlock("t1", false, "ok")]),
+        };
+
+        var exception = await Assert.ThrowsAsync<InvalidOperationException>(() => capture.NextTurnAsync(
+            "system prompt", secondConversation, ToolStubs.Tools, CancellationToken.None));
+
+        Assert.Contains("cut off", exception.Message, StringComparison.Ordinal);
+        Assert.False(File.Exists(capturePath), "The stale complete-looking prefix must not survive a later rejection.");
+    }
+
+    [Fact]
     public void CaptureFile_IsSchemaValid_WithRequestHashesAndVerbatimResponses()
     {
         var capturePath = CaptureTwoTurnRecording(out _);

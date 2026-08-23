@@ -42,8 +42,22 @@ public sealed class TurnCaptureModelClient : IModelClient
         // for that, which would invalidate every existing fixture), so a capture run that
         // hits this rare, non-deterministic condition is failed outright instead — rerun
         // it rather than trust a recording that cannot faithfully replay.
+        //
+        // The file is deleted, not just left unwritten: every earlier turn in this run was
+        // already persisted (the file is rewritten after each successful turn, by design,
+        // so a crash still leaves its prefix — see the class doc). Left in place, that
+        // prefix is itself a schema-valid, complete-looking recording that a pipeline
+        // which only checks "does the sample file exist" — as Grimoire.EvalRunner's
+        // capture pipeline does — would happily publish as a trustworthy, if shorter,
+        // sample. Only this specific rejection path deletes it; any other crash still
+        // leaves the prefix for debugging exactly as before.
         if (turn.HasIncompleteToolCall)
         {
+            if (File.Exists(_capturePath))
+            {
+                File.Delete(_capturePath);
+            }
+
             throw new InvalidOperationException(
                 $"Turn {_turns.Count + 1} had a tool call cut off mid-stream and cannot be captured " +
                 "(recordings do not yet represent an incomplete tool call, and replaying one built " +

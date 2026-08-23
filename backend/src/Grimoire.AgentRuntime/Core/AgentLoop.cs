@@ -367,6 +367,11 @@ public sealed class AgentLoop
     {
         if (turn.HasIncompleteToolCall)
         {
+            // Recorded directly rather than through ClassifyNoToolTurn, which this branch
+            // bypasses entirely — every other no-tool outcome is observed there, and this
+            // one needs its own distinct tag so operators can see the exact recovery event
+            // this fix introduced, not just an undifferentiated "continue".
+            _instrumentation.RecordNoToolTurn(turn.StopReason, "incomplete_tool_call");
             answerStream.EndTurn();
             conversation.Add(new ConversationMessage("user", [new ConversationTextBlock(IncompleteToolCallPrompt)]));
             return null;

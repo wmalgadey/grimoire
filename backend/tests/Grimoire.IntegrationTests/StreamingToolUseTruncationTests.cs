@@ -34,7 +34,7 @@ public class StreamingToolUseTruncationTests
         await using var provider = await FakeAnthropicEndpoint.StartAsync(
             HttpStatusCode.OK,
             FakeAnthropicEndpoint.StreamingToolUseBody(
-                "tool-1", "read_file", rawInputJson: """{"path": "index.md" """, stopReason: "max_tokens"),
+                "tool-1", "read_file", rawInputJson: "{\"path\": \"index.md\"", stopReason: "max_tokens"),
             FakeAnthropicEndpoint.StreamingContentType);
 
         var turn = await NextTurnAgainstAsync(provider);
@@ -50,7 +50,7 @@ public class StreamingToolUseTruncationTests
         await using var provider = await FakeAnthropicEndpoint.StartAsync(
             HttpStatusCode.OK,
             FakeAnthropicEndpoint.StreamingToolUseBody(
-                "tool-1", "read_file", rawInputJson: """{"path": "index.md" """, stopReason: "max_tokens"),
+                "tool-1", "read_file", rawInputJson: "{\"path\": \"index.md\"", stopReason: "max_tokens"),
             FakeAnthropicEndpoint.StreamingContentType);
 
         var turn = await NextTurnAgainstAsync(provider);
@@ -64,7 +64,7 @@ public class StreamingToolUseTruncationTests
         await using var provider = await FakeAnthropicEndpoint.StartAsync(
             HttpStatusCode.OK,
             FakeAnthropicEndpoint.StreamingToolUseBody(
-                "tool-1", "read_file", rawInputJson: """{"path": "index.md" """, stopReason: "max_tokens"),
+                "tool-1", "read_file", rawInputJson: "{\"path\": \"index.md\"", stopReason: "max_tokens"),
             FakeAnthropicEndpoint.StreamingContentType);
 
         var turn = await NextTurnAgainstAsync(provider);
@@ -102,6 +102,25 @@ public class StreamingToolUseTruncationTests
             HttpStatusCode.OK,
             FakeAnthropicEndpoint.StreamingToolUseBody(
                 "tool-1", "read_file", rawInputJson: """{"path": "index.md"}""", stopReason: "max_tokens", closeBlock: false),
+            FakeAnthropicEndpoint.StreamingContentType);
+
+        var turn = await NextTurnAgainstAsync(provider);
+
+        Assert.Empty(turn.ToolUseRequests);
+        Assert.True(turn.HasIncompleteToolCall);
+    }
+
+    [Fact]
+    public async Task AClosedToolCallWithMalformedJson_IsStillDroppedAsIncomplete()
+    {
+        // Copilot review on #178: every other malformed-payload test puts the bad JSON on an
+        // unclosed block, so IsCompleteToolCall's closure check alone would make them pass —
+        // a regression that broke or removed the JSON-validity check underneath it would go
+        // undetected. This one closes the block anyway, so only the parse check can catch it.
+        await using var provider = await FakeAnthropicEndpoint.StartAsync(
+            HttpStatusCode.OK,
+            FakeAnthropicEndpoint.StreamingToolUseBody(
+                "tool-1", "read_file", rawInputJson: "{\"path\": \"index.md\"", stopReason: "tool_use", closeBlock: true),
             FakeAnthropicEndpoint.StreamingContentType);
 
         var turn = await NextTurnAgainstAsync(provider);
