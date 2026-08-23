@@ -368,10 +368,14 @@ public sealed class AgentLoop
         if (turn.HasIncompleteToolCall)
         {
             // Recorded directly rather than through ClassifyNoToolTurn, which this branch
-            // bypasses entirely — every other no-tool outcome is observed there, and this
-            // one needs its own distinct tag so operators can see the exact recovery event
-            // this fix introduced, not just an undifferentiated "continue".
-            _instrumentation.RecordNoToolTurn(turn.StopReason, "incomplete_tool_call");
+            // bypasses entirely — every other no-tool outcome is observed there. Tagged
+            // "continue", the value the metric's documented contract already allows for
+            // exactly this behavior (specs/002-agentic-ingest-core/plan.md's
+            // wiki.ingest.no_tool_turns_total row: outcome=terminal|continue|
+            // invalid_tool_use|invalid_stop_reason) — a prior revision of this fix
+            // invented a fifth "incomplete_tool_call" value the contract does not declare,
+            // which is corrected here rather than widening the contract for one label.
+            _instrumentation.RecordNoToolTurn(turn.StopReason, "continue");
             answerStream.EndTurn();
             conversation.Add(new ConversationMessage("user", [new ConversationTextBlock(IncompleteToolCallPrompt)]));
             return null;
