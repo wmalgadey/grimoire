@@ -1,5 +1,6 @@
 using Grimoire.Hub.ApiErrors;
 using Grimoire.Hub.LintFindings;
+using Microsoft.AspNetCore.Mvc;
 
 namespace Grimoire.Hub.LintDispatch;
 
@@ -19,7 +20,7 @@ public static class LintSubmissionEndpoints
         return group;
     }
 
-    private static async Task<IResult> PostTriggerAsync(LintRunCoordinator coordinator, CancellationToken cancellationToken)
+    private static async Task<IResult> PostTriggerAsync([FromServices] LintRunCoordinator coordinator, CancellationToken cancellationToken)
     {
         var result = await coordinator.TriggerAsync(cancellationToken);
 
@@ -44,7 +45,7 @@ public static class LintSubmissionEndpoints
         };
     }
 
-    private static Task<IResult> GetLatestAsync(LintRunCoordinator coordinator)
+    private static Task<IResult> GetLatestAsync([FromServices] LintRunCoordinator coordinator)
     {
         var runId = coordinator.LatestRunId;
         if (runId is null)
@@ -55,7 +56,7 @@ public static class LintSubmissionEndpoints
         return GetRunAsync(runId, coordinator);
     }
 
-    private static Task<IResult> GetRunAsync(string runId, LintRunCoordinator coordinator)
+    private static Task<IResult> GetRunAsync(string runId, [FromServices] LintRunCoordinator coordinator)
     {
         var run = coordinator.GetRun(runId);
         if (run is null)
@@ -74,7 +75,7 @@ public static class LintSubmissionEndpoints
         }));
     }
 
-    private static async Task<IResult> GetFindingsAsync(string runId, FindingsReportStore store, CancellationToken cancellationToken)
+    private static async Task<IResult> GetFindingsAsync(string runId, [FromServices] FindingsReportStore store, CancellationToken cancellationToken)
     {
         var content = await store.TryReadAsync(runId, cancellationToken);
         if (content is null)

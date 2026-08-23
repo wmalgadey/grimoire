@@ -43,8 +43,8 @@ public static class IngestSubmissionEndpoints
 
     private static async Task<IResult> PostIngestSubmissionAsync(
         HttpRequest request,
-        IngestSubmissionValidator validator,
-        IngestSubmissionPipeline pipeline,
+        [FromServices] IngestSubmissionValidator validator,
+        [FromServices] IngestSubmissionPipeline pipeline,
         CancellationToken cancellationToken)
     {
         var logger = request.HttpContext.RequestServices
@@ -245,7 +245,10 @@ public static class IngestSubmissionEndpoints
     }
 
     private static async Task<IResult> GetBoardAsync(
-        KanbanBoardProjectionStore store, IngestContentPaths contentPaths, IngestRunCoordinator coordinator, CancellationToken cancellationToken)
+        [FromServices] KanbanBoardProjectionStore store,
+        [FromServices] IngestContentPaths contentPaths,
+        [FromServices] IngestRunCoordinator coordinator,
+        CancellationToken cancellationToken)
     {
         var tasks = await store.GetAllAsync(contentPaths.TasksDir, cancellationToken);
         var queuePositions = await coordinator.GetQueuePositionsAsync(cancellationToken);
@@ -269,10 +272,10 @@ public static class IngestSubmissionEndpoints
 
     private static async Task<IResult> GetTaskDetailAsync(
         string taskId,
-        KanbanBoardProjectionStore store,
-        Conversion.SourceArtifactStore sourceArtifactStore,
-        IngestContentPaths contentPaths,
-        IngestRunCoordinator coordinator,
+        [FromServices] KanbanBoardProjectionStore store,
+        [FromServices] Conversion.SourceArtifactStore sourceArtifactStore,
+        [FromServices] IngestContentPaths contentPaths,
+        [FromServices] IngestRunCoordinator coordinator,
         // Explicit: without it Minimal APIs infer a complex type as the request body, which
         // fails endpoint construction for a GET (and would bind from the wire, not DI).
         [FromServices] OperationalState.OperationalStateRepository stateRepository,
@@ -371,7 +374,7 @@ public static class IngestSubmissionEndpoints
     /// </summary>
     private static async Task<IResult> GetSourceOriginalAsync(
         string taskId,
-        Conversion.SourceArtifactStore sourceArtifactStore,
+        [FromServices] Conversion.SourceArtifactStore sourceArtifactStore,
         ILoggerFactory loggerFactory,
         CancellationToken cancellationToken)
     {
@@ -423,7 +426,7 @@ public static class IngestSubmissionEndpoints
     /// </summary>
     private static async Task<IResult> GetTaskRecordAsync(
         string taskId,
-        TaskRecordReadModel readModel,
+        [FromServices] TaskRecordReadModel readModel,
         ILoggerFactory loggerFactory,
         CancellationToken cancellationToken)
     {
@@ -471,7 +474,11 @@ public static class IngestSubmissionEndpoints
 
     /// <summary>Re-arms a single queued task after a Hub restart (004 FR-021).</summary>
     private static async Task<IResult> PostRetriggerAsync(
-        string taskId, IngestRunCoordinator coordinator, KanbanBoardProjectionStore store, IngestContentPaths contentPaths, CancellationToken cancellationToken)
+        string taskId,
+        [FromServices] IngestRunCoordinator coordinator,
+        [FromServices] KanbanBoardProjectionStore store,
+        [FromServices] IngestContentPaths contentPaths,
+        CancellationToken cancellationToken)
     {
         var projection = await store.GetByTaskIdAsync(contentPaths.TasksDir, taskId, cancellationToken);
         if (projection is null)
@@ -493,10 +500,10 @@ public static class IngestSubmissionEndpoints
     /// </summary>
     private static async Task<IResult> PostRestartAsync(
         string taskId,
-        IngestRunCoordinator coordinator,
-        KanbanBoardProjectionStore store,
-        Conversion.SourceArtifactStore sourceArtifactStore,
-        IngestContentPaths contentPaths,
+        [FromServices] IngestRunCoordinator coordinator,
+        [FromServices] KanbanBoardProjectionStore store,
+        [FromServices] Conversion.SourceArtifactStore sourceArtifactStore,
+        [FromServices] IngestContentPaths contentPaths,
         ILoggerFactory loggerFactory,
         CancellationToken cancellationToken)
     {
@@ -561,7 +568,7 @@ public static class IngestSubmissionEndpoints
     }
 
     /// <summary>Resumes automatic queue processing after a Hub restart (004 FR-021); idempotent.</summary>
-    private static async Task<IResult> PostResumeAsync(IngestRunCoordinator coordinator, CancellationToken cancellationToken)
+    private static async Task<IResult> PostResumeAsync([FromServices] IngestRunCoordinator coordinator, CancellationToken cancellationToken)
     {
         var queuedTasks = await coordinator.ResumeAsync(cancellationToken);
         return Results.Ok(new { queuePaused = false, queuedTasks });

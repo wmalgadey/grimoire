@@ -1,5 +1,6 @@
 using Grimoire.Hub.ApiErrors;
 using Grimoire.Hub.OperationalState;
+using Microsoft.AspNetCore.Mvc;
 
 namespace Grimoire.Hub.RemediationTasks;
 
@@ -41,7 +42,7 @@ public static class RemediationTaskEndpoints
     }
 
     private static async Task<IResult> ListAsync(
-        OperationalStateRepository repository,
+        [FromServices] OperationalStateRepository repository,
         string? runId,
         CancellationToken cancellationToken)
     {
@@ -58,9 +59,9 @@ public static class RemediationTaskEndpoints
 
     private static async Task<IResult> GetDetailAsync(
         string taskId,
-        OperationalStateRepository repository,
-        RemediationTaskRecordStore recordStore,
-        RemediationMessageTurnCoordinator messageTurnCoordinator,
+        [FromServices] OperationalStateRepository repository,
+        [FromServices] RemediationTaskRecordStore recordStore,
+        [FromServices] RemediationMessageTurnCoordinator messageTurnCoordinator,
         CancellationToken cancellationToken)
     {
         var rows = await repository.GetRemediationTasksAsync(cancellationToken: cancellationToken);
@@ -115,7 +116,7 @@ public static class RemediationTaskEndpoints
     /// </summary>
     private static async Task<IResult> AuthorizeAsync(
         string taskId,
-        RemediationTaskTransitionService transitionService,
+        [FromServices] RemediationTaskTransitionService transitionService,
         CancellationToken cancellationToken)
     {
         var result = await transitionService.AuthorizeAsync(taskId, cancellationToken);
@@ -141,7 +142,7 @@ public static class RemediationTaskEndpoints
     /// </summary>
     private static async Task<IResult> DismissAsync(
         string taskId,
-        RemediationTaskTransitionService transitionService,
+        [FromServices] RemediationTaskTransitionService transitionService,
         CancellationToken cancellationToken)
     {
         var result = await transitionService.DismissAsync(taskId, cancellationToken);
@@ -161,7 +162,7 @@ public static class RemediationTaskEndpoints
     /// </summary>
     private static async Task<IResult> WithdrawAuthorizationAsync(
         string taskId,
-        RemediationTaskTransitionService transitionService,
+        [FromServices] RemediationTaskTransitionService transitionService,
         CancellationToken cancellationToken)
     {
         var result = await transitionService.WithdrawAuthorizationAsync(taskId, cancellationToken);
@@ -185,8 +186,8 @@ public static class RemediationTaskEndpoints
     private static async Task<IResult> AttachContextAsync(
         string taskId,
         RemediationAttachContextRequest? body,
-        OperationalStateRepository repository,
-        RemediationTaskRecordStore recordStore,
+        [FromServices] OperationalStateRepository repository,
+        [FromServices] RemediationTaskRecordStore recordStore,
         CancellationToken cancellationToken)
     {
         var validation = ValidateContent(body?.Content);
@@ -225,8 +226,8 @@ public static class RemediationTaskEndpoints
     private static async Task<IResult> SendMessageAsync(
         string taskId,
         RemediationSendMessageRequest? body,
-        OperationalStateRepository repository,
-        RemediationMessageTurnCoordinator messageTurnCoordinator,
+        [FromServices] OperationalStateRepository repository,
+        [FromServices] RemediationMessageTurnCoordinator messageTurnCoordinator,
         CancellationToken cancellationToken)
     {
         var validation = ValidateContent(body?.Content);
@@ -272,9 +273,9 @@ public static class RemediationTaskEndpoints
     /// </summary>
     private static async Task<IResult> GetMessagesAsync(
         string taskId,
-        OperationalStateRepository repository,
-        RemediationTaskRecordStore recordStore,
-        RemediationMessageTurnCoordinator messageTurnCoordinator,
+        [FromServices] OperationalStateRepository repository,
+        [FromServices] RemediationTaskRecordStore recordStore,
+        [FromServices] RemediationMessageTurnCoordinator messageTurnCoordinator,
         CancellationToken cancellationToken)
     {
         var row = await FindTaskAsync(repository, taskId, cancellationToken);

@@ -3,6 +3,7 @@ using Grimoire.Hub.IngestDispatch;
 using Grimoire.Hub.LintDispatch;
 using Grimoire.Hub.OperationalState;
 using Grimoire.Hub.RemediationTasks;
+using Microsoft.AspNetCore.Mvc;
 
 namespace Grimoire.Hub.IngestSubmission;
 
@@ -27,11 +28,11 @@ public static class BoardEndpoints
     }
 
     private static async Task<IResult> GetCompositeBoardAsync(
-        KanbanBoardProjectionStore store,
-        IngestContentPaths contentPaths,
-        IngestRunCoordinator ingestCoordinator,
-        LintRunCoordinator lintCoordinator,
-        OperationalStateRepository stateRepository,
+        [FromServices] KanbanBoardProjectionStore store,
+        [FromServices] IngestContentPaths contentPaths,
+        [FromServices] IngestRunCoordinator ingestCoordinator,
+        [FromServices] LintRunCoordinator lintCoordinator,
+        [FromServices] OperationalStateRepository stateRepository,
         CancellationToken cancellationToken)
     {
         var tasks = await store.GetAllAsync(contentPaths.TasksDir, cancellationToken);

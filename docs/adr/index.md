@@ -52,6 +52,7 @@ relationships exist.
 | [ADR-027](ADR-027-gitversion-github-flow.md) | Version Numbers Computed by GitVersion, Branching by GitHub Flow | Accepted | — | — |
 | [ADR-028](ADR-028-agent-owned-activity-log-prepend-ordering.md) | Agent-Owned Activity Log — Prepend-Only Ordering and Removal of Harness Authorship | Accepted | Amends ADR-017 (`log.md` ordering and backstop bullet only) | — |
 | [ADR-029](ADR-029-harness-operator-turn-delimiter.md) | Harness Operator Turns Are Delimited Inside the User Channel | Accepted | Amends ADR-007 (adds the harness operator turn to the instruction surface) | — |
+| [ADR-030](ADR-030-minimal-api-service-parameter-attribution.md) | Explicit `[FromServices]` Attribution for Minimal-API Handler Parameters | Accepted | — | — |
 
 ## Maintenance
 
