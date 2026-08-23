@@ -116,13 +116,24 @@ public sealed record ModelRefusalDetails(string? Category, string? Explanation);
 /// <see cref="StopReason"/> is always a normalized enum value with protocol
 /// conversion handled by <see cref="ModelStopReasonContract"/>.
 /// </summary>
+/// <param name="HasIncompleteToolCall">
+/// #173: true when the provider started at least one tool call that never reached the
+/// harness intact — a stream cut mid-block, or one that closed without producing valid
+/// JSON — and that call was dropped rather than handed on as a
+/// <see cref="ToolUseRequest"/>. <see cref="ToolUseRequests"/> may still be non-empty:
+/// other, fully-formed calls in the same turn are kept and dispatched normally. This is
+/// the signal <see cref="AgentLoop"/> uses to tell the model the dropped call needs
+/// reissuing, since its absence from <see cref="ToolUseRequests"/> alone looks
+/// indistinguishable from the model simply not having made it.
+/// </param>
 public sealed record ModelTurn(
     string? AssistantText,
     IReadOnlyList<ToolUseRequest> ToolUseRequests,
     ModelStopReason StopReason,
     int InputTokens,
     int OutputTokens,
-    ModelRefusalDetails? Refusal = null);
+    ModelRefusalDetails? Refusal = null,
+    bool HasIncompleteToolCall = false);
 
 /// <summary>
 /// One message in the conversation history, representing either a user turn

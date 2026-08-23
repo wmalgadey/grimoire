@@ -22,8 +22,12 @@ public sealed class AnthropicModelClient : IModelClient
     /// #122: the per-request output ceiling, when the agent's own variable does not set
     /// one. It is an <em>enforced</em> cap the model is unaware of — hitting it truncates
     /// the response mid-thought, which comes back as <c>stop_reason: max_tokens</c> and
-    /// costs another turn against the turn cap, and for a <c>write_file</c> carrying a
-    /// large page the truncated body is still a syntactically valid tool call.
+    /// costs another turn against the turn cap. On the non-streaming path, which no agent
+    /// call site actually uses (<see cref="AgentLoop"/> always streams), a truncated
+    /// <c>write_file</c> would still be a syntactically valid tool call, because that path
+    /// serializes an already-parsed object; on the streaming path every call site does use,
+    /// the truncated accumulated text is syntactically invalid JSON by construction, and is
+    /// dropped rather than replayed (#173).
     /// <para>
     /// The value it replaces was the literal <c>8096</c>, which is not a round number in
     /// any base and reads as a typo for this one. It is deliberately left at the same
@@ -265,6 +269,7 @@ public sealed class AnthropicModelClient : IModelClient
     private sealed class StreamingTurn
     {
         private readonly SortedDictionary<long, (string Id, string Name, StringBuilder Json)> _toolBlocksByIndex = new();
+        private readonly HashSet<long> _closedBlockIndexes = [];
         private string? _assistantText;
         private ModelStopReason _stopReason = ModelStopReason.Unknown;
         private ModelRefusalDetails? _refusal;
@@ -285,6 +290,10 @@ public sealed class AnthropicModelClient : IModelClient
             else if (streamEvent.TryPickContentBlockDelta(out var blockDelta))
             {
                 ApplyContentBlockDelta(blockDelta, onTextDelta);
+            }
+            else if (streamEvent.TryPickContentBlockStop(out var blockStop))
+            {
+                _closedBlockIndexes.Add(blockStop.Index);
             }
             else if (streamEvent.TryPickDelta(out var messageDelta))
             {
@@ -308,33 +317,73 @@ public sealed class AnthropicModelClient : IModelClient
             }
         }
 
-        public ModelTurn ToModelTurn() => new(
-            AssistantText: _assistantText,
-            ToolUseRequests: _toolBlocksByIndex.Values
-                .Select(t => (t.Id, t.Name, InputJson: t.Json.Length == 0 ? "{}" : t.Json.ToString()))
-                .Where(t => IsCompleteToolInput(t.InputJson))
-                .Select(t => new ToolUseRequest(ToolUseId: t.Id, ToolName: t.Name, InputJson: t.InputJson))
-                .ToList(),
-            StopReason: _stopReason,
-            InputTokens: _inputTokens,
-            OutputTokens: _outputTokens,
-            Refusal: _refusal);
+        public ModelTurn ToModelTurn()
+        {
+            var completeRequests = new List<ToolUseRequest>(_toolBlocksByIndex.Count);
+            var hasIncompleteToolCall = false;
+
+            foreach (var (index, block) in _toolBlocksByIndex)
+            {
+                var inputJson = block.Json.Length == 0 ? "{}" : block.Json.ToString();
+                if (IsCompleteToolCall(index, inputJson))
+                {
+                    completeRequests.Add(new ToolUseRequest(block.Id, block.Name, inputJson));
+                }
+                else
+                {
+                    hasIncompleteToolCall = true;
+                }
+            }
+
+            return new(
+                AssistantText: _assistantText,
+                ToolUseRequests: completeRequests,
+                StopReason: _stopReason,
+                InputTokens: _inputTokens,
+                OutputTokens: _outputTokens,
+                Refusal: _refusal,
+                HasIncompleteToolCall: hasIncompleteToolCall);
+        }
 
         /// <summary>
         /// #173: a turn cut short mid-tool-call (the output cap truncates the stream, or the
-        /// connection ends before <c>content_block_stop</c>) leaves an accumulated string that
-        /// is syntactically incomplete JSON — streaming has no signal for "this block never
-        /// closed" other than the text itself failing to parse. Dropping such a block here,
-        /// rather than handing it on as <see cref="ToolUseRequest.InputJson"/>, keeps the
-        /// harness invariant that a <see cref="ConversationToolUseBlock"/> is always valid
-        /// JSON, and lets the loop's existing no-tool-turn handling (<c>max_tokens</c> ⇒
-        /// continue) ask the model to reissue the call instead of the harness replaying a
-        /// truncated one on the next turn and crashing on re-serialization. Uses the exact
-        /// deserialization <see cref="BuildContentBlocks"/> performs on replay, so nothing can
-        /// pass here and still fail there.
+        /// connection ends before <c>content_block_stop</c>) leaves a block that never reached
+        /// a state the harness can safely replay. Two independent checks decide that:
+        /// <list type="bullet">
+        ///   <item>
+        ///     <c>content_block_stop</c> actually arrived for this block's index — the
+        ///     provider's own, authoritative "this block is done" signal, which a stream cut
+        ///     at the output cap or a dropped connection never sends for the block it
+        ///     interrupted. Parsing alone is not enough: a block interrupted exactly at a
+        ///     point where the accumulated text happens to close every brace it opened would
+        ///     otherwise read as complete with nothing to tell it apart from one the provider
+        ///     genuinely finished.
+        ///   </item>
+        ///   <item>
+        ///     The accumulated text parses as one complete JSON value. Streaming deltas for
+        ///     one block are never interleaved with another's, and JSON grammar forbids a
+        ///     second top-level token after a value's closing brace, so a string that fails
+        ///     to parse is unambiguously a truncated prefix, not a coincidence.
+        ///   </item>
+        /// </list>
+        /// A block failing either check is dropped from <see cref="ModelTurn.ToolUseRequests"/>
+        /// rather than handed on as one — keeping the harness invariant that every
+        /// <see cref="ConversationToolUseBlock"/> is valid, complete JSON — and its turn is
+        /// flagged via <see cref="ModelTurn.HasIncompleteToolCall"/> so <see cref="AgentLoop"/>
+        /// can tell the model the call needs reissuing instead of silently losing it. A block
+        /// that closes with zero deltas ever received still passes both checks (its
+        /// synthesized <c>{}</c> parses, and closure fired): that is the provider's own
+        /// signal that it deliberately finished the block empty, and whether an empty call is
+        /// acceptable is <see cref="Grimoire.AgentRuntime.Guardrails.GuardedToolExecutor"/>'s
+        /// schema-validation question to answer, not this method's.
         /// </summary>
-        private static bool IsCompleteToolInput(string json)
+        private bool IsCompleteToolCall(long index, string json)
         {
+            if (!_closedBlockIndexes.Contains(index))
+            {
+                return false;
+            }
+
             try
             {
                 return JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(json) is not null;
@@ -501,6 +550,21 @@ public sealed class AnthropicModelClient : IModelClient
                     break;
 
                 case ConversationToolUseBlock toolUseBlock:
+                    // #173: this should be unreachable — StreamingTurn.ToModelTurn() and the
+                    // non-streaming path both guarantee InputJson is non-null, valid JSON
+                    // before it ever reaches the conversation. If the invariant is ever
+                    // broken anyway (a corrupted replay capture whose recorded input_json
+                    // deserialized to null — nullable annotations aren't enforced at
+                    // deserialization time — or a future caller that skips the guard), an
+                    // operator needs to see which tool call and task broke it, not a JSON
+                    // parser's byte offset or a bare ArgumentNullException.
+                    if (string.IsNullOrEmpty(toolUseBlock.InputJson))
+                    {
+                        throw new InvalidOperationException(
+                            $"Tool call '{toolUseBlock.ToolName}' (id '{toolUseBlock.ToolUseId}') has no " +
+                            "input JSON and cannot be replayed to the provider.");
+                    }
+
                     Dictionary<string, JsonElement> inputMap;
                     try
                     {
@@ -510,12 +574,6 @@ public sealed class AnthropicModelClient : IModelClient
                     }
                     catch (JsonException ex)
                     {
-                        // #173: this should be unreachable — StreamingTurn.ToModelTurn() and
-                        // the non-streaming path both guarantee InputJson is valid before it
-                        // ever reaches the conversation. If the invariant is ever broken
-                        // anyway (a corrupted replay capture, a future caller that skips the
-                        // guard), an operator needs to see which tool call and task broke it,
-                        // not a JSON parser's byte offset.
                         throw new InvalidOperationException(
                             $"Tool call '{toolUseBlock.ToolName}' (id '{toolUseBlock.ToolUseId}') has an " +
                             "invalid input JSON payload and cannot be replayed to the provider.", ex);
