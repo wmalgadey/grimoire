@@ -41,6 +41,16 @@ public class LintReplayEvalTests
     public Task SC008_InboundLinksRefreshed_ReplaysAtThreshold()
         => AssertScenarioAsync(LintScenarioDefinitions.InboundLinksRefreshed);
 
+    /// <summary>
+    /// SC-011 (026-guarded-tool-surface T066): the survey-at-scale scenario — the agent
+    /// completes a real survey of a wiki several times its declared context budget without
+    /// exceeding that budget. Gates the same way every other scenario here does, so the
+    /// standard PR pipeline enforces it.
+    /// </summary>
+    [Fact]
+    public Task SC011_AtScaleSurvey_ReplaysAtThreshold()
+        => AssertScenarioAsync(LintScenarioDefinitions.AtScaleSurvey);
+
     private static async Task AssertScenarioAsync(LintScenarioDefinition scenario)
     {
         var paths = EvalPaths.Discover();

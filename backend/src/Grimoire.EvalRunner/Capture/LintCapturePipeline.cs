@@ -108,8 +108,16 @@ public sealed class LintCapturePipeline
                 var rawCapture = RecordingSerialization.Load(capturePath);
                 model ??= rawCapture.Model;
 
+                var contentTokensRead = MeasureContentTokensRead(scenario, capturePath, fixtureWikiRoot);
+
                 var score = LintDeterministicScorers.Score(
-                    scenario.ScorerId, new LintSampleRunData(run.Narrative ?? string.Empty, wikiRoot, run.ProposedActions));
+                    scenario.ScorerId,
+                    new LintSampleRunData(
+                        run.Narrative ?? string.Empty,
+                        wikiRoot,
+                        run.ProposedActions,
+                        contentTokensRead,
+                        scenario.ContextBudgetTokens));
 
                 recordings.Add(rawCapture with
                 {
@@ -159,4 +167,12 @@ public sealed class LintCapturePipeline
     }
 
     private static string Truncate(string text) => text.Length <= 300 ? text : text[..300];
+
+    // Same read-side accounting the replay pipeline scores against (SC-011), so a scenario's
+    // capture-time and replay-time verdicts are computed identically. Measured against the
+    // pristine fixture, not the mutated sandbox — see ReadShapeAccounting.
+    private static int? MeasureContentTokensRead(LintScenarioDefinition scenario, string capturePath, string fixtureWikiRoot) =>
+        scenario.ContextBudgetTokens is null
+            ? null
+            : ReadShapeAccounting.Measure(capturePath, fixtureWikiRoot).ContentTokens;
 }

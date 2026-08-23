@@ -24,6 +24,31 @@ public enum WriteMode
 }
 
 /// <summary>
+/// One delete-scope rule (data-model.md "SafetyPolicy", ADR-031 R3): a canonical path
+/// prefix permitted for <c>delete_file</c>. Deliberately has no mode — deletion has no
+/// variants, unlike <see cref="WriteRule"/>. Absent entirely (no rules at all) means no
+/// deletion is permitted; this is the deny-by-default default for every agent except Lint.
+/// </summary>
+public readonly record struct DeleteRule
+{
+    public string Prefix { get; }
+
+    /// <summary>
+    /// Exact-match canonical paths this rule never matches, even though <see cref="Prefix"/>
+    /// otherwise would — the same shape as <see cref="WriteRule.ExcludePrefixes"/>, kept for
+    /// symmetry even though no shipped policy uses it (ADR-031 grants Lint's delete scope no
+    /// exclusions).
+    /// </summary>
+    public IReadOnlyList<string> ExcludePrefixes { get; }
+
+    public DeleteRule(string Prefix, IReadOnlyList<string>? ExcludePrefixes = null)
+    {
+        this.Prefix = Prefix;
+        this.ExcludePrefixes = ExcludePrefixes ?? Array.Empty<string>();
+    }
+}
+
+/// <summary>
 /// One write-scope rule (data-model.md "Write Rule", ADR-015, extended by ADR-016): a
 /// canonical path prefix plus its <see cref="Mode"/>.
 /// </summary>
@@ -82,6 +107,7 @@ public sealed class SafetyPolicy
 {
     private readonly IReadOnlyList<string> _readPrefixes;
     private readonly IReadOnlyList<WriteRule> _writeRules;
+    private readonly IReadOnlyList<DeleteRule> _deleteRules;
     private readonly string _repositoryRoot;
 
     /// <summary>
@@ -125,10 +151,42 @@ public sealed class SafetyPolicy
         string repositoryRoot,
         IReadOnlyList<string> readPrefixes,
         IReadOnlyList<WriteRule> writeRules)
+        : this(repositoryRoot, readPrefixes, writeRules, Array.Empty<DeleteRule>())
+    {
+    }
+
+    /// <summary>
+    /// Initializes a policy with absolute-path canonical prefixes already resolved against
+    /// the repository root, per-write-rule mode, and delete-scope rules (ADR-031 R3). The
+    /// only overload that can grant deletion — every other constructor delegates here with
+    /// an empty <paramref name="deleteRules"/> list, so an agent whose policy is loaded
+    /// through them (Ingest, Query, and Lint before this feature) can never delete.
+    /// </summary>
+    /// <param name="repositoryRoot">
+    /// Canonical absolute path to the repository root, used for traversal detection.
+    /// </param>
+    /// <param name="readPrefixes">
+    /// Canonical absolute path prefixes that allow read-scope tool calls.
+    /// </param>
+    /// <param name="writeRules">
+    /// Canonical absolute path prefixes (each with its <see cref="WriteMode"/>) that allow
+    /// write-scope tool calls.
+    /// </param>
+    /// <param name="deleteRules">
+    /// Canonical absolute path prefixes that allow <c>delete_file</c>. Deny-by-default like
+    /// every other scope: an empty list (the default via every other constructor) permits no
+    /// deletion at all.
+    /// </param>
+    public SafetyPolicy(
+        string repositoryRoot,
+        IReadOnlyList<string> readPrefixes,
+        IReadOnlyList<WriteRule> writeRules,
+        IReadOnlyList<DeleteRule> deleteRules)
     {
         _repositoryRoot = repositoryRoot;
         _readPrefixes = readPrefixes;
         _writeRules = writeRules;
+        _deleteRules = deleteRules;
     }
 
     /// <summary>
@@ -173,6 +231,31 @@ public sealed class SafetyPolicy
         return PolicyDecision.Deny("out_of_scope");
     }
 
+    /// <summary>
+    /// Evaluates whether a canonicalized target path is permitted for <c>delete_file</c>
+    /// (ADR-031 R3, data-model.md). Deletion is never evaluated as a write — an agent whose
+    /// policy declares <c>read-write</c> on a prefix gains no deletion from it; only an
+    /// explicit <see cref="DeleteRule"/> does. Deny-by-default: no rule matches ⇒
+    /// <c>no_rule</c>, mirroring the read scope's own default-deny reason.
+    /// </summary>
+    public PolicyDecision EvaluateDelete(string canonicalTarget)
+    {
+        if (!IsWithinRepositoryRoot(canonicalTarget))
+        {
+            return PolicyDecision.Deny("traversal");
+        }
+
+        foreach (var rule in _deleteRules)
+        {
+            if (PrefixMatches(rule.Prefix, canonicalTarget) && !IsExcluded(rule.ExcludePrefixes, canonicalTarget))
+            {
+                return PolicyDecision.Allow();
+            }
+        }
+
+        return PolicyDecision.Deny("no_rule");
+    }
+
     private static bool IsExcluded(IReadOnlyList<string> excludePrefixes, string canonicalTarget)
     {
         foreach (var excluded in excludePrefixes)
@@ -205,8 +288,14 @@ public sealed class SafetyPolicy
     /// loaded policy identity (version/sha256) still describes what was read from disk;
     /// this method only changes what the in-memory <see cref="SafetyPolicy"/> instance
     /// enforces for that one run.
+    ///
+    /// 026-guarded-tool-surface (ADR-031): also strips every delete rule, for the same
+    /// reason — a message turn is structurally read-only, and deletion is exactly the kind
+    /// of "write" this method exists to deny even though it is evaluated separately from
+    /// <see cref="Evaluate"/>'s write scope.
     /// </summary>
-    public SafetyPolicy WithNoWriteAccess() => new(_repositoryRoot, _readPrefixes, Array.Empty<WriteRule>());
+    public SafetyPolicy WithNoWriteAccess() =>
+        new(_repositoryRoot, _readPrefixes, Array.Empty<WriteRule>(), Array.Empty<DeleteRule>());
 
     private static bool PrefixMatches(string prefix, string canonicalTarget)
     {

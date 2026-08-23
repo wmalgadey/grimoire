@@ -4,6 +4,11 @@ status: accepted
 
 # ADR-017: Structural Format Enforcement for `log.md` and `index.md` Entries
 
+> **Amended by [ADR-031](ADR-031-lint-full-wiki-write-scope.md)**: Lint's policy no longer
+> excludes `index.md` and `log.md`, so this ADR's format enforcement — and ADR-028's prepend
+> ordering — now binds Lint's writes to those files exactly as it binds any other agent's.
+> The format rules themselves are unchanged; only the set of agents that can reach them grows.
+
 > **Amended by [ADR-028](ADR-028-agent-owned-activity-log-prepend-ordering.md)**:
 > the `log.md` half of the mechanism below is inverted from *append-only* to
 > *prepend-only* — the current content must be an unchanged **suffix** of the proposed

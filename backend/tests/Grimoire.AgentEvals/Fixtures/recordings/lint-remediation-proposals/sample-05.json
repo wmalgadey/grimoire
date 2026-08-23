@@ -1,12 +1,12 @@
 {
   "schema_version": 1,
   "sample": 5,
-  "task_id": "capture-lint-remediation-proposals-05-9922358431e5411a9a0aa6f3430e67be",
+  "task_id": "capture-lint-remediation-proposals-05-44a7b34a5dc64dd6beac813427704042",
   "model": "claude-haiku-4-5",
   "turns": [
     {
       "turn": 1,
-      "system_prompt_sha256": "sha256:060aabefdcda74d2eb1deef24389960be8b1efc4363daaecc404e946b4c4c305",
+      "system_prompt_sha256": "sha256:6aeef08a02ad4c24f474b4e83776ca028cffd1a500bc5113d954592af880da60",
       "conversation": [
         {
           "role": "user",
@@ -16,33 +16,36 @@
       "tool_names": [
         "list_files",
         "read_file",
-        "write_file"
+        "search_files",
+        "batch",
+        "write_file",
+        "delete_file"
       ],
       "stop_reason": "tool_use",
       "tool_uses": [
         {
-          "tool_use_id": "toolu_01TpyWfUdGSN2xxV9R7Bsxuu",
+          "tool_use_id": "toolu_012Fz73dXNGAbqLWGddXQdyX",
           "tool_name": "read_file",
-          "input_json": "{\u0022path\u0022:\u0022index.md\u0022}"
+          "input_json": "{\u0022path\u0022: \u0022index.md\u0022}"
         },
         {
-          "tool_use_id": "toolu_01Wig2ff63HhgecoHpAuWcD8",
+          "tool_use_id": "toolu_01Ep3tgf4MXxBn4gmDBkr9Vh",
           "tool_name": "read_file",
-          "input_json": "{\u0022path\u0022:\u0022log.md\u0022}"
+          "input_json": "{\u0022path\u0022: \u0022log.md\u0022}"
         },
         {
-          "tool_use_id": "toolu_01KMXpa32SPUP78La7k6fvEa",
+          "tool_use_id": "toolu_01T5MGoNQv5FJGKCrTDZ78t3",
           "tool_name": "list_files",
-          "input_json": "{\u0022path\u0022:\u0022.\u0022}"
+          "input_json": "{\u0022path\u0022: \u0022.\u0022}"
         }
       ],
-      "assistant_text": "I\u0027ll start by reading the entire wiki to understand its structure and content.",
-      "input_tokens": 5837,
-      "output_tokens": 144
+      "assistant_text": "I\u0027ll perform a comprehensive wiki health check. Let me start by surveying the wiki structure and content.",
+      "input_tokens": 9410,
+      "output_tokens": 150
     },
     {
       "turn": 2,
-      "system_prompt_sha256": "sha256:060aabefdcda74d2eb1deef24389960be8b1efc4363daaecc404e946b4c4c305",
+      "system_prompt_sha256": "sha256:6aeef08a02ad4c24f474b4e83776ca028cffd1a500bc5113d954592af880da60",
       "conversation": [
         {
           "role": "user",
@@ -50,43 +53,71 @@
         },
         {
           "role": "assistant",
-          "content_sha256": "sha256:4f34d34ef736747493ef2d31b69468307e703d8240ad16a2935607bb8e8eaad1"
+          "content_sha256": "sha256:9381a022c6a4d0f0fb8096b227438a7e511f001ef36bba614947c386a212f9f3"
         },
         {
           "role": "user",
-          "content_sha256": "sha256:44858a6c84e81e2c73cea206ebf509121e2aa9e84fb900302eb0d7c5a927e80d"
+          "content_sha256": "sha256:507e98123a71d439c2a176ad3d21c885982f44458bdf7ad3836446de9b3a6653"
         }
       ],
       "tool_names": [
         "list_files",
         "read_file",
-        "write_file"
+        "search_files",
+        "batch",
+        "write_file",
+        "delete_file"
       ],
       "stop_reason": "tool_use",
       "tool_uses": [
         {
-          "tool_use_id": "toolu_016Kv6H6z7y3RiaKLLCb2tph",
-          "tool_name": "list_files",
-          "input_json": "{\u0022path\u0022:\u0022tech\u0022}"
+          "tool_use_id": "toolu_01QkcxAuaPSysF2KTvC9D34j",
+          "tool_name": "read_file",
+          "input_json": "{\u0022path\u0022: \u0022cache-invalidation-ttl.md\u0022}"
         },
         {
-          "tool_use_id": "toolu_015NEJUc8H6rXXHEtazXsFEF",
-          "tool_name": "list_files",
-          "input_json": "{\u0022path\u0022:\u0022concepts\u0022}"
+          "tool_use_id": "toolu_01CaGro7vPNr1E96wHyurFJJ",
+          "tool_name": "read_file",
+          "input_json": "{\u0022path\u0022: \u0022cache-invalidation-events.md\u0022}"
         },
         {
-          "tool_use_id": "toolu_019vUVQBmhPJGehao4vqcAoF",
-          "tool_name": "list_files",
-          "input_json": "{\u0022path\u0022:\u0022patterns\u0022}"
+          "tool_use_id": "toolu_019tVaRmgJprk4yBvVPWyFXZ",
+          "tool_name": "read_file",
+          "input_json": "{\u0022path\u0022: \u0022retry-backoff.md\u0022}"
+        },
+        {
+          "tool_use_id": "toolu_014xh32YbmJsbyxwHxsMomS5",
+          "tool_name": "read_file",
+          "input_json": "{\u0022path\u0022: \u0022circuit-breaker.md\u0022}"
+        },
+        {
+          "tool_use_id": "toolu_01AFdgzvpQ5UBr33LDZJ3t6E",
+          "tool_name": "read_file",
+          "input_json": "{\u0022path\u0022: \u0022undertagged-topic.md\u0022}"
+        },
+        {
+          "tool_use_id": "toolu_01ALf8YqxetKPQpquynuDon2",
+          "tool_name": "read_file",
+          "input_json": "{\u0022path\u0022: \u0022unscored-topic.md\u0022}"
+        },
+        {
+          "tool_use_id": "toolu_01265RMUC47qTxYtxRfY3hdo",
+          "tool_name": "read_file",
+          "input_json": "{\u0022path\u0022: \u0022stale-topic.md\u0022}"
+        },
+        {
+          "tool_use_id": "toolu_01QiZt2UMt6jTg5SNJ91RN29",
+          "tool_name": "read_file",
+          "input_json": "{\u0022path\u0022: \u0022orphan-topic.md\u0022}"
         }
       ],
-      "assistant_text": "Now let me check if there are any topic folders:",
-      "input_tokens": 6386,
-      "output_tokens": 137
+      "assistant_text": "Good, I found the wiki structure. I can see there\u0027s an \u0060orphan-topic.md\u0060 file not in the index \u2014 that\u0027s the seeded orphan. Now let me read all pages in full to judge their condition. Given the small size, I\u0027ll read everything completely.",
+      "input_tokens": 9965,
+      "output_tokens": 413
     },
     {
       "turn": 3,
-      "system_prompt_sha256": "sha256:060aabefdcda74d2eb1deef24389960be8b1efc4363daaecc404e946b4c4c305",
+      "system_prompt_sha256": "sha256:6aeef08a02ad4c24f474b4e83776ca028cffd1a500bc5113d954592af880da60",
       "conversation": [
         {
           "role": "user",
@@ -94,76 +125,44 @@
         },
         {
           "role": "assistant",
-          "content_sha256": "sha256:4f34d34ef736747493ef2d31b69468307e703d8240ad16a2935607bb8e8eaad1"
+          "content_sha256": "sha256:9381a022c6a4d0f0fb8096b227438a7e511f001ef36bba614947c386a212f9f3"
         },
         {
           "role": "user",
-          "content_sha256": "sha256:44858a6c84e81e2c73cea206ebf509121e2aa9e84fb900302eb0d7c5a927e80d"
+          "content_sha256": "sha256:507e98123a71d439c2a176ad3d21c885982f44458bdf7ad3836446de9b3a6653"
         },
         {
           "role": "assistant",
-          "content_sha256": "sha256:d8e7c7259dd5828eaf16d125ba526126a655c9ad70081b5aca7c6641fe7a6a45"
+          "content_sha256": "sha256:253a9940a4a7783092802923f65898f0b4bb6c7254ee0f679f0fa582e7cefed6"
         },
         {
           "role": "user",
-          "content_sha256": "sha256:9f226489a9703136b2c59aa9876a3d1704cc1446136fa6e5e94152d8fa8f70e8"
+          "content_sha256": "sha256:8350a81869749234654e9e1dc65b1e139f5016ce8a39d9642cf34ac6a83fd1d6"
         }
       ],
       "tool_names": [
         "list_files",
         "read_file",
-        "write_file"
+        "search_files",
+        "batch",
+        "write_file",
+        "delete_file"
       ],
       "stop_reason": "tool_use",
       "tool_uses": [
         {
-          "tool_use_id": "toolu_01Mt4vbW4x2t5Sjt3X2ddXYd",
-          "tool_name": "read_file",
-          "input_json": "{\u0022path\u0022:\u0022cache-invalidation-ttl.md\u0022}"
-        },
-        {
-          "tool_use_id": "toolu_01FYWoEsZgjE5vUdr8kEX8BH",
-          "tool_name": "read_file",
-          "input_json": "{\u0022path\u0022:\u0022cache-invalidation-events.md\u0022}"
-        },
-        {
-          "tool_use_id": "toolu_01SEfvDY3DjttRBni18we6ZV",
-          "tool_name": "read_file",
-          "input_json": "{\u0022path\u0022:\u0022retry-backoff.md\u0022}"
-        },
-        {
-          "tool_use_id": "toolu_01Gk3H3oNcXKMapaYiKkGgMA",
-          "tool_name": "read_file",
-          "input_json": "{\u0022path\u0022:\u0022circuit-breaker.md\u0022}"
-        },
-        {
-          "tool_use_id": "toolu_013UhUmNGwjRu53LiuzD3W5i",
-          "tool_name": "read_file",
-          "input_json": "{\u0022path\u0022:\u0022undertagged-topic.md\u0022}"
-        },
-        {
-          "tool_use_id": "toolu_014bTiVnJDfCTwXYz4GZ3Evj",
-          "tool_name": "read_file",
-          "input_json": "{\u0022path\u0022:\u0022unscored-topic.md\u0022}"
-        },
-        {
-          "tool_use_id": "toolu_01F1HHKLkgu7NUYbU5CmuXri",
-          "tool_name": "read_file",
-          "input_json": "{\u0022path\u0022:\u0022stale-topic.md\u0022}"
-        },
-        {
-          "tool_use_id": "toolu_01AQSJTGHzrEutFGKzuTipFh",
-          "tool_name": "read_file",
-          "input_json": "{\u0022path\u0022:\u0022orphan-topic.md\u0022}"
+          "tool_use_id": "toolu_01M3u6hYJAQtxCMLCugkgVQX",
+          "tool_name": "search_files",
+          "input_json": "{\u0022pattern\u0022: \u0022\\\\[\\\\[([^\\\\]]\u002B)\\\\]\\\\]\u0022, \u0022max_results\u0022: 1000}"
         }
       ],
-      "assistant_text": "Good, the wiki is flat (all pages in the root). Let me now read every page in the wiki:",
-      "input_tokens": 6626,
-      "output_tokens": 376
+      "assistant_text": "Now let me check for wikilinks in each page to establish the inbound-link counts. I\u0027ll scan through all pages and index.md to extract wikilinks.",
+      "input_tokens": 12028,
+      "output_tokens": 119
     },
     {
       "turn": 4,
-      "system_prompt_sha256": "sha256:060aabefdcda74d2eb1deef24389960be8b1efc4363daaecc404e946b4c4c305",
+      "system_prompt_sha256": "sha256:6aeef08a02ad4c24f474b4e83776ca028cffd1a500bc5113d954592af880da60",
       "conversation": [
         {
           "role": "user",
@@ -171,64 +170,87 @@
         },
         {
           "role": "assistant",
-          "content_sha256": "sha256:4f34d34ef736747493ef2d31b69468307e703d8240ad16a2935607bb8e8eaad1"
+          "content_sha256": "sha256:9381a022c6a4d0f0fb8096b227438a7e511f001ef36bba614947c386a212f9f3"
         },
         {
           "role": "user",
-          "content_sha256": "sha256:44858a6c84e81e2c73cea206ebf509121e2aa9e84fb900302eb0d7c5a927e80d"
+          "content_sha256": "sha256:507e98123a71d439c2a176ad3d21c885982f44458bdf7ad3836446de9b3a6653"
         },
         {
           "role": "assistant",
-          "content_sha256": "sha256:d8e7c7259dd5828eaf16d125ba526126a655c9ad70081b5aca7c6641fe7a6a45"
+          "content_sha256": "sha256:253a9940a4a7783092802923f65898f0b4bb6c7254ee0f679f0fa582e7cefed6"
         },
         {
           "role": "user",
-          "content_sha256": "sha256:9f226489a9703136b2c59aa9876a3d1704cc1446136fa6e5e94152d8fa8f70e8"
+          "content_sha256": "sha256:8350a81869749234654e9e1dc65b1e139f5016ce8a39d9642cf34ac6a83fd1d6"
         },
         {
           "role": "assistant",
-          "content_sha256": "sha256:3b920eb36dfe9bab242883f947b03739e9491eebea54439e806fb1d4a5b6fb54"
+          "content_sha256": "sha256:7d10860de1022c0c5248b44bd3fb9db72adc9f4c3c26de6e5559de5637a0ea17"
         },
         {
           "role": "user",
-          "content_sha256": "sha256:8cf67204934a4bc6bac82ede52665bd2e1db1293e05e7e5348a700c954d53ed6"
+          "content_sha256": "sha256:6d0fac0d2f77ae053738ea760e04f3d98e1e811828f2c86d1600f01b655258e1"
         }
       ],
       "tool_names": [
         "list_files",
         "read_file",
-        "write_file"
+        "search_files",
+        "batch",
+        "write_file",
+        "delete_file"
       ],
       "stop_reason": "tool_use",
       "tool_uses": [
         {
-          "tool_use_id": "toolu_016dpQ1jZNEX4ee2UUKUruYu",
+          "tool_use_id": "toolu_014nffzAojR1fwRvoJe3E6WR",
           "tool_name": "read_file",
-          "input_json": "{\u0022path\u0022:\u0022orphan-topic.md\u0022}"
+          "input_json": "{\u0022path\u0022: \u0022cache-invalidation-ttl.md\u0022, \u0022frontmatter_only\u0022: true}"
         },
         {
-          "tool_use_id": "toolu_01AjEXAGx2CrHfsYtHapn587",
+          "tool_use_id": "toolu_01TqVEMk2uQrYo6XW1ihkaog",
           "tool_name": "read_file",
-          "input_json": "{\u0022path\u0022:\u0022undertagged-topic.md\u0022}"
+          "input_json": "{\u0022path\u0022: \u0022cache-invalidation-events.md\u0022, \u0022frontmatter_only\u0022: true}"
         },
         {
-          "tool_use_id": "toolu_018iqKh1TbaHZhjcjfducEq2",
+          "tool_use_id": "toolu_012U4foN58aa1gs1Hem59q4a",
           "tool_name": "read_file",
-          "input_json": "{\u0022path\u0022:\u0022unscored-topic.md\u0022}"
+          "input_json": "{\u0022path\u0022: \u0022retry-backoff.md\u0022, \u0022frontmatter_only\u0022: true}"
         },
         {
-          "tool_use_id": "toolu_01KUtRkURprfADkHoW4DSWDZ",
+          "tool_use_id": "toolu_01DTYPzwc4Tr3sTiVp1jEfaX",
           "tool_name": "read_file",
-          "input_json": "{\u0022path\u0022:\u0022stale-topic.md\u0022}"
+          "input_json": "{\u0022path\u0022: \u0022circuit-breaker.md\u0022, \u0022frontmatter_only\u0022: true}"
+        },
+        {
+          "tool_use_id": "toolu_01DXd3GnxFUyzttXnh1xJHeS",
+          "tool_name": "read_file",
+          "input_json": "{\u0022path\u0022: \u0022undertagged-topic.md\u0022, \u0022frontmatter_only\u0022: true}"
+        },
+        {
+          "tool_use_id": "toolu_01Gfpuwti5xFpYeWgfPeR1iR",
+          "tool_name": "read_file",
+          "input_json": "{\u0022path\u0022: \u0022unscored-topic.md\u0022, \u0022frontmatter_only\u0022: true}"
+        },
+        {
+          "tool_use_id": "toolu_014e9SPC1QKprUZZHk7ZiTbZ",
+          "tool_name": "read_file",
+          "input_json": "{\u0022path\u0022: \u0022stale-topic.md\u0022, \u0022frontmatter_only\u0022: true}"
+        },
+        {
+          "tool_use_id": "toolu_01DNTmrBotnrwwgRKivyKTpL",
+          "tool_name": "read_file",
+          "input_json": "{\u0022path\u0022: \u0022orphan-topic.md\u0022, \u0022frontmatter_only\u0022: true}"
         }
       ],
-      "assistant_text": "Perfect! Now I have all 9 pages. Let me extract all wikilinks by analyzing each file systematically. I\u0027ll do a complete pass-1 to identify all wikilinks:\n\n**Pass 1: Extract all wikilinks from every file**\n\nReading \u0060index.md\u0060:\n- \u0060[[cache-invalidation-ttl]]\u0060\n- \u0060[[cache-invalidation-events]]\u0060\n- \u0060[[retry-backoff]]\u0060\n- \u0060[[circuit-breaker]]\u0060\n- \u0060[[undertagged-topic]]\u0060\n- \u0060[[unscored-topic]]\u0060\n- \u0060[[stale-topic]]\u0060\n\nReading \u0060cache-invalidation-ttl.md\u0060: (no wikilinks in body)\n\nReading \u0060cache-invalidation-events.md\u0060: (no wikilinks in body)\n\nReading \u0060retry-backoff.md\u0060: (no wikilinks in body)\n\nReading \u0060circuit-breaker.md\u0060: (no wikilinks in body)\n\nReading \u0060undertagged-topic.md\u0060 (missing from earlier read - let me check if I got it):\nActually, I need to read the files I haven\u0027t read yet. Let me check those:\n\nI see I read 8 files but the list showed 9. Let me verify by reading the files I may have skipped:",
-      "input_tokens": 8652,
-      "output_tokens": 475
+      "assistant_text": "Good. Now let me analyze what I\u0027ve found:\n\n## Analysis Summary\n\n**Pages found**: 9 total\n- cache-invalidation-ttl.md\n- cache-invalidation-events.md\n- retry-backoff.md\n- circuit-breaker.md\n- undertagged-topic.md (missing \u0060tags\u0060)\n- unscored-topic.md (missing \u0060confidence\u0060/\u0060confidence_reason\u0060)\n- stale-topic.md (low-confidence, last_reviewed from 2025-01-05, now \u003E 90 days old)\n- orphan-topic.md (not in index, no inbound links)\n\n**Inbound link counts from index.md:**\n- cache-invalidation-ttl: 1\n- cache-invalidation-events: 1\n- retry-backoff: 1\n- circuit-breaker: 1\n- undertagged-topic: 1\n- unscored-topic: 1\n- stale-topic: 1\n- orphan-topic: 0\n\n**Content Quality Issues:**\n\n1. **Contradiction between cache-invalidation-ttl and cache-invalidation-events**: These pages make directly incompatible claims:\n   - TTL page: \u0022Event-driven invalidation... is unreliable in practice\u0022\n   - Events page: \u0022TTL-based expiry is unreliable under bursty writes\u0022 and \u0022should replace TTL-based expiry everywhere\u0022\n\n2. **Missing cross-reference**: The retry-backoff and circuit-breaker pages are both about resilience patterns but don\u0027t link to each other.\n\n3. **Missing cross-reference**: The undertagged and unscored pages are about metadata hygiene defects but don\u0027t link to stale-topic which is related.\n\n**Metadata Hygiene Issues:**\n\n1. **Missing tags** in undertagged-topic.md\n2. **Missing confidence** in unscored-topic.md\n3. **Review candidate**: stale-topic.md has low confidence with last_reviewed: 2025-01-05 (\u003E90 days old)\n\n**Structure Issues:**\n\n1. **Orphan page**: orphan-topic.md has no inbound links from any page or index.md\n\nNow let me check the frontmatter more carefully for inbound_links fields:",
+      "input_tokens": 12330,
+      "output_tokens": 1048
     },
     {
       "turn": 5,
-      "system_prompt_sha256": "sha256:060aabefdcda74d2eb1deef24389960be8b1efc4363daaecc404e946b4c4c305",
+      "system_prompt_sha256": "sha256:6aeef08a02ad4c24f474b4e83776ca028cffd1a500bc5113d954592af880da60",
       "conversation": [
         {
           "role": "user",
@@ -236,57 +258,60 @@
         },
         {
           "role": "assistant",
-          "content_sha256": "sha256:4f34d34ef736747493ef2d31b69468307e703d8240ad16a2935607bb8e8eaad1"
+          "content_sha256": "sha256:9381a022c6a4d0f0fb8096b227438a7e511f001ef36bba614947c386a212f9f3"
         },
         {
           "role": "user",
-          "content_sha256": "sha256:44858a6c84e81e2c73cea206ebf509121e2aa9e84fb900302eb0d7c5a927e80d"
+          "content_sha256": "sha256:507e98123a71d439c2a176ad3d21c885982f44458bdf7ad3836446de9b3a6653"
         },
         {
           "role": "assistant",
-          "content_sha256": "sha256:d8e7c7259dd5828eaf16d125ba526126a655c9ad70081b5aca7c6641fe7a6a45"
+          "content_sha256": "sha256:253a9940a4a7783092802923f65898f0b4bb6c7254ee0f679f0fa582e7cefed6"
         },
         {
           "role": "user",
-          "content_sha256": "sha256:9f226489a9703136b2c59aa9876a3d1704cc1446136fa6e5e94152d8fa8f70e8"
+          "content_sha256": "sha256:8350a81869749234654e9e1dc65b1e139f5016ce8a39d9642cf34ac6a83fd1d6"
         },
         {
           "role": "assistant",
-          "content_sha256": "sha256:3b920eb36dfe9bab242883f947b03739e9491eebea54439e806fb1d4a5b6fb54"
+          "content_sha256": "sha256:7d10860de1022c0c5248b44bd3fb9db72adc9f4c3c26de6e5559de5637a0ea17"
         },
         {
           "role": "user",
-          "content_sha256": "sha256:8cf67204934a4bc6bac82ede52665bd2e1db1293e05e7e5348a700c954d53ed6"
+          "content_sha256": "sha256:6d0fac0d2f77ae053738ea760e04f3d98e1e811828f2c86d1600f01b655258e1"
         },
         {
           "role": "assistant",
-          "content_sha256": "sha256:5a3b1711bf8a0ce63a1f8c3e0b9b5f492d0bd085bcf09f490474ce99f85aabfe"
+          "content_sha256": "sha256:c8e8e15aa460a185c481c422319a149bbcdcb2107c7ff3538bd10061914c7e3a"
         },
         {
           "role": "user",
-          "content_sha256": "sha256:c039cf77cb78114d1bf4e7ae40cbe2c3ed10a29b490a7d151b153412550e263f"
+          "content_sha256": "sha256:d932a598cf57742ce05c30ee8e3256df816e46085b768c6b9b2dc5abc83187fd"
         }
       ],
       "tool_names": [
         "list_files",
         "read_file",
-        "write_file"
+        "search_files",
+        "batch",
+        "write_file",
+        "delete_file"
       ],
       "stop_reason": "tool_use",
       "tool_uses": [
         {
-          "tool_use_id": "toolu_01PFGdfR3Hp2kTjSvW5kakQC",
-          "tool_name": "list_files",
-          "input_json": "{\u0022path\u0022:\u0022.\u0022}"
+          "tool_use_id": "toolu_01VrzCWzZzGhCJZfHhgEydjT",
+          "tool_name": "read_file",
+          "input_json": "{\u0022path\u0022: \u0022cache-invalidation-ttl.md\u0022}"
         }
       ],
-      "assistant_text": "I see the files returned are not matching the filenames I requested. Let me re-read them carefully by checking which files actually exist:",
-      "input_tokens": 9868,
-      "output_tokens": 81
+      "assistant_text": "None of the pages have \u0060inbound_links\u0060 fields, but they all need them (except orphan-topic which correctly has 0). Let me now perform the inbound-link count refresh. Based on my search, I found these wikilinks in index.md:\n- [[cache-invalidation-ttl]] (1)\n- [[cache-invalidation-events]] (1)\n- [[retry-backoff]] (1)\n- [[circuit-breaker]] (1)\n- [[undertagged-topic]] (1)\n- [[unscored-topic]] (1)\n- [[stale-topic]] (1)\n- orphan-topic (0 - not linked)\n\nLet me refresh all the inbound link counts. I\u0027ll start with the pages that have links pointing to them:",
+      "input_tokens": 14252,
+      "output_tokens": 241
     },
     {
       "turn": 6,
-      "system_prompt_sha256": "sha256:060aabefdcda74d2eb1deef24389960be8b1efc4363daaecc404e946b4c4c305",
+      "system_prompt_sha256": "sha256:6aeef08a02ad4c24f474b4e83776ca028cffd1a500bc5113d954592af880da60",
       "conversation": [
         {
           "role": "user",
@@ -294,80 +319,72 @@
         },
         {
           "role": "assistant",
-          "content_sha256": "sha256:4f34d34ef736747493ef2d31b69468307e703d8240ad16a2935607bb8e8eaad1"
+          "content_sha256": "sha256:9381a022c6a4d0f0fb8096b227438a7e511f001ef36bba614947c386a212f9f3"
         },
         {
           "role": "user",
-          "content_sha256": "sha256:44858a6c84e81e2c73cea206ebf509121e2aa9e84fb900302eb0d7c5a927e80d"
+          "content_sha256": "sha256:507e98123a71d439c2a176ad3d21c885982f44458bdf7ad3836446de9b3a6653"
         },
         {
           "role": "assistant",
-          "content_sha256": "sha256:d8e7c7259dd5828eaf16d125ba526126a655c9ad70081b5aca7c6641fe7a6a45"
+          "content_sha256": "sha256:253a9940a4a7783092802923f65898f0b4bb6c7254ee0f679f0fa582e7cefed6"
         },
         {
           "role": "user",
-          "content_sha256": "sha256:9f226489a9703136b2c59aa9876a3d1704cc1446136fa6e5e94152d8fa8f70e8"
+          "content_sha256": "sha256:8350a81869749234654e9e1dc65b1e139f5016ce8a39d9642cf34ac6a83fd1d6"
         },
         {
           "role": "assistant",
-          "content_sha256": "sha256:3b920eb36dfe9bab242883f947b03739e9491eebea54439e806fb1d4a5b6fb54"
+          "content_sha256": "sha256:7d10860de1022c0c5248b44bd3fb9db72adc9f4c3c26de6e5559de5637a0ea17"
         },
         {
           "role": "user",
-          "content_sha256": "sha256:8cf67204934a4bc6bac82ede52665bd2e1db1293e05e7e5348a700c954d53ed6"
+          "content_sha256": "sha256:6d0fac0d2f77ae053738ea760e04f3d98e1e811828f2c86d1600f01b655258e1"
         },
         {
           "role": "assistant",
-          "content_sha256": "sha256:5a3b1711bf8a0ce63a1f8c3e0b9b5f492d0bd085bcf09f490474ce99f85aabfe"
+          "content_sha256": "sha256:c8e8e15aa460a185c481c422319a149bbcdcb2107c7ff3538bd10061914c7e3a"
         },
         {
           "role": "user",
-          "content_sha256": "sha256:c039cf77cb78114d1bf4e7ae40cbe2c3ed10a29b490a7d151b153412550e263f"
+          "content_sha256": "sha256:d932a598cf57742ce05c30ee8e3256df816e46085b768c6b9b2dc5abc83187fd"
         },
         {
           "role": "assistant",
-          "content_sha256": "sha256:0dfb30b7311dd4976559e0b238cbdd5702611a0f52cb921aed034899de8b1325"
+          "content_sha256": "sha256:7c755bb6e394901d65f637dff62068151aa2b8c04dc071381bb50d5e3338fc63"
         },
         {
           "role": "user",
-          "content_sha256": "sha256:531cc6e37b6dc4ff9e5b7940ca26148d9fa2d6595e82e5b2a42d9a247e874612"
+          "content_sha256": "sha256:bdc9badaf67ca3e2c57a6fddd46204706c9839417598265d00a5c098cbb5be95"
         }
       ],
       "tool_names": [
         "list_files",
         "read_file",
-        "write_file"
+        "search_files",
+        "batch",
+        "write_file",
+        "delete_file"
       ],
       "stop_reason": "tool_use",
       "tool_uses": [
         {
-          "tool_use_id": "toolu_017vc4HwmnKKUZ3cLaFL76Ju",
-          "tool_name": "read_file",
-          "input_json": "{\u0022path\u0022:\u0022undertagged-topic.md\u0022}"
+          "tool_use_id": "toolu_01GXDnMEFmpTVvcnn1WU3YeL",
+          "tool_name": "write_file",
+          "input_json": "{\u0022path\u0022: \u0022cache-invalidation-ttl.md\u0022, \u0022content\u0022: \u0022---\\ntype: Concept\\ntitle: Cache Invalidation via TTL\\ndescription: Always expire cache entries on a fixed time-to-live.\\ntimestamp: 2026-01-10T00:00:00Z\\ntags:\\n  - concept/Caching\\n  - pattern/TTL\\nconfidence: medium\\nconfidence_reason: \\\u0022One source, internally consistent.\\\u0022\\ninbound_links: 1\\n---\\n\\n# Cache Invalidation via TTL\\n\\nEvery cache entry should be assigned a fixed time-to-live (TTL) and expired purely on\\nelapsed time. Event-driven invalidation (recomputing or evicting an entry the instant\\nits source data changes) is unreliable in practice \u2014 event delivery can be dropped,\\nduplicated, or reordered, so a system that depends on it will serve stale data with no\\nbound on how stale. TTL-based expiry is the only invalidation strategy that gives a\\nhard staleness guarantee, and it should be the default for every cache in this system.\\n\u0022}"
         },
         {
-          "tool_use_id": "toolu_01J7cdEASZuSF96xavxzkWhq",
+          "tool_use_id": "toolu_017FqSRE53kAvvLJen1iumZd",
           "tool_name": "read_file",
-          "input_json": "{\u0022path\u0022:\u0022unscored-topic.md\u0022}"
-        },
-        {
-          "tool_use_id": "toolu_017DLZznihkVnhthVCz4Sj74",
-          "tool_name": "read_file",
-          "input_json": "{\u0022path\u0022:\u0022stale-topic.md\u0022}"
-        },
-        {
-          "tool_use_id": "toolu_015ZTqZyUE3UghHBLKFBgTuF",
-          "tool_name": "read_file",
-          "input_json": "{\u0022path\u0022:\u0022orphan-topic.md\u0022}"
+          "input_json": "{\u0022path\u0022: \u0022cache-invalidation-events.md\u0022}"
         }
       ],
-      "assistant_text": "Let me read the specific files more carefully:",
-      "input_tokens": 10027,
-      "output_tokens": 193
+      "input_tokens": 14725,
+      "output_tokens": 348
     },
     {
       "turn": 7,
-      "system_prompt_sha256": "sha256:060aabefdcda74d2eb1deef24389960be8b1efc4363daaecc404e946b4c4c305",
+      "system_prompt_sha256": "sha256:6aeef08a02ad4c24f474b4e83776ca028cffd1a500bc5113d954592af880da60",
       "conversation": [
         {
           "role": "user",
@@ -375,88 +392,80 @@
         },
         {
           "role": "assistant",
-          "content_sha256": "sha256:4f34d34ef736747493ef2d31b69468307e703d8240ad16a2935607bb8e8eaad1"
+          "content_sha256": "sha256:9381a022c6a4d0f0fb8096b227438a7e511f001ef36bba614947c386a212f9f3"
         },
         {
           "role": "user",
-          "content_sha256": "sha256:44858a6c84e81e2c73cea206ebf509121e2aa9e84fb900302eb0d7c5a927e80d"
+          "content_sha256": "sha256:507e98123a71d439c2a176ad3d21c885982f44458bdf7ad3836446de9b3a6653"
         },
         {
           "role": "assistant",
-          "content_sha256": "sha256:d8e7c7259dd5828eaf16d125ba526126a655c9ad70081b5aca7c6641fe7a6a45"
+          "content_sha256": "sha256:253a9940a4a7783092802923f65898f0b4bb6c7254ee0f679f0fa582e7cefed6"
         },
         {
           "role": "user",
-          "content_sha256": "sha256:9f226489a9703136b2c59aa9876a3d1704cc1446136fa6e5e94152d8fa8f70e8"
+          "content_sha256": "sha256:8350a81869749234654e9e1dc65b1e139f5016ce8a39d9642cf34ac6a83fd1d6"
         },
         {
           "role": "assistant",
-          "content_sha256": "sha256:3b920eb36dfe9bab242883f947b03739e9491eebea54439e806fb1d4a5b6fb54"
+          "content_sha256": "sha256:7d10860de1022c0c5248b44bd3fb9db72adc9f4c3c26de6e5559de5637a0ea17"
         },
         {
           "role": "user",
-          "content_sha256": "sha256:8cf67204934a4bc6bac82ede52665bd2e1db1293e05e7e5348a700c954d53ed6"
+          "content_sha256": "sha256:6d0fac0d2f77ae053738ea760e04f3d98e1e811828f2c86d1600f01b655258e1"
         },
         {
           "role": "assistant",
-          "content_sha256": "sha256:5a3b1711bf8a0ce63a1f8c3e0b9b5f492d0bd085bcf09f490474ce99f85aabfe"
+          "content_sha256": "sha256:c8e8e15aa460a185c481c422319a149bbcdcb2107c7ff3538bd10061914c7e3a"
         },
         {
           "role": "user",
-          "content_sha256": "sha256:c039cf77cb78114d1bf4e7ae40cbe2c3ed10a29b490a7d151b153412550e263f"
+          "content_sha256": "sha256:d932a598cf57742ce05c30ee8e3256df816e46085b768c6b9b2dc5abc83187fd"
         },
         {
           "role": "assistant",
-          "content_sha256": "sha256:0dfb30b7311dd4976559e0b238cbdd5702611a0f52cb921aed034899de8b1325"
+          "content_sha256": "sha256:7c755bb6e394901d65f637dff62068151aa2b8c04dc071381bb50d5e3338fc63"
         },
         {
           "role": "user",
-          "content_sha256": "sha256:531cc6e37b6dc4ff9e5b7940ca26148d9fa2d6595e82e5b2a42d9a247e874612"
+          "content_sha256": "sha256:bdc9badaf67ca3e2c57a6fddd46204706c9839417598265d00a5c098cbb5be95"
         },
         {
           "role": "assistant",
-          "content_sha256": "sha256:7ddfdee96d48dfa159a4859909bc26b7ab3ceb14940d1a0f5bba5a4fd58ace08"
+          "content_sha256": "sha256:3db88ee86950dd4e6f845d6cc0f94933877157bd3bfa63862169eecc19fe8436"
         },
         {
           "role": "user",
-          "content_sha256": "sha256:10fa6b2a874c1faef8e5056aab0cb9ff1a77ff2c2c581bbb7140f3c72d3de5c5"
+          "content_sha256": "sha256:4c779948dde496ff718a7e4ac29b851a45b3d8e632009f535358ff1e051c3b36"
         }
       ],
       "tool_names": [
         "list_files",
         "read_file",
-        "write_file"
+        "search_files",
+        "batch",
+        "write_file",
+        "delete_file"
       ],
       "stop_reason": "tool_use",
       "tool_uses": [
         {
-          "tool_use_id": "toolu_01AuADGV8MaKVHiGiQMALdkZ",
-          "tool_name": "read_file",
-          "input_json": "{\u0022path\u0022:\u0022cache-invalidation-ttl.md\u0022}"
+          "tool_use_id": "toolu_019H1eXmpL8JL7iueGAZmX6W",
+          "tool_name": "write_file",
+          "input_json": "{\u0022path\u0022: \u0022cache-invalidation-events.md\u0022, \u0022content\u0022: \u0022---\\ntype: Concept\\ntitle: Event-Driven Cache Invalidation\\ndescription: Invalidate cache entries immediately when their source data changes.\\ntimestamp: 2026-06-20T00:00:00Z\\ntags:\\n  - concept/Caching\\n  - pattern/EventDriven\\nconfidence: medium\\nconfidence_reason: \\\u0022One source, internally consistent.\\\u0022\\ninbound_links: 1\\n---\\n\\n# Event-Driven Cache Invalidation\\n\\nTTL-based expiry is unreliable under bursty writes: a fixed time window means an entry\\ncan serve stale data for up to the full TTL after its source changes, and there is no\\nway to shorten that window without also discarding entries that are still fresh.\\nEvent-driven invalidation \u2014 evicting or recomputing an entry the moment a change event\\nfor its source data arrives \u2014 is the recommended default: it bounds staleness to the\\nevent-delivery latency instead of an arbitrary fixed window, and should replace\\nTTL-based expiry everywhere in this system.\\n\u0022}"
         },
         {
-          "tool_use_id": "toolu_016YyzMqqyTUETjoN41MwgNb",
+          "tool_use_id": "toolu_01UXkfMDd9v57Rn55sJxN3mN",
           "tool_name": "read_file",
-          "input_json": "{\u0022path\u0022:\u0022cache-invalidation-events.md\u0022}"
-        },
-        {
-          "tool_use_id": "toolu_01K5PuHf4xeoAevWAhNekyxk",
-          "tool_name": "read_file",
-          "input_json": "{\u0022path\u0022:\u0022retry-backoff.md\u0022}"
-        },
-        {
-          "tool_use_id": "toolu_013m1rLB373G94ZCKaHJi2YH",
-          "tool_name": "read_file",
-          "input_json": "{\u0022path\u0022:\u0022circuit-breaker.md\u0022}"
+          "input_json": "{\u0022path\u0022: \u0022retry-backoff.md\u0022}"
         }
       ],
-      "assistant_text": "I notice the filenames in the system don\u0027t match their actual content filenames \u2014 the files being returned are different from what their paths suggest. Let me approach this differently and document what I\u0027ve actually read:\n\n**Actual files read (with content matched to filenames):**\n\n1. **index.md**: Lists 7 pages with wikilinks\n2. **cache-invalidation-ttl.md**: Title \u0022Cache Invalidation via TTL\u0022, timestamp 2026-01-10, tags present, medium confidence\n3. **cache-invalidation-events.md**: Title \u0022Event-Driven Cache Invalidation\u0022, timestamp 2026-06-20, tags present, medium confidence\n4. **retry-backoff.md**: Title \u0022Exponential Backoff for Retries\u0022, timestamp 2026-03-01, tags present, high confidence\n5. **circuit-breaker.md**: Title \u0022Circuit Breaker\u0022, timestamp 2026-03-05, tags present, high confidence\n6. **orphan-topic.md**: Contains \u0022Idempotency Keys\u0022 content\n7. **undertagged-topic.md**: Contains \u0022Read-Through Caching\u0022 content (MISSING TAGS!)\n8. **unscored-topic.md**: Contains \u0022Write-Behind Caching\u0022 content (MISSING CONFIDENCE!)\n9. **stale-topic.md**: Contains \u0022Sticky Sessions\u0022 content (low confidence, old last_reviewed: 2025-01-05)\n\nThis means the actual filenames are being mapped to different conceptual topics. The three defect-topic files are demonstrating specific issues:\n\n- **undertagged-topic.md** = Read-Through Caching (no tags field)\n- **unscored-topic.md** = Write-Behind Caching (no confidence field)\n- **stale-topic.md** = Sticky Sessions (low confidence, last_reviewed 2025-01-05 - over 90 days old from today in 2026)\n\nNow I\u0027ll do my proper Pass 1 and Pass 2 analysis:\n\n**Pass 1: Extract all wikilinks**\n\nFrom \u0060index.md\u0060:\n- \u0060[[cache-invalidation-ttl]]\u0060\n- \u0060[[cache-invalidation-events]]\u0060\n- \u0060[[retry-backoff]]\u0060\n- \u0060[[circuit-breaker]]\u0060\n- \u0060[[undertagged-topic]]\u0060\n- \u0060[[unscored-topic]]\u0060\n- \u0060[[stale-topic]]\u0060\n\nFrom all other pages (cache-invalidation-ttl.md, cache-invalidation-events.md, retry-backoff.md, circuit-breaker.md, orphan-topic.md, undertagged-topic.md, unscored-topic.md, stale-topic.md): **No wikilinks found**\n\n**Pass 2: Calculate inbound_links per page**\n\nOccurrence totals across all files:\n- \u0060cache-invalidation-ttl\u0060: 1 (from index.md)\n- \u0060cache-invalidation-events\u0060: 1 (from index.md)\n- \u0060retry-backoff\u0060: 1 (from index.md)\n- \u0060circuit-breaker\u0060: 1 (from index.md)\n- \u0060undertagged-topic\u0060: 1 (from index.md)\n- \u0060unscored-topic\u0060: 1 (from index.md)\n- \u0060stale-topic\u0060: 1 (from index.md)\n- \u0060orphan-topic\u0060: 0 (never mentioned anywhere)\n\nNow let me check the current inbound_links values in each file and refresh where needed:\n\nFiles that need inbound_links updates:\n1. **cache-invalidation-ttl.md** - should have inbound_links: 1\n2. **cache-invalidation-events.md** - should have inbound_links: 1\n3. **retry-backoff.md** - should have inbound_links: 1\n4. **circuit-breaker.md** - should have inbound_links: 1\n5. **undertagged-topic.md** (Read-Through Caching) - should have inbound_links: 1\n6. **unscored-topic.md** (Write-Behind Caching) - should have inbound_links: 1\n7. **stale-topic.md** (Sticky Sessions) - should have inbound_links: 1\n8. **orphan-topic.md** (Idempotency Keys) - should have inbound_links: 0\n\nLet me update all pages with correct inbound_links:",
-      "input_tokens": 10961,
-      "output_tokens": 1239
+      "input_tokens": 15374,
+      "output_tokens": 352
     },
     {
       "turn": 8,
-      "system_prompt_sha256": "sha256:060aabefdcda74d2eb1deef24389960be8b1efc4363daaecc404e946b4c4c305",
+      "system_prompt_sha256": "sha256:6aeef08a02ad4c24f474b4e83776ca028cffd1a500bc5113d954592af880da60",
       "conversation": [
         {
           "role": "user",
@@ -464,96 +473,88 @@
         },
         {
           "role": "assistant",
-          "content_sha256": "sha256:4f34d34ef736747493ef2d31b69468307e703d8240ad16a2935607bb8e8eaad1"
+          "content_sha256": "sha256:9381a022c6a4d0f0fb8096b227438a7e511f001ef36bba614947c386a212f9f3"
         },
         {
           "role": "user",
-          "content_sha256": "sha256:44858a6c84e81e2c73cea206ebf509121e2aa9e84fb900302eb0d7c5a927e80d"
+          "content_sha256": "sha256:507e98123a71d439c2a176ad3d21c885982f44458bdf7ad3836446de9b3a6653"
         },
         {
           "role": "assistant",
-          "content_sha256": "sha256:d8e7c7259dd5828eaf16d125ba526126a655c9ad70081b5aca7c6641fe7a6a45"
+          "content_sha256": "sha256:253a9940a4a7783092802923f65898f0b4bb6c7254ee0f679f0fa582e7cefed6"
         },
         {
           "role": "user",
-          "content_sha256": "sha256:9f226489a9703136b2c59aa9876a3d1704cc1446136fa6e5e94152d8fa8f70e8"
+          "content_sha256": "sha256:8350a81869749234654e9e1dc65b1e139f5016ce8a39d9642cf34ac6a83fd1d6"
         },
         {
           "role": "assistant",
-          "content_sha256": "sha256:3b920eb36dfe9bab242883f947b03739e9491eebea54439e806fb1d4a5b6fb54"
+          "content_sha256": "sha256:7d10860de1022c0c5248b44bd3fb9db72adc9f4c3c26de6e5559de5637a0ea17"
         },
         {
           "role": "user",
-          "content_sha256": "sha256:8cf67204934a4bc6bac82ede52665bd2e1db1293e05e7e5348a700c954d53ed6"
+          "content_sha256": "sha256:6d0fac0d2f77ae053738ea760e04f3d98e1e811828f2c86d1600f01b655258e1"
         },
         {
           "role": "assistant",
-          "content_sha256": "sha256:5a3b1711bf8a0ce63a1f8c3e0b9b5f492d0bd085bcf09f490474ce99f85aabfe"
+          "content_sha256": "sha256:c8e8e15aa460a185c481c422319a149bbcdcb2107c7ff3538bd10061914c7e3a"
         },
         {
           "role": "user",
-          "content_sha256": "sha256:c039cf77cb78114d1bf4e7ae40cbe2c3ed10a29b490a7d151b153412550e263f"
+          "content_sha256": "sha256:d932a598cf57742ce05c30ee8e3256df816e46085b768c6b9b2dc5abc83187fd"
         },
         {
           "role": "assistant",
-          "content_sha256": "sha256:0dfb30b7311dd4976559e0b238cbdd5702611a0f52cb921aed034899de8b1325"
+          "content_sha256": "sha256:7c755bb6e394901d65f637dff62068151aa2b8c04dc071381bb50d5e3338fc63"
         },
         {
           "role": "user",
-          "content_sha256": "sha256:531cc6e37b6dc4ff9e5b7940ca26148d9fa2d6595e82e5b2a42d9a247e874612"
+          "content_sha256": "sha256:bdc9badaf67ca3e2c57a6fddd46204706c9839417598265d00a5c098cbb5be95"
         },
         {
           "role": "assistant",
-          "content_sha256": "sha256:7ddfdee96d48dfa159a4859909bc26b7ab3ceb14940d1a0f5bba5a4fd58ace08"
+          "content_sha256": "sha256:3db88ee86950dd4e6f845d6cc0f94933877157bd3bfa63862169eecc19fe8436"
         },
         {
           "role": "user",
-          "content_sha256": "sha256:10fa6b2a874c1faef8e5056aab0cb9ff1a77ff2c2c581bbb7140f3c72d3de5c5"
+          "content_sha256": "sha256:4c779948dde496ff718a7e4ac29b851a45b3d8e632009f535358ff1e051c3b36"
         },
         {
           "role": "assistant",
-          "content_sha256": "sha256:f6d2e805234b6c1ab14690c84e32c6f1be87df097a1094259675ddd5d1bd2f4f"
+          "content_sha256": "sha256:a4347613c120e1fcf49f57ca92eed8a0b299fbb9db1d1d7ad9606df838ec519e"
         },
         {
           "role": "user",
-          "content_sha256": "sha256:194c25eb789b52502f3ebac397eac7b3f1b060159cc806a406e5b5d52707d0ee"
+          "content_sha256": "sha256:f35be6b63a904e003b2ba3a26b19aa8d3ba66e869167d690a5196de3e12ad6e3"
         }
       ],
       "tool_names": [
         "list_files",
         "read_file",
-        "write_file"
+        "search_files",
+        "batch",
+        "write_file",
+        "delete_file"
       ],
       "stop_reason": "tool_use",
       "tool_uses": [
         {
-          "tool_use_id": "toolu_014pwWppvi2LZ9ZeAXqV4aEu",
+          "tool_use_id": "toolu_01F3rncPWHdSNnPScLMz7nR8",
           "tool_name": "write_file",
-          "input_json": "{\u0022path\u0022:\u0022cache-invalidation-ttl.md\u0022,\u0022content\u0022:\u0022---\\ntype: Concept\\ntitle: Cache Invalidation via TTL\\ndescription: Always expire cache entries on a fixed time-to-live.\\ntimestamp: 2026-01-10T00:00:00Z\\ntags:\\n  - concept/Caching\\n  - pattern/TTL\\nconfidence: medium\\nconfidence_reason: \\u0022One source, internally consistent.\\u0022\\ninbound_links: 1\\n---\\n\\n# Cache Invalidation via TTL\\n\\nEvery cache entry should be assigned a fixed time-to-live (TTL) and expired purely on\\nelapsed time. Event-driven invalidation (recomputing or evicting an entry the instant\\nits source data changes) is unreliable in practice \\u2014 event delivery can be dropped,\\nduplicated, or reordered, so a system that depends on it will serve stale data with no\\nbound on how stale. TTL-based expiry is the only invalidation strategy that gives a\\nhard staleness guarantee, and it should be the default for every cache in this system.\\n\u0022}"
+          "input_json": "{\u0022path\u0022: \u0022retry-backoff.md\u0022, \u0022content\u0022: \u0022---\\ntype: Concept\\ntitle: Exponential Backoff for Retries\\ndescription: Retry failed requests with exponentially increasing delay and jitter.\\ntimestamp: 2026-03-01T00:00:00Z\\ntags:\\n  - concept/Resilience\\n  - pattern/Retry\\nconfidence: high\\nconfidence_reason: \\\u0022Book source, corroborated by official docs.\\\u0022\\ninbound_links: 1\\n---\\n\\n# Exponential Backoff for Retries\\n\\nWhen a request fails transiently, retry it after a delay that grows exponentially with\\neach attempt, with random jitter added to avoid synchronized retry storms across many\\nclients. This bounds the load a struggling downstream service sees from retrying\\nclients, at the cost of higher latency for the eventually-successful request.\\n\u0022}"
         },
         {
-          "tool_use_id": "toolu_014814nrvkWggvYhhojrRa2r",
-          "tool_name": "write_file",
-          "input_json": "{\u0022path\u0022:\u0022cache-invalidation-events.md\u0022,\u0022content\u0022:\u0022---\\ntype: Concept\\ntitle: Event-Driven Cache Invalidation\\ndescription: Invalidate cache entries immediately when their source data changes.\\ntimestamp: 2026-06-20T00:00:00Z\\ntags:\\n  - concept/Caching\\n  - pattern/EventDriven\\nconfidence: medium\\nconfidence_reason: \\u0022One source, internally consistent.\\u0022\\ninbound_links: 1\\n---\\n\\n# Event-Driven Cache Invalidation\\n\\nTTL-based expiry is unreliable under bursty writes: a fixed time window means an entry\\ncan serve stale data for up to the full TTL after its source changes, and there is no\\nway to shorten that window without also discarding entries that are still fresh.\\nEvent-driven invalidation \\u2014 evicting or recomputing an entry the moment a change event\\nfor its source data arrives \\u2014 is the recommended default: it bounds staleness to the\\nevent-delivery latency instead of an arbitrary fixed window, and should replace\\nTTL-based expiry everywhere in this system.\\n\u0022}"
-        },
-        {
-          "tool_use_id": "toolu_01PhVmH4VncgGCTgrGi9sxSL",
-          "tool_name": "write_file",
-          "input_json": "{\u0022path\u0022:\u0022retry-backoff.md\u0022,\u0022content\u0022:\u0022---\\ntype: Concept\\ntitle: Exponential Backoff for Retries\\ndescription: Retry failed requests with exponentially increasing delay and jitter.\\ntimestamp: 2026-03-01T00:00:00Z\\ntags:\\n  - concept/Resilience\\n  - pattern/Retry\\nconfidence: high\\nconfidence_reason: \\u0022Book source, corroborated by official docs.\\u0022\\ninbound_links: 1\\n---\\n\\n# Exponential Backoff for Retries\\n\\nWhen a request fails transiently, retry it after a delay that grows exponentially with\\neach attempt, with random jitter added to avoid synchronized retry storms across many\\nclients. This bounds the load a struggling downstream service sees from retrying\\nclients, at the cost of higher latency for the eventually-successful request.\\n\u0022}"
-        },
-        {
-          "tool_use_id": "toolu_01YKMU1f8cZLFNGWYcMCtUBv",
-          "tool_name": "write_file",
-          "input_json": "{\u0022path\u0022:\u0022circuit-breaker.md\u0022,\u0022content\u0022:\u0022---\\ntype: Concept\\ntitle: Circuit Breaker\\ndescription: Fail fast against a downstream dependency that is already struggling.\\ntimestamp: 2026-03-05T00:00:00Z\\ntags:\\n  - concept/Resilience\\n  - pattern/CircuitBreaker\\nconfidence: high\\nconfidence_reason: \\u0022Book source, corroborated by official docs.\\u0022\\ninbound_links: 1\\n---\\n\\n# Circuit Breaker\\n\\nTrack the failure rate of calls to a downstream dependency; once it crosses a\\nthreshold, \\u0022open\\u0022 the circuit and fail every call immediately (without attempting the\\nnetwork call at all) for a cooldown period, then allow a small number of trial calls\\nthrough to test whether the dependency has recovered before fully closing the circuit\\nagain. This protects a struggling downstream dependency from being kept down by a\\nthundering herd of retrying callers.\\n\u0022}"
+          "tool_use_id": "toolu_019v9bhAopXRtBD6WoHwV1a5",
+          "tool_name": "read_file",
+          "input_json": "{\u0022path\u0022: \u0022circuit-breaker.md\u0022}"
         }
       ],
-      "assistant_text": "Now let me write these back with inbound_links added:",
-      "input_tokens": 13122,
-      "output_tokens": 1105
+      "input_tokens": 15972,
+      "output_tokens": 296
     },
     {
       "turn": 9,
-      "system_prompt_sha256": "sha256:060aabefdcda74d2eb1deef24389960be8b1efc4363daaecc404e946b4c4c305",
+      "system_prompt_sha256": "sha256:6aeef08a02ad4c24f474b4e83776ca028cffd1a500bc5113d954592af880da60",
       "conversation": [
         {
           "role": "user",
@@ -561,104 +562,96 @@
         },
         {
           "role": "assistant",
-          "content_sha256": "sha256:4f34d34ef736747493ef2d31b69468307e703d8240ad16a2935607bb8e8eaad1"
+          "content_sha256": "sha256:9381a022c6a4d0f0fb8096b227438a7e511f001ef36bba614947c386a212f9f3"
         },
         {
           "role": "user",
-          "content_sha256": "sha256:44858a6c84e81e2c73cea206ebf509121e2aa9e84fb900302eb0d7c5a927e80d"
+          "content_sha256": "sha256:507e98123a71d439c2a176ad3d21c885982f44458bdf7ad3836446de9b3a6653"
         },
         {
           "role": "assistant",
-          "content_sha256": "sha256:d8e7c7259dd5828eaf16d125ba526126a655c9ad70081b5aca7c6641fe7a6a45"
+          "content_sha256": "sha256:253a9940a4a7783092802923f65898f0b4bb6c7254ee0f679f0fa582e7cefed6"
         },
         {
           "role": "user",
-          "content_sha256": "sha256:9f226489a9703136b2c59aa9876a3d1704cc1446136fa6e5e94152d8fa8f70e8"
+          "content_sha256": "sha256:8350a81869749234654e9e1dc65b1e139f5016ce8a39d9642cf34ac6a83fd1d6"
         },
         {
           "role": "assistant",
-          "content_sha256": "sha256:3b920eb36dfe9bab242883f947b03739e9491eebea54439e806fb1d4a5b6fb54"
+          "content_sha256": "sha256:7d10860de1022c0c5248b44bd3fb9db72adc9f4c3c26de6e5559de5637a0ea17"
         },
         {
           "role": "user",
-          "content_sha256": "sha256:8cf67204934a4bc6bac82ede52665bd2e1db1293e05e7e5348a700c954d53ed6"
+          "content_sha256": "sha256:6d0fac0d2f77ae053738ea760e04f3d98e1e811828f2c86d1600f01b655258e1"
         },
         {
           "role": "assistant",
-          "content_sha256": "sha256:5a3b1711bf8a0ce63a1f8c3e0b9b5f492d0bd085bcf09f490474ce99f85aabfe"
+          "content_sha256": "sha256:c8e8e15aa460a185c481c422319a149bbcdcb2107c7ff3538bd10061914c7e3a"
         },
         {
           "role": "user",
-          "content_sha256": "sha256:c039cf77cb78114d1bf4e7ae40cbe2c3ed10a29b490a7d151b153412550e263f"
+          "content_sha256": "sha256:d932a598cf57742ce05c30ee8e3256df816e46085b768c6b9b2dc5abc83187fd"
         },
         {
           "role": "assistant",
-          "content_sha256": "sha256:0dfb30b7311dd4976559e0b238cbdd5702611a0f52cb921aed034899de8b1325"
+          "content_sha256": "sha256:7c755bb6e394901d65f637dff62068151aa2b8c04dc071381bb50d5e3338fc63"
         },
         {
           "role": "user",
-          "content_sha256": "sha256:531cc6e37b6dc4ff9e5b7940ca26148d9fa2d6595e82e5b2a42d9a247e874612"
+          "content_sha256": "sha256:bdc9badaf67ca3e2c57a6fddd46204706c9839417598265d00a5c098cbb5be95"
         },
         {
           "role": "assistant",
-          "content_sha256": "sha256:7ddfdee96d48dfa159a4859909bc26b7ab3ceb14940d1a0f5bba5a4fd58ace08"
+          "content_sha256": "sha256:3db88ee86950dd4e6f845d6cc0f94933877157bd3bfa63862169eecc19fe8436"
         },
         {
           "role": "user",
-          "content_sha256": "sha256:10fa6b2a874c1faef8e5056aab0cb9ff1a77ff2c2c581bbb7140f3c72d3de5c5"
+          "content_sha256": "sha256:4c779948dde496ff718a7e4ac29b851a45b3d8e632009f535358ff1e051c3b36"
         },
         {
           "role": "assistant",
-          "content_sha256": "sha256:f6d2e805234b6c1ab14690c84e32c6f1be87df097a1094259675ddd5d1bd2f4f"
+          "content_sha256": "sha256:a4347613c120e1fcf49f57ca92eed8a0b299fbb9db1d1d7ad9606df838ec519e"
         },
         {
           "role": "user",
-          "content_sha256": "sha256:194c25eb789b52502f3ebac397eac7b3f1b060159cc806a406e5b5d52707d0ee"
+          "content_sha256": "sha256:f35be6b63a904e003b2ba3a26b19aa8d3ba66e869167d690a5196de3e12ad6e3"
         },
         {
           "role": "assistant",
-          "content_sha256": "sha256:9edc246503f7397fe3246171c96ddd1031f2f6ba6428f08ad88663aa9c98618f"
+          "content_sha256": "sha256:d73c79013e03259adc0aebdc70043071af5442cacc7b835d0a39ab32ff6d4a7e"
         },
         {
           "role": "user",
-          "content_sha256": "sha256:fdafdf95273bdb52fc9bdd65603cf918676348077bc442a7c8feb9585a2b6d81"
+          "content_sha256": "sha256:350d665ad21b826272a5f312a0b76a892755b362584f43eac549ec42457fb9b8"
         }
       ],
       "tool_names": [
         "list_files",
         "read_file",
-        "write_file"
+        "search_files",
+        "batch",
+        "write_file",
+        "delete_file"
       ],
       "stop_reason": "tool_use",
       "tool_uses": [
         {
-          "tool_use_id": "toolu_01D7xDH9iTZxEzWRBncKzgKz",
-          "tool_name": "read_file",
-          "input_json": "{\u0022path\u0022:\u0022undertagged-topic.md\u0022}"
+          "tool_use_id": "toolu_01PytqrBwj19LrAJzZ2yq79H",
+          "tool_name": "write_file",
+          "input_json": "{\u0022path\u0022: \u0022circuit-breaker.md\u0022, \u0022content\u0022: \u0022---\\ntype: Concept\\ntitle: Circuit Breaker\\ndescription: Fail fast against a downstream dependency that is already struggling.\\ntimestamp: 2026-03-05T00:00:00Z\\ntags:\\n  - concept/Resilience\\n  - pattern/CircuitBreaker\\nconfidence: high\\nconfidence_reason: \\\u0022Book source, corroborated by official docs.\\\u0022\\ninbound_links: 1\\n---\\n\\n# Circuit Breaker\\n\\nTrack the failure rate of calls to a downstream dependency; once it crosses a\\nthreshold, \\\u0022open\\\u0022 the circuit and fail every call immediately (without attempting the\\nnetwork call at all) for a cooldown period, then allow a small number of trial calls\\nthrough to test whether the dependency has recovered before fully closing the circuit\\nagain. This protects a struggling downstream dependency from being kept down by a\\nthundering herd of retrying callers.\\n\u0022}"
         },
         {
-          "tool_use_id": "toolu_01KGuF3kiJS6aSwkkMab7bav",
+          "tool_use_id": "toolu_01QnvT1PFSowbeQBEJzbFLDm",
           "tool_name": "read_file",
-          "input_json": "{\u0022path\u0022:\u0022unscored-topic.md\u0022}"
-        },
-        {
-          "tool_use_id": "toolu_01P94Tox3NnXY5yAWtvmNMZW",
-          "tool_name": "read_file",
-          "input_json": "{\u0022path\u0022:\u0022stale-topic.md\u0022}"
-        },
-        {
-          "tool_use_id": "toolu_01NSVzqpHRDCNeUxK6bFJDFs",
-          "tool_name": "read_file",
-          "input_json": "{\u0022path\u0022:\u0022orphan-topic.md\u0022}"
+          "input_json": "{\u0022path\u0022: \u0022undertagged-topic.md\u0022}"
         }
       ],
-      "assistant_text": "Now let me handle the three defect-topic files:",
-      "input_tokens": 14377,
-      "output_tokens": 196
+      "input_tokens": 16528,
+      "output_tokens": 313
     },
     {
       "turn": 10,
-      "system_prompt_sha256": "sha256:060aabefdcda74d2eb1deef24389960be8b1efc4363daaecc404e946b4c4c305",
+      "system_prompt_sha256": "sha256:6aeef08a02ad4c24f474b4e83776ca028cffd1a500bc5113d954592af880da60",
       "conversation": [
         {
           "role": "user",
@@ -666,112 +659,104 @@
         },
         {
           "role": "assistant",
-          "content_sha256": "sha256:4f34d34ef736747493ef2d31b69468307e703d8240ad16a2935607bb8e8eaad1"
+          "content_sha256": "sha256:9381a022c6a4d0f0fb8096b227438a7e511f001ef36bba614947c386a212f9f3"
         },
         {
           "role": "user",
-          "content_sha256": "sha256:44858a6c84e81e2c73cea206ebf509121e2aa9e84fb900302eb0d7c5a927e80d"
+          "content_sha256": "sha256:507e98123a71d439c2a176ad3d21c885982f44458bdf7ad3836446de9b3a6653"
         },
         {
           "role": "assistant",
-          "content_sha256": "sha256:d8e7c7259dd5828eaf16d125ba526126a655c9ad70081b5aca7c6641fe7a6a45"
+          "content_sha256": "sha256:253a9940a4a7783092802923f65898f0b4bb6c7254ee0f679f0fa582e7cefed6"
         },
         {
           "role": "user",
-          "content_sha256": "sha256:9f226489a9703136b2c59aa9876a3d1704cc1446136fa6e5e94152d8fa8f70e8"
+          "content_sha256": "sha256:8350a81869749234654e9e1dc65b1e139f5016ce8a39d9642cf34ac6a83fd1d6"
         },
         {
           "role": "assistant",
-          "content_sha256": "sha256:3b920eb36dfe9bab242883f947b03739e9491eebea54439e806fb1d4a5b6fb54"
+          "content_sha256": "sha256:7d10860de1022c0c5248b44bd3fb9db72adc9f4c3c26de6e5559de5637a0ea17"
         },
         {
           "role": "user",
-          "content_sha256": "sha256:8cf67204934a4bc6bac82ede52665bd2e1db1293e05e7e5348a700c954d53ed6"
+          "content_sha256": "sha256:6d0fac0d2f77ae053738ea760e04f3d98e1e811828f2c86d1600f01b655258e1"
         },
         {
           "role": "assistant",
-          "content_sha256": "sha256:5a3b1711bf8a0ce63a1f8c3e0b9b5f492d0bd085bcf09f490474ce99f85aabfe"
+          "content_sha256": "sha256:c8e8e15aa460a185c481c422319a149bbcdcb2107c7ff3538bd10061914c7e3a"
         },
         {
           "role": "user",
-          "content_sha256": "sha256:c039cf77cb78114d1bf4e7ae40cbe2c3ed10a29b490a7d151b153412550e263f"
+          "content_sha256": "sha256:d932a598cf57742ce05c30ee8e3256df816e46085b768c6b9b2dc5abc83187fd"
         },
         {
           "role": "assistant",
-          "content_sha256": "sha256:0dfb30b7311dd4976559e0b238cbdd5702611a0f52cb921aed034899de8b1325"
+          "content_sha256": "sha256:7c755bb6e394901d65f637dff62068151aa2b8c04dc071381bb50d5e3338fc63"
         },
         {
           "role": "user",
-          "content_sha256": "sha256:531cc6e37b6dc4ff9e5b7940ca26148d9fa2d6595e82e5b2a42d9a247e874612"
+          "content_sha256": "sha256:bdc9badaf67ca3e2c57a6fddd46204706c9839417598265d00a5c098cbb5be95"
         },
         {
           "role": "assistant",
-          "content_sha256": "sha256:7ddfdee96d48dfa159a4859909bc26b7ab3ceb14940d1a0f5bba5a4fd58ace08"
+          "content_sha256": "sha256:3db88ee86950dd4e6f845d6cc0f94933877157bd3bfa63862169eecc19fe8436"
         },
         {
           "role": "user",
-          "content_sha256": "sha256:10fa6b2a874c1faef8e5056aab0cb9ff1a77ff2c2c581bbb7140f3c72d3de5c5"
+          "content_sha256": "sha256:4c779948dde496ff718a7e4ac29b851a45b3d8e632009f535358ff1e051c3b36"
         },
         {
           "role": "assistant",
-          "content_sha256": "sha256:f6d2e805234b6c1ab14690c84e32c6f1be87df097a1094259675ddd5d1bd2f4f"
+          "content_sha256": "sha256:a4347613c120e1fcf49f57ca92eed8a0b299fbb9db1d1d7ad9606df838ec519e"
         },
         {
           "role": "user",
-          "content_sha256": "sha256:194c25eb789b52502f3ebac397eac7b3f1b060159cc806a406e5b5d52707d0ee"
+          "content_sha256": "sha256:f35be6b63a904e003b2ba3a26b19aa8d3ba66e869167d690a5196de3e12ad6e3"
         },
         {
           "role": "assistant",
-          "content_sha256": "sha256:9edc246503f7397fe3246171c96ddd1031f2f6ba6428f08ad88663aa9c98618f"
+          "content_sha256": "sha256:d73c79013e03259adc0aebdc70043071af5442cacc7b835d0a39ab32ff6d4a7e"
         },
         {
           "role": "user",
-          "content_sha256": "sha256:fdafdf95273bdb52fc9bdd65603cf918676348077bc442a7c8feb9585a2b6d81"
+          "content_sha256": "sha256:350d665ad21b826272a5f312a0b76a892755b362584f43eac549ec42457fb9b8"
         },
         {
           "role": "assistant",
-          "content_sha256": "sha256:36f3bb9fbdf25148e1f7f23183ae58d3b3c8e6a4166d615e24647888bda71072"
+          "content_sha256": "sha256:877c3334d0383f2f4e0163d544de079180e5e9841e64d0822547fc6277fe45a4"
         },
         {
           "role": "user",
-          "content_sha256": "sha256:a04e881bd936c1cb11aeac61ec9d1add589d99fa3468d9e971dabedb38545c40"
+          "content_sha256": "sha256:bbd4cbbb358146cb476673a67f9822d9f7ba6b02f47d146e4732eb83bbe351c3"
         }
       ],
       "tool_names": [
         "list_files",
         "read_file",
-        "write_file"
+        "search_files",
+        "batch",
+        "write_file",
+        "delete_file"
       ],
       "stop_reason": "tool_use",
       "tool_uses": [
         {
-          "tool_use_id": "toolu_012EqvhQFwzWZ7KCddB8TfTH",
+          "tool_use_id": "toolu_01SW3LcsKtF93gyr3pQj3ivX",
           "tool_name": "write_file",
-          "input_json": "{\u0022path\u0022:\u0022undertagged-topic.md\u0022,\u0022content\u0022:\u0022---\\ntype: Concept\\ntitle: Read-Through Caching\\ndescription: Populate the cache lazily on a miss, from the system of record.\\ntimestamp: 2026-04-02T00:00:00Z\\nconfidence: medium\\nconfidence_reason: \\u0022One source, internally consistent.\\u0022\\ninbound_links: 1\\n---\\n\\n# Read-Through Caching\\n\\nOn a cache miss, the caching layer itself (not the caller) fetches the value from the\\nsystem of record, stores it in the cache, and returns it \\u2014 so every caller sees the\\nsame simple \\u0022read from cache\\u0022 interface regardless of whether the value was already\\ncached.\\n\u0022}"
+          "input_json": "{\u0022path\u0022: \u0022undertagged-topic.md\u0022, \u0022content\u0022: \u0022---\\ntype: Concept\\ntitle: Read-Through Caching\\ndescription: Populate the cache lazily on a miss, from the system of record.\\ntimestamp: 2026-04-02T00:00:00Z\\nconfidence: medium\\nconfidence_reason: \\\u0022One source, internally consistent.\\\u0022\\ninbound_links: 1\\n---\\n\\n# Read-Through Caching\\n\\nOn a cache miss, the caching layer itself (not the caller) fetches the value from the\\nsystem of record, stores it in the cache, and returns it \u2014 so every caller sees the\\nsame simple \\\u0022read from cache\\\u0022 interface regardless of whether the value was already\\ncached.\\n\u0022}"
         },
         {
-          "tool_use_id": "toolu_011S47JcjSZSQzV5NCRyvBmG",
-          "tool_name": "write_file",
-          "input_json": "{\u0022path\u0022:\u0022unscored-topic.md\u0022,\u0022content\u0022:\u0022---\\ntype: Concept\\ntitle: Write-Behind Caching\\ndescription: Acknowledge a write immediately and persist it to storage asynchronously.\\ntimestamp: 2026-04-10T00:00:00Z\\ntags:\\n  - concept/Caching\\n  - pattern/WriteBehind\\ninbound_links: 1\\n---\\n\\n# Write-Behind Caching\\n\\nA write is accepted and acknowledged to the caller as soon as it lands in the cache;\\nthe cache asynchronously flushes it to the underlying system of record afterward. This\\nlowers write latency at the cost of a durability window in which an acknowledged write\\ncan be lost if the cache node fails before flushing.\\n\u0022}"
-        },
-        {
-          "tool_use_id": "toolu_01GPfcLxduQ6HH9eSWAfn8uB",
-          "tool_name": "write_file",
-          "input_json": "{\u0022path\u0022:\u0022stale-topic.md\u0022,\u0022content\u0022:\u0022---\\ntype: Concept\\ntitle: Sticky Sessions\\ndescription: Route a client\\u0027s requests to the same backend instance for session affinity.\\ntimestamp: 2025-01-05T00:00:00Z\\ntags:\\n  - concept/LoadBalancing\\n  - pattern/StickySessions\\nconfidence: low\\nconfidence_reason: \\u0022Single blog-post source, no corroboration; likely superseded practice.\\u0022\\nlast_reviewed: \\u00222025-01-05\\u0022\\ninbound_links: 1\\n---\\n\\n# Sticky Sessions\\n\\nA load balancer routes all of a given client\\u0027s requests to the same backend instance\\n(via a cookie or client IP hash), so per-instance in-memory session state stays valid\\nacross requests without a shared session store.\\n\u0022}"
-        },
-        {
-          "tool_use_id": "toolu_01KC4xZDXPuVtfHRADPzGg83",
-          "tool_name": "write_file",
-          "input_json": "{\u0022path\u0022:\u0022orphan-topic.md\u0022,\u0022content\u0022:\u0022---\\ntype: Concept\\ntitle: Idempotency Keys\\ndescription: Deduplicate retried requests using a client-supplied idempotency key.\\ntimestamp: 2026-02-14T00:00:00Z\\ntags:\\n  - concept/Resilience\\n  - pattern/Idempotency\\nconfidence: medium\\nconfidence_reason: \\u0022One source, internally consistent.\\u0022\\ninbound_links: 0\\n---\\n\\n# Idempotency Keys\\n\\nA client attaches a unique idempotency key to a request; the server records which keys\\nit has already processed and returns the original result for a repeated key instead of\\nre-executing the operation. This makes retried requests (e.g. after a timeout with an\\nunknown outcome) safe to resend without risking a duplicate side effect.\\n\u0022}"
+          "tool_use_id": "toolu_017LETG98miHWcJvSqVx1GHZ",
+          "tool_name": "read_file",
+          "input_json": "{\u0022path\u0022: \u0022unscored-topic.md\u0022}"
         }
       ],
-      "assistant_text": "Now I\u0027ll update these with inbound_links:",
-      "input_tokens": 15314,
-      "output_tokens": 919
+      "input_tokens": 17051,
+      "output_tokens": 264
     },
     {
       "turn": 11,
-      "system_prompt_sha256": "sha256:060aabefdcda74d2eb1deef24389960be8b1efc4363daaecc404e946b4c4c305",
+      "system_prompt_sha256": "sha256:6aeef08a02ad4c24f474b4e83776ca028cffd1a500bc5113d954592af880da60",
       "conversation": [
         {
           "role": "user",
@@ -779,95 +764,480 @@
         },
         {
           "role": "assistant",
-          "content_sha256": "sha256:4f34d34ef736747493ef2d31b69468307e703d8240ad16a2935607bb8e8eaad1"
+          "content_sha256": "sha256:9381a022c6a4d0f0fb8096b227438a7e511f001ef36bba614947c386a212f9f3"
         },
         {
           "role": "user",
-          "content_sha256": "sha256:44858a6c84e81e2c73cea206ebf509121e2aa9e84fb900302eb0d7c5a927e80d"
+          "content_sha256": "sha256:507e98123a71d439c2a176ad3d21c885982f44458bdf7ad3836446de9b3a6653"
         },
         {
           "role": "assistant",
-          "content_sha256": "sha256:d8e7c7259dd5828eaf16d125ba526126a655c9ad70081b5aca7c6641fe7a6a45"
+          "content_sha256": "sha256:253a9940a4a7783092802923f65898f0b4bb6c7254ee0f679f0fa582e7cefed6"
         },
         {
           "role": "user",
-          "content_sha256": "sha256:9f226489a9703136b2c59aa9876a3d1704cc1446136fa6e5e94152d8fa8f70e8"
+          "content_sha256": "sha256:8350a81869749234654e9e1dc65b1e139f5016ce8a39d9642cf34ac6a83fd1d6"
         },
         {
           "role": "assistant",
-          "content_sha256": "sha256:3b920eb36dfe9bab242883f947b03739e9491eebea54439e806fb1d4a5b6fb54"
+          "content_sha256": "sha256:7d10860de1022c0c5248b44bd3fb9db72adc9f4c3c26de6e5559de5637a0ea17"
         },
         {
           "role": "user",
-          "content_sha256": "sha256:8cf67204934a4bc6bac82ede52665bd2e1db1293e05e7e5348a700c954d53ed6"
+          "content_sha256": "sha256:6d0fac0d2f77ae053738ea760e04f3d98e1e811828f2c86d1600f01b655258e1"
         },
         {
           "role": "assistant",
-          "content_sha256": "sha256:5a3b1711bf8a0ce63a1f8c3e0b9b5f492d0bd085bcf09f490474ce99f85aabfe"
+          "content_sha256": "sha256:c8e8e15aa460a185c481c422319a149bbcdcb2107c7ff3538bd10061914c7e3a"
         },
         {
           "role": "user",
-          "content_sha256": "sha256:c039cf77cb78114d1bf4e7ae40cbe2c3ed10a29b490a7d151b153412550e263f"
+          "content_sha256": "sha256:d932a598cf57742ce05c30ee8e3256df816e46085b768c6b9b2dc5abc83187fd"
         },
         {
           "role": "assistant",
-          "content_sha256": "sha256:0dfb30b7311dd4976559e0b238cbdd5702611a0f52cb921aed034899de8b1325"
+          "content_sha256": "sha256:7c755bb6e394901d65f637dff62068151aa2b8c04dc071381bb50d5e3338fc63"
         },
         {
           "role": "user",
-          "content_sha256": "sha256:531cc6e37b6dc4ff9e5b7940ca26148d9fa2d6595e82e5b2a42d9a247e874612"
+          "content_sha256": "sha256:bdc9badaf67ca3e2c57a6fddd46204706c9839417598265d00a5c098cbb5be95"
         },
         {
           "role": "assistant",
-          "content_sha256": "sha256:7ddfdee96d48dfa159a4859909bc26b7ab3ceb14940d1a0f5bba5a4fd58ace08"
+          "content_sha256": "sha256:3db88ee86950dd4e6f845d6cc0f94933877157bd3bfa63862169eecc19fe8436"
         },
         {
           "role": "user",
-          "content_sha256": "sha256:10fa6b2a874c1faef8e5056aab0cb9ff1a77ff2c2c581bbb7140f3c72d3de5c5"
+          "content_sha256": "sha256:4c779948dde496ff718a7e4ac29b851a45b3d8e632009f535358ff1e051c3b36"
         },
         {
           "role": "assistant",
-          "content_sha256": "sha256:f6d2e805234b6c1ab14690c84e32c6f1be87df097a1094259675ddd5d1bd2f4f"
+          "content_sha256": "sha256:a4347613c120e1fcf49f57ca92eed8a0b299fbb9db1d1d7ad9606df838ec519e"
         },
         {
           "role": "user",
-          "content_sha256": "sha256:194c25eb789b52502f3ebac397eac7b3f1b060159cc806a406e5b5d52707d0ee"
+          "content_sha256": "sha256:f35be6b63a904e003b2ba3a26b19aa8d3ba66e869167d690a5196de3e12ad6e3"
         },
         {
           "role": "assistant",
-          "content_sha256": "sha256:9edc246503f7397fe3246171c96ddd1031f2f6ba6428f08ad88663aa9c98618f"
+          "content_sha256": "sha256:d73c79013e03259adc0aebdc70043071af5442cacc7b835d0a39ab32ff6d4a7e"
         },
         {
           "role": "user",
-          "content_sha256": "sha256:fdafdf95273bdb52fc9bdd65603cf918676348077bc442a7c8feb9585a2b6d81"
+          "content_sha256": "sha256:350d665ad21b826272a5f312a0b76a892755b362584f43eac549ec42457fb9b8"
         },
         {
           "role": "assistant",
-          "content_sha256": "sha256:36f3bb9fbdf25148e1f7f23183ae58d3b3c8e6a4166d615e24647888bda71072"
+          "content_sha256": "sha256:877c3334d0383f2f4e0163d544de079180e5e9841e64d0822547fc6277fe45a4"
         },
         {
           "role": "user",
-          "content_sha256": "sha256:a04e881bd936c1cb11aeac61ec9d1add589d99fa3468d9e971dabedb38545c40"
+          "content_sha256": "sha256:bbd4cbbb358146cb476673a67f9822d9f7ba6b02f47d146e4732eb83bbe351c3"
         },
         {
           "role": "assistant",
-          "content_sha256": "sha256:eb294fc823133dfcce01317e12bd44c9437a7eb55be5a2978618c25f5ca6ef58"
+          "content_sha256": "sha256:5ca61b17142b0d985a3b345854b50d8cf255db999099a181a2c7f50ad293c7be"
         },
         {
           "role": "user",
-          "content_sha256": "sha256:2a4208559f38e969efec8857f1ebf3d77b7405edd3a1b02da2a841a3463fca73"
+          "content_sha256": "sha256:ed9bf8e10af5d8ef0f952e595d466a669b24406bc7bad7a31e55b7e7cd6877d7"
         }
       ],
       "tool_names": [
         "list_files",
         "read_file",
-        "write_file"
+        "search_files",
+        "batch",
+        "write_file",
+        "delete_file"
+      ],
+      "stop_reason": "tool_use",
+      "tool_uses": [
+        {
+          "tool_use_id": "toolu_016AMVXh9xbJ3SwsaaAr5wmA",
+          "tool_name": "write_file",
+          "input_json": "{\u0022path\u0022: \u0022unscored-topic.md\u0022, \u0022content\u0022: \u0022---\\ntype: Concept\\ntitle: Write-Behind Caching\\ndescription: Acknowledge a write immediately and persist it to storage asynchronously.\\ntimestamp: 2026-04-10T00:00:00Z\\ntags:\\n  - concept/Caching\\n  - pattern/WriteBehind\\ninbound_links: 1\\n---\\n\\n# Write-Behind Caching\\n\\nA write is accepted and acknowledged to the caller as soon as it lands in the cache;\\nthe cache asynchronously flushes it to the underlying system of record afterward. This\\nlowers write latency at the cost of a durability window in which an acknowledged write\\ncan be lost if the cache node fails before flushing.\\n\u0022}"
+        },
+        {
+          "tool_use_id": "toolu_01EMPbSoL9n8JJ42Y8A5Qtwj",
+          "tool_name": "read_file",
+          "input_json": "{\u0022path\u0022: \u0022stale-topic.md\u0022}"
+        }
+      ],
+      "input_tokens": 17538,
+      "output_tokens": 275
+    },
+    {
+      "turn": 12,
+      "system_prompt_sha256": "sha256:6aeef08a02ad4c24f474b4e83776ca028cffd1a500bc5113d954592af880da60",
+      "conversation": [
+        {
+          "role": "user",
+          "content_sha256": "sha256:0e6b028b605c801b435654e93e663930448ac5bae664ac732b5954946d500201"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:9381a022c6a4d0f0fb8096b227438a7e511f001ef36bba614947c386a212f9f3"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:507e98123a71d439c2a176ad3d21c885982f44458bdf7ad3836446de9b3a6653"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:253a9940a4a7783092802923f65898f0b4bb6c7254ee0f679f0fa582e7cefed6"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:8350a81869749234654e9e1dc65b1e139f5016ce8a39d9642cf34ac6a83fd1d6"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:7d10860de1022c0c5248b44bd3fb9db72adc9f4c3c26de6e5559de5637a0ea17"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:6d0fac0d2f77ae053738ea760e04f3d98e1e811828f2c86d1600f01b655258e1"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:c8e8e15aa460a185c481c422319a149bbcdcb2107c7ff3538bd10061914c7e3a"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:d932a598cf57742ce05c30ee8e3256df816e46085b768c6b9b2dc5abc83187fd"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:7c755bb6e394901d65f637dff62068151aa2b8c04dc071381bb50d5e3338fc63"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:bdc9badaf67ca3e2c57a6fddd46204706c9839417598265d00a5c098cbb5be95"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:3db88ee86950dd4e6f845d6cc0f94933877157bd3bfa63862169eecc19fe8436"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:4c779948dde496ff718a7e4ac29b851a45b3d8e632009f535358ff1e051c3b36"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:a4347613c120e1fcf49f57ca92eed8a0b299fbb9db1d1d7ad9606df838ec519e"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:f35be6b63a904e003b2ba3a26b19aa8d3ba66e869167d690a5196de3e12ad6e3"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:d73c79013e03259adc0aebdc70043071af5442cacc7b835d0a39ab32ff6d4a7e"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:350d665ad21b826272a5f312a0b76a892755b362584f43eac549ec42457fb9b8"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:877c3334d0383f2f4e0163d544de079180e5e9841e64d0822547fc6277fe45a4"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:bbd4cbbb358146cb476673a67f9822d9f7ba6b02f47d146e4732eb83bbe351c3"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:5ca61b17142b0d985a3b345854b50d8cf255db999099a181a2c7f50ad293c7be"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:ed9bf8e10af5d8ef0f952e595d466a669b24406bc7bad7a31e55b7e7cd6877d7"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:3ad53b12157efd4425d686b7b81901aa783a2a10d9435285bcf02cffb6f9e166"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:a4c7d91a1112d001cb04b89a4466d11f4de74222bf26c81209ff94ce2de27850"
+        }
+      ],
+      "tool_names": [
+        "list_files",
+        "read_file",
+        "search_files",
+        "batch",
+        "write_file",
+        "delete_file"
+      ],
+      "stop_reason": "tool_use",
+      "tool_uses": [
+        {
+          "tool_use_id": "toolu_01VRkiqy32LkUtDrfUeKe9D2",
+          "tool_name": "write_file",
+          "input_json": "{\u0022path\u0022: \u0022stale-topic.md\u0022, \u0022content\u0022: \u0022---\\ntype: Concept\\ntitle: Sticky Sessions\\ndescription: Route a client\u0027s requests to the same backend instance for session affinity.\\ntimestamp: 2025-01-05T00:00:00Z\\ntags:\\n  - concept/LoadBalancing\\n  - pattern/StickySessions\\nconfidence: low\\nconfidence_reason: \\\u0022Single blog-post source, no corroboration; likely superseded practice.\\\u0022\\nlast_reviewed: \\\u00222025-01-05\\\u0022\\ninbound_links: 1\\n---\\n\\n# Sticky Sessions\\n\\nA load balancer routes all of a given client\u0027s requests to the same backend instance\\n(via a cookie or client IP hash), so per-instance in-memory session state stays valid\\nacross requests without a shared session store.\\n\u0022}"
+        },
+        {
+          "tool_use_id": "toolu_01LCPa92rGNWyhxSaZoVhs1W",
+          "tool_name": "read_file",
+          "input_json": "{\u0022path\u0022: \u0022orphan-topic.md\u0022}"
+        }
+      ],
+      "input_tokens": 18047,
+      "output_tokens": 285
+    },
+    {
+      "turn": 13,
+      "system_prompt_sha256": "sha256:6aeef08a02ad4c24f474b4e83776ca028cffd1a500bc5113d954592af880da60",
+      "conversation": [
+        {
+          "role": "user",
+          "content_sha256": "sha256:0e6b028b605c801b435654e93e663930448ac5bae664ac732b5954946d500201"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:9381a022c6a4d0f0fb8096b227438a7e511f001ef36bba614947c386a212f9f3"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:507e98123a71d439c2a176ad3d21c885982f44458bdf7ad3836446de9b3a6653"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:253a9940a4a7783092802923f65898f0b4bb6c7254ee0f679f0fa582e7cefed6"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:8350a81869749234654e9e1dc65b1e139f5016ce8a39d9642cf34ac6a83fd1d6"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:7d10860de1022c0c5248b44bd3fb9db72adc9f4c3c26de6e5559de5637a0ea17"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:6d0fac0d2f77ae053738ea760e04f3d98e1e811828f2c86d1600f01b655258e1"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:c8e8e15aa460a185c481c422319a149bbcdcb2107c7ff3538bd10061914c7e3a"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:d932a598cf57742ce05c30ee8e3256df816e46085b768c6b9b2dc5abc83187fd"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:7c755bb6e394901d65f637dff62068151aa2b8c04dc071381bb50d5e3338fc63"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:bdc9badaf67ca3e2c57a6fddd46204706c9839417598265d00a5c098cbb5be95"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:3db88ee86950dd4e6f845d6cc0f94933877157bd3bfa63862169eecc19fe8436"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:4c779948dde496ff718a7e4ac29b851a45b3d8e632009f535358ff1e051c3b36"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:a4347613c120e1fcf49f57ca92eed8a0b299fbb9db1d1d7ad9606df838ec519e"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:f35be6b63a904e003b2ba3a26b19aa8d3ba66e869167d690a5196de3e12ad6e3"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:d73c79013e03259adc0aebdc70043071af5442cacc7b835d0a39ab32ff6d4a7e"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:350d665ad21b826272a5f312a0b76a892755b362584f43eac549ec42457fb9b8"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:877c3334d0383f2f4e0163d544de079180e5e9841e64d0822547fc6277fe45a4"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:bbd4cbbb358146cb476673a67f9822d9f7ba6b02f47d146e4732eb83bbe351c3"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:5ca61b17142b0d985a3b345854b50d8cf255db999099a181a2c7f50ad293c7be"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:ed9bf8e10af5d8ef0f952e595d466a669b24406bc7bad7a31e55b7e7cd6877d7"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:3ad53b12157efd4425d686b7b81901aa783a2a10d9435285bcf02cffb6f9e166"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:a4c7d91a1112d001cb04b89a4466d11f4de74222bf26c81209ff94ce2de27850"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:a43fa9f0873afa58031abc1aaf558b29e65c0d3b1b6cfa97481d4d156b7e5bbf"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:d8cccb112943c61e869131cd1865191d4769b41c016efb1c51d2075f09480371"
+        }
+      ],
+      "tool_names": [
+        "list_files",
+        "read_file",
+        "search_files",
+        "batch",
+        "write_file",
+        "delete_file"
+      ],
+      "stop_reason": "tool_use",
+      "tool_uses": [
+        {
+          "tool_use_id": "toolu_015oSxDmEaXPCeE4bMR12UjE",
+          "tool_name": "write_file",
+          "input_json": "{\u0022path\u0022: \u0022orphan-topic.md\u0022, \u0022content\u0022: \u0022---\\ntype: Concept\\ntitle: Idempotency Keys\\ndescription: Deduplicate retried requests using a client-supplied idempotency key.\\ntimestamp: 2026-02-14T00:00:00Z\\ntags:\\n  - concept/Resilience\\n  - pattern/Idempotency\\nconfidence: medium\\nconfidence_reason: \\\u0022One source, internally consistent.\\\u0022\\ninbound_links: 0\\n---\\n\\n# Idempotency Keys\\n\\nA client attaches a unique idempotency key to a request; the server records which keys\\nit has already processed and returns the original result for a repeated key instead of\\nre-executing the operation. This makes retried requests (e.g. after a timeout with an\\nunknown outcome) safe to resend without risking a duplicate side effect.\\n\u0022}"
+        }
+      ],
+      "input_tokens": 18579,
+      "output_tokens": 258
+    },
+    {
+      "turn": 14,
+      "system_prompt_sha256": "sha256:6aeef08a02ad4c24f474b4e83776ca028cffd1a500bc5113d954592af880da60",
+      "conversation": [
+        {
+          "role": "user",
+          "content_sha256": "sha256:0e6b028b605c801b435654e93e663930448ac5bae664ac732b5954946d500201"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:9381a022c6a4d0f0fb8096b227438a7e511f001ef36bba614947c386a212f9f3"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:507e98123a71d439c2a176ad3d21c885982f44458bdf7ad3836446de9b3a6653"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:253a9940a4a7783092802923f65898f0b4bb6c7254ee0f679f0fa582e7cefed6"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:8350a81869749234654e9e1dc65b1e139f5016ce8a39d9642cf34ac6a83fd1d6"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:7d10860de1022c0c5248b44bd3fb9db72adc9f4c3c26de6e5559de5637a0ea17"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:6d0fac0d2f77ae053738ea760e04f3d98e1e811828f2c86d1600f01b655258e1"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:c8e8e15aa460a185c481c422319a149bbcdcb2107c7ff3538bd10061914c7e3a"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:d932a598cf57742ce05c30ee8e3256df816e46085b768c6b9b2dc5abc83187fd"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:7c755bb6e394901d65f637dff62068151aa2b8c04dc071381bb50d5e3338fc63"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:bdc9badaf67ca3e2c57a6fddd46204706c9839417598265d00a5c098cbb5be95"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:3db88ee86950dd4e6f845d6cc0f94933877157bd3bfa63862169eecc19fe8436"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:4c779948dde496ff718a7e4ac29b851a45b3d8e632009f535358ff1e051c3b36"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:a4347613c120e1fcf49f57ca92eed8a0b299fbb9db1d1d7ad9606df838ec519e"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:f35be6b63a904e003b2ba3a26b19aa8d3ba66e869167d690a5196de3e12ad6e3"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:d73c79013e03259adc0aebdc70043071af5442cacc7b835d0a39ab32ff6d4a7e"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:350d665ad21b826272a5f312a0b76a892755b362584f43eac549ec42457fb9b8"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:877c3334d0383f2f4e0163d544de079180e5e9841e64d0822547fc6277fe45a4"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:bbd4cbbb358146cb476673a67f9822d9f7ba6b02f47d146e4732eb83bbe351c3"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:5ca61b17142b0d985a3b345854b50d8cf255db999099a181a2c7f50ad293c7be"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:ed9bf8e10af5d8ef0f952e595d466a669b24406bc7bad7a31e55b7e7cd6877d7"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:3ad53b12157efd4425d686b7b81901aa783a2a10d9435285bcf02cffb6f9e166"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:a4c7d91a1112d001cb04b89a4466d11f4de74222bf26c81209ff94ce2de27850"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:a43fa9f0873afa58031abc1aaf558b29e65c0d3b1b6cfa97481d4d156b7e5bbf"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:d8cccb112943c61e869131cd1865191d4769b41c016efb1c51d2075f09480371"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:4674a24e2f83f96e67403b8469480549255e3bcfec74abfadd874a6e75cac1da"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:c0821cfee35a5f681bbfd6d93a991aa703fbc880acb639d994ba8620d829f14e"
+        }
+      ],
+      "tool_names": [
+        "list_files",
+        "read_file",
+        "search_files",
+        "batch",
+        "write_file",
+        "delete_file"
       ],
       "stop_reason": "end_turn",
       "tool_uses": [],
-      "assistant_text": "Perfect! Now let me compile my findings. Let me analyze the wiki comprehensively:\n\n## Content Quality Analysis\n\n1. **Contradiction on cache invalidation strategy**: \u0060[[cache-invalidation-ttl]]\u0060 and \u0060[[cache-invalidation-events]]\u0060 make directly incompatible claims. The TTL page says TTL \u0022should be the default for every cache in this system\u0022 while the Events page says event-driven \u0022should replace TTL-based expiry everywhere in this system.\u0022 These are mutually exclusive recommendations about what should be the default strategy.\n\n2. **Related pages lacking cross-references**: The cache invalidation pages don\u0027t link to each other despite directly contradicting one another. Additionally, \u0060[[cache-invalidation-ttl]]\u0060, \u0060[[undertagged-topic]]\u0060 (Read-Through Caching), and \u0060[[unscored-topic]]\u0060 (Write-Behind Caching) are all about caching strategies but don\u0027t reference each other.\n\n## Metadata Hygiene Analysis\n\n1. **Missing tags**: \u0060[[undertagged-topic]]\u0060 (Read-Through Caching) has no \u0060tags\u0060 field. It should have tags like \u0060concept/Caching\u0060 and \u0060pattern/ReadThrough\u0060.\n\n2. **Missing confidence**: \u0060[[unscored-topic]]\u0060 (Write-Behind Caching) has no \u0060confidence\u0060 or \u0060confidence_reason\u0060 field. Based on the scoring formula (one source, internally consistent), this should be scored as \u0060medium\u0060.\n\n3. **Review candidates**: \u0060[[stale-topic]]\u0060 (Sticky Sessions) has a \u0060low\u0060 confidence score with \u0060last_reviewed: \u00222025-01-05\u0022\u0060. Since today is in 2026 (based on timestamps in the wiki), this is over 90 days old and needs review.\n\n## Structure Analysis\n\n1. **Orphan page**: \u0060[[orphan-topic]]\u0060 (Idempotency Keys) has zero inbound links from any other page, \u0060index.md\u0060, or \u0060log.md\u0060. This page exists but is never referenced anywhere, making it undiscoverable through the wiki\u0027s navigation.\n\n---\n\n## Findings Report\n\n## Content Quality\n\n### Contradictory cache invalidation strategy recommendations in [[cache-invalidation-ttl]] and [[cache-invalidation-events]]\n\nThese two pages make mutually exclusive claims about what cache invalidation strategy should be the default in the system. The TTL page states \u0022TTL-based expiry is the only invalidation strategy that gives a hard staleness guarantee, and it should be the default for every cache in this system.\u0022 The Events page directly contradicts this: \u0022Event-driven invalidation... is the recommended default: it bounds staleness to the event-delivery latency instead of an arbitrary fixed window, and should replace TTL-based expiry everywhere in this system.\u0022 The wiki cannot recommend both strategies as \u0022the default.\u0022\n\n**Proposed remediation**: One of these pages must be revised to acknowledge the trade-offs and clarify when each strategy is appropriate, or one must be marked \u0060superseded_by\u0060 the other if there has been a decision to adopt one approach over the other.\n\n### Missing cross-references between related caching pages\n\nThree pages address caching strategies ([[cache-invalidation-ttl]], [[undertagged-topic]] which covers Read-Through Caching, and [[unscored-topic]] which covers Write-Behind Caching) but do not link to each other despite obvious topical overlap. Readers following one caching pattern have no way to discover related patterns through the wiki\u0027s navigation.\n\n**Proposed remediation**: Add wikilinks between these three pages to help readers understand how different caching strategies interact. At minimum, each page should reference the others in a \u0022Related strategies\u0022 or \u0022See also\u0022 section.\n\n## Metadata Hygiene\n\n### Missing tags on [[undertagged-topic]] (Read-Through Caching)\n\nThe page has no \u0060tags\u0060 field. Per the Tag Taxonomy, it should have at least 2 tags (one category prefix and one content-specific tag).\n\n**Proposed remediation**: Add tags \u0060concept/Caching\u0060 and \u0060pattern/ReadThrough\u0060 to the frontmatter.\n\n### Missing confidence score on [[unscored-topic]] (Write-Behind Caching)\n\nThe page has no \u0060confidence\u0060 or \u0060confidence_reason\u0060 field. Using the Confidence Scoring formula: the page references one source (internally described as consistent), scoring 0 points for \u0022one source, internally consistent\u0022 and 0 for sourcing, yielding a total of 0\u2014threshold \u0060medium\u0060.\n\n**Proposed remediation**: Add \u0060confidence: medium\u0060 and \u0060confidence_reason: \u0022One source, internally consistent.\u0022\u0060 to the frontmatter.\n\n### Review candidate: [[stale-topic]] (Sticky Sessions)\n\nThis page is marked with \u0060confidence: low\u0060 and has \u0060last_reviewed: \u00222025-01-05\u0022\u0060. The Review Window is 90 days, and given that the wiki contains timestamps from 2026, this page is well overdue for a fresh review.\n\n## Structure\n\n### Orphan page: [[orphan-topic]] (Idempotency Keys)\n\nThis page has zero inbound links from any other page, \u0060index.md\u0060, or \u0060log.md\u0060. It exists in the wiki but is completely unreferenced, making it unreachable through normal navigation.\n\n**Proposed remediation**: Add a wikilink to [[orphan-topic]] from one or more appropriate pages. Possible candidates include [[retry-backoff]] (retries are a primary use case for idempotency keys) or a caching-related page if idempotency is relevant to caching strategies.\n\n\u0060\u0060\u0060proposed-actions\n[\n  {\n    \u0022title\u0022: \u0022Add missing tags to Read-Through Caching page\u0022,\n    \u0022description\u0022: \u0022The page undertagged-topic.md (Read-Through Caching) has no tags frontmatter. Add tags: [concept/Caching, pattern/ReadThrough] per the Tag Taxonomy.\u0022,\n    \u0022targetPath\u0022: \u0022undertagged-topic.md\u0022\n  },\n  {\n    \u0022title\u0022: \u0022Add missing confidence score to Write-Behind Caching page\u0022,\n    \u0022description\u0022: \u0022The page unscored-topic.md (Write-Behind Caching) has no confidence or confidence_reason field. Add confidence: medium and confidence_reason: \u0027One source, internally consistent.\u0027 per the Confidence Scoring formula.\u0022,\n    \u0022targetPath\u0022: \u0022unscored-topic.md\u0022\n  },\n  {\n    \u0022title\u0022: \u0022Add cross-reference links between related caching strategy pages\u0022,\n    \u0022description\u0022: \u0022Pages cache-invalidation-ttl.md, undertagged-topic.md (Read-Through Caching), and unscored-topic.md (Write-Behind Caching) all address caching strategies but do not link to each other. Add wikilinks in each page\u0027s body to reference the others, or create a \u0027See also\u0027 or \u0027Related strategies\u0027 section so readers can discover related patterns.\u0022,\n    \u0022targetPath\u0022: \u0022cache-invalidation-ttl.md\u0022\n  },\n  {\n    \u0022title\u0022: \u0022Add inbound link to orphan Idempotency Keys page\u0022,\n    \u0022description\u0022: \u0022The page orphan-topic.md (Idempotency Keys) has zero inbound links and is unreachable from the wiki\u0027s navigation. Add a wikilink to [[orphan-topic]] from retry-backoff.md (since retries are a primary use case for idempotency keys) or another appropriate page.\u0022,\n    \u0022targetPath\u0022: \u0022retry-backoff.md\u0022\n  },\n  {\n    \u0022title\u0022: \u0022Resolve contradictory cache invalidation strategy recommendations\u0022,\n    \u0022description\u0022: \u0022Pages cache-invalidation-ttl.md and cache-invalidation-events.md make mutually exclusive claims about whether TTL-based or event-driven invalidation should be the default strategy. Revise one or both pages to acknowledge the trade-offs and clarify when each strategy is appropriate, or mark one as superseded_by the other if a decision has been made.\u0022,\n    \u0022targetPath\u0022: \u0022cache-invalidation-ttl.md\u0022\n  }\n]\n\u0060\u0060\u0060",
-      "input_tokens": 16380,
-      "output_tokens": 1845
+      "assistant_text": "Perfect. I\u0027ve refreshed all the inbound-link counts. Now let me produce the Findings Report:\n\n---\n\n## Content Quality\n\n### Direct contradiction between [[cache-invalidation-ttl]] and [[cache-invalidation-events]]\n\nThese two pages make directly incompatible claims about the reliability and appropriateness of their respective caching strategies. The TTL page asserts that \u0022event-driven invalidation... is unreliable in practice\u0022 and that \u0022TTL-based expiry is the only invalidation strategy that gives a hard staleness guarantee.\u0022 The Events page directly contradicts this, stating that \u0022TTL-based expiry is unreliable under bursty writes\u0022 and that event-driven invalidation \u0022should replace TTL-based expiry everywhere in this system.\u0022\n\n**Proposed remediation**: Reconcile these contradictions by determining which strategy (or under what circumstances each) is actually recommended for this system. Either one page should be marked as superseding the other (if the thinking has evolved), or both should be rewritten to acknowledge the tradeoffs and clarify when each approach is appropriate.\n\n### Missing cross-reference: Related resilience patterns not linked\n\nThe pages [[retry-backoff]] and [[circuit-breaker]] both address resilience patterns for handling failures in distributed systems, but neither page links to the other. These concepts are complementary and often used together; readers of one should be aware of the other.\n\n**Proposed remediation**: Add wikilinks in both pages connecting them. For example, retry-backoff could mention circuit-breaker as a complementary pattern for protecting downstream services, and circuit-breaker could reference retry-backoff as a client-side resilience strategy that works alongside it.\n\n## Metadata Hygiene\n\n### Missing tags: [[undertagged-topic]]\n\nThe page has no \u0060tags\u0060 frontmatter field. According to the Tag Taxonomy, every page should have at least two tags (one category prefix and one content-specific tag).\n\n**Proposed remediation**: Add tags to undertagged-topic.md. Based on its content about read-through caching, propose: \u0060[concept/Caching, pattern/ReadThrough]\u0060.\n\n### Missing confidence: [[unscored-topic]]\n\nThe page has no \u0060confidence\u0060 or \u0060confidence_reason\u0060 frontmatter field.\n\n**Proposed remediation**: Add confidence scoring to unscored-topic.md. Based on the content about write-behind caching (one source, internally consistent, no external corroboration), assign: \u0060confidence: medium\u0060 with reason \u0060\u0022One source, internally consistent.\u0022\u0060.\n\n### Review candidates: Low-confidence pages overdue for review\n\nThe page [[stale-topic]] is marked as low-confidence (\u0060confidence: low\u0060) with \u0060last_reviewed: 2025-01-05\u0060. This is more than 90 days ago and exceeds the Review Window. The page contains a note that it may be \u0022superseded practice,\u0022 suggesting it warrants a fresh review to determine if it should be updated, marked as superseded, or confirmed still valid.\n\n## Structure\n\n### Orphan page: [[orphan-topic]]\n\nThe page orphan-topic.md has no inbound links from any other page or from index.md. This page is not referenced anywhere in the wiki, making it undiscoverable through normal navigation.\n\n**Proposed remediation**: Either link this page from one or more relevant pages (for example, from index.md if it belongs in the Technology catalog, or from related concept pages if it is related to other resilience or caching patterns), or if the page was created in error, delete it. The page appears to be about Idempotency Keys, which is a resilience concept that could reasonably be linked from [[retry-backoff]] as a complementary pattern for safe request retries.\n\n\u0060\u0060\u0060proposed-actions\n[\n  {\n    \u0022title\u0022: \u0022Reconcile cache invalidation strategy contradiction\u0022,\n    \u0022description\u0022: \u0022Pages [[cache-invalidation-ttl]] and [[cache-invalidation-events]] make directly incompatible claims about which strategy is reliable and should be used. Determine which is correct, or rewrite both to acknowledge tradeoffs and specify when each is appropriate.\u0022\n  },\n  {\n    \u0022title\u0022: \u0022Link related resilience patterns: retry-backoff and circuit-breaker\u0022,\n    \u0022description\u0022: \u0022Add cross-references between [[retry-backoff]] and [[circuit-breaker]]. These are complementary resilience patterns that should reference each other. Suggest adding a link in retry-backoff mentioning circuit-breaker as a complementary server-side protection, and vice versa.\u0022\n  },\n  {\n    \u0022title\u0022: \u0022Add missing tags to undertagged-topic page\u0022,\n    \u0022description\u0022: \u0022The page concepts/undertagged-topic.md (titled \u0027Read-Through Caching\u0027) has no tags frontmatter. Add tags: [concept/Caching, pattern/ReadThrough] per the Tag Taxonomy.\u0022,\n    \u0022targetPath\u0022: \u0022undertagged-topic.md\u0022\n  },\n  {\n    \u0022title\u0022: \u0022Add missing confidence score to unscored-topic page\u0022,\n    \u0022description\u0022: \u0022The page concepts/unscored-topic.md (titled \u0027Write-Behind Caching\u0027) has no confidence or confidence_reason field. Add: confidence: medium with reason \u0027One source, internally consistent.\u0027\u0022,\n    \u0022targetPath\u0022: \u0022unscored-topic.md\u0022\n  },\n  {\n    \u0022title\u0022: \u0022Link orphan page from index and/or related concepts\u0022,\n    \u0022description\u0022: \u0022The page [[orphan-topic]] (titled \u0027Idempotency Keys\u0027) has zero inbound links. Add it to index.md\u0027s Technology section, and optionally link it from [[retry-backoff]] as a complementary pattern for making retried requests safe.\u0022,\n    \u0022targetPath\u0022: \u0022orphan-topic.md\u0022\n  }\n]\n\u0060\u0060\u0060",
+      "input_tokens": 18857,
+      "output_tokens": 1318
     }
   ],
   "outcome": {

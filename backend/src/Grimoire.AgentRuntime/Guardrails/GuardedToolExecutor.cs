@@ -3,6 +3,7 @@ using Grimoire.AgentRuntime.Guardrails.Coordination;
 using System.Diagnostics;
 using System.Text;
 using System.Text.Json;
+using System.Text.RegularExpressions;
 
 namespace Grimoire.AgentRuntime.Guardrails;
 
@@ -30,6 +31,33 @@ public sealed class GuardedToolExecutor
     // Wiki markdown files carry no BOM by convention either way.
     private static readonly Encoding Utf8NoBom = new UTF8Encoding(encoderShouldEmitUTF8Identifier: false);
 
+    // ── search_files bounds (026-guarded-tool-surface, ADR-030 R2/R5) ──────────────────
+    // Single source of truth for the four documented defaults (research.md D2-D5). Kept as
+    // compile-time constants deliberately: SearchRegexBoundaryRuleTests decodes the options
+    // argument straight off the IL, which only works when it is a literal, not a value
+    // computed at runtime.
+    private const RegexOptions SearchRegexOptions = RegexOptions.NonBacktracking;
+    private const int SearchDefaultResultCap = 200;
+    private const int SearchHardResultCeiling = 1000;
+    private const int SearchMaxPatternLength = 1000;
+
+    // research.md D3: one documented "search time budget" bound, reused for both purposes
+    // it serves — the Regex constructor's own per-match timeout (never a hung run on one
+    // pathological line) and the wall-clock budget for the whole multi-file scan. An
+    // instance field (not another const) so tests can override it via the constructor —
+    // mirroring writeLockBackoffCap's rationale below — while staying a single-instruction
+    // load (ldfld) at the Regex construction call site, which is all
+    // SearchRegexBoundaryRuleTests' IL scan requires of it.
+    private static readonly TimeSpan DefaultSearchTimeBudget = TimeSpan.FromSeconds(2);
+    private readonly TimeSpan _searchTimeBudget;
+
+    // ── batch bounds (026-guarded-tool-surface, ADR-030 R4/R5) ──────────────────────────
+    private const int BatchMaxCalls = 20;
+    private static readonly HashSet<string> BatchAllowedTools = new(StringComparer.Ordinal)
+    {
+        ToolRegistry.ListFiles, ToolRegistry.ReadFile, ToolRegistry.SearchFiles,
+    };
+
     private readonly SafetyPolicy _policy;
     private readonly WriteJournal _journal;
     private readonly string _repositoryRoot;
@@ -41,6 +69,7 @@ public sealed class GuardedToolExecutor
     private readonly List<DeniedActionRecord> _denials = [];
     private readonly List<string> _touchedPaths = [];
     private readonly List<string> _createdPaths = [];
+    private readonly List<(string Path, int Turn)> _deletedPaths = [];
 
     /// <param name="writeLocksDir">
     /// ADR-015: base directory for cross-process write-coordination lock files. When
@@ -80,6 +109,13 @@ public sealed class GuardedToolExecutor
     /// <paramref name="logPath"/>/<paramref name="indexPath"/> format checks. <c>null</c>
     /// (the default) emits no span.
     /// </param>
+    /// <param name="searchTimeBudget">
+    /// 026-guarded-tool-surface (ADR-030 R2/R5): overrides <c>search_files</c>' default
+    /// 2-second time budget (both the Regex match timeout and the overall multi-file scan
+    /// budget). Exists so deterministic tests can force the <c>wiki.search.timed_out</c>
+    /// path without a multi-second wait, mirroring <paramref name="writeLockBackoffCap"/>;
+    /// production callers leave this <c>null</c>.
+    /// </param>
     public GuardedToolExecutor(
         SafetyPolicy policy,
         WriteJournal journal,
@@ -91,7 +127,8 @@ public sealed class GuardedToolExecutor
         TimeSpan? writeLockBackoffCap = null,
         string? logPath = null,
         string? indexPath = null,
-        ActivitySource? activitySource = null)
+        ActivitySource? activitySource = null,
+        TimeSpan? searchTimeBudget = null)
     {
         _policy = policy;
         _journal = journal;
@@ -99,6 +136,7 @@ public sealed class GuardedToolExecutor
         _taskId = taskId ?? string.Empty;
         _registry = registry ?? ToolRegistry.Default;
         _instrumentation = instrumentation ?? NullToolCallInstrumentation.Instance;
+        _searchTimeBudget = searchTimeBudget ?? DefaultSearchTimeBudget;
         _canonicalLogPath = logPath is not null ? Canonicalize(logPath) : null;
         var canonicalIndexPath = indexPath is not null ? Canonicalize(indexPath) : null;
         _writeGuard = writeLocksDir is not null
@@ -121,6 +159,15 @@ public sealed class GuardedToolExecutor
     /// the run's own journal — no judgment about page content (Constitution Principle V).
     /// </summary>
     public IReadOnlyList<string> CreatedPaths => _createdPaths;
+
+    /// <summary>
+    /// ADR-031 R4 (026-guarded-tool-surface): paths this run successfully deleted, paired
+    /// with the turn each deletion happened on. The turn is carried because a later
+    /// rollback (triggered by run failure, after the turn loop has already ended) needs it
+    /// to correlate its <c>wiki.page.delete_rolled_back</c> log event back to the turn the
+    /// original deletion occurred on.
+    /// </summary>
+    public IReadOnlyList<(string Path, int Turn)> DeletedPaths => _deletedPaths;
 
     /// <summary>
     /// 025-agent-owned-log (ADR-028, FR-012a): the run's allowed <em>wiki-content</em>
@@ -173,6 +220,12 @@ public sealed class GuardedToolExecutor
                 return await ExecuteReadFileAsync(inputJson, turn, cancellationToken);
             case ToolRegistry.WriteFile:
                 return await ExecuteWriteFileAsync(inputJson, turn, cancellationToken);
+            case ToolRegistry.SearchFiles:
+                return await ExecuteSearchFilesAsync(inputJson, turn, cancellationToken);
+            case ToolRegistry.DeleteFile:
+                return await ExecuteDeleteFileAsync(inputJson, turn, cancellationToken);
+            case ToolRegistry.Batch:
+                return await ExecuteBatchAsync(inputJson, turn, cancellationToken);
             default:
                 return new ToolExecutionResult(true, $"Unknown tool: {toolName}");
         }
@@ -218,6 +271,12 @@ public sealed class GuardedToolExecutor
     }
 
     // ── read_file ────────────────────────────────────────────────────────────────
+    // ADR-030 R3 (026-guarded-tool-surface, Feature-Scoped Invariant): optional
+    // offset/limit/frontmatter_only make a read partial. A partial read MUST NOT call
+    // _writeGuard.OnReadFile (T049) — feeding it a fragment would make a later stale-read
+    // conflict undetectable, silently licensing a whole-file overwrite off a slice the
+    // agent never actually saw in full. Omitting all three stays byte-for-byte today's
+    // whole-file read (FR-009), baseline included.
 
     private async Task<ToolExecutionResult> ExecuteReadFileAsync(
         string inputJson, int turn, CancellationToken cancellationToken)
@@ -226,6 +285,11 @@ public sealed class GuardedToolExecutor
             string.IsNullOrWhiteSpace(relativePath))
         {
             return new ToolExecutionResult(true, "Missing required property: path");
+        }
+
+        if (!TryParseReadRangeRequest(inputJson, out var range, out var rangeError))
+        {
+            return new ToolExecutionResult(true, rangeError!);
         }
 
         var canonical = Canonicalize(relativePath);
@@ -244,8 +308,133 @@ public sealed class GuardedToolExecutor
         }
 
         var content = await File.ReadAllTextAsync(canonical, Encoding.UTF8, cancellationToken);
-        _writeGuard?.OnReadFile(canonical, content);
-        return new ToolExecutionResult(false, content);
+
+        if (!range.HasOffset && !range.HasLimit && !range.FrontmatterOnly)
+        {
+            _writeGuard?.OnReadFile(canonical, content);
+            _instrumentation.RecordReadInvocation(_taskId, "full", turn);
+            return new ToolExecutionResult(false, content);
+        }
+
+        if (range.FrontmatterOnly)
+        {
+            _instrumentation.RecordReadInvocation(_taskId, "frontmatter", turn);
+            return new ToolExecutionResult(false, ExtractFrontmatter(content));
+        }
+
+        _instrumentation.RecordReadInvocation(_taskId, "range", turn);
+        return new ToolExecutionResult(false, ExtractLineRange(content, range.HasOffset ? range.Offset : 1, range.HasLimit ? range.Limit : null));
+    }
+
+    /// <summary>
+    /// Copilot review (PR #177): offset/limit are documented as 1-based/positive-count
+    /// (data-model.md's ReadRequest, "1-based first line" / "maximum number of lines").
+    /// A non-positive value is rejected outright rather than silently coerced (offset=0
+    /// becoming line 1, limit=0 becoming an empty slice with no EOF marker) — the same
+    /// "malformed input is a denial, not a reinterpretation" stance search_files already
+    /// takes for an oversized pattern. Split out of <see cref="ExecuteReadFileAsync"/> to
+    /// keep that method's own cyclomatic complexity under the CI gate.
+    /// <paramref name="request"/> is a plain value tuple rather than a named record type
+    /// deliberately: introducing a standalone type declaration here previously confused
+    /// the CI complexity tool's lightweight C# parser into misattributing an unrelated,
+    /// unchanged method (<see cref="ExecuteWriteFileAsync"/>) to a different pseudo-context
+    /// name between the base branch and this one, which made the complexity gate's
+    /// base/head function matching see it as a brand new function and fail spuriously.
+    /// </summary>
+    private static bool TryParseReadRangeRequest(
+        string inputJson,
+        out (bool HasOffset, int Offset, bool HasLimit, int Limit, bool FrontmatterOnly) request,
+        out string? error)
+    {
+        request = default;
+
+        var hasOffset = TryGetIntProperty(inputJson, "offset", out var offset);
+        if (hasOffset && offset < 1)
+        {
+            error = "Invalid property: offset must be a 1-based line number (>= 1).";
+            return false;
+        }
+
+        var hasLimit = TryGetIntProperty(inputJson, "limit", out var limit);
+        if (hasLimit && limit < 1)
+        {
+            error = "Invalid property: limit must be >= 1.";
+            return false;
+        }
+
+        var frontmatterOnly = TryGetBoolProperty(inputJson, "frontmatter_only", out var frontmatterOnlyValue) && frontmatterOnlyValue;
+
+        error = null;
+        request = (hasOffset, offset, hasLimit, limit, frontmatterOnly);
+        return true;
+    }
+
+    /// <summary>
+    /// "The frontmatter block" is the content between a leading document's first two
+    /// <c>---</c> delimiters (the same convention <c>TaskArtifactFrontmatter</c> parses).
+    /// A document with no frontmatter (no leading <c>---</c>, or no closing delimiter)
+    /// has none to return.
+    /// </summary>
+    private static string ExtractFrontmatter(string content)
+    {
+        if (!content.StartsWith("---", StringComparison.Ordinal))
+        {
+            return string.Empty;
+        }
+
+        var sections = content.Split("---", 3, StringSplitOptions.None);
+        return sections.Length < 3 ? string.Empty : sections[1].Trim();
+    }
+
+    /// <summary>
+    /// 1-based, inclusive-of-<paramref name="offset"/> line range, like <c>sed -n 'X,Yp'</c>.
+    /// An offset at or beyond the last line returns only the end-of-file marker (spec.md
+    /// Edge Cases: "an empty or partial result with an explicit end-of-file signal, not an
+    /// error that ends the run") — never <see cref="ToolExecutionResult.IsError"/>. A
+    /// <paramref name="limit"/> that would run past the last line is honored up to the last
+    /// line and the same marker is appended, since the request could not be satisfied in
+    /// full. A <paramref name="limit"/> that lands exactly on the last line is fully
+    /// satisfiable and gets no marker — that request was never truncated (Copilot review,
+    /// PR #177: the prior <c>&gt;=</c> comparison marked this case as end-of-file too).
+    /// </summary>
+    private static string ExtractLineRange(string content, int offset, int? limit)
+    {
+        var lines = SplitIntoLines(content);
+        var totalLines = lines.Length;
+        var startIndex = Math.Max(offset - 1, 0);
+
+        if (startIndex >= totalLines)
+        {
+            return $"[end of file: {totalLines} line(s) total]";
+        }
+
+        var available = totalLines - startIndex;
+        var truncatedByEndOfFile = limit.HasValue && limit.Value > available;
+        var count = limit.HasValue ? Math.Min(limit.Value, available) : available;
+        var slice = string.Join('\n', lines.Skip(startIndex).Take(count));
+
+        return truncatedByEndOfFile
+            ? $"{slice}\n[end of file: {totalLines} line(s) total]"
+            : slice;
+    }
+
+    /// <summary>
+    /// Splits on <c>\n</c> after normalizing <c>\r\n</c>, treating a single trailing
+    /// newline as terminating the last line rather than introducing an extra empty one —
+    /// matching how a line count is conventionally reported (an editor's line count, or
+    /// <c>wc -l</c> on a file ending in a newline), not <see cref="string.Split(char[])"/>'s
+    /// literal per-separator split.
+    /// </summary>
+    private static string[] SplitIntoLines(string content)
+    {
+        if (content.Length == 0)
+        {
+            return [];
+        }
+
+        var normalized = content.Replace("\r\n", "\n");
+        var trimmed = normalized.EndsWith('\n') ? normalized[..^1] : normalized;
+        return trimmed.Split('\n');
     }
 
     // ── write_file ───────────────────────────────────────────────────────────────
@@ -387,6 +576,481 @@ public sealed class GuardedToolExecutor
         return new ToolExecutionResult(false, $"Written: {relativePath}");
     }
 
+    // ── delete_file ──────────────────────────────────────────────────────────────
+    // ADR-031 R3/R4 (026-guarded-tool-surface): mimics `rm`. Evaluated against the
+    // **delete** scope (SafetyPolicy.EvaluateDelete), never the write scope — an agent
+    // whose policy grants read-write on a prefix gains no deletion from it (R3). Journaled
+    // before removal so a run that deletes and then fails restores it in the same
+    // reverse-order rollback that restores an overwrite (R4, data-model.md's rollback
+    // table: delete's prior state is the deleted content itself).
+
+    private async Task<ToolExecutionResult> ExecuteDeleteFileAsync(
+        string inputJson, int turn, CancellationToken cancellationToken)
+    {
+        if (!TryGetStringProperty(inputJson, "path", out var relativePath) ||
+            string.IsNullOrWhiteSpace(relativePath))
+        {
+            return new ToolExecutionResult(true, "Missing required property: path");
+        }
+
+        var canonical = Canonicalize(relativePath);
+        var policyResult = _policy.EvaluateDelete(canonical);
+
+        if (!policyResult.IsAllowed)
+        {
+            return RecordDenial(ToolRegistry.DeleteFile, relativePath, canonical, policyResult.DenialReason!, turn);
+        }
+
+        // Recorded allowed, and the span opened, before the existence check — mirroring
+        // read_file/list_files, so a policy-allowed attempt against an already-gone file
+        // is still visible to the tool-call span/metric rather than silently invisible.
+        _instrumentation.RecordAllowed(_taskId, ToolRegistry.DeleteFile, canonical, turn);
+        using var deleteActivity = _instrumentation.StartDeleteFileActivity(_taskId, canonical, turn);
+
+        if (!File.Exists(canonical))
+        {
+            deleteActivity?.SetTag("journaled", false);
+            deleteActivity?.SetTag("outcome", "not_found");
+            return new ToolExecutionResult(true, $"File not found: {relativePath}");
+        }
+
+        // Journal before removal: the recorded prior content is what a later rollback in
+        // this run restores the file from.
+        await _journal.RecordAsync(canonical, cancellationToken);
+        File.Delete(canonical);
+
+        _touchedPaths.Add(canonical);
+        _deletedPaths.Add((canonical, turn));
+        _instrumentation.RecordDeletion(_taskId, "applied", turn);
+        _instrumentation.LogPageDeleted(_taskId, canonical, turn);
+
+        deleteActivity?.SetTag("journaled", true);
+        deleteActivity?.SetTag("outcome", "applied");
+
+        return new ToolExecutionResult(false, $"Deleted: {relativePath}");
+    }
+
+    // ── batch ────────────────────────────────────────────────────────────────────
+    // ADR-030 R4 (026-guarded-tool-surface): a batch admits only read-only tool names
+    // (list_files, read_file, search_files) — no write, no delete, no nested batch — and
+    // rejects wholesale, before any member executes, on any violation (T056). A batch that
+    // passes validation carries no authority of its own: each member is dispatched through
+    // the same ExecuteAsync entry point every top-level call goes through, so it is
+    // evaluated against the policy and recorded exactly as if the model had called it
+    // directly (T057) — RecordAllowed/RecordDenial fire per member, same as any other call.
+
+    private async Task<ToolExecutionResult> ExecuteBatchAsync(
+        string inputJson, int turn, CancellationToken cancellationToken)
+    {
+        if (!TryParseBatchCalls(inputJson, out var calls, out var parseError))
+        {
+            return new ToolExecutionResult(true, parseError!);
+        }
+
+        if (calls.Count > BatchMaxCalls)
+        {
+            return RecordBatchRejected("too_many_calls", calls.Count, turn);
+        }
+
+        foreach (var call in calls)
+        {
+            if (string.Equals(call.Tool, ToolRegistry.Batch, StringComparison.Ordinal))
+            {
+                return RecordBatchRejected("nested_batch", calls.Count, turn);
+            }
+
+            if (!BatchAllowedTools.Contains(call.Tool))
+            {
+                return RecordBatchRejected("tool_not_allowed_in_batch", calls.Count, turn);
+            }
+        }
+
+        _instrumentation.RecordAllowed(_taskId, ToolRegistry.Batch, $"{calls.Count} call(s)", turn);
+        using var batchActivity = _instrumentation.StartBatchActivity(_taskId, turn);
+
+        var results = new StringBuilder();
+        var deniedCount = 0;
+
+        for (var i = 0; i < calls.Count; i++)
+        {
+            var call = calls[i];
+            // Copilot review (PR #177): a member's IsError alone conflates a real policy
+            // denial with a benign non-policy failure (file not found, malformed input) —
+            // neither of which adds to _denials. denied_count means "policy denials", so
+            // it is counted the same way SC-002/FR-013 define one: an entry actually
+            // recorded in _denials during this member's dispatch.
+            var denialsBeforeMember = _denials.Count;
+            var memberResult = await ExecuteAsync(call.Tool, call.InputJson, turn, cancellationToken);
+            var memberWasDenied = _denials.Count > denialsBeforeMember;
+            if (memberWasDenied)
+            {
+                deniedCount++;
+            }
+
+            var memberStatus = memberWasDenied ? "denied" : memberResult.IsError ? "error" : "ok";
+            results.AppendLine($"[{i}] {call.Tool}: {memberStatus}");
+            results.AppendLine(memberResult.Content);
+        }
+
+        _instrumentation.RecordBatchInvocation(_taskId, "completed", turn);
+        batchActivity?.SetTag("task_id", _taskId);
+        batchActivity?.SetTag("call_count", calls.Count);
+        batchActivity?.SetTag("denied_count", deniedCount);
+        batchActivity?.SetTag("outcome", "completed");
+
+        return new ToolExecutionResult(false, results.ToString().TrimEnd());
+    }
+
+    private sealed record BatchCallRequest(string Tool, string InputJson);
+
+    private static bool TryParseBatchCalls(string json, out List<BatchCallRequest> calls, out string? error)
+    {
+        calls = [];
+        error = null;
+
+        try
+        {
+            using var doc = JsonDocument.Parse(json);
+            if (!doc.RootElement.TryGetProperty("calls", out var callsElement) ||
+                callsElement.ValueKind != JsonValueKind.Array)
+            {
+                error = "Missing required property: calls";
+                return false;
+            }
+
+            foreach (var callElement in callsElement.EnumerateArray())
+            {
+                if (!callElement.TryGetProperty("tool", out var toolElement) ||
+                    toolElement.ValueKind != JsonValueKind.String)
+                {
+                    error = "Missing required property: calls[].tool";
+                    return false;
+                }
+
+                var inputJson = callElement.TryGetProperty("input", out var inputElement)
+                    ? inputElement.GetRawText()
+                    : "{}";
+
+                calls.Add(new BatchCallRequest(toolElement.GetString()!, inputJson));
+            }
+
+            return true;
+        }
+        catch (JsonException)
+        {
+            error = "Malformed input JSON";
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// A batch rejected wholesale, before any member executed. Bypasses
+    /// <see cref="RecordDenial"/>/<see cref="IToolCallInstrumentation.RecordDenied"/> in
+    /// favor of the dedicated <c>wiki.batch.invocations_total</c>/<c>wiki.batch.rejected</c>
+    /// signals — mirrors <see cref="RecordSearchPatternRejected"/>'s reasoning: this
+    /// rejection reason has its own established signal pair, not the generic denial one.
+    /// </summary>
+    private ToolExecutionResult RecordBatchRejected(string reason, int callCount, int turn)
+    {
+        var record = new DeniedActionRecord(ToolRegistry.Batch, callCount.ToString(), callCount.ToString(), reason, turn);
+        _denials.Add(record);
+
+        var outcome = reason == "too_many_calls" ? "rejected_size" : "rejected_write";
+        _instrumentation.RecordBatchInvocation(_taskId, outcome, turn);
+        _instrumentation.LogBatchRejected(_taskId, reason, callCount, turn);
+
+        return new ToolExecutionResult(
+            true,
+            $"denied: {reason}. This action is outside the safety policy; continue with your remaining allowed work.");
+    }
+
+    // ── search_files ─────────────────────────────────────────────────────────────
+    // ADR-030 R1/R2 (026-guarded-tool-surface): mimics `grep -rn`. Every candidate file is
+    // evaluated against the read policy before it is opened (T016) — a denied match is
+    // omitted silently, never reported, because reporting it would itself disclose that the
+    // path exists. A denial is recorded only for the search's own `path` root, exactly like
+    // list_files/read_file (T017).
+
+    private async Task<ToolExecutionResult> ExecuteSearchFilesAsync(
+        string inputJson, int turn, CancellationToken cancellationToken)
+    {
+        // Every candidate file is read synchronously (File.ReadLines, for lazy line-by-line
+        // scanning under the time budget below) — no genuine async I/O in this dispatch, but
+        // the signature stays Task<ToolExecutionResult> to match every sibling dispatch
+        // method's shape.
+        await Task.CompletedTask;
+
+        if (!TryGetStringProperty(inputJson, "pattern", out var pattern) || pattern.Length == 0)
+        {
+            return new ToolExecutionResult(true, "Missing required property: pattern");
+        }
+
+        if (pattern.Length > SearchMaxPatternLength)
+        {
+            return RecordSearchPatternRejected(pattern, "pattern_too_long", turn);
+        }
+
+        if (!TryBuildSearchRegex(inputJson, pattern, out var regex, out var rejectionReason))
+        {
+            return RecordSearchPatternRejected(pattern, rejectionReason!, turn);
+        }
+
+        var hasPathPrefix = TryGetStringProperty(inputJson, "path", out var relativePathPrefix) &&
+            !string.IsNullOrWhiteSpace(relativePathPrefix);
+        var searchRoot = hasPathPrefix ? Canonicalize(relativePathPrefix) : _repositoryRoot;
+
+        // ADR-030 R1: "A denial is recorded only for the search's own path argument when
+        // that root is out of scope." A default (whole-repository) search has no such
+        // argument to be out of scope — every candidate file is filtered silently below
+        // instead (ScanCandidateFiles), never as a top-level denial. Gating the default
+        // search on a root-level policy check would wrongly deny any search whose read
+        // scope is narrower than the repository root, even though per-file filtering
+        // already makes that search incapable of widening the read scope.
+        if (hasPathPrefix)
+        {
+            var rootPolicyResult = _policy.Evaluate(searchRoot, isWrite: false);
+            if (!rootPolicyResult.IsAllowed)
+            {
+                var denial = RecordDenial(ToolRegistry.SearchFiles, relativePathPrefix, searchRoot, rootPolicyResult.DenialReason!, turn);
+                _instrumentation.RecordSearchInvocation(_taskId, "denied", matchesReturned: 0, filesScanned: 0, turn);
+                return denial;
+            }
+        }
+
+        _instrumentation.RecordAllowed(_taskId, ToolRegistry.SearchFiles, searchRoot, turn);
+
+        var requestedMaxResults = TryGetIntProperty(inputJson, "max_results", out var maxResultsValue)
+            ? maxResultsValue
+            : SearchDefaultResultCap;
+        var cap = Math.Clamp(requestedMaxResults, 1, SearchHardResultCeiling);
+
+        using var scanActivity = _instrumentation.StartSearchScanActivity(_taskId, turn);
+        var scan = ScanCandidateFiles(searchRoot, regex!, cap, cancellationToken);
+
+        var outcome = scan.Truncated ? "truncated" : scan.TimedOut ? "timed_out" : "completed";
+        _instrumentation.RecordSearchInvocation(_taskId, outcome, scan.Matches.Count, scan.FilesScanned, turn);
+        EmitSearchScanTags(scanActivity, pattern.Length, hasPathPrefix ? relativePathPrefix : ".", scan, outcome);
+
+        return BuildSearchResult(scan, pattern.Length, cap, turn);
+    }
+
+    private void EmitSearchScanTags(Activity? scanActivity, int patternLength, string pathPrefix, SearchScanResult scan, string outcome)
+    {
+        scanActivity?.SetTag("task_id", _taskId);
+        scanActivity?.SetTag("pattern_length", patternLength);
+        scanActivity?.SetTag("path_prefix", pathPrefix);
+        scanActivity?.SetTag("files_scanned", scan.FilesScanned);
+        scanActivity?.SetTag("matches", scan.Matches.Count);
+        scanActivity?.SetTag("truncated", scan.Truncated);
+        scanActivity?.SetTag("outcome", outcome);
+    }
+
+    /// <summary>
+    /// ignore_case is folded into the pattern itself (an inline <c>(?i)</c> modifier) rather
+    /// than into the RegexOptions argument, so that argument stays the literal constant
+    /// <see cref="SearchRegexOptions"/> at every call site (T020) —
+    /// SearchRegexBoundaryRuleTests verifies the NonBacktracking bit by decoding a
+    /// compile-time constant off the IL, which a runtime-computed
+    /// <c>SearchRegexOptions | (ignoreCase ? ... : ...)</c> would defeat.
+    /// </summary>
+    private bool TryBuildSearchRegex(string inputJson, string pattern, out Regex? regex, out string? rejectionReason)
+    {
+        var ignoreCase = TryGetBoolProperty(inputJson, "ignore_case", out var ignoreCaseValue) && ignoreCaseValue;
+        var effectivePattern = ignoreCase ? "(?i)" + pattern : pattern;
+
+        try
+        {
+            regex = new Regex(effectivePattern, SearchRegexOptions, _searchTimeBudget);
+            rejectionReason = null;
+            return true;
+        }
+        catch (NotSupportedException)
+        {
+            // The NonBacktracking engine rejects constructs it cannot run without
+            // backtracking (lookaround, backreferences) at construction time (ADR-030 R2).
+            regex = null;
+            rejectionReason = "unsupported_syntax";
+            return false;
+        }
+        catch (ArgumentException)
+        {
+            regex = null;
+            rejectionReason = "invalid_pattern";
+            return false;
+        }
+    }
+
+    private sealed record SearchScanResult(List<string> Matches, int FilesScanned, bool Truncated, bool TimedOut);
+
+    private SearchScanResult ScanCandidateFiles(string searchRoot, Regex regex, int cap, CancellationToken cancellationToken)
+    {
+        var matches = new List<string>();
+        var filesScanned = 0;
+        var truncated = false;
+        var timedOut = false;
+        var stopwatch = Stopwatch.StartNew();
+
+        var candidateFiles = EnumerateSearchCandidates(searchRoot).OrderBy(f => f, StringComparer.Ordinal);
+
+        foreach (var candidateFile in candidateFiles)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+
+            if (stopwatch.Elapsed >= _searchTimeBudget)
+            {
+                timedOut = true;
+                break;
+            }
+
+            // T016 (ADR-030 R1): evaluated per candidate path against the read policy — a
+            // denied file is skipped, never reported as a denial.
+            if (!_policy.Evaluate(candidateFile, isWrite: false).IsAllowed)
+            {
+                continue;
+            }
+
+            filesScanned++;
+
+            var (fileTruncated, fileTimedOut) = ScanOneFile(candidateFile, regex, cap, stopwatch, matches, cancellationToken);
+            truncated |= fileTruncated;
+            timedOut |= fileTimedOut;
+
+            if (truncated || timedOut)
+            {
+                break;
+            }
+        }
+
+        stopwatch.Stop();
+        return new SearchScanResult(matches, filesScanned, truncated, timedOut);
+    }
+
+    /// <summary>
+    /// `path` may name a single file or a directory to recurse into (contracts/
+    /// guarded-tool-surface.md: "directory or file prefix").
+    /// </summary>
+    private IEnumerable<string> EnumerateSearchCandidates(string searchRoot)
+    {
+        if (File.Exists(searchRoot))
+        {
+            return [ResolvePhysicalPathInRepository(searchRoot)];
+        }
+
+        if (!Directory.Exists(searchRoot))
+        {
+            return [];
+        }
+
+        // Directory.EnumerateFiles is lazily evaluated and can throw mid-walk — e.g. a
+        // permission-denied subdirectory partway through the tree — so materialize it
+        // defensively here rather than letting the exception propagate out of a `foreach`
+        // in the caller. Whatever was already collected before the failure stays usable;
+        // the walk just stops early (spec.md Edge Cases: a search "must not corrupt or
+        // blow up the result").
+        var candidates = new List<string>();
+        try
+        {
+            foreach (var file in Directory.EnumerateFiles(searchRoot, "*", SearchOption.AllDirectories))
+            {
+                candidates.Add(ResolvePhysicalPathInRepository(file));
+            }
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+        }
+
+        return candidates;
+    }
+
+    private (bool Truncated, bool TimedOut) ScanOneFile(
+        string candidateFile, Regex regex, int cap, Stopwatch stopwatch, List<string> matches, CancellationToken cancellationToken)
+    {
+        var lineNumber = 0;
+        try
+        {
+            foreach (var line in File.ReadLines(candidateFile))
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                lineNumber++;
+
+                if (stopwatch.Elapsed >= _searchTimeBudget)
+                {
+                    return (Truncated: false, TimedOut: true);
+                }
+
+                bool isMatch;
+                try
+                {
+                    isMatch = regex.IsMatch(line);
+                }
+                catch (RegexMatchTimeoutException)
+                {
+                    return (Truncated: false, TimedOut: true);
+                }
+
+                if (!isMatch)
+                {
+                    continue;
+                }
+
+                var relativeMatchPath = Path.GetRelativePath(_repositoryRoot, candidateFile).Replace('\\', '/');
+                matches.Add($"{relativeMatchPath}:{lineNumber}:{line}");
+
+                if (matches.Count >= cap)
+                {
+                    return (Truncated: true, TimedOut: false);
+                }
+            }
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            // Unreadable (binary, locked, permission-denied, deleted mid-scan) — skip
+            // this file rather than fail the whole search.
+        }
+
+        return (Truncated: false, TimedOut: false);
+    }
+
+    private ToolExecutionResult BuildSearchResult(SearchScanResult scan, int patternLength, int cap, int turn)
+    {
+        var result = new StringBuilder();
+        foreach (var match in scan.Matches)
+        {
+            result.AppendLine(match);
+        }
+
+        if (scan.Truncated)
+        {
+            _instrumentation.LogSearchTruncated(_taskId, patternLength, cap, turn);
+            result.AppendLine($"[truncated: showing the first {cap} matches]");
+        }
+        else if (scan.TimedOut)
+        {
+            _instrumentation.LogSearchTimedOut(_taskId, _searchTimeBudget.TotalMilliseconds, scan.FilesScanned, turn);
+            result.AppendLine($"[incomplete: search time budget exceeded after scanning {scan.FilesScanned} file(s)]");
+        }
+
+        if (scan.Matches.Count == 0 && !scan.TimedOut)
+        {
+            return new ToolExecutionResult(false, "No matches found.");
+        }
+
+        return new ToolExecutionResult(false, result.ToString().TrimEnd());
+    }
+
+    private ToolExecutionResult RecordSearchPatternRejected(string pattern, string reason, int turn)
+    {
+        var record = new DeniedActionRecord(ToolRegistry.SearchFiles, pattern, pattern, reason, turn);
+        _denials.Add(record);
+
+        _instrumentation.RecordSearchInvocation(_taskId, "pattern_rejected", matchesReturned: 0, filesScanned: 0, turn);
+        _instrumentation.LogSearchPatternRejected(_taskId, reason, pattern.Length, turn);
+
+        return new ToolExecutionResult(
+            true,
+            $"denied: {reason}. This action is outside the safety policy; continue with your remaining allowed work.");
+    }
+
     // ── helpers ──────────────────────────────────────────────────────────────────
 
     private ToolExecutionResult RecordDenial(string action, string requestedTarget, string canonicalTarget, string reason, int turn)
@@ -507,6 +1171,42 @@ public sealed class GuardedToolExecutor
         catch (JsonException) { }
 
         value = string.Empty;
+        return false;
+    }
+
+    private static bool TryGetIntProperty(string json, string propertyName, out int value)
+    {
+        try
+        {
+            using var doc = JsonDocument.Parse(json);
+            if (doc.RootElement.TryGetProperty(propertyName, out var prop) &&
+                prop.ValueKind == JsonValueKind.Number &&
+                prop.TryGetInt32(out value))
+            {
+                return true;
+            }
+        }
+        catch (JsonException) { }
+
+        value = 0;
+        return false;
+    }
+
+    private static bool TryGetBoolProperty(string json, string propertyName, out bool value)
+    {
+        try
+        {
+            using var doc = JsonDocument.Parse(json);
+            if (doc.RootElement.TryGetProperty(propertyName, out var prop) &&
+                (prop.ValueKind == JsonValueKind.True || prop.ValueKind == JsonValueKind.False))
+            {
+                value = prop.GetBoolean();
+                return true;
+            }
+        }
+        catch (JsonException) { }
+
+        value = false;
         return false;
     }
 }

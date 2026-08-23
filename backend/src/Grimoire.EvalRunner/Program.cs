@@ -223,11 +223,23 @@ switch (subcommand)
                 foreach (var result in lintNotStored)
                 {
                     Console.Error.WriteLine($"{result.ScenarioId}: {result.Detail}");
+                    // The scenario-level line only says a sample was lost, never which one or
+                    // why — and a capture that loses one sample out of ten discards the other
+                    // nine (no partial stores), so the per-sample reason is the only thing that
+                    // tells an operator whether to simply re-run or to go fix something.
+                    foreach (var sample in result.Samples.Where(s => !s.Captured))
+                    {
+                        Console.Error.WriteLine($"  sample {sample.Sample}: {sample.Detail}");
+                    }
                 }
 
                 foreach (var result in remediationNotStored)
                 {
                     Console.Error.WriteLine($"{result.ScenarioId}: {result.Detail}");
+                    foreach (var sample in result.Samples.Where(s => !s.Captured))
+                    {
+                        Console.Error.WriteLine($"  sample {sample.Sample}: {sample.Detail}");
+                    }
                 }
 
                 return 2;

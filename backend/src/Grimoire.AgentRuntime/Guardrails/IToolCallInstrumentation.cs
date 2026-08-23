@@ -65,6 +65,93 @@ public interface IToolCallInstrumentation
     /// mirroring <see cref="StartAcquireWriteLockActivity"/>'s trigger point.
     /// </summary>
     void RecordWriteLockAcquisition(string taskId, string path, string outcome, double waitSeconds, int turn) { }
+
+    // ── 026-guarded-tool-surface (ADR-030/ADR-031): search, ranged read, batch, deletion ──
+    // signals. All default no-op, mirroring the ADR-015 signals above: only Lint (the sole
+    // agent that declares these tools, ADR-030 R6/ADR-031 R3) ever calls them.
+
+    /// <summary>plan.md's <c>wiki.search.invocations_total</c> counter (labels: <c>agent</c>,
+    /// <paramref name="outcome"/> ∈ completed|truncated|timed_out|denied|pattern_rejected)
+    /// and, together, the source of the <c>wiki.search.matches_returned</c>/
+    /// <c>wiki.search.files_scanned</c> histograms recorded via the two overloads below.
+    /// Emitted once per <c>search_files</c> call.</summary>
+    void RecordSearchInvocation(string taskId, string outcome, int matchesReturned, int filesScanned, int turn) { }
+
+    /// <summary>plan.md's <c>wiki.search.truncated</c> WARN log event: the result cap was
+    /// reached before every match was found.</summary>
+    void LogSearchTruncated(string taskId, int patternLength, int cap, int turn) { }
+
+    /// <summary>plan.md's <c>wiki.search.timed_out</c> WARN log event: the search time
+    /// budget was exhausted mid-scan; results returned are partial, never empty.</summary>
+    void LogSearchTimedOut(string taskId, double budgetMs, int filesScanned, int turn) { }
+
+    /// <summary>plan.md's <c>wiki.search.pattern_rejected</c> WARN log event: the pattern
+    /// was unsupported (e.g. lookaround) or exceeded the size bound (ADR-030 R2/R5).</summary>
+    void LogSearchPatternRejected(string taskId, string reason, int patternLength, int turn) { }
+
+    /// <summary>plan.md's <c>guardrails.search_scan</c> span. Caller sets
+    /// <c>pattern_length</c>/<c>path_prefix</c>/<c>files_scanned</c>/<c>matches</c>/
+    /// <c>truncated</c>/<c>outcome</c> once the scan completes.
+    ///
+    /// <b>Resolved during T029 implementation:</b> plan.md originally declared this a child
+    /// of <c>*_agent.tool_call</c>, but that span is only created by
+    /// <see cref="RecordAllowed"/>/<see cref="RecordDenied"/> — both create and dispose it
+    /// internally, only after dispatch returns — so it is never live when a call to this
+    /// method would need to parent to it. <c>AgentLoop</c>'s own turn loop confirms the
+    /// actual ambient span during dispatch: its <c>*_agent.model_turn</c> activity is kept
+    /// open with a <c>using</c> across the entire tool-dispatch call
+    /// (<c>AgentLoop.cs</c>: "The span stays open across tool dispatch below so every
+    /// per-agent tool-call span ... is a child of this model turn"). The actual, achievable
+    /// parent is therefore <c>*_agent.model_turn</c> — matching <see cref="StartBatchActivity"/>'s
+    /// already-correct declared parent — not <c>*_agent.tool_call</c>.
+    /// </summary>
+    Activity? StartSearchScanActivity(string taskId, int turn) => null;
+
+    /// <summary>plan.md's <c>wiki.read.invocations_total</c> counter, labelled by
+    /// <paramref name="shape"/> (<c>full</c>|<c>range</c>|<c>frontmatter</c>, ADR-030 R3) —
+    /// the source for the SC-014 measurement (research.md D9). Emitted once per
+    /// <c>read_file</c> call, including the pre-existing whole-file shape.</summary>
+    void RecordReadInvocation(string taskId, string shape, int turn) { }
+
+    /// <summary>plan.md's <c>wiki.batch.invocations_total</c> counter (labels: <c>agent</c>,
+    /// <paramref name="outcome"/> ∈ completed|rejected_write|rejected_size, ADR-030 R4).
+    /// Emitted once per <c>batch</c> call.</summary>
+    void RecordBatchInvocation(string taskId, string outcome, int turn) { }
+
+    /// <summary>plan.md's <c>wiki.batch.rejected</c> WARN log event: the batch contained a
+    /// write/delete/nested batch, or exceeded the max call count — rejected wholesale
+    /// before any member executed (ADR-030 R4).</summary>
+    void LogBatchRejected(string taskId, string reason, int callCount, int turn) { }
+
+    /// <summary>plan.md's <c>guardrails.batch</c> span, child of <c>*_agent.model_turn</c>
+    /// (ADR-030 R4). Caller sets <c>call_count</c>/<c>denied_count</c>/<c>outcome</c> once
+    /// the batch completes.</summary>
+    Activity? StartBatchActivity(string taskId, int turn) => null;
+
+    /// <summary>plan.md's <c>wiki.page.deletions_total</c> counter (labels: <c>agent</c>,
+    /// <paramref name="outcome"/> ∈ applied|rolled_back, ADR-031 R3/R4).</summary>
+    void RecordDeletion(string taskId, string outcome, int turn) { }
+
+    /// <summary>plan.md's <c>wiki.page.deleted</c> INFO log event: a deletion applied
+    /// through the guarded boundary.</summary>
+    void LogPageDeleted(string taskId, string path, int turn) { }
+
+    /// <summary>plan.md's <c>wiki.page.delete_rolled_back</c> WARN log event: a journaled
+    /// deletion was restored during rollback (ADR-031 R4).</summary>
+    void LogPageDeleteRolledBack(string taskId, string path, int turn) { }
+
+    /// <summary>plan.md's <c>guardrails.delete_file</c> span. Caller sets <c>journaled</c>/
+    /// <c>outcome</c> once the deletion (and any journal write) completes.
+    ///
+    /// Shares <see cref="StartSearchScanActivity"/>'s resolved parenting finding: the actual
+    /// ambient span during dispatch is <c>*_agent.model_turn</c> (kept open by
+    /// <c>AgentLoop</c> across the whole tool-dispatch call), not <c>*_agent.tool_call</c>
+    /// (only live after <c>RecordAllowed</c>/<c>RecordDenied</c> return). Implemented as a
+    /// child of <c>*_agent.model_turn</c> (T045; verified by
+    /// <c>LintDeletionObservabilityTests</c>' T047 span-parenting test), matching
+    /// <see cref="StartBatchActivity"/>'s already-correct declared parent.
+    /// </summary>
+    Activity? StartDeleteFileActivity(string taskId, string path, int turn) => null;
 }
 
 /// <summary>No-op default so hermetic tests that don't assert on telemetry don't need to wire an adapter.</summary>

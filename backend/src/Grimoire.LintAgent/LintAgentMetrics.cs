@@ -35,6 +35,62 @@ public static class LintAgentMetrics
             unit: "s",
             description: "Time spent waiting to acquire a write-coordination lock");
 
+    // ── 026-guarded-tool-surface (ADR-030/ADR-031) ──────────────────────────────────────
+
+    private static readonly Counter<long> _searchInvocationsTotal =
+        Meter.CreateCounter<long>("wiki.search.invocations_total",
+            description: "One per search_files call");
+
+    private static readonly Histogram<long> _searchMatchesReturned =
+        Meter.CreateHistogram<long>("wiki.search.matches_returned",
+            description: "Matches returned per search");
+
+    private static readonly Histogram<long> _searchFilesScanned =
+        Meter.CreateHistogram<long>("wiki.search.files_scanned",
+            description: "Files opened per search");
+
+    private static readonly Counter<long> _readInvocationsTotal =
+        Meter.CreateCounter<long>("wiki.read.invocations_total",
+            description: "Reads by shape, to show ranged reads displacing whole-page reads");
+
+    private static readonly Counter<long> _batchInvocationsTotal =
+        Meter.CreateCounter<long>("wiki.batch.invocations_total",
+            description: "One per batch call");
+
+    private static readonly Counter<long> _pageDeletionsTotal =
+        Meter.CreateCounter<long>("wiki.page.deletions_total",
+            description: "Pages deleted through the guarded boundary");
+
+    public static void RecordSearchInvocation(string outcome, int matchesReturned, int filesScanned)
+    {
+        _searchInvocationsTotal.Add(1,
+            new KeyValuePair<string, object?>("agent", "lint"),
+            new KeyValuePair<string, object?>("outcome", outcome));
+        _searchMatchesReturned.Record(matchesReturned, new KeyValuePair<string, object?>("agent", "lint"));
+        _searchFilesScanned.Record(filesScanned, new KeyValuePair<string, object?>("agent", "lint"));
+    }
+
+    public static void RecordReadInvocation(string shape)
+    {
+        _readInvocationsTotal.Add(1,
+            new KeyValuePair<string, object?>("agent", "lint"),
+            new KeyValuePair<string, object?>("shape", shape));
+    }
+
+    public static void RecordBatchInvocation(string outcome)
+    {
+        _batchInvocationsTotal.Add(1,
+            new KeyValuePair<string, object?>("agent", "lint"),
+            new KeyValuePair<string, object?>("outcome", outcome));
+    }
+
+    public static void RecordDeletion(string outcome)
+    {
+        _pageDeletionsTotal.Add(1,
+            new KeyValuePair<string, object?>("agent", "lint"),
+            new KeyValuePair<string, object?>("outcome", outcome));
+    }
+
     public static void RecordToolCall(string tool, string decision)
     {
         _toolCallsTotal.Add(1,

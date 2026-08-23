@@ -101,4 +101,64 @@ public sealed class LintToolCallInstrumentation : IToolCallInstrumentation
             LintAgentLogEvents.LogWriteLockTimeout(_logger, taskId, path, waitSeconds * 1000);
         }
     }
+
+    // ── 026-guarded-tool-surface (ADR-030/ADR-031): registered here (T014) ahead of the
+    // story phases that call them (Phase 3 search, Phase 4 delete, Phase 5 read shape,
+    // Phase 6 batch) — the production composition root for these signals is wired once,
+    // so each story phase only adds the call site.
+
+    public void RecordSearchInvocation(string taskId, string outcome, int matchesReturned, int filesScanned, int turn)
+        => LintAgentMetrics.RecordSearchInvocation(outcome, matchesReturned, filesScanned);
+
+    public void LogSearchTruncated(string taskId, int patternLength, int cap, int turn)
+        => LintAgentLogEvents.LogSearchTruncated(_logger, taskId, patternLength, cap, turn);
+
+    public void LogSearchTimedOut(string taskId, double budgetMs, int filesScanned, int turn)
+        => LintAgentLogEvents.LogSearchTimedOut(_logger, taskId, budgetMs, filesScanned, turn);
+
+    public void LogSearchPatternRejected(string taskId, string reason, int patternLength, int turn)
+        => LintAgentLogEvents.LogSearchPatternRejected(_logger, taskId, reason, patternLength, turn);
+
+    public Activity? StartSearchScanActivity(string taskId, int turn)
+    {
+        var span = LintAgentTracing.ActivitySource.StartActivity("guardrails.search_scan");
+        span?.SetTag("task_id", taskId);
+        span?.SetTag("turn", turn);
+        return span;
+    }
+
+    public void RecordReadInvocation(string taskId, string shape, int turn)
+        => LintAgentMetrics.RecordReadInvocation(shape);
+
+    public void RecordBatchInvocation(string taskId, string outcome, int turn)
+        => LintAgentMetrics.RecordBatchInvocation(outcome);
+
+    public void LogBatchRejected(string taskId, string reason, int callCount, int turn)
+        => LintAgentLogEvents.LogBatchRejected(_logger, taskId, reason, callCount, turn);
+
+    public Activity? StartBatchActivity(string taskId, int turn)
+    {
+        var span = LintAgentTracing.ActivitySource.StartActivity("guardrails.batch");
+        span?.SetTag("task_id", taskId);
+        span?.SetTag("turn", turn);
+        return span;
+    }
+
+    public void RecordDeletion(string taskId, string outcome, int turn)
+        => LintAgentMetrics.RecordDeletion(outcome);
+
+    public void LogPageDeleted(string taskId, string path, int turn)
+        => LintAgentLogEvents.LogPageDeleted(_logger, taskId, path, turn);
+
+    public void LogPageDeleteRolledBack(string taskId, string path, int turn)
+        => LintAgentLogEvents.LogPageDeleteRolledBack(_logger, taskId, path, turn);
+
+    public Activity? StartDeleteFileActivity(string taskId, string path, int turn)
+    {
+        var span = LintAgentTracing.ActivitySource.StartActivity("guardrails.delete_file");
+        span?.SetTag("task_id", taskId);
+        span?.SetTag("path", path);
+        span?.SetTag("turn", turn);
+        return span;
+    }
 }

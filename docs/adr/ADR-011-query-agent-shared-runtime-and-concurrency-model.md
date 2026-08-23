@@ -4,6 +4,12 @@ status: accepted
 
 # ADR-011: Shared Agent Runtime, Streaming, and Query Concurrency Model
 
+> **Amended by [ADR-030](ADR-030-guarded-retrieval-tool-surface.md)**: the shared
+> `ToolRegistry` gains `search_files`, `batch`, and `read_file` range parameters (and
+> `delete_file` via [ADR-031](ADR-031-lint-full-wiki-write-scope.md)). Only
+> `LintToolRegistry` declares them; R3/R11's unknown-tool rejection is exactly what keeps the
+> addition invisible to Ingest and Query.
+
 > **Amended by [ADR-013](ADR-013-unified-agent-platform-packaging-and-naming.md)**
 > (packaging / runtime-sharing aspects only): `Grimoire.AgentRuntime`'s scope is
 > extended and the Query no-write-guarantee rationale is restated; see "Shared runtime

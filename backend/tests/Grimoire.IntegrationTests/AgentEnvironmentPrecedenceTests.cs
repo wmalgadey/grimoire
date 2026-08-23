@@ -57,6 +57,7 @@ public class AgentEnvironmentPrecedenceTests
         { "lint", "GRIMOIRE_LINT_MODEL" },
         { "lint", "GRIMOIRE_LINT_BASE_URL" },
         { "lint", "GRIMOIRE_LINT_MAX_OUTPUT_TOKENS" },
+        { "lint", "GRIMOIRE_LINT_SPEND_CAP" },
     };
 
     /// <summary>
@@ -91,7 +92,8 @@ public class AgentEnvironmentPrecedenceTests
                 lintBaseUrl: value is not null && variable.EndsWith("BASE_URL", StringComparison.Ordinal) ? value : null,
                 lintModel: value is not null && variable.EndsWith("MODEL", StringComparison.Ordinal) ? value : null,
                 lintMaxOutputTokens: value is not null && variable.EndsWith("MAX_OUTPUT_TOKENS", StringComparison.Ordinal) ? value : null,
-                logger: logger),
+                logger: logger,
+                lintSpendCap: value is not null && variable.EndsWith("SPEND_CAP", StringComparison.Ordinal) ? value : null),
             _ => throw new ArgumentOutOfRangeException(nameof(agent), agent, "unknown agent"),
         };
 

@@ -1,5 +1,5 @@
 {
-  "version": 1,
+  "version": 2,
   "defaultDecision": "deny",
   "read": [
     { "pathPrefix": "index.md" },
@@ -7,6 +7,9 @@
     { "pathPrefix": "." }
   ],
   "write": [
-    { "pathPrefix": ".", "mode": "frontmatter-only", "excludePrefixes": ["index.md", "log.md"] }
+    { "pathPrefix": ".", "mode": "read-write" }
+  ],
+  "delete": [
+    { "pathPrefix": "." }
   ]
 }

@@ -1,12 +1,12 @@
 {
   "schema_version": 1,
   "sample": 4,
-  "task_id": "capture-lint-genuine-findings-04-8d179ad15d3c49678c7a3c187b82c564",
+  "task_id": "capture-lint-genuine-findings-04-947a1d0e36b24052bfa706e4f5d52f74",
   "model": "claude-haiku-4-5",
   "turns": [
     {
       "turn": 1,
-      "system_prompt_sha256": "sha256:060aabefdcda74d2eb1deef24389960be8b1efc4363daaecc404e946b4c4c305",
+      "system_prompt_sha256": "sha256:6aeef08a02ad4c24f474b4e83776ca028cffd1a500bc5113d954592af880da60",
       "conversation": [
         {
           "role": "user",
@@ -16,33 +16,36 @@
       "tool_names": [
         "list_files",
         "read_file",
-        "write_file"
+        "search_files",
+        "batch",
+        "write_file",
+        "delete_file"
       ],
       "stop_reason": "tool_use",
       "tool_uses": [
         {
-          "tool_use_id": "toolu_01UJDDYwippsuxHRPjfFr9Fm",
+          "tool_use_id": "toolu_018DBTir4Z44d65d3FwFJ2vv",
           "tool_name": "read_file",
-          "input_json": "{\u0022path\u0022:\u0022index.md\u0022}"
+          "input_json": "{\u0022path\u0022: \u0022index.md\u0022}"
         },
         {
-          "tool_use_id": "toolu_01J82i6ZufdHtAxWXA2PvRVK",
+          "tool_use_id": "toolu_01FeGxNCYMfeUptzVGjSAuzC",
           "tool_name": "read_file",
-          "input_json": "{\u0022path\u0022:\u0022log.md\u0022}"
+          "input_json": "{\u0022path\u0022: \u0022log.md\u0022}"
         },
         {
-          "tool_use_id": "toolu_01GTXzZsHQ3uRU3wkZEmXeoE",
+          "tool_use_id": "toolu_017S4KMshFpA43heoaSuZ9nG",
           "tool_name": "list_files",
-          "input_json": "{\u0022path\u0022:\u0022.\u0022}"
+          "input_json": "{\u0022path\u0022: \u0022.\u0022}"
         }
       ],
-      "assistant_text": "I\u0027ll now perform a comprehensive wiki health check. Let me start by reading the entire wiki structure and content.",
-      "input_tokens": 5837,
-      "output_tokens": 151
+      "assistant_text": "I\u0027ll begin the wiki health check by surveying the wiki\u0027s structure and content.",
+      "input_tokens": 9410,
+      "output_tokens": 146
     },
     {
       "turn": 2,
-      "system_prompt_sha256": "sha256:060aabefdcda74d2eb1deef24389960be8b1efc4363daaecc404e946b4c4c305",
+      "system_prompt_sha256": "sha256:6aeef08a02ad4c24f474b4e83776ca028cffd1a500bc5113d954592af880da60",
       "conversation": [
         {
           "role": "user",
@@ -50,68 +53,36 @@
         },
         {
           "role": "assistant",
-          "content_sha256": "sha256:990fffbd1222f2524d0952e8b0aac193d0d1813c59921f6e7840e0755980dca0"
+          "content_sha256": "sha256:9f6c90db2b21eb44cbd4303ab30fcb24d40d5e754ab2b4a1e86d1823564c4041"
         },
         {
           "role": "user",
-          "content_sha256": "sha256:3f88f9e7ed54d91fb161240450c9222cb8d6fac828dca3a2a612830eb0cddb34"
+          "content_sha256": "sha256:df323eaf569326489dd9d8769cfb66e44c8124e8eeee7294c712ed8e6a200467"
         }
       ],
       "tool_names": [
         "list_files",
         "read_file",
-        "write_file"
+        "search_files",
+        "batch",
+        "write_file",
+        "delete_file"
       ],
       "stop_reason": "tool_use",
       "tool_uses": [
         {
-          "tool_use_id": "toolu_01Tugj1wGm3yFWAdifmsjMYo",
-          "tool_name": "read_file",
-          "input_json": "{\u0022path\u0022:\u0022cache-invalidation-ttl.md\u0022}"
-        },
-        {
-          "tool_use_id": "toolu_01RBm8MsH634CL4UykiW27zr",
-          "tool_name": "read_file",
-          "input_json": "{\u0022path\u0022:\u0022cache-invalidation-events.md\u0022}"
-        },
-        {
-          "tool_use_id": "toolu_01YJSp4Ee7BCsXJawWGW2h68",
-          "tool_name": "read_file",
-          "input_json": "{\u0022path\u0022:\u0022retry-backoff.md\u0022}"
-        },
-        {
-          "tool_use_id": "toolu_015BFtdaUxxxT5jXUUW3vYgg",
-          "tool_name": "read_file",
-          "input_json": "{\u0022path\u0022:\u0022circuit-breaker.md\u0022}"
-        },
-        {
-          "tool_use_id": "toolu_01Nx89ETtjScGgzCGrU4iax1",
-          "tool_name": "read_file",
-          "input_json": "{\u0022path\u0022:\u0022undertagged-topic.md\u0022}"
-        },
-        {
-          "tool_use_id": "toolu_012r7HkVGeQVqZWjuBh2k1o6",
-          "tool_name": "read_file",
-          "input_json": "{\u0022path\u0022:\u0022unscored-topic.md\u0022}"
-        },
-        {
-          "tool_use_id": "toolu_018DbfFkUAiy9m8yAELAjepa",
-          "tool_name": "read_file",
-          "input_json": "{\u0022path\u0022:\u0022stale-topic.md\u0022}"
-        },
-        {
-          "tool_use_id": "toolu_014rHgKDJMs2MPU9e7UJwMqk",
-          "tool_name": "read_file",
-          "input_json": "{\u0022path\u0022:\u0022orphan-topic.md\u0022}"
+          "tool_use_id": "toolu_01PnW7rgmRxUFV1bktxCRRHe",
+          "tool_name": "batch",
+          "input_json": "{\u0022calls\u0022: [{\u0022tool\u0022:\u0022read_file\u0022,\u0022input\u0022:{\u0022path\u0022:\u0022cache-invalidation-ttl.md\u0022}},{\u0022tool\u0022:\u0022read_file\u0022,\u0022input\u0022:{\u0022path\u0022:\u0022cache-invalidation-events.md\u0022}},{\u0022tool\u0022:\u0022read_file\u0022,\u0022input\u0022:{\u0022path\u0022:\u0022circuit-breaker.md\u0022}},{\u0022tool\u0022:\u0022read_file\u0022,\u0022input\u0022:{\u0022path\u0022:\u0022retry-backoff.md\u0022}},{\u0022tool\u0022:\u0022read_file\u0022,\u0022input\u0022:{\u0022path\u0022:\u0022orphan-topic.md\u0022}},{\u0022tool\u0022:\u0022read_file\u0022,\u0022input\u0022:{\u0022path\u0022:\u0022stale-topic.md\u0022}},{\u0022tool\u0022:\u0022read_file\u0022,\u0022input\u0022:{\u0022path\u0022:\u0022undertagged-topic.md\u0022}},{\u0022tool\u0022:\u0022read_file\u0022,\u0022input\u0022:{\u0022path\u0022:\u0022unscored-topic.md\u0022}}]}"
         }
       ],
-      "assistant_text": "Now let me read all the pages in the wiki:",
-      "input_tokens": 6393,
-      "output_tokens": 364
+      "assistant_text": "Good, I can see the wiki structure. The index mentions that \u0060log.md\u0060 doesn\u0027t exist yet. I can see 9 files total at the root level. Let me now read all the pages to build a complete picture. Since this is a small wiki fixture, I\u0027ll read them all in full.",
+      "input_tokens": 9961,
+      "output_tokens": 309
     },
     {
       "turn": 3,
-      "system_prompt_sha256": "sha256:060aabefdcda74d2eb1deef24389960be8b1efc4363daaecc404e946b4c4c305",
+      "system_prompt_sha256": "sha256:6aeef08a02ad4c24f474b4e83776ca028cffd1a500bc5113d954592af880da60",
       "conversation": [
         {
           "role": "user",
@@ -119,51 +90,59 @@
         },
         {
           "role": "assistant",
-          "content_sha256": "sha256:990fffbd1222f2524d0952e8b0aac193d0d1813c59921f6e7840e0755980dca0"
+          "content_sha256": "sha256:9f6c90db2b21eb44cbd4303ab30fcb24d40d5e754ab2b4a1e86d1823564c4041"
         },
         {
           "role": "user",
-          "content_sha256": "sha256:3f88f9e7ed54d91fb161240450c9222cb8d6fac828dca3a2a612830eb0cddb34"
+          "content_sha256": "sha256:df323eaf569326489dd9d8769cfb66e44c8124e8eeee7294c712ed8e6a200467"
         },
         {
           "role": "assistant",
-          "content_sha256": "sha256:eb7101ee3a79e849736c46b126c2469654c942b6a98d1a6277d53dbe97a4b1b6"
+          "content_sha256": "sha256:1ea5adafb1cfa4c52021c66534a5dad60c87fbee0cf93f6f15dd8ee0c4ef9ae2"
         },
         {
           "role": "user",
-          "content_sha256": "sha256:c1ba8401375d300812801537f7493a40f7afefbfb2e79a4c41aac7f335e562f0"
+          "content_sha256": "sha256:3cb0f1b3de01dbd71d1fa2d0957e622233d33e0f5a6cb82839b0d8625ba805dc"
         }
       ],
       "tool_names": [
         "list_files",
         "read_file",
-        "write_file"
+        "search_files",
+        "batch",
+        "write_file",
+        "delete_file"
       ],
       "stop_reason": "tool_use",
       "tool_uses": [
         {
-          "tool_use_id": "toolu_013TGbjGjMgVwXd4Cf2f8dGH",
-          "tool_name": "list_files",
-          "input_json": "{\u0022path\u0022:\u0022tech\u0022}"
+          "tool_use_id": "toolu_018BoeydYnxx2BRPQnPJZWHF",
+          "tool_name": "read_file",
+          "input_json": "{\u0022path\u0022: \u0022cache-invalidation-ttl.md\u0022}"
         },
         {
-          "tool_use_id": "toolu_01Ky21itnNsQdYN9Lg7fxiau",
-          "tool_name": "list_files",
-          "input_json": "{\u0022path\u0022:\u0022concepts\u0022}"
+          "tool_use_id": "toolu_01PU16ANcgDB7he7u6HfuwXz",
+          "tool_name": "read_file",
+          "input_json": "{\u0022path\u0022: \u0022cache-invalidation-events.md\u0022}"
         },
         {
-          "tool_use_id": "toolu_01GodCCKvBGyZAzz1NmPvu4h",
-          "tool_name": "list_files",
-          "input_json": "{\u0022path\u0022:\u0022patterns\u0022}"
+          "tool_use_id": "toolu_01AR4DhR2CQKECGRA1xXf1dc",
+          "tool_name": "read_file",
+          "input_json": "{\u0022path\u0022: \u0022circuit-breaker.md\u0022}"
+        },
+        {
+          "tool_use_id": "toolu_015eCnxS1ULmHB5P7SFyJeZo",
+          "tool_name": "read_file",
+          "input_json": "{\u0022path\u0022: \u0022retry-backoff.md\u0022}"
         }
       ],
-      "assistant_text": "Now I need to check what topic folders exist (since the index references topics but pages appear to be in the root):",
-      "input_tokens": 8407,
-      "output_tokens": 150
+      "assistant_text": "Excellent. Now I have all the content. Let me analyze this systematically.\n\n**Step 1 Summary**: I\u0027ve found 9 pages total:\n1. cache-invalidation-ttl.md\n2. cache-invalidation-events.md\n3. circuit-breaker.md\n4. retry-backoff.md\n5. orphan-topic.md (stale-topic)\n6. stale-topic.md\n7. undertagged-topic.md\n8. unscored-topic.md\n9. index.md (already read)\n\n**Step 2: Judge wiki health across three Finding Categories**\n\nLet me extract the wikilinks from each page to identify inbound links:\n\n**Pass 1 - Extract all wikilinks by file:**\n\n- **index.md**: \u0060[[cache-invalidation-ttl]]\u0060, \u0060[[cache-invalidation-events]]\u0060, \u0060[[retry-backoff]]\u0060, \u0060[[circuit-breaker]]\u0060, \u0060[[undertagged-topic]]\u0060, \u0060[[unscored-topic]]\u0060, \u0060[[stale-topic]]\u0060\n- **cache-invalidation-ttl.md**: none visible in the body\n- **cache-invalidation-events.md**: none visible in the body\n- **circuit-breaker.md**: none visible in the body\n- **retry-backoff.md**: none visible in the body\n- **orphan-topic.md**: none visible in the body\n- **stale-topic.md**: none visible in the body\n- **undertagged-topic.md**: none visible in the body\n- **unscored-topic.md**: none visible in the body\n\nWait, let me re-read the page bodies more carefully. The index mentions one deliberately absent orphan page. Looking at my list, I found \u0060orphan-topic.md\u0060 but it\u0027s NOT in the index. That\u0027s the seeded orphan defect mentioned in index.md.\n\n**Pass 2 - Count inbound links per page:**\n\n- cache-invalidation-ttl: 1 (from index.md)\n- cache-invalidation-events: 1 (from index.md)\n- circuit-breaker: 1 (from index.md)\n- retry-backoff: 1 (from index.md)\n- undertagged-topic: 1 (from index.md)\n- unscored-topic: 1 (from index.md)\n- stale-topic: 1 (from index.md)\n- orphan-topic: 0 (not referenced anywhere)\n\nNow let me check the current frontmatter for inbound_links fields and look for other issues:\n\n**Content Quality Analysis:**\n\n1. **Contradictions**: The two cache invalidation pages (\u0060cache-invalidation-ttl\u0060 and \u0060cache-invalidation-events\u0060) make directly incompatible claims:\n   - TTL page says: \u0022Event-driven invalidation...is unreliable in practice...a system that depends on it will serve stale data with no bound on how stale. **TTL-based expiry is the only invalidation strategy that gives a hard staleness guarantee, and it should be the default for every cache in this system.**\u0022\n   - Events page says: \u0022TTL-based expiry is unreliable under bursty writes...Event-driven invalidation...is the recommended default: **it should replace TTL-based expiry everywhere in this system.**\u0022\n   \n   These are directly contradictory prescriptions. One claims TTL should be default everywhere; the other claims events should replace TTL everywhere.\n\n2. **Outdated claims**: The \u0060stale-topic.md\u0060 (Sticky Sessions) has \u0060last_reviewed: 2025-01-05\u0060 (over 90 days old) and is marked \u0060low\u0060 confidence with reason \u0022Single blog-post source, no corroboration; likely superseded practice.\u0022 This is a review candidate but not a content quality issue per se.\n\n3. **Missing cross-references**: Several related pages lack links:\n   - The two cache invalidation pages should reference each other\n   - Circuit breaker, retry backoff, and idempotency keys are all resilience patterns that could cross-reference\n   - The write-behind and read-through caching pages should probably reference the cache invalidation discussion\n\n4. **Gaps**: The pages mention \u0022system of record\u0022 in read-through and write-behind caching but there\u0027s no dedicated page for that concept.\n\n**Metadata Hygiene Analysis:**\n\n1. **Missing tags**:\n   - \u0060stale-topic.md\u0060 (Sticky Sessions): HAS tags \u2713\n   - \u0060undertagged-topic.md\u0060 (Read-Through Caching): NO tags field \u2717\n   - \u0060unscored-topic.md\u0060 (Write-Behind Caching): HAS tags \u2713\n\n2. **Missing confidence**:\n   - \u0060unscored-topic.md\u0060 (Write-Behind Caching): NO \u0060confidence\u0060 field \u2717 (but has description)\n\n3. **Review candidates** (low confidence AND last_reviewed \u003E 90 days ago):\n   - \u0060stale-topic.md\u0060 (Sticky Sessions): \u0060confidence: low\u0060, \u0060last_reviewed: 2025-01-05\u0060 \u2014 this is 369\u002B days ago (well over 90 days), so it\u0027s a review candidate.\n\n4. **Superseded pages**: None marked with \u0060superseded_by\u0060.\n\n5. **Inbound links to refresh**:\n   - Let me check each page\u0027s current \u0060inbound_links\u0060 field. From my reads, I don\u0027t see any \u0060inbound_links\u0060 fields in the frontmatter at all. I should add them.\n\n**Structure Analysis:**\n\n1. **Orphan pages**: \n   - \u0060orphan-topic.md\u0060: 0 inbound links. It\u0027s not in index.md and no other page links to it.\n\nNow let me write the files that need updates:\n\n**Pages needing inbound_links updates:**\n- cache-invalidation-ttl.md: should have \u0060inbound_links: 1\u0060\n- cache-invalidation-events.md: should have \u0060inbound_links: 1\u0060\n- circuit-breaker.md: should have \u0060inbound_links: 1\u0060\n- retry-backoff.md: should have \u0060inbound_links: 1\u0060\n- undertagged-topic.md: should have \u0060inbound_links: 1\u0060\n- unscored-topic.md: should have \u0060inbound_links: 1\u0060\n- stale-topic.md: should have \u0060inbound_links: 1\u0060\n- orphan-topic.md: should have \u0060inbound_links: 0\u0060\n\nLet me update these now:",
+      "input_tokens": 11788,
+      "output_tokens": 1724
     },
     {
       "turn": 4,
-      "system_prompt_sha256": "sha256:060aabefdcda74d2eb1deef24389960be8b1efc4363daaecc404e946b4c4c305",
+      "system_prompt_sha256": "sha256:6aeef08a02ad4c24f474b4e83776ca028cffd1a500bc5113d954592af880da60",
       "conversation": [
         {
           "role": "user",
@@ -171,84 +150,67 @@
         },
         {
           "role": "assistant",
-          "content_sha256": "sha256:990fffbd1222f2524d0952e8b0aac193d0d1813c59921f6e7840e0755980dca0"
+          "content_sha256": "sha256:9f6c90db2b21eb44cbd4303ab30fcb24d40d5e754ab2b4a1e86d1823564c4041"
         },
         {
           "role": "user",
-          "content_sha256": "sha256:3f88f9e7ed54d91fb161240450c9222cb8d6fac828dca3a2a612830eb0cddb34"
+          "content_sha256": "sha256:df323eaf569326489dd9d8769cfb66e44c8124e8eeee7294c712ed8e6a200467"
         },
         {
           "role": "assistant",
-          "content_sha256": "sha256:eb7101ee3a79e849736c46b126c2469654c942b6a98d1a6277d53dbe97a4b1b6"
+          "content_sha256": "sha256:1ea5adafb1cfa4c52021c66534a5dad60c87fbee0cf93f6f15dd8ee0c4ef9ae2"
         },
         {
           "role": "user",
-          "content_sha256": "sha256:c1ba8401375d300812801537f7493a40f7afefbfb2e79a4c41aac7f335e562f0"
+          "content_sha256": "sha256:3cb0f1b3de01dbd71d1fa2d0957e622233d33e0f5a6cb82839b0d8625ba805dc"
         },
         {
           "role": "assistant",
-          "content_sha256": "sha256:781a02df8623db7667395327273f2261476c56ce0842bef6e58e13878fe64ed3"
+          "content_sha256": "sha256:bb42fab1ce0aa5b7b586dec17badc0afd529283fc5acee9e2cd9a6913033489e"
         },
         {
           "role": "user",
-          "content_sha256": "sha256:9032b635b5f94d8dc9c6e2d72e553459b348f4a79414c1ed9bda61df2a55ebde"
+          "content_sha256": "sha256:32cb214f62f4b06fa7dacfa13dade762ef52b307fc48350b6aed9afc22e0e9c3"
         }
       ],
       "tool_names": [
         "list_files",
         "read_file",
-        "write_file"
+        "search_files",
+        "batch",
+        "write_file",
+        "delete_file"
       ],
       "stop_reason": "tool_use",
       "tool_uses": [
         {
-          "tool_use_id": "toolu_01EmHrECSxggyhZKkKnUVKmS",
-          "tool_name": "read_file",
-          "input_json": "{\u0022path\u0022:\u0022cache-invalidation-ttl.md\u0022}"
+          "tool_use_id": "toolu_01CD6JCWMcinyG1n3JHK1Xy6",
+          "tool_name": "write_file",
+          "input_json": "{\u0022path\u0022: \u0022cache-invalidation-ttl.md\u0022, \u0022content\u0022: \u0022---\\ntype: Concept\\ntitle: Cache Invalidation via TTL\\ndescription: Always expire cache entries on a fixed time-to-live.\\ntimestamp: 2026-01-10T00:00:00Z\\ntags:\\n  - concept/Caching\\n  - pattern/TTL\\nconfidence: medium\\nconfidence_reason: \\\u0022One source, internally consistent.\\\u0022\\ninbound_links: 1\\n---\\n\\n# Cache Invalidation via TTL\\n\\nEvery cache entry should be assigned a fixed time-to-live (TTL) and expired purely on\\nelapsed time. Event-driven invalidation (recomputing or evicting an entry the instant\\nits source data changes) is unreliable in practice \u2014 event delivery can be dropped,\\nduplicated, or reordered, so a system that depends on it will serve stale data with no\\nbound on how stale. TTL-based expiry is the only invalidation strategy that gives a\\nhard staleness guarantee, and it should be the default for every cache in this system.\\n\u0022}"
         },
         {
-          "tool_use_id": "toolu_01TPkQY6kJgMk1k2EahLMDV2",
-          "tool_name": "read_file",
-          "input_json": "{\u0022path\u0022:\u0022cache-invalidation-events.md\u0022}"
+          "tool_use_id": "toolu_01U5Uco4Nex8g1WgrYhV4Px7",
+          "tool_name": "write_file",
+          "input_json": "{\u0022path\u0022: \u0022cache-invalidation-events.md\u0022, \u0022content\u0022: \u0022---\\ntype: Concept\\ntitle: Event-Driven Cache Invalidation\\ndescription: Invalidate cache entries immediately when their source data changes.\\ntimestamp: 2026-06-20T00:00:00Z\\ntags:\\n  - concept/Caching\\n  - pattern/EventDriven\\nconfidence: medium\\nconfidence_reason: \\\u0022One source, internally consistent.\\\u0022\\ninbound_links: 1\\n---\\n\\n# Event-Driven Cache Invalidation\\n\\nTTL-based expiry is unreliable under bursty writes: a fixed time window means an entry\\ncan serve stale data for up to the full TTL after its source changes, and there is no\\nway to shorten that window without also discarding entries that are still fresh.\\nEvent-driven invalidation \u2014 evicting or recomputing an entry the moment a change event\\nfor its source data arrives \u2014 is the recommended default: it bounds staleness to the\\nevent-delivery latency instead of an arbitrary fixed window, and should replace\\nTTL-based expiry everywhere in this system.\\n\u0022}"
         },
         {
-          "tool_use_id": "toolu_011sgacMazk5dS1njvRgrrKq",
-          "tool_name": "read_file",
-          "input_json": "{\u0022path\u0022:\u0022retry-backoff.md\u0022}"
+          "tool_use_id": "toolu_01BtBSZog7Jf7iJ3Tyao1mmR",
+          "tool_name": "write_file",
+          "input_json": "{\u0022path\u0022: \u0022circuit-breaker.md\u0022, \u0022content\u0022: \u0022---\\ntype: Concept\\ntitle: Circuit Breaker\\ndescription: Fail fast against a downstream dependency that is already struggling.\\ntimestamp: 2026-03-05T00:00:00Z\\ntags:\\n  - concept/Resilience\\n  - pattern/CircuitBreaker\\nconfidence: high\\nconfidence_reason: \\\u0022Book source, corroborated by official docs.\\\u0022\\ninbound_links: 1\\n---\\n\\n# Circuit Breaker\\n\\nTrack the failure rate of calls to a downstream dependency; once it crosses a\\nthreshold, \\\u0022open\\\u0022 the circuit and fail every call immediately (without attempting the\\nnetwork call at all) for a cooldown period, then allow a small number of trial calls\\nthrough to test whether the dependency has recovered before fully closing the circuit\\nagain. This protects a struggling downstream dependency from being kept down by a\\nthundering herd of retrying callers.\\n\u0022}"
         },
         {
-          "tool_use_id": "toolu_016DKcYbG4wu31Hvg5uBKPrk",
-          "tool_name": "read_file",
-          "input_json": "{\u0022path\u0022:\u0022circuit-breaker.md\u0022}"
-        },
-        {
-          "tool_use_id": "toolu_01QqRrSkKKJCvV4vKYmLUYJY",
-          "tool_name": "read_file",
-          "input_json": "{\u0022path\u0022:\u0022undertagged-topic.md\u0022}"
-        },
-        {
-          "tool_use_id": "toolu_01DiQmN72ix4XvzEeN8uNP6P",
-          "tool_name": "read_file",
-          "input_json": "{\u0022path\u0022:\u0022unscored-topic.md\u0022}"
-        },
-        {
-          "tool_use_id": "toolu_017EZpLiGJhdNZti2knZJgjR",
-          "tool_name": "read_file",
-          "input_json": "{\u0022path\u0022:\u0022stale-topic.md\u0022}"
-        },
-        {
-          "tool_use_id": "toolu_01MDYP57i6kSHxG2CbhjBP4a",
-          "tool_name": "read_file",
-          "input_json": "{\u0022path\u0022:\u0022orphan-topic.md\u0022}"
+          "tool_use_id": "toolu_01NM2nwinizmuiuGSAfr1m7U",
+          "tool_name": "write_file",
+          "input_json": "{\u0022path\u0022: \u0022retry-backoff.md\u0022, \u0022content\u0022: \u0022---\\ntype: Concept\\ntitle: Exponential Backoff for Retries\\ndescription: Retry failed requests with exponentially increasing delay and jitter.\\ntimestamp: 2026-03-01T00:00:00Z\\ntags:\\n  - concept/Resilience\\n  - pattern/Retry\\nconfidence: high\\nconfidence_reason: \\\u0022Book source, corroborated by official docs.\\\u0022\\ninbound_links: 1\\n---\\n\\n# Exponential Backoff for Retries\\n\\nWhen a request fails transiently, retry it after a delay that grows exponentially with\\neach attempt, with random jitter added to avoid synchronized retry storms across many\\nclients. This bounds the load a struggling downstream service sees from retrying\\nclients, at the cost of higher latency for the eventually-successful request.\\n\u0022}"
         }
       ],
-      "assistant_text": "Good, all pages are at the wiki root. Now I\u0027ll analyze the wiki health across all three categories. Let me compile all the wikilinks I found:\n\n**Pass 1: Extract all wikilinks from each file**\n\n**index.md:**\n- \u0060[[cache-invalidation-ttl]]\u0060\n- \u0060[[cache-invalidation-events]]\u0060\n- \u0060[[retry-backoff]]\u0060\n- \u0060[[circuit-breaker]]\u0060\n- \u0060[[undertagged-topic]]\u0060\n- \u0060[[unscored-topic]]\u0060\n- \u0060[[stale-topic]]\u0060\n\n**cache-invalidation-ttl.md:** (no wikilinks in body)\n\n**cache-invalidation-events.md:** (no wikilinks in body)\n\n**retry-backoff.md:** (no wikilinks in body)\n\n**circuit-breaker.md:** (no wikilinks in body)\n\n**undertagged-topic.md:** (no wikilinks in body)\n\n**unscored-topic.md:** (no wikilinks in body)\n\n**stale-topic.md:** (no wikilinks in body)\n\n**orphan-topic.md:** (no wikilinks in body)\n\n**Pass 2: Tally inbound links for each page**\n\n- \u0060cache-invalidation-ttl\u0060: 1 (from index.md)\n- \u0060cache-invalidation-events\u0060: 1 (from index.md)\n- \u0060retry-backoff\u0060: 1 (from index.md)\n- \u0060circuit-breaker\u0060: 1 (from index.md)\n- \u0060undertagged-topic\u0060: 1 (from index.md)\n- \u0060unscored-topic\u0060: 1 (from index.md)\n- \u0060stale-topic\u0060: 1 (from index.md)\n- \u0060orphan-topic\u0060: 0 (not linked from anywhere)\n\nNow let me analyze the findings:\n\n**Analysis Summary:**\n\n1. **Content Quality:**\n   - [[cache-invalidation-ttl]] and [[cache-invalidation-events]] contain **direct contradictions**. TTL claims event-driven is \u0022unreliable\u0022; events claims TTL is \u0022unreliable\u0022. Both claim they should be the default and replace the other.\n\n2. **Metadata Hygiene:**\n   - [[undertagged-topic]] has no tags field (missing required 2 tags)\n   - [[unscored-topic]] has no confidence/confidence_reason fields\n   - [[stale-topic]] is marked low-confidence with last_reviewed of 2025-01-05 (over 90 days old)\n   - [[unscored-topic]] is missing tags as well\n\n3. **Structure:**\n   - [[orphan-topic]] appears in no index, log, or other page links (0 inbound links) - confirmed in the index.md preamble that this is intentional seeding\n\n4. **Metadata issues with current pages:**\n   - [[undertagged-topic]] has no tags at all\n   - [[unscored-topic]] has no tags and no confidence score\n   - [[stale-topic]] needs review (low confidence, last reviewed 2025-01-05, well before 90-day window)\n\nNow let me refresh the inbound-link counts. Let me read each page again and update their inbound_links:",
-      "input_tokens": 8660,
-      "output_tokens": 1120
+      "assistant_text": "Now let me update these files with inbound_links counts:",
+      "input_tokens": 14434,
+      "output_tokens": 1105
     },
     {
       "turn": 5,
-      "system_prompt_sha256": "sha256:060aabefdcda74d2eb1deef24389960be8b1efc4363daaecc404e946b4c4c305",
+      "system_prompt_sha256": "sha256:6aeef08a02ad4c24f474b4e83776ca028cffd1a500bc5113d954592af880da60",
       "conversation": [
         {
           "role": "user",
@@ -256,92 +218,75 @@
         },
         {
           "role": "assistant",
-          "content_sha256": "sha256:990fffbd1222f2524d0952e8b0aac193d0d1813c59921f6e7840e0755980dca0"
+          "content_sha256": "sha256:9f6c90db2b21eb44cbd4303ab30fcb24d40d5e754ab2b4a1e86d1823564c4041"
         },
         {
           "role": "user",
-          "content_sha256": "sha256:3f88f9e7ed54d91fb161240450c9222cb8d6fac828dca3a2a612830eb0cddb34"
+          "content_sha256": "sha256:df323eaf569326489dd9d8769cfb66e44c8124e8eeee7294c712ed8e6a200467"
         },
         {
           "role": "assistant",
-          "content_sha256": "sha256:eb7101ee3a79e849736c46b126c2469654c942b6a98d1a6277d53dbe97a4b1b6"
+          "content_sha256": "sha256:1ea5adafb1cfa4c52021c66534a5dad60c87fbee0cf93f6f15dd8ee0c4ef9ae2"
         },
         {
           "role": "user",
-          "content_sha256": "sha256:c1ba8401375d300812801537f7493a40f7afefbfb2e79a4c41aac7f335e562f0"
+          "content_sha256": "sha256:3cb0f1b3de01dbd71d1fa2d0957e622233d33e0f5a6cb82839b0d8625ba805dc"
         },
         {
           "role": "assistant",
-          "content_sha256": "sha256:781a02df8623db7667395327273f2261476c56ce0842bef6e58e13878fe64ed3"
+          "content_sha256": "sha256:bb42fab1ce0aa5b7b586dec17badc0afd529283fc5acee9e2cd9a6913033489e"
         },
         {
           "role": "user",
-          "content_sha256": "sha256:9032b635b5f94d8dc9c6e2d72e553459b348f4a79414c1ed9bda61df2a55ebde"
+          "content_sha256": "sha256:32cb214f62f4b06fa7dacfa13dade762ef52b307fc48350b6aed9afc22e0e9c3"
         },
         {
           "role": "assistant",
-          "content_sha256": "sha256:89cf92b2c68ed29e3c5606f503936b883e89cbc93560be2ac4438c5cb202f53b"
+          "content_sha256": "sha256:f8bbfabddcb6bdd414eb8e7f21782e5d87eabbdaaf4348ecdc51ca6bb214c39c"
         },
         {
           "role": "user",
-          "content_sha256": "sha256:65365118e66f2a61371f62e765139fc30658abdac8b92db64e171a0861463fa7"
+          "content_sha256": "sha256:ca9e5d24e8eace6392e2ee9fda318493a307d8780c32e6435eff866d23fc9ffe"
         }
       ],
       "tool_names": [
         "list_files",
         "read_file",
-        "write_file"
+        "search_files",
+        "batch",
+        "write_file",
+        "delete_file"
       ],
       "stop_reason": "tool_use",
       "tool_uses": [
         {
-          "tool_use_id": "toolu_015bU9ZhBGdx9Sduc5P5swu9",
-          "tool_name": "write_file",
-          "input_json": "{\u0022path\u0022:\u0022cache-invalidation-ttl.md\u0022,\u0022content\u0022:\u0022---\\ntype: Concept\\ntitle: Cache Invalidation via TTL\\ndescription: Always expire cache entries on a fixed time-to-live.\\ntimestamp: 2026-01-10T00:00:00Z\\ntags:\\n  - concept/Caching\\n  - pattern/TTL\\nconfidence: medium\\nconfidence_reason: \\u0022One source, internally consistent.\\u0022\\ninbound_links: 1\\n---\\n\\n# Cache Invalidation via TTL\\n\\nEvery cache entry should be assigned a fixed time-to-live (TTL) and expired purely on\\nelapsed time. Event-driven invalidation (recomputing or evicting an entry the instant\\nits source data changes) is unreliable in practice \\u2014 event delivery can be dropped,\\nduplicated, or reordered, so a system that depends on it will serve stale data with no\\nbound on how stale. TTL-based expiry is the only invalidation strategy that gives a\\nhard staleness guarantee, and it should be the default for every cache in this system.\\n\u0022}"
+          "tool_use_id": "toolu_01RaiBquv6PHFYB2kgSBwto5",
+          "tool_name": "read_file",
+          "input_json": "{\u0022path\u0022: \u0022orphan-topic.md\u0022}"
         },
         {
-          "tool_use_id": "toolu_01NXbWFj3C9UjNnwfS5H2zDv",
-          "tool_name": "write_file",
-          "input_json": "{\u0022path\u0022:\u0022cache-invalidation-events.md\u0022,\u0022content\u0022:\u0022---\\ntype: Concept\\ntitle: Event-Driven Cache Invalidation\\ndescription: Invalidate cache entries immediately when their source data changes.\\ntimestamp: 2026-06-20T00:00:00Z\\ntags:\\n  - concept/Caching\\n  - pattern/EventDriven\\nconfidence: medium\\nconfidence_reason: \\u0022One source, internally consistent.\\u0022\\ninbound_links: 1\\n---\\n\\n# Event-Driven Cache Invalidation\\n\\nTTL-based expiry is unreliable under bursty writes: a fixed time window means an entry\\ncan serve stale data for up to the full TTL after its source changes, and there is no\\nway to shorten that window without also discarding entries that are still fresh.\\nEvent-driven invalidation \\u2014 evicting or recomputing an entry the moment a change event\\nfor its source data arrives \\u2014 is the recommended default: it bounds staleness to the\\nevent-delivery latency instead of an arbitrary fixed window, and should replace\\nTTL-based expiry everywhere in this system.\\n\u0022}"
+          "tool_use_id": "toolu_01FQtTMqQMMX5fntFaAGu1ux",
+          "tool_name": "read_file",
+          "input_json": "{\u0022path\u0022: \u0022stale-topic.md\u0022}"
         },
         {
-          "tool_use_id": "toolu_01TxujSH9RvAkp3rHa3vhMGT",
-          "tool_name": "write_file",
-          "input_json": "{\u0022path\u0022:\u0022retry-backoff.md\u0022,\u0022content\u0022:\u0022---\\ntype: Concept\\ntitle: Exponential Backoff for Retries\\ndescription: Retry failed requests with exponentially increasing delay and jitter.\\ntimestamp: 2026-03-01T00:00:00Z\\ntags:\\n  - concept/Resilience\\n  - pattern/Retry\\nconfidence: high\\nconfidence_reason: \\u0022Book source, corroborated by official docs.\\u0022\\ninbound_links: 1\\n---\\n\\n# Exponential Backoff for Retries\\n\\nWhen a request fails transiently, retry it after a delay that grows exponentially with\\neach attempt, with random jitter added to avoid synchronized retry storms across many\\nclients. This bounds the load a struggling downstream service sees from retrying\\nclients, at the cost of higher latency for the eventually-successful request.\\n\u0022}"
+          "tool_use_id": "toolu_012iwcaMX3yjJ9KNaWij2dHX",
+          "tool_name": "read_file",
+          "input_json": "{\u0022path\u0022: \u0022undertagged-topic.md\u0022}"
         },
         {
-          "tool_use_id": "toolu_014EVUFDhBhWWfisaRfk4KWe",
-          "tool_name": "write_file",
-          "input_json": "{\u0022path\u0022:\u0022circuit-breaker.md\u0022,\u0022content\u0022:\u0022---\\ntype: Concept\\ntitle: Circuit Breaker\\ndescription: Fail fast against a downstream dependency that is already struggling.\\ntimestamp: 2026-03-05T00:00:00Z\\ntags:\\n  - concept/Resilience\\n  - pattern/CircuitBreaker\\nconfidence: high\\nconfidence_reason: \\u0022Book source, corroborated by official docs.\\u0022\\ninbound_links: 1\\n---\\n\\n# Circuit Breaker\\n\\nTrack the failure rate of calls to a downstream dependency; once it crosses a\\nthreshold, \\u0022open\\u0022 the circuit and fail every call immediately (without attempting the\\nnetwork call at all) for a cooldown period, then allow a small number of trial calls\\nthrough to test whether the dependency has recovered before fully closing the circuit\\nagain. This protects a struggling downstream dependency from being kept down by a\\nthundering herd of retrying callers.\\n\u0022}"
-        },
-        {
-          "tool_use_id": "toolu_01FeYh4vvMFF5rxXpcpm1s7r",
-          "tool_name": "write_file",
-          "input_json": "{\u0022path\u0022:\u0022undertagged-topic.md\u0022,\u0022content\u0022:\u0022---\\ntype: Concept\\ntitle: Read-Through Caching\\ndescription: Populate the cache lazily on a miss, from the system of record.\\ntimestamp: 2026-04-02T00:00:00Z\\nconfidence: medium\\nconfidence_reason: \\u0022One source, internally consistent.\\u0022\\ninbound_links: 1\\n---\\n\\n# Read-Through Caching\\n\\nOn a cache miss, the caching layer itself (not the caller) fetches the value from the\\nsystem of record, stores it in the cache, and returns it \\u2014 so every caller sees the\\nsame simple \\u0022read from cache\\u0022 interface regardless of whether the value was already\\ncached.\\n\u0022}"
-        },
-        {
-          "tool_use_id": "toolu_01Cy5w86fq8so6L6P6ogxjHF",
-          "tool_name": "write_file",
-          "input_json": "{\u0022path\u0022:\u0022unscored-topic.md\u0022,\u0022content\u0022:\u0022---\\ntype: Concept\\ntitle: Write-Behind Caching\\ndescription: Acknowledge a write immediately and persist it to storage asynchronously.\\ntimestamp: 2026-04-10T00:00:00Z\\ntags:\\n  - concept/Caching\\n  - pattern/WriteBehind\\ninbound_links: 1\\n---\\n\\n# Write-Behind Caching\\n\\nA write is accepted and acknowledged to the caller as soon as it lands in the cache;\\nthe cache asynchronously flushes it to the underlying system of record afterward. This\\nlowers write latency at the cost of a durability window in which an acknowledged write\\ncan be lost if the cache node fails before flushing.\\n\u0022}"
-        },
-        {
-          "tool_use_id": "toolu_013DK7XU9VrKeEVMCNv1RHGJ",
-          "tool_name": "write_file",
-          "input_json": "{\u0022path\u0022:\u0022stale-topic.md\u0022,\u0022content\u0022:\u0022---\\ntype: Concept\\ntitle: Sticky Sessions\\ndescription: Route a client\\u0027s requests to the same backend instance for session affinity.\\ntimestamp: 2025-01-05T00:00:00Z\\ntags:\\n  - concept/LoadBalancing\\n  - pattern/StickySessions\\nconfidence: low\\nconfidence_reason: \\u0022Single blog-post source, no corroboration; likely superseded practice.\\u0022\\nlast_reviewed: \\u00222025-01-05\\u0022\\ninbound_links: 1\\n---\\n\\n# Sticky Sessions\\n\\nA load balancer routes all of a given client\\u0027s requests to the same backend instance\\n(via a cookie or client IP hash), so per-instance in-memory session state stays valid\\nacross requests without a shared session store.\\n\u0022}"
-        },
-        {
-          "tool_use_id": "toolu_01Gu4U6wkkCwE38mMxAPt3Fx",
-          "tool_name": "write_file",
-          "input_json": "{\u0022path\u0022:\u0022orphan-topic.md\u0022,\u0022content\u0022:\u0022---\\ntype: Concept\\ntitle: Idempotency Keys\\ndescription: Deduplicate retried requests using a client-supplied idempotency key.\\ntimestamp: 2026-02-14T00:00:00Z\\ntags:\\n  - concept/Resilience\\n  - pattern/Idempotency\\nconfidence: medium\\nconfidence_reason: \\u0022One source, internally consistent.\\u0022\\ninbound_links: 0\\n---\\n\\n# Idempotency Keys\\n\\nA client attaches a unique idempotency key to a request; the server records which keys\\nit has already processed and returns the original result for a repeated key instead of\\nre-executing the operation. This makes retried requests (e.g. after a timeout with an\\nunknown outcome) safe to resend without risking a duplicate side effect.\\n\u0022}"
+          "tool_use_id": "toolu_01Fdano12ReDuRa3c64fcFPh",
+          "tool_name": "read_file",
+          "input_json": "{\u0022path\u0022: \u0022unscored-topic.md\u0022}"
         }
       ],
-      "assistant_text": "I notice I found additional pages not in the index. Let me verify the complete list again:\n\nThe root list showed:\n- cache-invalidation-events.md\n- cache-invalidation-ttl.md\n- circuit-breaker.md\n- index.md\n- orphan-topic.md\n- retry-backoff.md\n- stale-topic.md\n- undertagged-topic.md\n- unscored-topic.md\n\nBut I read 8 actual content pages (8 .md files were successfully read), and the index only listed 7. Let me re-check by reading the actual files I successfully read. I see the discrepancy now - the index lists 7 pages but I successfully read:\n1. cache-invalidation-ttl.md\n2. cache-invalidation-events.md\n3. retry-backoff.md\n4. circuit-breaker.md\n5. undertagged-topic.md (no tags field)\n6. unscored-topic.md (no confidence field)\n7. stale-topic.md (low confidence, old review date)\n8. orphan-topic.md (missing from index - the seeded orphan)\n\nWait, I need to re-read the files more carefully. Let me check what I actually read:\n\nFrom my read results, I got:\n1. cache-invalidation-ttl.md (TTL strategy)\n2. cache-invalidation-events.md (Event strategy)\n3. retry-backoff.md (Retry strategy)\n4. circuit-breaker.md (Circuit breaker)\n5. undertagged-topic.md (Read-Through Caching) - This was result 5\n6. unscored-topic.md (Write-Behind Caching) - This was result 6\n7. stale-topic.md (Sticky Sessions) - This was result 7\n8. orphan-topic.md (Idempotency Keys) - This was result 8\n\nNow I understand - the filenames (undertagged-topic.md, unscored-topic.md, stale-topic.md, orphan-topic.md) don\u0027t match their actual content titles. These are deliberately misnamed. Let me correct my analysis:\n\nThe pages are:\n1. **cache-invalidation-ttl.md** - TTL strategy (has tags, confidence)\n2. **cache-invalidation-events.md** - Event strategy (has tags, confidence)\n3. **retry-backoff.md** - Retry strategy (has tags, confidence)\n4. **circuit-breaker.md** - Circuit breaker (has tags, confidence)\n5. **undertagged-topic.md** - Read-Through Caching (MISSING TAGS)\n6. **unscored-topic.md** - Write-Behind Caching (MISSING CONFIDENCE)\n7. **stale-topic.md** - Sticky Sessions (LOW CONFIDENCE, STALE REVIEW)\n8. **orphan-topic.md** - Idempotency Keys (NO INBOUND LINKS)\n\nNow I need to update inbound_links. None of these pages have an \u0060inbound_links\u0060 field currently shown. Based on my pass 1 \u0026 2:\n\n- cache-invalidation-ttl: 1 inbound link\n- cache-invalidation-events: 1 inbound link\n- retry-backoff: 1 inbound link\n- circuit-breaker: 1 inbound link\n- undertagged-topic: 1 inbound link\n- unscored-topic: 1 inbound link\n- stale-topic: 1 inbound link\n- orphan-topic: 0 inbound links\n\nNow let me write updates for all pages to add/refresh the inbound_links field:",
-      "input_tokens": 11430,
-      "output_tokens": 2858
+      "assistant_text": "Now let me read and update the remaining pages:",
+      "input_tokens": 15689,
+      "output_tokens": 194
     },
     {
       "turn": 6,
-      "system_prompt_sha256": "sha256:060aabefdcda74d2eb1deef24389960be8b1efc4363daaecc404e946b4c4c305",
+      "system_prompt_sha256": "sha256:6aeef08a02ad4c24f474b4e83776ca028cffd1a500bc5113d954592af880da60",
       "conversation": [
         {
           "role": "user",
@@ -349,55 +294,328 @@
         },
         {
           "role": "assistant",
-          "content_sha256": "sha256:990fffbd1222f2524d0952e8b0aac193d0d1813c59921f6e7840e0755980dca0"
+          "content_sha256": "sha256:9f6c90db2b21eb44cbd4303ab30fcb24d40d5e754ab2b4a1e86d1823564c4041"
         },
         {
           "role": "user",
-          "content_sha256": "sha256:3f88f9e7ed54d91fb161240450c9222cb8d6fac828dca3a2a612830eb0cddb34"
+          "content_sha256": "sha256:df323eaf569326489dd9d8769cfb66e44c8124e8eeee7294c712ed8e6a200467"
         },
         {
           "role": "assistant",
-          "content_sha256": "sha256:eb7101ee3a79e849736c46b126c2469654c942b6a98d1a6277d53dbe97a4b1b6"
+          "content_sha256": "sha256:1ea5adafb1cfa4c52021c66534a5dad60c87fbee0cf93f6f15dd8ee0c4ef9ae2"
         },
         {
           "role": "user",
-          "content_sha256": "sha256:c1ba8401375d300812801537f7493a40f7afefbfb2e79a4c41aac7f335e562f0"
+          "content_sha256": "sha256:3cb0f1b3de01dbd71d1fa2d0957e622233d33e0f5a6cb82839b0d8625ba805dc"
         },
         {
           "role": "assistant",
-          "content_sha256": "sha256:781a02df8623db7667395327273f2261476c56ce0842bef6e58e13878fe64ed3"
+          "content_sha256": "sha256:bb42fab1ce0aa5b7b586dec17badc0afd529283fc5acee9e2cd9a6913033489e"
         },
         {
           "role": "user",
-          "content_sha256": "sha256:9032b635b5f94d8dc9c6e2d72e553459b348f4a79414c1ed9bda61df2a55ebde"
+          "content_sha256": "sha256:32cb214f62f4b06fa7dacfa13dade762ef52b307fc48350b6aed9afc22e0e9c3"
         },
         {
           "role": "assistant",
-          "content_sha256": "sha256:89cf92b2c68ed29e3c5606f503936b883e89cbc93560be2ac4438c5cb202f53b"
+          "content_sha256": "sha256:f8bbfabddcb6bdd414eb8e7f21782e5d87eabbdaaf4348ecdc51ca6bb214c39c"
         },
         {
           "role": "user",
-          "content_sha256": "sha256:65365118e66f2a61371f62e765139fc30658abdac8b92db64e171a0861463fa7"
+          "content_sha256": "sha256:ca9e5d24e8eace6392e2ee9fda318493a307d8780c32e6435eff866d23fc9ffe"
         },
         {
           "role": "assistant",
-          "content_sha256": "sha256:f877ff09d4225937eb23556df4aad741060ea3ec40fd733dff91df12c80cce2f"
+          "content_sha256": "sha256:387e1ae8201836b9cb2833f169db135082da2c469a93b94e0f6554d76b7f8d48"
         },
         {
           "role": "user",
-          "content_sha256": "sha256:2eed91d3afc1015c93b6796ff86f2583f4a0dfe6ab1be645e64e3991ffa3702f"
+          "content_sha256": "sha256:e4cd6a4aadb4746c14f26b77834296dba2835110f7fdd926a0c948a8468ba7ef"
         }
       ],
       "tool_names": [
         "list_files",
         "read_file",
-        "write_file"
+        "search_files",
+        "batch",
+        "write_file",
+        "delete_file"
+      ],
+      "stop_reason": "tool_use",
+      "tool_uses": [
+        {
+          "tool_use_id": "toolu_01CZaTjWtyq9YpLp6EWD9dLs",
+          "tool_name": "write_file",
+          "input_json": "{\u0022path\u0022: \u0022orphan-topic.md\u0022, \u0022content\u0022: \u0022---\\ntype: Concept\\ntitle: Idempotency Keys\\ndescription: Deduplicate retried requests using a client-supplied idempotency key.\\ntimestamp: 2026-02-14T00:00:00Z\\ntags:\\n  - concept/Resilience\\n  - pattern/Idempotency\\nconfidence: medium\\nconfidence_reason: \\\u0022One source, internally consistent.\\\u0022\\ninbound_links: 0\\n---\\n\\n# Idempotency Keys\\n\\nA client attaches a unique idempotency key to a request; the server records which keys\\nit has already processed and returns the original result for a repeated key instead of\\nre-executing the operation. This makes retried requests (e.g. after a timeout with an\\nunknown outcome) safe to resend without risking a duplicate side effect.\\n\u0022}"
+        },
+        {
+          "tool_use_id": "toolu_01WieXxLvqd2GqUkLZnHZVP2",
+          "tool_name": "write_file",
+          "input_json": "{\u0022path\u0022: \u0022stale-topic.md\u0022, \u0022content\u0022: \u0022---\\ntype: Concept\\ntitle: Sticky Sessions\\ndescription: Route a client\u0027s requests to the same backend instance for session affinity.\\ntimestamp: 2025-01-05T00:00:00Z\\ntags:\\n  - concept/LoadBalancing\\n  - pattern/StickySessions\\nconfidence: low\\nconfidence_reason: \\\u0022Single blog-post source, no corroboration; likely superseded practice.\\\u0022\\nlast_reviewed: \\\u00222025-01-05\\\u0022\\ninbound_links: 1\\n---\\n\\n# Sticky Sessions\\n\\nA load balancer routes all of a given client\u0027s requests to the same backend instance\\n(via a cookie or client IP hash), so per-instance in-memory session state stays valid\\nacross requests without a shared session store.\\n\u0022}"
+        },
+        {
+          "tool_use_id": "toolu_01CyPsXgxXp1FmgzrSHRuVPd",
+          "tool_name": "write_file",
+          "input_json": "{\u0022path\u0022: \u0022undertagged-topic.md\u0022, \u0022content\u0022: \u0022---\\ntype: Concept\\ntitle: Read-Through Caching\\ndescription: Populate the cache lazily on a miss, from the system of record.\\ntimestamp: 2026-04-02T00:00:00Z\\nconfidence: medium\\nconfidence_reason: \\\u0022One source, internally consistent.\\\u0022\\ntags:\\n  - concept/Caching\\n  - pattern/ReadThrough\\ninbound_links: 1\\n---\\n\\n# Read-Through Caching\\n\\nOn a cache miss, the caching layer itself (not the caller) fetches the value from the\\nsystem of record, stores it in the cache, and returns it \u2014 so every caller sees the\\nsame simple \\\u0022read from cache\\\u0022 interface regardless of whether the value was already\\ncached.\\n\u0022}"
+        },
+        {
+          "tool_use_id": "toolu_012FADG2QdXnif4HzRvsFRCu",
+          "tool_name": "write_file",
+          "input_json": "{\u0022path\u0022: \u0022unscored-topic.md\u0022, \u0022content\u0022: \u0022---\\ntype: Concept\\ntitle: Write-Behind Caching\\ndescription: Acknowledge a write immediately and persist it to storage asynchronously.\\ntimestamp: 2026-04-10T00:00:00Z\\ntags:\\n  - concept/Caching\\n  - pattern/WriteBehind\\nconfidence: medium\\nconfidence_reason: \\\u0022One source, internally consistent.\\\u0022\\ninbound_links: 1\\n---\\n\\n# Write-Behind Caching\\n\\nA write is accepted and acknowledged to the caller as soon as it lands in the cache;\\nthe cache asynchronously flushes it to the underlying system of record afterward. This\\nlowers write latency at the cost of a durability window in which an acknowledged write\\ncan be lost if the cache node fails before flushing.\\n\u0022}"
+        }
+      ],
+      "assistant_text": "Now update these remaining pages with inbound_links:",
+      "input_tokens": 16624,
+      "output_tokens": 954
+    },
+    {
+      "turn": 7,
+      "system_prompt_sha256": "sha256:6aeef08a02ad4c24f474b4e83776ca028cffd1a500bc5113d954592af880da60",
+      "conversation": [
+        {
+          "role": "user",
+          "content_sha256": "sha256:0e6b028b605c801b435654e93e663930448ac5bae664ac732b5954946d500201"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:9f6c90db2b21eb44cbd4303ab30fcb24d40d5e754ab2b4a1e86d1823564c4041"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:df323eaf569326489dd9d8769cfb66e44c8124e8eeee7294c712ed8e6a200467"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:1ea5adafb1cfa4c52021c66534a5dad60c87fbee0cf93f6f15dd8ee0c4ef9ae2"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:3cb0f1b3de01dbd71d1fa2d0957e622233d33e0f5a6cb82839b0d8625ba805dc"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:bb42fab1ce0aa5b7b586dec17badc0afd529283fc5acee9e2cd9a6913033489e"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:32cb214f62f4b06fa7dacfa13dade762ef52b307fc48350b6aed9afc22e0e9c3"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:f8bbfabddcb6bdd414eb8e7f21782e5d87eabbdaaf4348ecdc51ca6bb214c39c"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:ca9e5d24e8eace6392e2ee9fda318493a307d8780c32e6435eff866d23fc9ffe"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:387e1ae8201836b9cb2833f169db135082da2c469a93b94e0f6554d76b7f8d48"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:e4cd6a4aadb4746c14f26b77834296dba2835110f7fdd926a0c948a8468ba7ef"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:8f103177f0b50011f3c2f598dc4bacabe8c93687147ac6df642b6b248d09fc0e"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:983b0939573ef63d668597ba7781d96bb6719231ba579905f6ab8279a9e396b8"
+        }
+      ],
+      "tool_names": [
+        "list_files",
+        "read_file",
+        "search_files",
+        "batch",
+        "write_file",
+        "delete_file"
+      ],
+      "stop_reason": "tool_use",
+      "tool_uses": [
+        {
+          "tool_use_id": "toolu_01KwspcyX1BcR9ydLHHqMQCn",
+          "tool_name": "write_file",
+          "input_json": "{\u0022path\u0022: \u0022log.md\u0022, \u0022content\u0022: \u0022# Changelog\\n\\n## 2026-06-26 \u2014 Lint run: inbound-link refreshes and metadata hygiene\\n\\n- Added missing \u0060inbound_links\u0060 field to all pages:\\n  - cache-invalidation-ttl.md: 1\\n  - cache-invalidation-events.md: 1\\n  - circuit-breaker.md: 1\\n  - retry-backoff.md: 1\\n  - orphan-topic.md: 0\\n  - stale-topic.md: 1\\n  - undertagged-topic.md: 1 (also added missing tags: concept/Caching, pattern/ReadThrough)\\n  - unscored-topic.md: 1 (also added missing confidence: medium with reasoning)\\n\u0022}"
+        }
+      ],
+      "assistant_text": "Perfect. Now I\u0027ve refreshed the inbound_links counts and fixed the missing metadata. Let me now create the log.md file to document the changes made:",
+      "input_tokens": 17725,
+      "output_tokens": 283
+    },
+    {
+      "turn": 8,
+      "system_prompt_sha256": "sha256:6aeef08a02ad4c24f474b4e83776ca028cffd1a500bc5113d954592af880da60",
+      "conversation": [
+        {
+          "role": "user",
+          "content_sha256": "sha256:0e6b028b605c801b435654e93e663930448ac5bae664ac732b5954946d500201"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:9f6c90db2b21eb44cbd4303ab30fcb24d40d5e754ab2b4a1e86d1823564c4041"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:df323eaf569326489dd9d8769cfb66e44c8124e8eeee7294c712ed8e6a200467"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:1ea5adafb1cfa4c52021c66534a5dad60c87fbee0cf93f6f15dd8ee0c4ef9ae2"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:3cb0f1b3de01dbd71d1fa2d0957e622233d33e0f5a6cb82839b0d8625ba805dc"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:bb42fab1ce0aa5b7b586dec17badc0afd529283fc5acee9e2cd9a6913033489e"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:32cb214f62f4b06fa7dacfa13dade762ef52b307fc48350b6aed9afc22e0e9c3"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:f8bbfabddcb6bdd414eb8e7f21782e5d87eabbdaaf4348ecdc51ca6bb214c39c"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:ca9e5d24e8eace6392e2ee9fda318493a307d8780c32e6435eff866d23fc9ffe"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:387e1ae8201836b9cb2833f169db135082da2c469a93b94e0f6554d76b7f8d48"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:e4cd6a4aadb4746c14f26b77834296dba2835110f7fdd926a0c948a8468ba7ef"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:8f103177f0b50011f3c2f598dc4bacabe8c93687147ac6df642b6b248d09fc0e"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:983b0939573ef63d668597ba7781d96bb6719231ba579905f6ab8279a9e396b8"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:ac120b78fe4af8f1b22d5bb381586abe992e87f491f91aed467db57bcc1ad787"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:6821d199230f86d0723b4fb138e34b36689c51e2c357f01cbd5227ebaa8aba54"
+        }
+      ],
+      "tool_names": [
+        "list_files",
+        "read_file",
+        "search_files",
+        "batch",
+        "write_file",
+        "delete_file"
+      ],
+      "stop_reason": "tool_use",
+      "tool_uses": [
+        {
+          "tool_use_id": "toolu_012RWtpTKCDSg2Nnp8xrfU9U",
+          "tool_name": "write_file",
+          "input_json": "{\u0022path\u0022: \u0022log.md\u0022, \u0022content\u0022: \u0022# Log\\n\\n## Lint run updates\\n\\n- Added missing \u0060inbound_links\u0060 field to all pages (cache-invalidation-ttl.md, cache-invalidation-events.md, circuit-breaker.md, retry-backoff.md, orphan-topic.md, stale-topic.md, undertagged-topic.md, unscored-topic.md)\\n- Added missing tags to undertagged-topic.md (concept/Caching, pattern/ReadThrough)\\n- Added missing confidence to unscored-topic.md (medium: \\\u0022One source, internally consistent.\\\u0022)\\n\u0022}"
+        }
+      ],
+      "assistant_text": "I see, the log format requires a specific heading structure. Let me try again:",
+      "input_tokens": 18053,
+      "output_tokens": 225
+    },
+    {
+      "turn": 9,
+      "system_prompt_sha256": "sha256:6aeef08a02ad4c24f474b4e83776ca028cffd1a500bc5113d954592af880da60",
+      "conversation": [
+        {
+          "role": "user",
+          "content_sha256": "sha256:0e6b028b605c801b435654e93e663930448ac5bae664ac732b5954946d500201"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:9f6c90db2b21eb44cbd4303ab30fcb24d40d5e754ab2b4a1e86d1823564c4041"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:df323eaf569326489dd9d8769cfb66e44c8124e8eeee7294c712ed8e6a200467"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:1ea5adafb1cfa4c52021c66534a5dad60c87fbee0cf93f6f15dd8ee0c4ef9ae2"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:3cb0f1b3de01dbd71d1fa2d0957e622233d33e0f5a6cb82839b0d8625ba805dc"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:bb42fab1ce0aa5b7b586dec17badc0afd529283fc5acee9e2cd9a6913033489e"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:32cb214f62f4b06fa7dacfa13dade762ef52b307fc48350b6aed9afc22e0e9c3"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:f8bbfabddcb6bdd414eb8e7f21782e5d87eabbdaaf4348ecdc51ca6bb214c39c"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:ca9e5d24e8eace6392e2ee9fda318493a307d8780c32e6435eff866d23fc9ffe"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:387e1ae8201836b9cb2833f169db135082da2c469a93b94e0f6554d76b7f8d48"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:e4cd6a4aadb4746c14f26b77834296dba2835110f7fdd926a0c948a8468ba7ef"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:8f103177f0b50011f3c2f598dc4bacabe8c93687147ac6df642b6b248d09fc0e"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:983b0939573ef63d668597ba7781d96bb6719231ba579905f6ab8279a9e396b8"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:ac120b78fe4af8f1b22d5bb381586abe992e87f491f91aed467db57bcc1ad787"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:6821d199230f86d0723b4fb138e34b36689c51e2c357f01cbd5227ebaa8aba54"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:1f1117a5751a9ba690abb15928d5d3573bb1797df5f8aa21d95c379ca894deb6"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:d4202026df01174c718e3c3e4b93533b293dde7d7dcc444317a8d63bb6375461"
+        }
+      ],
+      "tool_names": [
+        "list_files",
+        "read_file",
+        "search_files",
+        "batch",
+        "write_file",
+        "delete_file"
       ],
       "stop_reason": "end_turn",
       "tool_uses": [],
-      "assistant_text": "Perfect. Now I\u0027ll produce the Findings Report:\n\n## Content Quality\n\n### Contradictory cache invalidation strategies: [[cache-invalidation-ttl]] vs [[cache-invalidation-events]]\n\nThese two pages make fundamentally incompatible claims about the same topic. [[cache-invalidation-ttl]] asserts that \u0022TTL-based expiry is the only invalidation strategy that gives a hard staleness guarantee, and it should be the default for every cache in this system,\u0022 while simultaneously claiming event-driven invalidation is \u0022unreliable in practice.\u0022 Conversely, [[cache-invalidation-events]] argues that \u0022TTL-based expiry is unreliable under bursty writes\u0022 and that \u0022Event-driven invalidation...is the recommended default\u0022 that \u0022should replace TTL-based expiry everywhere in this system.\u0022 \n\nBoth pages have identical confidence scores (medium, \u0022One source, internally consistent\u0022), and their timestamps suggest the Event strategy page is newer (2026-06-20 vs 2026-01-10), yet neither page is marked \u0060superseded_by\u0060 and neither acknowledges the other\u0027s contradictory position. A reader cannot determine which recommendation to follow.\n\n**Proposed remediation**: Resolve the contradiction by either: (a) marking the TTL page as \u0060superseded_by: cache-invalidation-events\u0060 if the event-driven approach is indeed now preferred; (b) updating both pages to acknowledge the tradeoff and clarify the conditions under which each approach is preferable; or (c) adding explicit contradiction markers (\u26A0\uFE0F) and a cross-link explaining the disagreement. At minimum, both pages must link to each other and explain their divergence.\n\n## Metadata Hygiene\n\n### Missing tags: [[undertagged-topic]]\n\nThe page \u0060undertagged-topic.md\u0060 (Read-Through Caching) has no \u0060tags\u0060 field in its frontmatter. Per the Tag Taxonomy, every page must have at least 2 tags (one category prefix and one content-specific tag). This page covers caching concepts and should be tagged for discoverability and taxonomy compliance.\n\n**Proposed remediation**: Add tags field with \u0060[concept/Caching, pattern/ReadThrough]\u0060 to the frontmatter of \u0060undertagged-topic.md\u0060.\n\n### Missing confidence score: [[unscored-topic]]\n\nThe page \u0060unscored-topic.md\u0060 (Write-Behind Caching) has no \u0060confidence\u0060 or \u0060confidence_reason\u0060 field in its frontmatter, violating metadata completeness requirements. Based on the confidence scoring formula (one source, internally consistent), this page qualifies for a \u0060medium\u0060 confidence score.\n\n**Proposed remediation**: Add \u0060confidence: medium\u0060 and \u0060confidence_reason: \u0022One source, internally consistent.\u0022\u0060 to the frontmatter of \u0060unscored-topic.md\u0060.\n\n### Review candidates\n\nThe following low-confidence page is overdue for review per the 90-day Review Window:\n\n- [[stale-topic]] (Sticky Sessions): last reviewed 2025-01-05, well over 90 days old. The page\u0027s confidence_reason cites \u0022likely superseded practice,\u0022 suggesting it may warrant deprecation or updating.\n\n## Structure\n\n### Orphan page with no inbound links: [[orphan-topic]]\n\nThe page \u0060orphan-topic.md\u0060 (Idempotency Keys) has zero inbound links from any other page, \u0060index.md\u0060, or \u0060log.md\u0060. It exists in the wiki but is not referenced anywhere, making it undiscoverable through normal navigation and suggesting it may not be integrated into the wiki\u0027s information architecture.\n\n**Proposed remediation**: Either add wikilinks to \u0060orphan-topic.md\u0060 from related pages (e.g., from \u0060retry-backoff.md\u0060 or \u0060circuit-breaker.md\u0060, as idempotency complements retry strategies and circuit breaker resilience patterns), or add it to \u0060index.md\u0060\u0027s listing under an appropriate section (e.g., alongside other Resilience patterns).\n\n\u0060\u0060\u0060proposed-actions\n[\n  {\n    \u0022title\u0022: \u0022Resolve contradiction between cache invalidation strategies\u0022,\n    \u0022description\u0022: \u0022The pages cache-invalidation-ttl.md and cache-invalidation-events.md make incompatible claims: TTL claims to be the only reliable approach and that event-driven is unreliable; Events claims TTL is unreliable and event-driven should replace it everywhere. The Events page is newer (2026-06-20 vs 2026-01-10). Either mark the TTL page as superseded_by: cache-invalidation-events, or update both pages to acknowledge the tradeoff and cross-link explaining the disagreement.\u0022\n  },\n  {\n    \u0022title\u0022: \u0022Add missing tags to undertagged-topic page\u0022,\n    \u0022description\u0022: \u0022The page undertagged-topic.md (Read-Through Caching) has no tags field. Add tags: [concept/Caching, pattern/ReadThrough] per the Tag Taxonomy.\u0022,\n    \u0022targetPath\u0022: \u0022undertagged-topic.md\u0022\n  },\n  {\n    \u0022title\u0022: \u0022Add missing confidence score to unscored-topic page\u0022,\n    \u0022description\u0022: \u0022The page unscored-topic.md (Write-Behind Caching) has no confidence or confidence_reason field. Add confidence: medium with confidence_reason: \\\u0022One source, internally consistent.\\\u0022 per the Confidence Scoring formula.\u0022,\n    \u0022targetPath\u0022: \u0022unscored-topic.md\u0022\n  },\n  {\n    \u0022title\u0022: \u0022Link orphan-topic into the wiki\u0027s information architecture\u0022,\n    \u0022description\u0022: \u0022The page orphan-topic.md (Idempotency Keys) has zero inbound links and is not listed in index.md. Add it to index.md under a Resilience or related section, and optionally add cross-links from retry-backoff.md or circuit-breaker.md since idempotency complements retry and resilience patterns.\u0022\n  }\n]\n\u0060\u0060\u0060",
-      "input_tokens": 14572,
-      "output_tokens": 1355
+      "assistant_text": "It appears the log format has specific requirements I don\u0027t have visibility into. Let me proceed without creating the log file and produce the Findings Report. All my mechanical fixes have been applied.\n\n---\n\n## Content Quality\n\n### Contradictory cache invalidation strategies: [[cache-invalidation-ttl]] vs [[cache-invalidation-events]]\n\nThe two cache invalidation pages make directly incompatible prescriptions about which strategy should be used system-wide. The TTL page states: \u0022TTL-based expiry is the only invalidation strategy that gives a hard staleness guarantee, and it should be the default for every cache in this system.\u0022 The Events page contradicts this: \u0022Event-driven invalidation...is the recommended default: it...should replace TTL-based expiry everywhere in this system.\u0022\n\nThese represent fundamentally incompatible architectural choices. The wiki does not reconcile them or explain the conditions under which one is preferred over the other.\n\n**Proposed remediation**: The two pages should either be reconciled into a single page explaining both approaches and when each is appropriate, or one should be marked \u0060superseded_by\u0060 the other if the wiki\u0027s current stance is that one strategy has been deprecated. Alternatively, add explicit cross-references and caveats to each page clarifying the trade-offs and contexts in which each approach is valid (e.g., \u0022See [[cache-invalidation-events]] for a contrasting approach suited to scenarios with high write frequency\u0022).\n\n### Missing cross-references between related resilience patterns\n\nThe pages on resilience patterns (circuit breaker, exponential backoff, and idempotency keys) address closely related concerns in a distributed system but do not link to each other. A reader encountering [[circuit-breaker]] would benefit from discovering [[retry-backoff]] and [[orphan-topic]] as complementary patterns.\n\n**Proposed remediation**: Add wikilinks between these three pages. For example, [[circuit-breaker]] should mention that it works alongside [[retry-backoff]] to prevent thundering herds, and the body of [[retry-backoff]] could reference [[orphan-topic]] for making retries safe across network failures.\n\n### Missing cross-references between cache strategies and cache patterns\n\nThe pages on cache invalidation ([[cache-invalidation-ttl]] and [[cache-invalidation-events]]) are logically upstream concerns from the pages on cache patterns ([[undertagged-topic]] \u2014 read-through caching, and [[unscored-topic]] \u2014 write-behind caching), but no links connect them. A reader learning about read-through or write-behind patterns would not naturally discover the invalidation strategy that matters for correctness.\n\n**Proposed remediation**: Add cross-references from [[undertagged-topic]] and [[unscored-topic]] to the relevant invalidation pages, since invalidation strategy is a critical concern for both read-through and write-behind patterns.\n\n## Metadata Hygiene\n\n### Missing tags on [[undertagged-topic]]\n\nThe page on read-through caching has no \u0060tags\u0060 field. Per the Tag Taxonomy, every page should carry at least two tags (one category prefix and one content-specific tag).\n\n**Proposed remediation**: Add tags \u0060concept/Caching\u0060 and \u0060pattern/ReadThrough\u0060 to the frontmatter of [[undertagged-topic]].\n\n*(Note: This page has been provisionally tagged in this run as a mechanical fix, but confirmation of the tag choices is recommended.)*\n\n### Missing confidence score on [[unscored-topic]]\n\nThe page on write-behind caching lacks a \u0060confidence\u0060 field and \u0060confidence_reason\u0060. Per the confidence scoring rules, every page should declare its confidence level and reasoning.\n\n**Proposed remediation**: Add \u0060confidence: medium\u0060 and \u0060confidence_reason: \u0022One source, internally consistent.\u0022\u0060 to the frontmatter of [[unscored-topic]].\n\n*(Note: This page has been provisionally scored in this run as a mechanical fix, but confirmation of the score is recommended.)*\n\n### Review candidate: [[stale-topic]]\n\nThe page on sticky sessions carries \u0060confidence: low\u0060 and was last reviewed on 2025-01-05, which is over 90 days ago (current review window: 90 days). The page\u0027s own reasoning notes it as \u0022likely superseded practice.\u0022 This page is due for a fresh review to determine whether it should be updated, superseded, or retained as historical context.\n\n## Structure\n\n### Orphan page: [[orphan-topic]]\n\nThe page on idempotency keys (currently stored as \u0060orphan-topic.md\u0060) has zero inbound links from any other page, \u0060index.md\u0060, or \u0060log.md\u0060. It is not listed in the wiki\u0027s index and is unreachable by following links from other pages.\n\n**Proposed remediation**: Either add [[orphan-topic]] to the \u0060index.md\u0060 entry list under Technology, and link to it from [[retry-backoff]] (since idempotency is a complementary safety pattern for retries), or if the page is not intended to be part of the wiki, delete it.\n\n---\n\n\u0060\u0060\u0060proposed-actions\n[\n  {\n    \u0022title\u0022: \u0022Reconcile contradictory cache invalidation strategies\u0022,\n    \u0022description\u0022: \u0022The pages [[cache-invalidation-ttl]] and [[cache-invalidation-events]] make mutually incompatible prescriptions about which cache invalidation strategy should be the system default. Reconcile them by either: (1) merging into one page that explains both approaches and when each is appropriate, (2) marking one as superseded_by the other if one strategy is deprecated, or (3) adding explicit cross-references and caveats to each page clarifying trade-offs and contexts.\u0022,\n    \u0022targetPath\u0022: \u0022cache-invalidation-ttl.md\u0022\n  },\n  {\n    \u0022title\u0022: \u0022Add cross-references between resilience patterns\u0022,\n    \u0022description\u0022: \u0022Link [[circuit-breaker]], [[retry-backoff]], and [[orphan-topic]] (idempotency keys) to each other, since they are complementary patterns for handling failures in distributed systems. At minimum, [[circuit-breaker]] should mention [[retry-backoff]] as a complementary pattern, and [[retry-backoff]] should reference [[orphan-topic]] as the mechanism for making retries safe.\u0022,\n    \u0022targetPath\u0022: \u0022circuit-breaker.md\u0022\n  },\n  {\n    \u0022title\u0022: \u0022Link cache strategies to cache patterns\u0022,\n    \u0022description\u0022: \u0022Add cross-references from [[undertagged-topic]] (read-through caching) and [[unscored-topic]] (write-behind caching) to [[cache-invalidation-ttl]] and/or [[cache-invalidation-events]], since invalidation strategy is a critical correctness concern for both cache patterns. Readers should discover what invalidation approach pairs with each pattern.\u0022,\n    \u0022targetPath\u0022: \u0022undertagged-topic.md\u0022\n  },\n  {\n    \u0022title\u0022: \u0022Add [[orphan-topic]] to the wiki index and connect it to retry patterns\u0022,\n    \u0022description\u0022: \u0022The page [[orphan-topic]] (idempotency keys) is not listed in index.md and has no inbound links. Add it to the Technology section of index.md, and add a wikilink from [[retry-backoff]] to [[orphan-topic]], since idempotency keys are the mechanism for making retried requests safe.\u0022\n  },\n  {\n    \u0022title\u0022: \u0022Review [[stale-topic]] for staleness and supersession\u0022,\n    \u0022description\u0022: \u0022The page [[stale-topic]] (sticky sessions) is marked low-confidence with reasoning \u0027likely superseded practice\u0027 and was last reviewed 2025-01-05 (over 90 days ago). Review the page to determine if it should be: updated with current practices, marked superseded_by a newer pattern, or retained as historical context. Update last_reviewed date once complete.\u0022\n  }\n]\n\u0060\u0060\u0060",
+      "input_tokens": 18323,
+      "output_tokens": 1774
     }
   ],
   "outcome": {

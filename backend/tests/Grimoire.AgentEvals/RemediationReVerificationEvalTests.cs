@@ -60,6 +60,16 @@ public class RemediationReVerificationEvalTests
     public Task FR018_NoLongerApplicableProposal_AgentReportsNotApplicable_ReplayAtThreshold()
         => AssertScenarioAsync(RemediationReVerificationScenarioDefinitions.NoLongerApplicable);
 
+    /// <summary>
+    /// SC-013 (026-guarded-tool-surface T067): an authorized body-edit remediation produces
+    /// a page change that addresses the proposal. This is the assurance that replaced
+    /// ADR-016's structural frontmatter-only guarantee once ADR-031 superseded it, so it
+    /// gates in the standard PR pipeline like the pair above.
+    /// </summary>
+    [Fact]
+    public Task SC013_AuthorizedBodyEdit_ReplaysAtThreshold()
+        => AssertScenarioAsync(RemediationReVerificationScenarioDefinitions.BodyEditApplied);
+
     private static async Task AssertScenarioAsync(RemediationReVerificationScenarioDefinition scenario)
     {
         var paths = EvalPaths.Discover();
