@@ -25,9 +25,12 @@ public sealed class AnthropicModelClient : IModelClient
     /// costs another turn against the turn cap. On the non-streaming path, which no agent
     /// call site actually uses (<see cref="AgentLoop"/> always streams), a truncated
     /// <c>write_file</c> would still be a syntactically valid tool call, because that path
-    /// serializes an already-parsed object; on the streaming path every call site does use,
-    /// the truncated accumulated text is syntactically invalid JSON by construction, and is
-    /// dropped rather than replayed (#173).
+    /// serializes an already-parsed object. On the streaming path every call site does use,
+    /// truncation can leave a block whose accumulated text is invalid JSON — but does not
+    /// have to: a cut landing exactly after a value's closing brace leaves valid JSON that
+    /// is still incomplete, which is why completeness there also requires the block's own
+    /// <c>content_block_stop</c> to have arrived. Either way the block is dropped rather
+    /// than replayed (#173).
     /// <para>
     /// The value it replaces was the literal <c>8096</c>, which is not a round number in
     /// any base and reads as a typo for this one. It is deliberately left at the same
