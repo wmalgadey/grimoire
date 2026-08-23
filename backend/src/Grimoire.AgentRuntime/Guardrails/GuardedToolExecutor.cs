@@ -326,8 +326,6 @@ public sealed class GuardedToolExecutor
         return new ToolExecutionResult(false, ExtractLineRange(content, range.HasOffset ? range.Offset : 1, range.HasLimit ? range.Limit : null));
     }
 
-    private readonly record struct ReadRangeRequest(bool HasOffset, int Offset, bool HasLimit, int Limit, bool FrontmatterOnly);
-
     /// <summary>
     /// Copilot review (PR #177): offset/limit are documented as 1-based/positive-count
     /// (data-model.md's ReadRequest, "1-based first line" / "maximum number of lines").
@@ -336,8 +334,17 @@ public sealed class GuardedToolExecutor
     /// "malformed input is a denial, not a reinterpretation" stance search_files already
     /// takes for an oversized pattern. Split out of <see cref="ExecuteReadFileAsync"/> to
     /// keep that method's own cyclomatic complexity under the CI gate.
+    /// <paramref name="request"/> is a plain value tuple rather than a named record type
+    /// deliberately: introducing a standalone type declaration here previously confused
+    /// the CI complexity tool's lightweight C# parser into misattributing an unrelated,
+    /// unchanged method (<see cref="ExecuteWriteFileAsync"/>) to a different pseudo-context
+    /// name between the base branch and this one, which made the complexity gate's
+    /// base/head function matching see it as a brand new function and fail spuriously.
     /// </summary>
-    private static bool TryParseReadRangeRequest(string inputJson, out ReadRangeRequest request, out string? error)
+    private static bool TryParseReadRangeRequest(
+        string inputJson,
+        out (bool HasOffset, int Offset, bool HasLimit, int Limit, bool FrontmatterOnly) request,
+        out string? error)
     {
         request = default;
 
@@ -358,7 +365,7 @@ public sealed class GuardedToolExecutor
         var frontmatterOnly = TryGetBoolProperty(inputJson, "frontmatter_only", out var frontmatterOnlyValue) && frontmatterOnlyValue;
 
         error = null;
-        request = new ReadRangeRequest(hasOffset, offset, hasLimit, limit, frontmatterOnly);
+        request = (hasOffset, offset, hasLimit, limit, frontmatterOnly);
         return true;
     }
 
