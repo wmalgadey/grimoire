@@ -1,0 +1,120 @@
+{
+  "schema_version": 1,
+  "sample": 3,
+  "task_id": "capture-remediation-body-edit-applied-03-1c5b2a52172a46caa3bed9d516bfcdcc",
+  "model": "claude-haiku-4-5",
+  "turns": [
+    {
+      "turn": 1,
+      "system_prompt_sha256": "sha256:6aeef08a02ad4c24f474b4e83776ca028cffd1a500bc5113d954592af880da60",
+      "conversation": [
+        {
+          "role": "user",
+          "content_sha256": "sha256:08fbe25f49334f5aea7a2f962c0a87ca93e30ad536bba6f28e870fce6cc4a118"
+        }
+      ],
+      "tool_names": [
+        "list_files",
+        "read_file",
+        "search_files",
+        "batch",
+        "write_file",
+        "delete_file"
+      ],
+      "stop_reason": "tool_use",
+      "tool_uses": [
+        {
+          "tool_use_id": "toolu_01TzM65D65FgZezQmBQDMM8T",
+          "tool_name": "read_file",
+          "input_json": "{\u0022path\u0022: \u0022cache-ttl.md\u0022}"
+        }
+      ],
+      "assistant_text": "I\u0027ll re-verify this remediation action by reading the current content of the cache-ttl.md page.",
+      "input_tokens": 9500,
+      "output_tokens": 83
+    },
+    {
+      "turn": 2,
+      "system_prompt_sha256": "sha256:6aeef08a02ad4c24f474b4e83776ca028cffd1a500bc5113d954592af880da60",
+      "conversation": [
+        {
+          "role": "user",
+          "content_sha256": "sha256:08fbe25f49334f5aea7a2f962c0a87ca93e30ad536bba6f28e870fce6cc4a118"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:a09512f7e8c7edf683a277184821c0346f993da2b2f52858924bff815b8461fa"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:af58379fdbb22387bcf193fe0d913fbab899ff6743a2661cbbbd54fc9270e62a"
+        }
+      ],
+      "tool_names": [
+        "list_files",
+        "read_file",
+        "search_files",
+        "batch",
+        "write_file",
+        "delete_file"
+      ],
+      "stop_reason": "tool_use",
+      "tool_uses": [
+        {
+          "tool_use_id": "toolu_011Lu7i6KQhxqaXynJkEePfh",
+          "tool_name": "write_file",
+          "input_json": "{\u0022path\u0022: \u0022cache-ttl.md\u0022, \u0022content\u0022: \u0022---\\ntype: Concept\\ntitle: Cache TTL Defaults\\ndescription: The default time-to-live applied to cache entries when none is set explicitly.\\ntimestamp: 2026-05-01T00:00:00Z\\ntags:\\n  - concept/Caching\\n  - tech/dotnet\\nconfidence: medium\\nconfidence_reason: \\\u0022Fixture data, not a real source.\\\u0022\\ninbound_links: 1\\n---\\n\\n# Cache TTL Defaults\\n\\nWhen a cache entry is written without an explicit expiry, the runtime applies a default\\ntime-to-live of 300 seconds. Callers that need an entry to survive longer must set the\\nexpiry themselves at write time.\\n\\n## Choosing a value\\n\\nThe default suits read-heavy workloads whose upstream data changes slowly. Workloads that\\ntolerate staleness poorly should set a shorter expiry explicitly rather than relying on\\nit. Cache entries written through the batch import path are exempt and never expire.\\n\u0022}"
+        }
+      ],
+      "assistant_text": "**Step 1: Re-verify against current content**\n\nThe problem described in the proposal is still present and applicable. The page body currently states: \u0022the runtime applies a default time-to-live of 30 seconds.\u0022 This matches exactly what the proposal describes as the incorrect value. The proposal specifies that the correct default is 300 seconds, and I should change that single statement.\n\n**Step 2: Apply the fix**\n\nI will now update the page with the correct value, changing only the stated default from 30 seconds to 300 seconds in the body.",
+      "input_tokens": 9814,
+      "output_tokens": 417
+    },
+    {
+      "turn": 3,
+      "system_prompt_sha256": "sha256:6aeef08a02ad4c24f474b4e83776ca028cffd1a500bc5113d954592af880da60",
+      "conversation": [
+        {
+          "role": "user",
+          "content_sha256": "sha256:08fbe25f49334f5aea7a2f962c0a87ca93e30ad536bba6f28e870fce6cc4a118"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:a09512f7e8c7edf683a277184821c0346f993da2b2f52858924bff815b8461fa"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:af58379fdbb22387bcf193fe0d913fbab899ff6743a2661cbbbd54fc9270e62a"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:d2bc042afdfe0717f675bbd64119a0be92b6c48bb71b607008b56a097379f361"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:8e42e572426f7a5c9271314e8515ae49f4162de13cf972c176a611a7f761c560"
+        }
+      ],
+      "tool_names": [
+        "list_files",
+        "read_file",
+        "search_files",
+        "batch",
+        "write_file",
+        "delete_file"
+      ],
+      "stop_reason": "end_turn",
+      "tool_uses": [],
+      "assistant_text": "The fix has been applied successfully. The incorrect default value of 30 seconds has been corrected to 300 seconds in the page body, exactly as the proposal specified. No other content was changed.\n\n\u0060\u0060\u0060remediation-outcome\n{\u0022outcome\u0022: \u0022applied\u0022, \u0022reason\u0022: null}\n\u0060\u0060\u0060",
+      "input_tokens": 10251,
+      "output_tokens": 65
+    }
+  ],
+  "outcome": {
+    "status": "completed",
+    "checks": {
+      "outcome_matches_fixture": true,
+      "reason_present_when_required": true
+    }
+  }
+}

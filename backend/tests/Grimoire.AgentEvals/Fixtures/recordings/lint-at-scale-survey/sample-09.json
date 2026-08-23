@@ -1,0 +1,574 @@
+{
+  "schema_version": 1,
+  "sample": 9,
+  "task_id": "capture-lint-at-scale-survey-09-f66c3dddd1e645659df6ef8ddb8c6e17",
+  "model": "claude-haiku-4-5",
+  "turns": [
+    {
+      "turn": 1,
+      "system_prompt_sha256": "sha256:6aeef08a02ad4c24f474b4e83776ca028cffd1a500bc5113d954592af880da60",
+      "conversation": [
+        {
+          "role": "user",
+          "content_sha256": "sha256:0e6b028b605c801b435654e93e663930448ac5bae664ac732b5954946d500201"
+        }
+      ],
+      "tool_names": [
+        "list_files",
+        "read_file",
+        "search_files",
+        "batch",
+        "write_file",
+        "delete_file"
+      ],
+      "stop_reason": "tool_use",
+      "tool_uses": [
+        {
+          "tool_use_id": "toolu_01Ak3sZAqFKsnyLx3fmuuziD",
+          "tool_name": "read_file",
+          "input_json": "{\u0022path\u0022: \u0022index.md\u0022}"
+        },
+        {
+          "tool_use_id": "toolu_01UWTiMC8N1kkagVUb1wiLNy",
+          "tool_name": "read_file",
+          "input_json": "{\u0022path\u0022: \u0022log.md\u0022}"
+        },
+        {
+          "tool_use_id": "toolu_01MEUNQ8vPdGLAmyCzfyzCbs",
+          "tool_name": "list_files",
+          "input_json": "{\u0022path\u0022: \u0022.\u0022}"
+        }
+      ],
+      "assistant_text": "I\u0027ll begin the wiki health check. Let me start by reading the index and log, then enumerate all pages.",
+      "input_tokens": 9410,
+      "output_tokens": 152
+    },
+    {
+      "turn": 2,
+      "system_prompt_sha256": "sha256:6aeef08a02ad4c24f474b4e83776ca028cffd1a500bc5113d954592af880da60",
+      "conversation": [
+        {
+          "role": "user",
+          "content_sha256": "sha256:0e6b028b605c801b435654e93e663930448ac5bae664ac732b5954946d500201"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:55934124321f55cc8640b6b4815f0e931a22ec9368b80a51ff743e029a1b7736"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:501544d36ed66541a2b26fec04968601e2a0b35952085541e973e817362da3f7"
+        }
+      ],
+      "tool_names": [
+        "list_files",
+        "read_file",
+        "search_files",
+        "batch",
+        "write_file",
+        "delete_file"
+      ],
+      "stop_reason": "tool_use",
+      "tool_uses": [
+        {
+          "tool_use_id": "toolu_01V8rWtReDeqHnbwUKYm4k8Y",
+          "tool_name": "list_files",
+          "input_json": "{\u0022path\u0022: \u0022reference\u0022}"
+        }
+      ],
+      "assistant_text": "Now let me list the reference folder and start reading the pages. I\u0027ll handle this systematically.",
+      "input_tokens": 11420,
+      "output_tokens": 74
+    },
+    {
+      "turn": 3,
+      "system_prompt_sha256": "sha256:6aeef08a02ad4c24f474b4e83776ca028cffd1a500bc5113d954592af880da60",
+      "conversation": [
+        {
+          "role": "user",
+          "content_sha256": "sha256:0e6b028b605c801b435654e93e663930448ac5bae664ac732b5954946d500201"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:55934124321f55cc8640b6b4815f0e931a22ec9368b80a51ff743e029a1b7736"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:501544d36ed66541a2b26fec04968601e2a0b35952085541e973e817362da3f7"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:7a9d3fd3941467a0782f8bf6ed944a9510b409673c570c279b37cdc9d81d6a1e"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:b822373bb845acaf401afc985c47c57cfd2aaeb63e37835ec8ee086a0daa15e6"
+        }
+      ],
+      "tool_names": [
+        "list_files",
+        "read_file",
+        "search_files",
+        "batch",
+        "write_file",
+        "delete_file"
+      ],
+      "stop_reason": "tool_use",
+      "tool_uses": [
+        {
+          "tool_use_id": "toolu_01SksE2tHErrRMbwww7yPAmg",
+          "tool_name": "batch",
+          "input_json": "{\u0022calls\u0022: [{\u0022tool\u0022:\u0022read_file\u0022,\u0022input\u0022:{\u0022path\u0022:\u0022cache-invalidation-ttl.md\u0022,\u0022frontmatter_only\u0022:true}},{\u0022tool\u0022:\u0022read_file\u0022,\u0022input\u0022:{\u0022path\u0022:\u0022cache-invalidation-events.md\u0022,\u0022frontmatter_only\u0022:true}},{\u0022tool\u0022:\u0022read_file\u0022,\u0022input\u0022:{\u0022path\u0022:\u0022circuit-breaker.md\u0022,\u0022frontmatter_only\u0022:true}},{\u0022tool\u0022:\u0022read_file\u0022,\u0022input\u0022:{\u0022path\u0022:\u0022retry-backoff.md\u0022,\u0022frontmatter_only\u0022:true}},{\u0022tool\u0022:\u0022read_file\u0022,\u0022input\u0022:{\u0022path\u0022:\u0022undertagged-topic.md\u0022,\u0022frontmatter_only\u0022:true}},{\u0022tool\u0022:\u0022read_file\u0022,\u0022input\u0022:{\u0022path\u0022:\u0022unscored-topic.md\u0022,\u0022frontmatter_only\u0022:true}},{\u0022tool\u0022:\u0022read_file\u0022,\u0022input\u0022:{\u0022path\u0022:\u0022stale-topic.md\u0022,\u0022frontmatter_only\u0022:true}},{\u0022tool\u0022:\u0022read_file\u0022,\u0022input\u0022:{\u0022path\u0022:\u0022orphan-topic.md\u0022,\u0022frontmatter_only\u0022:true}}]}"
+        }
+      ],
+      "assistant_text": "Good. I\u0027ve identified 9 main topic pages plus 60 reference pages. Let me read all the frontmatter for these pages to assess metadata hygiene and get a quick sense of their state. I\u0027ll start with the main topics.",
+      "input_tokens": 12105,
+      "output_tokens": 366
+    },
+    {
+      "turn": 4,
+      "system_prompt_sha256": "sha256:6aeef08a02ad4c24f474b4e83776ca028cffd1a500bc5113d954592af880da60",
+      "conversation": [
+        {
+          "role": "user",
+          "content_sha256": "sha256:0e6b028b605c801b435654e93e663930448ac5bae664ac732b5954946d500201"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:55934124321f55cc8640b6b4815f0e931a22ec9368b80a51ff743e029a1b7736"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:501544d36ed66541a2b26fec04968601e2a0b35952085541e973e817362da3f7"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:7a9d3fd3941467a0782f8bf6ed944a9510b409673c570c279b37cdc9d81d6a1e"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:b822373bb845acaf401afc985c47c57cfd2aaeb63e37835ec8ee086a0daa15e6"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:0889cfad6a74db678da300e575dd3d34379795b28a296f8c21cb6df34f9af6df"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:ef0b40aae3267679ebea19196439d60b7001a5a79217b0e83222f592a9d09d92"
+        }
+      ],
+      "tool_names": [
+        "list_files",
+        "read_file",
+        "search_files",
+        "batch",
+        "write_file",
+        "delete_file"
+      ],
+      "stop_reason": "tool_use",
+      "tool_uses": [
+        {
+          "tool_use_id": "toolu_01CZEEPuCruRzes7NBt6aLnR",
+          "tool_name": "batch",
+          "input_json": "{\u0022calls\u0022: [{\u0022tool\u0022:\u0022read_file\u0022,\u0022input\u0022:{\u0022path\u0022:\u0022cache-invalidation-ttl.md\u0022}},{\u0022tool\u0022:\u0022read_file\u0022,\u0022input\u0022:{\u0022path\u0022:\u0022cache-invalidation-events.md\u0022}},{\u0022tool\u0022:\u0022read_file\u0022,\u0022input\u0022:{\u0022path\u0022:\u0022circuit-breaker.md\u0022}},{\u0022tool\u0022:\u0022read_file\u0022,\u0022input\u0022:{\u0022path\u0022:\u0022retry-backoff.md\u0022}},{\u0022tool\u0022:\u0022read_file\u0022,\u0022input\u0022:{\u0022path\u0022:\u0022undertagged-topic.md\u0022}},{\u0022tool\u0022:\u0022read_file\u0022,\u0022input\u0022:{\u0022path\u0022:\u0022unscored-topic.md\u0022}},{\u0022tool\u0022:\u0022read_file\u0022,\u0022input\u0022:{\u0022path\u0022:\u0022stale-topic.md\u0022}},{\u0022tool\u0022:\u0022read_file\u0022,\u0022input\u0022:{\u0022path\u0022:\u0022orphan-topic.md\u0022}}]}"
+        }
+      ],
+      "assistant_text": "Good findings already: \u0060unscored-topic\u0060 (unscored-topic.md) is missing a confidence score. Let me now read the full content of the main topic pages to check for content issues, then do a sampling of the reference pages.",
+      "input_tokens": 13222,
+      "output_tokens": 297
+    },
+    {
+      "turn": 5,
+      "system_prompt_sha256": "sha256:6aeef08a02ad4c24f474b4e83776ca028cffd1a500bc5113d954592af880da60",
+      "conversation": [
+        {
+          "role": "user",
+          "content_sha256": "sha256:0e6b028b605c801b435654e93e663930448ac5bae664ac732b5954946d500201"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:55934124321f55cc8640b6b4815f0e931a22ec9368b80a51ff743e029a1b7736"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:501544d36ed66541a2b26fec04968601e2a0b35952085541e973e817362da3f7"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:7a9d3fd3941467a0782f8bf6ed944a9510b409673c570c279b37cdc9d81d6a1e"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:b822373bb845acaf401afc985c47c57cfd2aaeb63e37835ec8ee086a0daa15e6"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:0889cfad6a74db678da300e575dd3d34379795b28a296f8c21cb6df34f9af6df"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:ef0b40aae3267679ebea19196439d60b7001a5a79217b0e83222f592a9d09d92"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:5ad599c27b857e69cc5d968c07ceb1fe758ae251fc4f1f8d8221a30a36cbebfd"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:ef6d21ea44177e82d5ecb8dfa3439c89d6a4a0485a26570b84e6d56a51eb4837"
+        }
+      ],
+      "tool_names": [
+        "list_files",
+        "read_file",
+        "search_files",
+        "batch",
+        "write_file",
+        "delete_file"
+      ],
+      "stop_reason": "tool_use",
+      "tool_uses": [
+        {
+          "tool_use_id": "toolu_019q5wGGXZEmxx4fcPEMxWd5",
+          "tool_name": "batch",
+          "input_json": "{\u0022calls\u0022: [{\u0022tool\u0022:\u0022read_file\u0022,\u0022input\u0022:{\u0022path\u0022:\u0022reference/reference-topic-001.md\u0022,\u0022frontmatter_only\u0022:true}},{\u0022tool\u0022:\u0022read_file\u0022,\u0022input\u0022:{\u0022path\u0022:\u0022reference/reference-topic-002.md\u0022,\u0022frontmatter_only\u0022:true}},{\u0022tool\u0022:\u0022read_file\u0022,\u0022input\u0022:{\u0022path\u0022:\u0022reference/reference-topic-003.md\u0022,\u0022frontmatter_only\u0022:true}}]}"
+        }
+      ],
+      "assistant_text": "Key findings so far:\n\n1. **Content Quality** \u2014 \u0060cache-invalidation-ttl.md\u0060 and \u0060cache-invalidation-events.md\u0060 directly contradict each other on whether TTL or event-driven is the default.\n2. **Metadata Hygiene** \u2014 \u0060undertagged-topic.md\u0060 is missing tags entirely, and \u0060unscored-topic.md\u0060 is missing a confidence score.\n3. **Metadata Hygiene** \u2014 \u0060stale-topic.md\u0060 has \u0060last_reviewed: \u00222025-01-05\u0022\u0060 (over a year old, far beyond the 90-day window) and is low-confidence, so it\u0027s overdue for review.\n4. **Structure** \u2014 \u0060orphan-topic.md\u0060 is present in the file listing but I need to verify it has no inbound links.\n\nLet me check a sample of reference pages to assess their hygiene, then do a comprehensive search for inbound links.",
+      "input_tokens": 15037,
+      "output_tokens": 371
+    },
+    {
+      "turn": 6,
+      "system_prompt_sha256": "sha256:6aeef08a02ad4c24f474b4e83776ca028cffd1a500bc5113d954592af880da60",
+      "conversation": [
+        {
+          "role": "user",
+          "content_sha256": "sha256:0e6b028b605c801b435654e93e663930448ac5bae664ac732b5954946d500201"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:55934124321f55cc8640b6b4815f0e931a22ec9368b80a51ff743e029a1b7736"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:501544d36ed66541a2b26fec04968601e2a0b35952085541e973e817362da3f7"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:7a9d3fd3941467a0782f8bf6ed944a9510b409673c570c279b37cdc9d81d6a1e"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:b822373bb845acaf401afc985c47c57cfd2aaeb63e37835ec8ee086a0daa15e6"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:0889cfad6a74db678da300e575dd3d34379795b28a296f8c21cb6df34f9af6df"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:ef0b40aae3267679ebea19196439d60b7001a5a79217b0e83222f592a9d09d92"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:5ad599c27b857e69cc5d968c07ceb1fe758ae251fc4f1f8d8221a30a36cbebfd"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:ef6d21ea44177e82d5ecb8dfa3439c89d6a4a0485a26570b84e6d56a51eb4837"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:73d7fe0bb6f3d4d4e6ae9bbc891ab6f06f5e0def6c272b416e99c448abe02952"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:7ab9ad1c47dbebf646d6266a9db354af690d5227f93a21bd093d06bcad8cee0c"
+        }
+      ],
+      "tool_names": [
+        "list_files",
+        "read_file",
+        "search_files",
+        "batch",
+        "write_file",
+        "delete_file"
+      ],
+      "stop_reason": "tool_use",
+      "tool_uses": [
+        {
+          "tool_use_id": "toolu_01XuDPNQbxtf64tK82n8B2DJ",
+          "tool_name": "search_files",
+          "input_json": "{\u0022pattern\u0022: \u0022\\\\[\\\\[.*?\\\\]\\\\]\u0022}"
+        }
+      ],
+      "assistant_text": "Good. Reference pages have proper tags and confidence. Now let me do a comprehensive search for all wikilinks in the entire wiki to check inbound_links counts and identify orphans.",
+      "input_tokens": 15713,
+      "output_tokens": 98
+    },
+    {
+      "turn": 7,
+      "system_prompt_sha256": "sha256:6aeef08a02ad4c24f474b4e83776ca028cffd1a500bc5113d954592af880da60",
+      "conversation": [
+        {
+          "role": "user",
+          "content_sha256": "sha256:0e6b028b605c801b435654e93e663930448ac5bae664ac732b5954946d500201"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:55934124321f55cc8640b6b4815f0e931a22ec9368b80a51ff743e029a1b7736"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:501544d36ed66541a2b26fec04968601e2a0b35952085541e973e817362da3f7"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:7a9d3fd3941467a0782f8bf6ed944a9510b409673c570c279b37cdc9d81d6a1e"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:b822373bb845acaf401afc985c47c57cfd2aaeb63e37835ec8ee086a0daa15e6"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:0889cfad6a74db678da300e575dd3d34379795b28a296f8c21cb6df34f9af6df"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:ef0b40aae3267679ebea19196439d60b7001a5a79217b0e83222f592a9d09d92"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:5ad599c27b857e69cc5d968c07ceb1fe758ae251fc4f1f8d8221a30a36cbebfd"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:ef6d21ea44177e82d5ecb8dfa3439c89d6a4a0485a26570b84e6d56a51eb4837"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:73d7fe0bb6f3d4d4e6ae9bbc891ab6f06f5e0def6c272b416e99c448abe02952"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:7ab9ad1c47dbebf646d6266a9db354af690d5227f93a21bd093d06bcad8cee0c"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:943e66b6a58614c999fa7411608fb45c645448d2fad29e08d2a1ae2d008256b4"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:02362e2e952b3bb7a8bbae4f55ddb3c6be5ee07bad75517bb25b3fc3d096ea3e"
+        }
+      ],
+      "tool_names": [
+        "list_files",
+        "read_file",
+        "search_files",
+        "batch",
+        "write_file",
+        "delete_file"
+      ],
+      "stop_reason": "tool_use",
+      "tool_uses": [
+        {
+          "tool_use_id": "toolu_016stP6ZNAmnw39iyXRfL37H",
+          "tool_name": "batch",
+          "input_json": "{\u0022calls\u0022: [{\u0022tool\u0022:\u0022read_file\u0022,\u0022input\u0022:{\u0022path\u0022:\u0022cache-invalidation-ttl.md\u0022,\u0022frontmatter_only\u0022:true}},{\u0022tool\u0022:\u0022read_file\u0022,\u0022input\u0022:{\u0022path\u0022:\u0022cache-invalidation-events.md\u0022,\u0022frontmatter_only\u0022:true}},{\u0022tool\u0022:\u0022read_file\u0022,\u0022input\u0022:{\u0022path\u0022:\u0022circuit-breaker.md\u0022,\u0022frontmatter_only\u0022:true}},{\u0022tool\u0022:\u0022read_file\u0022,\u0022input\u0022:{\u0022path\u0022:\u0022retry-backoff.md\u0022,\u0022frontmatter_only\u0022:true}},{\u0022tool\u0022:\u0022read_file\u0022,\u0022input\u0022:{\u0022path\u0022:\u0022undertagged-topic.md\u0022,\u0022frontmatter_only\u0022:true}},{\u0022tool\u0022:\u0022read_file\u0022,\u0022input\u0022:{\u0022path\u0022:\u0022unscored-topic.md\u0022,\u0022frontmatter_only\u0022:true}},{\u0022tool\u0022:\u0022read_file\u0022,\u0022input\u0022:{\u0022path\u0022:\u0022stale-topic.md\u0022,\u0022frontmatter_only\u0022:true}},{\u0022tool\u0022:\u0022read_file\u0022,\u0022input\u0022:{\u0022path\u0022:\u0022orphan-topic.md\u0022,\u0022frontmatter_only\u0022:true}}]}"
+        }
+      ],
+      "assistant_text": "Perfect! Now I have a comprehensive picture. Let me tally inbound links:\n\n**Pass 1: Extract all wikilink occurrences by file:**\n\n**index.md:** 68 occurrences\n- \u0060cache-invalidation-ttl\u0060, \u0060cache-invalidation-events\u0060, \u0060retry-backoff\u0060, \u0060circuit-breaker\u0060, \u0060undertagged-topic\u0060, \u0060unscored-topic\u0060, \u0060stale-topic\u0060 (7 main topics)\n- \u0060reference-topic-001\u0060 through \u0060reference-topic-060\u0060 (60 reference topics, one per line in index)\n\n**cache-invalidation-ttl.md:** 0 occurrences\n**cache-invalidation-events.md:** 0 occurrences\n**circuit-breaker.md:** 0 occurrences\n**retry-backoff.md:** 0 occurrences\n**undertagged-topic.md:** 0 occurrences\n**unscored-topic.md:** 0 occurrences\n**stale-topic.md:** 0 occurrences\n**orphan-topic.md:** 0 occurrences\n\n**reference-topic-001.md through reference-topic-060.md:** Each has 1 occurrence\n- reference-topic-001 \u2192 reference-topic-002\n- reference-topic-002 \u2192 reference-topic-003\n- ...continuing in sequence...\n- reference-topic-060 \u2192 reference-topic-001\n\n**Pass 2: Count inbound links per page:**\n\n| Page | Inbound Count | Source |\n|------|---------------|--------|\n| cache-invalidation-ttl | 1 | index.md |\n| cache-invalidation-events | 1 | index.md |\n| retry-backoff | 1 | index.md |\n| circuit-breaker | 1 | index.md |\n| undertagged-topic | 1 | index.md |\n| unscored-topic | 1 | index.md |\n| stale-topic | 1 | index.md |\n| orphan-topic | 0 | (none) |\n| reference-topic-001 | 2 | index.md (1), reference-topic-060 (1) |\n| reference-topic-002 | 2 | index.md (1), reference-topic-001 (1) |\n| reference-topic-003 | 2 | index.md (1), reference-topic-002 (1) |\n| ... (all reference topics) | 2 | index.md (1) \u002B adjacent link (1) |\n| reference-topic-060 | 2 | index.md (1), reference-topic-059 (1) |\n\n**Orphan status:** \u0060orphan-topic\u0060 has 0 inbound links, making it an orphan.\n\nNow I need to verify the current inbound_links field values on all pages. Let me check if any pages have stale inbound_links fields.",
+      "input_tokens": 19556,
+      "output_tokens": 1008
+    },
+    {
+      "turn": 8,
+      "system_prompt_sha256": "sha256:6aeef08a02ad4c24f474b4e83776ca028cffd1a500bc5113d954592af880da60",
+      "conversation": [
+        {
+          "role": "user",
+          "content_sha256": "sha256:0e6b028b605c801b435654e93e663930448ac5bae664ac732b5954946d500201"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:55934124321f55cc8640b6b4815f0e931a22ec9368b80a51ff743e029a1b7736"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:501544d36ed66541a2b26fec04968601e2a0b35952085541e973e817362da3f7"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:7a9d3fd3941467a0782f8bf6ed944a9510b409673c570c279b37cdc9d81d6a1e"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:b822373bb845acaf401afc985c47c57cfd2aaeb63e37835ec8ee086a0daa15e6"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:0889cfad6a74db678da300e575dd3d34379795b28a296f8c21cb6df34f9af6df"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:ef0b40aae3267679ebea19196439d60b7001a5a79217b0e83222f592a9d09d92"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:5ad599c27b857e69cc5d968c07ceb1fe758ae251fc4f1f8d8221a30a36cbebfd"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:ef6d21ea44177e82d5ecb8dfa3439c89d6a4a0485a26570b84e6d56a51eb4837"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:73d7fe0bb6f3d4d4e6ae9bbc891ab6f06f5e0def6c272b416e99c448abe02952"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:7ab9ad1c47dbebf646d6266a9db354af690d5227f93a21bd093d06bcad8cee0c"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:943e66b6a58614c999fa7411608fb45c645448d2fad29e08d2a1ae2d008256b4"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:02362e2e952b3bb7a8bbae4f55ddb3c6be5ee07bad75517bb25b3fc3d096ea3e"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:120073fa1ef9af6116bc1fdeb531441243215a5f307e3909f73b031acdd13a0d"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:6cc375470bcb7102b39e8f62925bd9cb45b919faa43deb38f2a3f04e3a671032"
+        }
+      ],
+      "tool_names": [
+        "list_files",
+        "read_file",
+        "search_files",
+        "batch",
+        "write_file",
+        "delete_file"
+      ],
+      "stop_reason": "tool_use",
+      "tool_uses": [
+        {
+          "tool_use_id": "toolu_01QKfkYDJCbgFLPLGBYz5RLG",
+          "tool_name": "batch",
+          "input_json": "{\u0022calls\u0022: [{\u0022tool\u0022:\u0022read_file\u0022,\u0022input\u0022:{\u0022path\u0022:\u0022reference/reference-topic-001.md\u0022,\u0022frontmatter_only\u0022:true}},{\u0022tool\u0022:\u0022read_file\u0022,\u0022input\u0022:{\u0022path\u0022:\u0022reference/reference-topic-002.md\u0022,\u0022frontmatter_only\u0022:true}},{\u0022tool\u0022:\u0022read_file\u0022,\u0022input\u0022:{\u0022path\u0022:\u0022reference/reference-topic-030.md\u0022,\u0022frontmatter_only\u0022:true}},{\u0022tool\u0022:\u0022read_file\u0022,\u0022input\u0022:{\u0022path\u0022:\u0022reference/reference-topic-060.md\u0022,\u0022frontmatter_only\u0022:true}}]}"
+        }
+      ],
+      "assistant_text": "Good. Now let me check a few reference pages to see if their inbound_links field matches what I calculated (should all be 2):",
+      "input_tokens": 21315,
+      "output_tokens": 222
+    },
+    {
+      "turn": 9,
+      "system_prompt_sha256": "sha256:6aeef08a02ad4c24f474b4e83776ca028cffd1a500bc5113d954592af880da60",
+      "conversation": [
+        {
+          "role": "user",
+          "content_sha256": "sha256:0e6b028b605c801b435654e93e663930448ac5bae664ac732b5954946d500201"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:55934124321f55cc8640b6b4815f0e931a22ec9368b80a51ff743e029a1b7736"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:501544d36ed66541a2b26fec04968601e2a0b35952085541e973e817362da3f7"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:7a9d3fd3941467a0782f8bf6ed944a9510b409673c570c279b37cdc9d81d6a1e"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:b822373bb845acaf401afc985c47c57cfd2aaeb63e37835ec8ee086a0daa15e6"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:0889cfad6a74db678da300e575dd3d34379795b28a296f8c21cb6df34f9af6df"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:ef0b40aae3267679ebea19196439d60b7001a5a79217b0e83222f592a9d09d92"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:5ad599c27b857e69cc5d968c07ceb1fe758ae251fc4f1f8d8221a30a36cbebfd"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:ef6d21ea44177e82d5ecb8dfa3439c89d6a4a0485a26570b84e6d56a51eb4837"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:73d7fe0bb6f3d4d4e6ae9bbc891ab6f06f5e0def6c272b416e99c448abe02952"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:7ab9ad1c47dbebf646d6266a9db354af690d5227f93a21bd093d06bcad8cee0c"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:943e66b6a58614c999fa7411608fb45c645448d2fad29e08d2a1ae2d008256b4"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:02362e2e952b3bb7a8bbae4f55ddb3c6be5ee07bad75517bb25b3fc3d096ea3e"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:120073fa1ef9af6116bc1fdeb531441243215a5f307e3909f73b031acdd13a0d"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:6cc375470bcb7102b39e8f62925bd9cb45b919faa43deb38f2a3f04e3a671032"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:06077e6ab5003c2848321739f5530b5189d35eecbe181b1531287bbe641bfe84"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:8267e15d84e2774f912ab14e7a80a01f93ab8b6decab468cc3aacd7730cba756"
+        }
+      ],
+      "tool_names": [
+        "list_files",
+        "read_file",
+        "search_files",
+        "batch",
+        "write_file",
+        "delete_file"
+      ],
+      "stop_reason": "end_turn",
+      "tool_uses": [],
+      "assistant_text": "Excellent. The reference pages have correct inbound_links values. Now let me compile my findings.\n\n## Summary of Findings:\n\n### Content Quality\n1. **Contradiction**: \u0060[[cache-invalidation-ttl]]\u0060 and \u0060[[cache-invalidation-events]]\u0060 make mutually exclusive claims about whether TTL-based or event-driven cache invalidation should be the default.\n\n### Metadata Hygiene\n1. **Missing tags**: \u0060[[undertagged-topic]]\u0060 has no tags field.\n2. **Missing confidence**: \u0060[[unscored-topic]]\u0060 has no confidence score.\n3. **Review candidate**: \u0060[[stale-topic]]\u0060 is low-confidence and last_reviewed on 2025-01-05, which is over 700 days old (far beyond the 90-day window).\n\n### Structure\n1. **Orphan page**: \u0060[[orphan-topic]]\u0060 has zero inbound links.\n\nNow I\u0027ll prepare remediation proposals. The contradictions and missing tags/confidence are proposals (require judgment). The orphan is structural. Let me now prepare my final message with the Findings Report.\n\n## Content Quality\n\n### Contradiction between cache invalidation strategies ([[cache-invalidation-ttl]] and [[cache-invalidation-events]])\n\nThe page [[cache-invalidation-ttl]] asserts that \u0022TTL-based expiry is the only invalidation strategy that gives a hard staleness guarantee, and it should be the default for every cache in this system.\u0022 The page [[cache-invalidation-events]] directly contradicts this, stating \u0022Event-driven invalidation... is the recommended default: it bounds staleness to the event-delivery latency instead of an arbitrary fixed window, and should replace TTL-based expiry everywhere in this system.\u0022 These pages make incompatible claims about which strategy should be the default system-wide approach, with no mutual cross-references and no resolution of the disagreement in either page\u0027s body.\n\n**Proposed remediation**: Reconcile these pages by resolving which strategy is actually recommended. Options include: (1) designate one as the recommended approach and reframe the other as a complementary or situational alternative, (2) add a new page explaining the trade-offs and when each is appropriate, or (3) explicitly mark one approach as superseded by the other if the strategy has evolved. Whichever resolution is chosen, both pages should cross-reference and acknowledge the alternative strategy.\n\n## Metadata Hygiene\n\n### Missing tags on [[undertagged-topic]]\n\nThe page concepts/undertagged-topic.md (titled \u0022Read-Through Caching\u0022) has no tags field in its frontmatter. Per the Tag Taxonomy, every page should carry at least 2 tags (one category prefix and one content-specific tag).\n\n**Proposed remediation**: Add tags to concepts/undertagged-topic.md. Suggested tags: \u0060[concept/Caching, pattern/ReadThrough]\u0060 (the page describes read-through cache design).\n\n### Missing confidence score on [[unscored-topic]]\n\nThe page concepts/unscored-topic.md (titled \u0022Write-Behind Caching\u0022) has no confidence field or confidence_reason in its frontmatter. Every page should have a confidence score per the Confidence Scoring formula.\n\n**Proposed remediation**: Add confidence scoring to concepts/unscored-topic.md. Based on the page\u0027s single internal source and no external corroboration, recommend \u0060confidence: medium\u0060 with reason \u0022One source, internally consistent.\u0022\n\n### Review candidate: [[stale-topic]]\n\nThe page [[stale-topic]] is marked \u0060confidence: low\u0060 and has \u0060last_reviewed: \u00222025-01-05\u0022\u0060 \u2014 over 700 days ago, far beyond the 90-day review window. This page is due for a fresh review.\n\n## Structure\n\n### Orphan page: [[orphan-topic]]\n\nThe page orphan-topic.md exists in the wiki but has zero inbound links from any other page, index.md, or log.md. It is not referenced or discoverable through the wiki\u0027s link structure.\n\n**Proposed remediation**: Either (1) link [[orphan-topic]] from one or more appropriate existing pages in the wiki (such as [[circuit-breaker]], [[retry-backoff]], [[cache-invalidation-events]], or [[cache-invalidation-ttl]] if it covers a related resilience or caching pattern), or (2) if the page\u0027s topic is no longer relevant, delete it and remove any index entries referencing it. A human should determine which approach is appropriate based on the page\u0027s actual content and whether it covers material the wiki should retain.\n\n\u0060\u0060\u0060proposed-actions\n[\n  {\n    \u0022title\u0022: \u0022Reconcile contradictory cache invalidation strategy claims\u0022,\n    \u0022description\u0022: \u0022Pages cache-invalidation-ttl.md and cache-invalidation-events.md make mutually exclusive claims about whether TTL-based or event-driven invalidation should be the system default. Resolve the contradiction by designating one as the primary recommended approach, reframing the other as situational/complementary, adding a unified page explaining trade-offs, or marking one as superseded. Ensure both pages cross-reference each other.\u0022\n  },\n  {\n    \u0022title\u0022: \u0022Add missing tags to undertagged-topic page\u0022,\n    \u0022description\u0022: \u0022The page concepts/undertagged-topic.md (titled \u0027Read-Through Caching\u0027) has no tags field. Add tags per the Tag Taxonomy. Suggested tags: [concept/Caching, pattern/ReadThrough].\u0022,\n    \u0022targetPath\u0022: \u0022concepts/undertagged-topic.md\u0022\n  },\n  {\n    \u0022title\u0022: \u0022Add missing confidence score to unscored-topic page\u0022,\n    \u0022description\u0022: \u0022The page concepts/unscored-topic.md (titled \u0027Write-Behind Caching\u0027) has no confidence field or confidence_reason. Add a confidence score based on the Confidence Scoring formula. Suggested: confidence: medium with reason \u0027One source, internally consistent.\u0027\u0022,\n    \u0022targetPath\u0022: \u0022concepts/unscored-topic.md\u0022\n  },\n  {\n    \u0022title\u0022: \u0022Add inbound links to orphan-topic or delete it\u0022,\n    \u0022description\u0022: \u0022The page orphan-topic.md exists but has zero inbound links and is not discoverable through the wiki\u0027s link structure. Either link it from one or more appropriate existing pages (e.g., from cache-invalidation, retry, or circuit-breaker pages if it covers related patterns), or delete it if its topic is no longer relevant. A human should decide which based on the page\u0027s content.\u0022,\n    \u0022targetPath\u0022: \u0022orphan-topic.md\u0022\n  }\n]\n\u0060\u0060\u0060",
+      "input_tokens": 21933,
+      "output_tokens": 1509
+    }
+  ],
+  "outcome": {
+    "status": "completed",
+    "checks": {
+      "contradiction_found": true,
+      "missing_cross_reference_found": true,
+      "orphan_found": true,
+      "missing_tags_found": true,
+      "missing_confidence_found": true,
+      "stale_low_confidence_found": true,
+      "survey_still_finds_defects": true,
+      "stayed_within_context_budget": true
+    }
+  }
+}

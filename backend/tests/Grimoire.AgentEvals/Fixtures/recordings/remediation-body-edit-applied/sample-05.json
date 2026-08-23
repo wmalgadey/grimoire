@@ -1,0 +1,120 @@
+{
+  "schema_version": 1,
+  "sample": 5,
+  "task_id": "capture-remediation-body-edit-applied-05-ddef127d07ab4d79834bfdf58b76e5ba",
+  "model": "claude-haiku-4-5",
+  "turns": [
+    {
+      "turn": 1,
+      "system_prompt_sha256": "sha256:6aeef08a02ad4c24f474b4e83776ca028cffd1a500bc5113d954592af880da60",
+      "conversation": [
+        {
+          "role": "user",
+          "content_sha256": "sha256:08fbe25f49334f5aea7a2f962c0a87ca93e30ad536bba6f28e870fce6cc4a118"
+        }
+      ],
+      "tool_names": [
+        "list_files",
+        "read_file",
+        "search_files",
+        "batch",
+        "write_file",
+        "delete_file"
+      ],
+      "stop_reason": "tool_use",
+      "tool_uses": [
+        {
+          "tool_use_id": "toolu_018mo9pjWFpS7ogtYHBRg5Gs",
+          "tool_name": "read_file",
+          "input_json": "{\u0022path\u0022: \u0022cache-ttl.md\u0022}"
+        }
+      ],
+      "assistant_text": "I\u0027ll start by reading the target page to verify whether the problem described in the proposal still exists.",
+      "input_tokens": 9500,
+      "output_tokens": 79
+    },
+    {
+      "turn": 2,
+      "system_prompt_sha256": "sha256:6aeef08a02ad4c24f474b4e83776ca028cffd1a500bc5113d954592af880da60",
+      "conversation": [
+        {
+          "role": "user",
+          "content_sha256": "sha256:08fbe25f49334f5aea7a2f962c0a87ca93e30ad536bba6f28e870fce6cc4a118"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:79cd829922a98b93c1ca210228604336db5f00ea95518785bd7ab9d0e9cef004"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:f942df3ac4a57a51719ef84b4619bd378ba6349afb4e9cdecbbcc6b8a0d1bd80"
+        }
+      ],
+      "tool_names": [
+        "list_files",
+        "read_file",
+        "search_files",
+        "batch",
+        "write_file",
+        "delete_file"
+      ],
+      "stop_reason": "tool_use",
+      "tool_uses": [
+        {
+          "tool_use_id": "toolu_01Q2h1xX2PunsNifc8VMEBRs",
+          "tool_name": "write_file",
+          "input_json": "{\u0022path\u0022: \u0022cache-ttl.md\u0022, \u0022content\u0022: \u0022---\\ntype: Concept\\ntitle: Cache TTL Defaults\\ndescription: The default time-to-live applied to cache entries when none is set explicitly.\\ntimestamp: 2026-05-01T00:00:00Z\\ntags:\\n  - concept/Caching\\n  - tech/dotnet\\nconfidence: medium\\nconfidence_reason: \\\u0022Fixture data, not a real source.\\\u0022\\ninbound_links: 1\\n---\\n\\n# Cache TTL Defaults\\n\\nWhen a cache entry is written without an explicit expiry, the runtime applies a default\\ntime-to-live of 300 seconds. Callers that need an entry to survive longer must set the\\nexpiry themselves at write time.\\n\\n## Choosing a value\\n\\nThe default suits read-heavy workloads whose upstream data changes slowly. Workloads that\\ntolerate staleness poorly should set a shorter expiry explicitly rather than relying on\\nit. Cache entries written through the batch import path are exempt and never expire.\\n\u0022}"
+        }
+      ],
+      "assistant_text": "I\u0027ve verified the problem. The page currently states \u0022the runtime applies a default time-to-live of 30 seconds\u0022 in the body. According to the proposal, this should be corrected to 300 seconds.\n\nNow I\u0027ll apply the fix as authorized:",
+      "input_tokens": 9810,
+      "output_tokens": 351
+    },
+    {
+      "turn": 3,
+      "system_prompt_sha256": "sha256:6aeef08a02ad4c24f474b4e83776ca028cffd1a500bc5113d954592af880da60",
+      "conversation": [
+        {
+          "role": "user",
+          "content_sha256": "sha256:08fbe25f49334f5aea7a2f962c0a87ca93e30ad536bba6f28e870fce6cc4a118"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:79cd829922a98b93c1ca210228604336db5f00ea95518785bd7ab9d0e9cef004"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:f942df3ac4a57a51719ef84b4619bd378ba6349afb4e9cdecbbcc6b8a0d1bd80"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:c319c4583173283a1fd13e1bbed7c3d5d256f3eb9f0f5cbb8e7d65cfc5e3f3ba"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:d5474cb1ae3e655748665db8889a1aabd94bde7f43c7897827e6ed5920083b4a"
+        }
+      ],
+      "tool_names": [
+        "list_files",
+        "read_file",
+        "search_files",
+        "batch",
+        "write_file",
+        "delete_file"
+      ],
+      "stop_reason": "end_turn",
+      "tool_uses": [],
+      "assistant_text": "The fix has been applied. I changed \u002230 seconds\u0022 to \u0022300 seconds\u0022 in the opening paragraph, exactly as the proposal specified. No other content was modified.\n\n\u0060\u0060\u0060remediation-outcome\n{\u0022outcome\u0022: \u0022applied\u0022, \u0022reason\u0022: null}\n\u0060\u0060\u0060",
+      "input_tokens": 10181,
+      "output_tokens": 59
+    }
+  ],
+  "outcome": {
+    "status": "completed",
+    "checks": {
+      "outcome_matches_fixture": true,
+      "reason_present_when_required": true
+    }
+  }
+}

@@ -1,0 +1,2108 @@
+{
+  "schema_version": 1,
+  "sample": 1,
+  "task_id": "capture-lint-at-scale-survey-01-3fc4feb2399d43f9a15efdafd5b773e8",
+  "model": "claude-haiku-4-5",
+  "turns": [
+    {
+      "turn": 1,
+      "system_prompt_sha256": "sha256:6aeef08a02ad4c24f474b4e83776ca028cffd1a500bc5113d954592af880da60",
+      "conversation": [
+        {
+          "role": "user",
+          "content_sha256": "sha256:0e6b028b605c801b435654e93e663930448ac5bae664ac732b5954946d500201"
+        }
+      ],
+      "tool_names": [
+        "list_files",
+        "read_file",
+        "search_files",
+        "batch",
+        "write_file",
+        "delete_file"
+      ],
+      "stop_reason": "tool_use",
+      "tool_uses": [
+        {
+          "tool_use_id": "toolu_01RLWTxg46tcobQF9n8RK4vk",
+          "tool_name": "batch",
+          "input_json": "{\u0022calls\u0022: [{\u0022tool\u0022:\u0022read_file\u0022,\u0022input\u0022:{\u0022path\u0022:\u0022index.md\u0022}},{\u0022tool\u0022:\u0022read_file\u0022,\u0022input\u0022:{\u0022path\u0022:\u0022log.md\u0022}},{\u0022tool\u0022:\u0022list_files\u0022,\u0022input\u0022:{\u0022path\u0022:\u0022.\u0022}}]}"
+        }
+      ],
+      "assistant_text": "I\u0027ll perform a complete wiki health check. Let me start by surveying the wiki structure.",
+      "input_tokens": 9410,
+      "output_tokens": 129
+    },
+    {
+      "turn": 2,
+      "system_prompt_sha256": "sha256:6aeef08a02ad4c24f474b4e83776ca028cffd1a500bc5113d954592af880da60",
+      "conversation": [
+        {
+          "role": "user",
+          "content_sha256": "sha256:0e6b028b605c801b435654e93e663930448ac5bae664ac732b5954946d500201"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:ab40bc1aab165cdddfd3f3eb3589bc75000c7671bab316a964b826d6e39fc59d"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:411b404b7548c2b2681957324237bd53af0fe6e72cd093be40693a017fb46911"
+        }
+      ],
+      "tool_names": [
+        "list_files",
+        "read_file",
+        "search_files",
+        "batch",
+        "write_file",
+        "delete_file"
+      ],
+      "stop_reason": "tool_use",
+      "tool_uses": [
+        {
+          "tool_use_id": "toolu_01D7EHmuA6VQ26F9aAZ4uqd5",
+          "tool_name": "list_files",
+          "input_json": "{\u0022path\u0022: \u0022reference\u0022}"
+        }
+      ],
+      "assistant_text": "Good, I can see the wiki structure. There are several topic pages in the root, a reference folder with many pages, and no log.md yet (which I\u0027ll need to create). Let me enumerate all files and then strategically read them.",
+      "input_tokens": 11348,
+      "output_tokens": 105
+    },
+    {
+      "turn": 3,
+      "system_prompt_sha256": "sha256:6aeef08a02ad4c24f474b4e83776ca028cffd1a500bc5113d954592af880da60",
+      "conversation": [
+        {
+          "role": "user",
+          "content_sha256": "sha256:0e6b028b605c801b435654e93e663930448ac5bae664ac732b5954946d500201"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:ab40bc1aab165cdddfd3f3eb3589bc75000c7671bab316a964b826d6e39fc59d"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:411b404b7548c2b2681957324237bd53af0fe6e72cd093be40693a017fb46911"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:164ee7b1de8da22a8be194e136f173283b5dd51ae40b59c74235296ebca8ba68"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:89f9d10277a4816dfb470876a04ceca39e48049e4a4f77f6debfe2c6fb7f5803"
+        }
+      ],
+      "tool_names": [
+        "list_files",
+        "read_file",
+        "search_files",
+        "batch",
+        "write_file",
+        "delete_file"
+      ],
+      "stop_reason": "tool_use",
+      "tool_uses": [
+        {
+          "tool_use_id": "toolu_01E4gRQCrk1mKJYSK12sD5v5",
+          "tool_name": "batch",
+          "input_json": "{\u0022calls\u0022: [{\u0022tool\u0022:\u0022read_file\u0022,\u0022input\u0022:{\u0022path\u0022:\u0022cache-invalidation-ttl.md\u0022}},{\u0022tool\u0022:\u0022read_file\u0022,\u0022input\u0022:{\u0022path\u0022:\u0022cache-invalidation-events.md\u0022}},{\u0022tool\u0022:\u0022read_file\u0022,\u0022input\u0022:{\u0022path\u0022:\u0022retry-backoff.md\u0022}},{\u0022tool\u0022:\u0022read_file\u0022,\u0022input\u0022:{\u0022path\u0022:\u0022circuit-breaker.md\u0022}},{\u0022tool\u0022:\u0022read_file\u0022,\u0022input\u0022:{\u0022path\u0022:\u0022undertagged-topic.md\u0022}},{\u0022tool\u0022:\u0022read_file\u0022,\u0022input\u0022:{\u0022path\u0022:\u0022unscored-topic.md\u0022}},{\u0022tool\u0022:\u0022read_file\u0022,\u0022input\u0022:{\u0022path\u0022:\u0022stale-topic.md\u0022}},{\u0022tool\u0022:\u0022read_file\u0022,\u0022input\u0022:{\u0022path\u0022:\u0022orphan-topic.md\u0022}}]}"
+        }
+      ],
+      "assistant_text": "Now let me read the pages mentioned in the index and the orphan page. I\u0027ll start with the main topic pages (all with seeded defects or potential issues), then sample some reference pages to understand their structure and check for links.",
+      "input_tokens": 12064,
+      "output_tokens": 293
+    },
+    {
+      "turn": 4,
+      "system_prompt_sha256": "sha256:6aeef08a02ad4c24f474b4e83776ca028cffd1a500bc5113d954592af880da60",
+      "conversation": [
+        {
+          "role": "user",
+          "content_sha256": "sha256:0e6b028b605c801b435654e93e663930448ac5bae664ac732b5954946d500201"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:ab40bc1aab165cdddfd3f3eb3589bc75000c7671bab316a964b826d6e39fc59d"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:411b404b7548c2b2681957324237bd53af0fe6e72cd093be40693a017fb46911"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:164ee7b1de8da22a8be194e136f173283b5dd51ae40b59c74235296ebca8ba68"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:89f9d10277a4816dfb470876a04ceca39e48049e4a4f77f6debfe2c6fb7f5803"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:4f2e13d0e92f1fc7fbcdcbcbcf27cdeb73ae9f58983119ad1338ec1a8cc3428a"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:ce53e48b411a9cac89bd867be1af555dad610ca40f45e9b5ca9f9701a7ad39e2"
+        }
+      ],
+      "tool_names": [
+        "list_files",
+        "read_file",
+        "search_files",
+        "batch",
+        "write_file",
+        "delete_file"
+      ],
+      "stop_reason": "tool_use",
+      "tool_uses": [
+        {
+          "tool_use_id": "toolu_01P73iwpXUnDHvbrDwJ4mPCh",
+          "tool_name": "batch",
+          "input_json": "{\u0022calls\u0022: [{\u0022tool\u0022:\u0022read_file\u0022,\u0022input\u0022:{\u0022path\u0022:\u0022reference/reference-topic-001.md\u0022,\u0022frontmatter_only\u0022:true}},{\u0022tool\u0022:\u0022read_file\u0022,\u0022input\u0022:{\u0022path\u0022:\u0022reference/reference-topic-002.md\u0022,\u0022frontmatter_only\u0022:true}},{\u0022tool\u0022:\u0022read_file\u0022,\u0022input\u0022:{\u0022path\u0022:\u0022reference/reference-topic-003.md\u0022,\u0022frontmatter_only\u0022:true}},{\u0022tool\u0022:\u0022read_file\u0022,\u0022input\u0022:{\u0022path\u0022:\u0022reference/reference-topic-004.md\u0022,\u0022frontmatter_only\u0022:true}},{\u0022tool\u0022:\u0022read_file\u0022,\u0022input\u0022:{\u0022path\u0022:\u0022reference/reference-topic-005.md\u0022,\u0022frontmatter_only\u0022:true}}]}"
+        }
+      ],
+      "assistant_text": "Excellent. I can see several issues already:\n\n1. **Cache Invalidation TTL vs Events**: These two pages directly contradict each other.\n2. **undertagged-topic (Read-Through Caching)**: Missing tags field.\n3. **unscored-topic (Write-Behind Caching)**: Missing confidence/confidence_reason.\n4. **stale-topic (Sticky Sessions)**: Low confidence, last_reviewed is 2025-01-05, which is more than 90 days old.\n5. **orphan-topic**: Listed in index.md but I need to check if it has inbound links.\n\nNow let me check a few reference pages to understand their structure and look for any cross-links:",
+      "input_tokens": 13875,
+      "output_tokens": 392
+    },
+    {
+      "turn": 5,
+      "system_prompt_sha256": "sha256:6aeef08a02ad4c24f474b4e83776ca028cffd1a500bc5113d954592af880da60",
+      "conversation": [
+        {
+          "role": "user",
+          "content_sha256": "sha256:0e6b028b605c801b435654e93e663930448ac5bae664ac732b5954946d500201"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:ab40bc1aab165cdddfd3f3eb3589bc75000c7671bab316a964b826d6e39fc59d"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:411b404b7548c2b2681957324237bd53af0fe6e72cd093be40693a017fb46911"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:164ee7b1de8da22a8be194e136f173283b5dd51ae40b59c74235296ebca8ba68"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:89f9d10277a4816dfb470876a04ceca39e48049e4a4f77f6debfe2c6fb7f5803"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:4f2e13d0e92f1fc7fbcdcbcbcf27cdeb73ae9f58983119ad1338ec1a8cc3428a"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:ce53e48b411a9cac89bd867be1af555dad610ca40f45e9b5ca9f9701a7ad39e2"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:a5eeddd1eacb69584c7d487692eef5ad572cd16c23ebfbd0df8949c6eb3bc146"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:ad8aa2db8169e68c1f45f41d46d22adc9e78efd67ab442914c11ddbbfec04641"
+        }
+      ],
+      "tool_names": [
+        "list_files",
+        "read_file",
+        "search_files",
+        "batch",
+        "write_file",
+        "delete_file"
+      ],
+      "stop_reason": "tool_use",
+      "tool_uses": [
+        {
+          "tool_use_id": "toolu_01J3aBqi3FrdQe8feCvSg9VM",
+          "tool_name": "search_files",
+          "input_json": "{\u0022pattern\u0022: \u0022\\\\[\\\\[.*?\\\\]\\\\]\u0022, \u0022max_results\u0022: 500}"
+        }
+      ],
+      "assistant_text": "Good, the reference pages look clean. Now I need to search for all wikilinks to understand the link graph and check for orphans. Let me search for wikilinks in all files:",
+      "input_tokens": 14771,
+      "output_tokens": 119
+    },
+    {
+      "turn": 6,
+      "system_prompt_sha256": "sha256:6aeef08a02ad4c24f474b4e83776ca028cffd1a500bc5113d954592af880da60",
+      "conversation": [
+        {
+          "role": "user",
+          "content_sha256": "sha256:0e6b028b605c801b435654e93e663930448ac5bae664ac732b5954946d500201"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:ab40bc1aab165cdddfd3f3eb3589bc75000c7671bab316a964b826d6e39fc59d"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:411b404b7548c2b2681957324237bd53af0fe6e72cd093be40693a017fb46911"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:164ee7b1de8da22a8be194e136f173283b5dd51ae40b59c74235296ebca8ba68"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:89f9d10277a4816dfb470876a04ceca39e48049e4a4f77f6debfe2c6fb7f5803"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:4f2e13d0e92f1fc7fbcdcbcbcf27cdeb73ae9f58983119ad1338ec1a8cc3428a"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:ce53e48b411a9cac89bd867be1af555dad610ca40f45e9b5ca9f9701a7ad39e2"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:a5eeddd1eacb69584c7d487692eef5ad572cd16c23ebfbd0df8949c6eb3bc146"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:ad8aa2db8169e68c1f45f41d46d22adc9e78efd67ab442914c11ddbbfec04641"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:be95b7f7f2c21b71e7baaafe334e757581eb5e4ceca35c5d07516f7a0701232c"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:b1cd17cf1d5a85344587d2221c370eb6bfa1ad808f1c2645f60a5e60407e3000"
+        }
+      ],
+      "tool_names": [
+        "list_files",
+        "read_file",
+        "search_files",
+        "batch",
+        "write_file",
+        "delete_file"
+      ],
+      "stop_reason": "tool_use",
+      "tool_uses": [
+        {
+          "tool_use_id": "toolu_0168QKh1vPsuewgCFb8cjkvG",
+          "tool_name": "batch",
+          "input_json": "{\u0022calls\u0022: [{\u0022tool\u0022:\u0022read_file\u0022,\u0022input\u0022:{\u0022path\u0022:\u0022reference/reference-topic-001.md\u0022}},{\u0022tool\u0022:\u0022read_file\u0022,\u0022input\u0022:{\u0022path\u0022:\u0022reference/reference-topic-060.md\u0022}}]}"
+        }
+      ],
+      "assistant_text": "Perfect! Now I can see the full link graph. Let me compile the inbound link counts:\n\n**From index.md** (links to):\n- cache-invalidation-ttl: 1\n- cache-invalidation-events: 1\n- retry-backoff: 1\n- circuit-breaker: 1\n- undertagged-topic: 1\n- unscored-topic: 1\n- stale-topic: 1\n- reference-topic-001 through reference-topic-060: 60 links total (1 each)\n\n**From page bodies**:\n- reference-topic-001 links to reference-topic-002\n- reference-topic-002 links to reference-topic-003\n- reference-topic-003 links to reference-topic-004\n- ... (chain continues)\n- reference-topic-060 links back to reference-topic-001\n\nSo the reference pages form a circular chain where each links to the next.\n\n**Inbound link counts:**\n- cache-invalidation-ttl: 1 (from index.md)\n- cache-invalidation-events: 1 (from index.md)\n- retry-backoff: 1 (from index.md)\n- circuit-breaker: 1 (from index.md)\n- undertagged-topic: 1 (from index.md)\n- unscored-topic: 1 (from index.md)\n- stale-topic: 1 (from index.md)\n- orphan-topic: 0 (not linked from anywhere!)\n- reference-topic-001: 2 (from index.md and reference-topic-060)\n- reference-topic-002: 2 (from index.md and reference-topic-001)\n- reference-topic-003 through reference-topic-059: 2 each (from index.md and previous in chain)\n- reference-topic-060: 2 (from index.md and reference-topic-059)\n\nNow let me read the reference pages to get their full content and check the inbound_links field values:",
+      "input_tokens": 18635,
+      "output_tokens": 586
+    },
+    {
+      "turn": 7,
+      "system_prompt_sha256": "sha256:6aeef08a02ad4c24f474b4e83776ca028cffd1a500bc5113d954592af880da60",
+      "conversation": [
+        {
+          "role": "user",
+          "content_sha256": "sha256:0e6b028b605c801b435654e93e663930448ac5bae664ac732b5954946d500201"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:ab40bc1aab165cdddfd3f3eb3589bc75000c7671bab316a964b826d6e39fc59d"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:411b404b7548c2b2681957324237bd53af0fe6e72cd093be40693a017fb46911"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:164ee7b1de8da22a8be194e136f173283b5dd51ae40b59c74235296ebca8ba68"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:89f9d10277a4816dfb470876a04ceca39e48049e4a4f77f6debfe2c6fb7f5803"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:4f2e13d0e92f1fc7fbcdcbcbcf27cdeb73ae9f58983119ad1338ec1a8cc3428a"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:ce53e48b411a9cac89bd867be1af555dad610ca40f45e9b5ca9f9701a7ad39e2"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:a5eeddd1eacb69584c7d487692eef5ad572cd16c23ebfbd0df8949c6eb3bc146"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:ad8aa2db8169e68c1f45f41d46d22adc9e78efd67ab442914c11ddbbfec04641"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:be95b7f7f2c21b71e7baaafe334e757581eb5e4ceca35c5d07516f7a0701232c"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:b1cd17cf1d5a85344587d2221c370eb6bfa1ad808f1c2645f60a5e60407e3000"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:cc090714016cda1ec2f209da11cf1311b4e8ba6c4a8d4e4f30cdbe4cbd5533f1"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:e4ff8e52d5e9515d0accd8d5f00437e39409a80edd27d20783fc6aaada9529fe"
+        }
+      ],
+      "tool_names": [
+        "list_files",
+        "read_file",
+        "search_files",
+        "batch",
+        "write_file",
+        "delete_file"
+      ],
+      "stop_reason": "tool_use",
+      "tool_uses": [
+        {
+          "tool_use_id": "toolu_01XD77F1VAMoFpTScQ3uYo2G",
+          "tool_name": "batch",
+          "input_json": "{\u0022calls\u0022: [{\u0022tool\u0022:\u0022read_file\u0022,\u0022input\u0022:{\u0022path\u0022:\u0022cache-invalidation-ttl.md\u0022,\u0022frontmatter_only\u0022:true}},{\u0022tool\u0022:\u0022read_file\u0022,\u0022input\u0022:{\u0022path\u0022:\u0022cache-invalidation-events.md\u0022,\u0022frontmatter_only\u0022:true}},{\u0022tool\u0022:\u0022read_file\u0022,\u0022input\u0022:{\u0022path\u0022:\u0022retry-backoff.md\u0022,\u0022frontmatter_only\u0022:true}},{\u0022tool\u0022:\u0022read_file\u0022,\u0022input\u0022:{\u0022path\u0022:\u0022circuit-breaker.md\u0022,\u0022frontmatter_only\u0022:true}},{\u0022tool\u0022:\u0022read_file\u0022,\u0022input\u0022:{\u0022path\u0022:\u0022undertagged-topic.md\u0022,\u0022frontmatter_only\u0022:true}},{\u0022tool\u0022:\u0022read_file\u0022,\u0022input\u0022:{\u0022path\u0022:\u0022unscored-topic.md\u0022,\u0022frontmatter_only\u0022:true}},{\u0022tool\u0022:\u0022read_file\u0022,\u0022input\u0022:{\u0022path\u0022:\u0022stale-topic.md\u0022,\u0022frontmatter_only\u0022:true}},{\u0022tool\u0022:\u0022read_file\u0022,\u0022input\u0022:{\u0022path\u0022:\u0022orphan-topic.md\u0022,\u0022frontmatter_only\u0022:true}}]}"
+        }
+      ],
+      "assistant_text": "Good, the inbound_links counts look correct. Now let me check the frontmatter of all main topic pages to assess metadata hygiene. Let me also verify the page frontmatter:",
+      "input_tokens": 20711,
+      "output_tokens": 355
+    },
+    {
+      "turn": 8,
+      "system_prompt_sha256": "sha256:6aeef08a02ad4c24f474b4e83776ca028cffd1a500bc5113d954592af880da60",
+      "conversation": [
+        {
+          "role": "user",
+          "content_sha256": "sha256:0e6b028b605c801b435654e93e663930448ac5bae664ac732b5954946d500201"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:ab40bc1aab165cdddfd3f3eb3589bc75000c7671bab316a964b826d6e39fc59d"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:411b404b7548c2b2681957324237bd53af0fe6e72cd093be40693a017fb46911"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:164ee7b1de8da22a8be194e136f173283b5dd51ae40b59c74235296ebca8ba68"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:89f9d10277a4816dfb470876a04ceca39e48049e4a4f77f6debfe2c6fb7f5803"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:4f2e13d0e92f1fc7fbcdcbcbcf27cdeb73ae9f58983119ad1338ec1a8cc3428a"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:ce53e48b411a9cac89bd867be1af555dad610ca40f45e9b5ca9f9701a7ad39e2"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:a5eeddd1eacb69584c7d487692eef5ad572cd16c23ebfbd0df8949c6eb3bc146"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:ad8aa2db8169e68c1f45f41d46d22adc9e78efd67ab442914c11ddbbfec04641"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:be95b7f7f2c21b71e7baaafe334e757581eb5e4ceca35c5d07516f7a0701232c"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:b1cd17cf1d5a85344587d2221c370eb6bfa1ad808f1c2645f60a5e60407e3000"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:cc090714016cda1ec2f209da11cf1311b4e8ba6c4a8d4e4f30cdbe4cbd5533f1"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:e4ff8e52d5e9515d0accd8d5f00437e39409a80edd27d20783fc6aaada9529fe"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:a982b855652c0b12aac9592d5fc8bfdfbee58542cf1e1e62ea71e0faa54b38e3"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:ea76bcab8646ba11f60dd5fea3498b960d4e0eaa02c0149b9b1beb2d01a2404a"
+        }
+      ],
+      "tool_names": [
+        "list_files",
+        "read_file",
+        "search_files",
+        "batch",
+        "write_file",
+        "delete_file"
+      ],
+      "stop_reason": "tool_use",
+      "tool_uses": [
+        {
+          "tool_use_id": "toolu_01MxSkkKji2x1wNi8mzhUmLF",
+          "tool_name": "search_files",
+          "input_json": "{\u0022pattern\u0022: \u0022inbound_links\u0022}"
+        }
+      ],
+      "assistant_text": "Now I have a clear picture. Let me check if there are any inbound_links fields on the topic pages that need updating:",
+      "input_tokens": 21817,
+      "output_tokens": 84
+    },
+    {
+      "turn": 9,
+      "system_prompt_sha256": "sha256:6aeef08a02ad4c24f474b4e83776ca028cffd1a500bc5113d954592af880da60",
+      "conversation": [
+        {
+          "role": "user",
+          "content_sha256": "sha256:0e6b028b605c801b435654e93e663930448ac5bae664ac732b5954946d500201"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:ab40bc1aab165cdddfd3f3eb3589bc75000c7671bab316a964b826d6e39fc59d"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:411b404b7548c2b2681957324237bd53af0fe6e72cd093be40693a017fb46911"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:164ee7b1de8da22a8be194e136f173283b5dd51ae40b59c74235296ebca8ba68"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:89f9d10277a4816dfb470876a04ceca39e48049e4a4f77f6debfe2c6fb7f5803"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:4f2e13d0e92f1fc7fbcdcbcbcf27cdeb73ae9f58983119ad1338ec1a8cc3428a"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:ce53e48b411a9cac89bd867be1af555dad610ca40f45e9b5ca9f9701a7ad39e2"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:a5eeddd1eacb69584c7d487692eef5ad572cd16c23ebfbd0df8949c6eb3bc146"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:ad8aa2db8169e68c1f45f41d46d22adc9e78efd67ab442914c11ddbbfec04641"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:be95b7f7f2c21b71e7baaafe334e757581eb5e4ceca35c5d07516f7a0701232c"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:b1cd17cf1d5a85344587d2221c370eb6bfa1ad808f1c2645f60a5e60407e3000"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:cc090714016cda1ec2f209da11cf1311b4e8ba6c4a8d4e4f30cdbe4cbd5533f1"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:e4ff8e52d5e9515d0accd8d5f00437e39409a80edd27d20783fc6aaada9529fe"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:a982b855652c0b12aac9592d5fc8bfdfbee58542cf1e1e62ea71e0faa54b38e3"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:ea76bcab8646ba11f60dd5fea3498b960d4e0eaa02c0149b9b1beb2d01a2404a"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:57977bc4ea0c896fba03ef183e11227800a9f357fb307d28fba792f45d96033c"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:385cc9b40b508bb61c41d5437decff59b776f221e4ae50d959b882eb2bd96628"
+        }
+      ],
+      "tool_names": [
+        "list_files",
+        "read_file",
+        "search_files",
+        "batch",
+        "write_file",
+        "delete_file"
+      ],
+      "stop_reason": "tool_use",
+      "tool_uses": [
+        {
+          "tool_use_id": "toolu_01LBaLxNtcrs1rRz6neYmm3A",
+          "tool_name": "batch",
+          "input_json": "{\u0022calls\u0022: [{\u0022tool\u0022:\u0022read_file\u0022,\u0022input\u0022:{\u0022path\u0022:\u0022cache-invalidation-ttl.md\u0022}},{\u0022tool\u0022:\u0022read_file\u0022,\u0022input\u0022:{\u0022path\u0022:\u0022cache-invalidation-events.md\u0022}},{\u0022tool\u0022:\u0022read_file\u0022,\u0022input\u0022:{\u0022path\u0022:\u0022retry-backoff.md\u0022}},{\u0022tool\u0022:\u0022read_file\u0022,\u0022input\u0022:{\u0022path\u0022:\u0022circuit-breaker.md\u0022}},{\u0022tool\u0022:\u0022read_file\u0022,\u0022input\u0022:{\u0022path\u0022:\u0022undertagged-topic.md\u0022}},{\u0022tool\u0022:\u0022read_file\u0022,\u0022input\u0022:{\u0022path\u0022:\u0022unscored-topic.md\u0022}},{\u0022tool\u0022:\u0022read_file\u0022,\u0022input\u0022:{\u0022path\u0022:\u0022stale-topic.md\u0022}},{\u0022tool\u0022:\u0022read_file\u0022,\u0022input\u0022:{\u0022path\u0022:\u0022orphan-topic.md\u0022}}]}"
+        }
+      ],
+      "assistant_text": "Perfect. The reference pages all have inbound_links: 2 which is correct. The topic pages don\u0027t have inbound_links fields at all, so I need to add them. Let me now compile my findings:\n\n## Summary of Issues Found:\n\n### Content Quality:\n1. **Cache Invalidation Contradiction**: [[cache-invalidation-ttl]] and [[cache-invalidation-events]] make directly contradictory claims about which strategy is better.\n\n### Metadata Hygiene:\n1. **[[undertagged-topic]]** (Read-Through Caching): Missing \u0060tags\u0060 field\n2. **[[unscored-topic]]** (Write-Behind Caching): Missing \u0060confidence\u0060 and \u0060confidence_reason\u0060 fields\n3. **Review Candidates**: [[stale-topic]] (Sticky Sessions) is low-confidence and last_reviewed is 2025-01-05 (\u003E90 days old)\n4. **Missing inbound_links**: Several topic pages are missing the inbound_links field entirely\n\n### Structure:\n1. **[[orphan-topic]]** (Idempotency Keys): Zero inbound links - not referenced from index.md or any other page\n\nNow let me update the pages. I\u0027ll start by adding missing inbound_links counts to the topic pages, then fix the missing metadata.\n\nLet me read each topic page in full before writing:",
+      "input_tokens": 23112,
+      "output_tokens": 553
+    },
+    {
+      "turn": 10,
+      "system_prompt_sha256": "sha256:6aeef08a02ad4c24f474b4e83776ca028cffd1a500bc5113d954592af880da60",
+      "conversation": [
+        {
+          "role": "user",
+          "content_sha256": "sha256:0e6b028b605c801b435654e93e663930448ac5bae664ac732b5954946d500201"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:ab40bc1aab165cdddfd3f3eb3589bc75000c7671bab316a964b826d6e39fc59d"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:411b404b7548c2b2681957324237bd53af0fe6e72cd093be40693a017fb46911"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:164ee7b1de8da22a8be194e136f173283b5dd51ae40b59c74235296ebca8ba68"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:89f9d10277a4816dfb470876a04ceca39e48049e4a4f77f6debfe2c6fb7f5803"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:4f2e13d0e92f1fc7fbcdcbcbcf27cdeb73ae9f58983119ad1338ec1a8cc3428a"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:ce53e48b411a9cac89bd867be1af555dad610ca40f45e9b5ca9f9701a7ad39e2"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:a5eeddd1eacb69584c7d487692eef5ad572cd16c23ebfbd0df8949c6eb3bc146"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:ad8aa2db8169e68c1f45f41d46d22adc9e78efd67ab442914c11ddbbfec04641"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:be95b7f7f2c21b71e7baaafe334e757581eb5e4ceca35c5d07516f7a0701232c"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:b1cd17cf1d5a85344587d2221c370eb6bfa1ad808f1c2645f60a5e60407e3000"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:cc090714016cda1ec2f209da11cf1311b4e8ba6c4a8d4e4f30cdbe4cbd5533f1"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:e4ff8e52d5e9515d0accd8d5f00437e39409a80edd27d20783fc6aaada9529fe"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:a982b855652c0b12aac9592d5fc8bfdfbee58542cf1e1e62ea71e0faa54b38e3"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:ea76bcab8646ba11f60dd5fea3498b960d4e0eaa02c0149b9b1beb2d01a2404a"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:57977bc4ea0c896fba03ef183e11227800a9f357fb307d28fba792f45d96033c"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:385cc9b40b508bb61c41d5437decff59b776f221e4ae50d959b882eb2bd96628"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:482aeeef6bb720a15c9f1dcabba7c7bde8f6300b2b537c940847b1a9cd91b248"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:bc22064f239ac2a97cfe5e57422f4e59f984b8910a0c6b2442e1041840b25f9a"
+        }
+      ],
+      "tool_names": [
+        "list_files",
+        "read_file",
+        "search_files",
+        "batch",
+        "write_file",
+        "delete_file"
+      ],
+      "stop_reason": "tool_use",
+      "tool_uses": [
+        {
+          "tool_use_id": "toolu_01XRb4249rGw7gCPgQtaY8uV",
+          "tool_name": "write_file",
+          "input_json": "{\u0022path\u0022: \u0022cache-invalidation-ttl.md\u0022, \u0022content\u0022: \u0022---\\ntype: Concept\\ntitle: Cache Invalidation via TTL\\ndescription: Always expire cache entries on a fixed time-to-live.\\ntimestamp: 2026-01-10T00:00:00Z\\ntags:\\n  - concept/Caching\\n  - pattern/TTL\\nconfidence: medium\\nconfidence_reason: \\\u0022One source, internally consistent.\\\u0022\\ninbound_links: 1\\n---\\n\\n# Cache Invalidation via TTL\\n\\nEvery cache entry should be assigned a fixed time-to-live (TTL) and expired purely on\\nelapsed time. Event-driven invalidation (recomputing or evicting an entry the instant\\nits source data changes) is unreliable in practice \u2014 event delivery can be dropped,\\nduplicated, or reordered, so a system that depends on it will serve stale data with no\\nbound on how stale. TTL-based expiry is the only invalidation strategy that gives a\\nhard staleness guarantee, and it should be the default for every cache in this system.\\n\u0022}"
+        }
+      ],
+      "assistant_text": "Now I\u0027ll update the pages with missing inbound_links counts. Based on my analysis:\n- cache-invalidation-ttl: 1\n- cache-invalidation-events: 1\n- retry-backoff: 1\n- circuit-breaker: 1\n- undertagged-topic: 1\n- unscored-topic: 1\n- stale-topic: 1\n- orphan-topic: 0\n\nLet me write these updates:",
+      "input_tokens": 25183,
+      "output_tokens": 411
+    },
+    {
+      "turn": 11,
+      "system_prompt_sha256": "sha256:6aeef08a02ad4c24f474b4e83776ca028cffd1a500bc5113d954592af880da60",
+      "conversation": [
+        {
+          "role": "user",
+          "content_sha256": "sha256:0e6b028b605c801b435654e93e663930448ac5bae664ac732b5954946d500201"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:ab40bc1aab165cdddfd3f3eb3589bc75000c7671bab316a964b826d6e39fc59d"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:411b404b7548c2b2681957324237bd53af0fe6e72cd093be40693a017fb46911"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:164ee7b1de8da22a8be194e136f173283b5dd51ae40b59c74235296ebca8ba68"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:89f9d10277a4816dfb470876a04ceca39e48049e4a4f77f6debfe2c6fb7f5803"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:4f2e13d0e92f1fc7fbcdcbcbcf27cdeb73ae9f58983119ad1338ec1a8cc3428a"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:ce53e48b411a9cac89bd867be1af555dad610ca40f45e9b5ca9f9701a7ad39e2"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:a5eeddd1eacb69584c7d487692eef5ad572cd16c23ebfbd0df8949c6eb3bc146"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:ad8aa2db8169e68c1f45f41d46d22adc9e78efd67ab442914c11ddbbfec04641"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:be95b7f7f2c21b71e7baaafe334e757581eb5e4ceca35c5d07516f7a0701232c"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:b1cd17cf1d5a85344587d2221c370eb6bfa1ad808f1c2645f60a5e60407e3000"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:cc090714016cda1ec2f209da11cf1311b4e8ba6c4a8d4e4f30cdbe4cbd5533f1"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:e4ff8e52d5e9515d0accd8d5f00437e39409a80edd27d20783fc6aaada9529fe"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:a982b855652c0b12aac9592d5fc8bfdfbee58542cf1e1e62ea71e0faa54b38e3"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:ea76bcab8646ba11f60dd5fea3498b960d4e0eaa02c0149b9b1beb2d01a2404a"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:57977bc4ea0c896fba03ef183e11227800a9f357fb307d28fba792f45d96033c"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:385cc9b40b508bb61c41d5437decff59b776f221e4ae50d959b882eb2bd96628"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:482aeeef6bb720a15c9f1dcabba7c7bde8f6300b2b537c940847b1a9cd91b248"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:bc22064f239ac2a97cfe5e57422f4e59f984b8910a0c6b2442e1041840b25f9a"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:fff5147d8bf30a426cdc61cd2a642ac9e8297d3bf07ff1f44bede99a3abd0491"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:8ae4bef930579ff6b3c5754805c8701b90da874fa6c29867e3fc34dd8564ad81"
+        }
+      ],
+      "tool_names": [
+        "list_files",
+        "read_file",
+        "search_files",
+        "batch",
+        "write_file",
+        "delete_file"
+      ],
+      "stop_reason": "tool_use",
+      "tool_uses": [
+        {
+          "tool_use_id": "toolu_01FbkBpHgr3gDXF1Fam5yJaV",
+          "tool_name": "write_file",
+          "input_json": "{\u0022path\u0022: \u0022cache-invalidation-events.md\u0022, \u0022content\u0022: \u0022---\\ntype: Concept\\ntitle: Event-Driven Cache Invalidation\\ndescription: Invalidate cache entries immediately when their source data changes.\\ntimestamp: 2026-06-20T00:00:00Z\\ntags:\\n  - concept/Caching\\n  - pattern/EventDriven\\nconfidence: medium\\nconfidence_reason: \\\u0022One source, internally consistent.\\\u0022\\ninbound_links: 1\\n---\\n\\n# Event-Driven Cache Invalidation\\n\\nTTL-based expiry is unreliable under bursty writes: a fixed time window means an entry\\ncan serve stale data for up to the full TTL after its source changes, and there is no\\nway to shorten that window without also discarding entries that are still fresh.\\nEvent-driven invalidation \u2014 evicting or recomputing an entry the moment a change event\\nfor its source data arrives \u2014 is the recommended default: it bounds staleness to the\\nevent-delivery latency instead of an arbitrary fixed window, and should replace\\nTTL-based expiry everywhere in this system.\\n\u0022}"
+        }
+      ],
+      "input_tokens": 25617,
+      "output_tokens": 311
+    },
+    {
+      "turn": 12,
+      "system_prompt_sha256": "sha256:6aeef08a02ad4c24f474b4e83776ca028cffd1a500bc5113d954592af880da60",
+      "conversation": [
+        {
+          "role": "user",
+          "content_sha256": "sha256:0e6b028b605c801b435654e93e663930448ac5bae664ac732b5954946d500201"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:ab40bc1aab165cdddfd3f3eb3589bc75000c7671bab316a964b826d6e39fc59d"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:411b404b7548c2b2681957324237bd53af0fe6e72cd093be40693a017fb46911"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:164ee7b1de8da22a8be194e136f173283b5dd51ae40b59c74235296ebca8ba68"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:89f9d10277a4816dfb470876a04ceca39e48049e4a4f77f6debfe2c6fb7f5803"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:4f2e13d0e92f1fc7fbcdcbcbcf27cdeb73ae9f58983119ad1338ec1a8cc3428a"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:ce53e48b411a9cac89bd867be1af555dad610ca40f45e9b5ca9f9701a7ad39e2"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:a5eeddd1eacb69584c7d487692eef5ad572cd16c23ebfbd0df8949c6eb3bc146"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:ad8aa2db8169e68c1f45f41d46d22adc9e78efd67ab442914c11ddbbfec04641"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:be95b7f7f2c21b71e7baaafe334e757581eb5e4ceca35c5d07516f7a0701232c"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:b1cd17cf1d5a85344587d2221c370eb6bfa1ad808f1c2645f60a5e60407e3000"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:cc090714016cda1ec2f209da11cf1311b4e8ba6c4a8d4e4f30cdbe4cbd5533f1"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:e4ff8e52d5e9515d0accd8d5f00437e39409a80edd27d20783fc6aaada9529fe"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:a982b855652c0b12aac9592d5fc8bfdfbee58542cf1e1e62ea71e0faa54b38e3"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:ea76bcab8646ba11f60dd5fea3498b960d4e0eaa02c0149b9b1beb2d01a2404a"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:57977bc4ea0c896fba03ef183e11227800a9f357fb307d28fba792f45d96033c"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:385cc9b40b508bb61c41d5437decff59b776f221e4ae50d959b882eb2bd96628"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:482aeeef6bb720a15c9f1dcabba7c7bde8f6300b2b537c940847b1a9cd91b248"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:bc22064f239ac2a97cfe5e57422f4e59f984b8910a0c6b2442e1041840b25f9a"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:fff5147d8bf30a426cdc61cd2a642ac9e8297d3bf07ff1f44bede99a3abd0491"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:8ae4bef930579ff6b3c5754805c8701b90da874fa6c29867e3fc34dd8564ad81"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:ffac86c6ed1c31b377856eaf8b9f361b76d06e12fe1b15710d04acfade03e3ba"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:7b5160e79d7a6ba1b1753f3ddeab1f5bca1ae9f85168c800806cc9fd2cbdbd89"
+        }
+      ],
+      "tool_names": [
+        "list_files",
+        "read_file",
+        "search_files",
+        "batch",
+        "write_file",
+        "delete_file"
+      ],
+      "stop_reason": "tool_use",
+      "tool_uses": [
+        {
+          "tool_use_id": "toolu_018YMDnXxmoaf6zcFSMNoTMt",
+          "tool_name": "write_file",
+          "input_json": "{\u0022path\u0022: \u0022retry-backoff.md\u0022, \u0022content\u0022: \u0022---\\ntype: Concept\\ntitle: Exponential Backoff for Retries\\ndescription: Retry failed requests with exponentially increasing delay and jitter.\\ntimestamp: 2026-03-01T00:00:00Z\\ntags:\\n  - concept/Resilience\\n  - pattern/Retry\\nconfidence: high\\nconfidence_reason: \\\u0022Book source, corroborated by official docs.\\\u0022\\ninbound_links: 1\\n---\\n\\n# Exponential Backoff for Retries\\n\\nWhen a request fails transiently, retry it after a delay that grows exponentially with\\neach attempt, with random jitter added to avoid synchronized retry storms across many\\nclients. This bounds the load a struggling downstream service sees from retrying\\nclients, at the cost of higher latency for the eventually-successful request.\\n\u0022}"
+        }
+      ],
+      "input_tokens": 25950,
+      "output_tokens": 255
+    },
+    {
+      "turn": 13,
+      "system_prompt_sha256": "sha256:6aeef08a02ad4c24f474b4e83776ca028cffd1a500bc5113d954592af880da60",
+      "conversation": [
+        {
+          "role": "user",
+          "content_sha256": "sha256:0e6b028b605c801b435654e93e663930448ac5bae664ac732b5954946d500201"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:ab40bc1aab165cdddfd3f3eb3589bc75000c7671bab316a964b826d6e39fc59d"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:411b404b7548c2b2681957324237bd53af0fe6e72cd093be40693a017fb46911"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:164ee7b1de8da22a8be194e136f173283b5dd51ae40b59c74235296ebca8ba68"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:89f9d10277a4816dfb470876a04ceca39e48049e4a4f77f6debfe2c6fb7f5803"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:4f2e13d0e92f1fc7fbcdcbcbcf27cdeb73ae9f58983119ad1338ec1a8cc3428a"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:ce53e48b411a9cac89bd867be1af555dad610ca40f45e9b5ca9f9701a7ad39e2"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:a5eeddd1eacb69584c7d487692eef5ad572cd16c23ebfbd0df8949c6eb3bc146"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:ad8aa2db8169e68c1f45f41d46d22adc9e78efd67ab442914c11ddbbfec04641"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:be95b7f7f2c21b71e7baaafe334e757581eb5e4ceca35c5d07516f7a0701232c"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:b1cd17cf1d5a85344587d2221c370eb6bfa1ad808f1c2645f60a5e60407e3000"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:cc090714016cda1ec2f209da11cf1311b4e8ba6c4a8d4e4f30cdbe4cbd5533f1"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:e4ff8e52d5e9515d0accd8d5f00437e39409a80edd27d20783fc6aaada9529fe"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:a982b855652c0b12aac9592d5fc8bfdfbee58542cf1e1e62ea71e0faa54b38e3"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:ea76bcab8646ba11f60dd5fea3498b960d4e0eaa02c0149b9b1beb2d01a2404a"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:57977bc4ea0c896fba03ef183e11227800a9f357fb307d28fba792f45d96033c"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:385cc9b40b508bb61c41d5437decff59b776f221e4ae50d959b882eb2bd96628"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:482aeeef6bb720a15c9f1dcabba7c7bde8f6300b2b537c940847b1a9cd91b248"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:bc22064f239ac2a97cfe5e57422f4e59f984b8910a0c6b2442e1041840b25f9a"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:fff5147d8bf30a426cdc61cd2a642ac9e8297d3bf07ff1f44bede99a3abd0491"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:8ae4bef930579ff6b3c5754805c8701b90da874fa6c29867e3fc34dd8564ad81"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:ffac86c6ed1c31b377856eaf8b9f361b76d06e12fe1b15710d04acfade03e3ba"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:7b5160e79d7a6ba1b1753f3ddeab1f5bca1ae9f85168c800806cc9fd2cbdbd89"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:825cdcf45f6e85c603fee19b48a05ed2805279e9bf660fc58774f0bf4fd46bde"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:f09be7a65bd59e90173451e53451b09f6497cd87e1805c7b23a04fb8c849398b"
+        }
+      ],
+      "tool_names": [
+        "list_files",
+        "read_file",
+        "search_files",
+        "batch",
+        "write_file",
+        "delete_file"
+      ],
+      "stop_reason": "tool_use",
+      "tool_uses": [
+        {
+          "tool_use_id": "toolu_01NHDqExjr3DyFk9iWbvKoLo",
+          "tool_name": "write_file",
+          "input_json": "{\u0022path\u0022: \u0022circuit-breaker.md\u0022, \u0022content\u0022: \u0022---\\ntype: Concept\\ntitle: Circuit Breaker\\ndescription: Fail fast against a downstream dependency that is already struggling.\\ntimestamp: 2026-03-05T00:00:00Z\\ntags:\\n  - concept/Resilience\\n  - pattern/CircuitBreaker\\nconfidence: high\\nconfidence_reason: \\\u0022Book source, corroborated by official docs.\\\u0022\\ninbound_links: 1\\n---\\n\\n# Circuit Breaker\\n\\nTrack the failure rate of calls to a downstream dependency; once it crosses a\\nthreshold, \\\u0022open\\\u0022 the circuit and fail every call immediately (without attempting the\\nnetwork call at all) for a cooldown period, then allow a small number of trial calls\\nthrough to test whether the dependency has recovered before fully closing the circuit\\nagain. This protects a struggling downstream dependency from being kept down by a\\nthundering herd of retrying callers.\\n\u0022}"
+        }
+      ],
+      "input_tokens": 26225,
+      "output_tokens": 271
+    },
+    {
+      "turn": 14,
+      "system_prompt_sha256": "sha256:6aeef08a02ad4c24f474b4e83776ca028cffd1a500bc5113d954592af880da60",
+      "conversation": [
+        {
+          "role": "user",
+          "content_sha256": "sha256:0e6b028b605c801b435654e93e663930448ac5bae664ac732b5954946d500201"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:ab40bc1aab165cdddfd3f3eb3589bc75000c7671bab316a964b826d6e39fc59d"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:411b404b7548c2b2681957324237bd53af0fe6e72cd093be40693a017fb46911"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:164ee7b1de8da22a8be194e136f173283b5dd51ae40b59c74235296ebca8ba68"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:89f9d10277a4816dfb470876a04ceca39e48049e4a4f77f6debfe2c6fb7f5803"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:4f2e13d0e92f1fc7fbcdcbcbcf27cdeb73ae9f58983119ad1338ec1a8cc3428a"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:ce53e48b411a9cac89bd867be1af555dad610ca40f45e9b5ca9f9701a7ad39e2"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:a5eeddd1eacb69584c7d487692eef5ad572cd16c23ebfbd0df8949c6eb3bc146"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:ad8aa2db8169e68c1f45f41d46d22adc9e78efd67ab442914c11ddbbfec04641"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:be95b7f7f2c21b71e7baaafe334e757581eb5e4ceca35c5d07516f7a0701232c"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:b1cd17cf1d5a85344587d2221c370eb6bfa1ad808f1c2645f60a5e60407e3000"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:cc090714016cda1ec2f209da11cf1311b4e8ba6c4a8d4e4f30cdbe4cbd5533f1"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:e4ff8e52d5e9515d0accd8d5f00437e39409a80edd27d20783fc6aaada9529fe"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:a982b855652c0b12aac9592d5fc8bfdfbee58542cf1e1e62ea71e0faa54b38e3"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:ea76bcab8646ba11f60dd5fea3498b960d4e0eaa02c0149b9b1beb2d01a2404a"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:57977bc4ea0c896fba03ef183e11227800a9f357fb307d28fba792f45d96033c"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:385cc9b40b508bb61c41d5437decff59b776f221e4ae50d959b882eb2bd96628"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:482aeeef6bb720a15c9f1dcabba7c7bde8f6300b2b537c940847b1a9cd91b248"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:bc22064f239ac2a97cfe5e57422f4e59f984b8910a0c6b2442e1041840b25f9a"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:fff5147d8bf30a426cdc61cd2a642ac9e8297d3bf07ff1f44bede99a3abd0491"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:8ae4bef930579ff6b3c5754805c8701b90da874fa6c29867e3fc34dd8564ad81"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:ffac86c6ed1c31b377856eaf8b9f361b76d06e12fe1b15710d04acfade03e3ba"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:7b5160e79d7a6ba1b1753f3ddeab1f5bca1ae9f85168c800806cc9fd2cbdbd89"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:825cdcf45f6e85c603fee19b48a05ed2805279e9bf660fc58774f0bf4fd46bde"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:f09be7a65bd59e90173451e53451b09f6497cd87e1805c7b23a04fb8c849398b"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:ddc34bc72827c8aeebff63074cf8052db9d0a82e0ca86f5fb5dbfe04da9a0c7a"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:92c5a8c791551d84bb3dfad246d0b8d0473327acb0138c9ceb7f1174970c4fc5"
+        }
+      ],
+      "tool_names": [
+        "list_files",
+        "read_file",
+        "search_files",
+        "batch",
+        "write_file",
+        "delete_file"
+      ],
+      "stop_reason": "tool_use",
+      "tool_uses": [
+        {
+          "tool_use_id": "toolu_01VtKoSN32wiHyryf9TrTFfg",
+          "tool_name": "write_file",
+          "input_json": "{\u0022path\u0022: \u0022undertagged-topic.md\u0022, \u0022content\u0022: \u0022---\\ntype: Concept\\ntitle: Read-Through Caching\\ndescription: Populate the cache lazily on a miss, from the system of record.\\ntimestamp: 2026-04-02T00:00:00Z\\nconfidence: medium\\nconfidence_reason: \\\u0022One source, internally consistent.\\\u0022\\ninbound_links: 1\\n---\\n\\n# Read-Through Caching\\n\\nOn a cache miss, the caching layer itself (not the caller) fetches the value from the\\nsystem of record, stores it in the cache, and returns it \u2014 so every caller sees the\\nsame simple \\\u0022read from cache\\\u0022 interface regardless of whether the value was already\\ncached.\\n\u0022}"
+        }
+      ],
+      "input_tokens": 26516,
+      "output_tokens": 222
+    },
+    {
+      "turn": 15,
+      "system_prompt_sha256": "sha256:6aeef08a02ad4c24f474b4e83776ca028cffd1a500bc5113d954592af880da60",
+      "conversation": [
+        {
+          "role": "user",
+          "content_sha256": "sha256:0e6b028b605c801b435654e93e663930448ac5bae664ac732b5954946d500201"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:ab40bc1aab165cdddfd3f3eb3589bc75000c7671bab316a964b826d6e39fc59d"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:411b404b7548c2b2681957324237bd53af0fe6e72cd093be40693a017fb46911"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:164ee7b1de8da22a8be194e136f173283b5dd51ae40b59c74235296ebca8ba68"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:89f9d10277a4816dfb470876a04ceca39e48049e4a4f77f6debfe2c6fb7f5803"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:4f2e13d0e92f1fc7fbcdcbcbcf27cdeb73ae9f58983119ad1338ec1a8cc3428a"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:ce53e48b411a9cac89bd867be1af555dad610ca40f45e9b5ca9f9701a7ad39e2"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:a5eeddd1eacb69584c7d487692eef5ad572cd16c23ebfbd0df8949c6eb3bc146"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:ad8aa2db8169e68c1f45f41d46d22adc9e78efd67ab442914c11ddbbfec04641"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:be95b7f7f2c21b71e7baaafe334e757581eb5e4ceca35c5d07516f7a0701232c"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:b1cd17cf1d5a85344587d2221c370eb6bfa1ad808f1c2645f60a5e60407e3000"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:cc090714016cda1ec2f209da11cf1311b4e8ba6c4a8d4e4f30cdbe4cbd5533f1"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:e4ff8e52d5e9515d0accd8d5f00437e39409a80edd27d20783fc6aaada9529fe"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:a982b855652c0b12aac9592d5fc8bfdfbee58542cf1e1e62ea71e0faa54b38e3"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:ea76bcab8646ba11f60dd5fea3498b960d4e0eaa02c0149b9b1beb2d01a2404a"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:57977bc4ea0c896fba03ef183e11227800a9f357fb307d28fba792f45d96033c"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:385cc9b40b508bb61c41d5437decff59b776f221e4ae50d959b882eb2bd96628"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:482aeeef6bb720a15c9f1dcabba7c7bde8f6300b2b537c940847b1a9cd91b248"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:bc22064f239ac2a97cfe5e57422f4e59f984b8910a0c6b2442e1041840b25f9a"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:fff5147d8bf30a426cdc61cd2a642ac9e8297d3bf07ff1f44bede99a3abd0491"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:8ae4bef930579ff6b3c5754805c8701b90da874fa6c29867e3fc34dd8564ad81"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:ffac86c6ed1c31b377856eaf8b9f361b76d06e12fe1b15710d04acfade03e3ba"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:7b5160e79d7a6ba1b1753f3ddeab1f5bca1ae9f85168c800806cc9fd2cbdbd89"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:825cdcf45f6e85c603fee19b48a05ed2805279e9bf660fc58774f0bf4fd46bde"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:f09be7a65bd59e90173451e53451b09f6497cd87e1805c7b23a04fb8c849398b"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:ddc34bc72827c8aeebff63074cf8052db9d0a82e0ca86f5fb5dbfe04da9a0c7a"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:92c5a8c791551d84bb3dfad246d0b8d0473327acb0138c9ceb7f1174970c4fc5"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:cdd62fa2eecd79ab488289007a44cace4d7de4cdcc468b0e1dd64523568ed778"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:af21c92b042153b95c42f580e52b2cb5e2e1949cf09600f25a2bcdda789c4178"
+        }
+      ],
+      "tool_names": [
+        "list_files",
+        "read_file",
+        "search_files",
+        "batch",
+        "write_file",
+        "delete_file"
+      ],
+      "stop_reason": "tool_use",
+      "tool_uses": [
+        {
+          "tool_use_id": "toolu_01CSuoaQwjaQ2Gj5x1QVvbUE",
+          "tool_name": "write_file",
+          "input_json": "{\u0022path\u0022: \u0022unscored-topic.md\u0022, \u0022content\u0022: \u0022---\\ntype: Concept\\ntitle: Write-Behind Caching\\ndescription: Acknowledge a write immediately and persist it to storage asynchronously.\\ntimestamp: 2026-04-10T00:00:00Z\\ntags:\\n  - concept/Caching\\n  - pattern/WriteBehind\\nconfidence: medium\\nconfidence_reason: \\\u0022One source, internally consistent.\\\u0022\\ninbound_links: 1\\n---\\n\\n# Write-Behind Caching\\n\\nA write is accepted and acknowledged to the caller as soon as it lands in the cache;\\nthe cache asynchronously flushes it to the underlying system of record afterward. This\\nlowers write latency at the cost of a durability window in which an acknowledged write\\ncan be lost if the cache node fails before flushing.\\n\u0022}"
+        }
+      ],
+      "input_tokens": 26759,
+      "output_tokens": 250
+    },
+    {
+      "turn": 16,
+      "system_prompt_sha256": "sha256:6aeef08a02ad4c24f474b4e83776ca028cffd1a500bc5113d954592af880da60",
+      "conversation": [
+        {
+          "role": "user",
+          "content_sha256": "sha256:0e6b028b605c801b435654e93e663930448ac5bae664ac732b5954946d500201"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:ab40bc1aab165cdddfd3f3eb3589bc75000c7671bab316a964b826d6e39fc59d"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:411b404b7548c2b2681957324237bd53af0fe6e72cd093be40693a017fb46911"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:164ee7b1de8da22a8be194e136f173283b5dd51ae40b59c74235296ebca8ba68"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:89f9d10277a4816dfb470876a04ceca39e48049e4a4f77f6debfe2c6fb7f5803"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:4f2e13d0e92f1fc7fbcdcbcbcf27cdeb73ae9f58983119ad1338ec1a8cc3428a"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:ce53e48b411a9cac89bd867be1af555dad610ca40f45e9b5ca9f9701a7ad39e2"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:a5eeddd1eacb69584c7d487692eef5ad572cd16c23ebfbd0df8949c6eb3bc146"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:ad8aa2db8169e68c1f45f41d46d22adc9e78efd67ab442914c11ddbbfec04641"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:be95b7f7f2c21b71e7baaafe334e757581eb5e4ceca35c5d07516f7a0701232c"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:b1cd17cf1d5a85344587d2221c370eb6bfa1ad808f1c2645f60a5e60407e3000"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:cc090714016cda1ec2f209da11cf1311b4e8ba6c4a8d4e4f30cdbe4cbd5533f1"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:e4ff8e52d5e9515d0accd8d5f00437e39409a80edd27d20783fc6aaada9529fe"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:a982b855652c0b12aac9592d5fc8bfdfbee58542cf1e1e62ea71e0faa54b38e3"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:ea76bcab8646ba11f60dd5fea3498b960d4e0eaa02c0149b9b1beb2d01a2404a"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:57977bc4ea0c896fba03ef183e11227800a9f357fb307d28fba792f45d96033c"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:385cc9b40b508bb61c41d5437decff59b776f221e4ae50d959b882eb2bd96628"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:482aeeef6bb720a15c9f1dcabba7c7bde8f6300b2b537c940847b1a9cd91b248"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:bc22064f239ac2a97cfe5e57422f4e59f984b8910a0c6b2442e1041840b25f9a"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:fff5147d8bf30a426cdc61cd2a642ac9e8297d3bf07ff1f44bede99a3abd0491"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:8ae4bef930579ff6b3c5754805c8701b90da874fa6c29867e3fc34dd8564ad81"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:ffac86c6ed1c31b377856eaf8b9f361b76d06e12fe1b15710d04acfade03e3ba"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:7b5160e79d7a6ba1b1753f3ddeab1f5bca1ae9f85168c800806cc9fd2cbdbd89"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:825cdcf45f6e85c603fee19b48a05ed2805279e9bf660fc58774f0bf4fd46bde"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:f09be7a65bd59e90173451e53451b09f6497cd87e1805c7b23a04fb8c849398b"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:ddc34bc72827c8aeebff63074cf8052db9d0a82e0ca86f5fb5dbfe04da9a0c7a"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:92c5a8c791551d84bb3dfad246d0b8d0473327acb0138c9ceb7f1174970c4fc5"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:cdd62fa2eecd79ab488289007a44cace4d7de4cdcc468b0e1dd64523568ed778"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:af21c92b042153b95c42f580e52b2cb5e2e1949cf09600f25a2bcdda789c4178"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:5706d64e1aecacd48ab8b409a15eb332c955547dd71a8630d94563e27e3ba6e4"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:e97fb1857e173f246fc031097e5a06212db7dd6bfe71ecf2582a0c22a9e7636d"
+        }
+      ],
+      "tool_names": [
+        "list_files",
+        "read_file",
+        "search_files",
+        "batch",
+        "write_file",
+        "delete_file"
+      ],
+      "stop_reason": "tool_use",
+      "tool_uses": [
+        {
+          "tool_use_id": "toolu_0138bAYNctoAWQ4rQx6skKi1",
+          "tool_name": "write_file",
+          "input_json": "{\u0022path\u0022: \u0022stale-topic.md\u0022, \u0022content\u0022: \u0022---\\ntype: Concept\\ntitle: Sticky Sessions\\ndescription: Route a client\u0027s requests to the same backend instance for session affinity.\\ntimestamp: 2025-01-05T00:00:00Z\\ntags:\\n  - concept/LoadBalancing\\n  - pattern/StickySessions\\nconfidence: low\\nconfidence_reason: \\\u0022Single blog-post source, no corroboration; likely superseded practice.\\\u0022\\nlast_reviewed: \\\u00222025-01-05\\\u0022\\ninbound_links: 1\\n---\\n\\n# Sticky Sessions\\n\\nA load balancer routes all of a given client\u0027s requests to the same backend instance\\n(via a cookie or client IP hash), so per-instance in-memory session state stays valid\\nacross requests without a shared session store.\\n\u0022}"
+        }
+      ],
+      "input_tokens": 27030,
+      "output_tokens": 244
+    },
+    {
+      "turn": 17,
+      "system_prompt_sha256": "sha256:6aeef08a02ad4c24f474b4e83776ca028cffd1a500bc5113d954592af880da60",
+      "conversation": [
+        {
+          "role": "user",
+          "content_sha256": "sha256:0e6b028b605c801b435654e93e663930448ac5bae664ac732b5954946d500201"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:ab40bc1aab165cdddfd3f3eb3589bc75000c7671bab316a964b826d6e39fc59d"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:411b404b7548c2b2681957324237bd53af0fe6e72cd093be40693a017fb46911"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:164ee7b1de8da22a8be194e136f173283b5dd51ae40b59c74235296ebca8ba68"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:89f9d10277a4816dfb470876a04ceca39e48049e4a4f77f6debfe2c6fb7f5803"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:4f2e13d0e92f1fc7fbcdcbcbcf27cdeb73ae9f58983119ad1338ec1a8cc3428a"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:ce53e48b411a9cac89bd867be1af555dad610ca40f45e9b5ca9f9701a7ad39e2"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:a5eeddd1eacb69584c7d487692eef5ad572cd16c23ebfbd0df8949c6eb3bc146"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:ad8aa2db8169e68c1f45f41d46d22adc9e78efd67ab442914c11ddbbfec04641"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:be95b7f7f2c21b71e7baaafe334e757581eb5e4ceca35c5d07516f7a0701232c"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:b1cd17cf1d5a85344587d2221c370eb6bfa1ad808f1c2645f60a5e60407e3000"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:cc090714016cda1ec2f209da11cf1311b4e8ba6c4a8d4e4f30cdbe4cbd5533f1"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:e4ff8e52d5e9515d0accd8d5f00437e39409a80edd27d20783fc6aaada9529fe"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:a982b855652c0b12aac9592d5fc8bfdfbee58542cf1e1e62ea71e0faa54b38e3"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:ea76bcab8646ba11f60dd5fea3498b960d4e0eaa02c0149b9b1beb2d01a2404a"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:57977bc4ea0c896fba03ef183e11227800a9f357fb307d28fba792f45d96033c"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:385cc9b40b508bb61c41d5437decff59b776f221e4ae50d959b882eb2bd96628"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:482aeeef6bb720a15c9f1dcabba7c7bde8f6300b2b537c940847b1a9cd91b248"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:bc22064f239ac2a97cfe5e57422f4e59f984b8910a0c6b2442e1041840b25f9a"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:fff5147d8bf30a426cdc61cd2a642ac9e8297d3bf07ff1f44bede99a3abd0491"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:8ae4bef930579ff6b3c5754805c8701b90da874fa6c29867e3fc34dd8564ad81"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:ffac86c6ed1c31b377856eaf8b9f361b76d06e12fe1b15710d04acfade03e3ba"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:7b5160e79d7a6ba1b1753f3ddeab1f5bca1ae9f85168c800806cc9fd2cbdbd89"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:825cdcf45f6e85c603fee19b48a05ed2805279e9bf660fc58774f0bf4fd46bde"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:f09be7a65bd59e90173451e53451b09f6497cd87e1805c7b23a04fb8c849398b"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:ddc34bc72827c8aeebff63074cf8052db9d0a82e0ca86f5fb5dbfe04da9a0c7a"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:92c5a8c791551d84bb3dfad246d0b8d0473327acb0138c9ceb7f1174970c4fc5"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:cdd62fa2eecd79ab488289007a44cace4d7de4cdcc468b0e1dd64523568ed778"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:af21c92b042153b95c42f580e52b2cb5e2e1949cf09600f25a2bcdda789c4178"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:5706d64e1aecacd48ab8b409a15eb332c955547dd71a8630d94563e27e3ba6e4"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:e97fb1857e173f246fc031097e5a06212db7dd6bfe71ecf2582a0c22a9e7636d"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:3b31d75ab3e8d42276606d4c7b546d13a49d5f6e25ee5c6b0c89cecba5c92bbd"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:2072a38eea8f4ae060c7c59620f9f72fd4fefb80ea0cd5188a97393d8a3e7efe"
+        }
+      ],
+      "tool_names": [
+        "list_files",
+        "read_file",
+        "search_files",
+        "batch",
+        "write_file",
+        "delete_file"
+      ],
+      "stop_reason": "tool_use",
+      "tool_uses": [
+        {
+          "tool_use_id": "toolu_01YLTNh1ueJFEmu6uU8Lbxc9",
+          "tool_name": "write_file",
+          "input_json": "{\u0022path\u0022: \u0022orphan-topic.md\u0022, \u0022content\u0022: \u0022---\\ntype: Concept\\ntitle: Idempotency Keys\\ndescription: Deduplicate retried requests using a client-supplied idempotency key.\\ntimestamp: 2026-02-14T00:00:00Z\\ntags:\\n  - concept/Resilience\\n  - pattern/Idempotency\\nconfidence: medium\\nconfidence_reason: \\\u0022One source, internally consistent.\\\u0022\\ninbound_links: 0\\n---\\n\\n# Idempotency Keys\\n\\nA client attaches a unique idempotency key to a request; the server records which keys\\nit has already processed and returns the original result for a repeated key instead of\\nre-executing the operation. This makes retried requests (e.g. after a timeout with an\\nunknown outcome) safe to resend without risking a duplicate side effect.\\n\u0022}"
+        }
+      ],
+      "input_tokens": 27294,
+      "output_tokens": 258
+    },
+    {
+      "turn": 18,
+      "system_prompt_sha256": "sha256:6aeef08a02ad4c24f474b4e83776ca028cffd1a500bc5113d954592af880da60",
+      "conversation": [
+        {
+          "role": "user",
+          "content_sha256": "sha256:0e6b028b605c801b435654e93e663930448ac5bae664ac732b5954946d500201"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:ab40bc1aab165cdddfd3f3eb3589bc75000c7671bab316a964b826d6e39fc59d"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:411b404b7548c2b2681957324237bd53af0fe6e72cd093be40693a017fb46911"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:164ee7b1de8da22a8be194e136f173283b5dd51ae40b59c74235296ebca8ba68"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:89f9d10277a4816dfb470876a04ceca39e48049e4a4f77f6debfe2c6fb7f5803"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:4f2e13d0e92f1fc7fbcdcbcbcf27cdeb73ae9f58983119ad1338ec1a8cc3428a"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:ce53e48b411a9cac89bd867be1af555dad610ca40f45e9b5ca9f9701a7ad39e2"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:a5eeddd1eacb69584c7d487692eef5ad572cd16c23ebfbd0df8949c6eb3bc146"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:ad8aa2db8169e68c1f45f41d46d22adc9e78efd67ab442914c11ddbbfec04641"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:be95b7f7f2c21b71e7baaafe334e757581eb5e4ceca35c5d07516f7a0701232c"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:b1cd17cf1d5a85344587d2221c370eb6bfa1ad808f1c2645f60a5e60407e3000"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:cc090714016cda1ec2f209da11cf1311b4e8ba6c4a8d4e4f30cdbe4cbd5533f1"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:e4ff8e52d5e9515d0accd8d5f00437e39409a80edd27d20783fc6aaada9529fe"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:a982b855652c0b12aac9592d5fc8bfdfbee58542cf1e1e62ea71e0faa54b38e3"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:ea76bcab8646ba11f60dd5fea3498b960d4e0eaa02c0149b9b1beb2d01a2404a"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:57977bc4ea0c896fba03ef183e11227800a9f357fb307d28fba792f45d96033c"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:385cc9b40b508bb61c41d5437decff59b776f221e4ae50d959b882eb2bd96628"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:482aeeef6bb720a15c9f1dcabba7c7bde8f6300b2b537c940847b1a9cd91b248"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:bc22064f239ac2a97cfe5e57422f4e59f984b8910a0c6b2442e1041840b25f9a"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:fff5147d8bf30a426cdc61cd2a642ac9e8297d3bf07ff1f44bede99a3abd0491"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:8ae4bef930579ff6b3c5754805c8701b90da874fa6c29867e3fc34dd8564ad81"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:ffac86c6ed1c31b377856eaf8b9f361b76d06e12fe1b15710d04acfade03e3ba"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:7b5160e79d7a6ba1b1753f3ddeab1f5bca1ae9f85168c800806cc9fd2cbdbd89"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:825cdcf45f6e85c603fee19b48a05ed2805279e9bf660fc58774f0bf4fd46bde"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:f09be7a65bd59e90173451e53451b09f6497cd87e1805c7b23a04fb8c849398b"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:ddc34bc72827c8aeebff63074cf8052db9d0a82e0ca86f5fb5dbfe04da9a0c7a"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:92c5a8c791551d84bb3dfad246d0b8d0473327acb0138c9ceb7f1174970c4fc5"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:cdd62fa2eecd79ab488289007a44cace4d7de4cdcc468b0e1dd64523568ed778"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:af21c92b042153b95c42f580e52b2cb5e2e1949cf09600f25a2bcdda789c4178"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:5706d64e1aecacd48ab8b409a15eb332c955547dd71a8630d94563e27e3ba6e4"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:e97fb1857e173f246fc031097e5a06212db7dd6bfe71ecf2582a0c22a9e7636d"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:3b31d75ab3e8d42276606d4c7b546d13a49d5f6e25ee5c6b0c89cecba5c92bbd"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:2072a38eea8f4ae060c7c59620f9f72fd4fefb80ea0cd5188a97393d8a3e7efe"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:ff93e7a5b885568d9926a5f19644d4e2f43737b2b2c11722f2134658d4d69ea8"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:357c80e4463d43d5852ef8d265833679c59a7db94a04141eaa9ac781f09088fa"
+        }
+      ],
+      "tool_names": [
+        "list_files",
+        "read_file",
+        "search_files",
+        "batch",
+        "write_file",
+        "delete_file"
+      ],
+      "stop_reason": "tool_use",
+      "tool_uses": [
+        {
+          "tool_use_id": "toolu_01WMQn7XzjWoqMDmZhuZS1Bp",
+          "tool_name": "write_file",
+          "input_json": "{\u0022path\u0022: \u0022log.md\u0022, \u0022content\u0022: \u0022# Change Log\\n\\n## 2026-06-20 \u2014 Lint run: inbound-link refresh and metadata hygiene\\n\\n- Refreshed \u0060inbound_links\u0060 counts on all topic pages (cache-invalidation-ttl, cache-invalidation-events, retry-backoff, circuit-breaker, undertagged-topic, unscored-topic, stale-topic, orphan-topic).\\n\u0022}"
+        }
+      ],
+      "assistant_text": "Now I need to create the log.md file to record what I\u0027ve done:",
+      "input_tokens": 27572,
+      "output_tokens": 181
+    },
+    {
+      "turn": 19,
+      "system_prompt_sha256": "sha256:6aeef08a02ad4c24f474b4e83776ca028cffd1a500bc5113d954592af880da60",
+      "conversation": [
+        {
+          "role": "user",
+          "content_sha256": "sha256:0e6b028b605c801b435654e93e663930448ac5bae664ac732b5954946d500201"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:ab40bc1aab165cdddfd3f3eb3589bc75000c7671bab316a964b826d6e39fc59d"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:411b404b7548c2b2681957324237bd53af0fe6e72cd093be40693a017fb46911"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:164ee7b1de8da22a8be194e136f173283b5dd51ae40b59c74235296ebca8ba68"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:89f9d10277a4816dfb470876a04ceca39e48049e4a4f77f6debfe2c6fb7f5803"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:4f2e13d0e92f1fc7fbcdcbcbcf27cdeb73ae9f58983119ad1338ec1a8cc3428a"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:ce53e48b411a9cac89bd867be1af555dad610ca40f45e9b5ca9f9701a7ad39e2"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:a5eeddd1eacb69584c7d487692eef5ad572cd16c23ebfbd0df8949c6eb3bc146"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:ad8aa2db8169e68c1f45f41d46d22adc9e78efd67ab442914c11ddbbfec04641"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:be95b7f7f2c21b71e7baaafe334e757581eb5e4ceca35c5d07516f7a0701232c"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:b1cd17cf1d5a85344587d2221c370eb6bfa1ad808f1c2645f60a5e60407e3000"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:cc090714016cda1ec2f209da11cf1311b4e8ba6c4a8d4e4f30cdbe4cbd5533f1"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:e4ff8e52d5e9515d0accd8d5f00437e39409a80edd27d20783fc6aaada9529fe"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:a982b855652c0b12aac9592d5fc8bfdfbee58542cf1e1e62ea71e0faa54b38e3"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:ea76bcab8646ba11f60dd5fea3498b960d4e0eaa02c0149b9b1beb2d01a2404a"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:57977bc4ea0c896fba03ef183e11227800a9f357fb307d28fba792f45d96033c"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:385cc9b40b508bb61c41d5437decff59b776f221e4ae50d959b882eb2bd96628"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:482aeeef6bb720a15c9f1dcabba7c7bde8f6300b2b537c940847b1a9cd91b248"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:bc22064f239ac2a97cfe5e57422f4e59f984b8910a0c6b2442e1041840b25f9a"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:fff5147d8bf30a426cdc61cd2a642ac9e8297d3bf07ff1f44bede99a3abd0491"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:8ae4bef930579ff6b3c5754805c8701b90da874fa6c29867e3fc34dd8564ad81"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:ffac86c6ed1c31b377856eaf8b9f361b76d06e12fe1b15710d04acfade03e3ba"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:7b5160e79d7a6ba1b1753f3ddeab1f5bca1ae9f85168c800806cc9fd2cbdbd89"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:825cdcf45f6e85c603fee19b48a05ed2805279e9bf660fc58774f0bf4fd46bde"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:f09be7a65bd59e90173451e53451b09f6497cd87e1805c7b23a04fb8c849398b"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:ddc34bc72827c8aeebff63074cf8052db9d0a82e0ca86f5fb5dbfe04da9a0c7a"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:92c5a8c791551d84bb3dfad246d0b8d0473327acb0138c9ceb7f1174970c4fc5"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:cdd62fa2eecd79ab488289007a44cace4d7de4cdcc468b0e1dd64523568ed778"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:af21c92b042153b95c42f580e52b2cb5e2e1949cf09600f25a2bcdda789c4178"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:5706d64e1aecacd48ab8b409a15eb332c955547dd71a8630d94563e27e3ba6e4"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:e97fb1857e173f246fc031097e5a06212db7dd6bfe71ecf2582a0c22a9e7636d"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:3b31d75ab3e8d42276606d4c7b546d13a49d5f6e25ee5c6b0c89cecba5c92bbd"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:2072a38eea8f4ae060c7c59620f9f72fd4fefb80ea0cd5188a97393d8a3e7efe"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:ff93e7a5b885568d9926a5f19644d4e2f43737b2b2c11722f2134658d4d69ea8"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:357c80e4463d43d5852ef8d265833679c59a7db94a04141eaa9ac781f09088fa"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:94c7d150b2c269dca7f90233bbe47ab875638121eb1dd7791aed1d9a074c7e35"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:73d68b489336e5b34e134e57de19ba65131208c170ba41ac12e2710fd392c7e6"
+        }
+      ],
+      "tool_names": [
+        "list_files",
+        "read_file",
+        "search_files",
+        "batch",
+        "write_file",
+        "delete_file"
+      ],
+      "stop_reason": "tool_use",
+      "tool_uses": [
+        {
+          "tool_use_id": "toolu_011mMBNpUt7VBURtGpyV2kwN",
+          "tool_name": "write_file",
+          "input_json": "{\u0022path\u0022: \u0022log.md\u0022, \u0022content\u0022: \u0022# Lint Run Log\\n\\n## 2026-06-20 Lint Run\\n\\nRefreshed inbound_links counts on topic pages.\\n\u0022}"
+        }
+      ],
+      "assistant_text": "Let me try a different format for log.md:",
+      "input_tokens": 27798,
+      "output_tokens": 115
+    },
+    {
+      "turn": 20,
+      "system_prompt_sha256": "sha256:6aeef08a02ad4c24f474b4e83776ca028cffd1a500bc5113d954592af880da60",
+      "conversation": [
+        {
+          "role": "user",
+          "content_sha256": "sha256:0e6b028b605c801b435654e93e663930448ac5bae664ac732b5954946d500201"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:ab40bc1aab165cdddfd3f3eb3589bc75000c7671bab316a964b826d6e39fc59d"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:411b404b7548c2b2681957324237bd53af0fe6e72cd093be40693a017fb46911"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:164ee7b1de8da22a8be194e136f173283b5dd51ae40b59c74235296ebca8ba68"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:89f9d10277a4816dfb470876a04ceca39e48049e4a4f77f6debfe2c6fb7f5803"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:4f2e13d0e92f1fc7fbcdcbcbcf27cdeb73ae9f58983119ad1338ec1a8cc3428a"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:ce53e48b411a9cac89bd867be1af555dad610ca40f45e9b5ca9f9701a7ad39e2"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:a5eeddd1eacb69584c7d487692eef5ad572cd16c23ebfbd0df8949c6eb3bc146"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:ad8aa2db8169e68c1f45f41d46d22adc9e78efd67ab442914c11ddbbfec04641"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:be95b7f7f2c21b71e7baaafe334e757581eb5e4ceca35c5d07516f7a0701232c"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:b1cd17cf1d5a85344587d2221c370eb6bfa1ad808f1c2645f60a5e60407e3000"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:cc090714016cda1ec2f209da11cf1311b4e8ba6c4a8d4e4f30cdbe4cbd5533f1"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:e4ff8e52d5e9515d0accd8d5f00437e39409a80edd27d20783fc6aaada9529fe"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:a982b855652c0b12aac9592d5fc8bfdfbee58542cf1e1e62ea71e0faa54b38e3"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:ea76bcab8646ba11f60dd5fea3498b960d4e0eaa02c0149b9b1beb2d01a2404a"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:57977bc4ea0c896fba03ef183e11227800a9f357fb307d28fba792f45d96033c"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:385cc9b40b508bb61c41d5437decff59b776f221e4ae50d959b882eb2bd96628"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:482aeeef6bb720a15c9f1dcabba7c7bde8f6300b2b537c940847b1a9cd91b248"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:bc22064f239ac2a97cfe5e57422f4e59f984b8910a0c6b2442e1041840b25f9a"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:fff5147d8bf30a426cdc61cd2a642ac9e8297d3bf07ff1f44bede99a3abd0491"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:8ae4bef930579ff6b3c5754805c8701b90da874fa6c29867e3fc34dd8564ad81"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:ffac86c6ed1c31b377856eaf8b9f361b76d06e12fe1b15710d04acfade03e3ba"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:7b5160e79d7a6ba1b1753f3ddeab1f5bca1ae9f85168c800806cc9fd2cbdbd89"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:825cdcf45f6e85c603fee19b48a05ed2805279e9bf660fc58774f0bf4fd46bde"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:f09be7a65bd59e90173451e53451b09f6497cd87e1805c7b23a04fb8c849398b"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:ddc34bc72827c8aeebff63074cf8052db9d0a82e0ca86f5fb5dbfe04da9a0c7a"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:92c5a8c791551d84bb3dfad246d0b8d0473327acb0138c9ceb7f1174970c4fc5"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:cdd62fa2eecd79ab488289007a44cace4d7de4cdcc468b0e1dd64523568ed778"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:af21c92b042153b95c42f580e52b2cb5e2e1949cf09600f25a2bcdda789c4178"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:5706d64e1aecacd48ab8b409a15eb332c955547dd71a8630d94563e27e3ba6e4"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:e97fb1857e173f246fc031097e5a06212db7dd6bfe71ecf2582a0c22a9e7636d"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:3b31d75ab3e8d42276606d4c7b546d13a49d5f6e25ee5c6b0c89cecba5c92bbd"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:2072a38eea8f4ae060c7c59620f9f72fd4fefb80ea0cd5188a97393d8a3e7efe"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:ff93e7a5b885568d9926a5f19644d4e2f43737b2b2c11722f2134658d4d69ea8"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:357c80e4463d43d5852ef8d265833679c59a7db94a04141eaa9ac781f09088fa"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:94c7d150b2c269dca7f90233bbe47ab875638121eb1dd7791aed1d9a074c7e35"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:73d68b489336e5b34e134e57de19ba65131208c170ba41ac12e2710fd392c7e6"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:3a788d39d42c9bbb6eff05d77a978099611b2208e6016f65f3487525493e879c"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:0b5c641001e6e888ecfb398f03810bec97cd65ccd4ce124a18eea2fbafab4f5b"
+        }
+      ],
+      "tool_names": [
+        "list_files",
+        "read_file",
+        "search_files",
+        "batch",
+        "write_file",
+        "delete_file"
+      ],
+      "stop_reason": "end_turn",
+      "tool_uses": [],
+      "assistant_text": "I see - there\u0027s a policy about log.md format. Let me check if there\u0027s an existing pattern I should follow. Since the log.md doesn\u0027t exist yet, I\u0027ll skip it for now and focus on the Findings Report, which is my primary responsibility. The instruction says \u0022If your run changed nothing, write nothing\u0022 but I did make changes (inbound_links refreshes), but the policy seems to require a specific format. Let me proceed with the report.\n\nNow let me create the comprehensive Findings Report:\n\n## Content Quality Findings\n\n**Cache Invalidation Contradiction**: [[cache-invalidation-ttl]] and [[cache-invalidation-events]] directly contradict each other about which caching invalidation strategy should be the default.\n\n[[cache-invalidation-ttl]] claims: \u0022TTL-based expiry is the only invalidation strategy that gives a hard staleness guarantee, and it should be the default for every cache in this system.\u0022\n\n[[cache-invalidation-events]] claims: \u0022Event-driven invalidation is the recommended default: it bounds staleness to the event-delivery latency instead of an arbitrary fixed window, and should replace TTL-based expiry everywhere in this system.\u0022\n\nThese are mutually exclusive claims about system defaults. Both pages have equal confidence scores (medium, one source each), so the contradiction cannot be resolved by confidence. One or both pages need reconciliation.\n\n**Proposed remediation**: Read both pages carefully and determine which caching strategy the system actually uses or intends to use as the default. Mark the now-incorrect page with a \u0060superseded_by\u0060 field pointing to the authoritative one, or revise one or both pages to describe when each strategy is appropriate (event-driven for some use cases, TTL for others).\n\n## Metadata Hygiene\n\n### Missing Tags: [[undertagged-topic]]\n\nThe page \u0022Read-Through Caching\u0022 (undertagged-topic.md) lacks a \u0060tags\u0060 field. Per the Tag Taxonomy, every page requires at least two tags: one category prefix and one content-specific tag.\n\n**Proposed remediation**: Add tags \u0060[\u0022concept/Caching\u0022, \u0022pattern/ReadThrough\u0022]\u0060 to undertagged-topic.md.\n\n### Missing Confidence Score: [[unscored-topic]]\n\nThe page \u0022Write-Behind Caching\u0022 (unscored-topic.md) lacks both a \u0060confidence\u0060 field and a \u0060confidence_reason\u0060 field. Every page should have a confidence score.\n\n**Proposed remediation**: Add \u0060confidence: medium\u0060 and \u0060confidence_reason: \u0022One source, internally consistent.\u0022\u0060 to unscored-topic.md.\n\n### Review Candidates (Informational)\n\nThe following low-confidence page is past the Review Window (90 days):\n\n- **[[stale-topic]]** (Sticky Sessions): Marked \u0060low\u0060 confidence with reason \u0022Single blog-post source, no corroboration; likely superseded practice.\u0022 Last reviewed 2025-01-05 (183 days ago). This page is a good candidate for a fresh look to determine if the assessment remains current or if it should be updated or removed.\n\n## Structure\n\n### Orphan Page: [[orphan-topic]]\n\nThe page \u0022Idempotency Keys\u0022 (orphan-topic.md) has zero inbound links. It is not referenced from \u0060index.md\u0060, \u0060log.md\u0060, or any other page in the wiki, making it undiscoverable through normal navigation.\n\n**Proposed remediation**: Either add a wikilink to this page from \u0060index.md\u0060 (since it is a legitimate topic that belongs in the Technology section) and update \u0060index.md\u0060 to list it, or if the page was created in error, delete it. Given that this page contains substantive content about a valid design pattern, the recommended fix is to add it to the index under the Technology section with an appropriate description.\n\n---\n\n\u0060\u0060\u0060proposed-actions\n[\n  {\n    \u0022title\u0022: \u0022Reconcile contradictory cache invalidation strategies\u0022,\n    \u0022description\u0022: \u0022Pages cache-invalidation-ttl.md and cache-invalidation-events.md make mutually exclusive claims about which caching invalidation strategy should be the system default. Determine the correct strategy and either mark one page as superseded, or revise both to explain when each strategy is appropriate (event-driven for some scenarios, TTL for others).\u0022,\n    \u0022targetPath\u0022: \u0022cache-invalidation-ttl.md\u0022\n  },\n  {\n    \u0022title\u0022: \u0022Add missing tags to Read-Through Caching page\u0022,\n    \u0022description\u0022: \u0022The page undertagged-topic.md (Read-Through Caching) has no tags field. Add tags: [concept/Caching, pattern/ReadThrough] per the Tag Taxonomy requirement of one category prefix plus one content-specific tag.\u0022,\n    \u0022targetPath\u0022: \u0022undertagged-topic.md\u0022\n  },\n  {\n    \u0022title\u0022: \u0022Add missing confidence score to Write-Behind Caching page\u0022,\n    \u0022description\u0022: \u0022The page unscored-topic.md (Write-Behind Caching) lacks both confidence and confidence_reason fields. Add confidence: medium and confidence_reason: \\\u0022One source, internally consistent.\\\u0022\u0022,\n    \u0022targetPath\u0022: \u0022unscored-topic.md\u0022\n  },\n  {\n    \u0022title\u0022: \u0022Add orphan page to index\u0022,\n    \u0022description\u0022: \u0022The page orphan-topic.md (Idempotency Keys) is not referenced from index.md or any other page, making it undiscoverable. Add an entry to the Technology section of index.md: [[orphan-topic]] \u2014 Deduplicate retried requests using a client-supplied idempotency key.\u0022,\n    \u0022targetPath\u0022: \u0022index.md\u0022\n  }\n]\n\u0060\u0060\u0060",
+      "input_tokens": 27958,
+      "output_tokens": 1290
+    }
+  ],
+  "outcome": {
+    "status": "completed",
+    "checks": {
+      "contradiction_found": true,
+      "missing_cross_reference_found": false,
+      "orphan_found": true,
+      "missing_tags_found": true,
+      "missing_confidence_found": true,
+      "stale_low_confidence_found": true,
+      "survey_still_finds_defects": true,
+      "stayed_within_context_budget": true
+    }
+  }
+}
