@@ -1,6 +1,6 @@
 # Minimal-API Handler Service-Parameter Attribution
 
-**Status**: Active (established by issue #59, ADR-030)
+**Status**: Active (established by issue #59)
 **Enforced by**: `backend/tests/Grimoire.ArchTests/MinimalApiServiceParameterRuleTests.cs`
 (Red/Green probed, standard PR pipeline)
 
@@ -42,6 +42,18 @@ broke 12 tests across 5 fixtures, none of which called `/defaults`.
 
 Rather than relying on the inference succeeding by accident in every host that will ever
 exist, this convention makes the binding source explicit on every handler parameter.
+
+**Why a structural test, not just this document.** Constitution Principle IV: "conventions
+not enforced by CI/CD do not exist." A prose-only version of this rule is exactly what was
+already violated once (#56/#57 — no doc, no gate, no CI failure until an unrelated test
+fixture broke). The alternative of asserting this via a live DI-container probe (e.g. a
+`WebApplicationFactory` per composition, asserting route-matcher construction succeeds) was
+considered and rejected: it would only catch a violation in whichever compositions the test
+suite happens to boot with the affected group mapped, reproducing the same "breaks in some
+hosts, not others" problem this convention exists to close. A static structural scan over
+the actual registered handler delegates catches it for every host, including ones not yet
+written — which is why `MinimalApiServiceParameterRuleTests` uses the same Mono.Cecil
+IL-scan approach as the rest of `Grimoire.ArchTests` rather than a runtime check.
 
 ## Exempt route/query/framework types
 
