@@ -119,6 +119,73 @@ public class ReplayAdapterTests : IDisposable
     }
 
     [Fact]
+    public async Task Capture_RejectsATurnWithAnIncompleteToolCall_RatherThanRecordingIt()
+    {
+        // #173 (Copilot review on #178): RecordedTurn has no field for
+        // ModelTurn.HasIncompleteToolCall, and ReplayModelClient always reconstructs it as
+        // false. Capturing this turn as-is would produce a recording that replays a
+        // different harness nudge than the live run actually took, diverging on the very
+        // next turn's conversation-hash check. Capture must fail outright instead of
+        // writing a recording it cannot faithfully replay.
+        var capturePath = Path.Combine(_scratch, "sample-incomplete.json");
+        var incompleteTurn = new ModelTurn(
+            AssistantText: null,
+            ToolUseRequests: [],
+            StopReason: ModelStopReason.MaxTokens,
+            InputTokens: 100,
+            OutputTokens: 50,
+            HasIncompleteToolCall: true);
+        var fake = new FakeModelClient([incompleteTurn]);
+        var capture = new TurnCaptureModelClient(fake, capturePath);
+
+        var exception = await Assert.ThrowsAsync<InvalidOperationException>(() => capture.NextTurnAsync(
+            "system prompt", [new ConversationMessage("user", "hello agent")], ToolStubs.Tools, CancellationToken.None));
+
+        Assert.Contains("incomplete or invalid", exception.Message, StringComparison.Ordinal);
+        Assert.False(File.Exists(capturePath), "A rejected turn must not be persisted.");
+    }
+
+    [Fact]
+    public async Task Capture_DeletesAnAlreadyPersistedPrefix_WhenALaterTurnHasAnIncompleteToolCall()
+    {
+        // Copilot review on #178: the file is rewritten after every successful turn, so by
+        // the time an incomplete tool call shows up on turn 2+, turn 1 is already on disk —
+        // a schema-valid, complete-looking recording that a pipeline checking only "does the
+        // sample file exist" would publish as a trustworthy (if shorter) sample. Rejecting
+        // just the offending turn isn't enough; the stale prefix has to go too.
+        var capturePath = Path.Combine(_scratch, "sample-multi-turn-incomplete.json");
+        var fake = new FakeModelClient(
+        [
+            FakeModelClient.WriteFileTurn("t1", "concepts/example.md", "content"),
+            new ModelTurn(
+                AssistantText: null,
+                ToolUseRequests: [],
+                StopReason: ModelStopReason.MaxTokens,
+                InputTokens: 100,
+                OutputTokens: 50,
+                HasIncompleteToolCall: true),
+        ]);
+        var capture = new TurnCaptureModelClient(fake, capturePath);
+
+        var firstConversation = new[] { new ConversationMessage("user", "hello agent") };
+        var turn1 = await capture.NextTurnAsync("system prompt", firstConversation, ToolStubs.Tools, CancellationToken.None);
+        Assert.True(File.Exists(capturePath), "The first, complete turn should have persisted a prefix.");
+
+        var secondConversation = new ConversationMessage[]
+        {
+            firstConversation[0],
+            new("assistant", [new ConversationToolUseBlock("t1", "write_file", turn1.ToolUseRequests[0].InputJson)]),
+            new("user", [new ConversationToolResultBlock("t1", false, "ok")]),
+        };
+
+        var exception = await Assert.ThrowsAsync<InvalidOperationException>(() => capture.NextTurnAsync(
+            "system prompt", secondConversation, ToolStubs.Tools, CancellationToken.None));
+
+        Assert.Contains("incomplete or invalid", exception.Message, StringComparison.Ordinal);
+        Assert.False(File.Exists(capturePath), "The stale complete-looking prefix must not survive a later rejection.");
+    }
+
+    [Fact]
     public void CaptureFile_IsSchemaValid_WithRequestHashesAndVerbatimResponses()
     {
         var capturePath = CaptureTwoTurnRecording(out _);
