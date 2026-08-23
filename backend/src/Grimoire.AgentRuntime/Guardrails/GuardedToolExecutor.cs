@@ -287,6 +287,25 @@ public sealed class GuardedToolExecutor
             return new ToolExecutionResult(true, "Missing required property: path");
         }
 
+        // Copilot review (PR #177): offset/limit are documented as 1-based/positive-count
+        // (data-model.md's ReadRequest, "1-based first line" / "maximum number of lines").
+        // Reject a non-positive value outright rather than silently coercing it (offset=0
+        // becoming line 1, limit=0 becoming an empty slice with no EOF marker) — the same
+        // "malformed input is a denial, not a reinterpretation" stance search_files already
+        // takes for an oversized pattern. Checked before canonicalization/policy, matching
+        // the missing-path check above: a shape error, not a policy decision.
+        var hasOffset = TryGetIntProperty(inputJson, "offset", out var offset);
+        if (hasOffset && offset < 1)
+        {
+            return new ToolExecutionResult(true, "Invalid property: offset must be a 1-based line number (>= 1).");
+        }
+
+        var hasLimit = TryGetIntProperty(inputJson, "limit", out var limit);
+        if (hasLimit && limit < 1)
+        {
+            return new ToolExecutionResult(true, "Invalid property: limit must be >= 1.");
+        }
+
         var canonical = Canonicalize(relativePath);
         var policyResult = _policy.Evaluate(canonical, isWrite: false);
 
@@ -304,8 +323,6 @@ public sealed class GuardedToolExecutor
 
         var content = await File.ReadAllTextAsync(canonical, Encoding.UTF8, cancellationToken);
 
-        var hasOffset = TryGetIntProperty(inputJson, "offset", out var offset);
-        var hasLimit = TryGetIntProperty(inputJson, "limit", out var limit);
         var frontmatterOnly = TryGetBoolProperty(inputJson, "frontmatter_only", out var frontmatterOnlyValue) && frontmatterOnlyValue;
 
         if (!hasOffset && !hasLimit && !frontmatterOnly)
@@ -348,7 +365,10 @@ public sealed class GuardedToolExecutor
     /// Edge Cases: "an empty or partial result with an explicit end-of-file signal, not an
     /// error that ends the run") — never <see cref="ToolExecutionResult.IsError"/>. A
     /// <paramref name="limit"/> that would run past the last line is honored up to the last
-    /// line and the same marker is appended, since the request could not be satisfied in full.
+    /// line and the same marker is appended, since the request could not be satisfied in
+    /// full. A <paramref name="limit"/> that lands exactly on the last line is fully
+    /// satisfiable and gets no marker — that request was never truncated (Copilot review,
+    /// PR #177: the prior <c>&gt;=</c> comparison marked this case as end-of-file too).
     /// </summary>
     private static string ExtractLineRange(string content, int offset, int? limit)
     {
@@ -362,11 +382,11 @@ public sealed class GuardedToolExecutor
         }
 
         var available = totalLines - startIndex;
-        var reachedEnd = limit is null || limit.Value >= available;
+        var truncatedByEndOfFile = limit.HasValue && limit.Value > available;
         var count = limit.HasValue ? Math.Min(limit.Value, available) : available;
         var slice = string.Join('\n', lines.Skip(startIndex).Take(count));
 
-        return limit.HasValue && reachedEnd
+        return truncatedByEndOfFile
             ? $"{slice}\n[end of file: {totalLines} line(s) total]"
             : slice;
     }
@@ -627,13 +647,21 @@ public sealed class GuardedToolExecutor
         for (var i = 0; i < calls.Count; i++)
         {
             var call = calls[i];
+            // Copilot review (PR #177): a member's IsError alone conflates a real policy
+            // denial with a benign non-policy failure (file not found, malformed input) —
+            // neither of which adds to _denials. denied_count means "policy denials", so
+            // it is counted the same way SC-002/FR-013 define one: an entry actually
+            // recorded in _denials during this member's dispatch.
+            var denialsBeforeMember = _denials.Count;
             var memberResult = await ExecuteAsync(call.Tool, call.InputJson, turn, cancellationToken);
-            if (memberResult.IsError)
+            var memberWasDenied = _denials.Count > denialsBeforeMember;
+            if (memberWasDenied)
             {
                 deniedCount++;
             }
 
-            results.AppendLine($"[{i}] {call.Tool}: {(memberResult.IsError ? "denied" : "ok")}");
+            var memberStatus = memberWasDenied ? "denied" : memberResult.IsError ? "error" : "ok";
+            results.AppendLine($"[{i}] {call.Tool}: {memberStatus}");
             results.AppendLine(memberResult.Content);
         }
 

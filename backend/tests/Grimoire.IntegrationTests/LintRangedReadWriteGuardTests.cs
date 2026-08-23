@@ -208,6 +208,100 @@ public class LintRangedReadWriteGuardTests
         }
     }
 
+    // ── Copilot review (PR #177): a limit landing exactly on the last line is fully
+    // satisfiable — no truncation happened, so no EOF marker belongs in the result. The
+    // prior `>=` comparison wrongly marked this case as end-of-file.
+
+    [Fact]
+    public async Task ReadRangeWhoseLimitExactlyReachesTheLastLine_ReturnsNoEofMarker()
+    {
+        var root = CreateTempRoot();
+        try
+        {
+            var wikiRoot = Path.Combine(root, "wiki");
+            Directory.CreateDirectory(wikiRoot);
+            await File.WriteAllTextAsync(Path.Combine(wikiRoot, "page.md"), "line one\nline two\nline three\n");
+
+            var policy = new SafetyPolicy(wikiRoot, readPrefixes: [wikiRoot + Path.DirectorySeparatorChar], writePrefixes: []);
+            var executor = new GuardedToolExecutor(policy, new WriteJournal(), wikiRoot, registry: RangedReadRegistry);
+
+            var result = await executor.ExecuteAsync(
+                ToolRegistry.ReadFile,
+                JsonSerializer.Serialize(new { path = "page.md", offset = 2, limit = 2 }),
+                turn: 1, CancellationToken.None);
+
+            Assert.False(result.IsError);
+            Assert.Equal("line two\nline three", result.Content);
+            Assert.DoesNotContain("end of file", result.Content, StringComparison.Ordinal);
+        }
+        finally
+        {
+            CleanUp(root);
+        }
+    }
+
+    // ── Copilot review (PR #177): offset/limit are documented as 1-based/positive-count —
+    // a non-positive value is rejected outright, never silently coerced (offset=0 becoming
+    // line 1, limit=0 becoming a silent empty slice).
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(-1)]
+    public async Task ReadWithNonPositiveOffset_IsRejected_NeverSilentlyCoerced(int invalidOffset)
+    {
+        var root = CreateTempRoot();
+        try
+        {
+            var wikiRoot = Path.Combine(root, "wiki");
+            Directory.CreateDirectory(wikiRoot);
+            await File.WriteAllTextAsync(Path.Combine(wikiRoot, "page.md"), "line one\nline two\n");
+
+            var policy = new SafetyPolicy(wikiRoot, readPrefixes: [wikiRoot + Path.DirectorySeparatorChar], writePrefixes: []);
+            var executor = new GuardedToolExecutor(policy, new WriteJournal(), wikiRoot, registry: RangedReadRegistry);
+
+            var result = await executor.ExecuteAsync(
+                ToolRegistry.ReadFile,
+                JsonSerializer.Serialize(new { path = "page.md", offset = invalidOffset }),
+                turn: 1, CancellationToken.None);
+
+            Assert.True(result.IsError);
+            Assert.Contains("offset", result.Content, StringComparison.Ordinal);
+        }
+        finally
+        {
+            CleanUp(root);
+        }
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(-1)]
+    public async Task ReadWithNonPositiveLimit_IsRejected_NeverSilentlyCoerced(int invalidLimit)
+    {
+        var root = CreateTempRoot();
+        try
+        {
+            var wikiRoot = Path.Combine(root, "wiki");
+            Directory.CreateDirectory(wikiRoot);
+            await File.WriteAllTextAsync(Path.Combine(wikiRoot, "page.md"), "line one\nline two\n");
+
+            var policy = new SafetyPolicy(wikiRoot, readPrefixes: [wikiRoot + Path.DirectorySeparatorChar], writePrefixes: []);
+            var executor = new GuardedToolExecutor(policy, new WriteJournal(), wikiRoot, registry: RangedReadRegistry);
+
+            var result = await executor.ExecuteAsync(
+                ToolRegistry.ReadFile,
+                JsonSerializer.Serialize(new { path = "page.md", offset = 1, limit = invalidLimit }),
+                turn: 1, CancellationToken.None);
+
+            Assert.True(result.IsError);
+            Assert.Contains("limit", result.Content, StringComparison.Ordinal);
+        }
+        finally
+        {
+            CleanUp(root);
+        }
+    }
+
     [Fact]
     public async Task FrontmatterOnlyRead_ReturnsJustTheFrontmatterBlock()
     {

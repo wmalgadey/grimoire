@@ -194,6 +194,44 @@ public class LintBatchToolTests
         }
     }
 
+    // ── Copilot review (PR #177): a member that fails for a non-policy reason (file not
+    // found) is not a "denial" — only an entry actually recorded in Denials counts as one,
+    // exactly as SC-002/FR-013 define it for the run as a whole.
+
+    [Fact]
+    public async Task BatchMemberThatIsNotFound_IsNotCountedAsADenial()
+    {
+        var root = CreateTempRoot();
+        try
+        {
+            var wikiRoot = Path.Combine(root, "wiki");
+            Directory.CreateDirectory(wikiRoot);
+            await File.WriteAllTextAsync(Path.Combine(wikiRoot, "page.md"), "content");
+
+            var policy = new SafetyPolicy(wikiRoot, readPrefixes: [wikiRoot + Path.DirectorySeparatorChar], writePrefixes: []);
+            var executor = new GuardedToolExecutor(policy, new WriteJournal(), wikiRoot, registry: BatchCapableRegistry);
+
+            var batchInput = JsonSerializer.Serialize(new
+            {
+                calls = new object[]
+                {
+                    new { tool = "read_file", input = new { path = "page.md" } },
+                    new { tool = "read_file", input = new { path = "never-existed.md" } },
+                },
+            });
+
+            var result = await executor.ExecuteAsync(ToolRegistry.Batch, batchInput, turn: 1, CancellationToken.None);
+
+            Assert.False(result.IsError);
+            Assert.Contains("File not found", result.Content, StringComparison.Ordinal);
+            Assert.Empty(executor.Denials);
+        }
+        finally
+        {
+            CleanUp(root);
+        }
+    }
+
     [Fact]
     public async Task BatchOfAllowedCalls_ReturnsEveryMembersResult()
     {
