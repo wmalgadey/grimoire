@@ -28,10 +28,9 @@ namespace Grimoire.ArchTests;
 /// themselves, so a private helper that merely looks like a handler is never mistaken for
 /// one and a handler registered under an unconventional name is never missed.
 ///
-/// Red/Green probed 2026-08-23: a temporary unannotated
-/// <c>OperationalStateRepository stateRepository</c> parameter added to
-/// <c>LintSubmissionEndpoints.GetLatestAsync</c> was confirmed to fail this test, then
-/// removed.
+/// Red/Green probed 2026-08-23: <c>[FromServices]</c> was temporarily removed from
+/// <c>LintSubmissionEndpoints.GetLatestAsync</c>'s <c>LintRunCoordinator coordinator</c>
+/// parameter, confirmed to fail this test, then restored.
 /// </summary>
 public class MinimalApiServiceParameterRuleTests
 {
