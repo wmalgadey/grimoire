@@ -306,7 +306,8 @@ public class StreamingToolUseTruncationTests
                 OutputTokens: 50,
                 HasIncompleteToolCall: true);
             var fake = new FakeModelClient([allDroppedTurn, FakeModelClient.FinalTurn("Done.")]);
-            var loop = new AgentLoop(fake, executor);
+            var instrumentation = new RecordingInstrumentation();
+            var loop = new AgentLoop(fake, executor, instrumentation: instrumentation);
 
             var result = await loop.RunAsync(
                 "You are a test agent.",
@@ -321,6 +322,18 @@ public class StreamingToolUseTruncationTests
             Assert.Contains(
                 lastMessage.ContentBlocks.OfType<ConversationTextBlock>(),
                 block => block.Text.Contains("cut off", StringComparison.Ordinal));
+
+            // Copilot review on #178: exercised through AgentLoop's own instrumentation
+            // wiring, not by calling IngestAgentMetrics directly, so a regression that
+            // drops or mislabels this recording would actually fail a test. Asserts both
+            // the stop reason and the contract-approved "continue" outcome for the
+            // incomplete-tool-call turn (specs/002-agentic-ingest-core/plan.md's closed
+            // outcome set — see the AgentLoop.HandleNoToolTurn comment for why this isn't
+            // "incomplete_tool_call"); the second entry is the script's ordinary
+            // FinalTurn completing the run.
+            Assert.Equal(
+                [(ModelStopReason.Unknown, "continue"), (ModelStopReason.EndTurn, "terminal")],
+                instrumentation.NoToolTurns);
         }
         finally
         {
@@ -342,5 +355,22 @@ public class StreamingToolUseTruncationTests
             ToolRegistry.Default.Tools,
             CancellationToken.None,
             onTextDelta: _ => { });
+    }
+
+    /// <summary>
+    /// Collects what the loop reported, so the assertion stays state-based (Principle II):
+    /// what was recorded, not which calls were made in which order on a mock. Mirrors
+    /// ModelRefusalReportingTests' private double of the same name.
+    /// </summary>
+    private sealed class RecordingInstrumentation : IAgentLoopInstrumentation
+    {
+        public List<(ModelStopReason StopReason, string Outcome)> NoToolTurns { get; } = [];
+
+        public System.Diagnostics.Activity? StartModelTurnActivity(string taskId, int turn) => null;
+        public void RecordAgentTurns(int turns, string outcome) { }
+        public void RecordModelTokens(int inputTokens, int outputTokens) { }
+        public void RecordModelToolRequests(int toolRequestCount, ModelStopReason stopReason) { }
+        public void RecordNoToolTurn(ModelStopReason stopReason, string outcome)
+            => NoToolTurns.Add((stopReason, outcome));
     }
 }
