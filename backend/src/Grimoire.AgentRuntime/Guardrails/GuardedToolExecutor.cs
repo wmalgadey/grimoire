@@ -561,7 +561,7 @@ public sealed class GuardedToolExecutor
                 _instrumentation.RecordWriteConflictRejected(_taskId, canonical, reason, turn);
             }
 
-            return (null, RecordDenial(ToolRegistry.WriteFile, relativePath, canonical, reason, turn));
+            return (null, RecordDenial(ToolRegistry.WriteFile, relativePath, canonical, reason, turn, guardDecision.Detail));
         }
 
         return (guardDecision.LockHandle, null);
@@ -1088,16 +1088,56 @@ public sealed class GuardedToolExecutor
 
     // ── helpers ──────────────────────────────────────────────────────────────────
 
-    private ToolExecutionResult RecordDenial(string action, string requestedTarget, string canonicalTarget, string reason, int turn)
+    private ToolExecutionResult RecordDenial(
+        string action, string requestedTarget, string canonicalTarget, string reason, int turn, string? detail = null)
     {
         var record = new DeniedActionRecord(action, requestedTarget, canonicalTarget, reason, turn);
         _denials.Add(record);
 
         _instrumentation.RecordDenied(_taskId, action, requestedTarget, canonicalTarget, reason, turn);
 
-        return new ToolExecutionResult(
-            true,
-            $"denied: {reason}. This action is outside the safety policy; continue with your remaining allowed work.");
+        return new ToolExecutionResult(true, BuildDenialMessage(reason, detail));
+    }
+
+    // Issue #182: catalog_entry_malformed and the three log_entry_* reasons are ADR-017/
+    // ADR-028 format rejections, not policy-scope denials — the write is exactly what the
+    // agent is supposed to be doing, only the proposed content's shape was wrong. Telling
+    // the agent those are "outside the safety policy" and to "continue with your remaining
+    // allowed work" describes a different, unfixable situation and instructs it to abandon
+    // a write that is one edit away from being accepted. Every other denial reason (scope,
+    // traversal, create-only-exists, stale-read, coordination timeout, frontmatter
+    // preservation) genuinely has nothing to correct, so it keeps the original message.
+    private static string BuildDenialMessage(string reason, string? detail)
+    {
+        var hint = reason switch
+        {
+            "catalog_entry_malformed" =>
+                "The write was rejected because a new index.md catalog line did not match the " +
+                "required \"- [Title](path) — description — status\" shape, not because it is " +
+                "out of scope. Fix that line's shape and reissue this write.",
+            "log_entry_not_prepended" =>
+                "The write was rejected because log.md's existing content must survive unchanged " +
+                "as a suffix of the proposed content — new entries are prepended above it, never " +
+                "replacing what is already there — not because it is out of scope. Fix the content " +
+                "and reissue this write.",
+            "log_entry_malformed_heading" =>
+                "The write was rejected because the prepended entry's first non-blank line did not " +
+                "match the required \"## [YYYY-MM-DD] TYPE | SUMMARY\" heading shape, not because " +
+                "it is out of scope. Fix the heading and reissue this write.",
+            "log_entry_missing_paragraph" =>
+                "The write was rejected because the prepended entry's heading was not followed by a " +
+                "paragraph, not because it is out of scope. Add the paragraph and reissue this write.",
+            _ => (string?)null,
+        };
+
+        if (hint is null)
+        {
+            return $"denied: {reason}. This action is outside the safety policy; continue with your remaining allowed work.";
+        }
+
+        return detail is null
+            ? $"denied: {reason}. {hint}"
+            : $"denied: {reason}. {hint} Offending line: {detail}";
     }
 
     /// <summary>

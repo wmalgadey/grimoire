@@ -104,6 +104,12 @@ public class CatalogEntryFormatEnforcementTests
             Assert.Equal("catalog_entry_malformed", decision.DenialReason);
             Assert.Null(decision.LockHandle);
 
+            // Issue #182: the offending line travels back as the decision's locating
+            // detail, so the harness can tell the agent exactly what to fix.
+            Assert.Equal(
+                "- [Retry Backoff](concepts/retry-backoff.md) — Beschreibt exponentielles Backoff bei Wiederholungen",
+                decision.Detail);
+
             // Nothing was applied — the on-disk file is untouched.
             Assert.Equal(ExistingCatalog, await File.ReadAllTextAsync(indexPath));
         }

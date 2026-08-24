@@ -14,7 +14,7 @@ namespace Grimoire.AgentRuntime.Guardrails.Coordination;
 /// just the check. On denial, the lock has already been released internally; there is
 /// nothing left for the caller to hold or dispose.
 /// </summary>
-public sealed record WriteGuardDecision(bool IsAllowed, string? DenialReason, IDisposable? LockHandle)
+public sealed record WriteGuardDecision(bool IsAllowed, string? DenialReason, IDisposable? LockHandle, string? Detail = null)
 {
     public static WriteGuardDecision Allowed(IDisposable lockHandle) => new(true, null, lockHandle);
 
@@ -27,7 +27,12 @@ public sealed record WriteGuardDecision(bool IsAllowed, string? DenialReason, ID
     /// <c>log_entry_malformed_heading</c>, <c>log_entry_missing_paragraph</c>, or (US4)
     /// <c>catalog_entry_malformed</c>.
     /// </param>
-    public static WriteGuardDecision Denied(string reason) => new(false, reason, null);
+    /// <param name="detail">
+    /// Issue #182: the locating detail the format check already has at the point of
+    /// denial — currently only <c>catalog_entry_malformed</c> carries one (the offending
+    /// <c>- [</c> line). <c>null</c> for every other reason.
+    /// </param>
+    public static WriteGuardDecision Denied(string reason, string? detail = null) => new(false, reason, null, detail);
 }
 
 /// <summary>
@@ -167,11 +172,11 @@ public sealed class SharedFileWriteGuard
             return WriteGuardDecision.Allowed(handle);
         }
 
-        var denialReason = await EvaluateExistingTargetChecksAsync(canonicalPath, mode, proposedContent, exists, cancellationToken);
+        var (denialReason, denialDetail) = await EvaluateExistingTargetChecksAsync(canonicalPath, mode, proposedContent, exists, cancellationToken);
         if (denialReason is not null)
         {
             handle.Dispose();
-            return WriteGuardDecision.Denied(denialReason);
+            return WriteGuardDecision.Denied(denialReason, denialDetail);
         }
 
         return WriteGuardDecision.Allowed(handle);
@@ -186,14 +191,14 @@ public sealed class SharedFileWriteGuard
     /// encountered, or <c>null</c> once every applicable check has passed — the caller
     /// still owns disposing the lock handle on either outcome.
     /// </summary>
-    private async Task<string?> EvaluateExistingTargetChecksAsync(
+    private async Task<(string? Reason, string? Detail)> EvaluateExistingTargetChecksAsync(
         string canonicalPath, WriteMode mode, string proposedContent, bool exists, CancellationToken cancellationToken)
     {
         // ADR-016: a frontmatter-only write always targets a page that already exists —
         // Lint never creates pages, so a missing target is denied before any content check.
         if (mode == WriteMode.FrontmatterOnly && !exists)
         {
-            return "frontmatter_only_target_missing";
+            return ("frontmatter_only_target_missing", null);
         }
 
         byte[]? currentBytes = null;
@@ -204,7 +209,7 @@ public sealed class SharedFileWriteGuard
             var casDenialReason = EvaluateCompareAndSwap(canonicalPath, currentBytes);
             if (casDenialReason is not null)
             {
-                return casDenialReason;
+                return (casDenialReason, null);
             }
         }
 
@@ -216,7 +221,7 @@ public sealed class SharedFileWriteGuard
             var frontmatterDenialReason = EvaluateFrontmatterPreservation(currentBytes!, proposedContent);
             if (frontmatterDenialReason is not null)
             {
-                return frontmatterDenialReason;
+                return (frontmatterDenialReason, null);
             }
         }
 
@@ -226,9 +231,20 @@ public sealed class SharedFileWriteGuard
         // canonical target being log.md/index.md, run after every existence/CAS/WriteMode
         // check above and before the write is committed (contract §3 order). Composes
         // with, never replaces, the checks above.
-        return EvaluateFormatIfTarget(canonicalPath, _logPath, "log", currentContent, proposedContent, ValidateLogEntryFormat)
-            ?? EvaluateFormatIfTarget(canonicalPath, _indexPath, "index", currentContent, proposedContent, ValidateCatalogEntryFormat);
+        //
+        // Issue #182: each validator returns a locating detail alongside its reason (the
+        // log checks encode "which of prepend/heading/paragraph failed" in the reason
+        // itself, so their detail is always null; the catalog check's detail is the
+        // offending `- [` line) so the harness can tell the agent exactly what to fix
+        // instead of just naming the reason code.
+        var logResult = EvaluateFormatIfTarget(canonicalPath, _logPath, "log", currentContent, proposedContent, WrapLogValidator);
+        return logResult.Reason is not null
+            ? logResult
+            : EvaluateFormatIfTarget(canonicalPath, _indexPath, "index", currentContent, proposedContent, ValidateCatalogEntryFormat);
     }
+
+    private static (string? Reason, string? Detail) WrapLogValidator(string currentContent, string proposedContent)
+        => (ValidateLogEntryFormat(currentContent, proposedContent), null);
 
     private string? EvaluateCompareAndSwap(string canonicalPath, byte[] currentBytes)
     {
@@ -262,16 +278,16 @@ public sealed class SharedFileWriteGuard
     /// otherwise. Shared by both the log.md and index.md format checks, distinguished only
     /// by <paramref name="targetLabel"/>.
     /// </summary>
-    private string? EvaluateFormatIfTarget(
+    private (string? Reason, string? Detail) EvaluateFormatIfTarget(
         string canonicalPath, string? targetPath, string targetLabel,
-        string currentContent, string proposedContent, Func<string, string, string?> validate)
+        string currentContent, string proposedContent, Func<string, string, (string? Reason, string? Detail)> validate)
     {
         if (targetPath is null || !string.Equals(canonicalPath, targetPath, StringComparison.Ordinal))
         {
-            return null;
+            return (null, null);
         }
 
-        var formatDenialReason = validate(currentContent, proposedContent);
+        var (formatDenialReason, detail) = validate(currentContent, proposedContent);
 
         using var formatSpan = _activitySource?.StartActivity("guardrails.format_validate");
         formatSpan?.SetTag("path", canonicalPath);
@@ -282,7 +298,7 @@ public sealed class SharedFileWriteGuard
             formatSpan?.SetTag("reason", formatDenialReason);
         }
 
-        return formatDenialReason;
+        return (formatDenialReason, detail);
     }
 
     /// <summary>
@@ -338,10 +354,11 @@ public sealed class SharedFileWriteGuard
     /// existed verbatim, and any line not starting with <c>- [</c> (section headings,
     /// blank lines), are never checked — pure string/regex operation over content already
     /// resident in memory, no judgment about whether a given description is good
-    /// (Constitution Principle V). Returns the denial reason, or <c>null</c> if every new
-    /// catalog line conforms.
+    /// (Constitution Principle V). Returns the denial reason and the offending line
+    /// (issue #182: the harness's own locating detail, so a denial can point at exactly
+    /// what to fix), or <c>(null, null)</c> if every new catalog line conforms.
     /// </summary>
-    internal static string? ValidateCatalogEntryFormat(string currentContent, string proposedContent)
+    internal static (string? Reason, string? Detail) ValidateCatalogEntryFormat(string currentContent, string proposedContent)
     {
         var currentLines = new HashSet<string>(SplitLines(currentContent), StringComparer.Ordinal);
 
@@ -359,11 +376,11 @@ public sealed class SharedFileWriteGuard
 
             if (!CatalogEntryPattern.IsMatch(line))
             {
-                return "catalog_entry_malformed";
+                return ("catalog_entry_malformed", line);
             }
         }
 
-        return null;
+        return (null, null);
     }
 
     private static IEnumerable<string> SplitLines(string content)
