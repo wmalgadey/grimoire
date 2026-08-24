@@ -22,15 +22,23 @@ public static class AgentStderrLogEvents
 {
     private static readonly EventId AgentStderrEvent = new(120, "agent_stderr");
 
-    public static void LogStderrLine(ILogger logger, string agent, string taskId, string line)
+    /// <param name="correlationKeyName">
+    /// The identifier's own field name — <c>task_id</c> (Ingest, remediation execution and
+    /// message-turn), <c>turn_id</c> (Query), or <c>run_id</c> (Lint's own run mode). Code
+    /// review (PR #191): tagging every spawn path's identifier as <c>task_id</c>
+    /// regardless of what it actually is mislabels Query/Lint's own identifiers and makes
+    /// the resulting log line harder to correlate against those agents' own events, which
+    /// use their real field name throughout.
+    /// </param>
+    public static void LogStderrLine(ILogger logger, string agent, string correlationKeyName, string correlationId, string line)
     {
         using var span = StartLogEventSpan();
         span?.SetTag("agent", agent);
-        span?.SetTag("task_id", taskId);
+        span?.SetTag(correlationKeyName, correlationId);
 
         logger.LogWarning(AgentStderrEvent,
-            "agent_stderr agent={agent} task_id={task_id} line={line}",
-            agent, taskId, SanitizeForLog(line));
+            "agent_stderr agent={agent} {correlation_key}={correlation_id} line={line}",
+            agent, correlationKeyName, correlationId, SanitizeForLog(line));
     }
 
     private static Activity? StartLogEventSpan()
