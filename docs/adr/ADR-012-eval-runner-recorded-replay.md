@@ -51,7 +51,7 @@ implementation.
 
 Chosen option: **Option 1.**
 
-- **New process**: `backend/src/Grimoire.EvalRunner` — subcommands `capture`, `replay`,
+- **New process**: `Grimoire.EvalRunner` — subcommands `capture`, `replay`,
   `status` (contract: `specs/009-agent-eval-replay/contracts/eval-cli.md`). It drives
   `Grimoire.IngestAgent` exclusively as a spawned child process per sample (ADR-002
   contract) in an isolated per-run workspace. 007's provider resolution, timeout, and

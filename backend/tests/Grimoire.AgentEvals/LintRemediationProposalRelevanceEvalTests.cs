@@ -33,7 +33,7 @@ namespace Grimoire.AgentEvals;
 /// fabricated — a stale recording is never silently reused):
 ///
 /// <code>
-/// dotnet run --project backend/src/Grimoire.EvalRunner -- capture --scenario lint-remediation-proposals
+/// dotnet run --project backend/tests/Grimoire.EvalRunner -- capture --scenario lint-remediation-proposals
 /// </code>
 ///
 /// (needs `GRIMOIRE_EVAL_PROVIDER_API_KEY`/`ANTHROPIC_AUTH_TOKEN` set per the existing

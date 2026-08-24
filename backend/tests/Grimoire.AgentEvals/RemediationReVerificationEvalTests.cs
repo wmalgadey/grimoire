@@ -41,7 +41,7 @@ namespace Grimoire.AgentEvals;
 /// real captured run, never fabricated — a stale recording is never silently reused):
 ///
 /// <code>
-/// dotnet run --project backend/src/Grimoire.EvalRunner -- capture --scenario remediation-reverify-still-applicable --scenario remediation-reverify-no-longer-applicable
+/// dotnet run --project backend/tests/Grimoire.EvalRunner -- capture --scenario remediation-reverify-still-applicable --scenario remediation-reverify-no-longer-applicable
 /// </code>
 ///
 /// (needs `GRIMOIRE_EVAL_PROVIDER_API_KEY`/`ANTHROPIC_AUTH_TOKEN` set per the existing

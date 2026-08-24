@@ -17,7 +17,7 @@ every replay.
 **If you re-record `log-no-day-grouping`, re-seed this file's date in the same change:**
 
 ```bash
-dotnet run --project backend/src/Grimoire.EvalRunner -- capture --scenario log-no-day-grouping
+dotnet run --project backend/tests/Grimoire.EvalRunner -- capture --scenario log-no-day-grouping
 ```
 
 The capture run's date must match the `## [YYYY-MM-DD]` heading above. If it does not, the

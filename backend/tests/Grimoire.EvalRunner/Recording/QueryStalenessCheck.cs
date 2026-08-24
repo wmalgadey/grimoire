@@ -4,31 +4,26 @@ using Grimoire.EvalRunner.Workspace;
 namespace Grimoire.EvalRunner.Recording;
 
 /// <summary>
-/// Staleness evaluation for remediation-execution re-verification scenarios (T039,
-/// 015-lint-board-parity) — mirrors <see cref="LintStalenessCheck"/> for
-/// <see cref="RemediationReVerificationScenarioDefinition"/>: same instruction surface
-/// (the remediation-execution mode is a Lint-binary invocation mode, research.md R8, so
-/// its fingerprint sources are Lint's own <c>system-prompt.md</c>/<c>policy.json</c>),
-/// no default-user-prompt document, no judge scoring (the scorer is fully deterministic,
-/// <see cref="Scoring.RemediationReVerificationScorer"/>).
+/// Staleness evaluation for Query scenarios (T099, 008-query-agent) — mirrors
+/// <see cref="StalenessCheck"/> for <see cref="QueryScenarioDefinition"/>, whose
+/// fingerprint sources differ (Query's own instruction surface, no default-user-prompt
+/// document, never judge-scored).
 /// </summary>
-public static class RemediationReVerificationStalenessCheck
+public static class QueryStalenessCheck
 {
     public static string RefreshCommand(string scenarioId)
-        => $"dotnet run --project backend/src/Grimoire.EvalRunner -- capture --scenario {scenarioId}";
+        => $"dotnet run --project backend/tests/Grimoire.EvalRunner -- capture --scenario {scenarioId}";
 
-    public static IReadOnlyDictionary<string, string> CurrentFingerprints(
-        RemediationReVerificationScenarioDefinition scenario, EvalPaths paths)
+    public static IReadOnlyDictionary<string, string> CurrentFingerprints(QueryScenarioDefinition scenario, EvalPaths paths)
         => Fingerprints.Compute(
-            paths.LintSystemPromptPath,
+            paths.QuerySystemPromptPath,
             defaultUserPromptPath: null,
-            paths.LintPolicyPath,
+            paths.QueryPolicyPath,
             paths.FixtureWikiRoot(scenario.FixtureName),
             scenario.StableSerialization(),
             judgePromptTemplate: null);
 
-    public static ScenarioTrustReport Evaluate(
-        RemediationReVerificationScenarioDefinition scenario, RecordingStore store, EvalPaths paths)
+    public static ScenarioTrustReport Evaluate(QueryScenarioDefinition scenario, RecordingStore store, EvalPaths paths)
     {
         if (!store.HasScenario(scenario.Id))
         {

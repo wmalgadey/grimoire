@@ -20,7 +20,7 @@ formulas, thresholds, and sources.
 - **Backend** (`backend/`) — .NET / C#, hexagonal (ports & adapters) architecture
 - **Frontend** (`frontend/`) — SvelteKit
 - **Agents** (`backend/src/Grimoire.*Agent/Instructions/`) — per-agent instruction files (`system-prompt.md`, `policy.json`, plus `default-user-prompt.md` where the agent has a default steering message) that govern each agent's behavior at runtime, delivered to the configured agent directory by the agent build
-- **Evals** (`backend/src/Grimoire.EvalRunner`, `backend/tests/Grimoire.AgentEvals`) — a standalone runner that replays committed recordings at the model port ([ADR-012](docs/adr/ADR-012-eval-runner-recorded-replay.md)), so agent *judgment* is scored against thresholds rather than pinned by deterministic tests
+- **Evals** (`backend/tests/Grimoire.EvalRunner`, `backend/tests/Grimoire.AgentEvals`) — a standalone runner that replays committed recordings at the model port ([ADR-012](docs/adr/ADR-012-eval-runner-recorded-replay.md)), so agent *judgment* is scored against thresholds rather than pinned by deterministic tests
 
 Grimoire is split into a **deterministic harness** (the Hub: dispatch, credential scoping,
 guardrails, persistence, observability) and the **agents** that actually decide what the

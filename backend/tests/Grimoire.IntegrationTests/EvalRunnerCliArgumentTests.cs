@@ -185,7 +185,7 @@ public class EvalRunnerCliArgumentTests : IDisposable
         foreach (var configuration in preferred)
         {
             var candidate = Path.Combine(
-                repoRoot, "backend", "src", "Grimoire.EvalRunner", "bin", configuration, "net10.0", "Grimoire.EvalRunner.dll");
+                repoRoot, "backend", "tests", "Grimoire.EvalRunner", "bin", configuration, "net10.0", "Grimoire.EvalRunner.dll");
             if (File.Exists(candidate))
             {
                 return candidate;

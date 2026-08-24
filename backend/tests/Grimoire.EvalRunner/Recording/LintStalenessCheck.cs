@@ -4,26 +4,27 @@ using Grimoire.EvalRunner.Workspace;
 namespace Grimoire.EvalRunner.Recording;
 
 /// <summary>
-/// Staleness evaluation for Query scenarios (T099, 008-query-agent) — mirrors
-/// <see cref="StalenessCheck"/> for <see cref="QueryScenarioDefinition"/>, whose
-/// fingerprint sources differ (Query's own instruction surface, no default-user-prompt
-/// document, never judge-scored).
+/// Staleness evaluation for Lint scenarios (013-lint-agent) — mirrors
+/// <see cref="QueryStalenessCheck"/> for <see cref="LintScenarioDefinition"/>, whose
+/// fingerprint sources are Lint's own instruction surface, no default-user-prompt
+/// document, and no judge scoring (every Lint scorer is deterministic, per
+/// <c>LintDeterministicScorers</c>).
 /// </summary>
-public static class QueryStalenessCheck
+public static class LintStalenessCheck
 {
     public static string RefreshCommand(string scenarioId)
-        => $"dotnet run --project backend/src/Grimoire.EvalRunner -- capture --scenario {scenarioId}";
+        => $"dotnet run --project backend/tests/Grimoire.EvalRunner -- capture --scenario {scenarioId}";
 
-    public static IReadOnlyDictionary<string, string> CurrentFingerprints(QueryScenarioDefinition scenario, EvalPaths paths)
+    public static IReadOnlyDictionary<string, string> CurrentFingerprints(LintScenarioDefinition scenario, EvalPaths paths)
         => Fingerprints.Compute(
-            paths.QuerySystemPromptPath,
+            paths.LintSystemPromptPath,
             defaultUserPromptPath: null,
-            paths.QueryPolicyPath,
+            paths.LintPolicyPath,
             paths.FixtureWikiRoot(scenario.FixtureName),
             scenario.StableSerialization(),
             judgePromptTemplate: null);
 
-    public static ScenarioTrustReport Evaluate(QueryScenarioDefinition scenario, RecordingStore store, EvalPaths paths)
+    public static ScenarioTrustReport Evaluate(LintScenarioDefinition scenario, RecordingStore store, EvalPaths paths)
     {
         if (!store.HasScenario(scenario.Id))
         {

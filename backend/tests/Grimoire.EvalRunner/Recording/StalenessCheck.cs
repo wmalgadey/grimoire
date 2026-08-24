@@ -33,7 +33,7 @@ public sealed record ScenarioTrustReport(
 public static class StalenessCheck
 {
     public static string RefreshCommand(string scenarioId)
-        => $"dotnet run --project backend/src/Grimoire.EvalRunner -- capture --scenario {scenarioId}";
+        => $"dotnet run --project backend/tests/Grimoire.EvalRunner -- capture --scenario {scenarioId}";
 
     public static IReadOnlyDictionary<string, string> CurrentFingerprints(ScenarioDefinition scenario, EvalPaths paths)
         => Fingerprints.Compute(
