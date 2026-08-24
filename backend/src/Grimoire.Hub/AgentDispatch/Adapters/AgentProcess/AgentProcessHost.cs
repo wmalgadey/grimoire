@@ -68,7 +68,7 @@ public sealed class AgentProcessHost : IAgentProcessLauncher
         }
 
         process.StandardInput.Close();
-        return new ProcessHandle(process);
+        return new ProcessHandle(process, _logger, IngestAgentName, request.TaskId);
     }
 
     /// <summary>
@@ -121,7 +121,7 @@ public sealed class AgentProcessHost : IAgentProcessLauncher
         await process.StandardInput.WriteAsync(stdinPayload);
         process.StandardInput.Close();
 
-        return new ProcessHandle(process);
+        return new ProcessHandle(process, _logger, QueryAgentName, request.TurnId);
     }
 
     /// <summary>ADR-016 (013-lint-agent): spawns a Lint agent process. No stdin payload at
@@ -130,7 +130,7 @@ public sealed class AgentProcessHost : IAgentProcessLauncher
     {
         var process = StartLintProcess(request);
         process.StandardInput.Close();
-        return Task.FromResult<IAgentProcessHandle>(new ProcessHandle(process));
+        return Task.FromResult<IAgentProcessHandle>(new ProcessHandle(process, _logger, LintAgentName, request.RunId));
     }
 
     /// <summary>
@@ -146,7 +146,7 @@ public sealed class AgentProcessHost : IAgentProcessLauncher
     {
         var process = StartRemediationProcess(request);
         process.StandardInput.Close();
-        return Task.FromResult<IAgentProcessHandle>(new ProcessHandle(process));
+        return Task.FromResult<IAgentProcessHandle>(new ProcessHandle(process, _logger, LintAgentName, request.TaskId));
     }
 
     /// <summary>
@@ -174,7 +174,7 @@ public sealed class AgentProcessHost : IAgentProcessLauncher
         await process.StandardInput.WriteAsync(stdinPayload);
         process.StandardInput.Close();
 
-        return new ProcessHandle(process);
+        return new ProcessHandle(process, _logger, LintAgentName, request.TaskId);
     }
 
     private Process StartMessageTurnProcess(RemediationMessageTurnAgentRequest request)
@@ -749,10 +749,61 @@ public sealed class AgentProcessHost : IAgentProcessLauncher
     private sealed class ProcessHandle : IAgentProcessHandle
     {
         private readonly Process _process;
+        private readonly ILogger _logger;
+        private readonly string _agentName;
+        private readonly string _taskId;
 
-        public ProcessHandle(Process process)
+        /// <param name="logger">
+        /// Issue #183: used only to re-log the child's stderr lines (drained in the
+        /// background starting immediately below) under the <c>agent_stderr</c> event —
+        /// never for anything on the ADR-008 event channel, which is stdout alone.
+        /// </param>
+        public ProcessHandle(Process process, ILogger logger, string agentName, string taskId)
         {
             _process = process;
+            _logger = logger;
+            _agentName = agentName;
+            _taskId = taskId;
+
+            // Fire-and-forget: every spawn path redirects stderr
+            // (RedirectStandardError = true), so something must always drain it or a
+            // talkative agent blocks forever on a full 64 KiB pipe once nobody reads it
+            // (issue #183). Mirrors RunToExitAsync's own stderr read on the manual CLI
+            // path, minus the buffering — this path re-logs line by line as they arrive
+            // instead of collecting the whole stream for a single post-mortem message.
+            _ = DrainStderrAsync();
+        }
+
+        private async Task DrainStderrAsync()
+        {
+            while (true)
+            {
+                string? line;
+                try
+                {
+                    line = await _process.StandardError.ReadLineAsync();
+                }
+                catch (ObjectDisposedException)
+                {
+                    // The handle was disposed while this background drain was still in
+                    // flight; nothing left to read (mirrors ReadStdoutLinesAsync below).
+                    return;
+                }
+                catch (IOException)
+                {
+                    // The pipe went away from under us (process killed mid-read); nothing
+                    // left to drain.
+                    return;
+                }
+
+                if (line is null)
+                {
+                    // Pipe closed (process exited). Every line already read was logged.
+                    return;
+                }
+
+                AgentStderrLogEvents.LogStderrLine(_logger, _agentName, _taskId, line);
+            }
         }
 
         public async IAsyncEnumerable<string> ReadStdoutLinesAsync(
