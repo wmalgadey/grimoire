@@ -495,11 +495,7 @@ public sealed class IngestRunCoordinator
                     // event's original behavior before any heartbeat has arrived yet.
                     // `started`/`activity`/every other event type no longer resets the
                     // window by their mere arrival (contracts/agent-run-events.md).
-                    var isLivenessProgress = runEvent.Type != AgentRunEvent.TypeHeartbeat
-                        || lastKnownProgress is null
-                        || runEvent.Progress != lastKnownProgress;
-
-                    if (isLivenessProgress)
+                    if (IsLivenessProgress(runEvent, lastKnownProgress))
                     {
                         Interlocked.Exchange(ref lastEventTicks, _timeProvider.GetUtcNow().UtcTicks);
                     }
@@ -536,49 +532,7 @@ public sealed class IngestRunCoordinator
             _runningHandles.TryRemove(taskId, out _);
             _runningTerminalSignals.TryRemove(taskId, out _);
 
-            // Issue #184 remedy (3): an explicit operator cancel produced this same
-            // "pipe closed, no terminal event" shape (Terminate() closes the pipe) — but
-            // it is not a liveness incident, so it skips ScheduleReactivationAsync/the
-            // exhausted-attempts path entirely and finalizes as failed right here.
-            if (_cancelledTaskIds.TryRemove(taskId, out _))
-            {
-                supervisionSpan?.SetTag("outcome", "cancelled");
-                IngestSubmissionLogEvents.LogRunCancelled(_logger, taskId);
-                await FinishRunAsync(
-                    taskId, "failed", "Cancelled by operator request.", writeFailureArtifact: true, CancellationToken.None);
-                _ = readLoop;
-                return;
-            }
-
-            if (attempt < _reactivationDelays.Count)
-            {
-                supervisionSpan?.SetTag("outcome", "liveness_interrupted");
-                await ScheduleReactivationAsync(run, attempt + 1, CancellationToken.None);
-                _ = readLoop;
-                return;
-            }
-
-            // Attempts exhausted: the pre-existing final-failure path, unchanged — except
-            // that this interruption is recorded too. SC-005 asks for *every* liveness
-            // interruption to be a distinct history entry "rather than an unexplained jump
-            // to a final failed state", and the last one is exactly the jump that would
-            // otherwise be unexplained.
-            supervisionSpan?.SetTag("outcome", "liveness_failed");
-            HubMetrics.RecordLivenessFailure();
-            HubMetrics.RecordReactivation("exhausted");
-            IngestSubmissionLogEvents.LogRunLivenessFailed(_logger, taskId, (long)silentSeconds, (long)_livenessWindow.TotalSeconds);
-            IngestSubmissionLogEvents.LogReactivationExhausted(_logger, taskId, _reactivationDelays.Count);
-
-            await _publisher.PublishAsync(
-                taskId, "running", IngestHistoryStatuses.LivenessInterrupted,
-                cancellationToken: CancellationToken.None,
-                historyDetail: $"no attempts remaining after {_reactivationDelays.Count} reactivations");
-
-            var reason = _reactivationDelays.Count == 0
-                ? $"Agent run showed no liveness for {(long)_livenessWindow.TotalSeconds} seconds and was terminated."
-                : $"Agent run showed no liveness for {(long)_livenessWindow.TotalSeconds} seconds after "
-                  + $"{_reactivationDelays.Count} automatic reactivation attempts and was terminated.";
-            await FinishRunAsync(taskId, "failed", reason, writeFailureArtifact: true, CancellationToken.None);
+            await HandleNoTerminalEventAsync(run, taskId, attempt, silentSeconds, supervisionSpan);
             _ = readLoop;
             return;
         }
@@ -592,6 +546,71 @@ public sealed class IngestRunCoordinator
         _runningTerminalSignals.TryRemove(taskId, out _);
         _cancelledTaskIds.TryRemove(taskId, out _);
         _ = readLoop; // read loop ends with the pipe; nothing to await after termination
+    }
+
+    /// <summary>
+    /// Issue #184: only a heartbeat whose progress counter has moved since the last one
+    /// seen counts as liveness — the first heartbeat of a run always counts (establishing
+    /// the baseline). Every other event type only ever fires as a direct consequence of
+    /// genuine loop work, so its arrival still counts unconditionally, matching every
+    /// event's original behavior before any heartbeat has arrived yet
+    /// (contracts/agent-run-events.md).
+    /// </summary>
+    private static bool IsLivenessProgress(AgentRunEvent runEvent, long? lastKnownProgress)
+        => runEvent.Type != AgentRunEvent.TypeHeartbeat
+            || lastKnownProgress is null
+            || runEvent.Progress != lastKnownProgress;
+
+    /// <summary>
+    /// <see cref="SuperviseAsync"/>'s "no terminal event ever arrived" outcome — the
+    /// process has already been terminated and disposed by the caller. Three distinct
+    /// endings: an explicit operator cancel (issue #184 remedy 3, finalized as failed
+    /// immediately, never reactivated), a bounded reactivation attempt still available
+    /// (ADR-025), or attempts exhausted (the original pre-023 final-failure path).
+    /// </summary>
+    private async Task HandleNoTerminalEventAsync(
+        QueuedIngestRun run, string taskId, int attempt, double silentSeconds, Activity? supervisionSpan)
+    {
+        // Issue #184 remedy (3): an explicit operator cancel produces this same "pipe
+        // closed, no terminal event" shape (Terminate() closes the pipe) — but it is not
+        // a liveness incident, so it skips reactivation/exhaustion entirely.
+        if (_cancelledTaskIds.TryRemove(taskId, out _))
+        {
+            supervisionSpan?.SetTag("outcome", "cancelled");
+            IngestSubmissionLogEvents.LogRunCancelled(_logger, taskId);
+            await FinishRunAsync(
+                taskId, "failed", "Cancelled by operator request.", writeFailureArtifact: true, CancellationToken.None);
+            return;
+        }
+
+        if (attempt < _reactivationDelays.Count)
+        {
+            supervisionSpan?.SetTag("outcome", "liveness_interrupted");
+            await ScheduleReactivationAsync(run, attempt + 1, CancellationToken.None);
+            return;
+        }
+
+        // Attempts exhausted: the pre-existing final-failure path, unchanged — except
+        // that this interruption is recorded too. SC-005 asks for *every* liveness
+        // interruption to be a distinct history entry "rather than an unexplained jump to
+        // a final failed state", and the last one is exactly the jump that would
+        // otherwise be unexplained.
+        supervisionSpan?.SetTag("outcome", "liveness_failed");
+        HubMetrics.RecordLivenessFailure();
+        HubMetrics.RecordReactivation("exhausted");
+        IngestSubmissionLogEvents.LogRunLivenessFailed(_logger, taskId, (long)silentSeconds, (long)_livenessWindow.TotalSeconds);
+        IngestSubmissionLogEvents.LogReactivationExhausted(_logger, taskId, _reactivationDelays.Count);
+
+        await _publisher.PublishAsync(
+            taskId, "running", IngestHistoryStatuses.LivenessInterrupted,
+            cancellationToken: CancellationToken.None,
+            historyDetail: $"no attempts remaining after {_reactivationDelays.Count} reactivations");
+
+        var reason = _reactivationDelays.Count == 0
+            ? $"Agent run showed no liveness for {(long)_livenessWindow.TotalSeconds} seconds and was terminated."
+            : $"Agent run showed no liveness for {(long)_livenessWindow.TotalSeconds} seconds after "
+              + $"{_reactivationDelays.Count} automatic reactivation attempts and was terminated.";
+        await FinishRunAsync(taskId, "failed", reason, writeFailureArtifact: true, CancellationToken.None);
     }
 
     /// <summary>
