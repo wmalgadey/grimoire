@@ -32,8 +32,16 @@ Emitted every 10 seconds (configurable via `--heartbeat-seconds`) by a backgroun
 timer, independent of model latency.
 
 ```json
-{"type":"heartbeat","taskId":"t-1","timestamp":"..."}
+{"type":"heartbeat","taskId":"t-1","timestamp":"...","progress":42}
 ```
+
+`progress` (issue #184) is a monotonically increasing counter of harness-observed loop
+mechanics — a streamed text delta arriving, a model turn completing, a tool call
+dispatched (Constitution Principle V: mechanics only, never content judgment). It proves
+the run is *advancing*, not merely that the process has a working timer: a heartbeat's
+own arrival is emitted unconditionally by the background timer regardless of whether the
+model is responding, so two consecutive heartbeats carrying the same `progress` value
+mean nothing happened between them even though the process is alive.
 
 ### `activity`
 
@@ -70,11 +78,23 @@ rollback), before process exit.
 
 | Situation | Hub behavior |
 |-----------|--------------|
-| Any event received | Update `lastEventAt`; forward relevant state/activity to board & detail via 003 realtime channel |
+| Any event received | Forward relevant state/activity to board & detail via 003 realtime channel |
+| `started` / `activity` received | Update `lastEventAt` — these only ever fire as a direct consequence of real loop work, never spontaneously |
+| `heartbeat` whose `progress` differs from the last observed value | Update `lastEventAt` |
+| `heartbeat` whose `progress` is unchanged from the last one seen | No update — this is the case that used to reset the window and no longer does (issue #184) |
 | `completed` / `failed` received | Terminal transition; stop supervision; advance queue |
-| No event for `livenessWindowSeconds` (default 60) | Mark run `failed` (liveness reason), terminate leftover process, advance queue |
+| No `lastEventAt` update for `livenessWindowSeconds` (default 60) | Mark run `failed` (liveness reason), terminate leftover process, advance queue |
 | Event for a task already terminal | Record as diagnostic, no state change (FR-022) |
 | Process exit without terminal event | No direct transition — silence lets the liveness window fire (single failure authority) |
+
+Issue #184: before this fix, `lastEventAt` was updated by *any* received event,
+including a bare `heartbeat` — which the background timer emits unconditionally whether
+or not the model is responding. That made a stalled model turn indistinguishable from a
+healthy one: heartbeats alone kept the watchdog silent indefinitely. `started` and
+`activity` are unaffected (they only ever fire as a result of genuine loop progress, so
+their arrival was never the problem); `heartbeat` now only counts when its `progress`
+counter has actually moved since the last one seen (the first `heartbeat` of a run always
+counts, establishing the baseline).
 
 ## Exit code
 

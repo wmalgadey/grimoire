@@ -34,6 +34,7 @@ public static class IngestSubmissionLogEvents
     private static readonly EventId TaskRestartedEvent = new(41, "ingest.task.restarted");
     private static readonly EventId TaskRestartRejectedEvent = new(42, "ingest.task.restart_rejected");
     private static readonly EventId SourceServedEvent = new(43, "ingest.source.served");
+    private static readonly EventId RunCancelledEvent = new(44, "ingest.run.cancelled");
 
     public static void LogSubmissionAccepted(ILogger logger, string taskId, string sourceKind, DateTimeOffset submittedAt)
     {
@@ -290,6 +291,16 @@ public static class IngestSubmissionLogEvents
         logger.LogError(ReactivationExhaustedEvent,
             "Ingest run reactivation attempts exhausted; failing the task. task_id={task_id} attempts={attempts}",
             taskId, attempts);
+    }
+
+    /// <summary>Issue #184 remedy (3): an operator cancelled the actively-running task.</summary>
+    public static void LogRunCancelled(ILogger logger, string taskId)
+    {
+        using var span = StartLogEventSpan("ingest.run.cancelled", "Warning");
+        span?.SetTag("task_id", taskId);
+
+        logger.LogWarning(RunCancelledEvent,
+            "Ingest run cancelled by operator request. task_id={task_id}", taskId);
     }
 
     public static void LogTaskRestarted(ILogger logger, string taskId)

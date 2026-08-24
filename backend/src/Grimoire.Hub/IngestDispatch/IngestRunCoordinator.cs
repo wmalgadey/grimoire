@@ -47,6 +47,21 @@ public sealed class IngestRunCoordinator
 
     private readonly SemaphoreSlim _slotLock = new(1, 1);
     private readonly ConcurrentDictionary<string, RunActivitySnapshot> _activity = new();
+    // Issue #184 remedy (3), operator cancel: the actively-supervised handle, keyed by
+    // task id, so CancelAsync can reach it from outside SuperviseAsync's own closure.
+    // Only ever holds at most one entry (the single agent slot), same lifetime as
+    // _runningTaskId — populated when supervision starts, removed on every exit path.
+    private readonly ConcurrentDictionary<string, IAgentProcessHandle> _runningHandles = new();
+    // The same task's terminal-event signal, so CancelAsync can complete it directly
+    // (with null, the existing "no terminal event" shape) instead of waiting out the
+    // liveness watchdog — a cancel is an immediate, deterministic operator action, not a
+    // liveness incident that happens to resolve once the window elapses.
+    private readonly ConcurrentDictionary<string, TaskCompletionSource<AgentRunEvent?>> _runningTerminalSignals = new();
+    // Marks a task as explicitly cancelled so SuperviseAsync's "no terminal event"
+    // branch finalizes it as failed directly instead of treating the resulting pipe
+    // close as a liveness incident eligible for automatic reactivation (ADR-025) — a
+    // deliberate cancel is not something to retry.
+    private readonly ConcurrentDictionary<string, byte> _cancelledTaskIds = new();
     private volatile string? _runningTaskId;
     /// <summary>
     /// 023-task-ui-improvements (ADR-025, research.md R2): the bounded automatic
@@ -195,6 +210,48 @@ public sealed class IngestRunCoordinator
         IngestSubmissionLogEvents.LogQueueResumed(_logger, taskId, scope: "task");
         await TryStartNextAsync(cancellationToken);
         return true;
+    }
+
+    /// <summary>
+    /// Issue #184 remedy (3): an operator cancel for a wedged run. Terminates the
+    /// actively-supervised process and finalizes the task as <c>failed</c> directly —
+    /// never through the bounded reactivation schedule (ADR-025), since a deliberate
+    /// cancel is not a liveness incident to retry. The only prior way to release a run
+    /// stuck behind an unbounded model call was <c>docker compose exec hub kill
+    /// &lt;pid&gt;</c>, which is not an operator procedure.
+    /// </summary>
+    /// <returns>
+    /// <see langword="false"/> when <paramref name="taskId"/> is not the task currently
+    /// occupying the agent slot (already finished, still queued, or unknown) — nothing to
+    /// cancel. The caller is responsible for turning that into the actual HTTP response.
+    /// </returns>
+    public Task<bool> CancelAsync(string taskId, CancellationToken cancellationToken = default)
+    {
+        if (_runningTaskId != taskId)
+        {
+            return Task.FromResult(false);
+        }
+
+        // Marked before completing the terminal signal so SuperviseAsync's "no terminal
+        // event" branch — entered the moment the line below resolves it — always sees the
+        // cancellation already recorded.
+        _cancelledTaskIds[taskId] = 0;
+
+        if (_runningHandles.TryGetValue(taskId, out var handle))
+        {
+            handle.Terminate();
+        }
+
+        // Resolves SuperviseAsync's await immediately (the existing "no terminal event"
+        // shape) rather than waiting for the liveness watchdog to eventually notice the
+        // pipe Terminate() just closed — a cancel is a deterministic operator action, not
+        // something that should take up to a full liveness window to take effect.
+        if (_runningTerminalSignals.TryGetValue(taskId, out var terminal))
+        {
+            terminal.TrySetResult(null);
+        }
+
+        return Task.FromResult(true);
     }
 
     /// <summary>
@@ -385,9 +442,23 @@ public sealed class IngestRunCoordinator
         using var supervisionSpan = HubTracing.ActivitySource.StartActivity("ingest_hub.run_supervision");
         supervisionSpan?.SetTag("task_id", taskId);
 
+        // Issue #184 remedy (3): the only handle CancelAsync can reach from outside this
+        // closure. Removed on every exit path below (including the reactivation branch —
+        // the next attempt's own SuperviseAsync call re-populates it for its own handle).
+        _runningHandles[taskId] = handle;
+
         var lastEventTicks = _timeProvider.GetUtcNow().UtcTicks;
         string lastEventType = "none";
+        // Issue #184: the watchdog used to reset lastEventTicks on the mere arrival of
+        // ANY event — including a bare `heartbeat`, which the background timer emits
+        // unconditionally whether or not the model is responding. That made a stalled
+        // model turn indistinguishable from a healthy one, since heartbeats alone kept
+        // the run's silence window from ever elapsing. lastKnownProgress tracks the last
+        // `heartbeat.progress` value seen (contracts/agent-run-events.md); only a
+        // `heartbeat` whose progress has actually moved counts as liveness now.
+        long? lastKnownProgress = null;
         var terminal = new TaskCompletionSource<AgentRunEvent?>(TaskCreationOptions.RunContinuationsAsynchronously);
+        _runningTerminalSignals[taskId] = terminal;
 
         // Liveness watchdog: event silence beyond the window is the sole failure
         // authority (ADR-008). Checked on a coarse tick so a hung process cannot park
@@ -418,7 +489,26 @@ public sealed class IngestRunCoordinator
 
                 if (!terminal.Task.IsCompleted)
                 {
-                    Interlocked.Exchange(ref lastEventTicks, _timeProvider.GetUtcNow().UtcTicks);
+                    // Issue #184: only a heartbeat whose progress counter has moved since
+                    // the last one seen resets the silence window — the first heartbeat of
+                    // a run always counts (establishing the baseline), matching every
+                    // event's original behavior before any heartbeat has arrived yet.
+                    // `started`/`activity`/every other event type no longer resets the
+                    // window by their mere arrival (contracts/agent-run-events.md).
+                    var isLivenessProgress = runEvent.Type != AgentRunEvent.TypeHeartbeat
+                        || lastKnownProgress is null
+                        || runEvent.Progress != lastKnownProgress;
+
+                    if (isLivenessProgress)
+                    {
+                        Interlocked.Exchange(ref lastEventTicks, _timeProvider.GetUtcNow().UtcTicks);
+                    }
+
+                    if (runEvent.Type == AgentRunEvent.TypeHeartbeat)
+                    {
+                        lastKnownProgress = runEvent.Progress;
+                    }
+
                     lastEventType = runEvent.Type;
                 }
 
@@ -443,6 +533,22 @@ public sealed class IngestRunCoordinator
             var silentSeconds = TimeSpan.FromTicks(_timeProvider.GetUtcNow().UtcTicks - Interlocked.Read(ref lastEventTicks)).TotalSeconds;
             handle.Terminate();
             await handle.DisposeAsync();
+            _runningHandles.TryRemove(taskId, out _);
+            _runningTerminalSignals.TryRemove(taskId, out _);
+
+            // Issue #184 remedy (3): an explicit operator cancel produced this same
+            // "pipe closed, no terminal event" shape (Terminate() closes the pipe) — but
+            // it is not a liveness incident, so it skips ScheduleReactivationAsync/the
+            // exhausted-attempts path entirely and finalizes as failed right here.
+            if (_cancelledTaskIds.TryRemove(taskId, out _))
+            {
+                supervisionSpan?.SetTag("outcome", "cancelled");
+                IngestSubmissionLogEvents.LogRunCancelled(_logger, taskId);
+                await FinishRunAsync(
+                    taskId, "failed", "Cancelled by operator request.", writeFailureArtifact: true, CancellationToken.None);
+                _ = readLoop;
+                return;
+            }
 
             if (attempt < _reactivationDelays.Count)
             {
@@ -482,6 +588,9 @@ public sealed class IngestRunCoordinator
         await FinishRunAsync(taskId, status, terminalEvent.Reason, writeFailureArtifact: false, CancellationToken.None);
 
         await handle.DisposeAsync();
+        _runningHandles.TryRemove(taskId, out _);
+        _runningTerminalSignals.TryRemove(taskId, out _);
+        _cancelledTaskIds.TryRemove(taskId, out _);
         _ = readLoop; // read loop ends with the pipe; nothing to await after termination
     }
 
