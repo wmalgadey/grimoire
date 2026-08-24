@@ -489,12 +489,14 @@ public sealed class IngestRunCoordinator
 
                 if (!terminal.Task.IsCompleted)
                 {
-                    // Issue #184: only a heartbeat whose progress counter has moved since
-                    // the last one seen resets the silence window — the first heartbeat of
-                    // a run always counts (establishing the baseline), matching every
-                    // event's original behavior before any heartbeat has arrived yet.
-                    // `started`/`activity`/every other event type no longer resets the
-                    // window by their mere arrival (contracts/agent-run-events.md).
+                    // Issue #184: `started`/`activity` still reset the window on their
+                    // mere arrival, exactly as before — they only ever fire as a direct
+                    // consequence of genuine loop work, so their arrival was never the
+                    // problem. Only `heartbeat` is now gated: the background timer emits
+                    // it unconditionally whether or not the model is responding, so it
+                    // resets the window only when its progress counter has actually moved
+                    // since the last one seen (the first heartbeat of a run always counts,
+                    // establishing the baseline). See contracts/agent-run-events.md.
                     if (IsLivenessProgress(runEvent, lastKnownProgress))
                     {
                         Interlocked.Exchange(ref lastEventTicks, _timeProvider.GetUtcNow().UtcTicks);

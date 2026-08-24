@@ -68,7 +68,7 @@ public sealed class AgentProcessHost : IAgentProcessLauncher
         }
 
         process.StandardInput.Close();
-        return new ProcessHandle(process, _logger, IngestAgentName, request.TaskId);
+        return new ProcessHandle(process, _logger, IngestAgentName, "task_id", request.TaskId);
     }
 
     /// <summary>
@@ -121,7 +121,7 @@ public sealed class AgentProcessHost : IAgentProcessLauncher
         await process.StandardInput.WriteAsync(stdinPayload);
         process.StandardInput.Close();
 
-        return new ProcessHandle(process, _logger, QueryAgentName, request.TurnId);
+        return new ProcessHandle(process, _logger, QueryAgentName, "turn_id", request.TurnId);
     }
 
     /// <summary>ADR-016 (013-lint-agent): spawns a Lint agent process. No stdin payload at
@@ -130,7 +130,7 @@ public sealed class AgentProcessHost : IAgentProcessLauncher
     {
         var process = StartLintProcess(request);
         process.StandardInput.Close();
-        return Task.FromResult<IAgentProcessHandle>(new ProcessHandle(process, _logger, LintAgentName, request.RunId));
+        return Task.FromResult<IAgentProcessHandle>(new ProcessHandle(process, _logger, LintAgentName, "run_id", request.RunId));
     }
 
     /// <summary>
@@ -146,7 +146,7 @@ public sealed class AgentProcessHost : IAgentProcessLauncher
     {
         var process = StartRemediationProcess(request);
         process.StandardInput.Close();
-        return Task.FromResult<IAgentProcessHandle>(new ProcessHandle(process, _logger, LintAgentName, request.TaskId));
+        return Task.FromResult<IAgentProcessHandle>(new ProcessHandle(process, _logger, LintAgentName, "task_id", request.TaskId));
     }
 
     /// <summary>
@@ -174,7 +174,7 @@ public sealed class AgentProcessHost : IAgentProcessLauncher
         await process.StandardInput.WriteAsync(stdinPayload);
         process.StandardInput.Close();
 
-        return new ProcessHandle(process, _logger, LintAgentName, request.TaskId);
+        return new ProcessHandle(process, _logger, LintAgentName, "task_id", request.TaskId);
     }
 
     private Process StartMessageTurnProcess(RemediationMessageTurnAgentRequest request)
@@ -751,19 +751,27 @@ public sealed class AgentProcessHost : IAgentProcessLauncher
         private readonly Process _process;
         private readonly ILogger _logger;
         private readonly string _agentName;
-        private readonly string _taskId;
+        private readonly string _correlationKeyName;
+        private readonly string _correlationId;
 
         /// <param name="logger">
         /// Issue #183: used only to re-log the child's stderr lines (drained in the
         /// background starting immediately below) under the <c>agent_stderr</c> event —
         /// never for anything on the ADR-008 event channel, which is stdout alone.
         /// </param>
-        public ProcessHandle(Process process, ILogger logger, string agentName, string taskId)
+        /// <param name="correlationKeyName">
+        /// Code review (PR #191): <paramref name="correlationId"/>'s own field name
+        /// (<c>task_id</c>, <c>turn_id</c>, or <c>run_id</c>) — every spawn path's
+        /// identifier used to be logged as <c>task_id</c> regardless of what it actually
+        /// was, mislabeling Query's turn id and Lint's run id.
+        /// </param>
+        public ProcessHandle(Process process, ILogger logger, string agentName, string correlationKeyName, string correlationId)
         {
             _process = process;
             _logger = logger;
             _agentName = agentName;
-            _taskId = taskId;
+            _correlationKeyName = correlationKeyName;
+            _correlationId = correlationId;
 
             // Fire-and-forget: every spawn path redirects stderr
             // (RedirectStandardError = true), so something must always drain it or a
@@ -802,7 +810,7 @@ public sealed class AgentProcessHost : IAgentProcessLauncher
                     return;
                 }
 
-                AgentStderrLogEvents.LogStderrLine(_logger, _agentName, _taskId, line);
+                AgentStderrLogEvents.LogStderrLine(_logger, _agentName, _correlationKeyName, _correlationId, line);
             }
         }
 
