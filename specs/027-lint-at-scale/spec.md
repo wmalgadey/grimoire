@@ -181,12 +181,13 @@ acceptable rate compared to a full-read baseline.
   *(Agent-judgment evaluation threshold — chosen to hold steady against the ~90% baseline
   the first issue comment measured for the pre-existing in-context tally, not to improve on
   it; improving it further is explicitly out of scope per FR-006.)*
-- **SC-006**: On the eval corpus used to validate this feature, a run's total content tokens
-  read stays at or below the ~86% reduction already observed incidentally under spec 026's
-  own eval scenario for whole-wiki reads of comparable size — i.e., this feature does not
-  regress the token-efficiency gain that already landed. *(Deterministic harness
-  measurement of an agent-driven outcome; evaluated by observation, not asserted as an
-  agent-judgment threshold.)*
+- **SC-006**: On the eval scenario already used to measure this (spec 026's
+  `lint-at-scale-survey`, a small fixture with its context budget deliberately set below
+  what a whole-wiki read would need), a run's total content tokens read stays at or below
+  the ~86% reduction already observed incidentally under spec 026's own eval scenario — i.e.,
+  this feature does not regress the token-efficiency gain that already landed, at whatever
+  scale that scenario runs at. *(Deterministic harness measurement of an agent-driven
+  outcome; evaluated by observation, not asserted as an agent-judgment threshold.)*
 
 ## Assumptions
 
@@ -215,3 +216,8 @@ acceptable rate compared to a full-read baseline.
   a synthetic corpus built for the purpose** — this spec does not mandate the wiki actually
   reach 1200+ pages before the feature can be considered done; it mandates the strategy be
   validated against that scale, not just today's page count.
+- **The evaluation fixtures used to validate this feature are synthetic and sized for the
+  property under test (e.g., a context budget set below what a full read would need), not
+  literal copies of the ~633-page production wiki.** SC-001's 633-page / ~400k-token
+  guarantee is validated by the strategy demonstrably generalizing across fixture sizes and
+  budgets, not by every eval run operating on a full-size corpus.
