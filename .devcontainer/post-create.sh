@@ -7,8 +7,13 @@ set -euo pipefail
 # against Bun's own published SHASUMS256.txt for that release, rather than piping
 # a remote install script directly into bash (supply-chain risk).
 BUN_VERSION="1.3.14"
+# bun-linux-x64 assumes AVX2 and SIGILLs on a CPU without it (older/virtualized hosts),
+# so pick bun-linux-x64-baseline there — Bun's own artifact for that case, published under
+# the same SHASUMS256.txt. Kept in step with scripts/mutation-test.Dockerfile (#190).
 case "$(uname -m)" in
-  x86_64) BUN_ARCH="linux-x64" ;;
+  x86_64)
+    if grep -qw avx2 /proc/cpuinfo; then BUN_ARCH="linux-x64"; else BUN_ARCH="linux-x64-baseline"; fi
+    ;;
   aarch64 | arm64) BUN_ARCH="linux-aarch64" ;;
   *)
     echo "Unsupported architecture for pinned Bun install: $(uname -m)" >&2
