@@ -63,6 +63,13 @@ public sealed class RunEventEmitter : IDisposable
     private readonly string _taskId;
     private readonly Lock _lock = new();
     private Timer? _heartbeatTimer;
+    // Issue #184: a monotonically increasing counter of harness-observed loop mechanics,
+    // carried on `heartbeat` events (contracts/agent-run-events.md). Bumped by
+    // RecordProgress — called from AgentLoop for every streamed text delta and internally
+    // by EmitActivity for every completed turn/dispatched tool call — never by content
+    // judgment (Constitution Principle V: pure mechanics, like the modelTurns/toolCalls
+    // counters `activity` already reports).
+    private long _progress;
 
     public RunEventEmitter(TextWriter writer, string taskId)
     {
@@ -78,11 +85,22 @@ public sealed class RunEventEmitter : IDisposable
         _heartbeatTimer ??= new Timer(_ => EmitHeartbeat(), null, interval, interval);
     }
 
+    /// <summary>
+    /// Issue #184: records one unit of loop-mechanical forward progress — a streamed text
+    /// delta, a completed model turn, a dispatched tool call. Thread-safe (the background
+    /// heartbeat timer reads it concurrently with the agent loop's own thread writing it).
+    /// </summary>
+    public void RecordProgress() => Interlocked.Increment(ref _progress);
+
     public void EmitHeartbeat()
-        => Emit(new { type = "heartbeat", taskId = _taskId, timestamp = DateTimeOffset.UtcNow });
+        => Emit(new { type = "heartbeat", taskId = _taskId, timestamp = DateTimeOffset.UtcNow, progress = Interlocked.Read(ref _progress) });
 
     public void EmitActivity(int modelTurns, int toolCalls, IReadOnlyDictionary<string, int> toolCallsByName, string currentAction)
-        => Emit(new
+    {
+        // Every activity event reports a completed loop step (a model turn finished, a
+        // tool call dispatched) — genuine forward progress, not merely time passing.
+        RecordProgress();
+        Emit(new
         {
             type = "activity",
             taskId = _taskId,
@@ -92,6 +110,7 @@ public sealed class RunEventEmitter : IDisposable
             toolCallsByName,
             currentAction,
         });
+    }
 
     /// <summary>
     /// ADR-011 R2: an incremental streamed-answer delta (contracts/query-run-events.md),

@@ -32,6 +32,15 @@ public sealed record AgentRunEvent(
     [property: JsonPropertyName("type")] string Type,
     [property: JsonPropertyName("taskId")] string TaskId,
     [property: JsonPropertyName("timestamp")] DateTimeOffset Timestamp,
+    // Issue #184: a monotonically increasing counter of harness-observed loop mechanics
+    // (a streamed text delta, a completed model turn, a dispatched tool call), carried on
+    // `heartbeat` events. IngestRunCoordinator's liveness watchdog resets its silence
+    // window only when this value changes from the last `heartbeat` it saw — never on the
+    // mere arrival of any event — so a stalled model turn can no longer hide behind a
+    // heartbeat timer that keeps firing regardless of whether the run is advancing. Null
+    // for every event type that does not carry it (RunEventEmitter only sets it on
+    // `heartbeat`).
+    [property: JsonPropertyName("progress")] long? Progress = null,
     [property: JsonPropertyName("modelTurns")] int? ModelTurns = null,
     [property: JsonPropertyName("toolCalls")] int? ToolCalls = null,
     [property: JsonPropertyName("toolCallsByName")] IReadOnlyDictionary<string, int>? ToolCallsByName = null,

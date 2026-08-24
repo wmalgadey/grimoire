@@ -153,7 +153,11 @@ public sealed class AgentLoop
         CancellationToken cancellationToken)
     {
         var conversation = new List<ConversationMessage>(initialConversation);
-        var answerStream = new TurnBoundaryTextStream(_onTextDelta);
+        // Issue #184: every streamed text delta is a unit of loop-mechanical forward
+        // progress (contracts/agent-run-events.md's heartbeat `progress` counter) — bumped
+        // here regardless of whether _onTextDelta is set, since Ingest passes none but
+        // still streams text mid-turn exactly like Query does.
+        var answerStream = new TurnBoundaryTextStream(_onTextDelta, () => _eventEmitter?.RecordProgress());
 
         int turnsUsed = 0;
         int totalInputTokens = 0;
@@ -300,7 +304,7 @@ public sealed class AgentLoop
     /// everything and marking nothing was the one option that read badly in both modes.
     /// </para>
     /// </summary>
-    private sealed class TurnBoundaryTextStream(Action<string>? onTextDelta)
+    private sealed class TurnBoundaryTextStream(Action<string>? onTextDelta, Action? onProgress = null)
     {
         private const string TurnSeparator = "\n\n";
 
@@ -309,7 +313,14 @@ public sealed class AgentLoop
 
         public void Write(string text)
         {
-            if (onTextDelta is null || string.IsNullOrEmpty(text))
+            if (string.IsNullOrEmpty(text))
+            {
+                return;
+            }
+
+            onProgress?.Invoke();
+
+            if (onTextDelta is null)
             {
                 return;
             }

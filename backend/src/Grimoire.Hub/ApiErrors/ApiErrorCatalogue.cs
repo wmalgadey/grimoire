@@ -58,6 +58,10 @@ public static class ApiErrorCatalogue
     public const string RestartSourceMissing = "restart_source_missing";
     public const string RestartAlreadyInProgress = "restart_already_in_progress";
 
+    // --- Ingest cancel (issue #184) -----------------------------------------
+
+    public const string IngestTaskNotRunning = "ingest_task_not_running";
+
     // --- Query -------------------------------------------------------------
 
     public const string QuerySubmissionBodyRequired = "query_submission_body_required";
@@ -168,6 +172,11 @@ public static class ApiErrorCatalogue
         new(RestartAlreadyInProgress, 409,
             "Restart already under way",
             "This task is already restarting. Wait for it to pick up again."),
+
+        // --- Ingest cancel (issue #184) ---
+        new(IngestTaskNotRunning, 409,
+            "Task is not running",
+            "Only the task currently occupying the agent slot can be cancelled. This one is queued, already finished, or does not exist."),
 
         // --- Query ---
         new(QuerySubmissionBodyRequired, 400,

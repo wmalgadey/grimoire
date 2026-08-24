@@ -32,6 +32,7 @@ public static class IngestSubmissionEndpoints
         group.MapGet("/{taskId}/source/original", GetSourceOriginalAsync);
         group.MapPost("/{taskId}/retrigger", PostRetriggerAsync);
         group.MapPost("/{taskId}/restart", PostRestartAsync);
+        group.MapPost("/{taskId}/cancel", PostCancelAsync);
         return group;
     }
 
@@ -565,6 +566,33 @@ public static class IngestSubmissionEndpoints
         HubMetrics.RecordRestart("rejected");
         IngestSubmissionLogEvents.LogTaskRestartRejected(logger, taskId, currentStatus);
         return ApiErrorResults.Problem(code);
+    }
+
+    /// <summary>
+    /// Issue #184 remedy (3): an operator cancel for a run wedged behind an unbounded
+    /// model call. The only prior release mechanism was `docker compose exec hub kill
+    /// &lt;pid&gt;`, which is not an operator procedure. Terminates the actively-running
+    /// task and finalizes it as `failed` — never auto-reactivated, since a deliberate
+    /// cancel is not a liveness incident.
+    /// </summary>
+    private static async Task<IResult> PostCancelAsync(
+        string taskId,
+        [FromServices] IngestRunCoordinator coordinator,
+        [FromServices] KanbanBoardProjectionStore store,
+        [FromServices] IngestContentPaths contentPaths,
+        CancellationToken cancellationToken)
+    {
+        var projection = await store.GetByTaskIdAsync(contentPaths.TasksDir, taskId, cancellationToken);
+        if (projection is null)
+        {
+            return ApiErrorResults.Problem(ApiErrorCatalogue.IngestTaskNotFound);
+        }
+
+        var cancelled = await coordinator.CancelAsync(taskId, cancellationToken);
+        return cancelled
+            ? Results.Ok(new { taskId, status = "cancelling" })
+            : ApiErrorResults.Problem(ApiErrorCatalogue.IngestTaskNotRunning,
+                $"This task is not the one currently occupying the agent slot (it is {projection.Column}), so it cannot be cancelled.");
     }
 
     /// <summary>Resumes automatic queue processing after a Hub restart (004 FR-021); idempotent.</summary>
