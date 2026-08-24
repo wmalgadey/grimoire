@@ -28,9 +28,13 @@ RUN apt-get update \
 ARG BUN_VERSION=1.3.14
 ENV BUN_INSTALL=/usr/local/bun
 ENV PATH=$BUN_INSTALL/bin:$PATH
+# bun-linux-x64 assumes AVX2 and SIGILLs on a CPU without it (older/virtualized hosts,
+# e.g. the deploy server's QEMU CPU model) — bun-linux-x64-baseline is Bun's own answer to
+# that, published under the same SHASUMS256.txt for every release. Detect at build time
+# rather than hard-picking baseline everywhere, since aarch64 has no such split (#190).
 RUN set -eux; \
     case "$(uname -m)" in \
-      x86_64) arch="linux-x64" ;; \
+      x86_64) if grep -qw avx2 /proc/cpuinfo; then arch="linux-x64"; else arch="linux-x64-baseline"; fi ;; \
       aarch64|arm64) arch="linux-aarch64" ;; \
       *) echo "unsupported architecture: $(uname -m)" >&2; exit 1 ;; \
     esac; \
