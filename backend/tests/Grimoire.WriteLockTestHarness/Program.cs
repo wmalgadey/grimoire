@@ -38,6 +38,16 @@ if (args.Length == 6 && args[0] == "guarded-append")
     return await RunGuardedAppendAsync(args);
 }
 
+// Issue #183: a stand-in "talkative ingest agent" for
+// AgentProcessDispatchStderrDrainTests — recognizes the exact `--task-id ...` argv
+// shape AgentProcessHost.StartProcess(IngestAgentRequest) always spawns with (no other
+// flag here is parsed) so the real dispatch path (StartAsync, not RunToExitAsync) can be
+// pointed at this harness in place of the real Grimoire.IngestAgent worker.
+if (args.Length > 0 && args[0] == "--task-id")
+{
+    return await RunStderrFloodAsync();
+}
+
 await Console.Error.WriteLineAsync(
     "Usage: lock-probe <writeLocksDir> <canonicalTargetPath> <backoffCapMs> <holdMs>\n" +
     "       guarded-append <wikiRoot> <writeLocksDir> <relativePath> <entryText> <waitForStdinBeforeWrite:0|1>");
@@ -126,4 +136,28 @@ static async Task<int> RunGuardedAppendAsync(string[] args)
     var reason = executor.Denials.Count > 0 ? executor.Denials[^1].Reason : "unknown";
     Console.WriteLine($"DENIED:{reason}");
     return 1;
+}
+
+// Issue #183: writes comfortably past a Linux pipe's default 64 KiB kernel buffer to
+// stderr, then emits a single stdout line and exits. Before the fix, nothing drained the
+// dispatch path's redirected stderr — once the buffer filled, the next stderr write
+// blocked forever and this process (and the run coordinating it) never reached its
+// terminal event. Real ANSI/JSON content in every line so a naive "read one huge line"
+// implementation would not accidentally pass by reading it as one incomplete line either.
+static async Task<int> RunStderrFloodAsync()
+{
+    const int floodBytes = 200_000; // ~3x the 64 KiB default pipe buffer
+    var line = new string('e', 200);
+    var written = 0;
+
+    while (written < floodBytes)
+    {
+        await Console.Error.WriteLineAsync(line);
+        written += line.Length + 1;
+    }
+
+    await Console.Error.FlushAsync();
+
+    Console.WriteLine("""{"event":"terminal","status":"completed"}""");
+    return 0;
 }
