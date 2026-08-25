@@ -277,14 +277,8 @@ repeatedly. `scripts/test-fast.sh` will not surface the staleness failure — on
 2026-08-12, convergence task T067 — Constitution v1.11.0 landed before this plan was first
 authored and binds it in full, but this classification was originally omitted):
 
-> **Correction (2026-08-24, ADR-032):** the "escape valve" this section cites does not
-> exist in any version of the constitution; T067 introduced the wording here and cited it
-> as constitutional text. The reflection/IL tests this section defends were replaced by
-> classicist behavioral tests in
-> [ADR-032](../../docs/adr/ADR-032-behavioral-enforcement-for-path-surface-invariants.md).
-> The historical text below is retained unedited.
-
-Per [ADR-024](../../docs/adr/ADR-024-memory-directory-root.md)'s Structural Enforcement
+Per
+[ADR-024](../../docs/adr/ADR-024-memory-directory-root.md)'s Structural Enforcement
 section (the classification was briefly recorded in an amending ADR-026, then merged back
 into ADR-024 itself before this branch merged to `main` — see that document's history
 note),

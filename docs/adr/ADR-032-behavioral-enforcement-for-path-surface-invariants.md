@@ -156,8 +156,12 @@ reflection test that turns an ordinary feature change into a false alarm.
 - The ArchTests project retains only Dependency & Layering Boundary Rules (domain
   purity, adapter containment, guarded-write boundary, instruction authorship) — all
   legitimately reflection/IL-based per Principle III.
-- `specs/022-memory-directory-root/plan.md`'s "escape valve" section is annotated with
-  a dated correction pointing here; the historical text remains readable.
+- `specs/022-memory-directory-root/plan.md` itself is left unedited — a merged feature's
+  spec is historical record (`CLAUDE.md`'s Document Map: not binding, never cited as a
+  current requirement), not a living document that needs a forward-pointing correction
+  every time a later ADR changes something it once asserted. This ADR is the correction
+  of record; anyone reading the old plan's escape-valve section without ADR-032's
+  context reads outdated reasoning, which is expected of a historical artifact.
 - ADR-024 and ADR-022 carry `Superseded in part by ADR-032` in their status headers,
   scoped to their Structural Enforcement sections only — both remain `Accepted` and
   govern everything else they decided; `docs/adr/index.md` reflects the chain
@@ -171,8 +175,12 @@ reflection test that turns an ordinary feature change into a false alarm.
 
 ## More Information
 
-Detailed rationale for each retired test and its replacement: `specs/022-memory-
-directory-root/plan.md`'s dated correction note. This ADR must be **Accepted** before
-any dependent `/speckit-tasks` run (Constitution, Spec-Kit Workflow step 4) — accepted
-directly on drafting/revision, consistent with this project's solo-operator sign-off
-convention.
+The retired reflection/IL tests' original per-rule justification (including the
+fabricated "escape valve" citation this ADR retracts) is preserved, unedited, as
+historical record in `specs/022-memory-directory-root/plan.md`'s "Constitution III
+classification and the Feature-Scoped-Invariant escape valve" section — this ADR is the
+current, binding correction; the old plan is not amended to point back to it, per
+`CLAUDE.md`'s Document Map (a merged feature's spec is historical, not a living
+document). This ADR must be **Accepted** before any dependent `/speckit-tasks` run
+(Constitution, Spec-Kit Workflow step 4) — accepted directly on drafting/revision,
+consistent with this project's solo-operator sign-off convention.
