@@ -628,7 +628,7 @@ public sealed class GuardedToolExecutor
             // "path judged safe" and "path acted upon" (research.md D3). A mismatch means
             // a path segment became a symlink after validation; discard the pending temp
             // file instead of renaming through the now-different physical route.
-            if (!string.Equals(ResolvePhysicalPathInRepository(canonical), canonical, StringComparison.Ordinal))
+            if (!RevalidatesToSamePhysicalPath(canonical))
             {
                 return false;
             }
@@ -697,7 +697,7 @@ public sealed class GuardedToolExecutor
         // validated against policy above. A mismatch means a path segment became a
         // symlink after validation (TOCTOU) — deny rather than delete through the now-
         // different physical route.
-        if (!string.Equals(ResolvePhysicalPathInRepository(canonical), canonical, StringComparison.Ordinal))
+        if (!RevalidatesToSamePhysicalPath(canonical))
         {
             deleteActivity?.SetTag("journaled", false);
             deleteActivity?.SetTag("outcome", "revalidation_failed");
@@ -888,14 +888,18 @@ public sealed class GuardedToolExecutor
         var hasPathPrefix = TryGetStringProperty(inputJson, "path", out var relativePathPrefix) &&
             !string.IsNullOrWhiteSpace(relativePathPrefix);
 
-        if (hasPathPrefix && !TryCanonicalize(relativePathPrefix, out _, out var searchCanonicalizationDenialReason))
+        // Copilot review (PR #199): canonicalize the path prefix exactly once and reuse the
+        // result — a second, separate Canonicalize call reintroduced the same
+        // unhandled-exception risk TryCanonicalize exists to close, for no benefit.
+        var canonicalPathPrefix = string.Empty;
+        if (hasPathPrefix && !TryCanonicalize(relativePathPrefix, out canonicalPathPrefix, out var searchCanonicalizationDenialReason))
         {
             var malformedDenial = RecordDenial(ToolRegistry.SearchFiles, relativePathPrefix, relativePathPrefix, searchCanonicalizationDenialReason!, turn);
             _instrumentation.RecordSearchInvocation(_taskId, "denied", matchesReturned: 0, filesScanned: 0, turn);
             return malformedDenial;
         }
 
-        var searchRoot = hasPathPrefix ? Canonicalize(relativePathPrefix) : _repositoryRoot;
+        var searchRoot = hasPathPrefix ? canonicalPathPrefix : _repositoryRoot;
 
         // ADR-030 R1: "A denial is recorded only for the search's own path argument when
         // that root is out of scope." A default (whole-repository) search has no such
@@ -1214,7 +1218,9 @@ public sealed class GuardedToolExecutor
     /// <c>symlink_loop</c> policy denial rather than letting it (or a stack overflow from
     /// an unbounded cyclic resolution) propagate out of the tool-call path.
     /// </summary>
-    private sealed class SymlinkLoopExceededException : Exception;
+    private sealed class SymlinkLoopExceededException : Exception
+    {
+    }
 
     /// <summary>
     /// D1 (027-host-stability): <see cref="Canonicalize"/> wraps .NET's <c>Path</c> APIs,
@@ -1244,6 +1250,33 @@ public sealed class GuardedToolExecutor
         {
             canonical = string.Empty;
             denialReason = "symlink_loop";
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// D3 (027-host-stability): revalidates that <paramref name="canonical"/> still
+    /// resolves to itself immediately before a mutating write/delete. Copilot review (PR
+    /// #199): the raw re-resolution call this wraps can throw the same way the initial
+    /// <see cref="Canonicalize"/> call can (a symlink swapped in during the TOCTOU window
+    /// could itself form a loop past <see cref="MaxSymlinkResolutionHops"/>, or otherwise
+    /// hit the <see cref="ArgumentException"/> case) — an exception thrown here, this close
+    /// to the mutating call, is exactly the unhandled-exception failure mode this feature
+    /// exists to close. Any resolution failure is treated as "does not match" (fails
+    /// closed) rather than being allowed to propagate.
+    /// </summary>
+    private bool RevalidatesToSamePhysicalPath(string canonical)
+    {
+        try
+        {
+            return string.Equals(ResolvePhysicalPathInRepository(canonical), canonical, StringComparison.Ordinal);
+        }
+        catch (ArgumentException)
+        {
+            return false;
+        }
+        catch (SymlinkLoopExceededException)
+        {
             return false;
         }
     }
