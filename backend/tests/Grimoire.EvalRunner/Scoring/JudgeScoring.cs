@@ -4,11 +4,13 @@ using Grimoire.AgentRuntime.Core.Adapters.Replay;
 namespace Grimoire.EvalRunner.Scoring;
 
 /// <summary>
-/// LLM-judge scoring for the steering-adoption scenario (Principle V: "reflects the
-/// steer" is a judgment call and stays an LLM verdict). At capture time the judge is
-/// invoked through the <see cref="IModelClient"/> port and its verdict recorded; at
-/// replay time the recorded verdict is consumed verbatim — the judge is never re-invoked
-/// (research.md R6). The prompt template participates in the staleness fingerprints.
+/// LLM-judge scoring for judge-scored Ingest scenarios (Principle V: such calls are
+/// judgment and stay an LLM verdict). No current scenario is judge-scored — the
+/// mechanism remains for future scenarios and for the staleness-fingerprint machinery.
+/// At capture time the judge is invoked through the <see cref="IModelClient"/> port and
+/// its verdict recorded; at replay time the recorded verdict is consumed verbatim — the
+/// judge is never re-invoked (research.md R6). The prompt template participates in the
+/// staleness fingerprints.
 /// </summary>
 public static class JudgeScoring
 {

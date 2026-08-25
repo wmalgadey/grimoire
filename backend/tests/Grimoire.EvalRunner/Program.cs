@@ -366,7 +366,7 @@ internal sealed record CliOptions(
 
     // Issue: a stray token used to be skipped silently AND — because the loop walked args
     // in fixed pairs — shifted every following option onto an odd index, where none of
-    // them matched either. `capture --no-build --scenario lint-defects-found` therefore
+    // them matched either. `capture --no-build --scenario <id>` therefore
     // parsed as "no scenario filter at all", and an empty filter means EVERY scenario:
     // one misplaced `dotnet run` flag turned a seven-scenario refresh into a live
     // re-capture of the whole corpus against the provider. Nothing is worth silently

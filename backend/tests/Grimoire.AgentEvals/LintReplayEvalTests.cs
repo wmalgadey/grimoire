@@ -25,22 +25,6 @@ namespace Grimoire.AgentEvals;
 [Collection("EvalRunnerReplayScenarios")]
 public class LintReplayEvalTests
 {
-    [Fact]
-    public Task SC005_DefectsFound_ReplaysAtThreshold()
-        => AssertScenarioAsync(LintScenarioDefinitions.DefectsFound);
-
-    [Fact]
-    public Task SC006_GenuineFindings_ReplaysAtThreshold()
-        => AssertScenarioAsync(LintScenarioDefinitions.GenuineFindings);
-
-    [Fact]
-    public Task SC007_MetadataProposals_ReplaysAtThreshold()
-        => AssertScenarioAsync(LintScenarioDefinitions.MetadataProposals);
-
-    [Fact]
-    public Task SC008_InboundLinksRefreshed_ReplaysAtThreshold()
-        => AssertScenarioAsync(LintScenarioDefinitions.InboundLinksRefreshed);
-
     /// <summary>
     /// SC-011 (026-guarded-tool-surface T066): the survey-at-scale scenario — the agent
     /// completes a real survey of a wiki several times its declared context budget without

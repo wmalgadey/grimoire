@@ -42,7 +42,7 @@ public class EvalIndependenceFromHubConfigurationTests
     public async Task JunkHubPathEnvVarsAndNoAgentRuntimeDirectory_YieldIdenticalResults_ToANormalRun()
     {
         var paths = EvalPaths.Discover();
-        var scenario = IngestScenarioDefinitions.UpdateOverDuplicate;
+        var scenario = IngestScenarioDefinitions.AdversarialSource;
 
         var baseline = await RunScenarioAsync(paths, scenario);
         Assert.Equal(TrustStatus.Trusted, baseline.TrustStatus);

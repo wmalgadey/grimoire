@@ -87,10 +87,10 @@ public class CaptureHygieneTests : IDisposable
         var pipeline = new IngestCapturePipeline(store, paths, IngestAgentProcessInvoker.ForRepo(paths, env), NullLogger.Instance);
 
         var result = await pipeline.RunScenarioAsync(
-            IngestScenarioDefinitions.ConventionAdherence, gate.Configuration, requestedSampleCount: 1, CancellationToken.None);
+            IngestScenarioDefinitions.InstructionChangeAdoption, gate.Configuration, requestedSampleCount: 1, CancellationToken.None);
 
         Assert.False(result.Stored);
-        Assert.False(store.HasScenario("convention-adherence"));
+        Assert.False(store.HasScenario("instruction-change-adoption"));
         var sample = Assert.Single(result.Samples);
         Assert.False(sample.Captured);
         Assert.Null(sample.Pass);

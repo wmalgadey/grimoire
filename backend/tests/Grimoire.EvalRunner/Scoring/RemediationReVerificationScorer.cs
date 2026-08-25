@@ -12,9 +12,9 @@ public sealed record RemediationReVerificationSampleRunData(
 
 /// <summary>
 /// T039 (015-lint-board-parity, FR-018): the deterministic scorer for the
-/// remediation-execution mode's re-verification eval. Unlike
-/// <see cref="LintDeterministicScorers.RemediationProposalsRelevant"/> (T028), which
-/// stands in for subjective human review via a frozen golden set (research.md R6's
+/// remediation-execution mode's re-verification eval. Unlike the former
+/// proposal-relevance scorer (T028, removed with its lower-stakes scenario), which
+/// stood in for subjective human review via a frozen golden set (research.md R6's
 /// caveat), this scorer needs no such stand-in: each fixture's
 /// <see cref="Scenarios.RemediationReVerificationScenarioDefinition.ExpectedOutcome"/> is
 /// an objective fact the fixture authors control directly — "does the wiki state this

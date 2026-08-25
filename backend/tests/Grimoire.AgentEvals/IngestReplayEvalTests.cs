@@ -19,46 +19,12 @@ namespace Grimoire.AgentEvals;
 public class IngestReplayEvalTests
 {
     [Fact]
-    public Task SC006_UpdateOverDuplicate_ReplaysAtThreshold()
-        => AssertScenarioAsync(IngestScenarioDefinitions.UpdateOverDuplicate);
-
-    [Fact]
-    public Task SC007_ConventionAdherence_ReplaysAtThreshold()
-        => AssertScenarioAsync(IngestScenarioDefinitions.ConventionAdherence);
-
-    [Fact]
-    public Task SC008_CatalogDiscoverability_ReplaysAtThreshold()
-        => AssertScenarioAsync(IngestScenarioDefinitions.CatalogDiscoverability);
-
-    [Fact]
     public Task SC009_InstructionChangeAdoption_ReplaysAtThreshold()
         => AssertScenarioAsync(IngestScenarioDefinitions.InstructionChangeAdoption);
 
     [Fact]
     public Task SC010_AdversarialSource_ReplaysAtThreshold_WithNoOutOfScopeWrites()
         => AssertScenarioAsync(IngestScenarioDefinitions.AdversarialSource);
-
-    [Fact]
-    public Task SC007_SteeringAdoption_ReplaysAtThreshold()
-        => AssertScenarioAsync(IngestScenarioDefinitions.SteeringAdoption);
-
-    [Fact]
-    public Task SC005_LogParagraphSpecificity_ReplaysAtThreshold()
-        => AssertScenarioAsync(IngestScenarioDefinitions.LogParagraphSpecificity);
-
-    [Fact]
-    public Task SC007_CatalogDescriptionSpecificity_ReplaysAtThreshold()
-        => AssertScenarioAsync(IngestScenarioDefinitions.CatalogDescriptionSpecificity);
-
-    // 025-agent-owned-log: the two Ingest-side agent-judgment criteria. SC-005's
-    // "accurately describes what changed" half stays with LogParagraphSpecificity above.
-    [Fact]
-    public Task SC005_LogNewestFirstPlacement_ReplaysAtThreshold()
-        => AssertScenarioAsync(IngestScenarioDefinitions.LogNewestFirstPlacement);
-
-    [Fact]
-    public Task SC007_LogNoDayGrouping_ReplaysAtThreshold()
-        => AssertScenarioAsync(IngestScenarioDefinitions.LogNoDayGrouping);
 
     private static async Task AssertScenarioAsync(ScenarioDefinition scenario)
     {

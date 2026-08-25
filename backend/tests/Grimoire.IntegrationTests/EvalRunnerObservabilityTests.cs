@@ -23,12 +23,12 @@ public class EvalRunnerObservabilityTests
         var logger = new CaptureLogger<EvalRunnerObservabilityTests>();
 
         EvalRunnerTelemetry.RecordRecordingCaptured(
-            logger, "capture-task-1", "convention-adherence", 3, "nvidia-model", "/tmp/rec/sample-03.json", "affordable");
+            logger, "capture-task-1", "instruction-change-adoption", 3, "nvidia-model", "/tmp/rec/sample-03.json", "affordable");
 
         var entry = Assert.Single(logger.Entries, e => e.EventName == "eval_recording_captured");
         Assert.Equal(LogLevel.Information, entry.Level);
         Assert.Equal("capture-task-1", entry.Fields["task_id"]?.ToString());
-        Assert.Equal("convention-adherence", entry.Fields["scenario"]?.ToString());
+        Assert.Equal("instruction-change-adoption", entry.Fields["scenario"]?.ToString());
         Assert.Equal("3", entry.Fields["sample"]?.ToString());
         Assert.Equal("nvidia-model", entry.Fields["model"]?.ToString());
         Assert.Equal("/tmp/rec/sample-03.json", entry.Fields["recording_path"]?.ToString());
@@ -58,13 +58,13 @@ public class EvalRunnerObservabilityTests
         var logger = new CaptureLogger<EvalRunnerObservabilityTests>();
 
         EvalRunnerTelemetry.RecordRecordingStale(
-            logger, "steering-adoption", ["system_prompt", "judge_prompt"], "data/evals/recordings/steering-adoption");
+            logger, "instruction-change-adoption", ["system_prompt", "judge_prompt"], "data/evals/recordings/instruction-change-adoption");
 
         var entry = Assert.Single(logger.Entries, e => e.EventName == "eval_recording_stale");
         Assert.Equal(LogLevel.Warning, entry.Level);
-        Assert.Equal("steering-adoption", entry.Fields["scenario"]?.ToString());
+        Assert.Equal("instruction-change-adoption", entry.Fields["scenario"]?.ToString());
         Assert.Equal("system_prompt,judge_prompt", entry.Fields["changed_fingerprints"]?.ToString());
-        Assert.Equal("data/evals/recordings/steering-adoption", entry.Fields["recording_path"]?.ToString());
+        Assert.Equal("data/evals/recordings/instruction-change-adoption", entry.Fields["recording_path"]?.ToString());
     }
 
     [Fact]
@@ -79,7 +79,7 @@ public class EvalRunnerObservabilityTests
         };
         ActivitySource.AddActivityListener(listener);
 
-        using (var captureSpan = EvalRunnerTelemetry.StartCaptureRun("span-task-1", "convention-adherence", "affordable", "nvidia-model"))
+        using (var captureSpan = EvalRunnerTelemetry.StartCaptureRun("span-task-1", "instruction-change-adoption", "affordable", "nvidia-model"))
         {
             Assert.NotNull(captureSpan);
             Assert.Null(captureSpan!.Parent);
@@ -94,7 +94,7 @@ public class EvalRunnerObservabilityTests
 
         var capture = Assert.Single(activities, a => a.OperationName == "eval.capture_run");
         Assert.Equal("span-task-1", GetTag(capture, "task_id"));
-        Assert.Equal("convention-adherence", GetTag(capture, "scenario"));
+        Assert.Equal("instruction-change-adoption", GetTag(capture, "scenario"));
         Assert.Equal("affordable", GetTag(capture, "provider"));
         Assert.Equal("nvidia-model", GetTag(capture, "model"));
 
@@ -139,16 +139,16 @@ public class EvalRunnerObservabilityTests
         listener.Start();
 
         var logger = new CaptureLogger<EvalRunnerObservabilityTests>();
-        EvalRunnerTelemetry.RecordRecordingCaptured(logger, "t1", "convention-adherence", 1, "m", "/tmp/r.json", "affordable");
-        EvalRunnerTelemetry.RecordReplayResult(logger, "t2", "convention-adherence", 1, "trusted", "m", "now");
-        EvalRunnerTelemetry.RecordRecordingStale(logger, "convention-adherence", ["system_prompt"], "/tmp/rec");
+        EvalRunnerTelemetry.RecordRecordingCaptured(logger, "t1", "instruction-change-adoption", 1, "m", "/tmp/r.json", "affordable");
+        EvalRunnerTelemetry.RecordReplayResult(logger, "t2", "instruction-change-adoption", 1, "trusted", "m", "now");
+        EvalRunnerTelemetry.RecordRecordingStale(logger, "instruction-change-adoption", ["system_prompt"], "/tmp/rec");
 
         Assert.Contains(measurements, m =>
-            m.Instrument == "grimoire.eval.recordings_captured_total" && m.Scenario == "convention-adherence" && m.Label == "affordable" && m.Value == 1);
+            m.Instrument == "grimoire.eval.recordings_captured_total" && m.Scenario == "instruction-change-adoption" && m.Label == "affordable" && m.Value == 1);
         Assert.Contains(measurements, m =>
-            m.Instrument == "grimoire.eval.replay_results_total" && m.Scenario == "convention-adherence" && m.Label == "trusted" && m.Value == 1);
+            m.Instrument == "grimoire.eval.replay_results_total" && m.Scenario == "instruction-change-adoption" && m.Label == "trusted" && m.Value == 1);
         Assert.Contains(measurements, m =>
-            m.Instrument == "grimoire.eval.replay_results_total" && m.Scenario == "convention-adherence" && m.Label == "stale" && m.Value == 1);
+            m.Instrument == "grimoire.eval.replay_results_total" && m.Scenario == "instruction-change-adoption" && m.Label == "stale" && m.Value == 1);
     }
 
     private static string? GetTag(Activity activity, string tagName)

@@ -8,7 +8,7 @@ namespace Grimoire.IntegrationTests;
 /// rather than being skipped.
 ///
 /// Written from a real incident. The parser walked <c>args</c> in fixed pairs and ignored
-/// anything it did not recognize, so <c>capture --no-build --scenario lint-defects-found</c>
+/// anything it did not recognize, so <c>capture --no-build --scenario &lt;id&gt;</c>
 /// — one <c>dotnet run</c> flag on the wrong side of the <c>--</c> — shifted every
 /// following option onto an odd index where nothing matched. The result was an empty
 /// scenario filter, and an empty filter means EVERY scenario: a seven-scenario refresh
@@ -41,7 +41,7 @@ public class EvalRunnerCliArgumentTests : IDisposable
     public async Task StrayFlag_FailsAndNamesIt_InsteadOfSilentlySelectingEveryScenario()
     {
         var result = await RunEvalRunnerAsync(
-            ["status", "--no-build", "--scenario", "update-over-duplicate", "--summary", _summaryPath]);
+            ["status", "--no-build", "--scenario", "adversarial-source", "--summary", _summaryPath]);
 
         Assert.Equal(UsageErrorExitCode, result.ExitCode);
         Assert.Contains("Unrecognized argument '--no-build'.", result.StdErr, StringComparison.Ordinal);
@@ -58,7 +58,7 @@ public class EvalRunnerCliArgumentTests : IDisposable
         // flag, exactly one scenario is selected. This is the assertion the pre-fix parser
         // failed — it reported all 27.
         var result = await RunEvalRunnerAsync(
-            ["status", "--scenario", "update-over-duplicate", "--summary", _summaryPath]);
+            ["status", "--scenario", "adversarial-source", "--summary", _summaryPath]);
 
         Assert.False(result.TimedOut, "A status run over one scenario must exit promptly.");
         Assert.True(File.Exists(_summaryPath), $"No summary was written. stderr: {result.StdErr}");
@@ -68,14 +68,14 @@ public class EvalRunnerCliArgumentTests : IDisposable
             .Split('\n')
             .Count(line => line.Contains("| status:", StringComparison.Ordinal));
         Assert.Equal(1, scenarioRows);
-        Assert.Contains("status:update-over-duplicate", summary, StringComparison.Ordinal);
+        Assert.Contains("status:adversarial-source", summary, StringComparison.Ordinal);
     }
 
     [Fact]
     public async Task MisspelledScenarioId_FailsAndNamesIt_InsteadOfRunningAShorterSelection()
     {
         var result = await RunEvalRunnerAsync(
-            ["status", "--scenario", "update-over-duplicate", "--scenario", "lint-defcts-found", "--summary", _summaryPath]);
+            ["status", "--scenario", "adversarial-source", "--scenario", "lint-defcts-found", "--summary", _summaryPath]);
 
         Assert.Equal(UsageErrorExitCode, result.ExitCode);
         Assert.Contains("Unknown scenario id(s): lint-defcts-found.", result.StdErr, StringComparison.Ordinal);
@@ -118,7 +118,7 @@ public class EvalRunnerCliArgumentTests : IDisposable
     [Fact]
     public async Task NoSubcommand_Fails()
     {
-        var result = await RunEvalRunnerAsync(["--scenario", "update-over-duplicate"]);
+        var result = await RunEvalRunnerAsync(["--scenario", "adversarial-source"]);
 
         Assert.Equal(UsageErrorExitCode, result.ExitCode);
         Assert.Contains(
