@@ -284,8 +284,7 @@ authored and binds it in full, but this classification was originally omitted):
 > [ADR-032](../../docs/adr/ADR-032-behavioral-enforcement-for-path-surface-invariants.md).
 > The historical text below is retained unedited.
 
-Per
-[ADR-024](../../docs/adr/ADR-024-memory-directory-root.md)'s Structural Enforcement
+Per [ADR-024](../../docs/adr/ADR-024-memory-directory-root.md)'s Structural Enforcement
 section (the classification was briefly recorded in an amending ADR-026, then merged back
 into ADR-024 itself before this branch merged to `main` — see that document's history
 note),
