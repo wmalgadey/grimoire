@@ -34,11 +34,15 @@ Principles modified:
     concrete orchestrator responsible for supplying each run's parameters and for
     observability. NEW bullet "Host stability guarantee": regardless of task or
     instruction content — including malformed or adversarial content — the harness MUST
-    ensure the agent process cannot destabilize the host (unbounded CPU/memory/disk/
-    subprocess consumption, or any action outside the guarded tool boundary/credential
-    scope), an instruction file MUST NOT be able to loosen this, and it MUST be proven by
-    hermetic tests under real resource pressure, never by an agent-behavior evaluation.
-    NEW bullet "Human in the loop (operator loop)": the user is the fourth actor —
+    ensure the agent process cannot corrupt the host by moving outside the guarded tool
+    boundary/credential scope already in force (writes outside its designated roots,
+    subprocesses beyond what its guarded tools require); an instruction file MUST NOT be
+    able to loosen this, and it MUST be proven by hermetic tests, never by an
+    agent-behavior evaluation. Resource governance (CPU/memory/disk/process-count
+    ceilings) is explicitly out of scope — a deployment concern addressed by container/
+    sandbox isolation (per ADR-002's own deferred direction), not a harness
+    responsibility; the harness's obligation there is monitoring/observability only,
+    never enforcement. NEW bullet "Human in the loop (operator loop)": the user is the fourth actor —
     supplying input (task requests, instruction files) and consuming observability through
     user-facing surfaces (frontend today; channels and OTel dashboards as they arrive) to
     evaluate and steer agent behavior; Principle IV signals MUST be reachable through at
@@ -64,7 +68,7 @@ Sections modified:
     the user-facing surface each such criterion's signal is observed on; the Principle V
     agentic-boundary checkbox now also requires that any feature spawning or
     reconfiguring agent processes proves the host stability guarantee via a hermetic
-    resource-pressure test)
+    test of write- and subprocess-containment, not resource limits)
 
 Sections removed: none
 
@@ -122,21 +126,29 @@ the same PR, the user asked the constitution to state plainly that the agent alo
 the wiki, that the harness/Hub's job is limited to steering agents, guardrails, and the
 tools an agent may use, that tasks and instructions are always user-supplied input
 regardless of their content, and — new ground — that whatever an instruction or task
-says, the harness must still guarantee the LLM cannot destabilize the host, with the Hub
+says, the harness must still guarantee the LLM cannot corrupt the host, with the Hub
 responsible for feeding the harness correct parameters and for monitoring/observability
 rather than for 100%-style tests of agent behavior. A research pass over the codebase
-before drafting the Host stability rule found it is NOT currently enforced:
-`AgentProcessHost`
+before drafting the Host stability rule found `AgentProcessHost`
 (backend/src/Grimoire.Hub/AgentDispatch/Adapters/AgentProcess/AgentProcessHost.cs) spawns
-Ingest/Query/Lint/Lint-remediation agent processes via a plain `Process.Start` with no
-CPU/memory/disk quota, cgroup, or Job Object; ADR-002 explicitly defers containment to a
-later deployment change; and no ADR or test in the repository covers resource/host-safety
-isolation for spawned agent processes (ADR-004's credential scoping is confidentiality/
-least-privilege, not resource stability, and ADR-008's liveness-window kill is a
-heartbeat/timeout mechanism, not a preemptive resource-abuse guard). The Host stability
-guarantee is stated as binding per Governance's non-retroactivity clause (it gates
-`/speckit-plan` runs from this date forward); it does not itself close the gap — see
-Deferred TODOs. A third ask on the same PR added the human-in-the-loop framing: the user
+Ingest/Query/Lint/Lint-remediation agent processes via a plain `Process.Start`, and that
+ADR-002 explicitly defers process containment to a later deployment change. The first
+draft of this rule (and the `/speckit-specify` follow-up it recommended, spec
+`027-host-stability`) read that gap as a resource-quota gap and drafted
+operator-configurable CPU/memory/disk/wall-clock/process-count ceilings enforced by the
+harness itself. On review the user corrected this: ADR-002's deferred containment IS the
+project's answer to resource governance — a container or comparable OS-level sandbox
+around the agent process, a deployment concern — and a harness that reimplements
+CPU/memory/disk quota enforcement duplicates what that sandbox already provides. What the
+harness itself owns is containment: the agent process must not be able to write outside
+its designated roots or launch subprocesses beyond what its guarded tools require,
+regardless of task or instruction content. This amendment's Host stability guarantee is
+worded to that corrected scope and, per Governance's non-retroactivity clause, gates
+`/speckit-plan` runs from this date forward; monitoring resource consumption (never
+enforcing limits on it) remains a Hub/observability obligation per the operator loop.
+Spec `027-host-stability` (opened before this correction, as the base of a
+since-drafted implementation stack) is revised separately to match. A third ask on the
+same PR added the human-in-the-loop framing: the user
 wanted the operator named as the fourth actor (input, Hub communication, and monitoring
 happen through the frontend — later channels and OTel dashboards — and that is where the
 observability for evaluating and steering the agent must be consumable), an explicit
@@ -147,11 +159,12 @@ before writing: OperationalStateRepository (hub_flags, queue state) is the sole 
 consumer, while task artifacts, findings reports, and remediation records all persist as
 markdown files — the rule names existing practice rather than mandating a migration.
 
-Deferred TODOs: implementing the Host stability guarantee (resource/process limits on
-spawned agent processes) is real backend work, not a constitution change, and is out of
-scope for this amendment (see Scope Guard in /speckit-constitution). Recorded as a
-deferred, non-governance intent — suggested follow-up is `/speckit-specify` on
-agent-process resource isolation.
+Deferred TODOs: proving the Host stability guarantee (hermetic tests that the agent
+process cannot write outside its designated roots or launch subprocesses beyond its
+guarded tools' scope, even under malformed/adversarial task or instruction content) is
+real backend work, not a constitution change, and is out of scope for this amendment (see
+Scope Guard in /speckit-constitution). Recorded as a deferred, non-governance intent —
+tracked in the revised spec `027-host-stability`.
 
 --------------------------------------------------------------------------
 PREVIOUS AMENDMENTS
@@ -974,13 +987,22 @@ only SQLite consumer, and every artifact store writes markdown files.
 
 **Host stability guarantee.** Regardless of what a task or an instruction file says —
 including content that is malformed, adversarial, or simply wrong — the harness MUST
-ensure the agent process cannot destabilize the host: unbounded CPU, memory, disk, or
-subprocess consumption, or any action outside the guarded tool boundary and credential
-scope already in force. This guarantee holds independently of instruction-file content;
+ensure the agent process cannot corrupt the host by moving outside the boundary already
+in force: it MUST NOT write to paths outside its designated roots, launch subprocesses
+beyond what its guarded tools require, or otherwise act outside the guarded tool boundary
+and credential scope. This is a containment guarantee — where the agent may act, not how
+much of the host it may consume — and it holds independently of instruction-file content;
 an instruction file MUST NOT be able to loosen it. It is a deterministic harness contract
-(Principle II) and MUST be proven by hermetic tests exercising real resource pressure —
-never by an agent-behavior evaluation, since the guarantee must hold even when the agent
-is actively misbehaving.
+(Principle II) and MUST be proven by hermetic tests, never by an agent-behavior
+evaluation, since it must hold even when the agent is actively misbehaving.
+
+Resource governance — CPU, memory, disk, and process-count ceilings — is deliberately out
+of this guarantee's scope: it is a deployment concern, addressed by running the agent
+process inside a container or comparable OS-level sandbox (the direction ADR-002 already
+defers to), not by the harness reimplementing what that sandbox already provides. The
+harness's own obligation there is limited to observability: the Hub MUST monitor and
+expose agent process resource consumption through Principle IV's signals so the operator
+can see and act on abnormal consumption through the operator loop — never enforcement.
 
 **Guardrails at the tool boundary.** Agent write and read capabilities MUST be mediated
 by guarded tools enforcing a versioned, deny-by-default policy at the moment the agent
@@ -1024,7 +1046,7 @@ A feature increment is DONE when ALL of the following conditions hold:
 - [ ] Logging contract is complete for every row in `plan.md ## Observability > Structured Log Events`: implementation tasks define stable event names and mandatory fields, deterministic integration tests validate event name/level/mandatory fields, and these logging tests run in the standard PR CI pipeline
 - [ ] Trace contract is complete for every row in `plan.md ## Observability > Distributed Trace Spans`: implementation tasks define span names, parent/child relationships, and required attributes; deterministic integration tests validate span names, parent/child relationships, and correlation attributes (including shared IDs such as `task_id`); and these trace tests run in the standard PR CI pipeline
 - [ ] Agent-behavior evaluation tests pass for every **high-stakes** agent-judgment success criterion in the spec, at the thresholds the spec defines; lower-stakes agent-judgment success criteria are documented as covered by the user-reported correction loop (Principle II) rather than a formal eval suite, with `plan.md ## Observability` naming the user-facing surface on which each such criterion's signal is observed (Principle V operator loop) — implemented and tested either co-located with their triggering user-story phase or in the final phase, confirmed complete by the final-phase completeness-audit task (only for features with agentic behavior)
-- [ ] The agentic boundary (Principle V) is respected: no wiki-content judgment is implemented as deterministic backend code, instruction files are loaded into the agent's context, and the guarded-tool structural test passes; any feature that spawns or reconfigures agent processes proves the host stability guarantee (Principle V) via a hermetic test exercising real resource pressure
+- [ ] The agentic boundary (Principle V) is respected: no wiki-content judgment is implemented as deterministic backend code, instruction files are loaded into the agent's context, and the guarded-tool structural test passes; any feature that spawns or reconfigures agent processes proves the host stability guarantee (Principle V) via a hermetic test that the agent process cannot write outside its designated roots or launch subprocesses beyond its guarded tools' scope
 - [ ] Hexagonal boundary rules (Principle I) hold: external-system dependencies introduced or touched by the feature are consumed via ports with production adapter and test fake, and infrastructure packages appear only in their designated adapter namespaces (enforced by structural architecture tests)
 - [ ] Integration tests against real infrastructure cover all API boundaries introduced by the feature (Testcontainers only where a containerized dependency is genuinely involved)
 - [ ] Test style follows Principle II's classicist (Chicago-school) rules: assertions are state-based (no interaction verification), test doubles are hand-rolled fakes implementing existing port interfaces only, and no mocking framework is referenced by any test project
