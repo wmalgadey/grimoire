@@ -21,9 +21,41 @@ deleted with it.
 
 ADR-021's accepted Decision Outcome enumerates the SlowEval tier's membership as exactly
 five named replay-eval classes, including the deleted one, and
-`AgentEvalsTierMembershipRuleTests` enforces that enumeration. Per Principle III's ADR
-immutability, a changed decision is recorded by a new ADR — not by silently diverging
-from the accepted enumeration.
+`AgentEvalsTierMembershipRuleTests` enforces that enumeration — a Boundary Rule's
+permanent, Red/Green-probed structural test asserting an exact class set. Per Principle
+III's ADR immutability, a changed decision is recorded by a new ADR — not by silently
+diverging from the accepted enumeration, and not by hand-editing ADR-021's Decision
+Outcome to match the new reality after the fact.
+
+## Decision Drivers
+
+- Principle III Immutability: ADR-021's enumerated five-class SlowEval membership is
+  Accepted decision content; it cannot be edited in place to remove a class, however
+  small the change, without a new ADR recording it.
+- `AgentEvalsTierMembershipRuleTests` asserts the enumeration exactly — leaving the
+  deleted class listed (with zero backing scenarios) would either fail that test
+  outright or require the test itself to special-case an empty class, either way
+  papering over a decision that has genuinely changed.
+- Constitution v1.12.0's eval-scope reduction (Principle II) is a real, external cause,
+  not a judgment call this ADR is re-litigating — the reduction only needs to be
+  recorded here, not re-argued.
+
+## Considered Options
+
+1. **Leave the empty `LintRemediationProposalRelevanceEvalTests` class declared with
+   `[Trait("Tier","SlowEval")]` and ADR-021's enumeration unchanged.** Rejected: a
+   zero-scenario class listed as a genuine SlowEval replay-eval class misrepresents
+   the tier's actual membership and leaves dead code in the test project.
+2. **Delete the empty class and quietly update `AgentEvalsTierMembershipRuleTests`'
+   enumeration without a new ADR — treat it as a trivial follow-on to the eval
+   pruning, not a decision of its own.** Rejected: this is exactly what Principle
+   III's Immutability rule forbids — ADR-021's Accepted Decision Outcome would be
+   edited in place to match code that has since diverged from it, with no record of
+   why or when the enumeration changed.
+3. **Delete the empty class, record the reduced enumeration via a new ADR that amends
+   ADR-021 with a bidirectional status-header link.** Chosen — satisfies Immutability
+   without re-deciding anything ADR-021 already settled (the tier taxonomy, the
+   fixed-wait convention, the concurrency levers all stand unchanged).
 
 ## Decision
 
