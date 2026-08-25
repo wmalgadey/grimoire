@@ -24,6 +24,109 @@ jeder neue Eintrag wird oben angefügt, ältere Einträge rücken nach unten.
 
 ## Timeline
 
+### [2026-08-25] Insight | TOCTOU-Race deterministisch testen, ohne Test-Hooks im Produktionscode
+
+Für Feature 027 (host-stability) brauchte ich einen echten Test für einen Symlink-Swap
+zwischen Pfad-Validierung und dem eigentlichen Schreiben/Löschen — klassisches
+TOCTOU-Problem. Ohne echte Nebenläufigkeit (kein zweiter Thread, kein Sleep-Timing-Gebastel)
+deterministisch hinzubekommen war der eigentlich interessante Teil.
+
+Der Trick: es gab schon ein sanktioniertes Port-Interface (`IToolCallInstrumentation`,
+eigentlich für Telemetrie gedacht), das an genau der richtigen Stelle im Code aufgerufen
+wird — direkt nachdem die Policy-Prüfung durchgelaufen ist, aber bevor die mutierende
+Dateioperation passiert. Ein handgeschriebener Fake dieses Interfaces konnte an dieser
+Stelle synchron den Symlink swappen, ganz ohne dass der Produktionscode um einen
+Testhook erweitert werden musste. Die Constitution erlaubt sowas sogar explizit
+(Principle II: Fakes nur für bestehende Port-Interfaces, kein Mocking-Framework) — und
+genau das war hier der Unterschied zwischen "sauber testbar" und "müsste extra
+Test-Only-Code einbauen".
+
+Mitnahme: Bevor ich für einen deterministischen Race-Test einen neuen Hook einbaue,
+erstmal schauen, ob nicht schon ein bestehendes Interface (Observability, Instrumentation,
+o.ä.) zufällig genau am richtigen Punkt im Ablauf sitzt.
+
+---
+
+### [2026-08-25] Incident | Standing Instruction zum Stack-Management erst per Routine-Reminder "entdeckt"
+
+Ich hatte für mich festgelegt, dass ich das Synchronisieren des gestackten PR-Verlaufs
+(#195→#199, Rebase/Retarget/Merge auf main) komplett selbst über die GitHub-Weboberfläche
+mache — Claude soll da nicht reinmergen oder force-pushen. Stand aber nirgends explizit
+im Auftrag. Claude hat's erst über eine geplante Routine-Nachricht mitbekommen, und bis
+dahin schon zweimal in Layer-Branches reingemerged, um echte Konflikte zu lösen (auf
+meine eigene Bitte hin, nur eben ohne die Einschränkung zu kennen).
+
+Claude hat das dann transparent gemeldet, statt es klammheimlich per Force-Push rückgängig
+zu machen (was ohnehin gegen dieselbe Regel verstoßen hätte) — das fand ich gut. Am Ende
+hat sich's von selbst erledigt, weil ich den Stack sowieso über die GitHub-UI neu
+aufgebaut habe.
+
+Für mich die eigentliche Lektion: Wenn mir sowas wichtig ist (wer darf wo pushen/mergen),
+gehört das an den Anfang der Session oder ins CLAUDE.md — nicht erst nachträglich über
+einen Reminder nachgereicht. Sonst ist's Zufall, ob's rechtzeitig ankommt.
+
+---
+
+### [2026-08-25] Insight | Amend vs. Supersede entscheidet der Umfang, nicht ob's wie eine Kehrtwende klingt
+
+Kleiner, aber für mich wichtiger Fehler, den ich bei Claude korrigieren musste: Claude
+wollte ADR-032 als "Supersedes ADR-024/ADR-022 (nur der Structural-Enforcement-Abschnitt)"
+labeln, mit der Begründung, die neue Regel würde die alte eher "umkehren" als nur
+"verengen". Das ist aber gar nicht die richtige Unterscheidung. Amend vs. Supersede hängt
+nur davon ab, ob die Änderung einen Teil der Entscheidung betrifft oder die ganze
+Entscheidung ersetzt — nicht davon, ob sich das Ergebnis wie eine Umkehr oder nur wie
+eine Verengung liest.
+
+Am Ende war's wieder ein "Amends", weil nur ein Abschnitt (Structural Enforcement)
+betroffen war und der Rest von ADR-024/022 unverändert weiterstand. Aber die Vermischung
+der beiden Kriterien (Umfang der Änderung vs. gefühlte Tonalität der Änderung) war ein
+echter Kategoriefehler, den ich mir für zukünftige ADR-Reviews merken will: erst fragen
+"wie viel wird geändert", dann erst "wie fühlt sich die Änderung an".
+
+---
+
+### [2026-08-25] Process | ADRs nur, wenn's das Feature wirklich braucht
+
+Ist mir in dieser Session gleich dreimal passiert (ADR-032, ADR-033, ADR-034): Claude
+schlägt im Plan-Schritt eine neue ADR vor, und ich frage nach — warum brauchen wir die
+eigentlich, sollte eine ADR nicht nur entstehen, wenn ein Feature sie fordert? In
+mindestens einem Fall (ADR-032) war die ehrliche Antwort am Ende: nein, brauchen wir
+nicht, das war nur eine Korrektur an einer bestehenden Regel, keine neue Entscheidung.
+
+Der SDD-Workflow selbst erzeugt da einen gewissen Sog Richtung "mehr ADRs" — der
+Plan-Schritt hat einen Trigger ("neue strukturelle Boundary → ADR"), und der ist leicht
+zu weit auszulegen, wenn man nicht genau hinschaut, ob es wirklich eine *neue* Entscheidung
+ist oder nur eine Präzisierung einer alten. Bei ADR-034 war's am Ende tatsächlich
+berechtigt (eine echte neue Boundary Rule, die vorher nirgends stand) — aber auch da
+musste ich nochmal nachfragen und mir die Begründung explizit dokumentieren lassen.
+
+Mitnahme für mich: bei jedem "ADR needed?"-Vorschlag reflexartig nachfragen, ob wirklich
+das Feature die ADR fordert — oder nur der Workflow, der gerade mechanisch durchläuft.
+
+---
+
+### [2026-08-25] Insight | Host Stability Guarantee: Containment statt Resource-Quotas
+
+Bei Feature 027 (host-stability) hat Claude die Constitution-Vorgabe "Host stability
+guarantee" zuerst als Resource-Quota-Problem gelesen — CPU/Memory/Disk/Wall-Clock-Limits,
+die der Harness selbst durchsetzen müsste. Musste ich korrigieren: Resource Governance
+ist ein Deployment-Concern, dafür gibt's schon den Container bzw. das OS-Sandbox drumherum
+(ADR-002 deutet da schon drauf hin). Wenn der Harness das nochmal selbst nachbaut,
+dupliziert er nur den Sandbox, statt ihn zu ergänzen.
+
+Die eigentliche Guarantee ist eine Containment-Guarantee: der Agent-Prozess darf den Host
+nicht korrumpieren, indem er außerhalb seiner Grenzen schreibt oder Dinge startet, die er
+nicht soll — nicht, dass er wenig Ressourcen verbraucht. Monitoring von Ressourcenverbrauch
+ist sinnvoll (Principle IV, Observability), das Regulieren ist aber nicht Job des Harness.
+
+Das war eine ziemlich grundsätzliche Kurskorrektur mitten in Spec und Plan (musste dafür
+sogar die Constitution selbst nochmal amenden, #195), aber am Ende ist genau die
+Unterscheidung "wer ist wofür zuständig" der Punkt, den ich mir für die Architektur
+generell merken will: bevor ich einen Guardrail baue, erst fragen, ob nicht schon eine
+andere Schicht (Container, OS, Infra) das eigentlich längst abdeckt.
+
+---
+
 ### [2026-08-21] Setup | Deployment auf den aibot-Server, mit eigener CLI
 
 In den letzten Sessions habe ich dafür gesorgt, dass ich meine Entwicklung schnell auf
