@@ -8,6 +8,8 @@
 
 **Input**: User description: "Lint at scale: The Lint agent currently reads the entire wiki in one context window ('read the whole wiki, judge its condition across all three Finding Categories, refresh any stale inbound-link counts you find, and produce the Findings Report as your final message' — backend/src/Grimoire.LintAgent/Program.cs:207-212). On the self-hosted deployment the wiki is 633 markdown pages / ~1.6M characters (~400k tokens), which does not fit in one context window and never will as the wiki grows. This is GitHub issue #108. Two directions were identified in the issue, not mutually exclusive: Direction A (instruction-file change, no ADR needed): teach the Lint agent to work from index.md and page frontmatter/search, pulling full page bodies only for pages it has reason to suspect, restoring the 'read the index first' navigation rule from the source Karpathy pattern that Grimoire's Lint prompt deviated from. Direction B (harness change, needs an ADR): shard the run — the harness partitions the wiki into windows, runs an agent loop per window with its own budget, and merges partial Findings Reports into one. Spec 026 (#159, merged to main) already landed the retrieval primitives this feature needs: search_files, a ranged read_file (offset/limit and frontmatter_only), and a read-only batch tool in LintToolRegistry. PR #179 (spec 026's Phase N) already rewrote system-prompt.md's 'Choosing how to read' section toward frontmatter-first/search-first reading and recorded an 86% reduction in median content tokens read on a 'lint-at-scale' eval corpus (655 pages) as an incidental byproduct of proving spec 026's own eval scenario — not a dedicated delivery of this issue. Acceptance direction from the issue: a Lint run over a wiki of the current size (600+ pages) completes rather than aborting; the strategy for 'more pages than fit in one context' is stated, not implicit; whatever bounds the reading is observable, so a partial pass is distinguishable from a complete one; the agent-judgment half is covered by evaluation tests, not deterministic assertions on instruction-file wording. Related, not in scope: #64 (lint content/body remediation), #42 (inbound-link refresh reliability — Direction A alone may make this worse), #88 (same context-window problem on Ingest), #107 (AgentLoop token-cap accounting bug, independent failure)."
 
+**Extension (2026-08-25)**: User request: "I would like to extend the spec to also include the fix to https://github.com/wmalgadey/grimoire/issues/201, because lint should also update log.md, and we need a fix for that too." GitHub issue #201's body: "`log.md` is prepend-only (ADR-028) and the only write primitive the guarded tool surface offers is whole-file `write_file`. So adding one log entry requires the agent to re-emit the entire existing file, byte-for-byte, inside a single tool call — the cost of one entry is O(file size), on a file that grows with every run and is never truncated. On the self-hosted server that cost has already exceeded what the agent is allowed to produce, and log writes now fail deterministically. [...] Proposed fix: Give the guarded tool surface a prepend primitive: the agent supplies only its new entry, and the harness concatenates head + current under the lock it already holds. [...] `index.md` has the same whole-file rewrite shape but is only 3 KB — out of scope here [...] This changes the guarded tool contract, so per the constitution it needs an ADR amending ADR-028 (and ADR-030 for the tool surface) and a run through the spec-kit workflow." Full issue: https://github.com/wmalgadey/grimoire/issues/201.
+
 ## Clarifications
 
 ### Session 2026-08-25
@@ -29,6 +31,16 @@
   remain deterministic harness guarantees, unaffected by this tiering, and SC-003 in
   particular is validated via the same small-fixture relation as the first answer, not a
   literal-scale corpus, per that same eval-cost concern.
+- Q: Should issue #201 (log.md's O(file-size) write cost) be a separate feature, or merged
+  into this one? → A: merged, at the user's explicit direction, overriding the initial
+  recommendation to keep them separate. Rationale recorded for traceability: Lint's own
+  instruction file (`agents/lint/system-prompt.md`) already reads and writes `log.md` as
+  part of reconciling `index.md`/`log.md` and recording deletions — so #201's already-observed
+  production failure (log writes now fail deterministically once `log.md` exceeds the
+  agent's output-token budget) is a live blocker on Lint's own write path, not just Ingest's.
+  #108's read-side scaling fix would otherwise hand Lint a write path already known to fail
+  at production scale. `plan.md` and `tasks.md` were deleted and this feature restarts
+  planning from this spec — see Assumptions for what that implies for the ADR gate.
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -83,7 +95,49 @@ how much of the wiki that run actually covered.
 
 ---
 
-### User Story 3 - Findings that span multiple pages are not silently lost (Priority: P2)
+### User Story 3 - A log entry can be written without re-emitting the whole file (Priority: P1)
+
+Lint's own instructions have it read and write `log.md` as part of reconciling `index.md`
+and `log.md` and recording page deletions — the same file Ingest and Query also write to
+record their own actions (ADR-028). Today, adding one entry requires an agent to reproduce
+`log.md`'s entire existing content inside the write call, because the only write primitive is
+whole-file `write_file` and the prepend-ordering guarantee (ADR-028) requires the proposed
+content to end with the current content byte-for-byte. On the self-hosted deployment `log.md`
+has grown to ~128KB / ~35k tokens, which already exceeds what an agent is allowed to produce
+in one response — log writes now fail deterministically (issue #201). An operator needs a log
+write to succeed regardless of how large the file has grown.
+
+**Why this priority**: This is an already-observed, live production failure, not a projected
+one — and it sits directly on Lint's own write path. Shipping User Story 1's read-side fix
+without this one would let Lint survey a wiki it currently cannot, only to still be unable to
+record what it found in `log.md`, or to record a page deletion's cleanup obligations
+(`agents/lint/system-prompt.md`'s "Reconciling `index.md` and `log.md`" step).
+
+**Independent Test**: With `log.md` already at or beyond its current production size, submit
+one well-formed new entry through the guarded tool surface. The write succeeds, the entry
+appears newest-first, and the agent did not need to reproduce the file's existing content to
+do it.
+
+**Acceptance Scenarios**:
+
+1. **Given** `log.md` is 128KB / ~35k tokens (today's production size), **When** an agent
+   submits one new, well-formed log entry, **Then** the write succeeds and the entry appears
+   newest-first, without the agent reproducing the file's existing content in its write call.
+2. **Given** `log.md` continues to grow with every run, **When** an agent submits one new
+   entry, **Then** the output-token cost of that write stays proportional to the entry's own
+   size, not to `log.md`'s total size.
+3. **Given** a malformed entry (wrong heading shape, or no body paragraph following it),
+   **When** an agent submits it through the new write path, **Then** the write is denied for
+   the same structural reasons ADR-028 already defines — the new write path does not weaken
+   any existing format guarantee.
+4. **Given** another process changes `log.md` between when this agent last observed it and
+   when it submits its entry, **When** the agent's write is evaluated, **Then** the conflict
+   is still detected and denied, even though the new write path requires no prior whole-file
+   read.
+
+---
+
+### User Story 4 - Findings that span multiple pages are not silently lost (Priority: P2)
 
 Some Lint findings — contradictions between pages, duplicate content, stale cross-references,
 inbound-link counts — depend on comparing information across pages, not just judging one
@@ -92,10 +146,10 @@ agent stops reading every page body by default, not to quietly stop being detect
 
 **Why this priority**: This is the risk both issue comments flag: narrowing what the agent
 reads is exactly what makes cross-page judgment harder, and issue #42 (inbound-link
-accuracy) is named as the concrete case already in trouble. It is not the primary failure
+accuracy) is named as the concrete case already in trouble. It is not a primary failure
 (a P1) because a run that completes with degraded cross-page recall is still strictly better
-than one that never completes — but shipping this feature without addressing it trades one
-known problem for another.
+than one that never completes, or that cannot record its own results — but shipping this
+feature without addressing it trades one known problem for another.
 
 **Independent Test**: An operator reading a completed run's Findings Report can judge whether
 cross-page findings (e.g., two pages that contradict each other) and inbound-link counts look
@@ -132,6 +186,14 @@ criterion, per Constitution v1.12.0's lower-stakes tiering (see SC-004/SC-005).
 - What happens on a run that exhausts its reading budget partway through? Coverage reporting
   must distinguish this from a run that judged the whole wiki relevant scope was reachable
   and stopped by choice.
+- What happens to two agents (e.g., Ingest and Lint) racing to write a `log.md` entry at
+  nearly the same time under the new write primitive? The existing cross-process lock and
+  conflict detection must still serialize and detect this — a prepend needing no prior read
+  must not be allowed to mean "no conflict check either" (User Story 3, issue #201's own
+  "decide this explicitly" note on compare-and-swap).
+- What happens to `index.md`, which has the same whole-file-rewrite shape but is far smaller
+  (~3KB) than `log.md`? Explicitly out of scope for this feature (issue #201 names it "the
+  same class of problem on a slower fuse") — noted, not fixed, here.
 
 ## Requirements *(mandatory)*
 
@@ -171,6 +233,23 @@ criterion, per Constitution v1.12.0's lower-stakes tiering (see SC-004/SC-005).
   judgment about which pages matter and what a finding means remains the agent's, exercised
   under instruction files; any harness-side change introduced to make runs complete (e.g.,
   partitioning or scheduling work) MUST NOT itself decide wiki content or findings.
+- **FR-010**: The guarded tool surface MUST offer a write primitive that lets an agent add
+  one new entry to `log.md` without reproducing the file's existing content in the write
+  call — the output-token cost of one entry write MUST be proportional to the entry's own
+  size, not to `log.md`'s total size.
+- **FR-011**: The new write primitive MUST continue to enforce every structural guarantee
+  ADR-028/ADR-017 already place on `log.md` writes — prepend ordering, the heading-pattern
+  check, and the non-empty-body-paragraph check — unweakened.
+- **FR-012**: The new write primitive MUST continue to detect and deny a stale concurrent
+  write (another process having changed `log.md` since this agent last observed it), even
+  though the primitive itself requires no whole-file read beforehand.
+- **FR-013**: This feature's write-side fix is scoped to `log.md` only. `index.md` has the
+  same whole-file-rewrite cost shape but is far smaller today; it is explicitly out of scope
+  here and tracked as the same class of problem, deferred.
+- **FR-014**: Whatever design is chosen for FR-010 MUST be consistent with Constitution
+  Principle V exactly as FR-009 requires for the read side: what to log and what an entry
+  says remains the agent's judgment under instruction files; the harness gains only a
+  cheaper way to commit an agent-authored entry, never authorship of the entry itself.
 
 ### Key Entities
 
@@ -184,6 +263,10 @@ criterion, per Constitution v1.12.0's lower-stakes tiering (see SC-004/SC-005).
 - **Findings Report**: Existing concept (per spec 013) — the agent's final output describing
   what it found across the three Finding Categories. Unchanged in shape by this feature;
   what changes is how much of the wiki informed it and whether that scope is now stated.
+- **Log Entry**: One agent-authored addition to `log.md` (ADR-028: a `## [date] Title | ...`
+  heading followed by at least one body paragraph), written by Lint, Ingest, or Query. This
+  feature changes how an entry is committed to disk (a bounded-cost write primitive), not its
+  shape, its ordering guarantee, or what triggers an agent to write one.
 
 ## Success Criteria *(mandatory)*
 
@@ -226,6 +309,15 @@ criterion, per Constitution v1.12.0's lower-stakes tiering (see SC-004/SC-005).
   this feature does not regress the token-efficiency gain that already landed, at whatever
   scale that scenario runs at. *(Deterministic harness measurement of an agent-driven
   outcome; evaluated by observation, not asserted as an agent-judgment threshold.)*
+- **SC-007**: 100% of well-formed, single-entry `log.md` writes succeed and cost output
+  tokens proportional to the entry's own size — regardless of `log.md`'s existing size,
+  including at the ~128KB / ~35k-token size already observed failing in production.
+  *(Deterministic harness guarantee.)*
+- **SC-008**: 100% of `log.md` writes that violate an existing structural rule (wrong
+  ordering, malformed heading, missing body paragraph) or race a stale concurrent write are
+  still denied under the new write primitive, with the same reasons as before. *(Deterministic
+  harness guarantee — the new primitive must not weaken any guarantee ADR-028/ADR-017 already
+  established.)*
 
 ## Assumptions
 
@@ -238,6 +330,10 @@ criterion, per Constitution v1.12.0's lower-stakes tiering (see SC-004/SC-005).
   feature does not need to fix (though it may no longer be reachable if this feature's
   design avoids exhausting the cap in the first place); #64 is a larger remediation surface
   that depends on Lint completing at all, which is what this feature delivers.
+- **Scope boundary — `index.md`'s equivalent whole-file-rewrite cost (FR-013) is out of
+  scope**, per issue #201's own scoping. It is materially smaller today (~3KB vs. `log.md`'s
+  ~128KB) and not yet observed failing in production; it is the same class of problem on a
+  slower fuse, tracked separately rather than bundled in here.
 - **The retrieval primitives from spec 026 (`search_files`, ranged `read_file`,
   `frontmatter_only`, read-only `batch`) already exist in `LintToolRegistry` and are assumed
   available; this feature does not redeliver them.** Whether this feature's design uses them
@@ -263,7 +359,26 @@ criterion, per Constitution v1.12.0's lower-stakes tiering (see SC-004/SC-005).
   edit or a missed finding surfaced on a later pass — not an irreversible or hard-to-reverse
   outcome). This is why they are expressed narratively rather than as hard-gating numeric
   thresholds, and why a formal recorded-replay eval suite is optional rather than mandatory
-  for them, unlike SC-001/002/003/006, which remain deterministic harness guarantees. This
-  keeps this feature's own eval footprint proportionate to what issue #108 actually needs
+  for them, unlike SC-001/002/003/006/007/008, which remain deterministic harness guarantees.
+  This keeps this feature's own eval footprint proportionate to what it actually needs
   verified, consistent with the same cost-consciousness that motivated the v1.12.0 amendment
   and the removal of 19 lower-stakes eval scenarios project-wide (ADR-033).
+- **This feature will require a new ADR**, reversing the earlier (pre-merge) conclusion that
+  none was needed. FR-010's write primitive changes the guarded tool contract (a new
+  `write_file` mode or a new tool), which per Constitution Principle III needs an Accepted
+  ADR amending ADR-028 (prepend-ordering mechanism) and ADR-030 (retrieval/write tool
+  surface) before `/speckit-tasks` can run — exactly as issue #201 itself states.
+- **A pre-existing ADR bidirectional-linking gap, found while researching this merge, should
+  be closed by that new ADR rather than left standing.** ADR-028's own "O4 — instruction
+  files" mechanism section states, as part of its Accepted decision content, that "Lint never
+  writes the activity log." That is no longer true: ADR-031 (accepted after ADR-028) gives
+  Lint full write authority over the whole wiki, including `log.md`
+  (`agents/lint/system-prompt.md` now extensively reads and writes it), and ADR-031's own
+  header text acknowledges "ADR-028's prepend ordering binds Lint's writes" — but ADR-031
+  declares itself as amending only ADR-017, not ADR-028, and ADR-028's status header carries
+  no "Amended by ADR-031" entry, nor does `docs/adr/index.md`. This is the one-sided-link
+  failure mode Constitution Principle III's "ADR Status Maintenance" section exists to
+  prevent. Recorded here so the planning phase does not silently inherit it; the new ADR this
+  feature drafts amends ADR-028 anyway (for the prepend primitive), which is the natural,
+  minimal place to also add the missing link back to ADR-031, rather than opening a separate,
+  unrelated ADR just to fix a status header.

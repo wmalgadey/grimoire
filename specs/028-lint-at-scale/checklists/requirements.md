@@ -40,3 +40,13 @@
   (Direction B specifically requires an ADR per Constitution Principle III) and belongs in
   `/speckit-plan`, not in this spec. The spec's requirements and success criteria are
   written to be satisfiable by either direction or a combination.
+- **2026-08-25 re-validation, after merging issue #201 (log.md write cost) into this spec at
+  the user's explicit direction.** All checklist items above were re-checked against the
+  merged spec and still pass — the new User Story 3, FR-010–FR-014, SC-007/SC-008, and the
+  Assumptions bullets added for the merge are all bounded, testable, and free of
+  implementation detail (the write primitive is described as "a write primitive," never as
+  `WriteMode.Prepend` or a specific tool shape — that choice belongs in `/speckit-plan`).
+  `plan.md` and `tasks.md` were deleted per the user's request and will be regenerated fresh
+  against this merged spec; unlike the original spec, this one is now expected to need a new
+  ADR (amending ADR-028 and ADR-030) before `/speckit-tasks` can run — see spec.md's
+  Assumptions section.
