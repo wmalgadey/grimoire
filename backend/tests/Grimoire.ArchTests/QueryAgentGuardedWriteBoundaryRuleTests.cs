@@ -70,6 +70,24 @@ public class QueryAgentGuardedWriteBoundaryRuleTests
         "System.IO.Directory::Delete",
         "System.IO.Directory::Move",
         "System.IO.StreamWriter::.ctor",
+        // ADR-032 follow-up: writable-handle acquisition routes a write past the list
+        // above without ever naming a Write* method. FileStream construction is banned
+        // outright in scanned namespaces (reads there use File.OpenRead/OpenText, which
+        // stay allowed); SetLastWriteTime also covers the Utc overload via prefix match.
+        "System.IO.FileStream::.ctor",
+        "System.IO.File::OpenWrite",
+        "System.IO.File::SetLastWriteTime",
+        "System.IO.RandomAccess::Write",
+    ];
+
+    // Exact-match companions to _writeMethods: File.Open acquires a writable handle
+    // depending on its FileMode/FileAccess arguments (invisible at the IL call-name
+    // level), so every overload is treated as a write. Matched by equality, not prefix,
+    // so the read-only File.OpenRead/OpenText/OpenHandle stay allowed (a write through
+    // an OpenHandle-acquired handle is caught at RandomAccess::Write instead).
+    private static readonly string[] _exactWriteMethods =
+    [
+        "System.IO.File::Open",
     ];
 
     [Fact]
@@ -108,7 +126,8 @@ public class QueryAgentGuardedWriteBoundaryRuleTests
                                 continue;
 
                             var callSig = $"{callee.DeclaringType.FullName}::{callee.Name}";
-                            if (_writeMethods.Any(w => callSig.StartsWith(w, StringComparison.Ordinal)))
+                            if (_writeMethods.Any(w => callSig.StartsWith(w, StringComparison.Ordinal))
+                                || _exactWriteMethods.Any(w => callSig.Equals(w, StringComparison.Ordinal)))
                             {
                                 violations.Add($"{type.FullName}.{method.Name} [{effectiveNamespace}] → {callSig}");
                             }
