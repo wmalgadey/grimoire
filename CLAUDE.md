@@ -11,16 +11,13 @@ All code, comments, documentation, and architectural artifacts must be written i
 
 Exception: Project-internal notes or personal development logs may use other languages if clearly marked, but all shared documentation, code comments, and specifications must be in English.
 
-**Verbatim user input is a record, not authored content.** A block that quotes what the
-user actually said — the `**Input**: User description:` field that `/speckit-specify`
-writes into `spec.md`, a quoted clarification answer, an issue excerpt — MUST be preserved
-in the language the user used, unedited. Translating it destroys the traceability the field
-exists for: it is evidence of the request, not a statement of the requirement. Everything
-*derived* from it — every requirement, scenario, acceptance criterion, and all authored
-prose around the quote — MUST be English, and that derived text is what contributors and
-reviewers read. Flagging a non-English verbatim quote as a language-policy violation is a
-false positive; the rule to apply to it is "is it marked as a quote and is everything
-derived from it in English?"
+**Verbatim user input is a record, not authored content.** A block that quotes what the user actually said — the `**Input**: User description:` field that `/speckit-specify` writes into `spec.md`, a quoted clarification answer, an issue excerpt — MUST be preserved in the language the user used, unedited. Translating it destroys the traceability the field exists for: it is evidence of the request, not a statement of the requirement. Everything *derived* from it — every requirement, scenario, acceptance criterion, and all authored prose around the quote — MUST be English, and that derived text is what contributors and reviewers read. Flagging a non-English verbatim quote as a language-policy violation is a false positive; the rule to apply to it is "is it marked as a quote and is everything derived from it in English?"
+
+## Markdown Formatting
+
+**No hard-wrapped line breaks inside paragraphs.** Write each paragraph, rationale block, or prose list item as a single line, however long — do not insert a line break partway through a sentence to keep lines under some character count. Only break a line where markdown itself requires it: between paragraphs (a blank line), between list items, before/after headings, and inside fenced code blocks. Rely on the reader's editor or renderer to soft-wrap for display.
+
+This applies to every markdown file in the repository — the constitution, ADRs, specs, plans, this file, and any other authored `.md` content — not just newly written ones; reflow a file's touched paragraphs when you next edit it for other reasons, rather than leaving a mix of styles. Hard-wrapping a paragraph provides no benefit to any reader or tool here, and it actively breaks things that operate on line boundaries — diffs turn a one-sentence edit into a reflowed wall of changed lines, `grep`/search tools miss matches split across a line break, and content copied or piped between tools picks up spurious embedded newlines. None of that is worth trading away for a line-length convention nobody asked for.
 
 ## Document Map
 
