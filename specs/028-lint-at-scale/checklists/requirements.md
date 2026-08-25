@@ -44,10 +44,11 @@
   the user's explicit direction.** All checklist items above were re-checked against the
   merged spec and still pass — the new User Story 3, FR-010–FR-015, SC-007/SC-008, and the
   Assumptions bullets added for the merge are all bounded and testable. `plan.md` and
-  `tasks.md` were deleted per the user's request and will be regenerated fresh against this
-  merged spec; unlike the original spec, this one is now expected to need a new ADR
-  (amending ADR-028 and ADR-030) before `/speckit-tasks` can run — see spec.md's Assumptions
-  section.
+  `tasks.md` were deleted per the user's request at that point and were regenerated fresh
+  against this merged spec by the subsequent `/speckit-plan` pass; unlike the original spec,
+  this one needed a new ADR — drafted and Accepted as ADR-035, amending ADR-017 and ADR-028
+  (not ADR-030, which turned out to be retrieval-only and unaffected — see spec.md's
+  Assumptions section and research.md R7).
 - **2026-08-25, second `/speckit-clarify` pass (post-merge).** Two high-impact open design
   points issue #201 itself flagged as unresolved were resolved and recorded in spec.md's
   Clarifications: the write primitive's scope (all three of Ingest/Query/Lint, not Lint

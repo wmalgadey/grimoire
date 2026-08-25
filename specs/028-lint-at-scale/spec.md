@@ -39,8 +39,11 @@
   production failure (log writes now fail deterministically once `log.md` exceeds the
   agent's output-token budget) is a live blocker on Lint's own write path, not just Ingest's.
   #108's read-side scaling fix would otherwise hand Lint a write path already known to fail
-  at production scale. `plan.md` and `tasks.md` were deleted and this feature restarts
-  planning from this spec — see Assumptions for what that implies for the ADR gate.
+  at production scale. At the time of this clarification, `plan.md` and `tasks.md` (built
+  for the narrower, pre-merge scope) had just been deleted and this feature restarted
+  planning from this spec — see Assumptions for what that implied for the ADR gate. (Both
+  now exist again in this PR, regenerated against the merged spec by the subsequent
+  `/speckit-plan` pass and ADR-035.)
 
 ### Session 2026-08-25 (continued, post-merge)
 
@@ -52,9 +55,13 @@
   `agents/query/system-prompt.md`, not only Lint's.
 - Q: Should the primitive be a new mode on the existing `write_file` tool, or a distinct new
   tool? → A: a new `write_file` mode (named `WriteMode.Prepend` in this decision, for
-  traceability into the eventual ADR/plan), consistent with how ranged `read_file` (ADR-030
-  R3) and `FrontmatterOnly` (ADR-016) were both added as modes/parameters on an existing
-  tool rather than new tools, keeping the tool count flat.
+  traceability into the eventual ADR/plan — later refined by research.md R7 to a
+  schema-level `write_file` call parameter, *not* a new value on the policy-level
+  `Grimoire.Domain.Guardrails.WriteMode` enum this naming could be misread as; the
+  substance of this answer, a mode on `write_file` rather than a distinct tool, is
+  unchanged), consistent with how ranged `read_file` (ADR-030 R3) and `FrontmatterOnly`
+  (ADR-016) were both added as modes/parameters on an existing tool rather than new tools,
+  keeping the tool count flat.
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -147,10 +154,10 @@ do it.
    **When** an agent submits it through the new write path, **Then** the write is denied for
    the same structural reasons ADR-028 already defines — the new write path does not weaken
    any existing format guarantee.
-4. **Given** another process changes `log.md` between when this agent last observed it and
-   when it submits its entry, **When** the agent's write is evaluated, **Then** the conflict
-   is still detected and denied, even though the new write path requires no prior whole-file
-   read.
+4. **Given** two agents race to write a `log.md` entry at nearly the same time, **When**
+   both writes are evaluated, **Then** neither entry is lost or silently overwritten — the
+   writes are serialized so each agent's entry is prepended onto the latest content in
+   lock-acquisition order, without either agent needing to have read the file first.
 
 ---
 
@@ -204,10 +211,10 @@ criterion, per Constitution v1.12.0's lower-stakes tiering (see SC-004/SC-005).
   must distinguish this from a run that judged the whole wiki relevant scope was reachable
   and stopped by choice.
 - What happens to two agents (e.g., Ingest and Lint) racing to write a `log.md` entry at
-  nearly the same time under the new write primitive? The existing cross-process lock and
-  conflict detection must still serialize and detect this — a prepend needing no prior read
-  must not be allowed to mean "no conflict check either" (User Story 3, issue #201's own
-  "decide this explicitly" note on compare-and-swap).
+  nearly the same time under the new write primitive? The existing cross-process lock still
+  serializes the writes so neither entry is lost — a prepend needing no prior read means no
+  compare-and-swap check applies, not that concurrent writers go unserialized (User Story 3,
+  issue #201's own "decide this explicitly" note on compare-and-swap; research.md R8).
 - What happens to `index.md`, which has the same whole-file-rewrite shape but is far smaller
   (~3KB) than `log.md`? Explicitly out of scope for this feature (issue #201 names it "the
   same class of problem on a slower fuse") — noted, not fixed, here.
@@ -250,17 +257,24 @@ criterion, per Constitution v1.12.0's lower-stakes tiering (see SC-004/SC-005).
   judgment about which pages matter and what a finding means remains the agent's, exercised
   under instruction files; any harness-side change introduced to make runs complete (e.g.,
   partitioning or scheduling work) MUST NOT itself decide wiki content or findings.
-- **FR-010**: The guarded tool surface MUST offer a write primitive — a new `write_file`
-  mode (`WriteMode.Prepend`), per clarification — that lets Ingest, Query, and Lint each add
-  one new entry to `log.md` without reproducing the file's existing content in the write
-  call. The output-token cost of one entry write MUST be proportional to the entry's own
-  size, not to `log.md`'s total size, for all three agents.
+- **FR-010**: The guarded tool surface MUST offer a write primitive — a new call-shape
+  parameter on the existing `write_file` tool (a `mode` value, distinct from the
+  policy-level `WriteMode` enum that governs which edits a *path* allows — see research.md
+  R7), per clarification — that lets Ingest, Query, and Lint each add one new entry to
+  `log.md` without reproducing the file's existing content in the write call. The
+  output-token cost of one entry write MUST be proportional to the entry's own size, not to
+  `log.md`'s total size, for all three agents.
 - **FR-011**: The new write primitive MUST continue to enforce every structural guarantee
   ADR-028/ADR-017 already place on `log.md` writes — prepend ordering, the heading-pattern
   check, and the non-empty-body-paragraph check — unweakened.
-- **FR-012**: The new write primitive MUST continue to detect and deny a stale concurrent
-  write (another process having changed `log.md` since this agent last observed it), even
-  though the primitive itself requires no whole-file read beforehand.
+- **FR-012**: The new write primitive MUST guarantee no `log.md` entry is lost or silently
+  overwritten under concurrent writers — two agents racing to write are serialized so each
+  entry lands, in lock-acquisition order, onto the latest content. This is the safety
+  property the primitive must uphold, not a specific mechanism: for a full-content
+  (`ReadWrite`-mode) write, that mechanism remains the existing stale-write denial; for the
+  new primitive, the equivalent safety is satisfied by reading fresh content under the write
+  lock rather than by a denial path (see research.md R8) — there is no scenario where a
+  prepend can be "stale," since it never asserts anything about the file's prior content.
 - **FR-013**: This feature's write-side fix is scoped to `log.md` only. `index.md` has the
   same whole-file-rewrite cost shape but is far smaller today; it is explicitly out of scope
   here and tracked as the same class of problem, deferred.
@@ -338,10 +352,13 @@ criterion, per Constitution v1.12.0's lower-stakes tiering (see SC-004/SC-005).
   including at the ~128KB / ~35k-token size already observed failing in production.
   *(Deterministic harness guarantee.)*
 - **SC-008**: 100% of `log.md` writes that violate an existing structural rule (wrong
-  ordering, malformed heading, missing body paragraph) or race a stale concurrent write are
-  still denied under the new write primitive, with the same reasons as before. *(Deterministic
-  harness guarantee — the new primitive must not weaken any guarantee ADR-028/ADR-017 already
-  established.)*
+  ordering, malformed heading, missing body paragraph) are still denied under the new write
+  primitive, with the same reasons as before; and 100% of concurrent writes to `log.md`
+  leave every entry intact — none lost, none silently overwritten — regardless of write
+  timing. *(Deterministic harness guarantee — the new primitive must not weaken any
+  structural guarantee ADR-028/ADR-017 already established, and must uphold the same
+  no-lost-writes safety property `ReadWrite` mode's compare-and-swap check provides, by a
+  different, lock-serialized mechanism — see research.md R8.)*
 
 ## Assumptions
 
@@ -387,16 +404,19 @@ criterion, per Constitution v1.12.0's lower-stakes tiering (see SC-004/SC-005).
   This keeps this feature's own eval footprint proportionate to what it actually needs
   verified, consistent with the same cost-consciousness that motivated the v1.12.0 amendment
   and the removal of 19 lower-stakes eval scenarios project-wide (ADR-033).
-- **This feature will require a new ADR**, reversing the earlier (pre-merge) conclusion that
-  none was needed. FR-010's write primitive changes the guarded tool contract — a new
-  `write_file` mode, `WriteMode.Prepend`, per clarification — available to all three of
-  Ingest's, Query's, and Lint's tool registries (also per clarification), which per
-  Constitution Principle III needs an Accepted ADR amending ADR-028 (prepend-ordering
-  mechanism) and ADR-030 (tool surface) before `/speckit-tasks` can run — exactly as issue
-  #201 itself states. Because the primitive is shared across all three agent tool
-  registries rather than Lint-only, the ADR's registry-scope discussion should also touch
-  ADR-011 (shared runtime and per-agent `ToolRegistry` declaration), the same pattern
-  ADR-030 itself already followed when it added Lint-only tools.
+- **This feature required a new ADR**, reversing the earlier (pre-merge) conclusion that
+  none was needed — drafted and Accepted as ADR-035. FR-010's write primitive changes the
+  guarded tool contract (a new `write_file` call-shape parameter, not a new value on the
+  policy-level `WriteMode` enum — see research.md R7 and FR-010's updated wording), which
+  per Constitution Principle III needed an Accepted ADR before `/speckit-tasks` could run,
+  exactly as issue #201 itself anticipated. Contrary to that initial anticipation, ADR-035
+  amends only ADR-017 (format-validation entry point) and ADR-028 (prepend-ordering
+  mechanism) — **not** ADR-030, which is scoped entirely to retrieval (`search_files`,
+  ranged `read_file`, read-only `batch`) and never touches `write_file`. It also does not
+  amend ADR-011: all three per-agent tool registries already declare the identical shared
+  `WriteFileDefinition` constant, so widening its schema reaches Ingest, Query, and Lint at
+  once with no registry-file change and no registry-scope decision to record (unlike
+  ADR-030 R6, which deliberately scoped three genuinely new tools to Lint only).
 - **A pre-existing ADR bidirectional-linking gap, found while researching this merge, should
   be closed by that new ADR rather than left standing.** ADR-028's own "O4 — instruction
   files" mechanism section states, as part of its Accepted decision content, that "Lint never
