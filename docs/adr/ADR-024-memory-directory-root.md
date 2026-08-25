@@ -4,12 +4,14 @@ status: Accepted
 
 # ADR-024: Memory Directory — A Fourth Independent Root for Agent Process Bookkeeping
 
-> **Amended by [ADR-032](ADR-032-behavioral-enforcement-for-path-surface-invariants.md)**:
-> M1, M2, and M4 keep their substance; their reflection/IL enforcement is replaced by
-> classicist behavioral tests, and the "Principle III escape valve" justification in this
-> document's Structural Enforcement section is withdrawn — no such clause exists in any
-> version of the constitution. The Structural Enforcement table's references to
-> `DirectorySwitchSurfaceRuleTests`/`NoCodeLevelPathDefaultsRuleTests`/
+> **Superseded in part by [ADR-032](ADR-032-behavioral-enforcement-for-path-surface-invariants.md)
+> — Structural Enforcement section only**: M1, M2, and M4 keep their substance
+> unchanged and this ADR remains `Accepted` and governing for everything else it
+> decided; only the Structural Enforcement section's enforcement-mechanism claim is
+> replaced outright (reflection/IL tests → classicist behavioral tests), and the
+> "Principle III escape valve" justification it cited is withdrawn — no such clause
+> exists in any version of the constitution. The Structural Enforcement table's
+> references to `DirectorySwitchSurfaceRuleTests`/`NoCodeLevelPathDefaultsRuleTests`/
 > `PathOptionsGroupingRuleTests` (now retired) are historical per ADR immutability —
 > ADR-032 names the current enforcement for each rule.
 >
