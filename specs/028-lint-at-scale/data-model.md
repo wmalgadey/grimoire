@@ -109,3 +109,69 @@ counterpart):
 None of these change the fixture's deterministic-generation contract (still generated at
 build time, git-ignored, LCG-seeded) — they extend what the generator plants, not how it
 generates.
+
+---
+
+## Write-side: the `write_file` prepend mode (ADR-035)
+
+No new persisted entity. This is a **call-shape** addition to an existing tool, not a data
+model change — documented here because it changes what `content` means for one call shape,
+and because it must not be confused with the pre-existing, unrelated policy-level
+`Grimoire.Domain.Guardrails.WriteMode` enum (research.md R7).
+
+### `write_file` call shape (existing tool, widened schema)
+
+| Field | Type | Before | After |
+|---|---|---|---|
+| `path` | `string` | Required. Unchanged. | Required. Unchanged. |
+| `content` | `string` | Required. Always the full proposed file content. | Required. Full proposed content when `mode` is omitted/`"replace"` (unchanged, default); **the entry alone** when `mode: "prepend"`. |
+| `mode` | `string` enum | Did not exist. | New, optional. `"replace"` (default) \| `"prepend"`. Omitting it is byte-identical to today's behavior — no existing caller's call shape changes. |
+
+### Two distinct "mode" concepts — not to be conflated
+
+| | `Grimoire.Domain.Guardrails.WriteMode` (existing) | `write_file`'s new `mode` parameter |
+|---|---|---|
+| Scope | Policy-rule-scoped: which class of edit a *path* is allowed to receive (`SafetyPolicy`/`WriteRule`) | Call-scoped: how *this one call*'s `content` should be interpreted |
+| Set by | The agent's declared policy file, evaluated by `SafetyPolicy.Evaluate` | The agent, per tool call, in its JSON arguments |
+| Visible to the model? | No — the agent never sees or chooses this | Yes — an explicit, schema-visible parameter, same shape as ranged `read_file`'s `offset`/`limit` |
+| Values | `ReadWrite`, `CreateOnly`, `FrontmatterOnly` | `"replace"`, `"prepend"` |
+| Changed by this feature? | **No** — zero new members, zero new branches on `WriteRule.Mode` | **Yes** — this is the entire write-side deliverable |
+
+`log.md`'s `WriteRule.Mode` stays `ReadWrite` (per ADR-031's full-authority grant) — an
+agent *may* still send a full-content `mode: "replace"` write to `log.md` (expensive, but
+still correct and still subject to ADR-028's prepend-ordering check); `mode: "prepend"` is
+a cheaper alternative path to the same structural guarantee, not a policy restriction.
+
+### Prepend-mode write assembly (transient, in-process, per-call)
+
+No new persisted type. At dispatch time (`GuardedToolExecutor.ExecuteWriteFileAsync` →
+`SharedFileWriteGuard.EvaluateWriteAsync`), a `mode: "prepend"` call:
+
+1. Acquires the same per-target `CrossProcessFileLock` every write already acquires.
+2. Reads `log.md`'s current content fresh from disk, inside the lock — not from any prior
+   `OnReadFile` baseline, and performs no compare-and-swap check (research.md R8: there is
+   no staleness scenario for a prepend to be stale *against*).
+3. Assembles `proposedContent = entry + currentContent` in-memory — never persisted in this
+   intermediate form, only the final concatenation is committed.
+4. Runs the *same* `ValidateLogEntryFormat` heading/paragraph checks ADR-017/ADR-028 already
+   define, retargeted to validate `entry` directly (ADR-035 R3) rather than a `head`
+   subtracted from a whole-file `proposedContent`.
+5. Commits via the same atomic temp-file + `File.Move` path every write uses
+   (`GuardedToolExecutor.WriteFileAtomicallyAsync`), then re-baselines via `OnWriteCommitted`
+   exactly as today.
+
+### Transport path
+
+```
+Agent's write_file call: {path: "log.md", mode: "prepend", content: "<entry only>"}
+  → GuardedToolExecutor.ExecuteWriteFileAsync forwards `mode` to
+      SharedFileWriteGuard.EvaluateWriteAsync
+  → SharedFileWriteGuard reads current log.md content under the lock (no baseline),
+      assembles entry + current, validates the entry directly (ADR-035 R3)
+  → GuardedToolExecutor.WriteFileAtomicallyAsync commits atomically (unchanged commit path)
+  → GuardedToolExecutor.TouchedPaths / ActivityLogWritten updated exactly as any other
+      successful log.md write (WikiLogCoverageObserver unaffected — research.md R10)
+```
+
+No new file, no new format, no new process boundary — the same `log.md` file, in the same
+`grimoire-log/*` shape (whatever it's called today), reached by a cheaper call.

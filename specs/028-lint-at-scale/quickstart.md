@@ -11,7 +11,8 @@ checks need recordings and are gated separately.
 - No large or production-scale content root is needed anywhere in this quickstart. SC-001/
   SC-002 use a small ad hoc temp-directory root the hermetic tests build themselves; SC-003/
   SC-004/SC-005/SC-006 reuse the existing `lint-at-scale-survey` eval fixture (generated at
-  build time, git-ignored, ~69 pages) unchanged in size.
+  build time, git-ignored, ~69 pages) unchanged in size; SC-007/SC-008's `log.md` fixture is
+  built inline by the write-side tests (seeded to ~128KB to reproduce the production size).
 - No API key is needed for anything in the "Harness contracts" section. If one is required to
   run those, that is a defect (Principle II).
 
@@ -19,15 +20,17 @@ checks need recordings and are gated separately.
 
 ```bash
 ./scripts/test-fast.sh                                            # domain + arch + fast tier
+dotnet test backend/tests/Grimoire.ArchTests --configuration Release
 dotnet test backend/tests/Grimoire.IntegrationTests --configuration Release
 ```
 
-Expected: green. Because this feature introduces no new Boundary Rule (see plan.md's
-Architectural Constraints section), there is no new Phase 0 structural test — the
-`ConsideredPaths`/`WikiCoverage` behavior is covered by classicist, state-based integration
-tests against the real `GuardedToolExecutor` and a real temp-directory content root.
+Expected: green. The read-side (`ConsideredPaths`/`WikiCoverage`) introduces no Boundary
+Rule and is covered entirely by classicist integration tests. The write-side (ADR-035)
+**does** introduce two Boundary Rules — `Grimoire.ArchTests` MUST show both Red/Green
+probed (schema stays `additionalProperties: false`-compatible; no `OnReadFile` call is
+reachable from the prepend dispatch path) before any other write-side task was implemented.
 
-### Spot checks worth doing by hand
+### Spot checks worth doing by hand — read side
 
 | Check | How | Expected |
 |---|---|---|
@@ -36,6 +39,16 @@ tests against the real `GuardedToolExecutor` and a real temp-directory content r
 | Coverage on a forced-partial pass | Same harness with the simulated budget tight enough to force early stop | `WikiCoverage.Status == Partial`, `PagesConsidered < PagesTotal`, and this is visibly distinct from `FindingsReport.Partial` (crash) being `false` |
 | `list_files` alone doesn't count as coverage | Trigger a run where the agent lists but never opens a page | That page is absent from `ConsideredPaths` / not counted toward `PagesConsidered` |
 | No regression on a small wiki | Run against a wiki small enough for the old whole-wiki read (e.g., the `lint-seeded-defects` base fixture) | Run time and thoroughness are unchanged from before this feature (FR-007) |
+
+### Spot checks worth doing by hand — write side (ADR-035)
+
+| Check | How | Expected |
+|---|---|---|
+| Reproduces, then fixes, issue #201 (SC-007) | Seed a temp-dir `log.md` to ~128KB; call `write_file` with `mode: "prepend"` and a small entry | Write succeeds; on-disk file is `entry + originalContent`, byte-for-byte |
+| Cost is proportional to entry, not file (SC-007) | Same seeded file; compare the *call's own* `content` length to the file's total size | Call `content` length is the entry's length only — never includes the seeded 128KB |
+| Malformed entry still denied (SC-008) | Prepend-mode call with no heading, or a heading with no following paragraph | Denied `log_entry_malformed_heading` / `log_entry_missing_paragraph` — same reasons as today |
+| Concurrent prepends both land (SC-008) | Two tasks/threads submit different entries to the same `log.md` near-simultaneously | Both entries present afterward, newest-first, in lock-acquisition order — no `write_conflict_stale_read` denial, no lost entry |
+| `index.md` unaffected | Prepend-mode call targeting `index.md` | Rejected/handled by the existing, unchanged catalog-entry check — no prepend-specific behavior applies |
 
 ## Observability
 
