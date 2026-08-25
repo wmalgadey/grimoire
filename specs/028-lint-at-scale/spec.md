@@ -42,6 +42,20 @@
   at production scale. `plan.md` and `tasks.md` were deleted and this feature restarts
   planning from this spec — see Assumptions for what that implies for the ADR gate.
 
+### Session 2026-08-25 (continued, post-merge)
+
+- Q: Should the new bounded-cost `log.md` write primitive be usable by Ingest and Query as
+  well as Lint, or scoped to Lint only? → A: all three. Issue #201's own production
+  evidence — the writes already failing — comes entirely from Ingest, not Lint; scoping the
+  fix to Lint only would leave the actually-observed failure unresolved. This feature's
+  write-side work now explicitly includes `agents/ingest/system-prompt.md` and
+  `agents/query/system-prompt.md`, not only Lint's.
+- Q: Should the primitive be a new mode on the existing `write_file` tool, or a distinct new
+  tool? → A: a new `write_file` mode (named `WriteMode.Prepend` in this decision, for
+  traceability into the eventual ADR/plan), consistent with how ranged `read_file` (ADR-030
+  R3) and `FrontmatterOnly` (ADR-016) were both added as modes/parameters on an existing
+  tool rather than new tools, keeping the tool count flat.
+
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - A health-check run over the full wiki completes (Priority: P1)
@@ -97,21 +111,24 @@ how much of the wiki that run actually covered.
 
 ### User Story 3 - A log entry can be written without re-emitting the whole file (Priority: P1)
 
-Lint's own instructions have it read and write `log.md` as part of reconciling `index.md`
-and `log.md` and recording page deletions — the same file Ingest and Query also write to
-record their own actions (ADR-028). Today, adding one entry requires an agent to reproduce
-`log.md`'s entire existing content inside the write call, because the only write primitive is
-whole-file `write_file` and the prepend-ordering guarantee (ADR-028) requires the proposed
-content to end with the current content byte-for-byte. On the self-hosted deployment `log.md`
-has grown to ~128KB / ~35k tokens, which already exceeds what an agent is allowed to produce
-in one response — log writes now fail deterministically (issue #201). An operator needs a log
-write to succeed regardless of how large the file has grown.
+Ingest, Query, and Lint each write `log.md` to record their own actions (ADR-028) — Lint's
+own instructions additionally have it read and write `log.md` as part of reconciling
+`index.md` and `log.md` and recording page deletions. Today, adding one entry requires an
+agent to reproduce `log.md`'s entire existing content inside the write call, because the only
+write primitive is whole-file `write_file` and the prepend-ordering guarantee (ADR-028)
+requires the proposed content to end with the current content byte-for-byte. On the
+self-hosted deployment `log.md` has grown to ~128KB / ~35k tokens, which already exceeds what
+an agent is allowed to produce in one response — log writes now fail deterministically for
+Ingest today (issue #201), and Lint's own write path depends on the identical mechanism. An
+operator needs a log write to succeed regardless of how large the file has grown, for
+whichever agent is writing it.
 
-**Why this priority**: This is an already-observed, live production failure, not a projected
-one — and it sits directly on Lint's own write path. Shipping User Story 1's read-side fix
-without this one would let Lint survey a wiki it currently cannot, only to still be unable to
-record what it found in `log.md`, or to record a page deletion's cleanup obligations
-(`agents/lint/system-prompt.md`'s "Reconciling `index.md` and `log.md`" step).
+**Why this priority**: This is an already-observed, live production failure on Ingest's write
+path, not a projected one, and Lint's own write path shares the exact same broken mechanism.
+Shipping User Story 1's read-side fix without this one would let Lint survey a wiki it
+currently cannot, only to still be unable to record what it found in `log.md`, or to record a
+page deletion's cleanup obligations (`agents/lint/system-prompt.md`'s "Reconciling
+`index.md` and `log.md`" step) — while leaving Ingest's already-failing writes unfixed.
 
 **Independent Test**: With `log.md` already at or beyond its current production size, submit
 one well-formed new entry through the guarded tool surface. The write succeeds, the entry
@@ -233,10 +250,11 @@ criterion, per Constitution v1.12.0's lower-stakes tiering (see SC-004/SC-005).
   judgment about which pages matter and what a finding means remains the agent's, exercised
   under instruction files; any harness-side change introduced to make runs complete (e.g.,
   partitioning or scheduling work) MUST NOT itself decide wiki content or findings.
-- **FR-010**: The guarded tool surface MUST offer a write primitive that lets an agent add
+- **FR-010**: The guarded tool surface MUST offer a write primitive — a new `write_file`
+  mode (`WriteMode.Prepend`), per clarification — that lets Ingest, Query, and Lint each add
   one new entry to `log.md` without reproducing the file's existing content in the write
-  call — the output-token cost of one entry write MUST be proportional to the entry's own
-  size, not to `log.md`'s total size.
+  call. The output-token cost of one entry write MUST be proportional to the entry's own
+  size, not to `log.md`'s total size, for all three agents.
 - **FR-011**: The new write primitive MUST continue to enforce every structural guarantee
   ADR-028/ADR-017 already place on `log.md` writes — prepend ordering, the heading-pattern
   check, and the non-empty-body-paragraph check — unweakened.
@@ -250,6 +268,12 @@ criterion, per Constitution v1.12.0's lower-stakes tiering (see SC-004/SC-005).
   Principle V exactly as FR-009 requires for the read side: what to log and what an entry
   says remains the agent's judgment under instruction files; the harness gains only a
   cheaper way to commit an agent-authored entry, never authorship of the entry itself.
+- **FR-015**: Because FR-010's primitive is only exercised if an agent actually calls it,
+  `agents/ingest/system-prompt.md`, `agents/query/system-prompt.md`, and
+  `agents/lint/system-prompt.md` MUST each be updated to write `log.md` entries through the
+  new primitive instead of the current "read the whole file, then write your entry followed
+  by exactly what you read" pattern — landing only the harness capability without this would
+  leave Ingest's already-observed production failure (issue #201) unfixed.
 
 ### Key Entities
 
@@ -364,10 +388,15 @@ criterion, per Constitution v1.12.0's lower-stakes tiering (see SC-004/SC-005).
   verified, consistent with the same cost-consciousness that motivated the v1.12.0 amendment
   and the removal of 19 lower-stakes eval scenarios project-wide (ADR-033).
 - **This feature will require a new ADR**, reversing the earlier (pre-merge) conclusion that
-  none was needed. FR-010's write primitive changes the guarded tool contract (a new
-  `write_file` mode or a new tool), which per Constitution Principle III needs an Accepted
-  ADR amending ADR-028 (prepend-ordering mechanism) and ADR-030 (retrieval/write tool
-  surface) before `/speckit-tasks` can run — exactly as issue #201 itself states.
+  none was needed. FR-010's write primitive changes the guarded tool contract — a new
+  `write_file` mode, `WriteMode.Prepend`, per clarification — available to all three of
+  Ingest's, Query's, and Lint's tool registries (also per clarification), which per
+  Constitution Principle III needs an Accepted ADR amending ADR-028 (prepend-ordering
+  mechanism) and ADR-030 (tool surface) before `/speckit-tasks` can run — exactly as issue
+  #201 itself states. Because the primitive is shared across all three agent tool
+  registries rather than Lint-only, the ADR's registry-scope discussion should also touch
+  ADR-011 (shared runtime and per-agent `ToolRegistry` declaration), the same pattern
+  ADR-030 itself already followed when it added Lint-only tools.
 - **A pre-existing ADR bidirectional-linking gap, found while researching this merge, should
   be closed by that new ADR rather than left standing.** ADR-028's own "O4 — instruction
   files" mechanism section states, as part of its Accepted decision content, that "Lint never

@@ -42,11 +42,18 @@
   written to be satisfiable by either direction or a combination.
 - **2026-08-25 re-validation, after merging issue #201 (log.md write cost) into this spec at
   the user's explicit direction.** All checklist items above were re-checked against the
-  merged spec and still pass — the new User Story 3, FR-010–FR-014, SC-007/SC-008, and the
-  Assumptions bullets added for the merge are all bounded, testable, and free of
-  implementation detail (the write primitive is described as "a write primitive," never as
-  `WriteMode.Prepend` or a specific tool shape — that choice belongs in `/speckit-plan`).
-  `plan.md` and `tasks.md` were deleted per the user's request and will be regenerated fresh
-  against this merged spec; unlike the original spec, this one is now expected to need a new
-  ADR (amending ADR-028 and ADR-030) before `/speckit-tasks` can run — see spec.md's
-  Assumptions section.
+  merged spec and still pass — the new User Story 3, FR-010–FR-015, SC-007/SC-008, and the
+  Assumptions bullets added for the merge are all bounded and testable. `plan.md` and
+  `tasks.md` were deleted per the user's request and will be regenerated fresh against this
+  merged spec; unlike the original spec, this one is now expected to need a new ADR
+  (amending ADR-028 and ADR-030) before `/speckit-tasks` can run — see spec.md's Assumptions
+  section.
+- **2026-08-25, second `/speckit-clarify` pass (post-merge).** Two high-impact open design
+  points issue #201 itself flagged as unresolved were resolved and recorded in spec.md's
+  Clarifications: the write primitive's scope (all three of Ingest/Query/Lint, not Lint
+  only — FR-010/FR-015) and its shape (a new `write_file` mode, `WriteMode.Prepend`, not a
+  distinct tool). Naming the specific mode in spec.md is the clarify answer itself, not a
+  premature implementation choice — the "No implementation details" checklist item above
+  still passes: the spec records *what was decided*, not incidental technical detail the
+  spec author chose unprompted. All checklist items re-verified against the updated spec;
+  still passing.
