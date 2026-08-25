@@ -59,6 +59,7 @@ relationships exist.
 | [ADR-031](ADR-031-lint-full-wiki-write-scope.md) | Lint Holds Full Authority Over Wiki Content, in Both Modes | Accepted | Supersedes ADR-016; amends ADR-017, ADR-018, ADR-006 (journal covers deletion) | — |
 | [ADR-032](ADR-032-behavioral-enforcement-for-path-surface-invariants.md) | Behavioral Enforcement for Feature-Scoped Path-Surface Invariants | Accepted | Amends ADR-022 (R2 enforcement), ADR-024 (M1/M2/M4 enforcement) | — |
 | [ADR-033](ADR-033-sloweval-replay-class-set-reduction.md) | SlowEval Replay Class Set Reduced by the Lower-Stakes Eval Removal | Accepted | Amends ADR-021 (SlowEval class enumeration) | — |
+| [ADR-034](ADR-034-path-and-subprocess-containment-hardening.md) | Path and Subprocess Containment Hardening | Accepted | — | — |
 
 ## Maintenance
 
