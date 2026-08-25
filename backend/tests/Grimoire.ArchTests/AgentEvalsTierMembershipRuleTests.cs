@@ -1,7 +1,8 @@
 namespace Grimoire.ArchTests;
 
 /// <summary>
-/// Structural regression guard for ADR-021 / spec 019-fast-test-tier FR-014 and SC-002:
+/// Structural regression guard for ADR-021 (SlowEval class set as amended by ADR-033) /
+/// spec 019-fast-test-tier FR-014 and SC-002:
 /// tier membership inside <c>Grimoire.AgentEvals</c> is declared by the <c>Tier</c> xUnit
 /// trait, not by which file a test lives in (research.md R1). This rule makes that
 /// membership a permanent, CI-enforced fact instead of a one-time manual check —
