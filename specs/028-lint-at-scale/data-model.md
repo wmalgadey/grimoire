@@ -95,14 +95,15 @@ process boundary, no new port, no new file format family.
 
 ## Eval fixture additions (`LintAtScaleFixture` and `lint-seeded-defects`)
 
-Two new planted-defect shapes, additive to the existing generator
+**Optional** planted-defect shapes (research.md R5, spec.md SC-004/SC-005 — Constitution
+v1.12.0 lower-stakes tiering): at most one per criterion, added only if the optional
+recorded-replay checks (tasks.md T025/T026) are kept, additive to the existing generator
 (`backend/tests/Grimoire.EvalRunner/.../LintAtScaleFixture.cs` and its seeded-defects
 counterpart):
 
 | Fixture addition | Used by | Description |
 |---|---|---|
-| Contradiction pair | SC-004 | Two pages asserting mutually exclusive facts about the same subject. |
-| Duplicate-content pair | SC-004 | Two pages whose bodies substantially restate the same content under different titles. |
+| Contradiction pair **or** duplicate-content pair (pick one, not both) | SC-004 | Either two pages asserting mutually exclusive facts about the same subject, or two pages whose bodies substantially restate the same content under different titles — one shape, whichever is simpler to seed. |
 | Stale inbound-link-count page | SC-005 | A page whose recorded inbound-link count in frontmatter no longer matches the actual inbound-link graph in the fixture. |
 
 None of these change the fixture's deterministic-generation contract (still generated at

@@ -97,20 +97,23 @@ accuracy) is named as the concrete case already in trouble. It is not the primar
 than one that never completes — but shipping this feature without addressing it trades one
 known problem for another.
 
-**Independent Test**: Run Lint against an evaluation corpus containing known, planted
-cross-page findings (e.g., two pages that contradict each other, a page whose actual inbound
-links differ from its recorded count) and confirm the findings are still surfaced at an
-acceptable rate compared to a full-read baseline.
+**Independent Test**: An operator reading a completed run's Findings Report can judge whether
+cross-page findings (e.g., two pages that contradict each other) and inbound-link counts look
+right, at least as reliably as before Direction A's narrowing — confirmed primarily via the
+user-reported correction loop, and optionally via one small recorded-replay check per
+criterion, per Constitution v1.12.0's lower-stakes tiering (see SC-004/SC-005).
 
 **Acceptance Scenarios**:
 
-1. **Given** an evaluation corpus with a planted contradiction between two pages, **When**
-   Lint runs against it, **Then** the resulting Findings Report surfaces the contradiction
-   at least as reliably as the documented evaluation threshold requires.
+1. **Given** a planted contradiction between two pages, **When** Lint runs against them,
+   **Then** the resulting Findings Report surfaces the contradiction at least as reliably as
+   before narrowing — verified via the correction loop and, where one exists, an optional
+   recorded-replay check (SC-004).
 2. **Given** a page whose recorded inbound-link count no longer matches its actual inbound
    links, **When** Lint runs a health check that includes that page, **Then** the refreshed
    count in the Findings Report matches the actual count at least as reliably as the
-   documented evaluation threshold requires.
+   pre-existing baseline — verified via the correction loop and, where one exists, an optional
+   recorded-replay check (SC-005).
 
 ---
 
@@ -150,13 +153,15 @@ acceptable rate compared to a full-read baseline.
   as complete.
 - **FR-005**: The chosen strategy MUST NOT regress Lint's ability to detect finding
   categories that depend on comparing content across multiple pages (contradictions,
-  duplicate content, stale cross-references) below the evaluation thresholds defined in
-  Success Criteria.
+  duplicate content, stale cross-references) below the expected behavior stated in SC-004 —
+  a lower-stakes agent-judgment criterion (Constitution v1.12.0), verified primarily via the
+  user-reported correction loop, with a numeric threshold applying only where an optional
+  eval check exists.
 - **FR-006**: The chosen strategy MUST NOT regress the accuracy of inbound-link count
-  refreshing (the subject of the related issue #42) below the evaluation threshold defined
-  in Success Criteria; this feature is not required to *improve* inbound-link accuracy
-  beyond that threshold, only to avoid making it worse as a side effect of bounding what the
-  agent reads.
+  refreshing (the subject of the related issue #42) below the expected behavior stated in
+  SC-005 — same lower-stakes tiering and verification approach as FR-005; this feature is not
+  required to *improve* inbound-link accuracy, only to avoid making it worse as a side effect
+  of bounding what the agent reads.
 - **FR-007**: A Lint run over a wiki small enough to fit the prior whole-wiki-read approach
   MUST NOT become slower, less thorough, or less reliable as a result of this feature.
 - **FR-008**: The system MUST continue to complete Lint runs as the wiki grows beyond its

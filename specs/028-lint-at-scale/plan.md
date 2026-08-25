@@ -68,8 +68,10 @@ adds observability around the *existing* six Lint tools; it does not add a seven
 harness tests require no live LLM calls or API keys — only the evaluation tier does, and it
 runs against recordings in CI (ADR-012).
 
-**Scale/Scope**: Validated at 1x (633 pages / ~400k tokens, today's production size) and 2x
-(≥1200 pages, via an extended synthetic fixture or an accumulated snapshot) per SC-003.
+**Scale/Scope**: Validated as a budget-to-content-size *relation* (SC-003), not by literal
+page count — a small fixture with its reading budget tuned to reproduce, and then exceed,
+today's 633-page/200k-context ratio, holding at a tighter ratio too. See research.md R3/R5
+for why this replaced the earlier plan to grow the fixture toward 633/1200+ pages.
 
 ## Constitution Check
 
@@ -222,7 +224,7 @@ backend/
     │   └── Scenarios/
     │       └── LintScenarioDefinitions.cs    # lint-at-scale-survey gains a parameterized budget, not a bigger fixture
     └── Grimoire.AgentEvals/
-        └── LintReplayEvalTests.cs            # extended assertions for coverage + new SC-004/SC-005 scenarios
+        └── LintReplayEvalTests.cs            # + SC-003's budget variant; up to two optional SC-004/SC-005 scenarios if kept
 ```
 
 **Structure Decision**: No new project. This feature touches exactly the existing

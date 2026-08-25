@@ -98,11 +98,13 @@ proportionately bounded at a tighter budget-to-content ratio than the pre-existi
 - [ ] T005 [P] [US1] Test in `LintAtScaleCompletionTests.cs`: a run against the small
   `lint-seeded-defects` base fixture (pre-existing, no filler pages) shows no regression in
   run time or thoroughness versus its pre-feature baseline (FR-007)
-- [ ] T006 [US1] If T004 falls below the ratio spec 026's SC-011 already established (the
-  86% reduction baseline in `specs/026-guarded-tool-surface/baseline.md`), narrow
+- [ ] T006 [US1] If T004 shows reading volume growing super-linearly relative to the looser
+  ratio (SC-003's own stated pass condition, tasks.md T003/plan.md's Test Strategy row for
+  SC-003 — not a comparison against SC-011's original, looser-ratio baseline number), narrow
   `agents/lint/system-prompt.md`'s "Choosing how to read" section only as much as needed to
-  restore it (FR-001, FR-002) — an agentic-core change, not backend code (plan.md § Agentic
-  Boundary); skip entirely if T004 already holds against the already-landed prompt
+  restore proportional growth (FR-001, FR-002) — an agentic-core change, not backend code
+  (plan.md § Agentic Boundary); skip entirely if T004 already holds against the already-landed
+  prompt
 
 **Checkpoint**: Lint's cap-enforcement mechanics are proven hermetically; the real agent's
 scale headroom is confirmed by one minimal, targeted eval addition; small-wiki behavior is
