@@ -23,7 +23,9 @@ status: accepted
 >
 > **Amended by [ADR-032](ADR-032-behavioral-enforcement-for-path-surface-invariants.md)**:
 > R2's substance is unchanged; its IL-scan enforcement is replaced by the behavioral
-> fail-loudly startup-validation tests.
+> fail-loudly startup-validation tests. Where this document's own enforcement notes
+> still describe R2 as an IL literal scan (`NoCodeLevelPathDefaultsRuleTests`), that
+> text is historical per ADR immutability — ADR-032 defines the current mechanism.
 
 ## Context and Problem Statement
 

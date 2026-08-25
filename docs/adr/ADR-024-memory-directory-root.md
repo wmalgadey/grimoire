@@ -8,7 +8,10 @@ status: Accepted
 > M1, M2, and M4 keep their substance; their reflection/IL enforcement is replaced by
 > classicist behavioral tests, and the "Principle III escape valve" justification in this
 > document's Structural Enforcement section is withdrawn — no such clause exists in any
-> version of the constitution.
+> version of the constitution. The Structural Enforcement table's references to
+> `DirectorySwitchSurfaceRuleTests`/`NoCodeLevelPathDefaultsRuleTests`/
+> `PathOptionsGroupingRuleTests` (now retired) are historical per ADR immutability —
+> ADR-032 names the current enforcement for each rule.
 >
 > **Amends [ADR-022](ADR-022-minimal-directory-configuration-surface.md)**: rule R1's
 > switch cap grows from three named entries to four (`--memory-dir` added); the
