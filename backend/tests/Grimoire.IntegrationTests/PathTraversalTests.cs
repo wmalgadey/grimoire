@@ -2,6 +2,7 @@ using Grimoire.Domain.Guardrails;
 using Grimoire.AgentRuntime.Guardrails;
 using System.Diagnostics;
 using System.Text.Json;
+using System.Linq;
 
 namespace Grimoire.IntegrationTests;
 
@@ -370,6 +371,63 @@ public class PathTraversalTests
                 var literalTarget = Path.Combine(realInner, "%2e%2e%2Foutside-write.txt");
                 Assert.True(File.Exists(literalTarget));
             }
+        }
+        finally
+        {
+            if (Directory.Exists(root))
+            {
+                Directory.Delete(root, recursive: true);
+            }
+        }
+    }
+
+    [Fact]
+    public async Task ReadFile_Denies_SymlinkChainExceedingHopCap_WithoutUnboundedRecursion()
+    {
+        var root = Path.Combine(Path.GetTempPath(), $"path-traversal-loop-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(root);
+
+        try
+        {
+            var wikiTech = Path.Combine(root, "wiki", "tech");
+            Directory.CreateDirectory(wikiTech);
+
+            var midRoot = Path.Combine(root, "mid");
+            Directory.CreateDirectory(midRoot);
+
+            // 41 one-hop directory symlinks (L0..L40), each in its own real directory —
+            // each is discovered by a separate recursive resolution step (D2), rather than
+            // being pre-collapsed by .NET's own single-call ResolveLinkTarget(returnFinalTarget:
+            // true) chain-following, which only flattens symlinks chained directly at the OS
+            // level within one segment. This is what actually exercises the 40-hop cap.
+            const int hopCount = 41;
+            var previousDir = wikiTech;
+            for (var i = 0; i < hopCount; i++)
+            {
+                var targetDir = Path.Combine(midRoot, $"dir{i}");
+                Directory.CreateDirectory(targetDir);
+                File.CreateSymbolicLink(Path.Combine(previousDir, $"L{i}"), targetDir);
+                previousDir = targetDir;
+            }
+
+            var policy = new SafetyPolicy(
+                root,
+                readPrefixes: [Path.Combine(root, "wiki") + Path.DirectorySeparatorChar, midRoot + Path.DirectorySeparatorChar],
+                writePrefixes: [wikiTech + Path.DirectorySeparatorChar]);
+
+            var journal = new WriteJournal();
+            var executor = new GuardedToolExecutor(policy, journal, root);
+
+            var relativePath = "wiki/tech/" + string.Join("/", Enumerable.Range(0, hopCount).Select(i => $"L{i}")) + "/secret.md";
+
+            var result = await executor.ExecuteAsync(
+                ToolRegistry.ReadFile,
+                JsonSerializer.Serialize(new { path = relativePath }),
+                turn: 1,
+                CancellationToken.None);
+
+            Assert.True(result.IsError);
+            Assert.Contains(executor.Denials, d => d.Reason == "symlink_loop");
         }
         finally
         {
