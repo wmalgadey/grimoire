@@ -275,9 +275,7 @@ repeatedly. `scripts/test-fast.sh` will not surface the staleness failure — on
 
 **Constitution III classification and the Feature-Scoped-Invariant escape valve** (added
 2026-08-12, convergence task T067 — Constitution v1.11.0 landed before this plan was first
-authored and binds it in full, but this classification was originally omitted):
-
-Per
+authored and binds it in full, but this classification was originally omitted): per
 [ADR-024](../../docs/adr/ADR-024-memory-directory-root.md)'s Structural Enforcement
 section (the classification was briefly recorded in an amending ADR-026, then merged back
 into ADR-024 itself before this branch merged to `main` — see that document's history
