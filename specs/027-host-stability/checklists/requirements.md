@@ -31,17 +31,27 @@
 
 ## Notes
 
-- Validation pass 2026-08-24: all items pass. The spec deliberately names existing
-  mechanisms only at the level the constitution itself does (guarded tools, task
-  artifacts, liveness window) — as domain vocabulary, not implementation prescriptions;
-  the resource-vector inventory comes verbatim from the constitution v1.12.0 Sync Impact
-  Report's gap analysis. Every success criterion is a deterministic 100% harness
-  guarantee; the spec records explicitly that no agent-judgment criterion (and therefore
-  no eval suite) is in scope, per Principle II's success-criteria split.
-- Constitution alignment: FR-012 pins verification to hermetic real-resource-pressure
-  tests (Principle V); FR-008 satisfies the operator-loop observability requirement
-  (Principle V); FR-011 bounds scope against already-covered mechanisms.
-- Ready for `/speckit-clarify` (optional) or `/speckit-plan`. Planning will need an ADR
-  for the enforcement boundary — a new cross-cutting concern per Principle III (Principle
-  IV's separate custom-infrastructure rule applies only if planning genuinely introduces
-  new infrastructure) — and must name the concrete observability signals and surface.
+- Validation pass 2026-08-24 (initial): all items passed against the original,
+  resource-quota-scoped draft.
+- **Revision 2026-08-25**: the user corrected the feature's scope after review — resource
+  governance (CPU/memory/disk/wall-clock ceilings) is a deployment concern that container/
+  sandbox isolation already provides (ADR-002's deferred direction), not a harness
+  responsibility. The constitution's Host stability guarantee was amended in the same PR
+  to read as a **containment** guarantee (agent process cannot write outside its roots or
+  launch unsanctioned subprocesses), and this spec was rewritten to match. Re-validated
+  against the rewritten spec: all checklist items still pass. A pre-drafting research pass
+  found path containment already implemented and tested for the plain cases
+  (`GuardedToolExecutor`, `PathTraversalTests`) and subprocess containment already safe by
+  construction (fixed executables, argument-list invocation, allowlisted extensions) — so
+  this feature is now a hardening/structural-enforcement feature (close residual
+  adversarial-input gaps, pin the guarantee with a Boundary Rule test), not a new
+  subsystem. All success criteria remain deterministic 100% harness guarantees; no
+  agent-judgment criterion, no eval suite, per Principle II's success-criteria split.
+- Constitution alignment: FR-007 pins verification to hermetic tests against the real
+  containment mechanism (Principle V); FR-008 explicitly excludes resource-ceiling
+  enforcement from this feature, matching the corrected Principle V scope.
+- Ready for `/speckit-clarify` (optional) or `/speckit-plan`. Planning will need a new
+  ADR — no existing ADR governs path-traversal or subprocess-spawn safety as a dedicated
+  topic (Principle III, new cross-cutting concern) — and Phase 0 MUST include a
+  Red/Green-probed structural test for the spawn-site registry (FR-004), a genuine
+  Dependency & Layering Boundary Rule.

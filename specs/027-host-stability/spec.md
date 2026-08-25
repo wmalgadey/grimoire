@@ -8,204 +8,168 @@
 
 **Input**: User description: "Host stability guarantee for agent runs. Constitution v1.12.0 (Principle V, \"Host stability guarantee\") requires: regardless of what a task or an instruction file says — including malformed or adversarial content — the harness MUST ensure the agent process cannot destabilize the host: unbounded CPU, memory, disk, or subprocess consumption, or any action outside the guarded tool boundary and credential scope already in force. This guarantee holds independently of instruction-file content and must be proven by hermetic tests exercising real resource pressure (never by agent-behavior evaluation, since it must hold even when the agent is actively misbehaving). Today this is a known gap (recorded in the constitution's Sync Impact Report for v1.12.0): agent child processes are spawned with no CPU/memory/disk quota and no wall-clock ceiling on the dispatch path; a spawned agent may itself spawn arbitrary subprocesses (the existing tree-kill is reactive only, tied to the liveness window); the markdown converter child process has a timeout but no memory cap and its stdout is buffered unbounded in Hub memory; URL fetching downloads without any size limit; guarded writes have no per-write or per-run content-size cap, so disk growth within policy scope is unbounded. Already bounded today (keep, not in scope to change): agent turn cap, context cap, and spend cap in the agent loop; the converter wall-clock timeout; the liveness-window supervision. The feature: the operator can rely on the host surviving any single agent run. Every resource vector an agent run can consume (CPU time, resident memory, disk writes, downloaded/converted content size, number of child processes, total run wall-clock) is bounded by an operator-configurable limit with a safe default; hitting a limit terminates or denies the offending operation deterministically, is recorded with a reason (like guardrail denials are today), surfaces to the operator through the Hub's observability (metrics/log events/spans per Principle IV, visible on a user-facing surface per the operator loop), and never corrupts durable state (task artifacts and records reflect the terminated run's true state). An instruction file or task input must have no way to raise or disable these limits. All success criteria for this feature are deterministic harness guarantees (100%) — there is no agent-judgment criterion in scope, so no eval suite; verification is hermetic tests exercising real resource pressure per the constitution."
 
+**Revision input**: User correction (2026-08-25), verbatim: "Ich würde das feature in frage stellen, da es das ziel dieses projekteS ist, agenten im container zu isolieren. Dort gibt es inherente möglichkeiten die ressourcen der agenten zu limitieren bzw zu kontrollieren. Wenn das feature ein direkter schluss aus der änderung der constitution ist, müssen wir hier nachschärfen bzw. Genauer beschreiben was das ziel ist. Sicher ist es sinnvoll ressourcenverbrauch zu monitoren, aber zu reglementieren finde ich nicht notwendig, dafür sind container ideal und das ist eher eine deployment variante. Was ich meinte ist, dass der harness sicherstellen soll, das der agent sich nur so im system „bewegen" kann dass der host nicht korrumpiert wird, z.b. durch das schreiben in falsche dateien oder durch starten von anwendungen, die das system instabil machen. Das llm muss sicher betrieben werden, der hub monitored und orchestriert"
+
+**Note on this revision**: The original draft above read the constitution's Host stability
+guarantee as a resource-quota problem (CPU/memory/disk/wall-clock ceilings enforced by the
+harness). The user corrected this: resource governance is a deployment concern — a
+container or comparable OS-level sandbox around the agent process already provides it
+(the direction ADR-002 defers to), and the harness reimplementing it would duplicate that
+sandbox rather than complement it. The constitution's Host stability guarantee (amended in
+the same PR that opened this correction) now reads as a **containment** guarantee: the
+harness must ensure the agent process cannot corrupt the host by writing to the wrong
+files or by causing the wrong things to run — not that it must meter how much CPU or
+memory the agent consumes. Everything below reflects that corrected scope.
+
 ## User Scenarios & Testing *(mandatory)*
 
-### User Story 1 - A runaway agent run cannot take down the host (Priority: P1)
+### User Story 1 - Adversarial paths cannot escape the guarded write boundary (Priority: P1)
 
-The operator runs Grimoire unattended on a machine that also does other work (or is
-small — a self-hosted server). An agent run goes wrong: the model loops, an instruction
-file is malformed, or ingested content is adversarial, and the run starts consuming CPU,
-memory, or wall-clock time without bound. The harness ends the run at its configured
-resource ceiling, records why, and the host — and every other Grimoire run — continues
-unaffected. The operator finds a terminated run with a clear reason, not a frozen or
-crashed machine.
+The operator relies on every guarded write, read, and delete staying inside the wiki and
+memory roots no matter what a task, an ingested document, or an instruction file
+contains. Today's guarded-tool boundary already resolves plain traversal (`../`),
+absolute-path overrides, and simple symlink escapes back to their canonical target before
+allowing an action — but an adversary rarely stops at the plain case. A path expressed
+through encoding tricks (percent-encoding, Unicode normalization variants of `.` and `/`),
+a null byte appended to a permitted-looking prefix, or a symlink swapped in after
+validation but before the write executes must be rejected exactly as reliably as the
+plain case.
 
 **Why this priority**: This is the constitutional guarantee itself (Principle V, Host
-stability guarantee). Every other story refines how limits are configured or observed;
-without this one, an unattended deployment is unsafe and the constitution's mandate is
-unmet. It is also the minimum viable slice: fixed safe defaults with no configurability
-would already deliver it.
+stability guarantee) as corrected: where the agent may act, enforced regardless of task
+or instruction content. The happy-path mechanism already exists (`GuardedToolExecutor`'s
+canonicalize-then-match design, ADR-006) and is already tested for the plain cases
+(`PathTraversalTests`); this story closes its remaining adversarial-input gaps and pins
+the whole guarantee down with hermetic, adversarial tests so it cannot regress silently.
 
-**Independent Test**: Can be fully tested by launching a run whose (scripted, misbehaving)
-agent process consumes CPU, memory, wall-clock, or spawns subprocesses without bound, and
-observing that the harness terminates the run at the ceiling while the host and a
-concurrently running well-behaved run stay healthy.
+**Independent Test**: Can be fully tested by submitting each adversarial path variant
+(encoded traversal, null-byte suffix, post-validation symlink swap) to the guarded write,
+read, and delete tools against a real filesystem and asserting denial plus an untouched
+target outside the root.
 
 **Acceptance Scenarios**:
 
-1. **Given** a run whose agent process exceeds its memory ceiling, **When** the ceiling is
-   crossed, **Then** the run is terminated (the agent process and all of its
-   descendants), the run reaches a terminal failure state naming the exceeded limit, and
-   no other running task is affected.
-2. **Given** a run whose agent process exceeds its total wall-clock ceiling — even while
-   still emitting liveness signals, **When** the ceiling is crossed, **Then** the run is
-   terminated with the exceeded limit recorded as the reason.
-3. **Given** a run whose agent process spawns more child processes than the configured
-   subprocess ceiling, **When** the ceiling is crossed, **Then** the excess spawning is
-   stopped, the run is terminated, and every process the run created is gone afterward.
-4. **Given** a misbehaving run that is terminated at any ceiling, **When** the operator
-   inspects the run afterward, **Then** its task artifact and harness records exist, are
-   well-formed, and state the run's true terminal outcome (which limit, when) — never a
-   record that claims success or an artifact left half-written by the kill.
-5. **Given** an instruction file or task input that attempts to name, raise, or disable a
-   resource limit, **When** the run executes, **Then** the limits in force are unchanged
-   — nothing an agent or a task author writes can influence them.
+1. **Given** a write request whose path uses plain `../` segments to point outside its
+   root, **When** it is submitted, **Then** the write is denied and no file outside the
+   root is created or modified (already covered today — regression-guarded here).
+2. **Given** a write request whose path is percent-encoded or uses a Unicode
+   normalization variant to represent an out-of-root traversal, **When** it is submitted,
+   **Then** it is denied identically to the plain-text case.
+3. **Given** a path containing a null byte followed by an out-of-root suffix, **When** it
+   is submitted, **Then** the write is denied — the path is never silently truncated to a
+   permitted-looking prefix and then acted on.
+4. **Given** a symlink inside the write scope that is swapped to point outside the root
+   between the boundary check and the actual filesystem write, **When** the write
+   executes, **Then** it is denied or is provably confined to the originally validated
+   target — never the swapped-in destination.
+5. **Given** any of the above adversarial variants arriving via task input, an ingested
+   document, or instruction-file content, **When** the run executes, **Then** the outcome
+   is identical regardless of which source carried it — nothing an agent reads or a task
+   supplies can loosen the boundary.
 
 ---
 
-### User Story 2 - Oversized external content is refused, not swallowed (Priority: P2)
+### User Story 2 - Every process the harness spawns is a known, non-injectable one (Priority: P2)
 
-The operator submits a source for ingest that turns out to be enormous — a huge download
-behind a URL, or a document whose conversion output explodes in size. Instead of the
-harness consuming unbounded memory or disk holding it, the fetch or conversion stops at
-the configured size ceiling and the task fails with a clear "content too large" outcome
-the operator can see and act on (split the source, raise the limit deliberately).
+The operator relies on the harness never spawning a process the operator did not sanction,
+and never letting task, document, or agent-generated content be interpreted as a command.
+Every process-spawn site in the codebase today (the agent worker launch, the document
+converter) already uses a fixed executable path with argument-list invocation rather than
+a shell-parsed command string — but that safety is a property of how the code happens to
+be written today, not a guarantee anything currently proves or a future change is
+prevented from breaking.
 
-**Why this priority**: These vectors (fetch size, conversion output size, per-write and
-per-run write volume) destabilize the host through the harness's own process rather than
-the agent's, so they are not covered by terminating the agent process. They complete the
-"every vector bounded" guarantee but are less acute than P1's runaway-process case.
+**Why this priority**: Subprocess containment is the second half of the corrected Host
+stability guarantee. It is lower priority than User Story 1 only because today's spawn
+sites are already safe by construction (confirmed by inspection: fixed executables,
+`ArgumentList` rather than a shell string, filename-derived values validated against an
+allowlist before use) — this story turns that implicit property into a structurally
+enforced, regression-proof one.
 
-**Independent Test**: Can be fully tested by submitting sources whose download or
-conversion output exceeds the configured ceilings and asserting the task fails with the
-size-limit reason while memory and disk usage stay bounded.
-
-**Acceptance Scenarios**:
-
-1. **Given** a URL source whose content exceeds the download size ceiling, **When** it is
-   fetched, **Then** the transfer stops at the ceiling (it does not download fully and
-   discard afterward), the task reaches a failure state naming the size limit, and the
-   host's memory use stays bounded throughout.
-2. **Given** a document whose conversion output exceeds the conversion size ceiling,
-   **When** it is converted, **Then** conversion stops at the ceiling and the task fails
-   naming the size limit, without the oversized output ever being held fully in memory.
-3. **Given** an agent that attempts a single guarded write larger than the per-write size
-   ceiling, **When** the write is invoked, **Then** it is denied at the tool boundary
-   with a recorded reason and the run continues with its remaining allowed actions —
-   exactly as guardrail denials behave today.
-4. **Given** an agent whose accumulated guarded writes exceed the per-run write-volume
-   ceiling, **When** the ceiling is crossed, **Then** further writes are denied with a
-   recorded reason; already-completed writes remain valid and recorded.
-
----
-
-### User Story 3 - The operator configures the limits and sees every limit event (Priority: P3)
-
-The operator tunes resource ceilings to their machine — a larger server can afford more —
-through the same configuration surface as the rest of the system, with every limit having
-a safe default so a fresh deployment is protected without any tuning. When any limit
-fires, the operator can see it: which run, which limit, its configured value, and what the
-harness did, on a surface they actually look at.
-
-**Why this priority**: Configurability and visibility make the guarantee operable, but
-the guarantee itself (P1/P2, on safe defaults) protects the host even if this story ships
-last.
-
-**Independent Test**: Can be fully tested by starting the system with custom limit values
-and asserting they are in force; starting with none and asserting the defaults are in
-force; and firing any limit and asserting the operator-visible signals appear.
+**Independent Test**: Can be fully tested by a structural test enumerating every
+process-spawn call site in the production codebase and asserting each matches the
+required pattern (fixed executable, argument-list construction), Red/Green-probed by
+introducing a violating call site and confirming detection.
 
 **Acceptance Scenarios**:
 
-1. **Given** no limit configuration, **When** the system starts, **Then** every resource
-   limit is active at its documented safe default.
-2. **Given** an operator-configured value for a limit, **When** the system starts,
-   **Then** that value is in force for subsequent runs, and the configuration surface is
-   the operator's (host configuration) — never the agent's instruction files or the task
-   request.
-3. **Given** any limit event (termination or denial), **When** it occurs, **Then** the
-   operator can see the run, the limit, its configured value, and the action taken
-   through the Hub's observability signals on a user-facing surface, correlated to the
-   run's identity.
-4. **Given** an invalid limit configuration (negative, zero where zero is meaningless,
-   non-numeric), **When** the system starts, **Then** startup fails with a message naming
-   the offending setting — it does not silently fall back.
+1. **Given** the current codebase, **When** the structural spawn-site test runs, **Then**
+   every process-spawn call site is accounted for in an enumerated, reviewed set, and
+   each uses a fixed executable path with argument-list invocation.
+2. **Given** a new process-spawn call site is added without being added to the enumerated
+   set, **When** the test suite runs, **Then** the structural test fails, naming the new
+   site.
+3. **Given** a spawn invocation whose arguments include task-, document-, or
+   agent-generated content, **When** the process is constructed, **Then** that content
+   reaches the process only via the argument list — never concatenated into a single
+   shell-interpreted command string.
+4. **Given** an ingested document whose filename-derived extension selects which
+   converter or code path handles it, **When** it is processed, **Then** only an
+   allowlisted extension is accepted; anything else is rejected before it can influence
+   process construction.
 
 ---
 
 ### Edge Cases
 
-- A run is terminated at a ceiling at the exact moment it is writing its task artifact:
-  the artifact must still end up well-formed and truthful (terminal state recorded by the
-  harness, partial agent narrative preserved or absent — never a corrupt file).
-- The agent process ignores the first termination request: the harness must escalate so
-  that the process tree is gone within a bounded grace period regardless.
-- Two limits are crossed near-simultaneously (e.g. memory and wall-clock): one reason is
-  recorded deterministically; the run must not double-terminate or race itself into an
-  inconsistent record.
-- A subprocess spawned by the agent outlives its parent's termination attempt: cleanup
-  must cover the whole tree, including processes that re-parented.
-- The converter or fetch ceiling fires on content that is exactly at the boundary: at-limit
-  content succeeds; only content strictly beyond the limit is refused (off-by-one is
-  observable and tested).
-- Limit events during concurrent runs: each event is attributed to the correct run; one
-  run's termination never cancels or delays an unrelated run.
-- The host itself is under external memory pressure unrelated to Grimoire: the harness's
-  own supervision must keep functioning (its bookkeeping is not the thing that dies
-  first).
+- A symlink swap lands in the narrow window between the boundary check resolving a path
+  and the filesystem write actually executing (time-of-check-to-time-of-use).
+- A path mixes multiple obfuscation techniques at once (e.g., percent-encoded traversal
+  through a symlinked intermediate directory).
+- A future agent type or tool adds its own process-spawn call site — must be caught by
+  the structural test before merge, not discovered later.
+- A future converter or fetch path is added that shells out to a different executable
+  with different argument-construction conventions — must satisfy the same fixed-
+  executable/argument-list pattern or fail the structural test.
+- An adversarial path or filename is valid enough to pass OS-level validation but is
+  still meant to probe the boundary (e.g., a path that is technically inside the root
+  after resolution but was clearly constructed to test the edges of the canonicalization
+  logic) — the boundary check must be exercised by these near-miss cases too, not just
+  obviously-outside ones.
 
 ## Requirements *(mandatory)*
 
 ### Functional Requirements
 
-- **FR-001**: The harness MUST bound every resource vector a single agent run can consume
-  on the host: processor time, resident memory, total run wall-clock time, number of
-  live child processes in the run's process tree, volume of disk written through guarded
-  tools (per single write and cumulative per run), downloaded content size per fetch, and
-  conversion output size per document.
-- **FR-002**: Every limit MUST have a safe default that is active with no operator
-  configuration, and every limit MUST be operator-configurable through the host's own
-  configuration surface (the same tiers as other operator settings).
-- **FR-003**: Limits MUST NOT be configurable or influenceable through agent-facing
-  content: no content an agent reads, a task supplies, or an instruction file states can
-  raise, lower, disable, or otherwise influence a limit in force. (Lowering is also
-  excluded to keep the boundary absolute: limits belong to the operator, full stop.)
-- **FR-004**: When a process-scoped ceiling (processor time, memory, wall-clock,
-  subprocess count) is crossed, the harness MUST terminate the run: the agent process and
-  every descendant process are stopped within a bounded grace period, the run reaches a
-  terminal failure state, and the recorded outcome names the exceeded limit and its
-  configured value.
-- **FR-005**: When an operation-scoped ceiling (per-write size, per-run write volume,
-  fetch size, conversion output size) is crossed, the harness MUST deny or stop that
-  operation deterministically with a recorded reason; where the run can meaningfully
-  continue (guarded-write denials), it continues with allowed actions, mirroring today's
-  guardrail-denial behavior.
-- **FR-006**: Oversized external content MUST be stopped at the ceiling as it streams in
-  — the harness MUST NOT first buffer or download the full content and discard it
-  afterward; host memory use for fetching and converting MUST stay bounded regardless of
-  source size.
-- **FR-007**: A run terminated or denied by any limit MUST leave durable state truthful
-  and well-formed: task artifacts and harness records reflect the run's actual terminal
-  outcome, completed writes remain valid, and no artifact or record is left corrupt.
-- **FR-008**: Every limit event MUST be observable by the operator: emitted as business
-  metrics, structured log events, and trace attributes correlated to the run's identity,
-  and consumable on at least one user-facing surface (Principle V operator loop).
-- **FR-009**: Limit enforcement MUST be independent of agent cooperation: it holds when
-  the agent process is unresponsive, actively spawning, or ignoring termination —
-  escalating as needed until the process tree is gone.
-- **FR-010**: Invalid limit configuration MUST fail startup with a message naming the
-  offending setting; the system MUST NOT start with silently substituted values.
-- **FR-011**: Existing bounds stay as they are and out of scope to change: the agent
-  loop's turn, context, and spend caps; the converter's wall-clock timeout; and
-  liveness-window supervision. This feature adds the missing resource ceilings around
-  them; where an existing mechanism already terminates a run, the new limits compose with
-  it rather than replacing it.
-- **FR-012**: The guarantee MUST be verified by hermetic tests that exercise real
-  resource pressure (a genuinely memory-hungry, CPU-hungry, subprocess-spawning, or
-  oversized-content workload) against the real enforcement path — never by agent-behavior
-  evaluation and never by simulating the pressure away (Principle V; Principle II harness
-  contracts).
+- **FR-001**: The harness MUST deny any guarded write, read, or delete whose target path
+  resolves — after normalization, encoding-decoding, and symlink resolution — outside its
+  policy-designated root, regardless of how the path is expressed: plain relative
+  traversal, absolute-path override, symlink indirection, percent-encoding, Unicode
+  normalization tricks, or null-byte truncation.
+- **FR-002**: Path containment MUST use the resolved physical target, not the literal
+  input string, as the authority for the boundary check, and MUST close the gap between
+  validating a path and acting on it closely enough that a symlink swapped in during that
+  window cannot redirect the action outside the root.
+- **FR-003**: Every process the harness spawns MUST use a fixed, non-shell-parsed
+  invocation: an executable path that is never derived from task, document, or
+  agent-generated content, with arguments passed via an argument list rather than a
+  single shell-interpreted command string.
+- **FR-004**: The set of process-spawn call sites in the production codebase MUST be
+  enumerable and closed: an automated structural test MUST fail if a new spawn call site
+  is introduced without being added to that reviewed, enumerated set.
+- **FR-005**: Filename- or content-derived values that influence which converter, tool,
+  or code path handles a piece of content (e.g., a file extension) MUST be validated
+  against a fixed allowlist before use, independent of what the requester supplied.
+- **FR-006**: Both guarantees (FR-001–FR-002 path containment, FR-003–FR-005 subprocess
+  containment) MUST hold regardless of task input or instruction-file content — no
+  content an agent reads or a task supplies can loosen, disable, or bypass them, including
+  content specifically constructed to test the boundary.
+- **FR-007**: The guarantee MUST be verified by hermetic tests exercising the real
+  containment mechanism — a real filesystem with real symlinks and adversarial path
+  strings, the real spawn call sites — never by agent-behavior evaluation, since it must
+  hold even when the agent is actively misbehaving.
+- **FR-008**: This feature MUST NOT introduce resource ceilings (CPU, memory, disk,
+  wall-clock, or process-count limits) or any enforcement mechanism for them; resource
+  governance is explicitly out of scope (see Out of Scope).
 
 ### Key Entities
 
-- **Resource limit policy**: the operator-owned set of ceilings in force for a run —
-  each with a vector (CPU time, memory, wall-clock, subprocess count, per-write size,
-  per-run write volume, fetch size, conversion output size), a configured value or safe
-  default, and the scope it applies to (process-scoped vs. operation-scoped).
-- **Limit event**: the record that a specific run crossed a specific ceiling — carries
-  the run identity, the limit, its configured value, the action taken (terminated /
-  denied / stopped), and when it happened. Appears in the run's durable records and in
-  the observability signals.
+- **Containment boundary**: the policy-designated root(s) a guarded tool call is confined
+  to, and the resolved physical path a requested action is checked against after
+  normalization and symlink resolution.
+- **Spawn-site registry**: the enumerated, reviewed set of process-spawn call sites in the
+  production codebase, each declaring its fixed executable and confirming argument-list
+  (non-shell) invocation.
 
 ## Success Criteria *(mandatory)*
 
@@ -216,61 +180,55 @@ carries a high-stakes/lower-stakes classification and no eval suite is in scope.
 
 ### Measurable Outcomes
 
-- **SC-001**: 100% of runs whose process tree crosses a process-scoped ceiling (memory,
-  processor time, wall-clock, subprocess count) under hermetic resource pressure reach a
-  terminal failure state naming the exceeded limit, with the entire process tree gone
-  within the bounded grace period.
-- **SC-002**: 100% of oversized fetches and conversions stop at the configured ceiling
-  with the task failing on the named size limit, while the harness's own memory use
-  remains bounded (verified under real oversized inputs).
-- **SC-003**: 100% of guarded writes beyond the per-write or per-run ceiling are denied
-  with a recorded reason; 100% of previously completed writes remain valid afterward.
-- **SC-004**: 100% of limit-terminated runs leave well-formed, truthful durable records:
-  the task artifact and harness records name the limit outcome, and no artifact is
-  corrupt or claims success.
-- **SC-005**: 100% of limit events are visible through the Hub's observability signals
-  with run correlation, and 0 limit values can be altered from instruction files or task
-  input (attempts have no effect, verified adversarially).
-- **SC-006**: With zero operator configuration, 100% of the limits are active at their
-  documented safe defaults; with invalid configuration, startup fails naming the setting
-  in 100% of cases.
-- **SC-007**: During any single misbehaving run under hermetic resource pressure,
-  concurrently running well-behaved work is isolated in 100% of test scenarios: it is
-  never terminated or cancelled by the misbehaving run's limit enforcement, it reaches
-  its own correct terminal state, and its records are uncorrupted. (Scheduling latency
-  is deliberately not a criterion — OS scheduling variance is not hermetically
-  provable.)
+- **SC-001**: 100% of adversarial path variants tested (plain traversal, absolute
+  override, symlink escape, percent-encoded traversal, Unicode-normalization traversal,
+  null-byte truncation, post-validation symlink swap) are denied by the guarded write,
+  read, and delete boundary, with zero actions reaching outside the designated root.
+- **SC-002**: 100% of process-spawn call sites in the production codebase are covered by
+  the enumerated, structurally enforced set; introducing an unlisted spawn site fails the
+  structural test in 100% of Red/Green probe attempts.
+- **SC-003**: 100% of spawned-process invocations use argument-list construction with a
+  fixed executable path; 0 invocations build a shell-interpreted command string from
+  task, document, or agent-generated content.
+- **SC-004**: 100% of filename- or content-derived values that select a converter, tool,
+  or code path are validated against a fixed allowlist before use.
 
 ## Assumptions
 
-- "Host stability" is scoped to what a single Grimoire deployment can control: bounding
-  its own runs' consumption. Protecting the host against other software, or against an
-  operator deliberately configuring absurdly high limits, is out of scope.
-- Safe defaults are chosen for a modest self-hosted machine and documented with the
-  configuration surface; picking their concrete values is planning/implementation work,
-  not spec work — the spec requires only that they exist, are safe for unattended
-  operation, and are documented.
-- The subprocess ceiling counts live processes in the run's tree at any moment, not
-  cumulative spawns over the run's lifetime.
-- Operation-scoped denials reuse the existing guardrail-denial recording shape (reasoned
-  denial, run continues) rather than inventing a parallel mechanism; process-scoped
-  terminations reuse the existing terminal-failure shape runs already have. This is a
-  consistency assumption about operator experience, not an implementation prescription.
-- Observability for limit events follows Principle IV as usual (metrics, structured log
-  events, trace correlation); naming the exact signals is plan work (`plan.md ##
-  Observability`), including the user-facing surface where the operator sees them.
-- The constitution's host-stability rule also names "any action outside the guarded tool
-  boundary and credential scope already in force" — those boundaries exist today
-  (guarded tools, credential scoping) and are out of scope here except that this feature
-  must not weaken them.
+- The happy-path containment mechanism already exists (`GuardedToolExecutor`'s
+  canonicalize-then-match design, ADR-006) and already covers plain traversal, absolute
+  overrides, and simple symlink escapes (`PathTraversalTests`). This feature hardens its
+  residual adversarial-input gaps and pins the whole guarantee down with a dedicated,
+  hermetic adversarial test suite — it is not a rewrite of the existing mechanism.
+- Today's two process-spawn sites (the agent worker launch, the document converter)
+  already follow the required pattern by construction (fixed executable, argument-list
+  invocation, allowlisted file extensions). This feature makes that an enforced,
+  structurally tested invariant rather than an implicit property that could regress
+  silently when a new spawn site or converter is added later.
+- Resource governance (CPU, memory, disk, wall-clock, process-count) is explicitly not
+  this feature's concern. Per the corrected constitution, it is a deployment concern
+  addressed by container or comparable OS-level sandbox isolation around the agent
+  process (the direction ADR-002 already defers to); the harness's own obligation there
+  is limited to monitoring/observability, which is a separate, general Hub concern not
+  gated by this feature's Definition of Done.
+- No ADR currently governs path-traversal safety or subprocess-spawn safety as a
+  dedicated topic (ADR-006 documents the canonicalize-then-match design in passing;
+  ADR-002 documents the spawn model without naming injection safety as a concern).
+  Planning for this feature is expected to draft one, per Principle III.
 
 ## Out of Scope
 
-- Changing the agent loop's existing turn/context/spend caps or the liveness-window
-  supervision (FR-011).
+- CPU, memory, disk, or wall-clock resource ceilings, or any mechanism to enforce them —
+  explicitly rejected as within this feature's scope; that governance belongs to
+  container/sandbox-level deployment isolation (ADR-002's deferred direction), not the
+  harness.
+- Implementing resource-consumption monitoring or metrics. The constitution names this as
+  a general Hub/observability obligation, but it is a separate concern from this
+  feature's containment guarantee and is not gated by this feature's Definition of Done.
 - Containerizing or otherwise re-architecting how agent processes are hosted; this
-  feature bounds the current execution model. (A future ADR may still choose
-  containerization; nothing here precludes it.)
-- Multi-run/global resource budgeting across concurrent runs (per-run ceilings only).
-- Network egress restrictions beyond download size (destination allow-listing is the
-  credential/fetch boundary's concern, unchanged).
+  feature strengthens containment within the current execution model. A future ADR may
+  still choose containerization for resource isolation — nothing here precludes or
+  requires it.
+- Network egress restrictions beyond what credential scoping already provides.
+- Rewriting the existing guarded-tool-boundary mechanism; this feature hardens its edge
+  cases and structurally pins its guarantees, not a redesign.
