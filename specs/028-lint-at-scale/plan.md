@@ -1,8 +1,8 @@
 # Implementation Plan: Lint at Scale
 
-**Branch**: `027-lint-at-scale` | **Date**: 2026-08-24 | **Spec**: [spec.md](./spec.md)
+**Branch**: `028-lint-at-scale` | **Date**: 2026-08-24 | **Spec**: [spec.md](./spec.md)
 
-**Input**: Feature specification from `/specs/027-lint-at-scale/spec.md`
+**Input**: Feature specification from `/specs/028-lint-at-scale/spec.md`
 
 ## Summary
 
@@ -22,10 +22,14 @@ effect of a different feature. What #108 still needs, and what this feature deli
    `DeniedActions` and `InboundLinksRefreshed` onto the persisted Findings Report — new,
    because no equivalent of `GuardedToolExecutor`'s write-tracking accumulators exists for
    reads today.
-2. Evaluation coverage scoped to *this* issue's own acceptance criteria — completion at
-   current scale, headroom at 2x scale, and no regression on cross-page findings or
-   inbound-link accuracy (#42) — extending the existing `lint-at-scale-survey` scenario and
-   its fixture rather than building new eval infrastructure.
+2. Deterministic validation of this issue's scale claims (completion, headroom, token
+   efficiency) via the existing small `lint-at-scale-survey` fixture with its reading budget
+   tuned — not a new large corpus. Cross-page findings and inbound-link accuracy (#42) are
+   classified lower-stakes agent judgment per Constitution v1.12.0 and are covered primarily
+   by the user-reported correction loop against the persisted Findings Report, with at most
+   one small optional recorded-replay check for extra confidence — not a mandatory eval
+   matrix. Both choices keep this feature's own eval footprint proportionate to what #108
+   needs verified, rather than building new eval infrastructure disproportionate to the risk.
 
 Direction B (harness-side sharding into windowed sub-runs with partial-report merging) is
 explicitly not adopted here — see research.md R1 for the rationale and its revisit trigger.
@@ -74,7 +78,7 @@ runs against recordings in CI (ADR-012).
 | Principle | Assessment | Verdict |
 |---|---|---|
 | I — Domain architecture & hexagonal boundaries | No new external system, no new port. `ConsideredPaths` is an in-process accumulator on the existing `GuardedToolExecutor`, the same shape as its existing `TouchedPaths`/`CreatedPaths` fields — falls under the same persistence/filesystem-adjacent reasoning already accepted for those. No infrastructure package relocation. | PASS |
-| II — Pragmatic testing | Integration tests against the real filesystem in temp dirs and the real `LintRunCoordinator`; no mocking framework. Doubles limited to whatever port fakes already exist upstream (none new here). Success criteria split: SC-001/002/003/006 deterministic; SC-004/005 evaluation thresholds. SC-002 verified at the `FindingsReport` record level, not via a new parser (contracts/coverage-signal.md "Verification approach") — avoids adding parsing infrastructure the feature does not otherwise need (Ownership Test). | PASS |
+| II — Pragmatic testing | Integration tests against the real filesystem in temp dirs and the real `LintRunCoordinator`; no mocking framework. Doubles limited to whatever port fakes already exist upstream (none new here). Success criteria split per Constitution v1.12.0's tiering: SC-001/002/003/006 deterministic harness guarantees; SC-004/005 are agent-judgment criteria classified **lower-stakes** (a missed cross-page finding or a stale link count is correctable on a later pass, not destructive) — expressed narratively, satisfied primarily by the user-reported correction loop, with one small optional recorded-replay check for extra confidence rather than a mandatory eval suite gating the DoD. SC-002 verified at the `FindingsReport` record level, not via a new parser (contracts/coverage-signal.md "Verification approach") — avoids adding parsing infrastructure the feature does not otherwise need (Ownership Test). | PASS |
 | III — ADR-driven & test-enforced | All ADRs in `docs/adr/` read. ADR-030 and ADR-031 already Accepted and directly constrain the reused tool surface and write scope; neither needs amendment (see Architectural Constraints below). This feature introduces **no new structural boundary** — it extends an existing data-flow pipeline (`GuardedToolExecutor` → `RunCompletionMetadata` → NDJSON → `LintRunCoordinator` → `FindingsReportFormat`) with a new field, the same pipeline `DeniedActions`/`InboundLinksRefreshed` already travel. No new ADR is drafted. Phase 0 states explicitly: no Boundary Rule introduced by this feature. | PASS |
 | IV — Behavioral & observable | Observability section below enumerates metrics, log events, and spans; each derives implementation + deterministic test + CI tasks. Contract tests exercise the existing `LintAgentTracing`/`LintAgentMetrics` production wiring, not a test-only provider. | PASS |
 | V — Agentic core & deterministic harness | The coverage signal is deliberately behavior-agnostic: it records *whether* a read-shaped tool call touched a page, never *whether the agent's judgment about that page was right*. Computing it is squarely harness bookkeeping (like `TouchedPaths` already is for writes), not a decision about wiki content. What to read, when to stop, and what counts as a finding remain the agent's, under the already-updated instruction files. | PASS |
@@ -92,7 +96,8 @@ code.
 | [ADR-030](../../docs/adr/ADR-030-guarded-retrieval-tool-surface.md) | Guarded Retrieval Tools — Search, Ranged Read, and Read-Only Batch | Names the #108 problem directly in its own Context. Delivers `search_files`, ranged `read_file` (`frontmatter_only`), and read-only `batch`, which this feature's coverage tracking observes but does not modify. R3 (a ranged read must never set the write-guard CAS baseline) is unaffected — `ConsideredPaths` only records that a path was read, never re-implements or touches `OnReadFile`. |
 | [ADR-031](../../docs/adr/ADR-031-lint-full-wiki-write-scope.md) | Lint Holds Full Authority Over Wiki Content, in Both Modes | Governs write scope, not reads; unaffected by this feature. `WikiContentWrites` (its accumulator) and the new `ConsideredPaths` are sibling, independent lists on `GuardedToolExecutor` — this feature adds one, does not touch the other. |
 | [ADR-006](../../docs/adr/ADR-006-agent-tool-loop-guarded-boundary.md) | Agent Tool-Use Loop and Guarded Tool Boundary | Every tool dispatch already passes through `GuardedToolExecutor`; `ConsideredPaths` is populated on the existing success path of that dispatch, not a new one. No new tool is added — R3/R11 (unknown-tool rejection) is unaffected. |
-| [ADR-012](../../docs/adr/ADR-012-eval-runner-recorded-replay.md) | Standalone Eval Runner and Recorded-Replay at the Model Port | Governs how the SC-004/SC-005 evaluation tests and the extended `lint-at-scale-survey` scenario run — recorded-replay against the real `Grimoire.LintAgent` executable, `[Trait("Tier","SlowEval")]` in the standard PR pipeline. No new eval mechanism. |
+| [ADR-012](../../docs/adr/ADR-012-eval-runner-recorded-replay.md) | Standalone Eval Runner and Recorded-Replay at the Model Port | Governs the one optional recorded-replay check this feature adds — recorded-replay against the real `Grimoire.LintAgent` executable, `[Trait("Tier","SlowEval")]` in the standard PR pipeline. No new eval mechanism. |
+| [ADR-033](../../docs/adr/ADR-033-sloweval-replay-class-set-reduction.md) | SlowEval Replay Class Set Reduced by the Lower-Stakes Eval Removal | This feature adds its one optional check as a new scenario inside the existing `LintReplayEvalTests` class (extending `lint-at-scale-survey`); it does **not** introduce a new SlowEval replay-eval class, so ADR-033's four-class enumeration is unaffected and needs no further amendment. |
 
 **New ADR required?**: **No.** This feature extends an existing, already-Accepted data-flow
 pipeline with an additive field; it introduces no new external system, no new port, no new
@@ -121,11 +126,11 @@ ability to *observe and report* what the agent already does, never to decide it.
 
 | Success criterion | Category | Primary test type | Doubles / external dependencies | Fixtures / sampled data | Notes |
 |---|---|---|---|---|---|
-| SC-001 (633-page run completes) | Deterministic guarantee | Integration test against a real temp-dir content root sized to reproduce the token volume (via the extended `LintAtScaleFixture`, scaled `FillerPageCount`), asserting no `AgentLoopCapException` | None — real filesystem, real `AgentLoop`, real `GuardedToolExecutor` | Extended `LintAtScaleFixture` at production-scale `FillerPageCount` | Confirms Direction A's existing narrowing holds at the exact scale #108 names, not just the smaller pre-existing eval size |
-| SC-002 (100% of runs carry a coverage report) | Deterministic guarantee | Integration test asserting the `FindingsReport.WikiCoverage` value passed to `FindingsReportFormat.Build`, across both a complete-pass and a forced-partial-pass run | Real filesystem, real coordinator; no mocking framework | A small fixture (complete pass) and a tightly budget-capped run (forced partial pass) | Record-level assertion, no new parser (contracts/coverage-signal.md) |
-| SC-003 (2x scale headroom) | Deterministic guarantee | Integration/eval test at ≥1200-page synthetic scale, asserting completion and comparing reading-volume growth against the 1x baseline | Real filesystem; extended fixture | `LintAtScaleFixture` at `FillerPageCount` ≈ 1200+ | Also the trigger check for research.md R1's Direction-B revisit condition (super-linear growth) |
-| SC-004 (cross-page findings survive narrowing) | Agent-judgment threshold (≥90%) | Recorded-replay evaluation, extending `lint-at-scale-survey` | Recorded model responses (ADR-012) | Fixture gains a planted contradiction pair and a duplicate-content pair | New scenario variant or additional planted defects on the existing scenario |
-| SC-005 (inbound-link accuracy holds ≥90%) | Agent-judgment threshold (≥90%) | Recorded-replay evaluation | Recorded model responses (ADR-012) | Fixture gains a stale inbound-link-count page | Threshold chosen to hold steady against the pre-existing baseline, not to improve on it (FR-006) |
+| SC-001 (633-page-equivalent run completes) | Deterministic guarantee | Integration test: a real temp-directory content root (a handful of small pages, purpose-built for the test — not the shared eval fixture) plus a hand-rolled fake `IModelClient` (existing port, Principle II) scripted to issue enough tool calls to exceed a small simulated token/turn budget; asserts the run completes with no `AgentLoopCapException` | Hand-rolled fake `IModelClient` (existing port); real filesystem, real `AgentLoop`, real `GuardedToolExecutor` | A small ad hoc content root (a handful of pages); no eval fixture, no live/recorded LLM calls | Fully hermetic — proves the cap-enforcement mechanism is correct regardless of agent behavior. Does **not** by itself prove the *real* agent stays within that envelope on a real 633-page wiki — that is Direction A's own already-established evidence (spec 026's `lint-at-scale-survey`/SC-011, unchanged, still running in CI), which this feature relies on rather than re-proving |
+| SC-002 (100% of runs carry a coverage report) | Deterministic guarantee | Integration test asserting the `FindingsReport.WikiCoverage` value passed to `FindingsReportFormat.Build`, across both a complete-pass and a forced-partial-pass run | Real filesystem, real coordinator; hand-rolled fake `IModelClient`; no mocking framework | Same small ad hoc content root as SC-001 | Record-level assertion, no new parser (contracts/coverage-signal.md) |
+| SC-003 (scale headroom as a relation) | Deterministic measurement of a real agent-driven outcome | One additional scenario variant on the existing `lint-at-scale-survey` (same fixture, a tighter `ContextBudgetTokens`), recorded-replay, comparing reading volume against the SC-006 baseline ratio for super-linear growth | Recorded model responses (ADR-012) | Existing `LintAtScaleFixture`, one new budget value — no new pages | The one genuinely new eval addition this feature needs for the scale claim: confirms the *real* agent's real behavior holds at a tighter ratio, which SC-001/002's hermetic harness test cannot show (that test proves the cap mechanics are correct, not that the real agent stays inside them) — also the trigger check for research.md R1's Direction-B revisit condition (super-linear growth) |
+| SC-004 (cross-page findings survive narrowing) | Lower-stakes agent-judgment (Constitution v1.12.0) | Primarily the user-reported correction loop (Observability below); one optional recorded-replay case, extending `lint-at-scale-survey`, MAY additionally exist | Recorded model responses (ADR-012), only if the optional check is added | At most one small addition to the existing fixture (one contradiction OR duplicate-content pair) — not a matrix | Absence of the optional check does not fail the DoD; see Test what we own / Constitution v1.12.0 |
+| SC-005 (inbound-link accuracy holds) | Lower-stakes agent-judgment (Constitution v1.12.0) | Same treatment as SC-004: correction loop primary, one optional recorded-replay case MAY exist | Recorded model responses (ADR-012), only if the optional check is added | At most one small addition to the existing fixture (one stale inbound-link-count page) | Threshold, if the optional check is kept, is framed as "holds steady," not "improves" (FR-006) |
 | SC-006 (token-efficiency gain not regressed) | Deterministic measurement of an agent-driven outcome | Comparison against the recorded `lint-at-scale-survey` baseline (`specs/026-guarded-tool-surface/baseline.md`) | Recorded model responses (ADR-012) | Existing `lint-at-scale-survey` recordings | Observational check, not a new agent-judgment threshold — a regression here is a harness-measurable fact about the same recordings |
 
 ## Observability
@@ -163,12 +168,25 @@ integration test validating the span carries these attributes (against the real
 `LintAgentTracing` composition root, per Principle IV — not a test-only `ActivitySource`); (3)
 a CI task ensuring this test runs in the standard PR pipeline.
 
+### Correction-loop observability surface (Constitution v1.12.0, Principle V)
+
+SC-004 and SC-005 are lower-stakes and rely primarily on the user-reported correction loop.
+Per the constitution's "Human in the loop" bullet, the surface the user observes this on
+MUST be named here: the **persisted Findings Report file itself** (`grimoire-findings/1`,
+`specs/013-lint-agent/contracts/findings-report-format.md`) — an operator reads a run's
+narrative body directly to judge whether cross-page findings and inbound-link counts look
+right, and, per `WikiCoverage` (this feature's own addition), now also sees whether that
+judgment was made over the whole wiki or a partial pass. No new user-facing surface is
+introduced for this — the same file operators already read for every other Finding Category
+carries this feedback loop. If the operator notices a miss, the fix is an edit to
+`agents/lint/system-prompt.md`, verified by the operator on the next run — not a code change.
+
 ## Project Structure
 
 ### Documentation (this feature)
 
 ```text
-specs/027-lint-at-scale/
+specs/028-lint-at-scale/
 ├── plan.md              # This file
 ├── research.md           # Phase 0 output
 ├── data-model.md          # Phase 1 output
@@ -202,7 +220,7 @@ backend/
     ├── Grimoire.IntegrationTests/            # classicist tests for ConsideredPaths, WikiCoverage computation, log event, span attributes
     ├── Grimoire.EvalRunner/
     │   └── Scenarios/
-    │       └── LintScenarioDefinitions.cs    # lint-at-scale-survey scale variants; new SC-004/SC-005 fixture defects
+    │       └── LintScenarioDefinitions.cs    # lint-at-scale-survey gains a parameterized budget, not a bigger fixture
     └── Grimoire.AgentEvals/
         └── LintReplayEvalTests.cs            # extended assertions for coverage + new SC-004/SC-005 scenarios
 ```

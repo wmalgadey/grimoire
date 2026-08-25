@@ -1,6 +1,6 @@
 # Phase 0 Research: Lint at Scale
 
-**Feature**: [spec.md](./spec.md) | **Branch**: `027-lint-at-scale`
+**Feature**: [spec.md](./spec.md) | **Branch**: `028-lint-at-scale`
 
 ## R1 — Direction A vs. Direction B (issue #108's central open question)
 
@@ -111,36 +111,105 @@ field on `FindingsReport` is produced today.
 
 ## R3 — Evaluation strategy for SC-001, SC-003, SC-004, SC-005, SC-006
 
-**Decision**: Extend the existing `lint-at-scale-survey` scenario
-(`backend/tests/Grimoire.EvalRunner/Scenarios/LintScenarioDefinitions.cs:140-145`,
-fixture `LintAtScaleFixture` — confirmed ~69 pages / ~50,895 content tokens, generated at
-build time from `FillerPageCount = 60` + the `lint-seeded-defects` fixture, git-ignored,
-deterministic via a hand-rolled LCG) rather than building new eval infrastructure. This
-feature:
+**Decision (revised 2026-08-25 — see R5 below)**: Validate SC-001/SC-003 purely by
+**tuning `ContextBudgetTokens`** against the existing `lint-at-scale-survey` scenario
+(`backend/tests/Grimoire.EvalRunner/Scenarios/LintScenarioDefinitions.cs`, fixture
+`LintAtScaleFixture` — confirmed ~69 pages / ~50,895 content tokens, generated at build time
+from `FillerPageCount = 60` + the `lint-seeded-defects` fixture, git-ignored, deterministic
+via a hand-rolled LCG). **No new large corpus is generated for this feature** — an earlier
+version of this decision (recorded in spec.md's Clarifications, session 2026-08-25) proposed
+raising `FillerPageCount` toward production/2x scale; that was rejected as disproportionate
+to what the property needs proven (see R5) and replaced with budget-only tuning. SC-004 and
+SC-005 are reclassified lower-stakes per Constitution v1.12.0 and no longer require fixture
+defect generation as a mandatory deliverable (see R5) — at most one small, optional addition
+to the existing fixture may still exist for extra confidence, not a matrix.
 
-- Adds scenario variants that raise `FillerPageCount` and/or lower
-  `ContextBudgetTokens` to validate SC-001 (current-scale completion) and SC-003 (2x
-  headroom) — the scenario is already designed as a *relation* between corpus size and
-  budget, not a fixed corpus, so this is parameter tuning, not new plumbing.
-- Adds planted cross-page defects (a contradiction pair, a duplicate-content pair) to the
-  fixture generator for SC-004, and a stale inbound-link-count page for SC-005 — both
-  slot into the existing seeded-defects pattern `lint-seeded-defects` already uses.
-- Adds a scorer assertion for the new coverage signal (SC-002 is deterministic and checked
-  directly against the persisted `FindingsReport`; SC-006 compares content-tokens-read
-  against the existing 86% baseline recorded in `specs/026-guarded-tool-surface/baseline.md`).
+- SC-001/SC-002 are pure harness mechanics (cap enforcement, coverage computation) —
+  proven hermetically with a hand-rolled fake `IModelClient` and a small ad hoc temp-dir
+  content root, independent of the shared eval fixture and of any real/recorded model
+  output. This is what makes them genuinely "deterministic harness guarantees": the test
+  does not depend on what a real agent would choose to read.
+- SC-003 (scale headroom) is different in kind: it is a claim about the *real* agent's real
+  behavior generalizing to a tighter budget-to-content ratio, which a scripted fake model
+  cannot demonstrate. This gets exactly one new addition — a second `lint-at-scale-survey`
+  scenario variant with a lower `ContextBudgetTokens` against the *same* existing fixture —
+  run as a recorded-replay eval, not grown into a new corpus.
+- SC-006 compares content-tokens-read against the existing 86% baseline recorded in
+  `specs/026-guarded-tool-surface/baseline.md`.
+- SC-004/SC-005: primarily the user-reported correction loop (R5); if a small optional
+  recorded-replay check is added, it slots into the existing `lint-seeded-defects` pattern
+  with at most one addition per criterion, inside the existing `LintReplayEvalTests` class
+  (no new SlowEval replay-eval class, per ADR-033).
 
 **Rationale**: `Grimoire.EvalRunner`'s capture/replay machinery
 (`backend/tests/Grimoire.AgentEvals/LintReplayEvalTests.cs`, ADR-012 recorded-replay,
 `[Trait("Tier","SlowEval")]`) already runs the real `Grimoire.LintAgent` executable against
 recorded model responses in the standard PR pipeline. Reusing it means this feature's
 evaluation tests are gated the same way spec 026's already are, with no new harness needed to
-run them.
+run them. Budget-only tuning proves the same "bounded reading, regardless of how much content
+exists beyond the budget" mechanism as growing the corpus would, at a fraction of the build
+time, git-ignored-fixture regeneration cost, and CI wall-clock cost — directly the concern
+the user raised when this decision was revised (see R5).
 
 **Correction carried from spec.md**: the earlier draft's "655 pages" figure for this fixture
 was wrong; the actual fixture is ~69 pages and the 86% reduction was achieved by lowering the
 context budget relative to that smaller corpus, not by running against a wiki-scale corpus.
 spec.md's SC-003/SC-006 language was corrected to reflect this before this research was
 written up.
+
+## R5 — Revising R1/R3's eval footprint: user cost concern + Constitution v1.12.0 (2026-08-25)
+
+**Context**: After R1-R4 were written and `tasks.md` generated (session of 2026-08-24), two
+things happened before implementation started:
+
+1. The user reviewed the resulting `tasks.md` and rejected its T001/T004 approach — raising
+   `LintAtScaleFixture`'s `FillerPageCount` to literal production scale (~633 pages) and 2x
+   scale (~1200+ pages) to validate SC-001/SC-003 — as overengineered, given that Lint's own
+   agent-judgment behavior cannot be exhaustively verified anyway and eval/LLM-call cost
+   needs to stay proportionate. Their own framing: a small number of specific, well-testable,
+   meaningful evals, not a broad matrix validated by brute-force corpus scale.
+2. Independently, `main` was amended to Constitution v1.12.0 while this feature was in
+   flight (ratified before this feature's rebase onto `main`, both dated 2026-08-25),
+   introducing the same cost concern as binding project policy: agent-judgment success
+   criteria are now tiered **high-stakes** (formal eval suite required) vs. **lower-stakes**
+   (a formal eval suite is optional; the user-reported correction loop is sufficient
+   coverage). ADR-033 records the project-wide removal of 19 lower-stakes eval scenarios
+   under this same amendment.
+
+**Decision**: Both are the same concern arriving through two channels — the user's direct
+feedback, and the project's own newly-ratified policy for exactly this situation. This
+feature adopts both together, superseding R1/R3's original eval-scale plan:
+
+- SC-001/SC-003 (deterministic harness guarantees, not agent judgment — the v1.12.0 tiering
+  does not apply to them) are revalidated via budget-relation tuning against the existing
+  small fixture (R3, revised), not by growing the fixture.
+- SC-004 (cross-page findings) and SC-005 (inbound-link accuracy) are classified
+  **lower-stakes** under Constitution v1.12.0 Principle II: a missed cross-page finding is
+  surfaced (or not) in a Findings Report an operator reads every run, and a stale inbound-link
+  count is a single correctable wiki field — neither is an irreversible or hard-to-reverse
+  outcome. Both are satisfied primarily by the user-reported correction loop (plan.md's new
+  Observability subsection names the Findings Report file as the surface). A formal
+  recorded-replay eval suite for either is now optional, not mandatory for the DoD — at most
+  one small, targeted addition per criterion to the existing fixture, never a full matrix of
+  planted-defect variants.
+
+**Alternative rejected**: dropping SC-004/SC-005 eval coverage to exactly zero. Rejected
+because the user's own words ("es macht sicherlich Sinn, den ein oder anderen Fall zu
+prüfen" — it certainly makes sense to check a case or two) asked for *some* targeted
+verification, not none; Constitution v1.12.0 makes a formal suite optional, not forbidden.
+Keeping the door open for one minimal, well-targeted check per criterion — inside the
+existing `LintReplayEvalTests` class, no new eval infrastructure — satisfies both the user's
+stated preference and the constitution's permission without reintroducing the cost the user
+flagged.
+
+**Alternative rejected**: keeping the original T001/T004 literal-scale corpus generation
+because "SC-001 says 633 pages" is a defensible literal reading of the success criterion.
+Rejected because spec.md's own Assumptions section (written before tasks.md, during the
+original `/speckit-plan`) already stated the intent this decision restores: "validated by the
+strategy demonstrably generalizing across fixture sizes and budgets, not by every eval run
+operating on a full-size corpus." `tasks.md`'s T001/T004 had drifted from that stated intent
+toward the more literal, more expensive interpretation — this decision corrects tasks.md back
+to what spec.md's own Assumptions already said, rather than re-deciding it from nothing.
 
 ## R4 — Observability signal shape
 

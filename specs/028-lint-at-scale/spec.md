@@ -1,12 +1,34 @@
 # Feature Specification: Lint at Scale
 
-**Feature Branch**: `027-lint-at-scale`
+**Feature Branch**: `028-lint-at-scale`
 
 **Created**: 2026-08-24
 
 **Status**: Draft
 
 **Input**: User description: "Lint at scale: The Lint agent currently reads the entire wiki in one context window ('read the whole wiki, judge its condition across all three Finding Categories, refresh any stale inbound-link counts you find, and produce the Findings Report as your final message' — backend/src/Grimoire.LintAgent/Program.cs:207-212). On the self-hosted deployment the wiki is 633 markdown pages / ~1.6M characters (~400k tokens), which does not fit in one context window and never will as the wiki grows. This is GitHub issue #108. Two directions were identified in the issue, not mutually exclusive: Direction A (instruction-file change, no ADR needed): teach the Lint agent to work from index.md and page frontmatter/search, pulling full page bodies only for pages it has reason to suspect, restoring the 'read the index first' navigation rule from the source Karpathy pattern that Grimoire's Lint prompt deviated from. Direction B (harness change, needs an ADR): shard the run — the harness partitions the wiki into windows, runs an agent loop per window with its own budget, and merges partial Findings Reports into one. Spec 026 (#159, merged to main) already landed the retrieval primitives this feature needs: search_files, a ranged read_file (offset/limit and frontmatter_only), and a read-only batch tool in LintToolRegistry. PR #179 (spec 026's Phase N) already rewrote system-prompt.md's 'Choosing how to read' section toward frontmatter-first/search-first reading and recorded an 86% reduction in median content tokens read on a 'lint-at-scale' eval corpus (655 pages) as an incidental byproduct of proving spec 026's own eval scenario — not a dedicated delivery of this issue. Acceptance direction from the issue: a Lint run over a wiki of the current size (600+ pages) completes rather than aborting; the strategy for 'more pages than fit in one context' is stated, not implicit; whatever bounds the reading is observable, so a partial pass is distinguishable from a complete one; the agent-judgment half is covered by evaluation tests, not deterministic assertions on instruction-file wording. Related, not in scope: #64 (lint content/body remediation), #42 (inbound-link refresh reliability — Direction A alone may make this worse), #88 (same context-window problem on Ingest), #107 (AgentLoop token-cap accounting bug, independent failure)."
+
+## Clarifications
+
+### Session 2026-08-25
+
+- Q: Should this feature validate "the wiki no longer fits in one context window" by
+  generating large synthetic wiki corpora sized close to production (600+ pages, and
+  1200+ for the 2x check), or by reusing a small fixture with its context budget
+  deliberately lowered relative to corpus size? → A: reuse the small budget-constrained
+  fixture relation (no new large corpus generation); keep the eval footprint proportionate.
+  Superseded/subsumed by the second answer below, which resolves the same concern through
+  the project's own binding policy rather than an ad hoc choice.
+- Q: How does Constitution v1.12.0's high-stakes/lower-stakes agent-judgment tiering
+  (ratified on `main` after this feature's spec was first drafted, in response to the same
+  eval-cost concern raised above) apply to SC-004 and SC-005? → A: both are lower-stakes
+  (a missed cross-page finding or a stale inbound-link count is correctable on a later
+  pass, not a destructive or hard-to-reverse outcome) — expressed narratively, satisfied
+  primarily by the user-reported correction loop, with a formal recorded-replay eval suite
+  optional rather than mandatory for the Definition of Done. SC-001/SC-002/SC-003/SC-006
+  remain deterministic harness guarantees, unaffected by this tiering, and SC-003 in
+  particular is validated via the same small-fixture relation as the first answer, not a
+  literal-scale corpus, per that same eval-cost concern.
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -169,18 +191,29 @@ acceptable rate compared to a full-read baseline.
 - **SC-002**: 100% of completed Lint runs carry a coverage report stating whether the pass
   was complete or partial, derived from the run's own observed activity. *(Deterministic
   harness guarantee.)*
-- **SC-003**: On repeated runs against a fixed wiki snapshot at or above today's size, total
-  wall-clock run time and reading volume do not regress beyond a defined margin as the wiki
-  continues to grow — measured at 1x, and re-validated at 2x today's page count using a
-  synthetic or accumulated corpus. *(Deterministic harness guarantee, scale envelope.)*
-- **SC-004**: ≥ 90% of sampled evaluation runs against a corpus containing planted
-  cross-page findings (contradictions or duplicate content between two pages) surface the
-  planted finding in the Findings Report. *(Agent-judgment evaluation threshold.)*
-- **SC-005**: ≥ 90% of sampled evaluation runs against a corpus containing pages with a
-  stale inbound-link count refresh that count to match the actual inbound-link graph.
-  *(Agent-judgment evaluation threshold — chosen to hold steady against the ~90% baseline
-  the first issue comment measured for the pre-existing in-context tally, not to improve on
-  it; improving it further is explicitly out of scope per FR-006.)*
+- **SC-003**: The "more wiki than fits one context window" property is validated as a
+  *relation* between corpus size and reading budget — not by generating a corpus at literal
+  production scale — and holds at more than one point on that relation (e.g., a fixture
+  whose budget is set to a smaller fraction of what a full read would need than the
+  baseline case), with reading volume not growing super-linearly as that fraction shrinks.
+  *(Deterministic harness guarantee, scale envelope. This is deliberately a cheap,
+  repeatable relation check, not a large generated corpus — see Assumptions.)*
+- **SC-004**: Lint's Findings Report continues to surface cross-page findings (contradictions,
+  duplicate content between two pages) once reading is narrowed by Direction A, at least as
+  reliably as before narrowing. *(Lower-stakes agent-judgment criterion per Constitution
+  v1.12.0 Principle II — a missed cross-page finding is correctable on the next run, not a
+  destructive or hard-to-reverse outcome. Satisfied primarily by the user-reported correction
+  loop: an operator who notices a missed finding via the Findings Report adjusts
+  `system-prompt.md` and verifies the fix themselves — no CI-gated eval suite is required for
+  this to count as done. One small, specific recorded-replay check MAY additionally exist for
+  extra confidence, but its absence does not fail the Definition of Done.)*
+- **SC-005**: Lint's inbound-link count refresh continues to match the actual inbound-link
+  graph once reading is narrowed, at least as reliably as the pre-existing baseline (out of
+  scope: improving it further, per FR-006 — see also #42). *(Lower-stakes agent-judgment
+  criterion per Constitution v1.12.0 Principle II — a stale count is a single, correctable
+  wiki edit, not a destructive outcome. Same correction-loop treatment as SC-004: no
+  mandatory eval suite; one small optional recorded-replay check MAY exist for extra
+  confidence.)*
 - **SC-006**: On the eval scenario already used to measure this (spec 026's
   `lint-at-scale-survey`, a small fixture with its context budget deliberately set below
   what a whole-wiki read would need), a run's total content tokens read stays at or below
@@ -212,12 +245,20 @@ acceptable rate compared to a full-read baseline.
   spec 013** (the original Lint Agent feature); this feature does not redefine what a
   successful run or a Findings Report is, only what informs it and what it reports about
   its own coverage.
-- **The 2x-scale re-validation in SC-003 uses either an accumulated production snapshot or
-  a synthetic corpus built for the purpose** — this spec does not mandate the wiki actually
-  reach 1200+ pages before the feature can be considered done; it mandates the strategy be
-  validated against that scale, not just today's page count.
-- **The evaluation fixtures used to validate this feature are synthetic and sized for the
-  property under test (e.g., a context budget set below what a full read would need), not
-  literal copies of the ~633-page production wiki.** SC-001's 633-page / ~400k-token
-  guarantee is validated by the strategy demonstrably generalizing across fixture sizes and
-  budgets, not by every eval run operating on a full-size corpus.
+- **SC-003 does not require generating a corpus at literal production scale (633 or
+  1200+ pages).** Building and maintaining a several-hundred-page synthetic wiki fixture for
+  this alone was judged disproportionate to what it proves — the same "reading bounded well
+  below total content" property is demonstrated more cheaply, and more repeatably, by
+  tightening the reading budget against a small fixture than by growing the fixture to match
+  the budget. SC-001's 633-page / ~400k-token guarantee is validated by this relation
+  generalizing across fixture sizes and budgets, not by every eval run operating on a
+  full-size corpus.
+- **SC-004 and SC-005 are classified lower-stakes per Constitution v1.12.0's Principle II
+  tiering** (agent-judgment criteria whose cost of being wrong is a single, correctable wiki
+  edit or a missed finding surfaced on a later pass — not an irreversible or hard-to-reverse
+  outcome). This is why they are expressed narratively rather than as hard-gating numeric
+  thresholds, and why a formal recorded-replay eval suite is optional rather than mandatory
+  for them, unlike SC-001/002/003/006, which remain deterministic harness guarantees. This
+  keeps this feature's own eval footprint proportionate to what issue #108 actually needs
+  verified, consistent with the same cost-consciousness that motivated the v1.12.0 amendment
+  and the removal of 19 lower-stakes eval scenarios project-wide (ADR-033).
