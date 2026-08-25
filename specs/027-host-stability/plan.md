@@ -93,7 +93,22 @@ No violations requiring justification — Complexity Tracking is not filled.
 | ADR-032 | Behavioral Enforcement for Feature-Scoped Path-Surface Invariants | Establishes the Boundary-Rule-vs-Feature-Scoped-Invariant classification and the rule that an FSI must never get a reflection/IL test — directly governs how ADR-034 classifies and enforces R1–R4 in this feature. |
 | ADR-034 | Path and Subprocess Containment Hardening (new, this feature) | The feature's own ADR — see `docs/adr/ADR-034-path-and-subprocess-containment-hardening.md`. Names R1/R2 (Boundary Rules, structural test) and R3/R4 (Feature-Scoped Invariants, classicist tests). |
 
-**New ADR required?**: Yes — drafted as `docs/adr/ADR-034-path-and-subprocess-containment-hardening.md`, status `accepted` (this project's established solo-operator sign-off convention, matching ADR-032/ADR-033). `docs/adr/index.md` updated in the same change.
+**New ADR required?**: Yes. R1/R2 (spawn-site registry, argument-list-only invocation)
+are Boundary Rules that no existing ADR names: `ADR-002` documents the agent spawn
+model (child process, CLI args, credential scoping) but never names injection safety —
+which type may construct a process — as a concern; `ADR-006` documents the guarded-tool
+boundary's path-canonicalization design but never addresses subprocess safety at all.
+Per Principle III, "if `plan.md` introduces a new structural boundary... not covered by
+existing ADRs, the agent MUST draft a new ADR," and separately, "a Boundary Rule named
+in an Accepted ADR, without a corresponding automated structural enforcement test, MUST
+NOT be referenced as an active architectural constraint" — meaning `tasks.md`'s Phase 0
+task cannot cite R1/R2 as something it tests until an ADR names them. Drafted as
+`docs/adr/ADR-034-path-and-subprocess-containment-hardening.md`, status `accepted`
+(this project's established solo-operator sign-off convention, matching
+ADR-032/ADR-033). `docs/adr/index.md` updated in the same change. (R3/R4 are
+Feature-Scoped Invariants, not Boundary Rules, and do not independently require an
+ADR — they are folded into ADR-034 because the feature's containment topic covers both
+halves together.)
 
 ## Agentic Boundary (Constitution Principle V)
 
