@@ -1,6 +1,102 @@
 <!--
 SYNC IMPACT REPORT
 ==================
+Version change: 1.12.0 → 2.0.0 (2026-08-25)
+
+Principles modified:
+  - III. ADR-Driven & Test-Enforced Architecture (NEW rule "Single-aspect ADRs; no
+    feature content": every ADR MUST decide exactly one system boundary or technology
+    choice; where a plan.md surfaces more than one such decision, the agent MUST draft
+    one ADR per aspect rather than a single combined record; ADRs MUST NOT fix
+    feature-level requirements, behavior, or implementation detail. "ADR Status
+    Maintenance" REDEFINED: the `Amends`/`Amended by` link is retired for ADRs drafted
+    from this date forward — superseding an ADR now always invalidates the ENTIRE ADR,
+    never a section, table row, or "in part" scope; any still-valid aspect of a
+    superseded ADR MUST be re-decided as its own new, independent, single-aspect ADR in
+    the Mandatory ADR format, never inherited by reference from or patched into the
+    superseded text. NEW rule "Extension is not invalidation," with a decisive
+    Invalidation test (would honoring the new requirement reverse, narrow, or contradict
+    what the ADR actually decided?) distinguishing extensions — which MUST NOT touch the
+    original ADR's status, not even in part — from invalidations, which MUST go through
+    whole-ADR supersession; drafting an ADR now requires recording, under its own
+    Decision Outcome / Change Triggers, which future changes are anticipated extensions
+    versus anticipated invalidations, so the distinction is made at drafting time rather
+    than inferred later. NEW "Mandatory ADR format": every ADR drafted from this date
+    forward MUST use the specified MADR-based skeleton verbatim, including a required
+    "Change Triggers" section listing anticipated extensions and invalidations.)
+
+Principles added: none
+
+Sections modified:
+  - Definition of Done (the ADR-status-header checkbox now requires the Mandatory ADR
+    format, exactly one decided aspect per touched ADR, and whole-ADR — never partial —
+    supersession wherever an ADR is touched)
+
+Sections removed: none
+
+Templates assessed (none modified — /speckit-constitution writes only the constitution;
+dependent templates read it at runtime):
+  - .specify/templates/plan-template.md ✅ no change required (the existing "Agent MUST
+    read all ADRs" / "draft a new ADR for any structural boundary not covered" gate
+    already routes a plan surfacing several boundaries toward several ADRs; this
+    amendment makes that mandatory rather than incidental, with no template shape change)
+  - .specify/templates/tasks-template.md ✅ no change required (Phase 0 / ADR-reference
+    handling is unaffected by how an ADR records its own supersession)
+  - .specify/templates/spec-template.md ✅ no change required (specs stay tech-agnostic
+    and name no ADRs)
+  - .specify/templates/checklist-template.md ✅ no change required
+
+Rationale for MAJOR bump: this redefines, backward-incompatibly, how an existing governance
+mechanism works. The v1.9.0/v1.10.0 amendments made ADR supersession bidirectional but still
+explicitly permitted it to be partial ("Supersedes ADR-003 (in part)", "Amends ADR-002,
+ADR-004, ADR-006, ADR-007, ADR-008" — see `docs/adr/index.md` as it stood before this
+change). This amendment forbids that pattern outright for every ADR drafted from now on:
+`Amends`/`Amended by` MUST NOT appear in a new ADR's status header, and what was previously
+recorded as a partial amendment or partial supersession must instead be a whole-ADR
+supersession plus new, single-aspect ADRs for whatever remains valid. A drafting practice
+that was previously compliant — amend part of an Accepted ADR, leave the rest standing — is
+now a violation when repeated going forward: exactly the "incompatible principle
+removal/redefinition" the Governance section reserves for MAJOR, not MINOR.
+
+Trigger (2026-08-25, user request, German-language input): the user observed that ADRs are
+currently being adjusted "in Teilen" (in parts) often enough that it measurably reduces
+their usefulness and clarity. `docs/adr/index.md` bears this out at the time of this
+amendment: ADR-002 carries four partial "Amended by" entries, ADR-009 combines a partial
+"Supersedes ADR-003 (in part)" with five partial "amends," and ADR-022 both amends five
+ADRs and partially supersedes a sixth — understanding what any one of these currently
+decides requires reading its full amendment chain rather than one Accepted document. The
+user asked for four things, all incorporated: (1) no more partial amendment or
+supersession — if any part of an ADR must be invalidated, the whole ADR is invalidated and
+new ADRs are drafted for whatever still stands, in full MADR format; (2) each ADR MUST
+cover exactly one aspect, so that "the whole ADR" is a meaningful, narrow unit to
+invalidate; (3) the existing "ADRs only for genuine system boundaries or technology
+decisions" scope stays unchanged, and ADRs MUST NOT encode feature-level requirements or
+aspects of a feature; (4) an extension of already-decided functionality MUST NOT
+invalidate the ADR, not even in part — operationalized as the Invalidation test and the
+requirement to record anticipated extensions/invalidations at drafting time, which is also
+the user's requested "basis for ADRs considers the reason for possible changes." The
+existing `Extends` convention already informally used in `docs/adr/index.md` (ADR-016,
+ADR-017, ADR-026) modeled part of this distinction; this amendment makes it binding. The
+user also asked for a mandatory ADR format template; per this command's own Scope Guard
+("Write only .specify/memory/constitution.md; do not create or modify template source
+files"), the format is specified inline in the constitution itself (see "Mandatory ADR
+format" under Principle III) rather than as a new file under `.specify/templates/` or
+`docs/adr/` — `/speckit-constitution` does not create source files outside the
+constitution.
+
+Deferred TODOs: retroactively splitting the ADRs that currently carry partial
+Amends/Supersedes links (per `docs/adr/index.md`: at least ADR-002, ADR-003, ADR-004,
+ADR-006 through ADR-013, ADR-016 through ADR-018, ADR-020, ADR-022 through ADR-024,
+ADR-028 through ADR-033) into single-aspect, whole-ADR-supersession form is real
+ADR-authoring work, not a constitution change, and is out of scope for this amendment
+(Scope Guard). Governance's non-retroactivity clause already grandfathers them as
+historical record; a follow-up ADR-restructuring pass is recommended but not mandated —
+see Next Actions in this command's own output.
+
+--------------------------------------------------------------------------
+PREVIOUS AMENDMENTS
+--------------------------------------------------------------------------
+
 Version change: 1.11.0 → 1.12.0 (2026-08-24)
 
 Principles modified:
@@ -714,9 +810,20 @@ Before generating any `plan.md`, the agent MUST read all ADRs in `docs/adr/`. Th
 listing which ADR numbers constrain the implementation and how.
 
 If `plan.md` introduces a new structural boundary, integration pattern, or cross-cutting
-concern not covered by existing ADRs, the agent MUST draft a new ADR in MADR format in
-`docs/adr/` as part of the `/speckit-plan` output. The drafted ADR MUST reach **Accepted**
-status (via review or explicit author sign-off) before `/speckit-tasks` is invoked.
+concern not covered by existing ADRs, the agent MUST draft a new ADR in the Mandatory ADR
+format (below) in `docs/adr/` as part of the `/speckit-plan` output. The drafted ADR MUST
+reach **Accepted** status (via review or explicit author sign-off) before `/speckit-tasks`
+is invoked.
+
+**Single-aspect ADRs; no feature content.** Each ADR MUST decide exactly one aspect — one
+genuine system boundary or one technology choice — per the existing "ADRs only for real
+system boundaries or technology decisions" scope (Principle I's `New boundaries via ADR`;
+Principle IV's infrastructure-approval rule). If `plan.md` surfaces more than one such
+decision, the agent MUST draft one ADR per aspect rather than folding them into a single
+combined record. An ADR MUST NOT fix feature-level requirements, behavior, scope, or
+implementation detail — those live in `spec.md`, `plan.md`, and `tasks.md`; an ADR records
+only the durable boundary or technology decision a feature happens to surface, never the
+feature itself.
 
 Four distinct categories of tests enforce architectural rules, with different preconditions:
 
@@ -810,16 +917,39 @@ decision content itself.
 
 - **Immutability.** An Accepted ADR's decision content (Context, Decision, Consequences)
   MUST NOT be edited after acceptance to change what was decided. A changed decision is
-  recorded by a new ADR that either **supersedes** the old one (replaces it entirely) or
-  **amends** it (adds or narrows detail while the original decision stands). Rewriting an
-  Accepted ADR's substance in place is a violation regardless of whether the new text is
-  more accurate.
-- **Bidirectional linking.** When ADR-B supersedes or amends ADR-A, both status headers
-  MUST be updated in the same change: ADR-B's header records `Supersedes ADR-A` or
-  `Amends ADR-A`, and ADR-A's header records `Superseded by ADR-B` or `Amended by ADR-B`.
-  A one-sided link — the new ADR pointing back without the old ADR pointing forward —
-  MUST NOT ship; a reader who opens ADR-A alone has no other way to learn it is no longer
-  current.
+  recorded by a new ADR that **supersedes** the old one, replacing it entirely. Rewriting
+  an Accepted ADR's substance in place is a violation regardless of whether the new text
+  is more accurate.
+- **Whole-ADR supersession only — no partial amendment or supersession.** Superseding an
+  ADR always invalidates the **entire** ADR, never a section, a table row, or "this aspect
+  only" of it. The prior mechanism of "amending" an ADR — narrowing or overriding part of
+  its decision while the rest stayed Accepted — is retired for every ADR drafted from this
+  amendment forward: `Amends` / `Amended by` MUST NOT appear in the status header of a new
+  ADR. If any part of an Accepted ADR's decision needs to change, the whole ADR MUST
+  transition to **Superseded**, and every aspect of it that is still valid MUST be
+  re-decided as its own new, independent, single-aspect ADR in the Mandatory ADR format
+  below — never inherited by reference from the superseded text and never patched into it.
+  `Supersedes` / `Superseded by` is the only decision-changing link a new ADR may carry.
+- **Extension is not invalidation.** Using more of an already-decided boundary or
+  technology within the scope that decision already covers — a new consumer of an
+  existing port, an additional row in an already-adopted schema, a new switch alongside
+  an already-ratified CLI surface — MUST NOT supersede, amend, or otherwise change the
+  status of the original ADR, not even in part. **Invalidation test** (decisive): would
+  honoring the new requirement mean reversing, narrowing, or contradicting what the ADR
+  actually decided? If no — everything the ADR decided remains true, the change only adds
+  to it — it is an extension: no ADR status change, optionally cross-referenced with an
+  `Extends ADR-N` note that carries no supersede/amend obligation on either side. If yes,
+  it is an invalidation and MUST go through whole-ADR supersession above; there is no
+  third option. Every ADR's own drafting MUST record, under its Change Triggers (Mandatory
+  ADR format below), which future changes the author expects would be mere extensions
+  (no ADR action) versus which would invalidate the decision (a full supersession) — this
+  is the basis on which later authors and reviewers apply the test above rather than
+  guessing after the fact.
+- **Bidirectional linking.** When ADR-B supersedes ADR-A, both status headers MUST be
+  updated in the same change: ADR-B's header records `Supersedes ADR-A`, and ADR-A's
+  header records `Superseded by ADR-B`. A one-sided link — the new ADR pointing back
+  without the old ADR pointing forward — MUST NOT ship; a reader who opens ADR-A alone
+  has no other way to learn it is no longer current.
 - **Lifecycle minimum.** Every ADR carries a status from exactly {Proposed, Accepted,
   Deprecated, Superseded} (case-insensitive; the repository's convention is lowercase
   YAML frontmatter — `status: accepted` — the Title Case above names the four states for
@@ -833,25 +963,88 @@ decision content itself.
   MUST be reviewed at least every 90 days; ADRs scoped to purely internal architecture
   (module layering, internal packaging, persistence internals) MUST be reviewed at least
   every 365 days. Each review MUST end in one of: no change, or a status update per the
-  two rules above, reflected in `docs/adr/index.md`.
+  rules above, reflected in `docs/adr/index.md`.
 - **Central index.** `docs/adr/index.md` MUST list every ADR — number, title, current
-  status, and, for Superseded or Amended ADRs, the supersede/amend chain — and MUST be
-  updated in the same change as any ADR whose status or existence changes. The index is
-  the single place a reader determines, without opening every file, which ADRs currently
-  govern the codebase.
+  status, and, for Superseded ADRs, the supersede chain — and MUST be updated in the same
+  change as any ADR whose status or existence changes. The index is the single place a
+  reader determines, without opening every file, which ADRs currently govern the codebase.
+
+**Mandatory ADR format.** Every ADR drafted from this amendment forward MUST use the
+following MADR-based skeleton. Every listed section MUST be present, in this order, and
+MUST NOT be omitted; the angle-bracket placeholders are the only parts that vary. Authors
+MAY add extra clarifying subsections beneath an existing required heading, but MUST NOT
+remove or reorder a required one.
+
+```markdown
+---
+status: proposed
+---
+
+# ADR-NNN: <One-line title naming the single aspect this ADR decides>
+
+## Context and Problem Statement
+
+<Why this one boundary or technology decision is needed now; the forces in tension.
+Scoped to exactly one aspect — see "Single-aspect ADRs; no feature content" above.>
+
+## Decision Drivers
+
+- <driver 1>
+- <driver 2>
+
+## Considered Options
+
+1. <option 1>
+2. <option 2>
+
+## Decision Outcome
+
+Chosen option: **<option>**, because <justification>.
+
+- <supporting decision detail>
+- Tag each Boundary Rule or Feature-Scoped Invariant this ADR introduces, per this
+  Principle's "Structural boundary tests" / "Feature-Scoped Invariants" categories.
+
+### Consequences
+
+- Good, because <benefit>.
+- Bad, because <cost>, mitigated by <mitigation, if any>.
+- Neutral, because <accepted tradeoff>.
+
+## Change Triggers
+
+- **Extensions (do not invalidate this ADR):** <foreseeable uses of this decision that
+  stay within what it decided — no ADR action needed when they occur>.
+- **Invalidations (would require full supersession):** <foreseeable changes that would
+  reverse, narrow, or contradict this decision — any of these retires this ADR wholesale
+  via a new Superseding ADR, per "Whole-ADR supersession only" above>.
+
+## More Information
+
+<Cross-references to other ADRs this one depends on or is expected to be read alongside.
+MUST NOT restate or narrow their decisions — see "Extension is not invalidation" above.>
+```
 
 Rationale: MADR/Nygard practice treats Accepted ADRs as immutable and supersession as a
 bidirectional pointer for exactly this reason — without it, the common failure mode is a
 new ADR that references the old one while the old one still reads as current, or a
 collection where nobody can tell which "Accepted" entries have actually been overtaken.
-This was not hypothetical here: ADR-022's own "Superseded and amended decisions" table
-rewrote parts of ADR-009 without ADR-009's status header recording that fact. This rule
-makes that structurally impossible going forward; ADR-001 through ADR-023 were also
-migrated to it in the same change set (a one-time follow-up the user requested alongside
-this amendment — see `docs/adr/index.md` and each ADR's own status header), so the rule
-and the repository agree from the moment it lands. Future amendments are still not
-obligated to retrofit past ADRs under Governance's non-retroactivity clause; this
-migration was a deliberate, explicitly requested exception, not a new standing rule.
+The v1.10.0 amendment made supersession bidirectional but still let it be partial
+("Supersedes ADR-003 (in part)", "Amends ADR-002, ADR-004, ADR-006, ADR-007, ADR-008") —
+in practice this let single ADRs (ADR-002, ADR-009, ADR-022 among others) accumulate
+several partial amendments each, so that understanding what any one of them currently
+decides required reading its full amendment chain rather than one Accepted document. This
+amendment removes that middle ground: an ADR going forward is either untouched, wholly
+superseded, or merely extended — and extension was never a decision change and never
+needed a supersede/amend link at all. `docs/adr/index.md`'s existing `Extends` convention
+(ADR-016, ADR-017, ADR-026) already modeled that third case informally; this amendment
+makes it binding and adds the "why would this need to change" question to drafting time
+(the Change Triggers section), so authors write the extension/invalidation distinction
+down in advance rather than a later reader inferring it from a diff. Existing partial
+`Amends`/`Amended by`/`Supersedes ... (in part)` links recorded in ADRs and
+`docs/adr/index.md` before this amendment are grandfathered under Governance's
+non-retroactivity clause — historical record, not a pattern to repeat — and are not
+required to be retroactively split into single-aspect ADRs by this change.
 
 ### IV. Behavioral & Observable Engineering
 
@@ -1053,7 +1246,9 @@ A feature increment is DONE when ALL of the following conditions hold:
 - [ ] Every test added or modified by the feature asserts a product-owned contract (Principle II "Test what we own"): no test re-verifies third-party library behavior, and any residual framework dependency is covered by at most one minimal, intent-named wire-up test
 - [ ] CI/CD pipeline passes: architecture tests, integration tests, linting, build
 - [ ] No unapproved infrastructure was introduced
-- [ ] Any ADR touched by the feature that supersedes or amends another ADR carries a
+- [ ] Any ADR touched by the feature follows the Mandatory ADR format and decides exactly
+      one aspect (Principle III "Single-aspect ADRs; no feature content"); if it
+      supersedes another ADR, the supersession is whole (never in part) and carries a
       bidirectional status-header link on both sides (Principle III "ADR Status
       Maintenance"), and `docs/adr/index.md` reflects the change
 
@@ -1082,4 +1277,4 @@ the amendment closes a live defect in the merged feature, not when it adds a new
 or ceremony. (Concretely: the final-phase completeness-audit task introduced in v1.5.0 is
 absent from specs 001–009, all authored earlier; that absence is not a violation.)
 
-**Version**: 1.12.0 | **Ratified**: 2026-06-23 | **Last Amended**: 2026-08-24
+**Version**: 2.0.0 | **Ratified**: 2026-06-23 | **Last Amended**: 2026-08-25
