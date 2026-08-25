@@ -81,7 +81,7 @@ outside the root (spec.md's own Independent Test for this story).
 
 > **NOTE: Write these tests FIRST, ensure they FAIL before implementation (classicist TDD, Constitution Principle II).**
 
-- [ ] T002 [US1] Extend `backend/tests/Grimoire.IntegrationTests/PathTraversalTests.cs` with adversarial-variant cases against a real temp-directory filesystem and real `File.CreateSymbolicLink` — no doubles:
+- [X] T002 [US1] Extend `backend/tests/Grimoire.IntegrationTests/PathTraversalTests.cs` with adversarial-variant cases against a real temp-directory filesystem and real `File.CreateSymbolicLink` — no doubles:
   - A percent-encoded traversal string (e.g. `%2e%2e%2Foutside`) submitted as a guarded-write `path` — asserts the write is denied (or lands harmlessly inside the root as a literal filename) and nothing outside the root is touched.
   - A Unicode-normalization-confusable traversal string (e.g. a fullwidth solidus variant of `../`) — same assertion.
   - A path containing an embedded NUL byte followed by an out-of-root suffix — asserts denial with reason `malformed_path` and, critically, that the guarded tool call returns a normal `is_error` result rather than an unhandled exception propagating out of the run.
@@ -93,7 +93,7 @@ outside the root (spec.md's own Independent Test for this story).
 
 ### Implementation for User Story 1
 
-- [ ] T003 [US1] Harden `backend/src/Grimoire.AgentRuntime/Guardrails/GuardedToolExecutor.cs` so T002 passes (research.md D1–D3):
+- [X] T003 [US1] Harden `backend/src/Grimoire.AgentRuntime/Guardrails/GuardedToolExecutor.cs` so T002 passes (research.md D1–D3):
   - **D1**: catch the `ArgumentException` .NET's `Path` APIs throw for an embedded NUL character inside `Canonicalize`/`ResolvePhysicalPathInRepository`, and surface it as a normal policy denial with reason `malformed_path` instead of letting it propagate unhandled.
   - **D2**: make `ResolvePhysicalPathInRepository`'s per-segment symlink walk recursive — after resolving one segment's reparse point, recurse the same resolution walk on the reconstructed path instead of `break`-ing out, so a target reached through further symlinks is fully resolved. Cap recursion at 40 hops (Linux's conventional `MAXSYMLINKS`); exceeding it denies with reason `symlink_loop`.
   - **D3**: in `ExecuteWriteFileAsync`/`WriteFileAtomicallyAsync` and `ExecuteDeleteFileAsync`, immediately before the mutating `File.Move`/`File.Delete` call, recompute the canonical physical path and compare it ordinally to the path already validated against policy; a mismatch denies with reason `revalidation_failed` before the mutating call executes.

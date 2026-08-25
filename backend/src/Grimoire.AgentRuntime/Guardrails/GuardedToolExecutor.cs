@@ -242,7 +242,11 @@ public sealed class GuardedToolExecutor
             return new ToolExecutionResult(true, "Missing required property: path");
         }
 
-        var canonical = Canonicalize(relativePath);
+        if (!TryCanonicalize(relativePath, out var canonical, out var canonicalizationDenialReason))
+        {
+            return RecordDenial(ToolRegistry.ListFiles, relativePath, relativePath, canonicalizationDenialReason!, turn);
+        }
+
         var policyResult = _policy.Evaluate(canonical, isWrite: false);
 
         if (!policyResult.IsAllowed)
@@ -292,7 +296,11 @@ public sealed class GuardedToolExecutor
             return new ToolExecutionResult(true, rangeError!);
         }
 
-        var canonical = Canonicalize(relativePath);
+        if (!TryCanonicalize(relativePath, out var canonical, out var canonicalizationDenialReason))
+        {
+            return RecordDenial(ToolRegistry.ReadFile, relativePath, relativePath, canonicalizationDenialReason!, turn);
+        }
+
         var policyResult = _policy.Evaluate(canonical, isWrite: false);
 
         if (!policyResult.IsAllowed)
@@ -453,7 +461,11 @@ public sealed class GuardedToolExecutor
             return new ToolExecutionResult(true, "Missing required property: content");
         }
 
-        var canonical = Canonicalize(relativePath);
+        if (!TryCanonicalize(relativePath, out var canonical, out var canonicalizationDenialReason))
+        {
+            return RecordDenial(ToolRegistry.WriteFile, relativePath, relativePath, canonicalizationDenialReason!, turn);
+        }
+
         var policyResult = _policy.Evaluate(canonical, isWrite: true);
 
         if (!policyResult.IsAllowed)
@@ -470,9 +482,10 @@ public sealed class GuardedToolExecutor
             return lockAcquisition.Denial;
         }
 
+        bool published;
         try
         {
-            await WriteFileAtomicallyAsync(canonical, content, cancellationToken);
+            published = await WriteFileAtomicallyAsync(canonical, content, cancellationToken);
         }
         finally
         {
@@ -480,6 +493,15 @@ public sealed class GuardedToolExecutor
             // cancellation — so an interrupted run can never wedge a target (ADR-015,
             // FR-011).
             lockAcquisition.LockHandle?.Dispose();
+        }
+
+        // D3 (027-host-stability): the physical path was re-resolved immediately before
+        // the publishing rename and no longer matched what policy validated above — a
+        // path segment was swapped to a symlink after validation (TOCTOU). Deny rather
+        // than have published through the now-different physical route.
+        if (!published)
+        {
+            return RecordDenial(ToolRegistry.WriteFile, relativePath, canonical, "revalidation_failed", turn);
         }
 
         // Record touched path, emit telemetry.
@@ -576,9 +598,13 @@ public sealed class GuardedToolExecutor
     /// The atomic-write half of <see cref="ExecuteWriteFileAsync"/>'s executor obligations
     /// (contract order): journal prior state, ensure the parent directory exists, write via
     /// temp file + rename, then update the write guard's read-hash baseline. Runs while the
-    /// caller still holds any write-coordination lock.
+    /// caller still holds any write-coordination lock. Returns <c>false</c> (D3,
+    /// 027-host-stability) when the physical path re-resolved immediately before the
+    /// publishing rename no longer matches <paramref name="canonical"/> — a path segment
+    /// was swapped to a symlink after policy validation — without performing the rename;
+    /// the caller records the <c>revalidation_failed</c> denial.
     /// </summary>
-    private async Task WriteFileAtomicallyAsync(string canonical, string content, CancellationToken cancellationToken)
+    private async Task<bool> WriteFileAtomicallyAsync(string canonical, string content, CancellationToken cancellationToken)
     {
         // 1. Journal prior state.
         await _journal.RecordAsync(canonical, cancellationToken);
@@ -592,23 +618,36 @@ public sealed class GuardedToolExecutor
 
         // 3. Atomic write via temp + rename within the same directory.
         var tempPath = canonical + ".tmp." + Guid.NewGuid().ToString("N");
+        var published = false;
         try
         {
             await File.WriteAllTextAsync(tempPath, content, Utf8NoBom, cancellationToken);
+
+            // D3: re-resolve the physical path immediately before the rename that
+            // publishes content at `canonical` — the smallest achievable window between
+            // "path judged safe" and "path acted upon" (research.md D3). A mismatch means
+            // a path segment became a symlink after validation; discard the pending temp
+            // file instead of renaming through the now-different physical route.
+            if (!string.Equals(ResolvePhysicalPathInRepository(canonical), canonical, StringComparison.Ordinal))
+            {
+                return false;
+            }
+
             File.Move(tempPath, canonical, overwrite: true);
+            published = true;
         }
-        catch
+        finally
         {
-            if (File.Exists(tempPath))
+            if (!published && File.Exists(tempPath))
             {
                 try { File.Delete(tempPath); } catch { /* best-effort cleanup */ }
             }
-            throw;
         }
 
         // 4. Update the write guard's read-hash baseline for this path (so this run's
         // own next write/read of the same path is never mistaken for a stale read).
         _writeGuard?.OnWriteCommitted(canonical, content);
+        return true;
     }
 
     // ── delete_file ──────────────────────────────────────────────────────────────
@@ -628,7 +667,11 @@ public sealed class GuardedToolExecutor
             return new ToolExecutionResult(true, "Missing required property: path");
         }
 
-        var canonical = Canonicalize(relativePath);
+        if (!TryCanonicalize(relativePath, out var canonical, out var canonicalizationDenialReason))
+        {
+            return RecordDenial(ToolRegistry.DeleteFile, relativePath, relativePath, canonicalizationDenialReason!, turn);
+        }
+
         var policyResult = _policy.EvaluateDelete(canonical);
 
         if (!policyResult.IsAllowed)
@@ -647,6 +690,18 @@ public sealed class GuardedToolExecutor
             deleteActivity?.SetTag("journaled", false);
             deleteActivity?.SetTag("outcome", "not_found");
             return new ToolExecutionResult(true, $"File not found: {relativePath}");
+        }
+
+        // D3 (027-host-stability): re-resolve the physical path immediately before the
+        // mutating File.Delete call and compare it, ordinally, to the path already
+        // validated against policy above. A mismatch means a path segment became a
+        // symlink after validation (TOCTOU) — deny rather than delete through the now-
+        // different physical route.
+        if (!string.Equals(ResolvePhysicalPathInRepository(canonical), canonical, StringComparison.Ordinal))
+        {
+            deleteActivity?.SetTag("journaled", false);
+            deleteActivity?.SetTag("outcome", "revalidation_failed");
+            return RecordDenial(ToolRegistry.DeleteFile, relativePath, canonical, "revalidation_failed", turn);
         }
 
         // Journal before removal: the recorded prior content is what a later rollback in
@@ -832,6 +887,14 @@ public sealed class GuardedToolExecutor
 
         var hasPathPrefix = TryGetStringProperty(inputJson, "path", out var relativePathPrefix) &&
             !string.IsNullOrWhiteSpace(relativePathPrefix);
+
+        if (hasPathPrefix && !TryCanonicalize(relativePathPrefix, out _, out var searchCanonicalizationDenialReason))
+        {
+            var malformedDenial = RecordDenial(ToolRegistry.SearchFiles, relativePathPrefix, relativePathPrefix, searchCanonicalizationDenialReason!, turn);
+            _instrumentation.RecordSearchInvocation(_taskId, "denied", matchesReturned: 0, filesScanned: 0, turn);
+            return malformedDenial;
+        }
+
         var searchRoot = hasPathPrefix ? Canonicalize(relativePathPrefix) : _repositoryRoot;
 
         // ADR-030 R1: "A denial is recorded only for the search's own path argument when
@@ -1140,6 +1203,51 @@ public sealed class GuardedToolExecutor
             : $"denied: {reason}. {hint} Offending line: {detail}";
     }
 
+    // D2 (027-host-stability, research.md): Linux's conventional MAXSYMLINKS/ELOOP limit,
+    // reused as the recursion cap for ResolvePhysicalPathInRepository's chained-symlink walk.
+    private const int MaxSymlinkResolutionHops = 40;
+
+    /// <summary>
+    /// D1/D2 (027-host-stability): thrown by <see cref="ResolvePhysicalPathInRepository(string, int)"/>
+    /// when a chained symlink resolution exceeds <see cref="MaxSymlinkResolutionHops"/>.
+    /// Caught only by <see cref="TryCanonicalize"/>, which turns it into a normal
+    /// <c>symlink_loop</c> policy denial rather than letting it (or a stack overflow from
+    /// an unbounded cyclic resolution) propagate out of the tool-call path.
+    /// </summary>
+    private sealed class SymlinkLoopExceededException : Exception;
+
+    /// <summary>
+    /// D1 (027-host-stability): <see cref="Canonicalize"/> wraps .NET's <c>Path</c> APIs,
+    /// which throw <see cref="ArgumentException"/> for an embedded NUL character rather
+    /// than failing closed. This wrapper turns that (and a chained-symlink resolution that
+    /// exceeds <see cref="MaxSymlinkResolutionHops"/>) into a normal policy-style denial —
+    /// every dispatch method MUST canonicalize user-supplied path input through this method,
+    /// never <see cref="Canonicalize"/> directly, so a malformed or adversarial path can
+    /// never propagate as an unhandled exception out of the guarded-tool boundary
+    /// (Constitution Principle V, host stability guarantee).
+    /// </summary>
+    private bool TryCanonicalize(string path, out string canonical, out string? denialReason)
+    {
+        try
+        {
+            canonical = Canonicalize(path);
+            denialReason = null;
+            return true;
+        }
+        catch (ArgumentException)
+        {
+            canonical = string.Empty;
+            denialReason = "malformed_path";
+            return false;
+        }
+        catch (SymlinkLoopExceededException)
+        {
+            canonical = string.Empty;
+            denialReason = "symlink_loop";
+            return false;
+        }
+    }
+
     /// <summary>
     /// Resolves a repo-root-relative (or absolute) path to a canonical absolute path.
     /// Applies lexical normalization and resolves symbolic links for existing
@@ -1154,7 +1262,20 @@ public sealed class GuardedToolExecutor
         return ResolvePhysicalPathInRepository(fullPath);
     }
 
-    private string ResolvePhysicalPathInRepository(string fullPath)
+    private string ResolvePhysicalPathInRepository(string fullPath) =>
+        ResolvePhysicalPathInRepository(fullPath, MaxSymlinkResolutionHops);
+
+    /// <summary>
+    /// D2 (027-host-stability, research.md): a target reached through one segment's
+    /// reparse point may itself be reached through further symlinks among its own
+    /// remaining, unresolved path segments (e.g. a symlinked intermediate directory whose
+    /// resolved target contains another symlink) — recursing the whole walk on the
+    /// reconstructed path, instead of appending the tail literally and stopping, re-checks
+    /// every remaining segment for reparse points too. <paramref name="hopsRemaining"/>
+    /// caps the recursion so a symlink cycle denies (<see cref="SymlinkLoopExceededException"/>)
+    /// rather than resolving forever.
+    /// </summary>
+    private string ResolvePhysicalPathInRepository(string fullPath, int hopsRemaining)
     {
         var canonical = Path.GetFullPath(fullPath);
 
@@ -1176,13 +1297,18 @@ public sealed class GuardedToolExecutor
                 continue;
             }
 
-            current = targetPath;
-            for (var j = i + 1; j < parts.Length; j++)
+            if (hopsRemaining <= 0)
             {
-                current = Path.Combine(current, parts[j]);
+                throw new SymlinkLoopExceededException();
             }
 
-            break;
+            var reconstructed = targetPath;
+            for (var j = i + 1; j < parts.Length; j++)
+            {
+                reconstructed = Path.Combine(reconstructed, parts[j]);
+            }
+
+            return ResolvePhysicalPathInRepository(reconstructed, hopsRemaining - 1);
         }
 
         return Path.GetFullPath(current);
