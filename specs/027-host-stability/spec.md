@@ -156,10 +156,10 @@ force; and firing any limit and asserting the operator-visible signals appear.
 - **FR-002**: Every limit MUST have a safe default that is active with no operator
   configuration, and every limit MUST be operator-configurable through the host's own
   configuration surface (the same tiers as other operator settings).
-- **FR-003**: Limits MUST NOT be readable as an instruction-file or task-input concern:
-  no content an agent reads, a task supplies, or an instruction file states can raise,
-  lower, disable, or otherwise influence a limit in force. (Lowering is also excluded to
-  keep the boundary absolute: limits belong to the operator, full stop.)
+- **FR-003**: Limits MUST NOT be configurable or influenceable through agent-facing
+  content: no content an agent reads, a task supplies, or an instruction file states can
+  raise, lower, disable, or otherwise influence a limit in force. (Lowering is also
+  excluded to keep the boundary absolute: limits belong to the operator, full stop.)
 - **FR-004**: When a process-scoped ceiling (processor time, memory, wall-clock,
   subprocess count) is crossed, the harness MUST terminate the run: the agent process and
   every descendant process are stopped within a bounded grace period, the run reaches a
@@ -235,9 +235,11 @@ carries a high-stakes/lower-stakes classification and no eval suite is in scope.
   documented safe defaults; with invalid configuration, startup fails naming the setting
   in 100% of cases.
 - **SC-007**: During any single misbehaving run under hermetic resource pressure,
-  concurrently running well-behaved work completes unaffected in 100% of test scenarios
-  (no cross-run termination, delay beyond the host's normal scheduling, or record
-  corruption).
+  concurrently running well-behaved work is isolated in 100% of test scenarios: it is
+  never terminated or cancelled by the misbehaving run's limit enforcement, it reaches
+  its own correct terminal state, and its records are uncorrupted. (Scheduling latency
+  is deliberately not a criterion — OS scheduling variance is not hermetically
+  provable.)
 
 ## Assumptions
 

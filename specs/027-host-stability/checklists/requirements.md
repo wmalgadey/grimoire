@@ -42,5 +42,6 @@
   tests (Principle V); FR-008 satisfies the operator-loop observability requirement
   (Principle V); FR-011 bounds scope against already-covered mechanisms.
 - Ready for `/speckit-clarify` (optional) or `/speckit-plan`. Planning will need an ADR
-  for the enforcement boundary (Principle IV custom-infrastructure / Principle III new
-  cross-cutting concern) and must name the concrete observability signals and surface.
+  for the enforcement boundary — a new cross-cutting concern per Principle III (Principle
+  IV's separate custom-infrastructure rule applies only if planning genuinely introduces
+  new infrastructure) — and must name the concrete observability signals and surface.
