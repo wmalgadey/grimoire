@@ -11,8 +11,8 @@ Principles modified:
     decisions) or lower-stakes (day-to-day categorization/tagging/phrasing/update-vs-
     create calls). Only high-stakes criteria require a formal eval suite gating the DoD.
     NEW subsection "User-reported correction loop": for lower-stakes criteria, the user
-    observing agent misbehavior — via the Hub's observability signals (Principle IV) and/
-    or the wiki output itself — having the agent's instruction files adjusted, and
+    observing agent misbehavior — via the Hub's observability signals (Principle IV)
+    and/or the wiki output itself — having the agent's instruction files adjusted, and
     verifying the fix themselves is a sufficient, legitimate verification path — no
     CI-gated automated eval threshold required. "Success-criteria split" now requires
     specs to classify each agent-judgment criterion into one of the two tiers (defaulting
