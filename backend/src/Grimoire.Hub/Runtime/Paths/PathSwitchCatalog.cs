@@ -9,13 +9,11 @@ internal sealed record PathSwitch(string Name, string ConfigKey, string Descript
 
 /// <summary>
 /// Single source of truth for the ADR-022 switch vocabulary, amended by ADR-024 rule M1
-/// — structurally capped at exactly these four entries by
-/// <c>Grimoire.ArchTests.DirectorySwitchSurfaceRuleTests</c>, so the surface cannot
-/// regrow the way it did under ADR-009's uncapped "single source of truth" rule. Both
-/// Program.cs's AddCommandLine wiring and its --help usage text, as well as
-/// HubHelpUsageTests' parity assertions, derive from this one list — internal visibility
-/// plus [assembly: InternalsVisibleTo("Grimoire.IntegrationTests")] (AssemblyInfo.cs)
-/// lets the test reference it directly instead of maintaining a second hardcoded copy.
+/// — capped at exactly these four entries, enforced behaviorally per ADR-032: the
+/// out-of-process <c>HubHelpUsageTests</c> fact asserts the real binary's --help output
+/// lists exactly these switches, so the surface cannot regrow silently the way it did
+/// under ADR-009's uncapped "single source of truth" rule. Both Program.cs's
+/// AddCommandLine wiring and its --help usage text derive from this one list.
 ///
 /// <see cref="PathSwitch.ConfigKey"/> values are nested (<c>Grimoire:Paths:Data:Dir</c>,
 /// not <c>Grimoire:Paths:DataDir</c>) per ADR-024's configuration-file regrouping

@@ -112,18 +112,29 @@
   Constitution Principle II mandates a split:
   - Harness/system outcomes (dispatch, artifacts, guardrails, persistence) are
     deterministic guarantees — "100%" is appropriate.
-  - Agent-judgment outcomes (content decisions made by an LLM under instructions) MUST
-    be evaluation thresholds (e.g., "≥ 90% of sampled runs..."). Attaching a 100%
-    deterministic guarantee to agent judgment is a spec defect: it forces the
-    implementation to replace the agent with deterministic code.
+  - Agent-judgment outcomes (content decisions made by an LLM under instructions) MUST be
+    classified as either high-stakes or lower-stakes:
+    - High-stakes = large/hard-to-reverse blast radius (irreversible wiki writes,
+      supersession/deletion of existing content, guardrail-adjacent decisions, anything
+      safety- or correctness-critical). MUST be an evaluation threshold (e.g., "≥ 90% of
+      sampled runs...") backed by a formal eval suite gating the DoD.
+    - Lower-stakes = day-to-day categorization/tagging/phrasing/update-vs-create calls
+      whose cost of being wrong is a single correctable wiki edit. MAY be stated
+      narratively instead of as a numeric threshold; satisfied by the user-reported
+      correction loop (observe → report → adjust instruction file → user verifies) rather
+      than a mandatory eval suite.
+  - An agent-judgment criterion that is not explicitly classified defaults to high-stakes.
+    Attaching a 100% deterministic guarantee to an agent-judgment outcome, of either tier,
+    is a spec defect: it forces the implementation to replace the agent with
+    deterministic code.
 -->
 
 ### Measurable Outcomes
 
 - **SC-001**: [Deterministic harness guarantee, e.g., "100% of runs produce a task artifact"]
 - **SC-002**: [Deterministic harness guarantee, e.g., "100% of denied actions are recorded with a reason"]
-- **SC-003**: [Agent-judgment threshold, e.g., "≥ 90% of sampled ingests update the existing page instead of creating a duplicate"]
-- **SC-004**: [Agent-judgment threshold or business metric, e.g., "≥ 95% of sampled pages carry the required frontmatter"]
+- **SC-003**: [High-stakes agent-judgment threshold, e.g., "≥ 90% of sampled ingests update the existing page instead of creating a duplicate"]
+- **SC-004**: [Lower-stakes agent-judgment outcome, stated narratively, e.g., "Sampled pages carry the required frontmatter; deviations are corrected via user-reported instruction adjustments"]
 
 ## Assumptions
 

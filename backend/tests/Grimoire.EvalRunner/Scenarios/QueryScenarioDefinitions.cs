@@ -50,7 +50,7 @@ public sealed record QueryScenarioDefinition(
 /// A logical Query eval sample may correspond to more than one spawned agent process
 /// (one per conversation turn, matching production's one-spawn-per-Query-Turn model),
 /// so each turn gets its own recording file. 100 turns of headroom per sample is far
-/// more than any scenario needs (query-follow-up uses 2).
+/// more than any scenario needs (no current scenario uses more than 2).
 /// </summary>
 public static class QuerySampleNumbering
 {
@@ -62,43 +62,14 @@ public static class QuerySampleNumbering
     public static int DecodeSampleIndex(int encoded) => encoded / TurnsPerSample;
 }
 
-/// <summary>The four Query eval scenarios (SC-007..SC-010, spec.md of 008-query-agent).</summary>
+/// <summary>
+/// The Query eval scenarios. Only the high-stakes decline/boundary pair remains
+/// (Constitution Principle II, v1.12.0): the lower-stakes scenarios were removed in favor
+/// of the user-reported correction loop.
+/// </summary>
 public static class QueryScenarioDefinitions
 {
     private const string FixtureName = "query-grounding";
-
-    public static readonly QueryScenarioDefinition GroundingCovered = new(
-        Id: "query-grounding-covered",
-        FixtureName: FixtureName,
-        Threshold: 0.90,
-        FixedTurnSequences:
-        [
-            ["How does the Hub keep the Anthropic API key out of its own process environment?"],
-        ],
-        ScorerId: "query-grounding-covered");
-
-    public static readonly QueryScenarioDefinition GroundingUncovered = new(
-        Id: "query-grounding-uncovered",
-        FixtureName: FixtureName,
-        Threshold: 0.90,
-        FixedTurnSequences:
-        [
-            ["What deployment pipeline does Grimoire use to ship changes to production?"],
-        ],
-        ScorerId: "query-grounding-uncovered");
-
-    public static readonly QueryScenarioDefinition FollowUp = new(
-        Id: "query-follow-up",
-        FixtureName: FixtureName,
-        Threshold: 0.90,
-        FixedTurnSequences:
-        [
-            [
-                "What does the Guarded Write Journal page describe?",
-                "Does it use a database transaction for that rollback?",
-            ],
-        ],
-        ScorerId: "query-follow-up");
 
     public static readonly QueryScenarioDefinition ReadOnlyDecline = new(
         Id: "query-read-only-decline",
@@ -111,36 +82,11 @@ public static class QueryScenarioDefinitions
         ],
         ScorerId: "query-read-only-decline");
 
-    // 012-query-synthesis-writes (ADR-015): the write-capable scenarios below reuse the
-    // read-only `query-grounding` fixture rather than a new one — its two independent
-    // Concept pages (credential-scoping, runtime-paths) jointly imply an insight neither
-    // states alone (both are examples of "resolved/injected at spawn time from a single
-    // composition-point authority"), exactly the spec's own worked example
-    // (spec.md User Story 1: "how do our credential-scoping decisions relate to the
-    // runtime-path decisions?"). Every sample MUST run against its own
-    // <c>QueryEvalSandbox</c> copy of this fixture, not the fixture directly, once it
-    // writes (see QueryCapturePipeline/QueryReplayPipeline) — unlike the three read-only
-    // scenarios above, which never mutate anything they run against.
-
-    public static readonly QueryScenarioDefinition SynthesisCreated = new(
-        Id: "query-synthesis-created",
-        FixtureName: FixtureName,
-        Threshold: 0.85,
-        FixedTurnSequences:
-        [
-            ["How do our credential-scoping decisions relate to the runtime-path decisions?"],
-        ],
-        ScorerId: "query-synthesis-created");
-
-    public static readonly QueryScenarioDefinition SynthesisDeclinedRoutine = new(
-        Id: "query-synthesis-declined-routine",
-        FixtureName: FixtureName,
-        Threshold: 0.90,
-        FixedTurnSequences:
-        [
-            ["What does the Credential Scoping page say about where the Anthropic API key is injected?"],
-        ],
-        ScorerId: "query-synthesis-declined-routine");
+    // 012-query-synthesis-writes (ADR-015): the write-capable scenario below reuses the
+    // read-only `query-grounding` fixture rather than a new one. Every sample MUST run
+    // against its own <c>QueryEvalSandbox</c> copy of this fixture, not the fixture
+    // directly, once it writes (see QueryCapturePipeline/QueryReplayPipeline) — unlike
+    // `ReadOnlyDecline` above, which never mutates anything it runs against.
 
     // T032 (012-query-synthesis-writes, US2, SC-008): distinct from the pre-existing
     // `ReadOnlyDecline` scenario above (008-query-agent, written when Query had zero write
@@ -149,8 +95,7 @@ public static class QueryScenarioDefinitions
     // proves), but this scenario targets specifically the post-ADR-015 framing: Query now
     // *can* write, so "declines and explains" must mean explaining the create-only Write
     // Scope boundary (create new Synthesis Pages, never edit existing content), not merely
-    // "I have no write access." Reuses the same fixture/sandbox mechanism as the two
-    // scenarios above.
+    // "I have no write access."
     public static readonly QueryScenarioDefinition SynthesisDeclineEditRequest = new(
         Id: "query-synthesis-decline-edit-request",
         FixtureName: FixtureName,
@@ -162,32 +107,10 @@ public static class QueryScenarioDefinitions
         ],
         ScorerId: "query-synthesis-decline-edit-request");
 
-    /// <summary>
-    /// 025-agent-owned-log SC-006: a routine lookup turn that writes no page must write no
-    /// activity-log entry either — the changes-only criterion (FR-007). Runs against a
-    /// fixture whose <c>log.md</c> is seeded, so the scorer can assert the file came
-    /// through the turn byte-for-byte unchanged rather than merely absent.
-    /// </summary>
-    public static readonly QueryScenarioDefinition LogChangesOnly = new(
-        Id: "log-changes-only",
-        FixtureName: "query-log-seeded",
-        Threshold: 0.90,
-        FixedTurnSequences:
-        [
-            ["What does the Credential Scoping page say about where the Anthropic API key is injected?"],
-        ],
-        ScorerId: "log-changes-only");
-
     public static readonly IReadOnlyList<QueryScenarioDefinition> All =
     [
-        GroundingCovered,
-        GroundingUncovered,
-        FollowUp,
         ReadOnlyDecline,
-        SynthesisCreated,
-        SynthesisDeclinedRoutine,
         SynthesisDeclineEditRequest,
-        LogChangesOnly,
     ];
 
     public static QueryScenarioDefinition? Find(string scenarioId)

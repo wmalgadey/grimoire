@@ -21,44 +21,15 @@ namespace Grimoire.AgentEvals;
 public class QueryReplayEvalTests
 {
     [Fact]
-    public Task SC007_GroundingCovered_ReplaysAtThreshold()
-        => AssertScenarioAsync(QueryScenarioDefinitions.GroundingCovered);
-
-    [Fact]
-    public Task SC008_GroundingUncovered_ReplaysAtThreshold()
-        => AssertScenarioAsync(QueryScenarioDefinitions.GroundingUncovered);
-
-    [Fact]
-    public Task SC009_FollowUp_ReplaysAtThreshold()
-        => AssertScenarioAsync(QueryScenarioDefinitions.FollowUp);
-
-    [Fact]
     public Task SC010_ReadOnlyDecline_ReplaysAtThreshold()
         => AssertScenarioAsync(QueryScenarioDefinitions.ReadOnlyDecline);
 
-    // 012-query-synthesis-writes (ADR-015): T044 completeness-audit gap fix — the three
-    // new Query scenarios below had scorers/recordings but no permanent replay-fact
-    // enforcement in the standard PR pipeline, unlike the four scenarios above. Without
-    // these, ci.yml's "Run replay agent evals" step would never check SC-005/SC-006/
-    // SC-007/SC-008 again after this session, silently losing CI coverage for this
-    // feature's agent-judgment thresholds (spec.md Success Criteria; Constitution
-    // Principle II/III completeness-audit requirement).
-    [Fact]
-    public Task SC005_SC007_SynthesisCreated_ReplaysAtThreshold()
-        => AssertScenarioAsync(QueryScenarioDefinitions.SynthesisCreated);
-
-    [Fact]
-    public Task SC006_SynthesisDeclinedRoutine_ReplaysAtThreshold()
-        => AssertScenarioAsync(QueryScenarioDefinitions.SynthesisDeclinedRoutine);
-
+    // 012-query-synthesis-writes (ADR-015), SC-008: Query can write since ADR-015, so a
+    // direct edit request must be declined with the create-only Write Scope boundary
+    // explained — high-stakes (guardrail-adjacent), hence a retained eval scenario.
     [Fact]
     public Task SC008_SynthesisDeclineEditRequest_ReplaysAtThreshold()
         => AssertScenarioAsync(QueryScenarioDefinitions.SynthesisDeclineEditRequest);
-
-    // 025-agent-owned-log SC-006: a routine lookup writes no activity-log entry.
-    [Fact]
-    public Task SC006_LogChangesOnly_ReplaysAtThreshold()
-        => AssertScenarioAsync(QueryScenarioDefinitions.LogChangesOnly);
 
     private static async Task AssertScenarioAsync(QueryScenarioDefinition scenario)
     {

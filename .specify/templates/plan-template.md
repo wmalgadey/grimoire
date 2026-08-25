@@ -98,8 +98,17 @@
 <!--
   ACTION REQUIRED: Map each success criterion from spec.md to the test approach that
   proves it. Deterministic harness guarantees MUST map to hermetic contract,
-  integration, or architecture tests. Agent-judgment outcomes MUST map to evaluation
-  runs with explicit thresholds.
+  integration, or architecture tests.
+
+  Agent-judgment outcomes route by the high-stakes/lower-stakes classification carried
+  from spec.md (Constitution Principle II):
+  - High-stakes agent-judgment criteria MUST map to an evaluation run with an explicit
+    threshold — this is where eval spend belongs.
+  - Lower-stakes agent-judgment criteria map to a hermetic test of the harness plumbing
+    around the decision (the guarded tool was invoked, the write landed) plus the
+    user-reported correction loop for the judgment itself — NOT a mandatory evaluation
+    run. Do not add a formal eval suite here merely because the criterion involves an
+    LLM; add one only if the stakes genuinely warrant it.
 
   Include the concrete doubles, fixtures, and recorded samples required to keep the
   test suite reproducible. Hermetic tests MUST NOT require live LLM provider calls or
@@ -114,7 +123,8 @@
 | Success criterion | Category | Primary test type | Doubles / external dependencies | Fixtures / sampled data | Notes |
 |-------------------|----------|-------------------|----------------------------------|-------------------------|-------|
 | `[e.g., Submission is persisted atomically]` | Deterministic guarantee | Hermetic integration test | `[e.g., real filesystem in a temp dir, fake clock; Testcontainers only if a containerized dependency is genuinely involved]` | `[e.g., valid submission payload, rollback scenario fixture]` | `[Why this test proves the criterion]` |
-| `[e.g., Agent chooses update over duplicate creation in >= 90% of sampled runs]` | Agent-judgment threshold | Evaluation with threshold | `[e.g., recorded LLM responses or approved live-eval gate]` | `[e.g., sampled wiki/source pairs, golden adjudication set]` | `[Threshold, scorer, retry policy]` |
+| `[e.g., Agent chooses update over duplicate creation in >= 90% of sampled runs]` | High-stakes agent-judgment threshold | Evaluation with threshold | `[e.g., recorded LLM responses or approved live-eval gate]` | `[e.g., sampled wiki/source pairs, golden adjudication set]` | `[Threshold, scorer, retry policy]` |
+| `[e.g., Sampled pages carry the required frontmatter]` | Lower-stakes agent-judgment outcome | Hermetic test of the guarded-write plumbing + user-reported correction loop | `[e.g., none beyond the existing tool-call fake]` | `[e.g., none — no eval suite required]` | `[No formal eval suite required; documented as covered by the correction loop]` |
 
 ## Observability
 
@@ -123,6 +133,12 @@
 <!--
   ACTION REQUIRED: Enumerate every observable signal this feature MUST emit.
   Be specific — use the domain's Ubiquitous Language for metric/span names.
+
+  Operator loop (Constitution Principle V): for every signal that a lower-stakes
+  agent-judgment criterion relies on via the user-reported correction loop, name the
+  user-facing surface (frontend view, channel, OTel dashboard) on which the user is
+  expected to observe it. A signal that is emitted but consumable nowhere the user
+  actually looks does not close the loop.
 -->
 
 ### Business Metrics (OpenTelemetry Counters / Gauges)

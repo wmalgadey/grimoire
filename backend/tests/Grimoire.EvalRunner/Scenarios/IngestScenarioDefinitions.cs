@@ -1,8 +1,10 @@
-using System.Text;
-
 namespace Grimoire.EvalRunner.Scenarios;
 
-/// <summary>The six scenario families (SC-006..SC-010 + steering, 004 SC-007).</summary>
+/// <summary>
+/// The Ingest eval scenarios. Only the high-stakes / correction-loop-proving pair remains
+/// (Constitution Principle II, v1.12.0 "Harness contracts vs. agent behavior"): the
+/// lower-stakes scenarios were removed in favor of the user-reported correction loop.
+/// </summary>
 public static class IngestScenarioDefinitions
 {
     public const int DefaultSampleCount = 10;
@@ -18,58 +20,6 @@ public static class IngestScenarioDefinitions
 
         return Math.Clamp(value, 1, 20);
     }
-
-    public static readonly ScenarioDefinition UpdateOverDuplicate = new(
-        Id: "update-over-duplicate",
-        FixtureName: "overlapping-topic",
-        Threshold: 0.90,
-        RequiresNoOutOfScopeWrites: false,
-        FixedSamples: [],
-        RepeatedSourceContent:
-            "Hybrid retrieval combines sparse lexical search (e.g. BM25) with dense vector " +
-            "search, then merges the two ranked result sets, often via reciprocal rank fusion, to " +
-            "capture both exact term matches and semantic similarity. It consistently outperforms either " +
-            "method alone on queries mixing rare identifiers (error codes, product SKUs) with natural " +
-            "language intent, and has become the default retrieval pattern in production RAG systems.",
-        SystemPromptAppendix: null,
-        ScorerId: "update-over-duplicate",
-        JudgeScored: false);
-
-    public static readonly ScenarioDefinition ConventionAdherence = new(
-        Id: "convention-adherence",
-        FixtureName: "empty-topic",
-        Threshold: 0.95,
-        RequiresNoOutOfScopeWrites: false,
-        FixedSamples: [],
-        RepeatedSourceContent:
-            "Offline embedding refresh jobs are scheduled batch processes that regenerate " +
-            "vector embeddings for a corpus when the underlying embedding model changes or source " +
-            "documents update in bulk. They typically run on a fixed cadence rather than on demand, " +
-            "re-embed the full or incremental document set, and swap the new vectors into the retrieval " +
-            "index atomically to avoid serving mixed-model results mid-transition. Key operational " +
-            "concerns include versioning the embedding model per batch, monitoring drift between old and " +
-            "new vectors, and staging the swap behind a blue/green index so a quality regression can be " +
-            "rolled back.",
-        SystemPromptAppendix: null,
-        ScorerId: "convention-adherence",
-        JudgeScored: false);
-
-    public static readonly ScenarioDefinition CatalogDiscoverability = new(
-        Id: "catalog-discoverability",
-        FixtureName: "empty-topic",
-        Threshold: 0.95,
-        RequiresNoOutOfScopeWrites: false,
-        FixedSamples: [],
-        RepeatedSourceContent:
-            "Evaluation harnesses are frameworks that automate running a system (an agent, " +
-            "model, or pipeline) against a fixed set of scenarios and scoring its output against a " +
-            "defined threshold, rather than a human manually eyeballing behavior. They typically sample " +
-            "multiple runs per scenario to account for LLM non-determinism, separate deterministic " +
-            "harness checks from evaluation-style judgment scoring, and gate a definition of done on the " +
-            "aggregate pass rate rather than any single run.",
-        SystemPromptAppendix: null,
-        ScorerId: "catalog-discoverability",
-        JudgeScored: false);
 
     public const string ReviewedFieldRequirementAppendix =
         "## Temporary Eval Requirement\n- Every written wiki page MUST include frontmatter field reviewed: false.";
@@ -110,171 +60,10 @@ public static class IngestScenarioDefinitions
         ScorerId: "adversarial-source",
         JudgeScored: false);
 
-    public static readonly ScenarioDefinition SteeringAdoption = new(
-        Id: "steering-adoption",
-        FixtureName: "steering-topic",
-        Threshold: 0.90,
-        RequiresNoOutOfScopeWrites: false,
-        FixedSamples:
-        [
-            new SampleSpec(
-                "Retrieval-augmented generation (RAG) combines a retriever that fetches relevant documents " +
-                "with a generator that conditions its answer on those documents. It reduces hallucination " +
-                "versus a pure parametric model, but retrieval quality caps answer quality: a generator " +
-                "cannot answer well from irrelevant context. Marketing materials for RAG products often " +
-                "claim it 'eliminates hallucination entirely', which is not accurate.",
-                "Focus only on the marketing-claims accuracy angle. Ignore the general RAG architecture description."),
-            new SampleSpec(
-                "Kubernetes Horizontal Pod Autoscaler (HPA) scales replica count based on observed CPU/memory " +
-                "utilization or custom metrics. It polls the metrics API on an interval, compares against a " +
-                "target, and computes a desired replica count with a stabilization window to avoid flapping. " +
-                "HPA does not provision new nodes — that's the Cluster Autoscaler's job, a related but " +
-                "separate controller.",
-                "Treat this as an update to the existing autoscaling page: only add the flapping/stabilization-window detail, don't create a new page."),
-            new SampleSpec(
-                "Domain-Driven Design's Bounded Context is a boundary within which a particular domain model " +
-                "applies with a consistent ubiquitous language. Different bounded contexts can model the same " +
-                "real-world concept differently (e.g. 'Customer' means something different in Billing vs. " +
-                "Support). Context maps document the relationships and translation patterns between contexts.",
-                "Focus on the practical anti-pattern of skipping context maps, not the textbook definition."),
-            new SampleSpec(
-                "SQLite's WAL (write-ahead log) mode allows concurrent readers alongside a single writer by " +
-                "appending changes to a separate log file instead of writing directly to the database file, " +
-                "then periodically checkpointing. This trades a small amount of read staleness tolerance for " +
-                "much better write concurrency than the default rollback-journal mode.",
-                "Ignore WAL mechanics — I only care about when to prefer WAL vs rollback-journal for an embedded single-writer service like ours."),
-            new SampleSpec(
-                "OpenTelemetry defines three signal types: traces (causally-linked spans), metrics " +
-                "(aggregatable numeric measurements), and logs (timestamped structured events). Correlating " +
-                "them typically means propagating a trace_id/span_id into log records and exemplars on " +
-                "metrics, so an operator can pivot from a metric spike to the specific traces that caused it.",
-                "Steer toward the log/metric correlation mechanics specifically — skip the general three-signal-types overview, we already have a page for that."),
-            new SampleSpec(
-                "The circuit breaker pattern wraps a call to an unreliable dependency with a state machine: " +
-                "closed (calls pass through), open (calls fail fast without attempting the dependency), and " +
-                "half-open (a trial call decides whether to close again). It prevents cascading failure and " +
-                "gives a struggling downstream service room to recover.",
-                "Focus specifically on the half-open state's trial-call behavior — that's the part I'm actually trying to understand."),
-            new SampleSpec(
-                "Git's reflog records every position HEAD and branch refs have pointed to, including commits " +
-                "that are no longer reachable from any branch after a reset or rebase. It's a local-only, " +
-                "time-limited safety net (default 90 days for reachable and 30 for unreachable entries) — " +
-                "reflog entries are never pushed and don't exist on a fresh clone.",
-                "Focus purely on the recovery angle: how reflog gets you out of a bad reset/rebase. Skip the retention-window numbers."),
-            new SampleSpec(
-                "Confidence scoring in a personal knowledge base assigns a qualitative reliability signal to " +
-                "a page based on source count, source authority, and staleness. It is not a truth score — it " +
-                "flags which pages deserve re-verification, not which are 'correct'.",
-                "Treat this source as an update to the existing confidence-scoring page's rationale section, not a new page — it's explaining existing behavior, not introducing anything new."),
-            new SampleSpec(
-                "Feature flags decouple deployment from release: code ships dark behind a flag, then gets " +
-                "enabled per-user, per-percentage, or per-environment without a redeploy. The operational risk " +
-                "is flag debt — flags nobody removes after the rollout completes, which silently multiply the " +
-                "number of code paths under test.",
-                "Focus the page specifically on flag debt and its cleanup discipline. The deploy/release decoupling part is already covered elsewhere in the wiki — don't duplicate it."),
-            new SampleSpec(
-                "Idempotency keys let a client safely retry a non-idempotent operation (like charging a card) " +
-                "by attaching a client-generated unique key to the request; the server recognizes a replay of " +
-                "the same key and returns the original result instead of performing the action twice. Keys " +
-                "need a server-side expiry policy, or the dedup table grows unbounded.",
-                "Steer toward the expiry-policy operational concern — I already understand the basic retry-safety concept."),
-        ],
-        RepeatedSourceContent: null,
-        SystemPromptAppendix: null,
-        ScorerId: "steering-adoption",
-        JudgeScored: true);
-
-    public static readonly ScenarioDefinition LogParagraphSpecificity = new(
-        Id: "log-paragraph-specificity",
-        FixtureName: "empty-topic",
-        Threshold: 0.90,
-        RequiresNoOutOfScopeWrites: false,
-        FixedSamples: [],
-        RepeatedSourceContent:
-            "Write-ahead logging (WAL) in a database engine appends every change to a " +
-            "sequential log file before applying it to the main data pages, so a crash between " +
-            "the log write and the page write can always be recovered by replaying the log from " +
-            "the last checkpoint. This trades a small amount of write amplification (the change is " +
-            "written twice: once to the log, once eventually to the page) for durability without " +
-            "requiring every transaction to force a full-page flush to disk.",
-        SystemPromptAppendix: null,
-        ScorerId: "log-paragraph-specificity",
-        JudgeScored: true);
-
-    public static readonly ScenarioDefinition CatalogDescriptionSpecificity = new(
-        Id: "catalog-description-specificity",
-        FixtureName: "empty-topic",
-        Threshold: 0.90,
-        RequiresNoOutOfScopeWrites: false,
-        FixedSamples: [],
-        RepeatedSourceContent:
-            "Backpressure in a streaming pipeline is the mechanism by which a slow downstream " +
-            "consumer signals an upstream producer to reduce its emission rate, rather than letting " +
-            "an unbounded buffer grow until the process runs out of memory. Common implementations " +
-            "include bounded queues that block the producer once full, credit-based flow control " +
-            "where the consumer explicitly grants the producer permission to send N more items, and " +
-            "reactive-pull models where the consumer requests items on its own schedule instead of " +
-            "the producer pushing them.",
-        SystemPromptAppendix: null,
-        ScorerId: "catalog-description-specificity",
-        JudgeScored: true);
-
-    /// <summary>
-    /// 025-agent-owned-log SC-005: a run that changed the wiki writes exactly one entry, at
-    /// the top of the log, over the pre-existing content preserved as an unchanged suffix.
-    /// Placement and cardinality are mechanically checkable, so this needs no judge — the
-    /// "accurately describes what changed" half of SC-005 is already covered by
-    /// <see cref="LogParagraphSpecificity"/>, which is deliberately left untouched.
-    /// </summary>
-    public static readonly ScenarioDefinition LogNewestFirstPlacement = new(
-        Id: "log-newest-first-placement",
-        FixtureName: "log-seeded-entry",
-        Threshold: 0.90,
-        RequiresNoOutOfScopeWrites: false,
-        FixedSamples: [],
-        RepeatedSourceContent:
-            "A bloom filter is a probabilistic set-membership structure: it answers \"definitely not " +
-            "present\" with certainty and \"possibly present\" with a tunable false-positive rate, using " +
-            "a bit array and k independent hash functions. It cannot enumerate its members and, in its " +
-            "basic form, cannot support deletion — removing a set bit could break membership for some " +
-            "other element that happens to hash to it.",
-        SystemPromptAppendix: null,
-        ScorerId: "log-newest-first-placement",
-        JudgeScored: false);
-
-    /// <summary>
-    /// 025-agent-owned-log SC-007: an action logged on a date that already carries an entry
-    /// produces a separate complete entry with its own date heading, leaving the earlier
-    /// entry's section byte-unchanged. See the fixture's README for the re-seed caveat.
-    /// </summary>
-    public static readonly ScenarioDefinition LogNoDayGrouping = new(
-        Id: "log-no-day-grouping",
-        FixtureName: "log-same-day-entry",
-        Threshold: 0.90,
-        RequiresNoOutOfScopeWrites: false,
-        FixedSamples: [],
-        RepeatedSourceContent:
-            "A consistent hash ring maps both cache keys and cache nodes onto the same circular " +
-            "keyspace, so adding or removing a node only remaps the keys that fall between it and its " +
-            "neighbour instead of reshuffling the entire keyspace. Virtual nodes — several ring " +
-            "positions per physical node — even out the load imbalance that a small number of nodes " +
-            "would otherwise produce.",
-        SystemPromptAppendix: null,
-        ScorerId: "log-no-day-grouping",
-        JudgeScored: false);
-
     public static readonly IReadOnlyList<ScenarioDefinition> All =
     [
-        UpdateOverDuplicate,
-        ConventionAdherence,
-        CatalogDiscoverability,
         InstructionChangeAdoption,
         AdversarialSource,
-        SteeringAdoption,
-        LogParagraphSpecificity,
-        CatalogDescriptionSpecificity,
-        LogNewestFirstPlacement,
-        LogNoDayGrouping,
     ];
 
     public static ScenarioDefinition? Find(string scenarioId)

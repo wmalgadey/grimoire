@@ -20,6 +20,13 @@ status: accepted
 > `RemediationTasksDir` from `WikiDir` to `MemoryDir`, reversing the placement this ADR
 > recorded as deliberate. Rule R2 gains a namespace-scoped companion rather than a new
 > global literal. Everything else this ADR decided is unchanged.
+>
+> **Amended by [ADR-032](ADR-032-behavioral-enforcement-for-path-surface-invariants.md)**:
+> R2's substance is unchanged; only its enforcement-mechanism claim changes — its
+> IL-scan enforcement is replaced by the behavioral fail-loudly startup-validation
+> tests. Where this document's own enforcement notes still describe R2 as an IL literal
+> scan (`NoCodeLevelPathDefaultsRuleTests`), that text is historical per ADR
+> immutability — ADR-032 defines the current mechanism.
 
 ## Context and Problem Statement
 

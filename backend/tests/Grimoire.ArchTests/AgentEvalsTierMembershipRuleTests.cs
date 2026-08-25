@@ -1,7 +1,8 @@
 namespace Grimoire.ArchTests;
 
 /// <summary>
-/// Structural regression guard for ADR-021 / spec 019-fast-test-tier FR-014 and SC-002:
+/// Structural regression guard for ADR-021 (SlowEval class set as amended by ADR-033) /
+/// spec 019-fast-test-tier FR-014 and SC-002:
 /// tier membership inside <c>Grimoire.AgentEvals</c> is declared by the <c>Tier</c> xUnit
 /// trait, not by which file a test lives in (research.md R1). This rule makes that
 /// membership a permanent, CI-enforced fact instead of a one-time manual check —
@@ -10,29 +11,29 @@ namespace Grimoire.ArchTests;
 /// </summary>
 public class AgentEvalsTierMembershipRuleTests
 {
-    // The eight hermetic harness-mechanics classes (T002) that must carry Tier=Fast so
+    // The hermetic harness-mechanics classes (T002) that must carry Tier=Fast so
     // `scripts/test-fast.sh`'s `--filter "Tier=Fast"` selects them and zero replay-eval
-    // prerequisite is ever required to run the fast tier.
+    // prerequisite is ever required to run the fast tier. (The scorer-unit classes for
+    // the removed lower-stakes scenarios left this set with their scenarios —
+    // Constitution Principle II, v1.12.0.)
     private static readonly Type[] _hermeticFastTierTypes =
     [
         typeof(Grimoire.AgentEvals.ReplayContractTests),
         typeof(Grimoire.AgentEvals.CaptureHygieneTests),
         typeof(Grimoire.AgentEvals.StalenessTests),
         typeof(Grimoire.AgentEvals.EvalProviderResolverTests),
-        typeof(Grimoire.AgentEvals.LintDeterministicScorersTests),
         typeof(Grimoire.AgentEvals.RemediationReVerificationScorerTests),
         typeof(Grimoire.AgentEvals.LocalEnvFileTests),
         typeof(Grimoire.AgentEvals.TimeoutEnforcingModelClientTests),
     ];
 
-    // The five genuine replay-eval scenario classes (T014/US3) — agent-judgment evals,
+    // The genuine replay-eval scenario classes (T014/US3) — agent-judgment evals,
     // never selected by the fast tier's Tier=Fast filter.
     private static readonly Type[] _replayEvalTypes =
     [
         typeof(Grimoire.AgentEvals.IngestReplayEvalTests),
         typeof(Grimoire.AgentEvals.LintReplayEvalTests),
         typeof(Grimoire.AgentEvals.QueryReplayEvalTests),
-        typeof(Grimoire.AgentEvals.LintRemediationProposalRelevanceEvalTests),
         typeof(Grimoire.AgentEvals.RemediationReVerificationEvalTests),
     ];
 

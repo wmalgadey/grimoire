@@ -4,6 +4,15 @@ status: Accepted
 
 # ADR-024: Memory Directory — A Fourth Independent Root for Agent Process Bookkeeping
 
+> **Amended by [ADR-032](ADR-032-behavioral-enforcement-for-path-surface-invariants.md)**:
+> M1, M2, and M4 keep their substance unchanged; only the Structural Enforcement
+> section's enforcement-mechanism claim changes (reflection/IL tests → classicist
+> behavioral tests), and the "Principle III escape valve" justification it cited is
+> withdrawn — no such clause exists in any version of the constitution. The Structural
+> Enforcement table's references to `DirectorySwitchSurfaceRuleTests`/
+> `NoCodeLevelPathDefaultsRuleTests`/`PathOptionsGroupingRuleTests` (now retired) are
+> historical per ADR immutability — ADR-032 names the current enforcement for each rule.
+>
 > **Amends [ADR-022](ADR-022-minimal-directory-configuration-surface.md)**: rule R1's
 > switch cap grows from three named entries to four (`--memory-dir` added); the
 > root/sub-path table gains `MemoryDir` and re-anchors `TasksDir`/`ConversationsDir`/

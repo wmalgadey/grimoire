@@ -1,10 +1,7 @@
-using System.ComponentModel;
 using System.Diagnostics;
-using System.Reflection;
+using System.Text.RegularExpressions;
 using Grimoire.EvalRunner.Workspace;
 using Grimoire.Hub.Cli;
-using Grimoire.Hub.Runtime.Paths;
-using Spectre.Console.Cli;
 
 namespace Grimoire.IntegrationTests;
 
@@ -39,6 +36,54 @@ public class HubHelpUsageTests
 
         // ADR-024 M1: the fourth root switch is listed alongside the pre-existing three.
         Assert.Contains("--memory-dir", result.StdOut, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// ADR-024 rule M1, enforced behaviorally per ADR-032: the operator-visible CLI
+    /// surface — the real binary's --help OPTIONS grid — lists exactly the four root
+    /// path switches, each with description text. This replaces the retired reflection
+    /// parity tests over <c>HubPathSettings</c>/<c>PathSwitchCatalog</c>
+    /// (<c>DirectorySwitchSurfaceRuleTests</c> and the two in-process facts formerly in
+    /// this file): a fifth path switch, a dropped switch, or a description-less switch
+    /// changes this rendered output and fails here, without pinning any type's shape.
+    /// Growing the surface is a deliberate ADR-032 amendment, not an incidental break.
+    /// </summary>
+    [Fact]
+    public async Task Help_ListsExactlyTheFourPathSwitches_EachWithADescription()
+    {
+        var result = await RunHubAsync(["--help"]);
+
+        Assert.False(result.TimedOut, "--help must exit promptly.");
+        Assert.Equal(0, result.ExitCode);
+
+        // Scan only the OPTIONS grid: the server-start footer re-mentions the roots in
+        // prose and must not count toward the switch surface.
+        var optionsStart = result.StdOut.IndexOf("OPTIONS:", StringComparison.Ordinal);
+        var commandsStart = result.StdOut.IndexOf("COMMANDS:", StringComparison.Ordinal);
+        Assert.True(optionsStart >= 0, "--help output carries no OPTIONS section.");
+        Assert.True(commandsStart > optionsStart, "--help output carries no COMMANDS section after OPTIONS.");
+        var optionsSection = result.StdOut[optionsStart..commandsStart];
+
+        var pathSwitchLines = optionsSection
+            .Split('\n')
+            .Select(line => (Line: line, Match: Regex.Match(line, @"(--[a-z][a-z0-9-]*-dir)\b")))
+            .Where(x => x.Match.Success)
+            .ToArray();
+
+        Assert.Equal(
+            ["--agent-dir", "--data-dir", "--memory-dir", "--wiki-dir"],
+            pathSwitchLines
+                .Select(x => x.Match.Groups[1].Value)
+                .OrderBy(name => name, StringComparer.Ordinal)
+                .ToArray());
+
+        foreach (var (line, match) in pathSwitchLines)
+        {
+            var descriptionText = line[(match.Index + match.Length)..].Replace("<PATH>", string.Empty).Trim();
+            Assert.False(
+                descriptionText.Length == 0,
+                $"{match.Groups[1].Value} is listed without description text.");
+        }
     }
 
     [Fact]
@@ -250,69 +295,6 @@ public class HubHelpUsageTests
         Directory.CreateDirectory(root);
         File.WriteAllText(Path.Combine(root, ".env"), string.Empty);
         return root;
-    }
-
-    /// <summary>
-    /// T013 (018-hub-cli-commands, research.md D4): an in-process parity check between
-    /// <see cref="HubPathSettings"/>'s declared <c>[CommandOption]</c> properties and
-    /// <see cref="PathSwitchCatalog.All"/> — the two sources D4 requires to stay a strict
-    /// 1:1 mapping (every path switch gets exactly one Spectre option, and Spectre never
-    /// grows an option the catalog — and therefore the web host's own switch handling —
-    /// doesn't know about). Unlike the other tests in this file, this does not spawn the
-    /// Hub process: it reflects directly over the settings type.
-    /// </summary>
-    [Fact]
-    public void HubPathSettings_DeclaresExactlyOneCommandOptionPerPathSwitchCatalogEntry()
-    {
-        var expectedSwitchNames = PathSwitchCatalog.All
-            .Select(s => s.Name)
-            .OrderBy(name => name, StringComparer.Ordinal)
-            .ToArray();
-
-        var declaredProperties = typeof(HubPathSettings)
-            .GetProperties(BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly)
-            .ToArray();
-
-        var actualSwitchNames = new List<string>();
-        foreach (var property in declaredProperties)
-        {
-            var attribute = property.GetCustomAttribute<CommandOptionAttribute>();
-            Assert.True(attribute is not null, $"{nameof(HubPathSettings)}.{property.Name} has no [CommandOption] attribute.");
-            actualSwitchNames.Add("--" + Assert.Single(attribute!.LongNames));
-        }
-
-        // Every declared property must carry exactly one [CommandOption]; the loop above
-        // already asserts that, so this only needs to confirm the count lines up with the
-        // catalog (catches a stray non-path property slipping in).
-        Assert.Equal(declaredProperties.Length, actualSwitchNames.Count);
-        Assert.Equal(expectedSwitchNames, actualSwitchNames.OrderBy(name => name, StringComparer.Ordinal).ToArray());
-    }
-
-    /// <summary>
-    /// The help text an operator reads comes from <see cref="HubPathSettings"/>'s
-    /// <c>[Description]</c> attributes — Spectre renders the settings type, not the catalog.
-    /// <see cref="PathSwitchCatalog"/> carries the same descriptions and is the documented
-    /// single declaration point (ADR-020), so without this assertion its copy could silently
-    /// drift from (or outlive) the one actually shown. Extends the 1:1 name parity above to
-    /// the text.
-    /// </summary>
-    [Fact]
-    public void HubPathSettings_DescriptionsMatchThePathSwitchCatalogEntryTheyMirror()
-    {
-        var descriptionsBySwitchName = typeof(HubPathSettings)
-            .GetProperties(BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly)
-            .ToDictionary(
-                property => "--" + property.GetCustomAttribute<CommandOptionAttribute>()!.LongNames.Single(),
-                property => property.GetCustomAttribute<DescriptionAttribute>()?.Description,
-                StringComparer.Ordinal);
-
-        foreach (var pathSwitch in PathSwitchCatalog.All)
-        {
-            Assert.True(
-                descriptionsBySwitchName.TryGetValue(pathSwitch.Name, out var declaredDescription),
-                $"{nameof(HubPathSettings)} declares no [CommandOption] for {pathSwitch.Name}.");
-            Assert.Equal(pathSwitch.Description, declaredDescription);
-        }
     }
 
     private static async Task<HubRunResult> RunHubAsync(IReadOnlyList<string> args, string? workingDirectory = null)
