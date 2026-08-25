@@ -4,18 +4,17 @@ status: accepted
 
 # ADR-032: Behavioral Enforcement for Feature-Scoped Path-Surface Invariants
 
-> **Supersedes [ADR-024](ADR-024-memory-directory-root.md) — Structural Enforcement
-> section only (M1, M2, M4 enforcement mechanism)**: ADR-024's own decision for M1, M2,
-> and M4 is unchanged and remains governing — this ADR replaces only the section
-> describing *how* those three rules are proven. That section is not narrowed or
-> extended, it is reversed (see Context: why supersession, not amendment): the
-> reflection/IL Phase 0 tests it named, and the "Principle III escape valve"
-> justification for keeping them, are retracted outright and replaced by this ADR's
-> Decision.
+> **Amends [ADR-024](ADR-024-memory-directory-root.md)**: M1, M2, and M4 keep their
+> substance unchanged — this ADR changes only the Structural Enforcement section
+> describing *how* those three rules are proven. The reflection/IL Phase 0 tests it
+> named, and the "Principle III escape valve" justification for keeping them, are
+> retracted and replaced by this ADR's Decision. This is a partial change to one named
+> section, not a full replacement of ADR-024's decision, so it is recorded as an
+> amendment, not a supersession — see Context for why an earlier draft of this note got
+> that wrong.
 >
-> **Supersedes [ADR-022](ADR-022-minimal-directory-configuration-surface.md) —
-> Structural Enforcement section only (R2 enforcement mechanism)**: same relationship,
-> for rule R2's IL-scan enforcement.
+> **Amends [ADR-022](ADR-022-minimal-directory-configuration-surface.md)**: same
+> relationship, for rule R2's IL-scan enforcement.
 
 ## Context and Problem Statement
 
@@ -45,24 +44,22 @@ The per-rule justifications T067 recorded ("no runtime-observable behavior can c
 the violation") also turn out to be overstated: the behavioral test suite that exists
 today *does* observably catch each violation class (see Decision).
 
-**Why this is supersession, not amendment.** The constitution defines *amends* as
-"adds or narrows detail while the original decision stands" and *supersedes* as
-"replaces it entirely." What ADR-024's and ADR-022's Structural Enforcement sections
-asserted — that reflection/IL tests prove M1/M2/M4/R2, licensed by an escape valve —
-is not narrowed or extended here; it is factually wrong and retracted outright, with a
-different mechanism substituted in its place. An earlier draft of this ADR recorded
-that reversal as an "Amends" relationship, reasoning that M1/M2/M4/R2's *substance* was
-unchanged. Review caught that this understated the change: the substance is indeed
-unchanged, but the enforcement claim — the actual content of the superseded section — is
-not narrowed, it is reversed, and folding a reversal into a one-line "Amended by" status
-note buried the decision instead of recording it. This ADR is scoped to exactly the
-Structural Enforcement section of each document — `docs/adr/index.md` already uses this
-same **scoped supersession** pattern for ADR-009 (superseded in part by ADR-022) and
-ADR-011 (superseded in part by ADR-014, ADR-015): the superseding ADR replaces a named
-subsection while the rest of the original ADR, and its own `Accepted` status, stand
-unchanged. Full retirement of an ADR's core decision (the pattern reserved for ADR-016)
-does not apply here — ADR-024's fourth-root decision and ADR-022's three-tier
-precedence/switch-cap/no-code-defaults decisions are untouched.
+**Why this is an amendment, not a supersession — and why an earlier draft of this ADR
+got that wrong.** The constitution defines *amends* as "adds or narrows detail while the
+original decision stands" and *supersedes* as "replaces it entirely." A prior revision of
+this note argued that because the Structural Enforcement section's *specific claim* is
+reversed (not narrowed) — the reflection/IL tests it named are retracted outright, not
+extended — the relationship should be "Supersedes ... (section only)," reasoning by
+analogy to `docs/adr/index.md`'s existing "superseded in part" entries for ADR-009 and
+ADR-011. On review that reasoning does not hold: "supersedes" and "amends" split on
+*scope* — whole decision replaced, versus part of it changed — not on whether the changed
+part reads as a reversal or a narrowing. This ADR changes exactly one named section of
+ADR-024 and one of ADR-022, while every other part of each — ADR-024's fourth-root
+decision, ADR-022's three-tier precedence/switch-cap/no-code-defaults decisions — stands
+untouched. That is a partial change by definition, so it is an amendment regardless of
+how sharply the changed section's content differs from what it replaces. (The `index.md`
+"superseded in part" precedent this ADR originally leaned on is a separate question this
+ADR does not resolve — it is not re-litigated here.)
 
 ## Decision Drivers
 
@@ -162,16 +159,10 @@ reflection test that turns an ordinary feature change into a false alarm.
   every time a later ADR changes something it once asserted. This ADR is the correction
   of record; anyone reading the old plan's escape-valve section without ADR-032's
   context reads outdated reasoning, which is expected of a historical artifact.
-- ADR-024 and ADR-022 carry `Superseded in part by ADR-032` in their status headers,
-  scoped to their Structural Enforcement sections only — both remain `Accepted` and
-  govern everything else they decided; `docs/adr/index.md` reflects the chain
-  (Principle III, ADR Status Maintenance).
-- Neutral, because this scoped-supersession framing — rather than "Amends" — is a
-  correction in its own right: it makes the reversal (not narrowing) of the Structural
-  Enforcement claim visible in the status header itself, matching the pattern this
-  project already uses for ADR-009/ADR-011/ADR-014/ADR-015, instead of relying on a
-  reader opening the linked ADR to discover that the "amendment" actually replaced the
-  section wholesale.
+- ADR-024 and ADR-022 carry `Amended by ADR-032` in their status headers, scoped in the
+  header's own text to their Structural Enforcement sections only — both remain
+  `Accepted` and govern everything else they decided; `docs/adr/index.md` reflects the
+  chain (Principle III, ADR Status Maintenance).
 
 ## More Information
 

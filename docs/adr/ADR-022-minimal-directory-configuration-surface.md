@@ -21,14 +21,12 @@ status: accepted
 > recorded as deliberate. Rule R2 gains a namespace-scoped companion rather than a new
 > global literal. Everything else this ADR decided is unchanged.
 >
-> **Superseded in part by [ADR-032](ADR-032-behavioral-enforcement-for-path-surface-invariants.md)
-> — Structural Enforcement section only**: R2's substance is unchanged and this ADR
-> remains `Accepted` and governing for everything else it decided; only the section's
-> enforcement-mechanism claim is replaced outright — its IL-scan enforcement is
-> replaced by the behavioral fail-loudly startup-validation tests. Where this
-> document's own enforcement notes still describe R2 as an IL literal scan
-> (`NoCodeLevelPathDefaultsRuleTests`), that text is historical per ADR immutability —
-> ADR-032 defines the current mechanism.
+> **Amended by [ADR-032](ADR-032-behavioral-enforcement-for-path-surface-invariants.md)**:
+> R2's substance is unchanged; only its enforcement-mechanism claim changes — its
+> IL-scan enforcement is replaced by the behavioral fail-loudly startup-validation
+> tests. Where this document's own enforcement notes still describe R2 as an IL literal
+> scan (`NoCodeLevelPathDefaultsRuleTests`), that text is historical per ADR
+> immutability — ADR-032 defines the current mechanism.
 
 ## Context and Problem Statement
 
