@@ -20,6 +20,10 @@ status: accepted
 > `RemediationTasksDir` from `WikiDir` to `MemoryDir`, reversing the placement this ADR
 > recorded as deliberate. Rule R2 gains a namespace-scoped companion rather than a new
 > global literal. Everything else this ADR decided is unchanged.
+>
+> **Amended by [ADR-032](ADR-032-behavioral-enforcement-for-path-surface-invariants.md)**:
+> R2's substance is unchanged; its IL-scan enforcement is replaced by the behavioral
+> fail-loudly startup-validation tests.
 
 ## Context and Problem Statement
 

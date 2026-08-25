@@ -19,10 +19,10 @@ namespace Grimoire.Hub.Cli;
 /// class's properties instead would create a second, competing source of truth for path
 /// values — deliberately avoided.
 ///
-/// One property per <see cref="PathSwitchCatalog.All"/> entry — structurally capped at
-/// exactly four by <c>Grimoire.ArchTests.DirectorySwitchSurfaceRuleTests</c> (ADR-022
-/// rule R1, amended by ADR-024 rule M1); a parity test (<c>HubHelpUsageTests</c>)
-/// asserts the 1:1 mapping so the two can never independently drift. The
+/// One property per <see cref="PathSwitchCatalog.All"/> entry — capped at exactly four
+/// (ADR-022 rule R1, amended by ADR-024 rule M1), enforced behaviorally per ADR-032 by
+/// <c>HubHelpUsageTests</c>' out-of-process --help assertion, so the CLI surface and
+/// this class can never independently drift. The
 /// <see cref="DescriptionAttribute"/> text below mirrors <see cref="PathSwitchCatalog.All"/>'s
 /// descriptions so `&lt;command&gt; --help` shows the same wording as the root help's
 /// "Options:" section.

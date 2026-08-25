@@ -10,7 +10,8 @@ namespace Grimoire.ArchTests;
 /// harness-record folder is dangling by construction once those folders anchor at
 /// <c>MemoryDir</c> instead of <c>WikiDir</c> (research R3). Same tripwire idiom as
 /// ADR-022 rule R2 / ADR-009's <c>rev-parse</c> literal scan
-/// (<see cref="NoCodeLevelPathDefaultsRuleTests"/>, <see cref="RuntimePathsBoundaryRuleTests"/>).
+/// (<see cref="RuntimePathsBoundaryRuleTests"/>; R2's own IL scan was retired for
+/// behavioral enforcement by ADR-032).
 /// </summary>
 public class NoWikiRelativeHarnessRecordLinkRuleTests
 {
