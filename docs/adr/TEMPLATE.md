@@ -1,8 +1,8 @@
 ---
-status: proposed
-supersedes: null
-superseded_by: []
-reason: null
+status: proposed  # proposed | accepted | declined | deprecated | superseded
+supersedes: null  # the single ADR this one replaces, e.g. ADR-016, or null
+superseded_by: []  # filled in later, by whichever ADR(s) replace this one
+reason: null  # REQUIRED (short statement) if status is declined, or deprecated with no replacement; optional otherwise
 ---
 
 # ADR-NNN: <One-line title naming the single aspect this ADR decides>
@@ -37,7 +37,7 @@ Chosen option: **<option>**, because <justification>.
 ## Change Triggers
 
 - **Extensions (do not invalidate this ADR):** <foreseeable uses of this decision that stay within what it decided — no ADR action needed when they occur>.
-- **Invalidations (would require full supersession):** <foreseeable changes that would reverse, narrow, or contradict this decision — any of these retires this ADR wholesale via a new Superseding ADR, per Constitution Principle III's "Whole-ADR supersession, bidirectionally linked" above>.
+- **Invalidations (would require full supersession):** <foreseeable changes that would reverse, narrow, or contradict this decision — any of these retires this ADR wholesale via a new Superseding ADR, per Constitution Principle III, "Whole-ADR supersession, bidirectionally linked">.
 
 ## More Information
 
