@@ -135,7 +135,7 @@ Follow this execution flow:
 Formatting & Style Requirements:
 
 - Use Markdown headings exactly as in the template (do not demote/promote levels).
-- Do NOT hard-wrap lines within a paragraph or rationale block — write each as one line, however long, and let the reader's editor soft-wrap it (see CLAUDE.md "Markdown Formatting"). Hard wraps break diffing, grepping, and copy/paste of this content.
+- Wrap long rationale lines to keep readability (<100 chars ideally) but do not hard enforce with awkward breaks.
 - Keep a single blank line between sections.
 - Avoid trailing whitespace.
 
