@@ -15,9 +15,27 @@ Exception: Project-internal notes or personal development logs may use other lan
 
 ## Markdown Formatting
 
-**No hard-wrapped line breaks inside paragraphs.** Write each paragraph, rationale block, or prose list item as a single line, however long — do not insert a line break partway through a sentence to keep lines under some character count. Only break a line where markdown itself requires it: between paragraphs (a blank line), between list items, before/after headings, and inside fenced code blocks. Rely on the reader's editor or renderer to soft-wrap for display.
+**Wrap long paragraphs for diff readability, but treat the width as an orientation, not a hard
+rule.** A paragraph written as one very long line is hard to review in a `git diff` or a terminal
+— the whole paragraph shows as a single changed line and reading it means scrolling horizontally.
+Wrap prose, rationale blocks, and prose list items to roughly 90-100 characters per line so diffs
+stay reviewable. This is guidance, not an enforced cap: never fracture a phrase mid-word or
+mid-clause just to hit the character count, and let a line run a little long rather than force
+an awkward break. Only break where markdown itself requires it otherwise: between paragraphs (a
+blank line), between list items, before/after headings, and inside fenced code blocks — a
+wrapped line inside a paragraph stays part of that paragraph; it is never a paragraph boundary
+and must not be read or generated as one.
 
-This applies to every markdown file in the repository — the constitution, ADRs, specs, plans, this file, and any other authored `.md` content — not just newly written ones; reflow a file's touched paragraphs when you next edit it for other reasons, rather than leaving a mix of styles. Hard-wrapping a paragraph provides no benefit to any reader or tool here, and it actively breaks things that operate on line boundaries — diffs turn a one-sentence edit into a reflowed wall of changed lines, `grep`/search tools miss matches split across a line break, and content copied or piped between tools picks up spurious embedded newlines. None of that is worth trading away for a line-length convention nobody asked for.
+Weigh the trade-offs for the content at hand rather than applying this everywhere uniformly:
+wrapping helps diff review, but it can still split a `grep`/search match across two lines, and
+text copied or piped elsewhere can pick up the embedded newlines mid-sentence. For content that is
+dense with material that gets copied, grepped, or piped between tools — task artifacts, log
+entries, generated records, and verbatim-quoted user input — prefer a single unwrapped line per
+paragraph instead, since those failure modes matter more there than diff-scrolling does. Apply
+this to every markdown file in the repository — the constitution, ADRs, specs, plans, this file,
+and any other authored `.md` content — not just newly written ones; reflow a file's touched
+paragraphs to whichever convention fits its content when you next edit it for other reasons,
+rather than leaving an arbitrary mix.
 
 ## Document Map
 
