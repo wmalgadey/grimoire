@@ -1,5 +1,8 @@
 ---
-status: accepted
+status: superseded
+supersedes: null
+superseded_by: [ADR-040]
+reason: null
 ---
 
 # ADR-009: Explicit Runtime Path Configuration and Consolidated Data Directory
