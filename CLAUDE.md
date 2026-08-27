@@ -11,7 +11,15 @@ All code, comments, documentation, and architectural artifacts must be written i
 
 Exception: Project-internal notes or personal development logs may use other languages if clearly marked, but all shared documentation, code comments, and specifications must be in English.
 
-**Verbatim user input is a record, not authored content.** A block that quotes what the user actually said — the `**Input**: User description:` field that `/speckit-specify` writes into `spec.md`, a quoted clarification answer, an issue excerpt — MUST be preserved in the language the user used, unedited. Translating it destroys the traceability the field exists for: it is evidence of the request, not a statement of the requirement. Everything *derived* from it — every requirement, scenario, acceptance criterion, and all authored prose around the quote — MUST be English, and that derived text is what contributors and reviewers read. Flagging a non-English verbatim quote as a language-policy violation is a false positive; the rule to apply to it is "is it marked as a quote and is everything derived from it in English?"
+**Verbatim user input is a record, not authored content.** A block that quotes what the user
+actually said — the `**Input**: User description:` field that `/speckit-specify` writes into
+`spec.md`, a quoted clarification answer, an issue excerpt — MUST be preserved in the language the
+user used, unedited. Translating it destroys the traceability the field exists for: it is evidence
+of the request, not a statement of the requirement. Everything *derived* from it — every
+requirement, scenario, acceptance criterion, and all authored prose around the quote — MUST be
+English, and that derived text is what contributors and reviewers read. Flagging a non-English
+verbatim quote as a language-policy violation is a false positive; the rule to apply to it is "is
+it marked as a quote and is everything derived from it in English?"
 
 ## Markdown Formatting
 
