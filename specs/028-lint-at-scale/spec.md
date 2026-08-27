@@ -409,14 +409,24 @@ criterion, per Constitution v1.12.0's lower-stakes tiering (see SC-004/SC-005).
   guarded tool contract (a new `write_file` call-shape parameter, not a new value on the
   policy-level `WriteMode` enum — see research.md R7 and FR-010's updated wording), which
   per Constitution Principle III needed an Accepted ADR before `/speckit-tasks` could run,
-  exactly as issue #201 itself anticipated. Contrary to that initial anticipation, ADR-035
-  amends only ADR-017 (format-validation entry point) and ADR-028 (prepend-ordering
-  mechanism) — **not** ADR-030, which is scoped entirely to retrieval (`search_files`,
-  ranged `read_file`, read-only `batch`) and never touches `write_file`. It also does not
-  amend ADR-011: all three per-agent tool registries already declare the identical shared
+  exactly as issue #201 itself anticipated. Contrary to that initial anticipation — and
+  reworked again after Constitution v2.0.0 landed on `main` mid-flight (retiring partial
+  `Amends`/`Amended by` for new ADRs; see below) — ADR-035 **extends** ADR-017
+  (format-validation entry point) and ADR-028 (prepend-ordering mechanism) without changing
+  either ADR's status, and touches neither ADR-030 (scoped entirely to retrieval —
+  `search_files`, ranged `read_file`, read-only `batch` — and never touching `write_file`)
+  nor ADR-011 (all three per-agent tool registries already declare the identical shared
   `WriteFileDefinition` constant, so widening its schema reaches Ingest, Query, and Lint at
-  once with no registry-file change and no registry-scope decision to record (unlike
+  once with no registry-file change and no registry-scope decision to record — unlike
   ADR-030 R6, which deliberately scoped three genuinely new tools to Lint only).
+- **Constitution v2.0.0 (2026-08-25) landed on `main` while this feature was in flight**,
+  requiring single-aspect ADRs and retiring partial `Amends`/`Amended by` for ADRs drafted
+  from that amendment forward, in favor of an Invalidation test: does the new decision
+  reverse, narrow, or contradict what an earlier ADR decided? ADR-035 does not, for either
+  ADR-017 or ADR-028, so it is an extension under this test — its frontmatter carries
+  `supersedes: null`, and neither ADR-017 nor ADR-028's own status changed. See research.md
+  R11 for the full rationale and what stayed on the older, grandfathered convention (the
+  ADR-028/ADR-031 gap-fix below, which predates v2.0.0 on both sides).
 - **A pre-existing ADR bidirectional-linking gap, found while researching this merge, should
   be closed by that new ADR rather than left standing.** ADR-028's own "O4 — instruction
   files" mechanism section states, as part of its Accepted decision content, that "Lint never

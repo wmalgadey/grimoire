@@ -218,3 +218,41 @@ ADR-028's own precedent.
   (current: `WriteFileAtomicallyAsync`, `:607-651`, `File.Move` at `:636`). The new ADR and
   plan.md cite method names as the stable reference, with line numbers as a secondary,
   expected-to-drift pointer.
+
+## R11 — Constitution v2.0.0 (2026-08-25): ADR-035 is an extension, not an amendment
+
+**Context**: `main` was independently amended to Constitution v2.0.0 while this feature was
+in flight (after ADR-035 was originally drafted using the pre-v2.0.0 `Amends`/`Amended by`
+convention this document's R9/R10 above describe). v2.0.0 requires every ADR to decide
+exactly one aspect, retires partial `Amends`/`Amended by` for ADRs drafted from that
+amendment forward, and introduces a decisive Invalidation test: would honoring the new
+decision reverse, narrow, or contradict what the earlier ADR actually decided? If no, it is
+an **extension** — the earlier ADR's status MUST NOT change, not even in part.
+
+**Decision**: ADR-035 is unambiguously an extension of ADR-017 and ADR-028 under this test —
+its own Decision Outcome states plainly that ADR-028's ordering guarantee "stands exactly as
+decided" and ADR-017's heading/paragraph checks are "unchanged in substance." ADR-035 was
+rewritten accordingly: its frontmatter now carries `supersedes: null` / `superseded_by: []`
+per the Mandatory ADR format, its opening note reads `**Extends** ADR-017, ADR-028 — no
+supersession` rather than `Amends`, and the `Amended by ADR-035` blockquotes this feature
+had added to ADR-017 and ADR-028 themselves are removed — an extension carries no
+obligation on the extended ADR's side at all, not even a cross-reference. R9's "the new ADR
+amending ADR-028 must state this distinction" (above) and R10's "amends ADR-017... amends
+ADR-028..." language are superseded by this entry; both remain in this document as the
+historical record of what was decided before v2.0.0 landed, per this project's own
+research.md convention (see R5's identical treatment of the v1.12.0 amendment).
+
+**Not affected**: the pre-existing, pre-v2.0.0 one-sided-link gap this feature separately
+closed between ADR-028 and ADR-031 (ADR-028's O4 statement, made false by ADR-031, never
+recorded as such) stays on the old `Amends`/`Amended by` convention — both of those ADRs
+predate v2.0.0 and are grandfathered under Governance's non-retroactivity clause; fixing
+their own historical cross-reference is maintenance on grandfathered content, not a new ADR
+drafted under the retired pattern.
+
+**Alternative rejected**: keeping ADR-035's original `Amends` framing on the theory that
+this feature's own `/speckit-plan` began before v2.0.0 was ratified. Rejected because this
+feature is still unmerged and under active revision — the same reasoning this project
+already applied when v1.12.0 landed mid-flight (R5 above) — and because the user's own
+request that triggered this rebase ("überprüfe die spec und vor allem den plan anhand der
+anpassungen") asked directly for the plan to be checked against exactly this kind of
+upstream adjustment.
