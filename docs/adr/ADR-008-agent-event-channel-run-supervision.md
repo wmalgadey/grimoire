@@ -1,5 +1,8 @@
 ---
-status: accepted
+status: superseded
+supersedes: null
+superseded_by: [ADR-037, ADR-038, ADR-039]
+reason: null
 ---
 
 # ADR-008: Agent Event Channel, Run Supervision, and Persistent Run Queue
