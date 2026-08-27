@@ -43,7 +43,7 @@
   for the narrower, pre-merge scope) had just been deleted and this feature restarted
   planning from this spec — see Assumptions for what that implied for the ADR gate. (Both
   now exist again in this PR, regenerated against the merged spec by the subsequent
-  `/speckit-plan` pass and ADR-051.)
+  `/speckit-plan` pass; a drafted ADR was later retracted — see Assumptions.)
 
 ### Session 2026-08-25 (continued, post-merge)
 
@@ -407,42 +407,41 @@ criterion, per Constitution v1.12.0's lower-stakes tiering (see SC-004/SC-005).
   This keeps this feature's own eval footprint proportionate to what it actually needs
   verified, consistent with the same cost-consciousness that motivated the v1.12.0 amendment
   and the removal of 19 lower-stakes eval scenarios project-wide (ADR-033).
-- **This feature required a new ADR**, reversing the earlier (pre-merge) conclusion that
-  none was needed — drafted and Accepted as **ADR-051** (originally drafted as "ADR-035";
-  renumbered after a name collision with an independent, differently-scoped ADR-035 that
-  landed on `main` mid-flight — see below). FR-010's write primitive changes the guarded
-  tool contract (a new `write_file` call-shape parameter, not a new value on the
-  policy-level `WriteMode` enum — see research.md R7 and FR-010's updated wording), which
-  per Constitution Principle III needed an Accepted ADR before `/speckit-tasks` could run,
-  exactly as issue #201 itself anticipated. ADR-051 **extends** `main`'s ADR-035
-  (agent-exclusive activity-log authorship, which itself wholly supersedes the original
-  ADR-028) without changing ADR-035's status, and touches neither ADR-030 (scoped entirely
-  to retrieval — `search_files`, ranged `read_file`, read-only `batch` — and never touching
-  `write_file`) nor ADR-011's successors (all per-agent tool registries already declare the
-  identical shared `WriteFileDefinition` constant, so widening its schema reaches Ingest,
-  Query, and Lint at once with no registry-file change and no registry-scope decision to
-  record — unlike ADR-030 R6, which deliberately scoped three genuinely new tools to Lint
-  only).
+- **This feature initially concluded it required a new ADR**, reversing the earlier
+  (pre-merge) conclusion that none was needed — drafted and reaching Accepted status as
+  "ADR-035". FR-010's write primitive changes the guarded tool contract (a new
+  `write_file` call-shape parameter, not a new value on the policy-level `WriteMode` enum
+  — see research.md R7 and FR-010's updated wording), which was read, at the time, as
+  needing an Accepted ADR before `/speckit-tasks` could run, per issue #201's own
+  anticipation. This conclusion did not survive review (see below); this feature's final
+  state needs **no new ADR** at all.
 - **Constitution v2.0.0 (2026-08-25) landed on `main` while this feature was in flight**,
   requiring single-aspect ADRs and retiring partial `Amends`/`Amended by` for ADRs drafted
   from that amendment forward, in favor of an Invalidation test: does the new decision
-  reverse, narrow, or contradict what an earlier ADR decided? This feature's ADR does not,
-  for the ADR it extends, so it is an extension under this test — its frontmatter carries
-  `supersedes: null`. See research.md R11 for that first correction's full rationale.
+  reverse, narrow, or contradict what an earlier ADR decided? This feature's then-drafted
+  ADR did not, for the ADRs it extended, so it was treated as an extension under this test.
+  See research.md R11 for that first correction's full rationale.
 - **A second, independent, much larger ADR restructuring later landed on `main`**, also
   mid-flight, superseding the original ADR-028 wholesale with a new, differently-scoped
   ADR-035 ("Agent-Exclusive Authorship of the Wiki Activity Log" — decides *who* may author
   `log.md` content, not the prepend-ordering mechanism this feature's own ADR had drafted
   under that same number) and deprecating ADR-017 entirely, reclassifying its
   format-enforcement content as feature-scoped and moving it to a contract document rather
-  than an ADR. This forced two changes to this feature's own ADR, both purely
-  reconciliation, not a requirements change: renumbering "ADR-035" to the next free
-  number, **ADR-051**, and narrowing its Decision Outcome to keep only its genuine
-  guarded-tool-boundary-capability content (the schema addition and no-baseline dispatch
-  rule) — its format-validation and `index.md`-scope content, which had been modeled on the
-  now-deprecated ADR-017, moved into `contracts/log-prepend-write.md`, mirroring the exact
-  split the restructuring itself applied project-wide. The pre-existing ADR-028/ADR-031
-  bidirectional-linking gap this feature had separately identified and planned to close
-  (ADR-028's "O4" text claiming "Lint never writes the activity log," made false by ADR-031)
-  is now moot: ADR-028 is wholly Superseded by ADR-035, so a partial-link correction on a
-  fully-retired document serves no purpose. See research.md R12 for the full rationale.
+  than an ADR. This forced this feature's own ADR to be renumbered "ADR-035" → "ADR-051"
+  (the next free number) and re-pointed to extend `main`'s new ADR-035 instead. See
+  research.md R12 for the full rationale, including why the pre-existing ADR-028/ADR-031
+  bidirectional-linking gap this feature had separately identified became moot once
+  ADR-028 was wholly Superseded.
+- **The PR author's own review then rejected the premise of drafting an ADR here at all**,
+  independent of either restructuring above: an optional call-shape parameter added to an
+  already-existing tool, defaulting to current behavior and granting no capability the
+  tool's existing contract did not already permit, decides nothing a reader could not
+  already infer from `write_file`'s existing contract — it is feature content, not a
+  structural boundary or technology choice, regardless of how it is numbered or what it
+  extends. Constitution **v2.1.0** now codifies this as the "Guarded tool surface
+  ADR-triggering test" (Principle III): a new ADR is warranted only for a new tool *name*,
+  a new/changed policy-level enum value, or a new external-system dependency — none of
+  which this feature introduces. ADR-051 was retracted before merge; its two rules (the
+  `mode` schema addition and its no-baseline dispatch mechanism) are now Feature-Scoped
+  Invariants in `plan.md`, covered by classicist tests, under the already-Accepted
+  guarded-tool-boundary ADR-006. See research.md R13 for the full rationale.

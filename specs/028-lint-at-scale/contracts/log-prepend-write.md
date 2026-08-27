@@ -2,10 +2,13 @@
 
 Extends the existing `write_file` guarded tool (`ToolRegistry.WriteFileDefinition`,
 declared identically by `LintToolRegistry`, `IngestToolRegistry`, and `QueryToolRegistry`).
-Per ADR-051, this is a schema and dispatch-path addition to one existing tool — no new tool
-name, no new port, no new external system. The format-validation and scope rules this
-contract states (below) are feature-scoped content, not part of ADR-051's own decision —
-the same "format content lives in a contract, not the ADR" split ADR-035
+This is a schema and dispatch-path addition to one existing tool — no new tool name, no
+new port, no new external system, and — per Constitution v2.1.0's "Guarded tool surface
+ADR-triggering test" (Principle III) — no new ADR: it operates inside the guarded tool
+boundary ADR-006 already decided, and its two rules (schema addition, no-baseline
+dispatch) are the Feature-Scoped Invariants FSI-1/FSI-2 in `plan.md`. The format-validation
+and scope rules this contract states (below) are likewise feature content, mirroring the
+same "format content lives in a contract, not an ADR" split `main`'s ADR-035
 (agent-exclusive-activity-log-authorship) already established for the log's ordering rule.
 
 ## Tool call schema (JSON)
@@ -48,8 +51,9 @@ After — new, optional `mode`:
    (which deny `write_conflict_stale_read` against a prior `OnReadFile` baseline), a
    prepend write reads current content fresh, under the lock, at evaluation time — there is
    no baseline to compare against and no staleness scenario to deny (research.md R8).
-3. Heading/paragraph format validation, retargeted (feature-scoped format content, not
-   ADR-051's decision — see the note at the top of this contract): the supplied `content`
+3. Heading/paragraph format validation, retargeted (feature-scoped format content, not a
+   Feature-Scoped Invariant or ADR decision — see the note at the top of this contract):
+   the supplied `content`
    (the entry alone) must have, as its first non-blank line, a heading matching
    `^## \[\d{4}-\d{2}-\d{2}\] .+ \| .+$`, and at least one further non-blank line must
    follow within the entry. Denial reasons unchanged: `log_entry_malformed_heading`,

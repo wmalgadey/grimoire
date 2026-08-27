@@ -19,17 +19,20 @@ own path, merged from issues #108 and #201 at the user's explicit direction:
 2. **Write-side (US3, new)**: `log.md`'s only write primitive costs O(file size) per entry,
    and this has already exceeded the agent's output-token budget in production —
    deterministic write failures today, on Ingest, and on the exact mechanism Lint's own
-   instructions also depend on. **ADR-051** (Accepted) adds a `write_file` prepend mode,
-   available to Ingest, Query, and Lint alike, dropping the cost to O(entry size)
-   (research.md R6-R12).
+   instructions also depend on. This feature adds a `write_file` prepend mode, available to
+   Ingest, Query, and Lint alike, dropping the cost to O(entry size) (research.md R6-R13).
 
 Direction B (harness-side sharding, read-side) remains explicitly not adopted (research.md
-R1). Unlike the pre-merge version of this plan, this feature **does** require a new ADR —
-ADR-051, already Accepted — because the write-side fix changes the guarded tool contract.
-ADR-051 extends [ADR-035](../../docs/adr/ADR-035-agent-exclusive-activity-log-authorship.md)
-(agent-exclusive activity-log authorship) — the ADR-035 that superseded ADR-028 in a
-separate, independent restructuring that landed on `main` mid-flight (research.md R12) —
-not the original ADR-028/ADR-017, which are now Superseded/Deprecated respectively.
+R1). This feature introduces **no new ADR**. An ADR was drafted for the write-side fix
+(originally "ADR-035", renumbered ADR-051 after a numbering collision with `main`'s own
+new ADR-035) and reached Accepted status, but was retracted before merge: the PR author's
+review (research.md R13) established, and Constitution v2.1.0's new "Guarded tool surface
+ADR-triggering test" now codifies, that an optional call-shape parameter added to an
+already-existing tool — defaulting to current behavior, granting no capability the tool's
+existing contract did not already permit — is feature content, not a structural boundary.
+The write-side fix is covered by the guarded tool boundary ADR-006 already established;
+its two rules (schema addition, no-baseline dispatch) are Feature-Scoped Invariants in
+this plan's Architectural Constraints section, not ADR material.
 
 ## Technical Context
 
@@ -51,8 +54,10 @@ field; `log.md` itself gains no new format, only a cheaper way to write the same
 `GuardedToolExecutor`/`SharedFileWriteGuard`/`LintRunCoordinator`, real temp-directory
 content roots, and — for the read-side hermetic tests — a hand-rolled fake `IModelClient`
 port double); `Grimoire.AgentEvals` recorded-replay (ADR-012) for the one read-side eval
-addition and any optional lower-stakes checks kept for SC-004/SC-005; `Grimoire.ArchTests`
-(NetArchTest) for ADR-051's two Boundary Rules.
+addition and any optional lower-stakes checks kept for SC-004/SC-005. No `Grimoire.ArchTests`
+addition: the write-side's two rules are Feature-Scoped Invariants (Constitution Principle
+III), verified by the same classicist `Grimoire.IntegrationTests` suite, not a Phase 0
+structural/reflection test.
 
 **Target Platform**: Linux container (Docker) in production; Windows/macOS for development.
 
@@ -66,8 +71,10 @@ production.
 **Constraints**: No new external system, no new port. The read-side adds no new tool (six
 Lint tools unchanged). The write-side widens one existing tool's schema
 (`write_file` gains an optional `mode` parameter) rather than adding a seventh tool or a
-new tool name, per ADR-051. Hermetic harness tests require no live LLM calls or API keys;
-only the evaluation tier does, gated in CI (ADR-012).
+new tool name — a Feature-Scoped Invariant under the already-Accepted ADR-006, not a
+change requiring its own ADR (Constitution v2.1.0's guarded tool surface test). Hermetic
+harness tests require no live LLM calls or API keys; only the evaluation tier does, gated
+in CI (ADR-012).
 
 **Scale/Scope**: Read-side validated as a budget-to-content-size *relation* (SC-003), not
 by literal page count (research.md R3). Write-side validated at the exact production size
@@ -82,13 +89,13 @@ removes the size dependency entirely rather than raising a ceiling (SC-007).
 |---|---|---|
 | I — Domain architecture & hexagonal boundaries | No new external system, no new port. `ConsideredPaths` (read-side) is an in-process accumulator on `GuardedToolExecutor`, same shape as its existing write-tracking lists. The write-side prepend path reads/writes the same local filesystem through the same guard — no new adapter, no infrastructure package relocation. | PASS |
 | II — Pragmatic testing | Read-side: hermetic fake-`IModelClient` tests for SC-001/002 (no model calls); one recorded-replay eval variant for SC-003; SC-004/005 lower-stakes per Constitution v1.12.0, correction-loop primary. Write-side: SC-007/008 are deterministic harness guarantees, tested with classicist state-based integration tests against the real guard, real lock, real temp-directory filesystem — no mocking framework, no double beyond the one sanctioned `IModelClient` port fake already in use for the read side. | PASS |
-| III — ADR-driven & test-enforced | All ADRs in `docs/adr/` re-read for this merge, including two independent upstream ADR events that landed on `main` while this feature was in flight: Constitution v2.0.0 (single-aspect ADRs, partial `Amends`/`Amended by` retired for new work) and, separately, a project-wide v2.0.0 restructuring pass that retroactively split several old multi-aspect ADRs — including superseding ADR-028 wholesale with new **ADR-035** (agent-exclusive activity-log authorship) and deprecating ADR-017 entirely (its format-enforcement content reclassified as feature-scoped, owned by a contract document, not an ADR) (research.md R12). This feature's own ADR was renumbered **ADR-035 → ADR-051** to clear the resulting number collision, narrowed to keep only its genuine guarded-tool-boundary-capability content (R1 schema addition, R2 no-baseline dispatch — the two Boundary Rules, mirroring ADR-030's precedent for guarded-tool capability changes), and re-pointed to **extend the new ADR-035** rather than the retired ADR-028/ADR-017 — its format-validation and `index.md`-scope content moved into `contracts/log-prepend-write.md`, mirroring the exact split the restructuring itself applied project-wide. Neither ADR-035's nor ADR-006's status changes as a result (Invalidation test: this feature reverses, narrows, or contradicts nothing either already decided). The earlier, separate ADR-028/ADR-031 one-sided-link gap-fix (both pre-v2.0.0, grandfathered) is superseded by the restructuring itself and no longer applies — ADR-028 is now wholly Superseded, so a partial-link correction on a fully-retired document serves no purpose. Phase 0 of `tasks.md` covers ADR-051's two Boundary Rules with structural tests. | PASS |
+| III — ADR-driven & test-enforced | All ADRs in `docs/adr/` re-read for this merge, including two independent upstream ADR events that landed on `main` while this feature was in flight: Constitution v2.0.0 (single-aspect ADRs, partial `Amends`/`Amended by` retired for new work) and, separately, a project-wide restructuring pass that retroactively split several old multi-aspect ADRs — including superseding ADR-028 wholesale with a new **ADR-035** (agent-exclusive activity-log authorship) and deprecating ADR-017 entirely (its format-enforcement content reclassified as feature-scoped, owned by a contract document, not an ADR). This feature's own ADR was first renumbered **ADR-035 → ADR-051** to clear the resulting number collision, then **retracted entirely** after the PR author's direct review pushback established that its content — an optional call-shape parameter on an already-existing tool, defaulting to current behavior — never met the bar for a genuine structural boundary or technology decision (research.md R13). Constitution **v2.1.0**'s new "Guarded tool surface ADR-triggering test" (Principle III) now codifies the criterion this feature's retraction follows: a new ADR is needed only for a new tool *name*, a new/changed policy-level enum value, or a new external-system dependency — none of which this feature introduces. `write_file`'s prepend mode instead operates inside the guarded tool boundary ADR-006 already decided; its two rules (schema addition, no-baseline dispatch) are **Feature-Scoped Invariants**, covered by classicist tests in their normal implementation phase, never a Phase 0 structural test. ADR-035 (agent-exclusive authorship) is confirmed unaffected — this feature changes only how cheaply an already-authored entry is committed, never who authors it. | PASS |
 | IV — Behavioral & observable | Read-side Observability section unchanged from the pre-merge plan (coverage metrics/log event/span). Write-side introduces no new business metric, log event, or span — spec.md's FR-010–FR-015 require correctness and cost, not new telemetry; existing denial-reason/format-validation telemetry (`guardrails.format_validate`) already covers the write path and needs no addition (see Observability section below for the explicit no-new-signals statement). | PASS |
 | V — Agentic core & deterministic harness | Read-side: coverage signal is behavior-agnostic (records *whether* a page was read, not judgment quality). Write-side: FR-014 requires the same boundary — the harness gains a cheaper way to *commit* an agent-authored entry, never authorship of the entry. What to log, what an entry says, and what counts as a Lint finding all remain agent judgment under instruction files (three files updated: Ingest, Query, Lint — FR-015). | PASS |
 
 **Post-design re-check**: unchanged after Phase 1 — data-model.md and contracts/
 introduce no new boundary, no new dependency, and no relocation of judgment into backend
-code beyond what ADR-051 already authorizes.
+code beyond what ADR-006's existing guarded tool boundary already authorizes.
 
 ## Architectural Constraints & ADRs
 
@@ -96,21 +103,38 @@ code beyond what ADR-051 already authorizes.
 
 | ADR | Title | Constraint on this feature |
 |-----|-------|---------------------------|
-| [ADR-051](../../docs/adr/ADR-051-write-file-prepend-mode-for-log-md.md) | A `write_file` Prepend Mode for Cheap `log.md` Writes | **New, Accepted as part of this plan.** Governs the write-side (US3)'s guarded-tool-boundary capability only: the `mode` schema addition (R1) and no-baseline lock-serialized dispatch (R2) — its two Boundary Rules, gating Phase 0 of `tasks.md`. Format validation, `index.md` non-involvement, and instruction-file updates are feature content, recorded in `contracts/log-prepend-write.md`, not this ADR's own decision. |
-| [ADR-035](../../docs/adr/ADR-035-agent-exclusive-activity-log-authorship.md) | Agent-Exclusive Authorship of the Wiki Activity Log | Decides *who* may author `log.md` content (the agents, exclusively) — unaffected by this feature. ADR-051 extends this: the harness gains a cheaper way to *commit* an agent-authored entry, never authorship of it. Supersedes the original ADR-028 wholesale (a separate, independent restructuring on `main`, research.md R12) — this feature's write path must produce exactly the same on-disk shape a compliant `ReadWrite`-mode write already produces, per the activity-log format contract ADR-035 itself defers to. |
-| [ADR-006](../../docs/adr/ADR-006-agent-tool-loop-guarded-boundary.md) | Agent Tool-Use Loop and Guarded Tool Boundary | Every `write_file` dispatch — replace or prepend — already passes through `GuardedToolExecutor`/the deny-by-default policy and its write journal. No new tool is added; R3/R11-equivalent unknown-tool rejection is unaffected since `write_file`'s tool *name* is unchanged. |
-| [ADR-011](../../docs/adr/ADR-011-query-agent-shared-runtime-and-concurrency-model.md)'s successors (ADR-044–ADR-047) | Shared Agent Runtime Library; Token-Level Answer Streaming; Query Dispatch; Query Realtime Delivery | Confirmed unaffected (research.md R10, re-verified against the restructured successors in R12): all three per-agent registries already declare the identical shared `WriteFileDefinition`; widening its schema needs no registry-scope decision, unlike ADR-030 R6's deliberate Lint-only scoping of genuinely new tools. |
-| [ADR-030](../../docs/adr/ADR-030-guarded-retrieval-tool-surface.md) | Guarded Retrieval Tools — Search, Ranged Read, and Read-Only Batch | Read-side only (`search_files`, ranged `read_file`, `batch`); confirmed to not constrain `write_file`/`WriteMode` at all (research.md R10). Also the precedent this plan follows for treating a guarded-tool capability change (vs. a format/content rule) as ADR-worthy material. |
+| [ADR-006](../../docs/adr/ADR-006-agent-tool-loop-guarded-boundary.md) | Agent Tool-Use Loop and Guarded Tool Boundary | Governs the write-side (US3) directly: every `write_file` dispatch — replace or prepend — already passes through `GuardedToolExecutor`/the deny-by-default policy and its write journal. No new tool is added; unknown-tool rejection is unaffected since `write_file`'s tool *name* is unchanged. Per Constitution v2.1.0's guarded tool surface test, the `mode` schema addition and its no-baseline dispatch mechanism operate inside this already-Accepted boundary — they are this feature's two Feature-Scoped Invariants (below), not a new ADR's Boundary Rules. |
+| [ADR-035](../../docs/adr/ADR-035-agent-exclusive-activity-log-authorship.md) | Agent-Exclusive Authorship of the Wiki Activity Log | Decides *who* may author `log.md` content (the agents, exclusively) — confirmed unaffected. This feature changes only how cheaply an already-authored entry is committed, never authorship of it. |
+| [ADR-011](../../docs/adr/ADR-011-query-agent-shared-runtime-and-concurrency-model.md)'s successors (ADR-044–ADR-047) | Shared Agent Runtime Library; Token-Level Answer Streaming; Query Dispatch; Query Realtime Delivery | Confirmed unaffected (research.md R10): all three per-agent registries already declare the identical shared `WriteFileDefinition`; widening its schema needs no registry-scope decision, unlike ADR-030 R6's deliberate Lint-only scoping of genuinely new tools. |
+| [ADR-030](../../docs/adr/ADR-030-guarded-retrieval-tool-surface.md) | Guarded Retrieval Tools — Search, Ranged Read, and Read-Only Batch | Read-side only (`search_files`, ranged `read_file`, `batch`); confirmed to not constrain `write_file`/`WriteMode` at all (research.md R10). |
 | [ADR-031](../../docs/adr/ADR-031-lint-full-wiki-write-scope.md) | Lint Holds Full Authority Over Wiki Content, in Both Modes | Governs Lint's write scope (unaffected) — `log.md` is already in Lint's `ReadWrite` scope, so Lint reaching the new `mode: "prepend"` capability needs no policy change. |
 | [ADR-012](../../docs/adr/ADR-012-eval-runner-recorded-replay.md) | Standalone Eval Runner and Recorded-Replay at the Model Port | Governs the one read-side eval scenario variant (SC-003) and any optional SC-004/SC-005 checks kept — recorded-replay, `[Trait("Tier","SlowEval")]`, no new eval mechanism. |
 | [ADR-033](../../docs/adr/ADR-033-sloweval-replay-class-set-reduction.md) | SlowEval Replay Class Set Reduced by the Lower-Stakes Eval Removal | This feature adds no new SlowEval replay-eval class — all read-side eval work lands inside the existing `LintReplayEvalTests` class. ADR-033's four-class enumeration is unaffected. |
 
-**New ADR required?**: **Yes — ADR-051, already drafted and Accepted** (see above). This
-reverses the pre-merge version of this plan's "No" conclusion: the write-side fix changes
-the guarded tool contract (`write_file`'s schema), which per Constitution Principle III
-required an Accepted ADR before this plan could proceed to Phase 0/`/speckit-tasks`. The
+**New ADR required?**: **No.** An ADR was drafted for the write-side fix (originally
+"ADR-035", renumbered ADR-051) and reached Accepted status, but was retracted before merge
+following the PR author's direct review pushback (research.md R13): adding an optional
+`mode` parameter to the already-existing `write_file` tool — defaulting to current
+behavior, granting no capability the tool's contract did not already permit — does not
+meet Constitution v2.1.0's "Guarded tool surface ADR-triggering test" (a new tool *name*,
+a new/changed policy-level enum value, or a new external-system dependency). It is
+feature content, covered by the guarded tool boundary ADR-006 already decided, and
+verified as two Feature-Scoped Invariants (below) rather than a Boundary Rule. The
 read-side portion of this feature independently still introduces no new structural
-boundary of its own (unchanged from the pre-merge analysis).
+boundary of its own (unchanged from the original, pre-merge analysis).
+
+### Feature-Scoped Invariants (write-side, US3)
+
+Per Constitution Principle III, these are the write-side's own rules — not durable
+dependency-direction rules, so they get no Phase 0 structural/reflection test. Each is
+covered by a classicist, state-based integration test in `Grimoire.IntegrationTests`
+exercising the real `SharedFileWriteGuard`/`GuardedToolExecutor` against a real
+temp-directory filesystem.
+
+| # | Rule | Verification |
+|---|------|---------------|
+| FSI-1 | `ToolRegistry.WriteFileDefinition`'s JSON schema gains an optional `mode` string property (`enum: ["replace", "prepend"]`, default `"replace"`), staying `additionalProperties: false`-compatible across all three per-agent registries (`LintToolRegistry`, `IngestToolRegistry`, `QueryToolRegistry`). Omitting `mode` is unchanged, existing behavior. | Integration test: an unlisted schema field is still rejected; a call omitting `mode` behaves byte-identically to today; a call with `mode: "prepend"` is accepted by all three registries. |
+| FSI-2 | A `mode: "prepend"` write acquires the existing per-target `CrossProcessFileLock`, reads `log.md`'s current content fresh from disk under the lock (no prior `OnReadFile` baseline, no compare-and-swap check), and commits `entry + currentContent` atomically via the existing temp-file + `File.Move` path. | Integration test: a prepend write succeeds with no preceding read in the same run; two concurrent prepend writers are serialized by the lock and both entries land, in lock-acquisition order, with none lost. |
 
 ## Agentic Boundary (Constitution Principle V)
 
@@ -124,8 +148,8 @@ boundary of its own (unchanged from the pre-merge analysis).
 | Recording which pages a read-shaped tool call actually touched (`ConsideredPaths`) | Harness | `Grimoire.AgentRuntime.Guardrails.GuardedToolExecutor` |
 | Computing `WikiCoverage` from harness-observed facts | Harness | `Grimoire.LintAgent` (`LintIntentHandler`/`RunEventEmitter`), `Grimoire.Hub.LintDispatch.LintRunCoordinator` |
 | Persisting `WikiCoverage` onto the Findings Report | Harness | `Grimoire.Hub.LintFindings.FindingsReportFormat` |
-| Concatenating a prepend-mode entry with current `log.md` content and committing atomically | Harness | `Grimoire.AgentRuntime.Guardrails.GuardedToolExecutor`, `SharedFileWriteGuard` (ADR-051 R2) |
-| Validating a prepend-mode entry's heading/paragraph shape | Harness | `Grimoire.AgentRuntime.Guardrails.Coordination.SharedFileWriteGuard` (feature-scoped format content, `contracts/log-prepend-write.md` — not an ADR-051 rule, mirroring how the same check's ADR-017 predecessor was deprecated in favor of contract-owned content) |
+| Concatenating a prepend-mode entry with current `log.md` content and committing atomically | Harness | `Grimoire.AgentRuntime.Guardrails.GuardedToolExecutor`, `SharedFileWriteGuard` (Feature-Scoped Invariant FSI-2, above) |
+| Validating a prepend-mode entry's heading/paragraph shape | Harness | `Grimoire.AgentRuntime.Guardrails.Coordination.SharedFileWriteGuard` (feature-scoped format content, `contracts/log-prepend-write.md` — mirroring how the same check's ADR-017 predecessor was deprecated in favor of contract-owned content) |
 
 No wiki-content judgment moves into backend code by this feature, on either the read or
 write side. The harness gains only the ability to observe/report (read side) and to commit
@@ -207,7 +231,7 @@ introduced. If the operator notices a miss, the fix is an edit to
 ```text
 specs/028-lint-at-scale/
 ├── plan.md              # This file
-├── research.md           # Phase 0 output (R1-R5 read-side, R6-R10 write-side)
+├── research.md           # Phase 0 output (R1-R5 read-side, R6-R13 write-side/ADR history)
 ├── data-model.md          # Phase 1 output
 ├── quickstart.md          # Phase 1 output
 ├── contracts/
@@ -244,9 +268,7 @@ backend/
 └── tests/
     ├── Grimoire.IntegrationTests/
     │   ├── (read-side) ConsideredPaths/WikiCoverage/log-event/span tests, hermetic fake-IModelClient tests for SC-001/002
-    │   └── (write-side) SharedFileWriteGuardPrependTests.cs — new, mirroring the existing FrontmatterOnly test file's shape
-    ├── Grimoire.ArchTests/
-    │   └── (new) ADR-051 R1/R2 Boundary Rule tests
+    │   └── (write-side) SharedFileWriteGuardPrependTests.cs — new, mirroring the existing FrontmatterOnly test file's shape (covers FSI-1/FSI-2, classicist, no Grimoire.ArchTests addition)
     ├── Grimoire.EvalRunner/Scenarios/LintScenarioDefinitions.cs    # lint-at-scale-survey gains a parameterized budget variant
     └── Grimoire.AgentEvals/LintReplayEvalTests.cs                  # extended assertions; optional SC-004/SC-005 scenarios if kept
 ```
@@ -255,8 +277,9 @@ backend/
 `Grimoire.AgentRuntime`/`Grimoire.Domain` (guarded execution, both read and write paths),
 `Grimoire.LintAgent`/`Grimoire.IngestAgent`/`Grimoire.QueryAgent` (agent process harnesses
 and instruction files), and `Grimoire.Hub` (persistence/coordination), plus their existing
-test projects and one new `Grimoire.ArchTests` file for ADR-051's Boundary Rules. No
-frontend change.
+test projects. No new `Grimoire.ArchTests` file: FSI-1/FSI-2 are Feature-Scoped Invariants,
+covered by the classicist `Grimoire.IntegrationTests` addition above, not a Phase 0
+structural test. No frontend change.
 
 ## Complexity Tracking
 

@@ -112,7 +112,7 @@ generates.
 
 ---
 
-## Write-side: the `write_file` prepend mode (ADR-051)
+## Write-side: the `write_file` prepend mode (Feature-Scoped Invariants FSI-1/FSI-2, plan.md)
 
 No new persisted entity. This is a **call-shape** addition to an existing tool, not a data
 model change — documented here because it changes what `content` means for one call shape,

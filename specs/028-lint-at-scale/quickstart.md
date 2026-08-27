@@ -20,15 +20,15 @@ checks need recordings and are gated separately.
 
 ```bash
 ./scripts/test-fast.sh                                            # domain + arch + fast tier
-dotnet test backend/tests/Grimoire.ArchTests --configuration Release
 dotnet test backend/tests/Grimoire.IntegrationTests --configuration Release
 ```
 
-Expected: green. The read-side (`ConsideredPaths`/`WikiCoverage`) introduces no Boundary
-Rule and is covered entirely by classicist integration tests. The write-side (ADR-051)
-**does** introduce two Boundary Rules — `Grimoire.ArchTests` MUST show both Red/Green
-probed (schema stays `additionalProperties: false`-compatible; no `OnReadFile` call is
-reachable from the prepend dispatch path) before any other write-side task was implemented.
+Expected: green. Neither side of this feature introduces a Boundary Rule: the read-side
+(`ConsideredPaths`/`WikiCoverage`) and the write-side's two Feature-Scoped Invariants
+(FSI-1/FSI-2, plan.md — schema stays `additionalProperties: false`-compatible; no
+`OnReadFile` call is reachable from the prepend dispatch path) are both covered entirely
+by classicist integration tests, no `Grimoire.ArchTests` addition (Constitution v2.1.0's
+guarded tool surface test).
 
 ### Spot checks worth doing by hand — read side
 
@@ -40,7 +40,7 @@ reachable from the prepend dispatch path) before any other write-side task was i
 | `list_files` alone doesn't count as coverage | Trigger a run where the agent lists but never opens a page | That page is absent from `ConsideredPaths` / not counted toward `PagesConsidered` |
 | No regression on a small wiki | Run against a wiki small enough for the old whole-wiki read (e.g., the `lint-seeded-defects` base fixture) | Run time and thoroughness are unchanged from before this feature (FR-007) |
 
-### Spot checks worth doing by hand — write side (ADR-051)
+### Spot checks worth doing by hand — write side (FSI-1/FSI-2, plan.md)
 
 | Check | How | Expected |
 |---|---|---|

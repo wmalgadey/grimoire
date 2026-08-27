@@ -66,7 +66,6 @@ mean the ADR's decision no longer governs.
 | [ADR-048](ADR-048-hub-cli-framework.md) | Hub CLI Command Framework — Spectre.Console.Cli | Accepted | Supersedes ADR-020 | — |
 | [ADR-049](ADR-049-cli-in-process-blocking-execution.md) | Hub CLI In-Process Blocking Execution Against the Shared Composition Root | Accepted | Supersedes ADR-020 | — |
 | [ADR-050](ADR-050-cli-hub-concurrency-locking.md) | Cross-Process CLI–Hub Coordination via OS-Level Locks | Accepted | Supersedes ADR-020 | — |
-| [ADR-051](ADR-051-write-file-prepend-mode-for-log-md.md) | A `write_file` Prepend Mode for Cheap `log.md` Writes | Accepted | Extends ADR-035 (no supersession) | — |
 | [ADR-051](ADR-051-backend-test-tier-taxonomy.md) | Backend Test Tier Taxonomy, Deterministic-Wait Convention, and Suite Concurrency Levers | Accepted | Supersedes ADR-021 | — |
 | [ADR-052](ADR-052-memory-directory-root.md) | Memory Directory — A Fourth Independent Root for Agent Process Bookkeeping | Accepted | Supersedes ADR-024 | — |
 

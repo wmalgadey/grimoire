@@ -327,3 +327,64 @@ restructuring had already merged by the time this rebase happened; renumbering a
 merged, Accepted ADR on `main` to accommodate an unmerged feature branch would be exactly
 backwards, and ADR numbers are permanent once assigned (Constitution Principle III,
 "Lifecycle and frontmatter contract").
+
+## R13 — ADR-051 retracted: the write-side fix never needed an ADR (Constitution v2.1.0)
+
+**Context**: with ADR-051 renumbered and re-pointed per R12, the PR author reviewed it
+directly on PR #193 and rejected the premise of drafting an ADR here at all — in four
+review comments, independent of either restructuring above: "This still is no adr, it is
+just a feature description, no new technical aspekt or a system boundry. It is just
+another tool and a guardrail"; "Wie vermeiden wir zukünftig solche ADRs? ... wenn wir für
+jedes Tool einen adr machen, sind die adrs viel zu spezifisch und es ändern sich keine
+technologischen Entscheidung durch den adr, es werden nur neue aspekte des eigentlichen
+Features ... hinzugefügt"; and "No extensions allowed with new constitution 2.0" —
+rejecting even the `Extends ADR-N` framing (R11/R12's own mechanism) as a way to justify
+this being an ADR at all.
+
+**Decision**: Agreed, and generalized into a constitution amendment (v2.0.0 → v2.1.0,
+Principle III's new "Guarded tool surface ADR-triggering test") rather than resolved as a
+one-off exception for this feature. Comparing against the project's own actual precedent
+settles the criterion cleanly: ADR-030 earned its own ADR by introducing new tool *names*
+(`search_files`, `batch`); ADR-016 earned one by adding a new *value* to the policy-level
+`WriteMode` enum. This feature's write-side fix did neither — it widened one existing
+tool's call shape with an optional, default-preserving `mode` parameter, granting no
+access `write_file`'s existing contract did not already cover (the tool could always fully
+overwrite `log.md`; prepend is only a cheaper path to the same end state). Generalized:
+a guarded-tool-surface change needs a new ADR only for (a) a new tool name, (b) a new/
+changed policy-level enum value, or (c) a new external-system dependency — none of which
+this feature introduces.
+
+**Consequences for this feature**:
+
+- `docs/adr/ADR-051-write-file-prepend-mode-for-log-md.md` is deleted (never merged to
+  `main`, so no supersession/deprecation tombstone is needed — the number is simply
+  unused, consistent with the R12 precedent that an in-flight, unmerged ADR number is
+  renumberable).
+- `docs/adr/index.md`'s ADR-051 row is removed.
+- ADR-051's two rules — R1 (schema addition) and R2 (no-baseline, lock-serialized
+  dispatch) — are recorded in `plan.md`'s Architectural Constraints & ADRs section as
+  Feature-Scoped Invariants FSI-1/FSI-2, covered by the same classicist integration tests
+  that were already planned (`SharedFileWriteGuardPrependTests.cs`), now with no
+  `Grimoire.ArchTests`/Phase 0 structural-test obligation at all.
+- ADR-006 (the guarded tool-use loop and write journal, already Accepted) is the ADR that
+  governs this feature's write-side change — as a constraint it was already reading and
+  writing through, not a boundary this feature itself decides.
+- `main`'s ADR-035 (agent-exclusive activity-log authorship) is confirmed unaffected and
+  needs no `Extends` cross-reference from this feature at all, since this feature no
+  longer drafts an ADR to carry one.
+
+**Rationale**: this is the same instinct that drove R5 (proportionate eval footprint) and
+the v1.12.0/v2.0.0 amendments before it — verification and documentation rigor should
+track what actually changed, not accumulate ceremony per touched file. An ADR for every
+tool-schema widening would mean this project drafts an ADR per feature almost by
+definition, since nearly every feature that touches the guarded tool surface adds some
+parameter to some tool; that dilutes what "Accepted ADR" signals for the genuine
+boundary/technology decisions ADR-006, ADR-030, and ADR-016 actually represent.
+
+**Alternative rejected**: keeping ADR-051 as a `declined` (or `deprecated`) tombstone
+entry in `docs/adr/index.md` for historical traceability. Rejected: ADR-051 was never
+merged to `main` — it existed only inside this still-open PR — so there is no shared
+history to preserve a tombstone against; this research.md entry and the PR's own review
+thread already carry that record. A permanent index row for a document that never
+reached the shared `docs/adr/` history the index describes would misrepresent what the
+index is for.

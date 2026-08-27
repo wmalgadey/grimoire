@@ -46,14 +46,20 @@
   Assumptions bullets added for the merge are all bounded and testable. `plan.md` and
   `tasks.md` were deleted per the user's request at that point and were regenerated fresh
   against this merged spec by the subsequent `/speckit-plan` pass; unlike the original spec,
-  this one needed a new ADR — originally drafted as "ADR-035", extending ADR-017 and
-  ADR-028 without changing either's status (Constitution v2.0.0's Invalidation test; not
-  ADR-030, which turned out to be retrieval-only and unaffected — see spec.md's Assumptions
-  section and research.md R7/R11). A second, independent, larger ADR restructuring later
-  superseded ADR-028 wholesale with a new, differently-scoped `main` ADR-035 and deprecated
-  ADR-017 entirely, which forced this feature's own ADR to be renumbered to **ADR-051** and
-  narrowed to extend `main`'s ADR-035 instead — a reconciliation, not a requirements change
-  (research.md R12).
+  this one initially needed a new ADR — originally drafted as "ADR-035", extending
+  ADR-017 and ADR-028 without changing either's status (Constitution v2.0.0's
+  Invalidation test; not ADR-030, which turned out to be retrieval-only and unaffected —
+  see spec.md's Assumptions section and research.md R7/R11). A second, independent,
+  larger ADR restructuring later superseded ADR-028 wholesale with a new,
+  differently-scoped `main` ADR-035 and deprecated ADR-017 entirely, which forced this
+  feature's own ADR to be renumbered to "ADR-051" and narrowed to extend `main`'s
+  ADR-035 instead (research.md R12). The PR author's own review then established, and
+  Constitution v2.1.0's new "Guarded tool surface ADR-triggering test" now codifies, that
+  this content never needed a dedicated ADR in the first place — it is feature content
+  under the already-Accepted ADR-006, not a structural boundary — so ADR-051 was
+  retracted and its two rules recorded as Feature-Scoped Invariants in `plan.md` instead
+  (research.md R13). This feature now needs **no new ADR**, a third and final
+  reconciliation of the same underlying question, not a requirements change.
 - **2026-08-25, second `/speckit-clarify` pass (post-merge).** Two high-impact open design
   points issue #201 itself flagged as unresolved were resolved and recorded in spec.md's
   Clarifications: the write primitive's scope (all three of Ingest/Query/Lint, not Lint
