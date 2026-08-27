@@ -1,5 +1,8 @@
 ---
-status: accepted
+status: superseded
+supersedes: null
+superseded_by: [ADR-036]
+reason: null
 ---
 
 # ADR-002: Ingest Agent Execution Model
