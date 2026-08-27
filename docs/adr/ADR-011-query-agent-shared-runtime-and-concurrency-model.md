@@ -1,5 +1,8 @@
 ---
-status: accepted
+status: superseded
+supersedes: null
+superseded_by: [ADR-044, ADR-045, ADR-046, ADR-047]
+reason: null
 ---
 
 # ADR-011: Shared Agent Runtime, Streaming, and Query Concurrency Model
