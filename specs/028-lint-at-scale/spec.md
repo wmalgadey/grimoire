@@ -43,7 +43,7 @@
   for the narrower, pre-merge scope) had just been deleted and this feature restarted
   planning from this spec — see Assumptions for what that implied for the ADR gate. (Both
   now exist again in this PR, regenerated against the merged spec by the subsequent
-  `/speckit-plan` pass and ADR-035.)
+  `/speckit-plan` pass and ADR-051.)
 
 ### Session 2026-08-25 (continued, post-merge)
 
@@ -118,12 +118,14 @@ how much of the wiki that run actually covered.
 
 ### User Story 3 - A log entry can be written without re-emitting the whole file (Priority: P1)
 
-Ingest, Query, and Lint each write `log.md` to record their own actions (ADR-028) — Lint's
+Ingest, Query, and Lint each write `log.md` to record their own actions (agent-exclusive
+authorship, ADR-035) — Lint's
 own instructions additionally have it read and write `log.md` as part of reconciling
 `index.md` and `log.md` and recording page deletions. Today, adding one entry requires an
 agent to reproduce `log.md`'s entire existing content inside the write call, because the only
-write primitive is whole-file `write_file` and the prepend-ordering guarantee (ADR-028)
-requires the proposed content to end with the current content byte-for-byte. On the
+write primitive is whole-file `write_file` and the prepend-ordering guarantee (the
+activity-log write contract) requires the proposed content to end with the current content
+byte-for-byte. On the
 self-hosted deployment `log.md` has grown to ~128KB / ~35k tokens, which already exceeds what
 an agent is allowed to produce in one response — log writes now fail deterministically for
 Ingest today (issue #201), and Lint's own write path depends on the identical mechanism. An
@@ -152,8 +154,8 @@ do it.
    size, not to `log.md`'s total size.
 3. **Given** a malformed entry (wrong heading shape, or no body paragraph following it),
    **When** an agent submits it through the new write path, **Then** the write is denied for
-   the same structural reasons ADR-028 already defines — the new write path does not weaken
-   any existing format guarantee.
+   the same structural reasons the activity-log format contract already defines — the new
+   write path does not weaken any existing format guarantee.
 4. **Given** two agents race to write a `log.md` entry at nearly the same time, **When**
    both writes are evaluated, **Then** neither entry is lost or silently overwritten — the
    writes are serialized so each agent's entry is prepended onto the latest content in
@@ -265,8 +267,8 @@ criterion, per Constitution v1.12.0's lower-stakes tiering (see SC-004/SC-005).
   output-token cost of one entry write MUST be proportional to the entry's own size, not to
   `log.md`'s total size, for all three agents.
 - **FR-011**: The new write primitive MUST continue to enforce every structural guarantee
-  ADR-028/ADR-017 already place on `log.md` writes — prepend ordering, the heading-pattern
-  check, and the non-empty-body-paragraph check — unweakened.
+  the activity-log format contract already places on `log.md` writes — prepend ordering, the
+  heading-pattern check, and the non-empty-body-paragraph check — unweakened.
 - **FR-012**: The new write primitive MUST guarantee no `log.md` entry is lost or silently
   overwritten under concurrent writers — two agents racing to write are serialized so each
   entry lands, in lock-acquisition order, onto the latest content. This is the safety
@@ -301,8 +303,9 @@ criterion, per Constitution v1.12.0's lower-stakes tiering (see SC-004/SC-005).
 - **Findings Report**: Existing concept (per spec 013) — the agent's final output describing
   what it found across the three Finding Categories. Unchanged in shape by this feature;
   what changes is how much of the wiki informed it and whether that scope is now stated.
-- **Log Entry**: One agent-authored addition to `log.md` (ADR-028: a `## [date] Title | ...`
-  heading followed by at least one body paragraph), written by Lint, Ingest, or Query. This
+- **Log Entry**: One agent-authored addition to `log.md` (the activity-log format contract: a
+  `## [date] Title | ...` heading followed by at least one body paragraph), written by Lint,
+  Ingest, or Query. This
   feature changes how an entry is committed to disk (a bounded-cost write primitive), not its
   shape, its ordering guarantee, or what triggers an agent to write one.
 
@@ -356,7 +359,7 @@ criterion, per Constitution v1.12.0's lower-stakes tiering (see SC-004/SC-005).
   primitive, with the same reasons as before; and 100% of concurrent writes to `log.md`
   leave every entry intact — none lost, none silently overwritten — regardless of write
   timing. *(Deterministic harness guarantee — the new primitive must not weaken any
-  structural guarantee ADR-028/ADR-017 already established, and must uphold the same
+  structural guarantee the activity-log format contract already established, and must uphold the same
   no-lost-writes safety property `ReadWrite` mode's compare-and-swap check provides, by a
   different, lock-serialized mechanism — see research.md R8.)*
 
@@ -405,39 +408,41 @@ criterion, per Constitution v1.12.0's lower-stakes tiering (see SC-004/SC-005).
   verified, consistent with the same cost-consciousness that motivated the v1.12.0 amendment
   and the removal of 19 lower-stakes eval scenarios project-wide (ADR-033).
 - **This feature required a new ADR**, reversing the earlier (pre-merge) conclusion that
-  none was needed — drafted and Accepted as ADR-035. FR-010's write primitive changes the
-  guarded tool contract (a new `write_file` call-shape parameter, not a new value on the
+  none was needed — drafted and Accepted as **ADR-051** (originally drafted as "ADR-035";
+  renumbered after a name collision with an independent, differently-scoped ADR-035 that
+  landed on `main` mid-flight — see below). FR-010's write primitive changes the guarded
+  tool contract (a new `write_file` call-shape parameter, not a new value on the
   policy-level `WriteMode` enum — see research.md R7 and FR-010's updated wording), which
   per Constitution Principle III needed an Accepted ADR before `/speckit-tasks` could run,
-  exactly as issue #201 itself anticipated. Contrary to that initial anticipation — and
-  reworked again after Constitution v2.0.0 landed on `main` mid-flight (retiring partial
-  `Amends`/`Amended by` for new ADRs; see below) — ADR-035 **extends** ADR-017
-  (format-validation entry point) and ADR-028 (prepend-ordering mechanism) without changing
-  either ADR's status, and touches neither ADR-030 (scoped entirely to retrieval —
-  `search_files`, ranged `read_file`, read-only `batch` — and never touching `write_file`)
-  nor ADR-011 (all three per-agent tool registries already declare the identical shared
-  `WriteFileDefinition` constant, so widening its schema reaches Ingest, Query, and Lint at
-  once with no registry-file change and no registry-scope decision to record — unlike
-  ADR-030 R6, which deliberately scoped three genuinely new tools to Lint only).
+  exactly as issue #201 itself anticipated. ADR-051 **extends** `main`'s ADR-035
+  (agent-exclusive activity-log authorship, which itself wholly supersedes the original
+  ADR-028) without changing ADR-035's status, and touches neither ADR-030 (scoped entirely
+  to retrieval — `search_files`, ranged `read_file`, read-only `batch` — and never touching
+  `write_file`) nor ADR-011's successors (all per-agent tool registries already declare the
+  identical shared `WriteFileDefinition` constant, so widening its schema reaches Ingest,
+  Query, and Lint at once with no registry-file change and no registry-scope decision to
+  record — unlike ADR-030 R6, which deliberately scoped three genuinely new tools to Lint
+  only).
 - **Constitution v2.0.0 (2026-08-25) landed on `main` while this feature was in flight**,
   requiring single-aspect ADRs and retiring partial `Amends`/`Amended by` for ADRs drafted
   from that amendment forward, in favor of an Invalidation test: does the new decision
-  reverse, narrow, or contradict what an earlier ADR decided? ADR-035 does not, for either
-  ADR-017 or ADR-028, so it is an extension under this test — its frontmatter carries
-  `supersedes: null`, and neither ADR-017 nor ADR-028's own status changed. See research.md
-  R11 for the full rationale and what stayed on the older, grandfathered convention (the
-  ADR-028/ADR-031 gap-fix below, which predates v2.0.0 on both sides).
-- **A pre-existing ADR bidirectional-linking gap, found while researching this merge, should
-  be closed by that new ADR rather than left standing.** ADR-028's own "O4 — instruction
-  files" mechanism section states, as part of its Accepted decision content, that "Lint never
-  writes the activity log." That is no longer true: ADR-031 (accepted after ADR-028) gives
-  Lint full write authority over the whole wiki, including `log.md`
-  (`agents/lint/system-prompt.md` now extensively reads and writes it), and ADR-031's own
-  header text acknowledges "ADR-028's prepend ordering binds Lint's writes" — but ADR-031
-  declares itself as amending only ADR-017, not ADR-028, and ADR-028's status header carries
-  no "Amended by ADR-031" entry, nor does `docs/adr/index.md`. This is the one-sided-link
-  failure mode Constitution Principle III's "ADR Status Maintenance" section exists to
-  prevent. Recorded here so the planning phase does not silently inherit it; the new ADR this
-  feature drafts amends ADR-028 anyway (for the prepend primitive), which is the natural,
-  minimal place to also add the missing link back to ADR-031, rather than opening a separate,
-  unrelated ADR just to fix a status header.
+  reverse, narrow, or contradict what an earlier ADR decided? This feature's ADR does not,
+  for the ADR it extends, so it is an extension under this test — its frontmatter carries
+  `supersedes: null`. See research.md R11 for that first correction's full rationale.
+- **A second, independent, much larger ADR restructuring later landed on `main`**, also
+  mid-flight, superseding the original ADR-028 wholesale with a new, differently-scoped
+  ADR-035 ("Agent-Exclusive Authorship of the Wiki Activity Log" — decides *who* may author
+  `log.md` content, not the prepend-ordering mechanism this feature's own ADR had drafted
+  under that same number) and deprecating ADR-017 entirely, reclassifying its
+  format-enforcement content as feature-scoped and moving it to a contract document rather
+  than an ADR. This forced two changes to this feature's own ADR, both purely
+  reconciliation, not a requirements change: renumbering "ADR-035" to the next free
+  number, **ADR-051**, and narrowing its Decision Outcome to keep only its genuine
+  guarded-tool-boundary-capability content (the schema addition and no-baseline dispatch
+  rule) — its format-validation and `index.md`-scope content, which had been modeled on the
+  now-deprecated ADR-017, moved into `contracts/log-prepend-write.md`, mirroring the exact
+  split the restructuring itself applied project-wide. The pre-existing ADR-028/ADR-031
+  bidirectional-linking gap this feature had separately identified and planned to close
+  (ADR-028's "O4" text claiming "Lint never writes the activity log," made false by ADR-031)
+  is now moot: ADR-028 is wholly Superseded by ADR-035, so a partial-link correction on a
+  fully-retired document serves no purpose. See research.md R12 for the full rationale.

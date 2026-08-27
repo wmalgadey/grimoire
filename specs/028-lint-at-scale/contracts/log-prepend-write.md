@@ -2,8 +2,11 @@
 
 Extends the existing `write_file` guarded tool (`ToolRegistry.WriteFileDefinition`,
 declared identically by `LintToolRegistry`, `IngestToolRegistry`, and `QueryToolRegistry`).
-Per ADR-035, this is a schema and dispatch-path addition to one existing tool — no new tool
-name, no new port, no new external system.
+Per ADR-051, this is a schema and dispatch-path addition to one existing tool — no new tool
+name, no new port, no new external system. The format-validation and scope rules this
+contract states (below) are feature-scoped content, not part of ADR-051's own decision —
+the same "format content lives in a contract, not the ADR" split ADR-035
+(agent-exclusive-activity-log-authorship) already established for the log's ordering rule.
 
 ## Tool call schema (JSON)
 
@@ -34,9 +37,9 @@ After — new, optional `mode`:
   declared in the JSON schema itself (`ToolRegistry.cs`), not merely accepted permissively
   by the executor.
 - `mode: "prepend"` is accepted for any target path, not only `log.md` — the same
-  concatenation mechanism applies generically; ADR-017/ADR-028's *format checks* remain
-  gated on the target being `log.md` specifically (unchanged — `index.md` and any other
-  path are unaffected, ADR-035 R4).
+  concatenation mechanism applies generically; the activity-log *format checks* below
+  remain gated on the target being `log.md` specifically (unchanged — `index.md` and any
+  other path are unaffected, "What does not change" below).
 
 ## Validation, in order (prepend mode)
 
@@ -45,7 +48,8 @@ After — new, optional `mode`:
    (which deny `write_conflict_stale_read` against a prior `OnReadFile` baseline), a
    prepend write reads current content fresh, under the lock, at evaluation time — there is
    no baseline to compare against and no staleness scenario to deny (research.md R8).
-3. Heading/paragraph format validation, retargeted (ADR-035 R3): the supplied `content`
+3. Heading/paragraph format validation, retargeted (feature-scoped format content, not
+   ADR-051's decision — see the note at the top of this contract): the supplied `content`
    (the entry alone) must have, as its first non-blank line, a heading matching
    `^## \[\d{4}-\d{2}-\d{2}\] .+ \| .+$`, and at least one further non-blank line must
    follow within the entry. Denial reasons unchanged: `log_entry_malformed_heading`,
@@ -72,7 +76,7 @@ equivalent check.
 ## What does not change
 
 - `index.md`'s catalog-entry format check (`ValidateCatalogEntryFormat`) — entirely separate
-  mechanism, untouched, not reachable from any prepend-mode code path (ADR-035 R4).
+  mechanism, untouched, not reachable from any prepend-mode code path.
 - `ReadWrite`-mode writes to `log.md` or anywhere else — the CAS check, the frontmatter
   preservation check (for `FrontmatterOnly`-mode targets elsewhere in the wiki), and the
   atomic commit path are all byte-for-byte unchanged.

@@ -215,7 +215,7 @@ entirely unchanged.
 
 ## More Information
 
-Detailed rationale and code-level grounding: `specs/028-lint-at-scale/research.md` (R6-R11).
+Detailed rationale and code-level grounding: `specs/028-lint-at-scale/research.md` (R6-R12).
 Contract (format validation, `index.md` non-involvement, instruction-file changes):
 `specs/028-lint-at-scale/contracts/log-prepend-write.md`. Read alongside
 [ADR-035](ADR-035-agent-exclusive-activity-log-authorship.md) (who may author activity-log

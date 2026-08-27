@@ -25,7 +25,7 @@ dotnet test backend/tests/Grimoire.IntegrationTests --configuration Release
 ```
 
 Expected: green. The read-side (`ConsideredPaths`/`WikiCoverage`) introduces no Boundary
-Rule and is covered entirely by classicist integration tests. The write-side (ADR-035)
+Rule and is covered entirely by classicist integration tests. The write-side (ADR-051)
 **does** introduce two Boundary Rules — `Grimoire.ArchTests` MUST show both Red/Green
 probed (schema stays `additionalProperties: false`-compatible; no `OnReadFile` call is
 reachable from the prepend dispatch path) before any other write-side task was implemented.
@@ -40,7 +40,7 @@ reachable from the prepend dispatch path) before any other write-side task was i
 | `list_files` alone doesn't count as coverage | Trigger a run where the agent lists but never opens a page | That page is absent from `ConsideredPaths` / not counted toward `PagesConsidered` |
 | No regression on a small wiki | Run against a wiki small enough for the old whole-wiki read (e.g., the `lint-seeded-defects` base fixture) | Run time and thoroughness are unchanged from before this feature (FR-007) |
 
-### Spot checks worth doing by hand — write side (ADR-035)
+### Spot checks worth doing by hand — write side (ADR-051)
 
 | Check | How | Expected |
 |---|---|---|

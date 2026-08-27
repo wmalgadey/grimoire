@@ -256,3 +256,74 @@ already applied when v1.12.0 landed mid-flight (R5 above) — and because the us
 request that triggered this rebase ("überprüfe die spec und vor allem den plan anhand der
 anpassungen") asked directly for the plan to be checked against exactly this kind of
 upstream adjustment.
+
+## R12 — Second ADR restructuring (2026-08-27): this feature's ADR renumbered ADR-035 → ADR-051
+
+**Context**: A second, independent, and much larger ADR restructuring landed on `main`
+while this feature was still in flight — separate from, and later than, the Constitution
+v2.0.0 amendment R11 documents above. That restructuring: (1) superseded the original
+ADR-028 ("Agent-Owned Activity Log — Prepend-Only Ordering and Removal of Harness
+Authorship") wholesale with a new ADR, also numbered **ADR-035**, but decisively
+differently scoped — "Agent-Exclusive Authorship of the Wiki Activity Log," which decides
+*who* may author `log.md` content (the agents, exclusively, structurally enforced by
+removing `Grimoire.AgentRuntime.WikiLog` from the guarded-write-boundary allow-list), not
+the prepend-ordering mechanism this feature's own ADR had been drafted under that same
+number to extend; and (2) deprecated ADR-017 ("Structural Format Enforcement for `log.md`
+and `index.md` Entries") entirely, with `status: deprecated` and a `reason` explaining that
+its format-enforcement content is feature-scoped, owned by
+`specs/025-agent-owned-log/contracts/activity-log-write-contract.md`, not an architectural
+decision. `main`'s new ADR-035 makes this explicit in its own "More Information" section:
+"The prepend-only ordering check on activity-log writes is deliberately **not** decided
+here: it is feature-scoped format content whose contract lives in
+[the activity-log write contract] ... not an architectural decision."
+
+This collided directly with this feature's own ADR, which had been drafted (post-R11) as
+"ADR-035, extending ADR-017 and ADR-028" — the same number `main` had independently
+assigned to an unrelated decision, and a scope (format validation, `index.md` non-
+involvement) that `main`'s own restructuring had just relegated to contract-document status
+for the *identical* content class.
+
+**Decision**: This feature's ADR was renumbered to **ADR-051** (the next free number after
+ADR-050) and rewritten under the Invalidation test (Constitution Principle III) to:
+
+- Re-point its "Extends" note from the now-Superseded ADR-028 / now-Deprecated ADR-017 to
+  `main`'s new ADR-035 (agent-exclusive authorship) — the harness gains a cheaper way to
+  *commit* an agent-authored entry, never authorship of it, so this is still a pure
+  extension, no supersession, of the ADR that now actually governs the log's authorship
+  question.
+- Narrow its Decision Outcome to keep only the two rules that are genuinely
+  guarded-tool-boundary-capability material: R1 (the `write_file` schema gains an optional
+  `mode` parameter) and R2 (no-baseline, lock-serialized prepend dispatch) — the two
+  Boundary Rules that gate Phase 0 of `tasks.md`.
+- Drop what had been R3 (format-validation retargeting) and R4 (`index.md` non-involvement)
+  as separately-tagged ADR rules. By the exact same logic the restructuring itself applied
+  to ADR-017 project-wide, this content is feature-scoped format/scope content, not a
+  guarded-tool-boundary decision — it now lives in
+  `specs/028-lint-at-scale/contracts/log-prepend-write.md` as plain contract prose, cross-
+  referencing this ADR rather than being decided by it.
+- Drop the previously-planned ADR-028/ADR-031 one-sided-link gap-fix (R9/R10 above). It is
+  now moot: ADR-028 is wholly Superseded, so a partial-link correction on a fully-retired
+  document serves no purpose to a reader, who is directed to `main`'s ADR-035 instead.
+
+**Rationale**: this is the same "which content is ADR-worthy vs. contract-worthy" line
+`main`'s own restructuring drew, applied consistently to this feature's ADR rather than
+carving out an exception for it. ADR-030 and ADR-016 remain the positive precedent (a
+guarded-tool *capability* change — new tool, new schema field, new dispatch branch — is
+legitimate ADR material); ADR-017's deprecation is the negative precedent (a pure
+format/content rule for one file's shape is not, once a contract document exists to own
+it). Every reference to "ADR-035" in this feature's own spec/plan/data-model/contract
+documents that meant *this feature's* ADR was renamed to ADR-051 accordingly; references to
+"ADR-035" that mean `main`'s agent-exclusive-authorship ADR were left as ADR-035 and,
+where ambiguous, disambiguated with "`main`'s ADR-035" or similar. R9's and R10's own
+"amends ADR-028"/"amends ADR-017" language (written under the pre-R12 numbering) remains in
+this document unedited, as the historical record of what was decided before this second
+restructuring landed — this project's established append-only convention for research.md
+(R5's treatment of the v1.12.0 amendment; R11's own treatment of R9/R10 for the *first*
+restructuring).
+
+**Alternative rejected**: keeping this feature's ADR at number "035" and asking the
+restructuring's authors to renumber their own new ADR instead. Rejected — `main`'s
+restructuring had already merged by the time this rebase happened; renumbering a
+merged, Accepted ADR on `main` to accommodate an unmerged feature branch would be exactly
+backwards, and ADR numbers are permanent once assigned (Constitution Principle III,
+"Lifecycle and frontmatter contract").

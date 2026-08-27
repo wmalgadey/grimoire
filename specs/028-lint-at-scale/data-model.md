@@ -112,7 +112,7 @@ generates.
 
 ---
 
-## Write-side: the `write_file` prepend mode (ADR-035)
+## Write-side: the `write_file` prepend mode (ADR-051)
 
 No new persisted entity. This is a **call-shape** addition to an existing tool, not a data
 model change — documented here because it changes what `content` means for one call shape,
@@ -139,8 +139,9 @@ and because it must not be confused with the pre-existing, unrelated policy-leve
 
 `log.md`'s `WriteRule.Mode` stays `ReadWrite` (per ADR-031's full-authority grant) — an
 agent *may* still send a full-content `mode: "replace"` write to `log.md` (expensive, but
-still correct and still subject to ADR-028's prepend-ordering check); `mode: "prepend"` is
-a cheaper alternative path to the same structural guarantee, not a policy restriction.
+still correct and still subject to the activity-log's prepend-ordering contract); `mode:
+"prepend"` is a cheaper alternative path to the same structural guarantee, not a policy
+restriction.
 
 ### Prepend-mode write assembly (transient, in-process, per-call)
 
@@ -153,9 +154,10 @@ No new persisted type. At dispatch time (`GuardedToolExecutor.ExecuteWriteFileAs
    no staleness scenario for a prepend to be stale *against*).
 3. Assembles `proposedContent = entry + currentContent` in-memory — never persisted in this
    intermediate form, only the final concatenation is committed.
-4. Runs the *same* `ValidateLogEntryFormat` heading/paragraph checks ADR-017/ADR-028 already
-   define, retargeted to validate `entry` directly (ADR-035 R3) rather than a `head`
-   subtracted from a whole-file `proposedContent`.
+4. Runs the *same* `ValidateLogEntryFormat` heading/paragraph checks the activity-log format
+   contract already defines (`specs/028-lint-at-scale/contracts/log-prepend-write.md`),
+   retargeted to validate `entry` directly rather than a `head` subtracted from a whole-file
+   `proposedContent`.
 5. Commits via the same atomic temp-file + `File.Move` path every write uses
    (`GuardedToolExecutor.WriteFileAtomicallyAsync`), then re-baselines via `OnWriteCommitted`
    exactly as today.
@@ -167,7 +169,7 @@ Agent's write_file call: {path: "log.md", mode: "prepend", content: "<entry only
   → GuardedToolExecutor.ExecuteWriteFileAsync forwards `mode` to
       SharedFileWriteGuard.EvaluateWriteAsync
   → SharedFileWriteGuard reads current log.md content under the lock (no baseline),
-      assembles entry + current, validates the entry directly (ADR-035 R3)
+      assembles entry + current, validates the entry directly (contracts/log-prepend-write.md)
   → GuardedToolExecutor.WriteFileAtomicallyAsync commits atomically (unchanged commit path)
   → GuardedToolExecutor.TouchedPaths / ActivityLogWritten updated exactly as any other
       successful log.md write (WikiLogCoverageObserver unaffected — research.md R10)
