@@ -1,5 +1,7 @@
 ---
-status: accepted
+status: superseded
+superseded_by: [ADR-037, ADR-038, ADR-039]
+reason: Bundled three independent aspects its own text named separately (event transport, run supervision, persistent queue), which had begun drifting apart via partial amendments. Re-decided as single-aspect ADR-037/038/039.
 ---
 
 # ADR-008: Agent Event Channel, Run Supervision, and Persistent Run Queue

@@ -1,5 +1,7 @@
 ---
-status: accepted
+status: superseded
+superseded_by: [ADR-036]
+reason: Multi-aspect and four times partially amended — its Decision Outcome still described exit-code result reporting that ADR-008 had replaced. The execution-model aspect is re-decided as current truth in ADR-036.
 ---
 
 # ADR-002: Ingest Agent Execution Model

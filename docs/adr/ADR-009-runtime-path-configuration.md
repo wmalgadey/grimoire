@@ -1,5 +1,7 @@
 ---
-status: accepted
+status: superseded
+superseded_by: [ADR-040]
+reason: One real decision buried under six partial cross-ADR amendment notes, and itself partially superseded by ADR-022 — reading it no longer yielded current truth. The path-composition aspect is re-decided in ADR-040.
 ---
 
 # ADR-009: Explicit Runtime Path Configuration and Consolidated Data Directory

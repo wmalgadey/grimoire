@@ -1,5 +1,7 @@
 ---
-status: accepted
+status: superseded
+superseded_by: [ADR-044, ADR-045, ADR-046, ADR-047]
+reason: Bundled roughly eight separable decisions, four of which later ADRs (013/014/015/030) had already carved out piecemeal. The still-live aspects are re-decided as single-aspect ADR-044/045/046/047.
 ---
 
 # ADR-011: Shared Agent Runtime, Streaming, and Query Concurrency Model

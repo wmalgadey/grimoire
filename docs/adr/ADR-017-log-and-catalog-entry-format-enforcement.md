@@ -1,5 +1,6 @@
 ---
-status: accepted
+status: deprecated
+reason: Feature-scoped format enforcement, not a system boundary or technology decision — the ADR self-limits to two exact-match files and its rules are owned by specs/014-wiki-storage-restructure/contracts/log-and-catalog-entry-format.md (log.md ordering later re-contracted by specs/025-agent-owned-log/contracts/activity-log-write-contract.md). Retired without replacement under Constitution v2.0.0 "Single-aspect ADRs; no feature content".
 ---
 
 # ADR-017: Structural Format Enforcement for `log.md` and `index.md` Entries
