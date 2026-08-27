@@ -1,8 +1,6 @@
 ---
 status: accepted
 supersedes: ADR-020
-superseded_by: []
-reason: null
 ---
 
 # ADR-050: Cross-Process CLI–Hub Coordination via OS-Level Locks

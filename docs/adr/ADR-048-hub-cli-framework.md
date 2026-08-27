@@ -1,8 +1,6 @@
 ---
 status: accepted
 supersedes: ADR-020
-superseded_by: []
-reason: null
 ---
 
 # ADR-048: Hub CLI Command Framework — Spectre.Console.Cli

@@ -1,8 +1,6 @@
 ---
 status: accepted
 supersedes: ADR-022
-superseded_by: []
-reason: null
 ---
 
 # ADR-043: Build-Distributed Agent Artifacts and Single Launch Mode

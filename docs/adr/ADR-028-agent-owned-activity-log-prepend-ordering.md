@@ -1,6 +1,5 @@
 ---
 status: superseded
-supersedes: null
 superseded_by: [ADR-035]
 reason: Authorship boundary re-decided as single-aspect ADR-035; the prepend-only ordering half is feature-scoped format content owned by specs/025-agent-owned-log/contracts/activity-log-write-contract.md, not an architectural decision.
 ---

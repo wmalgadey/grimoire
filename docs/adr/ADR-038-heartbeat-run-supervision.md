@@ -1,8 +1,6 @@
 ---
 status: accepted
 supersedes: ADR-008
-superseded_by: []
-reason: null
 ---
 
 # ADR-038: Heartbeat Liveness as the Sole Run-Failure-Detection Authority

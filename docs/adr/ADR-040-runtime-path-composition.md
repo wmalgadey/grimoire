@@ -1,8 +1,6 @@
 ---
 status: accepted
 supersedes: ADR-009
-superseded_by: []
-reason: null
 ---
 
 # ADR-040: Runtime Path Composition at One Explicit Configuration Point with Fail-Fast Validation

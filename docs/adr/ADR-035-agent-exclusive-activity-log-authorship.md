@@ -1,8 +1,6 @@
 ---
 status: accepted
 supersedes: ADR-028
-superseded_by: []
-reason: null
 ---
 
 # ADR-035: Agent-Exclusive Authorship of the Wiki Activity Log

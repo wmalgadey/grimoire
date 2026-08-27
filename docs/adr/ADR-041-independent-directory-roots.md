@@ -1,8 +1,6 @@
 ---
 status: accepted
 supersedes: ADR-022
-superseded_by: []
-reason: null
 ---
 
 # ADR-041: Independent Cwd-Anchored Directory Roots

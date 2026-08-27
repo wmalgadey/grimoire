@@ -1,8 +1,6 @@
 ---
 status: accepted
 supersedes: ADR-020
-superseded_by: []
-reason: null
 ---
 
 # ADR-049: Hub CLI In-Process Blocking Execution Against the Shared Composition Root

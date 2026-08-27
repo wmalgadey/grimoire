@@ -1,8 +1,6 @@
 ---
 status: accepted
 supersedes: ADR-011
-superseded_by: []
-reason: null
 ---
 
 # ADR-046: Query Dispatch — Bounded Concurrency, Immediate Rejection, and Interruption

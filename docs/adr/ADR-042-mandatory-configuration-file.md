@@ -1,8 +1,6 @@
 ---
 status: accepted
 supersedes: ADR-022
-superseded_by: []
-reason: null
 ---
 
 # ADR-042: Mandatory Configuration File as the Sole Source of Configuration Defaults

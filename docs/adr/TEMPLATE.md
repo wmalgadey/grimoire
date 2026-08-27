@@ -1,8 +1,12 @@
 ---
-status: proposed  # proposed | accepted | declined | deprecated | superseded
-supersedes: null  # the single ADR this one replaces, e.g. ADR-016, or null
-superseded_by: []  # filled in later, by whichever ADR(s) replace this one
-reason: null  # REQUIRED (short statement) if status is declined, or deprecated with no replacement; optional otherwise
+status: proposed
+# Frontmatter contract — a field that does not apply is OMITTED, never written as null/empty:
+#   status         REQUIRED. One of: proposed | accepted | declined | deprecated | superseded.
+#   supersedes     Only when this ADR replaces another: the single ADR it replaces (e.g. ADR-016).
+#   superseded_by  Only once replaced: the ADR(s) that replaced this one, e.g. [ADR-041, ADR-042].
+#                  Added to THIS file in the same change that creates the replacing ADR(s).
+#   reason         REQUIRED whenever the ADR leaves accepted/proposed (superseded, deprecated,
+#                  declined): a short statement of WHY it was invalidated or rejected.
 ---
 
 # ADR-NNN: <One-line title naming the single aspect this ADR decides>

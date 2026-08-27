@@ -1,8 +1,6 @@
 ---
 status: accepted
 supersedes: ADR-002
-superseded_by: []
-reason: null
 ---
 
 # ADR-036: Agent Child-Process Spawn Contract

@@ -1,8 +1,6 @@
 ---
 status: accepted
 supersedes: ADR-011
-superseded_by: []
-reason: null
 ---
 
 # ADR-045: Token-Level Answer Streaming over the Agent Event Channel

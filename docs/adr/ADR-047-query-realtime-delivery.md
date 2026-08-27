@@ -1,8 +1,6 @@
 ---
 status: accepted
 supersedes: ADR-011
-superseded_by: []
-reason: null
 ---
 
 # ADR-047: Query Realtime Delivery over a Dedicated SignalR Connection

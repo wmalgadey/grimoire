@@ -1,8 +1,7 @@
 ---
 status: superseded
-supersedes: null
 superseded_by: [ADR-041, ADR-042, ADR-043]
-reason: null
+reason: Bundled six aspects while partially amending five other ADRs and partially superseding a sixth — the worst partial-amendment carrier in the collection. Re-decided as single-aspect ADR-041/042/043.
 ---
 
 # ADR-022: Minimal Directory Configuration Surface — Three Roots, Mandatory Configuration File, and Build-Distributed Agent Artifacts

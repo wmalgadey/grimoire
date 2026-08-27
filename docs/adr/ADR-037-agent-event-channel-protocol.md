@@ -1,8 +1,6 @@
 ---
 status: accepted
 supersedes: ADR-008
-superseded_by: []
-reason: null
 ---
 
 # ADR-037: Agent Event Channel Protocol — NDJSON Event Stream on stdout

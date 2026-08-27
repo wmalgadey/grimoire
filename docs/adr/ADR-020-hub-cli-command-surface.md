@@ -1,8 +1,7 @@
 ---
 status: superseded
-supersedes: null
 superseded_by: [ADR-048, ADR-049, ADR-050]
-reason: null
+reason: Bundled the framework choice, the execution model, and the concurrency locking; ADR-023 had already proven the aspects separate cleanly. Re-decided as single-aspect ADR-048/049/050.
 ---
 
 # ADR-020: Hub CLI Command Surface — Framework, Dispatch, and In-Process Blocking Execution

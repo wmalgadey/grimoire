@@ -1,8 +1,6 @@
 ---
 status: accepted
 supersedes: ADR-008
-superseded_by: []
-reason: null
 ---
 
 # ADR-039: Persistent FIFO Run Queue in the Operational-State Database
