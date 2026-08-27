@@ -1,5 +1,8 @@
 ---
-status: accepted
+status: superseded
+supersedes: null
+superseded_by: [ADR-048, ADR-049, ADR-050]
+reason: null
 ---
 
 # ADR-020: Hub CLI Command Surface — Framework, Dispatch, and In-Process Blocking Execution

@@ -138,10 +138,10 @@ Rules introduced by this ADR, classified per Constitution Principle III:
 
 ## More Information
 
-- [ADR-041](ADR-041-independent-cwd-anchored-directory-roots.md) owns the root model:
+- [ADR-041](ADR-041-independent-directory-roots.md) owns the root model:
   which independent cwd-anchored roots exist, their switches, and the sub-path anchoring
   graph this composition point resolves.
-- [ADR-042](ADR-042-mandatory-config-file-no-code-defaults.md) owns the default-value
+- [ADR-042](ADR-042-mandatory-configuration-file.md) owns the default-value
   policy: the mandatory configuration file as the sole source of default paths.
 - [ADR-036](ADR-036-agent-child-process-spawn-contract.md) owns the agent spawn
   contract through which resolved paths reach agent processes.

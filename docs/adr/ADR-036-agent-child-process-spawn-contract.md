@@ -110,7 +110,7 @@ that touched its aspect: result reporting via events instead of an awaited exit 
 (originally ADR-008, now [ADR-037](ADR-037-agent-event-channel-protocol.md) /
 [ADR-038](ADR-038-heartbeat-run-supervision.md)) and the single launch mode from
 build-distributed artifacts (originally ADR-022, now
-[ADR-043](ADR-043-build-distributed-agent-artifacts-single-launch-mode.md)).
+[ADR-043](ADR-043-build-distributed-agent-artifacts.md)).
 
 Read alongside: [ADR-004](ADR-004-credential-scoping.md) — credential injection into the
 child environment; [ADR-034](ADR-034-path-and-subprocess-containment-hardening.md) —
