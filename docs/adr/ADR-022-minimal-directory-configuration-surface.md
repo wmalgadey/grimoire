@@ -1,5 +1,8 @@
 ---
-status: accepted
+status: superseded
+supersedes: null
+superseded_by: [ADR-041, ADR-042, ADR-043]
+reason: null
 ---
 
 # ADR-022: Minimal Directory Configuration Surface — Three Roots, Mandatory Configuration File, and Build-Distributed Agent Artifacts
