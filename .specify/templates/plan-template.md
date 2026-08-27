@@ -53,6 +53,15 @@
   using the Mandatory ADR format (docs/adr/TEMPLATE.md — Constitution Principle III)
   BEFORE finalizing this plan.
 
+  GUARDED TOOL SURFACE TEST (Constitution Principle III): if this feature changes the
+  guarded tool surface (Principle V), it needs a new ADR only if it (a) adds a new tool
+  *name* callable by an agent, (b) adds a new value to, or changes the semantics of, a
+  policy-level access enum (e.g. WriteMode), or (c) adds a new external-system
+  dependency (triggers the HEXAGONAL GATE below). An optional call-shape parameter added
+  to an already-existing tool, defaulting to current behavior and granting no capability
+  the tool did not already permit, is feature content — no new ADR, not even one using
+  the Extends ADR-N pattern; cover it as a Feature-Scoped Invariant instead.
+
   HEXAGONAL GATE (Constitution Principle I): If this feature adds a dependency on a
   new external system (LLM API, spawned process, subprocess converter, network
   service), the plan and its ADR MUST name: the port interface, the adapter namespace

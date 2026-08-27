@@ -930,6 +930,34 @@ the Mandatory ADR format (below) in `docs/adr/` as part of the `/speckit-plan` o
 The drafted ADR MUST reach **Accepted** status (via review or explicit author
 sign-off) before `/speckit-tasks` is invoked.
 
+**Guarded tool surface ADR-triggering test.** For changes to the guarded tool surface
+specifically (Principle V's guarded tool boundary — the tools an agent may invoke and
+what each one permits), a new ADR is required only when the change does at least one
+of the following:
+
+(a) introduces a new tool *name* callable by an agent;
+(b) adds a new value to, or changes the semantics of an existing value on, a
+    policy-level enum governing what class of edit or access a path allows (e.g.
+    `Grimoire.Domain.Guardrails.WriteMode`);
+(c) introduces a dependency on a new external system (Principle I's `New boundaries
+    via ADR`).
+
+A change that does none of these is feature content, not a structural boundary — most
+concretely, an optional call-shape parameter added to an *already-existing* tool that
+defaults to today's behavior and grants no capability the tool's existing contract did
+not already permit. Such a change needs no new ADR at all, not even one using the
+`Extends ADR-N` pattern below: the guarded tool boundary it operates inside of is
+already decided by whichever ADR established that boundary (e.g. ADR-006), and the
+change itself is verified as a Feature-Scoped Invariant (below) through an ordinary
+classicist test, never a Phase 0 structural test.
+
+Rationale: without a bright line, every widening of an already-decided tool's call
+shape reads as "a new structural boundary" under the general trigger above, producing
+an ADR per parameter rather than per genuine decision — an ADR that decides nothing a
+reader could not already infer from the tool's existing contract. The three triggers
+name what actually changes what the guarded boundary permits; anything short of them
+is the feature using capacity the boundary already granted.
+
 **Single-aspect ADRs; no feature content.** Each ADR MUST decide exactly one aspect —
 one genuine system boundary or one technology choice — per the existing "ADRs only for
 real system boundaries or technology decisions" scope (Principle I's `New boundaries
@@ -1357,4 +1385,8 @@ the amendment closes a live defect in the merged feature, not when it adds a new
 or ceremony. (Concretely: the final-phase completeness-audit task introduced in v1.5.0 is
 absent from specs 001–009, all authored earlier; that absence is not a violation.)
 
+<<<<<<< HEAD
 **Version**: 2.0.1 | **Ratified**: 2026-06-23 | **Last Amended**: 2026-09-05
+=======
+**Version**: 2.1.0 | **Ratified**: 2026-06-23 | **Last Amended**: 2026-08-27
+>>>>>>> 8e89a35 (docs: amend constitution to v2.1.0 (guarded tool surface ADR-triggering test))
