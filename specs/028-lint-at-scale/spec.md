@@ -63,6 +63,28 @@
   (ADR-016) were both added as modes/parameters on an existing tool rather than new tools,
   keeping the tool count flat.
 
+### Session 2026-08-27
+
+- Q: Should `log.md`'s format checks (heading pattern, body-paragraph presence) remain a
+  hard deny, or become a monitored-only signal — and if relaxed, for which write path(s)?
+  → A: monitor-only, for both the existing full-content (`mode: "replace"`) write path and
+  the new prepend-mode path — not scoped to just this feature's new capability. Rationale
+  (user's own framing): the harness's job is to supply guarded tools and system-level
+  security around them (which paths/modes an agent may touch, concurrency safety); what a
+  log entry's content or shape looks like is the agent's judgment (Constitution Principle
+  V), not something backend code should validate by denial.
+- Q: Should the prepend-only ordering check (the proposed write must end with the current
+  content, byte-for-byte) also become monitor-only, or stay a hard deny as the one
+  structural/security-relevant exception? → A: also monitor-only — allowed through and
+  recorded, not denied. This reverses FR-011/FR-012's prior framing of prepend ordering as
+  an unweakened deterministic guarantee (see FR-011/FR-012, revised below).
+- Q: When a `log.md` write no longer matches the expected shape (wrong order, malformed
+  heading, or missing paragraph), what should the harness do, mechanically? → A: commit
+  the write exactly as submitted (the harness never blocks or alters agent-authored
+  content), and emit both a structured log event and a counter metric identifying which
+  check(s), if any, the write deviated from — giving the user-reported correction loop
+  (Constitution Principle II) a concrete signal to act on.
+
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - A health-check run over the full wiki completes (Priority: P1)
@@ -152,10 +174,13 @@ do it.
 2. **Given** `log.md` continues to grow with every run, **When** an agent submits one new
    entry, **Then** the output-token cost of that write stays proportional to the entry's own
    size, not to `log.md`'s total size.
-3. **Given** a malformed entry (wrong heading shape, or no body paragraph following it),
-   **When** an agent submits it through the new write path, **Then** the write is denied for
-   the same structural reasons the activity-log format contract already defines — the new
-   write path does not weaken any existing format guarantee.
+3. **Given** an entry that does not match the activity-log format contract's expected shape
+   (wrong prepend order, wrong heading shape, or no body paragraph following it), **When**
+   an agent submits it through either write path (`mode: "replace"` or `mode: "prepend"`),
+   **Then** the write still commits exactly as submitted, and the harness emits a
+   structured log event and increments a counter metric identifying which check(s) the
+   write deviated from — content and structure remain the agent's judgment (Constitution
+   Principle V), monitored rather than denied (Clarifications, 2026-08-27).
 4. **Given** two agents race to write a `log.md` entry at nearly the same time, **When**
    both writes are evaluated, **Then** neither entry is lost or silently overwritten — the
    writes are serialized so each agent's entry is prepended onto the latest content in
@@ -266,17 +291,23 @@ criterion, per Constitution v1.12.0's lower-stakes tiering (see SC-004/SC-005).
   `log.md` without reproducing the file's existing content in the write call. The
   output-token cost of one entry write MUST be proportional to the entry's own size, not to
   `log.md`'s total size, for all three agents.
-- **FR-011**: The new write primitive MUST continue to enforce every structural guarantee
-  the activity-log format contract already places on `log.md` writes — prepend ordering, the
-  heading-pattern check, and the non-empty-body-paragraph check — unweakened.
+- **FR-011**: `log.md` writes, on either write path (`mode: "replace"` or `mode: "prepend"`),
+  MUST NOT be denied for failing the activity-log format contract's structural shape —
+  prepend ordering, the heading-pattern check, or the non-empty-body-paragraph check. A
+  write that deviates from that shape MUST still commit exactly as submitted (per
+  Clarifications, 2026-08-27): content and structure are the agent's judgment (Constitution
+  Principle V), not a harness-enforced denial. This reverses this feature's own earlier
+  framing (and predates it: the check being relaxed is pre-existing, shipped behavior from
+  spec 025/ADR-028, not something this feature introduced).
 - **FR-012**: The new write primitive MUST guarantee no `log.md` entry is lost or silently
-  overwritten under concurrent writers — two agents racing to write are serialized so each
-  entry lands, in lock-acquisition order, onto the latest content. This is the safety
-  property the primitive must uphold, not a specific mechanism: for a full-content
-  (`ReadWrite`-mode) write, that mechanism remains the existing stale-write denial; for the
-  new primitive, the equivalent safety is satisfied by reading fresh content under the write
-  lock rather than by a denial path (see research.md R8) — there is no scenario where a
-  prepend can be "stale," since it never asserts anything about the file's prior content.
+  overwritten under concurrent writers — two agents racing to write are serialized by the
+  per-target lock so each entry lands, in lock-acquisition order, onto the latest content.
+  This concurrency-safety property is independent of FR-011's now-relaxed format/ordering
+  checks — it holds purely from lock-serialized, fresh-content-read dispatch (research.md
+  R8), never from a denial path, for either write mode. It is unaffected by, and MUST NOT be
+  confused with, FR-011: FR-012 is a structural harness guarantee (no writer's entry is ever
+  silently lost); FR-011 is about whether a *conforming-shape* write is required at all
+  (it is not).
 - **FR-013**: This feature's write-side fix is scoped to `log.md` only. `index.md` has the
   same whole-file-rewrite cost shape but is far smaller today; it is explicitly out of scope
   here and tracked as the same class of problem, deferred.
@@ -290,6 +321,12 @@ criterion, per Constitution v1.12.0's lower-stakes tiering (see SC-004/SC-005).
   new primitive instead of the current "read the whole file, then write your entry followed
   by exactly what you read" pattern — landing only the harness capability without this would
   leave Ingest's already-observed production failure (issue #201) unfixed.
+- **FR-016**: Every `log.md` write MUST be observable regardless of whether it conforms to
+  the activity-log format contract's expected shape: the harness MUST emit a structured log
+  event and increment a counter metric identifying which check(s) (prepend ordering, heading
+  pattern, paragraph presence), if any, a given write deviated from — giving the
+  user-reported correction loop (Constitution Principle II) a concrete signal, per
+  Clarifications 2026-08-27.
 
 ### Key Entities
 
@@ -354,14 +391,20 @@ criterion, per Constitution v1.12.0's lower-stakes tiering (see SC-004/SC-005).
   tokens proportional to the entry's own size — regardless of `log.md`'s existing size,
   including at the ~128KB / ~35k-token size already observed failing in production.
   *(Deterministic harness guarantee.)*
-- **SC-008**: 100% of `log.md` writes that violate an existing structural rule (wrong
-  ordering, malformed heading, missing body paragraph) are still denied under the new write
-  primitive, with the same reasons as before; and 100% of concurrent writes to `log.md`
-  leave every entry intact — none lost, none silently overwritten — regardless of write
-  timing. *(Deterministic harness guarantee — the new primitive must not weaken any
-  structural guarantee the activity-log format contract already established, and must uphold the same
-  no-lost-writes safety property `ReadWrite` mode's compare-and-swap check provides, by a
-  different, lock-serialized mechanism — see research.md R8.)*
+- **SC-008**: 100% of concurrent writes to `log.md` leave every entry intact — none lost,
+  none silently overwritten — regardless of write timing or which write mode either writer
+  used. *(Deterministic harness guarantee, FR-012 — upheld by lock-serialized dispatch, for
+  either write mode, independent of FR-011's now-monitor-only format/ordering checks; see
+  research.md R8.)*
+- **SC-009**: A `log.md` write that deviates from the activity-log format contract's
+  expected shape (wrong prepend order, malformed heading, missing body paragraph) is
+  visible to an operator on the same run it happens, without reading `log.md` by hand: it
+  commits as submitted and surfaces via the structured log event and counter metric FR-016
+  requires. *(Lower-stakes agent-judgment criterion per Constitution v1.12.0 Principle II
+  tiering — a malformed or misordered entry is a single, correctable wiki edit, not a
+  destructive or hard-to-reverse outcome; satisfied by the user-reported correction loop
+  reading these signals, not a mandatory eval suite. This reclassifies what was, before
+  Clarifications 2026-08-27, framed as a 100% deterministic denial guarantee.)*
 
 ## Assumptions
 

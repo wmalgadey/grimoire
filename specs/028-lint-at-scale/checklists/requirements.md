@@ -74,3 +74,17 @@
   still passes: the spec records *what was decided*, not incidental technical detail the
   spec author chose unprompted. All checklist items re-verified against the updated spec;
   still passing.
+- **2026-08-27, third `/speckit-clarify` pass.** Reviewing this feature's write-side design
+  directly, the PR author made a further architectural call: `log.md`'s format checks
+  (heading pattern, paragraph presence) and its prepend-only ordering check both move from
+  a hard deny to a monitor-only signal (structured log event + counter metric), for both
+  the existing full-content write path and this feature's new prepend-mode path — content
+  and structural shape are agent judgment (Constitution Principle V), not a harness denial.
+  This reverses FR-011's prior "unweakened" framing, splits the old FR-012/SC-008 into a
+  still-deterministic concurrency-safety guarantee (FR-012/SC-008, unaffected — lock
+  serialization, not content-shape checking, is what prevents lost writes) and a new
+  observability requirement (FR-016/SC-009, classified lower-stakes agent-judgment per
+  Constitution v1.12.0, satisfied by the correction loop). All checklist items re-verified
+  against the updated spec; still passing — the reclassification is expressed narratively
+  with a concrete observable signal (FR-016), not a vague adjective, and needs no numeric
+  threshold per the lower-stakes tier.
