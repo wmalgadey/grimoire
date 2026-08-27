@@ -5,14 +5,21 @@ Central overview of all Architecture Decision Records, per Constitution Principl
 whose status or existence changes — it is the single place to see which ADRs currently
 govern the codebase without opening every file.
 
-Status is one of exactly: `Accepted`, `Proposed`, `Deprecated`, `Superseded` (case-
-insensitive — ADR files' YAML frontmatter uses lowercase, e.g. `status: accepted`; this
-table uses Title Case for readability, not a distinct value). When an ADR supersedes or
-amends another, both status headers carry the link (`Supersedes ADR-NNN` /
+Status is one of exactly: `Accepted`, `Proposed`, `Declined`, `Deprecated`, `Superseded`
+(case-insensitive — ADR files' YAML frontmatter uses lowercase, e.g. `status: accepted`;
+this table uses Title Case for readability, not a distinct value). `Declined` was added in
+Constitution v2.0.0 for a `Proposed` ADR that was not accepted; no ADR below currently uses
+it. Per Constitution v2.0.0 ("ADR Status Maintenance"), every ADR drafted from that
+amendment forward carries its supersede link in frontmatter (`supersedes` / `superseded_by`
+/ `reason`, per `docs/adr/TEMPLATE.md`) and MUST supersede wholly, never in part — the
+`Amends`/`Amended by` link is retired for new ADRs. The rows below predate that amendment
+and are grandfathered under Governance's non-retroactivity clause: when an ADR here
+supersedes or amends another, both status headers carry the link (`Supersedes ADR-NNN` /
 `Superseded by ADR-NNN`, or `Amends ADR-NNN` / `Amended by ADR-NNN`) — see the individual
 ADR files for the authoritative header; this table mirrors it. Most relationships below are
 scoped — "in part", "this section only", a single table row — and leave the amended ADR
-`Accepted`, with the chain columns qualifying what still applies.
+`Accepted`, with the chain columns qualifying what still applies; this partial-scoping
+pattern is historical record, not a pattern for new ADRs to follow.
 
 **ADR-016 is the one exception, and the first of its kind here.** ADR-031 retires its core
 decision outright rather than scoping it: Lint no longer runs under a `frontmatter-only`

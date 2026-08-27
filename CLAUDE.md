@@ -11,16 +11,39 @@ All code, comments, documentation, and architectural artifacts must be written i
 
 Exception: Project-internal notes or personal development logs may use other languages if clearly marked, but all shared documentation, code comments, and specifications must be in English.
 
-**Verbatim user input is a record, not authored content.** A block that quotes what the
-user actually said — the `**Input**: User description:` field that `/speckit-specify`
-writes into `spec.md`, a quoted clarification answer, an issue excerpt — MUST be preserved
-in the language the user used, unedited. Translating it destroys the traceability the field
-exists for: it is evidence of the request, not a statement of the requirement. Everything
-*derived* from it — every requirement, scenario, acceptance criterion, and all authored
-prose around the quote — MUST be English, and that derived text is what contributors and
-reviewers read. Flagging a non-English verbatim quote as a language-policy violation is a
-false positive; the rule to apply to it is "is it marked as a quote and is everything
-derived from it in English?"
+**Verbatim user input is a record, not authored content.** A block that quotes what the user
+actually said — the `**Input**: User description:` field that `/speckit-specify` writes into
+`spec.md`, a quoted clarification answer, an issue excerpt — MUST be preserved in the language the
+user used, unedited. Translating it destroys the traceability the field exists for: it is evidence
+of the request, not a statement of the requirement. Everything *derived* from it — every
+requirement, scenario, acceptance criterion, and all authored prose around the quote — MUST be
+English, and that derived text is what contributors and reviewers read. Flagging a non-English
+verbatim quote as a language-policy violation is a false positive; the rule to apply to it is "is
+it marked as a quote and is everything derived from it in English?"
+
+## Markdown Formatting
+
+**Wrap long paragraphs for diff readability, but treat the width as an orientation, not a hard
+rule.** A paragraph written as one very long line is hard to review in a `git diff` or a terminal
+— the whole paragraph shows as a single changed line and reading it means scrolling horizontally.
+Wrap prose, rationale blocks, and prose list items to roughly 90-100 characters per line so diffs
+stay reviewable. This is guidance, not an enforced cap: never fracture a phrase mid-word or
+mid-clause just to hit the character count, and let a line run a little long rather than force
+an awkward break. Only break where markdown itself requires it otherwise: between paragraphs (a
+blank line), between list items, before/after headings, and inside fenced code blocks — a
+wrapped line inside a paragraph stays part of that paragraph; it is never a paragraph boundary
+and must not be read or generated as one.
+
+Weigh the trade-offs for the content at hand rather than applying this everywhere uniformly:
+wrapping helps diff review, but it can still split a `grep`/search match across two lines, and
+text copied or piped elsewhere can pick up the embedded newlines mid-sentence. For content that is
+dense with material that gets copied, grepped, or piped between tools — task artifacts, log
+entries, generated records, and verbatim-quoted user input — prefer a single unwrapped line per
+paragraph instead, since those failure modes matter more there than diff-scrolling does. Apply
+this to every markdown file in the repository — the constitution, ADRs, specs, plans, this file,
+and any other authored `.md` content — not just newly written ones; reflow a file's touched
+paragraphs to whichever convention fits its content when you next edit it for other reasons,
+rather than leaving an arbitrary mix.
 
 ## Document Map
 

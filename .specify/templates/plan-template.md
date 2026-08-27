@@ -49,7 +49,8 @@
 <!--
   ACTION REQUIRED: List every ADR that constrains this feature's implementation.
   If this feature introduces a new structural boundary, integration pattern, or
-  cross-cutting concern not covered by existing ADRs, draft a new MADR in docs/adr/
+  cross-cutting concern not covered by existing ADRs, draft a new ADR in docs/adr/
+  using the Mandatory ADR format (docs/adr/TEMPLATE.md — Constitution Principle III)
   BEFORE finalizing this plan.
 
   HEXAGONAL GATE (Constitution Principle I): If this feature adds a dependency on a
