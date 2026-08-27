@@ -388,3 +388,47 @@ history to preserve a tombstone against; this research.md entry and the PR's own
 thread already carry that record. A permanent index row for a document that never
 reached the shared `docs/adr/` history the index describes would misrepresent what the
 index is for.
+
+## R14 — Constitution amendment reverted: the existing Principle III test was already sufficient
+
+**Context**: R13's decision generalized the ADR-051 retraction into a constitution
+amendment (v2.0.0 → v2.1.0, a new "Guarded tool surface ADR-triggering test" subsection).
+The PR author reviewed this directly and rejected it: "I don't think we should ammend the
+constitution here, and i don't see why an adr, like the one you created is needed with
+Constitution 2.0.0" — and, on the added subsection's own text: "That is specific no reason
+for an adr! There are only two reasons 1. a new or changed system boundary 2. a new or
+changed technical desicion" and "Also no reason for an adr."
+
+**Decision**: Agreed. Constitution v2.0.0's existing Principle III language already states
+the complete test, verbatim: "Single-aspect ADRs; no feature content. Each ADR MUST decide
+exactly one aspect — one genuine system boundary or one technology choice..." R13's own
+three-part enumeration (new tool name / new-or-changed policy enum value / new external
+dependency) was not a new rule — it was a narrower restatement of this exact pre-existing
+two-part test, scoped to one recurring case. Codifying it as a standalone constitution
+subsection risked exactly the failure mode this whole feature's ADR history has been
+about: an overly specific rule that can drift from the general principle it was meant to
+illustrate, rather than the general principle itself doing the work. The constitution
+amendment is reverted in full: `.specify/memory/constitution.md` and
+`.specify/templates/plan-template.md` are restored byte-identical to their pre-amendment
+(v2.0.0) state.
+
+**Consequences**: ADR-051's retraction (R13) stands unchanged on its own merits — an
+optional, default-preserving call-shape parameter on an already-existing tool decides
+neither a new system boundary nor a new technology choice, so it still fails Principle
+III's existing test. Every artifact in this feature (`plan.md`, `spec.md`,
+`checklists/requirements.md`, `contracts/log-prepend-write.md`, `quickstart.md`) is
+reworded to cite that existing test directly, dropping every reference to "Constitution
+v2.1.0" or a "Guarded tool surface ADR-triggering test" that no longer exists.
+
+**Rationale**: the same proportionality concern that has run through this whole feature
+(research.md R5's eval footprint, R13's ADR retraction) applies one level up here: don't
+add governance ceremony beyond what a single feature's edge case actually needs. The
+existing two-part test already answered the question; a new, project-wide constitution
+subsection to restate it for one tool-surface case was itself the kind of unnecessary
+specificity the user has been pushing back on throughout.
+
+**Alternative rejected**: keeping the v2.1.0 amendment on the theory that a named worked
+example helps future authors apply the general test consistently. Rejected directly by
+the user — the general test is not, in their judgment, ambiguous enough to warrant a
+named special case, and a special case invites the same proliferating specificity this
+session's arc has otherwise been about removing.

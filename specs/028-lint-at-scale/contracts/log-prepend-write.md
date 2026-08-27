@@ -3,10 +3,11 @@
 Extends the existing `write_file` guarded tool (`ToolRegistry.WriteFileDefinition`,
 declared identically by `LintToolRegistry`, `IngestToolRegistry`, and `QueryToolRegistry`).
 This is a schema and dispatch-path addition to one existing tool — no new tool name, no
-new port, no new external system, and — per Constitution v2.1.0's "Guarded tool surface
-ADR-triggering test" (Principle III) — no new ADR: it operates inside the guarded tool
-boundary ADR-006 already decided, and its two rules (schema addition, no-baseline
-dispatch) are the Feature-Scoped Invariants FSI-1/FSI-2 in `plan.md`. The format-validation
+new port, no new external system, and — per Constitution Principle III's existing
+"Single-aspect ADRs; no feature content" test (one genuine system boundary or one
+technology choice, neither of which this changes) — no new ADR: it operates inside the
+guarded tool boundary ADR-006 already decided, and its two rules (schema addition,
+no-baseline dispatch) are the Feature-Scoped Invariants FSI-1/FSI-2 in `plan.md`. The format-validation
 and scope rules this contract states (below) are likewise feature content, mirroring the
 same "format content lives in a contract, not an ADR" split `main`'s ADR-035
 (agent-exclusive-activity-log-authorship) already established for the log's ordering rule.

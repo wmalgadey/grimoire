@@ -26,13 +26,13 @@ Direction B (harness-side sharding, read-side) remains explicitly not adopted (r
 R1). This feature introduces **no new ADR**. An ADR was drafted for the write-side fix
 (originally "ADR-035", renumbered ADR-051 after a numbering collision with `main`'s own
 new ADR-035) and reached Accepted status, but was retracted before merge: the PR author's
-review (research.md R13) established, and Constitution v2.1.0's new "Guarded tool surface
-ADR-triggering test" now codifies, that an optional call-shape parameter added to an
-already-existing tool — defaulting to current behavior, granting no capability the tool's
-existing contract did not already permit — is feature content, not a structural boundary.
-The write-side fix is covered by the guarded tool boundary ADR-006 already established;
-its two rules (schema addition, no-baseline dispatch) are Feature-Scoped Invariants in
-this plan's Architectural Constraints section, not ADR material.
+review (research.md R13) established that it fails Constitution Principle III's existing
+"one genuine system boundary or one technology choice" test — an optional call-shape
+parameter added to an already-existing tool, defaulting to current behavior and granting
+no capability the tool's existing contract did not already permit, changes neither. The
+write-side fix is covered by the guarded tool boundary ADR-006 already established; its
+two rules (schema addition, no-baseline dispatch) are Feature-Scoped Invariants in this
+plan's Architectural Constraints section, not ADR material.
 
 ## Technical Context
 
@@ -72,7 +72,8 @@ production.
 Lint tools unchanged). The write-side widens one existing tool's schema
 (`write_file` gains an optional `mode` parameter) rather than adding a seventh tool or a
 new tool name — a Feature-Scoped Invariant under the already-Accepted ADR-006, not a
-change requiring its own ADR (Constitution v2.1.0's guarded tool surface test). Hermetic
+change requiring its own ADR (it decides neither a new system boundary nor a new
+technology choice, Constitution Principle III). Hermetic
 harness tests require no live LLM calls or API keys; only the evaluation tier does, gated
 in CI (ADR-012).
 
@@ -89,7 +90,7 @@ removes the size dependency entirely rather than raising a ceiling (SC-007).
 |---|---|---|
 | I — Domain architecture & hexagonal boundaries | No new external system, no new port. `ConsideredPaths` (read-side) is an in-process accumulator on `GuardedToolExecutor`, same shape as its existing write-tracking lists. The write-side prepend path reads/writes the same local filesystem through the same guard — no new adapter, no infrastructure package relocation. | PASS |
 | II — Pragmatic testing | Read-side: hermetic fake-`IModelClient` tests for SC-001/002 (no model calls); one recorded-replay eval variant for SC-003; SC-004/005 lower-stakes per Constitution v1.12.0, correction-loop primary. Write-side: SC-007/008 are deterministic harness guarantees, tested with classicist state-based integration tests against the real guard, real lock, real temp-directory filesystem — no mocking framework, no double beyond the one sanctioned `IModelClient` port fake already in use for the read side. | PASS |
-| III — ADR-driven & test-enforced | All ADRs in `docs/adr/` re-read for this merge, including two independent upstream ADR events that landed on `main` while this feature was in flight: Constitution v2.0.0 (single-aspect ADRs, partial `Amends`/`Amended by` retired for new work) and, separately, a project-wide restructuring pass that retroactively split several old multi-aspect ADRs — including superseding ADR-028 wholesale with a new **ADR-035** (agent-exclusive activity-log authorship) and deprecating ADR-017 entirely (its format-enforcement content reclassified as feature-scoped, owned by a contract document, not an ADR). This feature's own ADR was first renumbered **ADR-035 → ADR-051** to clear the resulting number collision, then **retracted entirely** after the PR author's direct review pushback established that its content — an optional call-shape parameter on an already-existing tool, defaulting to current behavior — never met the bar for a genuine structural boundary or technology decision (research.md R13). Constitution **v2.1.0**'s new "Guarded tool surface ADR-triggering test" (Principle III) now codifies the criterion this feature's retraction follows: a new ADR is needed only for a new tool *name*, a new/changed policy-level enum value, or a new external-system dependency — none of which this feature introduces. `write_file`'s prepend mode instead operates inside the guarded tool boundary ADR-006 already decided; its two rules (schema addition, no-baseline dispatch) are **Feature-Scoped Invariants**, covered by classicist tests in their normal implementation phase, never a Phase 0 structural test. ADR-035 (agent-exclusive authorship) is confirmed unaffected — this feature changes only how cheaply an already-authored entry is committed, never who authors it. | PASS |
+| III — ADR-driven & test-enforced | All ADRs in `docs/adr/` re-read for this merge, including two independent upstream ADR events that landed on `main` while this feature was in flight: Constitution v2.0.0 (single-aspect ADRs, partial `Amends`/`Amended by` retired for new work) and, separately, a project-wide restructuring pass that retroactively split several old multi-aspect ADRs — including superseding ADR-028 wholesale with a new **ADR-035** (agent-exclusive activity-log authorship) and deprecating ADR-017 entirely (its format-enforcement content reclassified as feature-scoped, owned by a contract document, not an ADR). This feature's own ADR was first renumbered **ADR-035 → ADR-051** to clear the resulting number collision, then **retracted entirely** after the PR author's direct review pushback: Principle III's existing "one genuine system boundary or one technology choice" test (`Single-aspect ADRs; no feature content`) already answers what this feature had been drafting a new ADR for — an optional call-shape parameter on an already-existing tool, defaulting to current behavior, changes neither (research.md R13). `write_file`'s prepend mode instead operates inside the guarded tool boundary ADR-006 already decided; its two rules (schema addition, no-baseline dispatch) are **Feature-Scoped Invariants**, covered by classicist tests in their normal implementation phase, never a Phase 0 structural test. ADR-035 (agent-exclusive authorship) is confirmed unaffected — this feature changes only how cheaply an already-authored entry is committed, never who authors it. | PASS |
 | IV — Behavioral & observable | Read-side Observability section unchanged from the pre-merge plan (coverage metrics/log event/span). Write-side introduces no new business metric, log event, or span — spec.md's FR-010–FR-015 require correctness and cost, not new telemetry; existing denial-reason/format-validation telemetry (`guardrails.format_validate`) already covers the write path and needs no addition (see Observability section below for the explicit no-new-signals statement). | PASS |
 | V — Agentic core & deterministic harness | Read-side: coverage signal is behavior-agnostic (records *whether* a page was read, not judgment quality). Write-side: FR-014 requires the same boundary — the harness gains a cheaper way to *commit* an agent-authored entry, never authorship of the entry. What to log, what an entry says, and what counts as a Lint finding all remain agent judgment under instruction files (three files updated: Ingest, Query, Lint — FR-015). | PASS |
 
@@ -103,7 +104,7 @@ code beyond what ADR-006's existing guarded tool boundary already authorizes.
 
 | ADR | Title | Constraint on this feature |
 |-----|-------|---------------------------|
-| [ADR-006](../../docs/adr/ADR-006-agent-tool-loop-guarded-boundary.md) | Agent Tool-Use Loop and Guarded Tool Boundary | Governs the write-side (US3) directly: every `write_file` dispatch — replace or prepend — already passes through `GuardedToolExecutor`/the deny-by-default policy and its write journal. No new tool is added; unknown-tool rejection is unaffected since `write_file`'s tool *name* is unchanged. Per Constitution v2.1.0's guarded tool surface test, the `mode` schema addition and its no-baseline dispatch mechanism operate inside this already-Accepted boundary — they are this feature's two Feature-Scoped Invariants (below), not a new ADR's Boundary Rules. |
+| [ADR-006](../../docs/adr/ADR-006-agent-tool-loop-guarded-boundary.md) | Agent Tool-Use Loop and Guarded Tool Boundary | Governs the write-side (US3) directly: every `write_file` dispatch — replace or prepend — already passes through `GuardedToolExecutor`/the deny-by-default policy and its write journal. No new tool is added; unknown-tool rejection is unaffected since `write_file`'s tool *name* is unchanged. The `mode` schema addition and its no-baseline dispatch mechanism operate inside this already-Accepted boundary — neither a new system boundary nor a new technology choice (Constitution Principle III) — so they are this feature's two Feature-Scoped Invariants (below), not a new ADR's Boundary Rules. |
 | [ADR-035](../../docs/adr/ADR-035-agent-exclusive-activity-log-authorship.md) | Agent-Exclusive Authorship of the Wiki Activity Log | Decides *who* may author `log.md` content (the agents, exclusively) — confirmed unaffected. This feature changes only how cheaply an already-authored entry is committed, never authorship of it. |
 | [ADR-011](../../docs/adr/ADR-011-query-agent-shared-runtime-and-concurrency-model.md)'s successors (ADR-044–ADR-047) | Shared Agent Runtime Library; Token-Level Answer Streaming; Query Dispatch; Query Realtime Delivery | Confirmed unaffected (research.md R10): all three per-agent registries already declare the identical shared `WriteFileDefinition`; widening its schema needs no registry-scope decision, unlike ADR-030 R6's deliberate Lint-only scoping of genuinely new tools. |
 | [ADR-030](../../docs/adr/ADR-030-guarded-retrieval-tool-surface.md) | Guarded Retrieval Tools — Search, Ranged Read, and Read-Only Batch | Read-side only (`search_files`, ranged `read_file`, `batch`); confirmed to not constrain `write_file`/`WriteMode` at all (research.md R10). |
@@ -115,13 +116,13 @@ code beyond what ADR-006's existing guarded tool boundary already authorizes.
 "ADR-035", renumbered ADR-051) and reached Accepted status, but was retracted before merge
 following the PR author's direct review pushback (research.md R13): adding an optional
 `mode` parameter to the already-existing `write_file` tool — defaulting to current
-behavior, granting no capability the tool's contract did not already permit — does not
-meet Constitution v2.1.0's "Guarded tool surface ADR-triggering test" (a new tool *name*,
-a new/changed policy-level enum value, or a new external-system dependency). It is
-feature content, covered by the guarded tool boundary ADR-006 already decided, and
-verified as two Feature-Scoped Invariants (below) rather than a Boundary Rule. The
-read-side portion of this feature independently still introduces no new structural
-boundary of its own (unchanged from the original, pre-merge analysis).
+behavior, granting no capability the tool's contract did not already permit — decides
+neither a new system boundary nor a new technology choice, so it fails Constitution
+Principle III's existing "Single-aspect ADRs; no feature content" test. It is feature
+content, covered by the guarded tool boundary ADR-006 already decided, and verified as
+two Feature-Scoped Invariants (below) rather than a Boundary Rule. The read-side portion
+of this feature independently still introduces no new structural boundary of its own
+(unchanged from the original, pre-merge analysis).
 
 ### Feature-Scoped Invariants (write-side, US3)
 

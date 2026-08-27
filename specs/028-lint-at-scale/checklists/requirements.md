@@ -53,13 +53,18 @@
   larger ADR restructuring later superseded ADR-028 wholesale with a new,
   differently-scoped `main` ADR-035 and deprecated ADR-017 entirely, which forced this
   feature's own ADR to be renumbered to "ADR-051" and narrowed to extend `main`'s
-  ADR-035 instead (research.md R12). The PR author's own review then established, and
-  Constitution v2.1.0's new "Guarded tool surface ADR-triggering test" now codifies, that
-  this content never needed a dedicated ADR in the first place — it is feature content
-  under the already-Accepted ADR-006, not a structural boundary — so ADR-051 was
-  retracted and its two rules recorded as Feature-Scoped Invariants in `plan.md` instead
-  (research.md R13). This feature now needs **no new ADR**, a third and final
-  reconciliation of the same underlying question, not a requirements change.
+  ADR-035 instead (research.md R12). The PR author's own review then established that
+  this content never needed a dedicated ADR in the first place: Constitution Principle
+  III's existing "Single-aspect ADRs; no feature content" test (one genuine system
+  boundary or one technology choice) already answers this — it is feature content under
+  the already-Accepted ADR-006, not a structural boundary — so ADR-051 was retracted and
+  its two rules recorded as Feature-Scoped Invariants in `plan.md` instead (research.md
+  R13). A first attempt to generalize this into a constitution amendment was itself
+  reverted on further review, for the same reason it retracted ADR-051 in the first
+  place — the existing test already sufficed, no new subsection was needed (research.md
+  R14). This feature now needs **no new ADR** and the constitution stays at v2.0.0, a
+  fourth and final reconciliation of the same underlying question, not a requirements
+  change.
 - **2026-08-25, second `/speckit-clarify` pass (post-merge).** Two high-impact open design
   points issue #201 itself flagged as unresolved were resolved and recorded in spec.md's
   Clarifications: the write primitive's scope (all three of Ingest/Query/Lint, not Lint

@@ -27,8 +27,8 @@ Expected: green. Neither side of this feature introduces a Boundary Rule: the re
 (`ConsideredPaths`/`WikiCoverage`) and the write-side's two Feature-Scoped Invariants
 (FSI-1/FSI-2, plan.md — schema stays `additionalProperties: false`-compatible; no
 `OnReadFile` call is reachable from the prepend dispatch path) are both covered entirely
-by classicist integration tests, no `Grimoire.ArchTests` addition (Constitution v2.1.0's
-guarded tool surface test).
+by classicist integration tests, no `Grimoire.ArchTests` addition — neither decides a new
+system boundary or technology choice (Constitution Principle III).
 
 ### Spot checks worth doing by hand — read side
 

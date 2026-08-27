@@ -435,13 +435,16 @@ criterion, per Constitution v1.12.0's lower-stakes tiering (see SC-004/SC-005).
 - **The PR author's own review then rejected the premise of drafting an ADR here at all**,
   independent of either restructuring above: an optional call-shape parameter added to an
   already-existing tool, defaulting to current behavior and granting no capability the
-  tool's existing contract did not already permit, decides nothing a reader could not
-  already infer from `write_file`'s existing contract — it is feature content, not a
-  structural boundary or technology choice, regardless of how it is numbered or what it
-  extends. Constitution **v2.1.0** now codifies this as the "Guarded tool surface
-  ADR-triggering test" (Principle III): a new ADR is warranted only for a new tool *name*,
-  a new/changed policy-level enum value, or a new external-system dependency — none of
-  which this feature introduces. ADR-051 was retracted before merge; its two rules (the
-  `mode` schema addition and its no-baseline dispatch mechanism) are now Feature-Scoped
-  Invariants in `plan.md`, covered by classicist tests, under the already-Accepted
-  guarded-tool-boundary ADR-006. See research.md R13 for the full rationale.
+  tool's existing contract did not already permit, decides neither a new system boundary
+  nor a new technology choice — Constitution Principle III's existing "Single-aspect ADRs;
+  no feature content" test, unchanged, already answers this. ADR-051 was retracted before
+  merge; its two rules (the `mode` schema addition and its no-baseline dispatch mechanism)
+  are now Feature-Scoped Invariants in `plan.md`, covered by classicist tests, under the
+  already-Accepted guarded-tool-boundary ADR-006. See research.md R13 for the full
+  rationale.
+- **A first attempt at generalizing this into a constitution amendment (v2.0.0 → v2.1.0)
+  was itself reverted**, again on the PR author's direct review: the amendment's own new
+  subsection was a narrower restatement of the test Principle III already stated, and
+  adding it risked the same proliferating-specificity problem this feature's ADR history
+  had just been corrected for, one level up. The constitution stays at v2.0.0. See
+  research.md R14 for the full rationale.
