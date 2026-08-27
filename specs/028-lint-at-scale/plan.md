@@ -21,6 +21,12 @@ own path, merged from issues #108 and #201 at the user's explicit direction:
    deterministic write failures today, on Ingest, and on the exact mechanism Lint's own
    instructions also depend on. This feature adds a `write_file` prepend mode, available to
    Ingest, Query, and Lint alike, dropping the cost to O(entry size) (research.md R6-R13).
+   A second, independent write-side decision (Clarifications, 2026-08-25/27; research.md
+   R15): `log.md`'s format/ordering checks (prepend order, heading pattern, paragraph
+   presence) move from a hard deny to a monitored signal, for both write modes — content
+   and structural shape are the agent's judgment (Constitution Principle V), not a harness
+   denial. This reverses pre-existing, shipped behavior from spec 025/ADR-028, not just
+   something newly introduced.
 
 Direction B (harness-side sharding, read-side) remains explicitly not adopted (research.md
 R1). This feature introduces **no new ADR**. An ADR was drafted for the write-side fix
@@ -89,10 +95,10 @@ removes the size dependency entirely rather than raising a ceiling (SC-007).
 | Principle | Assessment | Verdict |
 |---|---|---|
 | I — Domain architecture & hexagonal boundaries | No new external system, no new port. `ConsideredPaths` (read-side) is an in-process accumulator on `GuardedToolExecutor`, same shape as its existing write-tracking lists. The write-side prepend path reads/writes the same local filesystem through the same guard — no new adapter, no infrastructure package relocation. | PASS |
-| II — Pragmatic testing | Read-side: hermetic fake-`IModelClient` tests for SC-001/002 (no model calls); one recorded-replay eval variant for SC-003; SC-004/005 lower-stakes per Constitution v1.12.0, correction-loop primary. Write-side: SC-007/008 are deterministic harness guarantees, tested with classicist state-based integration tests against the real guard, real lock, real temp-directory filesystem — no mocking framework, no double beyond the one sanctioned `IModelClient` port fake already in use for the read side. | PASS |
+| II — Pragmatic testing | Read-side: hermetic fake-`IModelClient` tests for SC-001/002 (no model calls); one recorded-replay eval variant for SC-003; SC-004/005 lower-stakes per Constitution v1.12.0, correction-loop primary. Write-side: SC-007/008 remain deterministic harness guarantees (cost proportionality; concurrency-safety via lock-serialization), tested with classicist state-based integration tests against the real guard, real lock, real temp-directory filesystem — no mocking framework, no double beyond the one sanctioned `IModelClient` port fake already in use for the read side. SC-009 (format/ordering deviation visibility) is newly classified lower-stakes agent-judgment per Constitution v1.12.0, satisfied by the correction loop reading the new structured log event/metric (FR-016) — not a mandatory eval suite, matching SC-004/005's treatment. | PASS |
 | III — ADR-driven & test-enforced | All ADRs in `docs/adr/` re-read for this merge, including two independent upstream ADR events that landed on `main` while this feature was in flight: Constitution v2.0.0 (single-aspect ADRs, partial `Amends`/`Amended by` retired for new work) and, separately, a project-wide restructuring pass that retroactively split several old multi-aspect ADRs — including superseding ADR-028 wholesale with a new **ADR-035** (agent-exclusive activity-log authorship) and deprecating ADR-017 entirely (its format-enforcement content reclassified as feature-scoped, owned by a contract document, not an ADR). This feature's own ADR was first renumbered **ADR-035 → ADR-051** to clear the resulting number collision, then **retracted entirely** after the PR author's direct review pushback: Principle III's existing "one genuine system boundary or one technology choice" test (`Single-aspect ADRs; no feature content`) already answers what this feature had been drafting a new ADR for — an optional call-shape parameter on an already-existing tool, defaulting to current behavior, changes neither (research.md R13). `write_file`'s prepend mode instead operates inside the guarded tool boundary ADR-006 already decided; its two rules (schema addition, no-baseline dispatch) are **Feature-Scoped Invariants**, covered by classicist tests in their normal implementation phase, never a Phase 0 structural test. ADR-035 (agent-exclusive authorship) is confirmed unaffected — this feature changes only how cheaply an already-authored entry is committed, never who authors it. | PASS |
-| IV — Behavioral & observable | Read-side Observability section unchanged from the pre-merge plan (coverage metrics/log event/span). Write-side introduces no new business metric, log event, or span — spec.md's FR-010–FR-015 require correctness and cost, not new telemetry; existing denial-reason/format-validation telemetry (`guardrails.format_validate`) already covers the write path and needs no addition (see Observability section below for the explicit no-new-signals statement). | PASS |
-| V — Agentic core & deterministic harness | Read-side: coverage signal is behavior-agnostic (records *whether* a page was read, not judgment quality). Write-side: FR-014 requires the same boundary — the harness gains a cheaper way to *commit* an agent-authored entry, never authorship of the entry. What to log, what an entry says, and what counts as a Lint finding all remain agent judgment under instruction files (three files updated: Ingest, Query, Lint — FR-015). | PASS |
+| IV — Behavioral & observable | Read-side Observability section unchanged from the pre-merge plan (coverage metrics/log event/span). Write-side now introduces one new business metric and one new structured log event (FR-016/SC-009, Clarifications 2026-08-27): a write that deviates from `log.md`'s expected format/ordering shape is committed as submitted and recorded via `wiki.log.format_deviation_total`/`wiki.log.format_deviation`, extending the existing `WikiLogMetrics`/`WikiLogEvents` components (`Grimoire.AgentRuntime.WikiLog`) rather than adding a new telemetry surface. The pre-existing `guardrails.format_validate` span's `outcome`/`reason` tags are retargeted from "allowed/denied" to "conforming/deviated", since the check no longer gates the write. | PASS |
+| V — Agentic core & deterministic harness | Read-side: coverage signal is behavior-agnostic (records *whether* a page was read, not judgment quality). Write-side: FR-014 requires the same boundary — the harness gains a cheaper way to *commit* an agent-authored entry, never authorship of the entry. What to log, what an entry says, and what counts as a Lint finding all remain agent judgment under instruction files (three files updated: Ingest, Query, Lint — FR-015). FR-011/FR-016 extend this further (Clarifications 2026-08-27): *whether an entry's shape conforms* to the format contract is also agent judgment, not a harness-enforced denial — the harness's write-side guardrail job is capability (which tool/mode/path) and concurrency safety (FR-012), never content shape. | PASS |
 
 **Post-design re-check**: unchanged after Phase 1 — data-model.md and contracts/
 introduce no new boundary, no new dependency, and no relocation of judgment into backend
@@ -136,6 +142,7 @@ temp-directory filesystem.
 |---|------|---------------|
 | FSI-1 | `ToolRegistry.WriteFileDefinition`'s JSON schema gains an optional `mode` string property (`enum: ["replace", "prepend"]`, default `"replace"`), staying `additionalProperties: false`-compatible across all three per-agent registries (`LintToolRegistry`, `IngestToolRegistry`, `QueryToolRegistry`). Omitting `mode` is unchanged, existing behavior. | Integration test: an unlisted schema field is still rejected; a call omitting `mode` behaves byte-identically to today; a call with `mode: "prepend"` is accepted by all three registries. |
 | FSI-2 | A `mode: "prepend"` write acquires the existing per-target `CrossProcessFileLock`, reads `log.md`'s current content fresh from disk under the lock (no prior `OnReadFile` baseline, no compare-and-swap check), and commits `entry + currentContent` atomically via the existing temp-file + `File.Move` path. | Integration test: a prepend write succeeds with no preceding read in the same run; two concurrent prepend writers are serialized by the lock and both entries land, in lock-acquisition order, with none lost. |
+| FSI-3 | `log.md` writes are never denied for failing the activity-log format contract's structural shape (prepend order, heading pattern, paragraph presence), on either write mode — `EvaluateExistingTargetChecksAsync`'s log-format branch (`SharedFileWriteGuard.cs:230-244`) no longer returns a value that short-circuits the write. A write that deviates commits exactly as submitted and records the deviation via `wiki.log.format_deviation`/`wiki.log.format_deviation_total` (FR-011/FR-016). The compare-and-swap check (`write_conflict_stale_read`, ADR-015) and the `FrontmatterOnly` checks are unaffected — this invariant is scoped to the log-format branch only. | Integration test: a write with a malformed heading, missing paragraph, or wrong prepend order — on `mode: "replace"` and `mode: "prepend"` alike — commits unchanged and is never denied; a separate test asserts the deviation is captured (event + metric) with the correct reason code(s). |
 
 ## Agentic Boundary (Constitution Principle V)
 
@@ -150,7 +157,8 @@ temp-directory filesystem.
 | Computing `WikiCoverage` from harness-observed facts | Harness | `Grimoire.LintAgent` (`LintIntentHandler`/`RunEventEmitter`), `Grimoire.Hub.LintDispatch.LintRunCoordinator` |
 | Persisting `WikiCoverage` onto the Findings Report | Harness | `Grimoire.Hub.LintFindings.FindingsReportFormat` |
 | Concatenating a prepend-mode entry with current `log.md` content and committing atomically | Harness | `Grimoire.AgentRuntime.Guardrails.GuardedToolExecutor`, `SharedFileWriteGuard` (Feature-Scoped Invariant FSI-2, above) |
-| Validating a prepend-mode entry's heading/paragraph shape | Harness | `Grimoire.AgentRuntime.Guardrails.Coordination.SharedFileWriteGuard` (feature-scoped format content, `contracts/log-prepend-write.md` — mirroring how the same check's ADR-017 predecessor was deprecated in favor of contract-owned content) |
+| Observing (never denying) whether a `log.md` write's shape conforms to the format contract | Harness | `Grimoire.AgentRuntime.Guardrails.Coordination.SharedFileWriteGuard` (Feature-Scoped Invariant FSI-3, above) — the check's *content* (what shape is expected) is feature-scoped, `contracts/log-prepend-write.md`; that a deviation is only ever recorded, never denied, is FSI-3 |
+| Judging what a log entry says and whether its shape matters enough to fix | Agentic core | `agents/ingest/system-prompt.md`, `agents/query/system-prompt.md`, `agents/lint/system-prompt.md` — the correction-loop surface (Observability below) is where an operator, not the harness, decides whether a deviation needs a prompt fix |
 
 No wiki-content judgment moves into backend code by this feature, on either the read or
 write side. The harness gains only the ability to observe/report (read side) and to commit
@@ -169,7 +177,8 @@ more cheaply (write side) — never to decide.
 | SC-005 (inbound-link accuracy holds) | Lower-stakes agent-judgment (Constitution v1.12.0) | Same treatment as SC-004 | Recorded model responses, only if kept | At most one addition to the existing fixture | "Holds steady," not "improves" (FR-006) |
 | SC-006 (token-efficiency gain not regressed) | Deterministic measurement of an agent-driven outcome | Comparison against `specs/026-guarded-tool-surface/baseline.md` | Recorded model responses (ADR-012) | Existing `lint-at-scale-survey` recordings | Observational check |
 | SC-007 (prepend write cost proportional to entry, not file, size) | Deterministic guarantee | Integration test: real temp-dir `log.md` seeded to ~128KB (matching the production failure), a `write_file` call with `mode: "prepend"` and a small entry; asserts success and that no full-file content was required in the call | Real filesystem, real `SharedFileWriteGuard`, real lock — no doubles needed (no model call in the write path itself) | A seeded large `log.md` fixture built inline by the test (not a shared eval fixture) | Directly reproduces issue #201's production failure size and proves it now succeeds |
-| SC-008 (existing structural/conflict rules still hold under prepend) | Deterministic guarantee | Integration tests: malformed heading/missing paragraph via prepend mode denied with existing reasons; two concurrent prepend writers both land, in lock order, with no loss | Real filesystem, real lock, two concurrent tasks/threads for the race test | Small seeded `log.md` fixtures | Per research.md R8, the concurrent case proves *absence* of a corruption/loss scenario by construction, not a `write_conflict_stale_read`-style denial — the test asserts both entries present and correctly ordered, not a denial |
+| SC-008 (concurrency safety holds under prepend) | Deterministic guarantee | Integration test: two concurrent writers (any mix of `mode: "replace"`/`mode: "prepend"`) both land, in lock-acquisition order, with no loss | Real filesystem, real lock, two concurrent tasks/threads for the race test | Small seeded `log.md` fixtures | Per research.md R8, the concurrent case proves *absence* of a corruption/loss scenario by construction, not a `write_conflict_stale_read`-style denial — the test asserts both entries present and correctly ordered, not a denial |
+| SC-009 (format/ordering deviation is visible, not denied) | Lower-stakes agent-judgment (Constitution v1.12.0) | Integration test: a malformed heading/missing paragraph/wrong-order write, on either mode, commits unchanged and emits `wiki.log.format_deviation` (event) and increments `wiki.log.format_deviation_total` (metric) with the correct reason code | Real filesystem, real guard — no doubles needed | Small seeded `log.md` fixtures, reused from SC-008 | Correction-loop primary (Observability below); this reclassifies what SC-008 asserted as a 100% denial guarantee before Clarifications 2026-08-27 |
 
 ## Observability
 
@@ -181,23 +190,24 @@ more cheaply (write side) — never to decide.
 |-------------|------|-------------|--------|
 | `wiki.lint.coverage_ratio` | Histogram | `pages_considered / pages_total` for one completed Lint run (0.0–1.0) | `agent=lint` |
 | `wiki.lint.runs_total` | Counter | Completed Lint runs, by coverage status | `agent=lint`, `coverage_status=complete\|partial` |
+| `wiki.log.format_deviation_total` | Counter | A `log.md` write committed despite deviating from the activity-log format contract's expected shape (FR-011/FR-016, Clarifications 2026-08-27) — extends the existing `Grimoire.AgentRuntime.WikiLog.WikiLogMetrics` component, mirroring its `wiki.log.unlogged_change_total` pattern | `agent=ingest\|query\|lint`, `mode=replace\|prepend`, `reason` (one of the existing denial-reason codes, now repurposed as deviation codes: `log_entry_not_prepended`, `log_entry_malformed_heading`, `log_entry_missing_paragraph`) |
 
-**Write-side (US3): no new metric.** Spec.md's FR-010–FR-015 require write-cost and
-correctness, not a new telemetry signal — the existing `guardrails.format_validate` span
-and its denial-reason telemetry already cover both `replace`- and `prepend`-mode writes to
-`log.md` (the span's `target=log` tag and denial-reason field are mode-agnostic). Adding a
-metric nothing in spec.md asks for would be exactly the disproportionate-footprint pattern
-research.md R5 already steered away from on the eval side; this section states that
-explicitly rather than silently omitting a metric a reader might expect.
+**Write-side (US3): one new metric, above.** Reversing the pre-clarify plan's "no new
+metric" position (Clarifications 2026-08-27): FR-016 now requires this. The pre-existing
+`guardrails.format_validate` span still fires but its `outcome` tag is retargeted from
+"allowed/denied" to "conforming/deviated," since the check no longer gates the write —
+this metric is the durable, aggregable counterpart a dashboard can chart, which a span
+attribute alone cannot provide.
 
 ### Structured Log Events
 
 | Event | Level | Trigger | Mandatory fields |
 |-------|-------|---------|-----------------|
 | `lint.run.coverage_computed` | INFO | Once per completed Lint run, when `WikiCoverage` is computed (Hub side, alongside `PersistFindingsReportAsync`) | `run_id`, `pages_total`, `pages_considered`, `coverage_status` |
+| `wiki.log.format_deviation` | WARN | Once per `log.md` write whose content deviates from the activity-log format contract's expected shape, immediately after the (non-denying) format check runs — extends `Grimoire.AgentRuntime.WikiLog.WikiLogEvents`, mirroring its `wiki.log.change_not_logged` idiom (FR-011/FR-016) | `agent`, `mode`, `path`, `reason` (comma-joined if more than one check deviated) |
 
-**Derivation rule (MANDATORY)**: `tasks.md` MUST include, for this row: (1) an
-implementation task emitting `lint.run.coverage_computed` with a stable event name and these
+**Derivation rule (MANDATORY)**: `tasks.md` MUST include, for each of these two rows: (1) an
+implementation task emitting the event with a stable event name and these
 mandatory fields; (2) a deterministic integration test validating event name, level, and every
 mandatory field for this trigger; (3) a CI task ensuring this test runs in the standard PR
 pipeline.
@@ -216,14 +226,23 @@ a CI task ensuring this test runs in the standard PR pipeline.
 
 ### Correction-loop observability surface (Constitution v1.12.0, Principle V)
 
-SC-004 and SC-005 are lower-stakes and rely primarily on the user-reported correction loop.
-Per the constitution's "Human in the loop" bullet, the surface the user observes this on
-MUST be named here: the **persisted Findings Report file itself** (`grimoire-findings/1`) —
-an operator reads a run's narrative body directly to judge whether cross-page findings and
-inbound-link counts look right, and, per `WikiCoverage`, now also sees whether that
-judgment was made over the whole wiki or a partial pass. No new user-facing surface is
-introduced. If the operator notices a miss, the fix is an edit to
-`agents/lint/system-prompt.md`, verified by the operator on the next run.
+Two lower-stakes agent-judgment criteria rely primarily on the user-reported correction
+loop, each with its own named surface per the constitution's "Human in the loop" bullet:
+
+- **SC-004 and SC-005**: the **persisted Findings Report file itself**
+  (`grimoire-findings/1`) — an operator reads a run's narrative body directly to judge
+  whether cross-page findings and inbound-link counts look right, and, per
+  `WikiCoverage`, now also sees whether that judgment was made over the whole wiki or a
+  partial pass. If the operator notices a miss, the fix is an edit to
+  `agents/lint/system-prompt.md`, verified on the next run.
+- **SC-009**: the `wiki.log.format_deviation` structured log event and
+  `wiki.log.format_deviation_total` metric (Observability above) — an operator watching
+  the OTel dashboard or logs sees which agent, mode, and reason a `log.md` write deviated
+  under, without reading `log.md` by hand. If the pattern recurs, the fix is an edit to
+  the relevant agent's `system-prompt.md` (Ingest/Query/Lint), verified on the next run.
+
+No new user-facing surface is introduced for either — both route through infrastructure
+(Findings Report file, OTel pipeline) this project already has.
 
 ## Project Structure
 
@@ -247,11 +266,14 @@ specs/028-lint-at-scale/
 backend/
 ├── src/
 │   ├── Grimoire.AgentRuntime/
-│   │   └── Guardrails/
-│   │       ├── GuardedToolExecutor.cs              # + ConsideredPaths accumulator; ExecuteWriteFileAsync forwards `mode`
-│   │       ├── ToolRegistry.cs                     # WriteFileDefinition schema gains optional `mode` property
-│   │       └── Coordination/
-│   │           └── SharedFileWriteGuard.cs         # + prepend-mode dispatch (no baseline/CAS), entry-direct ValidateLogEntryFormat overload
+│   │   ├── Guardrails/
+│   │   │   ├── GuardedToolExecutor.cs              # + ConsideredPaths accumulator; ExecuteWriteFileAsync forwards `mode`
+│   │   │   ├── ToolRegistry.cs                     # WriteFileDefinition schema gains optional `mode` property
+│   │   │   └── Coordination/
+│   │   │       └── SharedFileWriteGuard.cs         # + prepend-mode dispatch (no baseline/CAS), entry-direct ValidateLogEntryFormat overload; log-format branch of EvaluateExistingTargetChecksAsync no longer denies (FSI-3)
+│   │   └── WikiLog/
+│   │       ├── WikiLogMetrics.cs                   # + RecordFormatDeviation (wiki.log.format_deviation_total)
+│   │       └── WikiLogEvents.cs                    # + LogFormatDeviation (wiki.log.format_deviation)
 │   ├── Grimoire.LintAgent/
 │   │   ├── Program.cs                        # LintIntentHandler computes WikiCoverage at completion
 │   │   ├── Instructions/system-prompt.md     # "Reconciling index.md and log.md" step updated to use mode: "prepend"
@@ -269,7 +291,7 @@ backend/
 └── tests/
     ├── Grimoire.IntegrationTests/
     │   ├── (read-side) ConsideredPaths/WikiCoverage/log-event/span tests, hermetic fake-IModelClient tests for SC-001/002
-    │   └── (write-side) SharedFileWriteGuardPrependTests.cs — new, mirroring the existing FrontmatterOnly test file's shape (covers FSI-1/FSI-2, classicist, no Grimoire.ArchTests addition)
+    │   └── (write-side) SharedFileWriteGuardPrependTests.cs — new, mirroring the existing FrontmatterOnly test file's shape (covers FSI-1/FSI-2/FSI-3, classicist, no Grimoire.ArchTests addition) — asserts both the no-denial behavior and that `WikiLogEvents.LogFormatDeviation`/`WikiLogMetrics.RecordFormatDeviation` fire with the correct reason (SC-009)
     ├── Grimoire.EvalRunner/Scenarios/LintScenarioDefinitions.cs    # lint-at-scale-survey gains a parameterized budget variant
     └── Grimoire.AgentEvals/LintReplayEvalTests.cs                  # extended assertions; optional SC-004/SC-005 scenarios if kept
 ```

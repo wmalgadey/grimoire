@@ -432,3 +432,78 @@ example helps future authors apply the general test consistently. Rejected direc
 the user — the general test is not, in their judgment, ambiguous enough to warrant a
 named special case, and a special case invites the same proliferating specificity this
 session's arc has otherwise been about removing.
+
+## R15 — `log.md` format/ordering checks reclassified: deny → monitor (Clarifications 2026-08-27)
+
+**Context**: reviewing this feature's write-side design directly, the user made a further
+architectural call, stated plainly: "It is again an llm decision what to do with the log,
+we just give the features/tools to use and add system level security by adding guardrails
+to it. The log entry format is nothing we validate, we could monitor it." Clarified via two
+structured questions: (1) scope — both the existing full-content write path and the new
+prepend-mode path, not just this feature's new capability; (2) the prepend-only ordering
+check specifically — also monitor-only, not kept as a security-relevant exception (this was
+the recommended, more conservative option; the user picked the more permissive one anyway,
+with the consequence — order violations allowed through, not denied — stated plainly in
+the question).
+
+**Code-level grounding**: `SharedFileWriteGuard.EvaluateExistingTargetChecksAsync`
+(`backend/src/Grimoire.AgentRuntime/Guardrails/Coordination/SharedFileWriteGuard.cs:194-244`)
+composes four checks in sequence for every `ReadWrite`-mode write, short-circuiting on the
+first non-null reason: `WriteMode.FrontmatterOnly` target-missing, compare-and-swap
+(`write_conflict_stale_read`, ADR-015), `FrontmatterOnly` body-preservation (ADR-016), and —
+only when the canonical target is `log.md` or `index.md` — the format/ordering check
+(`ValidateLogEntryFormat`, ADR-017/ADR-028 lineage, called identically for full-content
+writes at line 247 and reused by this feature's own prepend-mode path per
+`contracts/log-prepend-write.md`). This confirms two things: (a) the format/ordering check
+already applies today, identically, to full-content `mode: "replace"` writes — this
+feature's prepend mode was never going to introduce a *new* denial path, only reuse the
+existing one; and (b) it is a structurally separate branch from the CAS/FrontmatterOnly
+checks, so relaxing it does not touch `write_conflict_stale_read` or `FrontmatterOnly`
+enforcement at all — those remain exactly as they are (FR-012/SC-008 unaffected).
+
+**Decision**: `EvaluateFormatIfTarget`'s result, when the target is `log.md` specifically,
+no longer contributes a denial reason to `EvaluateExistingTargetChecksAsync`'s returned
+tuple. The write commits regardless of whether `ValidateLogEntryFormat` finds a deviation;
+the deviation (if any) is instead recorded via a new structured log event and counter
+metric. `index.md`'s catalog-format check is unaffected (out of scope, per this feature's
+existing FR-013) — this reclassification is `log.md`-specific, not a change to
+`EvaluateFormatIfTarget`'s shared plumbing beyond how its `log.md` branch's result is used.
+
+**Signal naming**: grounded in the existing, shipped
+`Grimoire.AgentRuntime.WikiLog.WikiLogMetrics`/`WikiLogEvents` components (025-agent-owned-log/
+ADR-028), which already carry exactly this kind of "harness noticed something about the
+activity log, without deciding wiki content" signal (`wiki.log.unlogged_change_total` /
+`wiki.log.change_not_logged`). The new metric (`wiki.log.format_deviation_total`) and log
+event (`wiki.log.format_deviation`, WARN) extend these existing components rather than
+introducing a new telemetry surface, matching their exact naming and parameter-passing
+conventions (a `Meter`/`ActivitySource` instance passed in per calling agent process, per
+ADR-005/ADR-013's frozen-meter-identity rule — never owned by `WikiLog` itself). The
+existing `guardrails.format_validate` span (`SharedFileWriteGuard.cs:292`) still fires,
+with its `outcome` tag retargeted from "allowed/denied" to "conforming/deviated" — the span
+is a per-call trace attribute, not a substitute for an aggregable counter metric or a
+durably queryable log event, so this feature adds the latter two rather than treating the
+existing span as sufficient.
+
+**Consequences**: FR-011 reverses (writes are never denied for format/ordering shape).
+FR-012/SC-008 narrow to the concurrency-safety property alone (unaffected, since it's a
+structurally separate lock/CAS mechanism). A new FR-016/SC-009 pair requires the observable
+signal, classified lower-stakes agent-judgment per Constitution v1.12.0 (a malformed or
+misordered entry is a single, correctable wiki edit — the correction loop, reading the new
+signal, is sufficient; no mandatory eval suite).
+
+**Rationale**: this is the same "harness owns capability and safety, agent owns content"
+line Constitution Principle V already draws project-wide (Agentic core: "judgment about
+wiki content... index/log content — MUST be exercised by an LLM agent"; Guardrails at the
+tool boundary: mediates "write and read *capabilities*", not content shape) — applied,
+for the first time in this feature's history, to a check that predates the feature itself
+rather than to something this feature was drafting fresh. Unlike the ADR-051 saga (R11-R14,
+which was about *how a decision gets recorded*), this is a genuine *behavior* change:
+`log.md` writes that would have failed today succeed after this feature ships, on both
+write paths.
+
+**Alternative rejected**: scoping the relaxation to the new prepend-mode path only, leaving
+the existing full-content path's denial behavior untouched. Considered and explicitly
+rejected by the user (first clarifying question) — the underlying judgment ("format is the
+agent's, not the harness's") does not depend on which call shape produced the write, and a
+mode-scoped relaxation would leave the identical content judgment enforced differently
+depending on which tool parameter an agent happened to use, an arbitrary distinction.

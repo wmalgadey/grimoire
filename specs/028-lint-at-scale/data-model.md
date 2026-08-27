@@ -139,9 +139,8 @@ and because it must not be confused with the pre-existing, unrelated policy-leve
 
 `log.md`'s `WriteRule.Mode` stays `ReadWrite` (per ADR-031's full-authority grant) — an
 agent *may* still send a full-content `mode: "replace"` write to `log.md` (expensive, but
-still correct and still subject to the activity-log's prepend-ordering contract); `mode:
-"prepend"` is a cheaper alternative path to the same structural guarantee, not a policy
-restriction.
+still correct); `mode: "prepend"` is a cheaper alternative path to the same on-disk shape,
+not a policy restriction. Neither path is denied for deviating from that shape (below).
 
 ### Prepend-mode write assembly (transient, in-process, per-call)
 
@@ -157,10 +156,30 @@ No new persisted type. At dispatch time (`GuardedToolExecutor.ExecuteWriteFileAs
 4. Runs the *same* `ValidateLogEntryFormat` heading/paragraph checks the activity-log format
    contract already defines (`specs/028-lint-at-scale/contracts/log-prepend-write.md`),
    retargeted to validate `entry` directly rather than a `head` subtracted from a whole-file
-   `proposedContent`.
+   `proposedContent` — but its result no longer gates the write (FSI-3, plan.md;
+   research.md R15). A non-conforming result feeds the deviation signal below instead of a
+   denial.
 5. Commits via the same atomic temp-file + `File.Move` path every write uses
    (`GuardedToolExecutor.WriteFileAtomicallyAsync`), then re-baselines via `OnWriteCommitted`
-   exactly as today.
+   exactly as today — unconditionally, regardless of step 4's outcome.
+
+### Format/ordering deviation signal (transient, in-process, per-call)
+
+No new persisted type. Emitted once per `log.md` write (either mode) whose content deviates
+from the activity-log format contract's expected shape — replaces the pre-existing denial
+outcome for this one check (research.md R15). Reuses the existing denial-reason vocabulary
+as deviation reason codes: `log_entry_not_prepended`, `log_entry_malformed_heading`,
+`log_entry_missing_paragraph`.
+
+| Field | Type | Description |
+|---|---|---|
+| `agent` | `string` | Which agent process made the write: `ingest` \| `query` \| `lint`. |
+| `mode` | `string` | The `write_file` call's mode: `replace` \| `prepend`. |
+| `reason` | `IReadOnlyList<string>` | One or more of the reason codes above — more than one may apply to the same write (e.g. wrong order *and* malformed heading). |
+
+Delivered via `Grimoire.AgentRuntime.WikiLog.WikiLogEvents.LogFormatDeviation` (structured
+log event, WARN) and `WikiLogMetrics.RecordFormatDeviation` (counter increment) — both
+existing components, extended rather than duplicated (research.md R15).
 
 ### Transport path
 
@@ -169,11 +188,13 @@ Agent's write_file call: {path: "log.md", mode: "prepend", content: "<entry only
   → GuardedToolExecutor.ExecuteWriteFileAsync forwards `mode` to
       SharedFileWriteGuard.EvaluateWriteAsync
   → SharedFileWriteGuard reads current log.md content under the lock (no baseline),
-      assembles entry + current, validates the entry directly (contracts/log-prepend-write.md)
+      assembles entry + current, checks the entry's shape (contracts/log-prepend-write.md)
+      — a non-conforming result no longer denies, it flows to WikiLogEvents/WikiLogMetrics
   → GuardedToolExecutor.WriteFileAtomicallyAsync commits atomically (unchanged commit path)
   → GuardedToolExecutor.TouchedPaths / ActivityLogWritten updated exactly as any other
       successful log.md write (WikiLogCoverageObserver unaffected — research.md R10)
 ```
 
 No new file, no new format, no new process boundary — the same `log.md` file, in the same
-`grimoire-log/*` shape (whatever it's called today), reached by a cheaper call.
+`grimoire-log/*` shape (whatever it's called today), reached by a cheaper call, whose shape
+is now observed rather than enforced.

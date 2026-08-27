@@ -24,11 +24,12 @@ dotnet test backend/tests/Grimoire.IntegrationTests --configuration Release
 ```
 
 Expected: green. Neither side of this feature introduces a Boundary Rule: the read-side
-(`ConsideredPaths`/`WikiCoverage`) and the write-side's two Feature-Scoped Invariants
-(FSI-1/FSI-2, plan.md — schema stays `additionalProperties: false`-compatible; no
-`OnReadFile` call is reachable from the prepend dispatch path) are both covered entirely
-by classicist integration tests, no `Grimoire.ArchTests` addition — neither decides a new
-system boundary or technology choice (Constitution Principle III).
+(`ConsideredPaths`/`WikiCoverage`) and the write-side's three Feature-Scoped Invariants
+(FSI-1/FSI-2/FSI-3, plan.md — schema stays `additionalProperties: false`-compatible; no
+`OnReadFile` call is reachable from the prepend dispatch path; format/ordering deviations
+are recorded, never denied, on either write mode) are all covered entirely by classicist
+integration tests, no `Grimoire.ArchTests` addition — none decides a new system boundary
+or technology choice (Constitution Principle III).
 
 ### Spot checks worth doing by hand — read side
 
@@ -40,13 +41,15 @@ system boundary or technology choice (Constitution Principle III).
 | `list_files` alone doesn't count as coverage | Trigger a run where the agent lists but never opens a page | That page is absent from `ConsideredPaths` / not counted toward `PagesConsidered` |
 | No regression on a small wiki | Run against a wiki small enough for the old whole-wiki read (e.g., the `lint-seeded-defects` base fixture) | Run time and thoroughness are unchanged from before this feature (FR-007) |
 
-### Spot checks worth doing by hand — write side (FSI-1/FSI-2, plan.md)
+### Spot checks worth doing by hand — write side (FSI-1/FSI-2/FSI-3, plan.md)
 
 | Check | How | Expected |
 |---|---|---|
 | Reproduces, then fixes, issue #201 (SC-007) | Seed a temp-dir `log.md` to ~128KB; call `write_file` with `mode: "prepend"` and a small entry | Write succeeds; on-disk file is `entry + originalContent`, byte-for-byte |
 | Cost is proportional to entry, not file (SC-007) | Same seeded file; compare the *call's own* `content` length to the file's total size | Call `content` length is the entry's length only — never includes the seeded 128KB |
-| Malformed entry still denied (SC-008) | Prepend-mode call with no heading, or a heading with no following paragraph | Denied `log_entry_malformed_heading` / `log_entry_missing_paragraph` — same reasons as today |
+| Malformed entry still commits (SC-009) | Prepend-mode call with no heading, or a heading with no following paragraph | Write succeeds unchanged (no denial); `wiki.log.format_deviation` fires with `reason=log_entry_malformed_heading` (or `log_entry_missing_paragraph`), and `wiki.log.format_deviation_total` increments with the matching label |
+| Wrong prepend order still commits (SC-009) | `mode: "replace"` call whose proposed content does not end with the current content | Write succeeds unchanged (no `log_entry_not_prepended` denial); the same deviation signal fires with `reason=log_entry_not_prepended` |
+| Conforming entry emits no signal (SC-009) | A well-formed prepend-mode entry | No `wiki.log.format_deviation` event, no metric increment — the signal only fires on deviation |
 | Concurrent prepends both land (SC-008) | Two tasks/threads submit different entries to the same `log.md` near-simultaneously | Both entries present afterward, newest-first, in lock-acquisition order — no `write_conflict_stale_read` denial, no lost entry |
 | `index.md` unaffected | Prepend-mode call targeting `index.md` | Rejected/handled by the existing, unchanged catalog-entry check — no prepend-specific behavior applies |
 
@@ -68,6 +71,16 @@ Trigger a Lint run to completion, then confirm:
   correlation attribute.
 - `wiki.lint.coverage_ratio` records one observation for the run.
 - `wiki.lint.runs_total{status=complete|partial}` increments with the correct label.
+
+Trigger a `log.md` write with a deliberately malformed entry (via any of Ingest/Query/Lint),
+then confirm:
+
+- A `wiki.log.format_deviation` structured log event (WARN) appears with `agent`, `mode`,
+  `path`, and `reason` fields matching the deviation.
+- `wiki.log.format_deviation_total{agent=...,mode=...,reason=...}` increments with matching
+  labels.
+- The write itself still succeeds — inspect `log.md` on disk and confirm the entry is
+  present exactly as submitted, not rejected.
 
 ## Agent behavior (evaluation tier)
 

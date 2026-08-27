@@ -52,19 +52,43 @@ After — new, optional `mode`:
    (which deny `write_conflict_stale_read` against a prior `OnReadFile` baseline), a
    prepend write reads current content fresh, under the lock, at evaluation time — there is
    no baseline to compare against and no staleness scenario to deny (research.md R8).
-3. Heading/paragraph format validation, retargeted (feature-scoped format content, not a
+3. Heading/paragraph format check, retargeted (feature-scoped format content, not a
    Feature-Scoped Invariant or ADR decision — see the note at the top of this contract):
-   the supplied `content`
-   (the entry alone) must have, as its first non-blank line, a heading matching
-   `^## \[\d{4}-\d{2}-\d{2}\] .+ \| .+$`, and at least one further non-blank line must
-   follow within the entry. Denial reasons unchanged: `log_entry_malformed_heading`,
-   `log_entry_missing_paragraph`.
+   the supplied `content` (the entry alone) is checked against a first-non-blank-line
+   heading matching `^## \[\d{4}-\d{2}-\d{2}\] .+ \| .+$`, with at least one further
+   non-blank line following within the entry. **This check never denies the write**
+   (Clarifications 2026-08-27; research.md R15; plan.md FSI-3): a non-conforming entry
+   still commits, and the deviation is recorded as `log_entry_malformed_heading` and/or
+   `log_entry_missing_paragraph` via `WikiLogEvents.LogFormatDeviation` (structured log
+   event) and `WikiLogMetrics.RecordFormatDeviation` (counter) — see "Format/ordering
+   deviation signal," below.
 4. Atomic commit of `content + currentContent` via the existing temp-file + `File.Move`
-   path. `OnWriteCommitted` re-baselines the file exactly as today, for any subsequent
-   write in the same run.
+   path, unconditionally (regardless of step 3's outcome). `OnWriteCommitted` re-baselines
+   the file exactly as today, for any subsequent write in the same run.
 
 A missing or empty `log.md` is a valid base — the first prepend write's entry becomes the
 whole file, identical in effect to today's first-write behavior under `ReadWrite` mode.
+
+## Format/ordering deviation signal
+
+Applies identically to `mode: "replace"` and `mode: "prepend"` writes to `log.md` — this is
+not a prepend-mode-only concern, since the underlying format check (§3 above; the
+equivalent check on the `mode: "replace"` path) is the same one this feature relaxes on
+both paths at once (research.md R15).
+
+- **Reason codes** (one write may carry more than one): `log_entry_not_prepended` (proposed
+  content does not end with current content, byte-for-byte — the prepend-only ordering
+  rule); `log_entry_malformed_heading`; `log_entry_missing_paragraph`.
+- **Structured log event**: `wiki.log.format_deviation` (WARN), fields `agent`
+  (`ingest`\|`query`\|`lint`), `mode` (`replace`\|`prepend`), `path`, `reason` (comma-joined
+  if more than one code applies).
+- **Metric**: `wiki.log.format_deviation_total` (Counter), labels `agent`, `mode`, `reason`.
+- Both extend the existing `Grimoire.AgentRuntime.WikiLog.WikiLogEvents`/`WikiLogMetrics`
+  components (data-model.md, "Format/ordering deviation signal"; plan.md Observability) —
+  not a new telemetry surface.
+- **Never emitted for a conforming write.** A write whose content already matches the
+  expected shape produces no event and no metric increment — this signal exists to name
+  deviations, not to record every write.
 
 ## Concurrent writers
 
@@ -81,15 +105,27 @@ equivalent check.
 ## What does not change
 
 - `index.md`'s catalog-entry format check (`ValidateCatalogEntryFormat`) — entirely separate
-  mechanism, untouched, not reachable from any prepend-mode code path.
-- `ReadWrite`-mode writes to `log.md` or anywhere else — the CAS check, the frontmatter
-  preservation check (for `FrontmatterOnly`-mode targets elsewhere in the wiki), and the
-  atomic commit path are all byte-for-byte unchanged.
+  mechanism, untouched, not reachable from any prepend-mode code path, and not reclassified
+  by this feature (still denies, per `contracts/log-prepend-write.md`'s scope — `log.md`
+  only).
+- The CAS check (`write_conflict_stale_read`) and the `FrontmatterOnly` body-preservation
+  check, for `ReadWrite`-mode writes to `log.md` or anywhere else — a structurally separate
+  branch of `EvaluateExistingTargetChecksAsync` from the format check this feature
+  reclassifies (research.md R15); both still deny exactly as before. The atomic commit path
+  itself is also unchanged.
 - The policy-level `Grimoire.Domain.Guardrails.WriteMode` enum — zero new members, zero
   new branches (data-model.md, "Two distinct 'mode' concepts").
 - Which agents can write `log.md` at all — governed by each agent's own `SafetyPolicy`,
   unchanged by this feature (Ingest and Query already could; Lint already could per
   ADR-031).
+
+## What does change beyond prepend mode itself
+
+Unlike every other section of this contract, the format/ordering reclassification above is
+**not** scoped to `mode: "prepend"` — it applies identically to `mode: "replace"` writes to
+`log.md`, reversing pre-existing, shipped behavior from spec 025/ADR-028 (research.md R15).
+This is the one place this feature changes something about the write path an agent was
+already using before this feature shipped.
 
 ## Instruction-file consumers (Constitution Principle V)
 
