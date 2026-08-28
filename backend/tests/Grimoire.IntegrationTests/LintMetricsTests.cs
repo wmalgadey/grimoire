@@ -1,4 +1,5 @@
 using System.Diagnostics.Metrics;
+using Grimoire.AgentRuntime.RunEvents;
 using Grimoire.Hub;
 using Grimoire.LintAgent;
 
@@ -108,6 +109,52 @@ public class LintMetricsTests
         var snapshot = Snapshot(measurements);
         Assert.Contains(snapshot, m => m.Value == 1L && m.Tool == "write_file" && m.Decision == "allowed");
         Assert.Contains(snapshot, m => m.Value == 1L && m.Tool == "write_file" && m.Decision == "denied");
+    }
+
+    // ── 028-lint-at-scale (US2, T011, plan.md ## Observability): wiki.lint.coverage_ratio /
+    // wiki.lint.coverage_runs_total (renamed from the originally planned wiki.lint.runs_total
+    // to avoid colliding with the pre-existing Hub-side metric of that name) ──────────────
+
+    [Fact]
+    public void LintAgentMetrics_RecordCoverage_RecordsRatio_AndIncrementsCoverageRunsTotal_WithCoverageStatusTag()
+    {
+        var ratioMeasurements = new List<(double Value, string Agent)>();
+        var runsMeasurements = new List<(long Value, string Agent, string CoverageStatus)>();
+
+        using var listener = new MeterListener();
+        listener.InstrumentPublished = (instrument, l) =>
+        {
+            if (instrument.Meter.Name != "Grimoire.LintAgent")
+            {
+                return;
+            }
+
+            if (instrument.Name is "wiki.lint.coverage_ratio" or "wiki.lint.coverage_runs_total")
+            {
+                l.EnableMeasurementEvents(instrument);
+            }
+        };
+        listener.SetMeasurementEventCallback<double>((_, value, tags, _) =>
+        {
+            var agent = tags.ToArray().FirstOrDefault(t => t.Key == "agent").Value?.ToString() ?? "";
+            AddSynchronized(ratioMeasurements, (value, agent));
+        });
+        listener.SetMeasurementEventCallback<long>((_, value, tags, _) =>
+        {
+            var tagArray = tags.ToArray();
+            var agent = tagArray.FirstOrDefault(t => t.Key == "agent").Value?.ToString() ?? "";
+            var coverageStatus = tagArray.FirstOrDefault(t => t.Key == "coverage_status").Value?.ToString() ?? "";
+            AddSynchronized(runsMeasurements, (value, agent, coverageStatus));
+        });
+        listener.Start();
+
+        LintAgentMetrics.RecordCoverage(WikiCoverage.Compute(pagesTotal: 633, pagesConsidered: 611));
+
+        var ratioSnapshot = Snapshot(ratioMeasurements);
+        Assert.Contains(ratioSnapshot, m => m.Agent == "lint" && Math.Abs(m.Value - (611.0 / 633.0)) < 0.0001);
+
+        var runsSnapshot = Snapshot(runsMeasurements);
+        Assert.Contains(runsSnapshot, m => m.Value == 1L && m.Agent == "lint" && m.CoverageStatus == "partial");
     }
 
     // ── T038 (013-lint-agent, US2): wiki.lint.findings_total{category} and
