@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using Grimoire.AgentRuntime.Core;
 using Grimoire.AgentRuntime.Guardrails;
+using Grimoire.AgentRuntime.WikiLog;
 using Microsoft.Extensions.Logging;
 
 namespace Grimoire.LintAgent;
@@ -100,6 +101,16 @@ public sealed class LintToolCallInstrumentation : IToolCallInstrumentation
         {
             LintAgentLogEvents.LogWriteLockTimeout(_logger, taskId, path, waitSeconds * 1000);
         }
+    }
+
+    /// <summary>028-lint-at-scale (US3, FR-016, SC-009): a log.md write committed despite a
+    /// format/ordering deviation — never a denial. Extends the shared WikiLogEvents/
+    /// WikiLogMetrics components with this agent's own frozen ActivitySource/Meter.</summary>
+    public void RecordFormatDeviation(string taskId, string path, string mode, IReadOnlyList<string> reasons, int turn)
+    {
+        var reason = string.Join(",", reasons);
+        WikiLogMetrics.RecordFormatDeviation(LintAgentMetrics.Meter, "lint", mode, reason);
+        WikiLogEvents.LogFormatDeviation(_logger, LintAgentTracing.ActivitySource, "lint", mode, path, reason);
     }
 
     // ── 026-guarded-tool-surface (ADR-030/ADR-031): registered here (T014) ahead of the

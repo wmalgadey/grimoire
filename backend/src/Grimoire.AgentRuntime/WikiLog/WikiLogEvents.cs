@@ -50,6 +50,40 @@ public static class WikiLogEvents
             wikiContentWrites);
     }
 
+    private static readonly EventId FormatDeviationEvent = new(3, "wiki.log.format_deviation");
+
+    /// <summary>
+    /// <c>wiki.log.format_deviation</c> (WARN). Emitted once per <c>log.md</c> write
+    /// (either call-shape mode) whose content deviates from the activity-log format
+    /// contract's expected shape — the write still commits (028-lint-at-scale US3, FR-016,
+    /// SC-009, Clarifications 2026-08-27; contracts/log-prepend-write.md). Never emitted
+    /// for a conforming write. Mandatory fields: <paramref name="agent"/>,
+    /// <paramref name="mode"/>, <paramref name="path"/>, <paramref name="reason"/> (the
+    /// comma-joined reason code(s), for a write that carried more than one).
+    /// </summary>
+    public static void LogFormatDeviation(
+        ILogger logger,
+        ActivitySource activitySource,
+        string agent,
+        string mode,
+        string path,
+        string reason)
+    {
+        using var span = StartLogEventSpan(activitySource, FormatDeviationEvent.Name ?? "wiki.log.format_deviation", "Warning");
+        span?.SetTag("agent", agent);
+        span?.SetTag("mode", mode);
+        span?.SetTag("path", path);
+        span?.SetTag("reason", reason);
+
+        logger.LogWarning(
+            FormatDeviationEvent,
+            "log.md write committed despite a format/ordering deviation. agent={agent} mode={mode} path={path} reason={reason}",
+            agent,
+            mode,
+            path,
+            reason);
+    }
+
     private static Activity? StartLogEventSpan(ActivitySource activitySource, string eventName, string level)
     {
         var span = activitySource.StartActivity(eventName);

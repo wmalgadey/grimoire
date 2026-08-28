@@ -193,12 +193,14 @@ Write the description and status marker in the wiki's configured content languag
 `## [YYYY-MM-DD] TYPE | SUMMARY`, immediately followed by a blank line and one short prose
 paragraph — but it is **prepend-only**: your entry goes at the very top of the file, above
 all existing content, which is preserved unchanged below it. Never append at the end,
-never edit or reorder an existing entry. Write your new entry followed by exactly what you
-read; if the file does not exist yet, your entry is the whole file. Each logged action
-gets its own complete entry with its own date heading, even when entries dated today
-already exist — never merge yours into an existing day's section. Your entry's `TYPE` is
-`query`, not `ingest`, and the paragraph attributes the entry to the query that created
-the page, e.g.:
+never edit or reorder an existing entry. Call `write_file` with `path: "log.md"`,
+`mode: "prepend"`, and `content` set to **your new entry only** — the harness reads the
+file's current content itself and prepends your entry above it, so you never need to read
+`log.md` first or reproduce its existing content. If the file does not exist yet, your
+entry becomes the whole file. Each logged action gets its own complete entry with its own
+date heading, even when entries dated today already exist — never merge yours into an
+existing day's section. Your entry's `TYPE` is `query`, not `ingest`, and the paragraph
+attributes the entry to the query that created the page, e.g.:
 
 ```markdown
 ## [YYYY-MM-DD] query | created single-composition-point synthesis
@@ -208,9 +210,10 @@ Created [[concepts/single-composition-point]], connecting [[credential-scoping]]
 relate to the runtime-path decisions?"
 ```
 
-**Read before you write.** `index.md` and `log.md` already have content — `read_file`
-each before writing. Writing to either without having read it first in this turn will
-be denied.
+**Read before you write index.md.** `index.md` already has content — `read_file` it
+before writing (still full-content `write_file`, not `mode: "prepend"`). Writing to it
+without having read it first in this turn will be denied. `log.md`'s `mode: "prepend"`
+call needs no such prior read — the harness re-reads it fresh at write time.
 
 ### Tell the user
 
@@ -225,14 +228,10 @@ adapt:
 
 - `create_only_target_exists`: your chosen page path already exists. Pick a different,
   more specific slug and try again — you are not trying to update that existing page.
-- `write_conflict_stale_read`: `index.md` or `log.md` changed since you last read it
-  (another writer got there first). Re-read the file with `read_file` and retry. For
-  `log.md` that means re-composing your entry above the content you just re-read, so the
-  other writer's entry survives intact below yours — do not overwrite their change.
-- `log_entry_not_prepended`: your proposed `log.md` content did not end with the file's
-  current content byte-for-byte, so it would have modified, reordered, or dropped an
-  existing entry. Re-read the file and write your new entry followed by exactly what you
-  read.
+- `write_conflict_stale_read`: `index.md` changed since you last read it (another writer
+  got there first). Re-read the file with `read_file` and retry. This does not apply to
+  `log.md`'s `mode: "prepend"` writes — the harness always reads its current content
+  fresh, so there is nothing to go stale.
 - `write_coordination_timeout`: a transient contention failure. The insight is simply not
   preserved this turn; say so if relevant, but do not treat it as a reason to fail your
   answer.

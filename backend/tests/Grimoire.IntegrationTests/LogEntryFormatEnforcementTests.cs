@@ -10,13 +10,15 @@ using Grimoire.Domain.Guardrails;
 namespace Grimoire.IntegrationTests;
 
 /// <summary>
-/// 025-agent-owned-log T011 (ADR-028, amending ADR-017): <see cref="SharedFileWriteGuard"/>'s
-/// log.md format-validation step — <b>prepend-only</b>, then heading shape
+/// 025-agent-owned-log T011 (ADR-028, amending ADR-017), reclassified by 028-lint-at-scale
+/// (US3, Clarifications 2026-08-27, research.md R15): <see cref="SharedFileWriteGuard"/>'s
+/// log.md format-validation step — prepend-only, then heading shape
 /// (<c>## [DATE] TYPE | SUMMARY</c>), then a following non-blank paragraph
-/// (contracts/activity-log-write-contract.md) — hermetic against a real temp filesystem,
-/// mirroring <c>SharedFileWriteGuardFrontmatterOnlyTests</c>'s idiom for ADR-016.
+/// (contracts/log-prepend-write.md) — never denies a write anymore (FSI-3). A
+/// non-conforming write still commits exactly as submitted; the check's result surfaces
+/// only as <see cref="WriteGuardDecision.FormatDeviationReasons"/>, never as a denial.
 ///
-/// These cover Feature-Scoped Invariant FSI-1 the way Constitution Principle III requires:
+/// These cover Feature-Scoped Invariant FSI-3 the way Constitution Principle III requires:
 /// classicist, state-based assertions over the real guard's returned decision and the real
 /// bytes on disk — never by reflecting over the guard's shape. Deliberately agent-agnostic
 /// throughout (including the trace span test below, which uses a private test-local
@@ -38,7 +40,7 @@ public class LogEntryFormatEnforcementTests
     private static SharedFileWriteGuard NewGuard(string writeLocksDir, string logPath, ActivitySource? activitySource = null) =>
         new(writeLocksDir, backoffCap: TimeSpan.FromMilliseconds(500), logPath: logPath, activitySource: activitySource);
 
-    /// <summary>FR-003, SC-004: the new entry goes on top and the prior bytes survive as an exact suffix.</summary>
+    /// <summary>FR-010, SC-007: the new entry goes on top and the prior bytes survive as an exact suffix.</summary>
     [Fact]
     public async Task WellFormedPrepend_ToExistingLog_Allows_AndKeepsPriorContentAsSuffix()
     {
@@ -57,6 +59,7 @@ public class LogEntryFormatEnforcementTests
             var decision = await guard.EvaluateWriteAsync(logPath, WriteMode.ReadWrite, proposed, CancellationToken.None);
 
             Assert.True(decision.IsAllowed);
+            Assert.Null(decision.FormatDeviationReasons);
             await File.WriteAllTextAsync(logPath, proposed);
             guard.OnWriteCommitted(logPath, proposed);
             decision.LockHandle!.Dispose();
@@ -72,11 +75,12 @@ public class LogEntryFormatEnforcementTests
     }
 
     /// <summary>
-    /// FR-004, SC-001: the shape this feature replaced. Appending the new entry after the
-    /// existing content — legal until ADR-028 — is now the canonical denial case.
+    /// FR-011, SC-009 (Clarifications 2026-08-27, research.md R15): the shape this feature's
+    /// predecessor (ADR-028) denied. Appending the new entry after the existing content
+    /// still commits — the deviation is recorded, never rejected.
     /// </summary>
     [Fact]
-    public async Task OldAppendShape_Denies_LogEntryNotPrepended_AndLeavesFileUnchanged()
+    public async Task OldAppendShape_Commits_AndReportsLogEntryNotPrepended()
     {
         var root = CreateTempDir();
         try
@@ -92,10 +96,13 @@ public class LogEntryFormatEnforcementTests
 
             var decision = await guard.EvaluateWriteAsync(logPath, WriteMode.ReadWrite, proposed, CancellationToken.None);
 
-            Assert.False(decision.IsAllowed);
-            Assert.Equal("log_entry_not_prepended", decision.DenialReason);
-            Assert.Null(decision.LockHandle);
-            Assert.Equal(ExistingEntry, await File.ReadAllTextAsync(logPath));
+            Assert.True(decision.IsAllowed);
+            Assert.Equal(["log_entry_not_prepended"], decision.FormatDeviationReasons);
+            await File.WriteAllTextAsync(logPath, proposed);
+            guard.OnWriteCommitted(logPath, proposed);
+            decision.LockHandle!.Dispose();
+
+            Assert.Equal(proposed, await File.ReadAllTextAsync(logPath));
         }
         finally
         {
@@ -120,6 +127,7 @@ public class LogEntryFormatEnforcementTests
             var decision = await guard.EvaluateWriteAsync(logPath, WriteMode.ReadWrite, ConformingEntry, CancellationToken.None);
 
             Assert.True(decision.IsAllowed);
+            Assert.Null(decision.FormatDeviationReasons);
             decision.LockHandle!.Dispose();
         }
         finally
@@ -128,9 +136,9 @@ public class LogEntryFormatEnforcementTests
         }
     }
 
-    /// <summary>FR-005, SC-001: removing an existing entry is not a prepend.</summary>
+    /// <summary>FR-011, SC-009: removing an existing entry is not a prepend, but still commits.</summary>
     [Fact]
-    public async Task PrependThatDropsAnExistingEntry_Denies_LogEntryNotPrepended()
+    public async Task PrependThatDropsAnExistingEntry_Commits_AndReportsLogEntryNotPrepended()
     {
         var root = CreateTempDir();
         try
@@ -148,9 +156,13 @@ public class LogEntryFormatEnforcementTests
 
             var decision = await guard.EvaluateWriteAsync(logPath, WriteMode.ReadWrite, proposed, CancellationToken.None);
 
-            Assert.False(decision.IsAllowed);
-            Assert.Equal("log_entry_not_prepended", decision.DenialReason);
-            Assert.Equal(existing, await File.ReadAllTextAsync(logPath));
+            Assert.True(decision.IsAllowed);
+            Assert.Equal(["log_entry_not_prepended"], decision.FormatDeviationReasons);
+            await File.WriteAllTextAsync(logPath, proposed);
+            guard.OnWriteCommitted(logPath, proposed);
+            decision.LockHandle!.Dispose();
+
+            Assert.Equal(proposed, await File.ReadAllTextAsync(logPath));
         }
         finally
         {
@@ -158,9 +170,9 @@ public class LogEntryFormatEnforcementTests
         }
     }
 
-    /// <summary>FR-005, SC-001: reordering existing entries is not a prepend either.</summary>
+    /// <summary>FR-011, SC-009: reordering existing entries is not a prepend either, but still commits.</summary>
     [Fact]
-    public async Task PrependThatReordersExistingEntries_Denies_LogEntryNotPrepended()
+    public async Task PrependThatReordersExistingEntries_Commits_AndReportsLogEntryNotPrepended()
     {
         var root = CreateTempDir();
         try
@@ -178,9 +190,13 @@ public class LogEntryFormatEnforcementTests
 
             var decision = await guard.EvaluateWriteAsync(logPath, WriteMode.ReadWrite, proposed, CancellationToken.None);
 
-            Assert.False(decision.IsAllowed);
-            Assert.Equal("log_entry_not_prepended", decision.DenialReason);
-            Assert.Equal(existing, await File.ReadAllTextAsync(logPath));
+            Assert.True(decision.IsAllowed);
+            Assert.Equal(["log_entry_not_prepended"], decision.FormatDeviationReasons);
+            await File.WriteAllTextAsync(logPath, proposed);
+            guard.OnWriteCommitted(logPath, proposed);
+            decision.LockHandle!.Dispose();
+
+            Assert.Equal(proposed, await File.ReadAllTextAsync(logPath));
         }
         finally
         {
@@ -190,10 +206,10 @@ public class LogEntryFormatEnforcementTests
 
     /// <summary>
     /// Edge case: a prepend that also "fixes" an existing entry. The current content is no
-    /// longer an exact suffix, so it is denied even though a conforming entry was added.
+    /// longer an exact suffix — reported, not rejected; a conforming new entry was added.
     /// </summary>
     [Fact]
-    public async Task PrependThatAlsoEditsExistingContent_Denies_LogEntryNotPrepended()
+    public async Task PrependThatAlsoEditsExistingContent_Commits_AndReportsLogEntryNotPrepended()
     {
         var root = CreateTempDir();
         try
@@ -210,9 +226,13 @@ public class LogEntryFormatEnforcementTests
 
             var decision = await guard.EvaluateWriteAsync(logPath, WriteMode.ReadWrite, proposed, CancellationToken.None);
 
-            Assert.False(decision.IsAllowed);
-            Assert.Equal("log_entry_not_prepended", decision.DenialReason);
-            Assert.Equal(ExistingEntry, await File.ReadAllTextAsync(logPath));
+            Assert.True(decision.IsAllowed);
+            Assert.Equal(["log_entry_not_prepended"], decision.FormatDeviationReasons);
+            await File.WriteAllTextAsync(logPath, proposed);
+            guard.OnWriteCommitted(logPath, proposed);
+            decision.LockHandle!.Dispose();
+
+            Assert.Equal(proposed, await File.ReadAllTextAsync(logPath));
         }
         finally
         {
@@ -243,6 +263,7 @@ public class LogEntryFormatEnforcementTests
             var decision = await guard.EvaluateWriteAsync(logPath, WriteMode.ReadWrite, proposed, CancellationToken.None);
 
             Assert.True(decision.IsAllowed);
+            Assert.Null(decision.FormatDeviationReasons);
             await File.WriteAllTextAsync(logPath, proposed);
             guard.OnWriteCommitted(logPath, proposed);
             decision.LockHandle!.Dispose();
@@ -270,6 +291,7 @@ public class LogEntryFormatEnforcementTests
             var decision = await guard.EvaluateWriteAsync(logPath, WriteMode.ReadWrite, ConformingEntry, CancellationToken.None);
 
             Assert.True(decision.IsAllowed);
+            Assert.Null(decision.FormatDeviationReasons);
             decision.LockHandle!.Dispose();
         }
         finally
@@ -279,7 +301,7 @@ public class LogEntryFormatEnforcementTests
     }
 
     [Fact]
-    public async Task InPlaceRewrite_Denies_LogEntryNotPrepended()
+    public async Task InPlaceRewrite_Commits_AndReportsLogEntryNotPrepended()
     {
         var root = CreateTempDir();
         try
@@ -296,12 +318,13 @@ public class LogEntryFormatEnforcementTests
 
             var decision = await guard.EvaluateWriteAsync(logPath, WriteMode.ReadWrite, proposed, CancellationToken.None);
 
-            Assert.False(decision.IsAllowed);
-            Assert.Equal("log_entry_not_prepended", decision.DenialReason);
-            Assert.Null(decision.LockHandle);
+            Assert.True(decision.IsAllowed);
+            Assert.Equal(["log_entry_not_prepended"], decision.FormatDeviationReasons);
+            await File.WriteAllTextAsync(logPath, proposed);
+            guard.OnWriteCommitted(logPath, proposed);
+            decision.LockHandle!.Dispose();
 
-            // Nothing was applied — the on-disk file is untouched.
-            Assert.Equal(ExistingEntry, await File.ReadAllTextAsync(logPath));
+            Assert.Equal(proposed, await File.ReadAllTextAsync(logPath));
         }
         finally
         {
@@ -311,10 +334,10 @@ public class LogEntryFormatEnforcementTests
 
     /// <summary>
     /// Edge case: a head of pure whitespace above intact existing content satisfies the
-    /// prepend rule but carries no entry, so the heading check rejects it.
+    /// prepend rule but carries no entry, so the heading check reports a deviation.
     /// </summary>
     [Fact]
-    public async Task WhitespaceOnlyPrepend_Denies_LogEntryMalformedHeading()
+    public async Task WhitespaceOnlyPrepend_Commits_AndReportsLogEntryMalformedHeading()
     {
         var root = CreateTempDir();
         try
@@ -330,9 +353,13 @@ public class LogEntryFormatEnforcementTests
 
             var decision = await guard.EvaluateWriteAsync(logPath, WriteMode.ReadWrite, proposed, CancellationToken.None);
 
-            Assert.False(decision.IsAllowed);
-            Assert.Equal("log_entry_malformed_heading", decision.DenialReason);
-            Assert.Equal(ExistingEntry, await File.ReadAllTextAsync(logPath));
+            Assert.True(decision.IsAllowed);
+            Assert.Equal(["log_entry_malformed_heading"], decision.FormatDeviationReasons);
+            await File.WriteAllTextAsync(logPath, proposed);
+            guard.OnWriteCommitted(logPath, proposed);
+            decision.LockHandle!.Dispose();
+
+            Assert.Equal(proposed, await File.ReadAllTextAsync(logPath));
         }
         finally
         {
@@ -342,10 +369,10 @@ public class LogEntryFormatEnforcementTests
 
     /// <summary>
     /// Edge case: a conforming heading prepended with no paragraph before the existing
-    /// content resumes is rejected within the head, not excused by the content below.
+    /// content resumes reports a deviation within the head, not excused by the content below.
     /// </summary>
     [Fact]
-    public async Task HeadingOnlyPrepend_AboveExistingContent_Denies_LogEntryMissingParagraph()
+    public async Task HeadingOnlyPrepend_AboveExistingContent_Commits_AndReportsLogEntryMissingParagraph()
     {
         var root = CreateTempDir();
         try
@@ -361,9 +388,13 @@ public class LogEntryFormatEnforcementTests
 
             var decision = await guard.EvaluateWriteAsync(logPath, WriteMode.ReadWrite, proposed, CancellationToken.None);
 
-            Assert.False(decision.IsAllowed);
-            Assert.Equal("log_entry_missing_paragraph", decision.DenialReason);
-            Assert.Equal(ExistingEntry, await File.ReadAllTextAsync(logPath));
+            Assert.True(decision.IsAllowed);
+            Assert.Equal(["log_entry_missing_paragraph"], decision.FormatDeviationReasons);
+            await File.WriteAllTextAsync(logPath, proposed);
+            guard.OnWriteCommitted(logPath, proposed);
+            decision.LockHandle!.Dispose();
+
+            Assert.Equal(proposed, await File.ReadAllTextAsync(logPath));
         }
         finally
         {
@@ -372,7 +403,7 @@ public class LogEntryFormatEnforcementTests
     }
 
     [Fact]
-    public async Task MalformedHeading_Denies_LogEntryMalformedHeading()
+    public async Task MalformedHeading_Commits_AndReportsLogEntryMalformedHeading()
     {
         var root = CreateTempDir();
         try
@@ -390,8 +421,9 @@ public class LogEntryFormatEnforcementTests
 
             var decision = await guard.EvaluateWriteAsync(logPath, WriteMode.ReadWrite, proposed, CancellationToken.None);
 
-            Assert.False(decision.IsAllowed);
-            Assert.Equal("log_entry_malformed_heading", decision.DenialReason);
+            Assert.True(decision.IsAllowed);
+            Assert.Equal(["log_entry_malformed_heading"], decision.FormatDeviationReasons);
+            decision.LockHandle!.Dispose();
         }
         finally
         {
@@ -400,7 +432,7 @@ public class LogEntryFormatEnforcementTests
     }
 
     [Fact]
-    public async Task HeadingMissingDateBracketsAndPipe_Denies_LogEntryMalformedHeading()
+    public async Task HeadingMissingDateBracketsAndPipe_Commits_AndReportsLogEntryMalformedHeading()
     {
         var root = CreateTempDir();
         try
@@ -418,8 +450,9 @@ public class LogEntryFormatEnforcementTests
 
             var decision = await guard.EvaluateWriteAsync(logPath, WriteMode.ReadWrite, proposed, CancellationToken.None);
 
-            Assert.False(decision.IsAllowed);
-            Assert.Equal("log_entry_malformed_heading", decision.DenialReason);
+            Assert.True(decision.IsAllowed);
+            Assert.Equal(["log_entry_malformed_heading"], decision.FormatDeviationReasons);
+            decision.LockHandle!.Dispose();
         }
         finally
         {
@@ -428,7 +461,7 @@ public class LogEntryFormatEnforcementTests
     }
 
     [Fact]
-    public async Task WrongHeadingLevel_Denies_LogEntryMalformedHeading()
+    public async Task WrongHeadingLevel_Commits_AndReportsLogEntryMalformedHeading()
     {
         var root = CreateTempDir();
         try
@@ -446,8 +479,9 @@ public class LogEntryFormatEnforcementTests
 
             var decision = await guard.EvaluateWriteAsync(logPath, WriteMode.ReadWrite, proposed, CancellationToken.None);
 
-            Assert.False(decision.IsAllowed);
-            Assert.Equal("log_entry_malformed_heading", decision.DenialReason);
+            Assert.True(decision.IsAllowed);
+            Assert.Equal(["log_entry_malformed_heading"], decision.FormatDeviationReasons);
+            decision.LockHandle!.Dispose();
         }
         finally
         {
@@ -456,7 +490,7 @@ public class LogEntryFormatEnforcementTests
     }
 
     [Fact]
-    public async Task HeadingWithNoFollowingParagraph_Denies_LogEntryMissingParagraph()
+    public async Task HeadingWithNoFollowingParagraph_Commits_AndReportsLogEntryMissingParagraph()
     {
         var root = CreateTempDir();
         try
@@ -473,8 +507,9 @@ public class LogEntryFormatEnforcementTests
 
             var decision = await guard.EvaluateWriteAsync(logPath, WriteMode.ReadWrite, proposed, CancellationToken.None);
 
-            Assert.False(decision.IsAllowed);
-            Assert.Equal("log_entry_missing_paragraph", decision.DenialReason);
+            Assert.True(decision.IsAllowed);
+            Assert.Equal(["log_entry_missing_paragraph"], decision.FormatDeviationReasons);
+            decision.LockHandle!.Dispose();
         }
         finally
         {
@@ -483,7 +518,7 @@ public class LogEntryFormatEnforcementTests
     }
 
     [Fact]
-    public async Task HeadingImmediatelyFollowedByBlankLineOnly_Denies_LogEntryMissingParagraph()
+    public async Task HeadingImmediatelyFollowedByBlankLineOnly_Commits_AndReportsLogEntryMissingParagraph()
     {
         var root = CreateTempDir();
         try
@@ -500,8 +535,43 @@ public class LogEntryFormatEnforcementTests
 
             var decision = await guard.EvaluateWriteAsync(logPath, WriteMode.ReadWrite, proposed, CancellationToken.None);
 
-            Assert.False(decision.IsAllowed);
-            Assert.Equal("log_entry_missing_paragraph", decision.DenialReason);
+            Assert.True(decision.IsAllowed);
+            Assert.Equal(["log_entry_missing_paragraph"], decision.FormatDeviationReasons);
+            decision.LockHandle!.Dispose();
+        }
+        finally
+        {
+            Directory.Delete(root, recursive: true);
+        }
+    }
+
+    /// <summary>
+    /// FR-016, SC-009 (data-model.md "Format/ordering deviation signal"): a write can
+    /// deviate from the ordering rule and the heading shape at the same time — both reason
+    /// codes are reported together, comma-joined at the log-event/metric layer, but kept as
+    /// distinct entries on <see cref="WriteGuardDecision.FormatDeviationReasons"/> itself.
+    /// </summary>
+    [Fact]
+    public async Task WriteThatIsBothNotPrependedAndMalformed_Commits_AndReportsBothReasons()
+    {
+        var root = CreateTempDir();
+        try
+        {
+            var logPath = Path.Combine(root, "wiki", "log.md");
+            Directory.CreateDirectory(Path.GetDirectoryName(logPath)!);
+            const string existing = "some prior content that will not survive as a suffix\n";
+            await File.WriteAllTextAsync(logPath, existing);
+
+            var guard = NewGuard(Path.Combine(root, "write-locks"), logPath);
+            guard.OnReadFile(logPath, existing);
+
+            var proposed = "no heading here at all, and the ordering is wrong too\n";
+
+            var decision = await guard.EvaluateWriteAsync(logPath, WriteMode.ReadWrite, proposed, CancellationToken.None);
+
+            Assert.True(decision.IsAllowed);
+            Assert.Equal(["log_entry_not_prepended", "log_entry_malformed_heading"], decision.FormatDeviationReasons);
+            decision.LockHandle!.Dispose();
         }
         finally
         {
@@ -525,6 +595,7 @@ public class LogEntryFormatEnforcementTests
             var decision = await guard.EvaluateWriteAsync(otherTarget, WriteMode.ReadWrite, "not a log entry at all", CancellationToken.None);
 
             Assert.True(decision.IsAllowed);
+            Assert.Null(decision.FormatDeviationReasons);
             decision.LockHandle!.Dispose();
         }
         finally
@@ -587,8 +658,10 @@ public class LogEntryFormatEnforcementTests
     }
 
     /// <summary>
-    /// T037: the <c>guardrails.format_validate</c> span exists with the plan-mandated
-    /// attributes. It is created inside <see cref="SharedFileWriteGuard.EvaluateWriteAsync(string, WriteMode, string, CancellationToken)"/>
+    /// T037 (retargeted by 028-lint-at-scale T030): the <c>guardrails.format_validate</c>
+    /// span exists with the plan-mandated attributes, its <c>outcome</c> tag now
+    /// <c>conforming</c>/<c>deviated</c> instead of <c>allowed</c>/<c>denied</c> (FSI-3). It
+    /// is created inside <see cref="SharedFileWriteGuard.EvaluateWriteAsync(string, WriteMode, string, CancellationToken, bool)"/>
     /// itself (ADR-017's mechanism lives there, run after the existing checks) — the same
     /// call GuardedToolExecutor wraps in its own <c>guardrails.acquire_write_lock</c> span
     /// while holding the per-target lock (contract §3), so in practice this span nests
@@ -650,7 +723,7 @@ public class LogEntryFormatEnforcementTests
                     turn: 2,
                     CancellationToken.None);
 
-                Assert.True(result.IsError);
+                Assert.False(result.IsError);
             }
 
             // Other test classes may run in parallel and emit spans on the same
@@ -662,7 +735,7 @@ public class LogEntryFormatEnforcementTests
             Assert.Equal(ambient!.SpanId.ToHexString(), formatSpan.ParentSpanId.ToHexString());
             Assert.Equal(logPath, GetTag(formatSpan, "path"));
             Assert.Equal("log", GetTag(formatSpan, "target"));
-            Assert.Equal("denied", GetTag(formatSpan, "outcome"));
+            Assert.Equal("deviated", GetTag(formatSpan, "outcome"));
             Assert.Equal("log_entry_malformed_heading", GetTag(formatSpan, "reason"));
         }
         finally
@@ -672,15 +745,15 @@ public class LogEntryFormatEnforcementTests
     }
 
     /// <summary>
-    /// 025-agent-owned-log T013 (FR-004, SC-001): the <c>guardrails.format_validate</c>
-    /// span is unchanged in name, parentage, and attribute set — only the <c>reason</c>
-    /// value it carries on an ordering denial changes, from <c>log_entry_not_appended</c>
-    /// to <c>log_entry_not_prepended</c>. Asserted through the real executor and guard, on
-    /// the shape this feature made illegal: appending the new entry after the existing
-    /// content.
+    /// 025-agent-owned-log T013 (FR-004, SC-001), retargeted by 028-lint-at-scale (FSI-3):
+    /// the <c>guardrails.format_validate</c> span is unchanged in name, parentage, and
+    /// attribute set — only the <c>outcome</c> value changes (now <c>deviated</c>, never
+    /// <c>denied</c>) and the write it accompanies now commits. Asserted through the real
+    /// executor and guard, on the shape the predecessor feature made a denial: appending
+    /// the new entry after the existing content.
     /// </summary>
     [Fact]
-    public async Task FormatValidateSpan_OnOrderingDenial_CarriesLogEntryNotPrependedReason()
+    public async Task FormatValidateSpan_OnOrderingDeviation_CarriesLogEntryNotPrependedReason_AndTheWriteCommits()
     {
         var activities = new ConcurrentBag<Activity>();
         using var listener = new ActivityListener
@@ -725,7 +798,7 @@ public class LogEntryFormatEnforcementTests
                     turn: 2,
                     CancellationToken.None);
 
-                Assert.True(result.IsError);
+                Assert.False(result.IsError);
             }
 
             var thisTrace = activities.Where(a => a.TraceId == ambient!.TraceId).ToList();
@@ -733,11 +806,11 @@ public class LogEntryFormatEnforcementTests
 
             Assert.Equal(logPath, GetTag(formatSpan, "path"));
             Assert.Equal("log", GetTag(formatSpan, "target"));
-            Assert.Equal("denied", GetTag(formatSpan, "outcome"));
+            Assert.Equal("deviated", GetTag(formatSpan, "outcome"));
             Assert.Equal("log_entry_not_prepended", GetTag(formatSpan, "reason"));
 
-            // The denial left the file untouched.
-            Assert.Equal(ExistingEntry, await File.ReadAllTextAsync(logPath));
+            // The write committed exactly as submitted — never denied.
+            Assert.Equal(ExistingEntry + ConformingEntry, await File.ReadAllTextAsync(logPath));
         }
         finally
         {

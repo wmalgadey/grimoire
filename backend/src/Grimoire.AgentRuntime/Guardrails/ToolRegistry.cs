@@ -260,7 +260,12 @@ public sealed class ToolRegistry
             },
             "content": {
               "type": "string",
-              "description": "Full new file content (UTF-8 markdown)."
+              "description": "Full new file content (UTF-8 markdown) when mode is omitted/\"replace\" (default); the new entry only, when mode is \"prepend\"."
+            },
+            "mode": {
+              "type": "string",
+              "enum": ["replace", "prepend"],
+              "description": "\"replace\" (default): content is the full proposed file. \"prepend\": content is a new entry only — the harness reads the target's current content itself and commits entry + currentContent, so the caller never has to reproduce the whole file to add one entry."
             }
           },
           "required": ["path", "content"],
