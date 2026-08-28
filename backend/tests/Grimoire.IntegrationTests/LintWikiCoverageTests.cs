@@ -17,12 +17,12 @@ namespace Grimoire.IntegrationTests;
 /// that internal type is not visible across the assembly boundary (mirrors
 /// <c>LintAtScaleCompletionTests</c>'s scope).
 /// </summary>
-public class WikiCoverageTests : IDisposable
+public class LintWikiCoverageTests : IDisposable
 {
     private readonly string _root;
     private readonly GuardedToolExecutor _executor;
 
-    public WikiCoverageTests()
+    public LintWikiCoverageTests()
     {
         _root = Path.Combine(Path.GetTempPath(), $"wiki-coverage-{Guid.NewGuid():N}");
         Directory.CreateDirectory(_root);
