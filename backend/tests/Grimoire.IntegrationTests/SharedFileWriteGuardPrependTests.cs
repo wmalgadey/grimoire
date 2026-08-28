@@ -32,12 +32,12 @@ public class SharedFileWriteGuardPrependTests
 
         Assert.False(root.GetProperty("additionalProperties").GetBoolean());
 
-        var required = root.GetProperty("required").EnumerateArray().Select(e => e.GetString()).ToArray();
+        var required = root.GetProperty("required").EnumerateArray().Select(e => e.GetString()!).ToArray();
         Assert.Equal(["path", "content"], required);
 
         var mode = root.GetProperty("properties").GetProperty("mode");
         Assert.Equal("string", mode.GetProperty("type").GetString());
-        var enumValues = mode.GetProperty("enum").EnumerateArray().Select(e => e.GetString()).ToArray();
+        var enumValues = mode.GetProperty("enum").EnumerateArray().Select(e => e.GetString()!).ToArray();
         Assert.Equal(["replace", "prepend"], enumValues);
     }
 
@@ -212,11 +212,15 @@ public class SharedFileWriteGuardPrependTests
                 await executor.ExecuteAsync(ToolRegistry.ReadFile, """{"path": "log.md"}""", turn: 1, CancellationToken.None);
             }
 
+            var call = new Dictionary<string, object?> { ["path"] = "log.md", ["content"] = content };
+            if (mode == "prepend")
+            {
+                call["mode"] = mode;
+            }
+
             var result = await executor.ExecuteAsync(
                 ToolRegistry.WriteFile,
-                JsonSerializer.Serialize(mode == "prepend"
-                    ? new { path = "log.md", mode, content }
-                    : new { path = "log.md", content }),
+                JsonSerializer.Serialize(call),
                 turn: 2, CancellationToken.None);
 
             Assert.False(result.IsError);
