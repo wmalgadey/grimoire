@@ -77,7 +77,24 @@ public static class LintScenarioDefinitions
         ScorerId: "lint-at-scale-survey",
         ContextBudgetTokens: 20_000);
 
-    public static readonly IReadOnlyList<LintScenarioDefinition> All = [AtScaleSurvey];
+    /// <summary>
+    /// 028-lint-at-scale (US1, FR-008/SC-003): the same fixture and scorer as
+    /// <see cref="AtScaleSurvey"/>, with the budget lever turned tighter — half the context
+    /// budget against the identical, unchanged fixture. Proves the "reading stays bounded
+    /// regardless of corpus size" property generalizes across more than one point on the
+    /// budget-to-content-size relation, without generating a second, larger corpus
+    /// (research.md R3: a large corpus was judged disproportionate to what this needs
+    /// proven). Reading-volume growth between this and <see cref="AtScaleSurvey"/> must not
+    /// be super-linear as the budget fraction shrinks.
+    /// </summary>
+    public static readonly LintScenarioDefinition AtScaleSurveyTightBudget = new(
+        Id: "lint-at-scale-survey-tight-budget",
+        FixtureName: Workspace.LintAtScaleFixture.FixtureName,
+        Threshold: 0.90,
+        ScorerId: "lint-at-scale-survey",
+        ContextBudgetTokens: 10_000);
+
+    public static readonly IReadOnlyList<LintScenarioDefinition> All = [AtScaleSurvey, AtScaleSurveyTightBudget];
 
     public static LintScenarioDefinition? Find(string scenarioId)
         => All.FirstOrDefault(s => string.Equals(s.Id, scenarioId, StringComparison.OrdinalIgnoreCase));
