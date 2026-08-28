@@ -38,13 +38,23 @@ internal static class LintPaths
             return 0;
         }
 
+        // Copilot review (PR #207): Directory.EnumerateFiles is lazily evaluated, so wrapping
+        // .Count() in one try/catch let a permission-denied subdirectory anywhere in the tree
+        // abort the whole count — the opposite of "skipped" above. Counting via a manual
+        // foreach and returning what was already counted before the failure is what actually
+        // gives that tolerance (mirrors GuardedToolExecutor.EnumerateSearchCandidates).
+        var count = 0;
         try
         {
-            return Directory.EnumerateFiles(wikiRoot, "*.md", SearchOption.AllDirectories).Count();
+            foreach (var _ in Directory.EnumerateFiles(wikiRoot, "*.md", SearchOption.AllDirectories))
+            {
+                count++;
+            }
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
-            return 0;
         }
+
+        return count;
     }
 }

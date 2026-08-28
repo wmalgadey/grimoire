@@ -329,9 +329,12 @@ public sealed class GuardedToolExecutor
             return new ToolExecutionResult(true, $"File not found: {relativePath}");
         }
 
-        _consideredPaths.Add(canonical);
-
         var content = await File.ReadAllTextAsync(canonical, Encoding.UTF8, cancellationToken);
+
+        // Copilot review (PR #207): recorded only once the read has actually succeeded — a
+        // path is not "considered" (ConsideredPaths' contract, above) if ReadAllTextAsync
+        // throws (IO/permissions) before this line is reached.
+        _consideredPaths.Add(canonical);
 
         if (!range.HasOffset && !range.HasLimit && !range.FrontmatterOnly)
         {
