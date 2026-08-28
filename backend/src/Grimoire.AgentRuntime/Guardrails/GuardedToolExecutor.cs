@@ -70,6 +70,11 @@ public sealed class GuardedToolExecutor
     private readonly List<string> _touchedPaths = [];
     private readonly List<string> _createdPaths = [];
     private readonly List<(string Path, int Turn)> _deletedPaths = [];
+    // 028-lint-at-scale (US2, FR-004): canonical paths named in a successful read_file
+    // result (any mode), a batch member's read result, or a search_files match — never a
+    // denied path, never a bare list_files result (data-model.md ConsideredPaths). Feeds
+    // WikiCoverage, computed once at run completion.
+    private readonly HashSet<string> _consideredPaths = new(StringComparer.Ordinal);
 
     /// <param name="writeLocksDir">
     /// ADR-015: base directory for cross-process write-coordination lock files. When
@@ -195,6 +200,15 @@ public sealed class GuardedToolExecutor
         && _touchedPaths.Contains(_canonicalLogPath, StringComparer.Ordinal);
 
     /// <summary>
+    /// 028-lint-at-scale (US2, FR-004): every distinct canonical page path this run
+    /// actually opened — via <c>read_file</c> (any mode), a <c>batch</c> member's read, or
+    /// a <c>search_files</c> match. A path named only in a <c>list_files</c> result is
+    /// never added (data-model.md ConsideredPaths). Feeds <c>WikiCoverage</c>, computed
+    /// once at run completion — never self-reported by the agent.
+    /// </summary>
+    public IReadOnlySet<string> ConsideredPaths => _consideredPaths;
+
+    /// <summary>
     /// Executes one tool call, applying policy, journaling, and telemetry.
     /// </summary>
     public async Task<ToolExecutionResult> ExecuteAsync(
@@ -314,6 +328,8 @@ public sealed class GuardedToolExecutor
         {
             return new ToolExecutionResult(true, $"File not found: {relativePath}");
         }
+
+        _consideredPaths.Add(canonical);
 
         var content = await File.ReadAllTextAsync(canonical, Encoding.UTF8, cancellationToken);
 
@@ -1097,6 +1113,7 @@ public sealed class GuardedToolExecutor
 
                 var relativeMatchPath = Path.GetRelativePath(_repositoryRoot, candidateFile).Replace('\\', '/');
                 matches.Add($"{relativeMatchPath}:{lineNumber}:{line}");
+                _consideredPaths.Add(candidateFile);
 
                 if (matches.Count >= cap)
                 {

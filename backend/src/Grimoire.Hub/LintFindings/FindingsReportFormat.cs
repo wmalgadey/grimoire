@@ -8,6 +8,14 @@ namespace Grimoire.Hub.LintFindings;
 public sealed record FindingsDeniedAction(string Action, string RequestedTarget, string CanonicalTarget, string Reason, int Turn);
 
 /// <summary>
+/// 028-lint-at-scale (US2, FR-003/FR-004, contracts/coverage-signal.md): the persisted
+/// counterpart of the run's harness-computed coverage report. Orthogonal to
+/// <see cref="FindingsReport.Partial"/> (data-model.md) — a completed run can report
+/// <see cref="Status"/> <c>"partial"</c> while <c>Partial</c> is <c>false</c>.
+/// </summary>
+public sealed record FindingsWikiCoverage(int PagesTotal, int PagesConsidered, string Status);
+
+/// <summary>
 /// Everything the Hub needs to write one Findings Report file (data-model.md "Findings
 /// Report", contracts/findings-report-format.md). Written exactly once, at the run's
 /// terminal transition — a Findings Report has exactly one "turn": the run itself.
@@ -23,7 +31,11 @@ public sealed record FindingsReport(
     string? InstructionFileSha256,
     IReadOnlyList<FindingsDeniedAction> DeniedActions,
     int InboundLinksRefreshed,
-    string Narrative);
+    string Narrative,
+    // 028-lint-at-scale (US2, FR-003): null only for a run that never reached a terminal
+    // `completed` event with a coverage report attached (a liveness-failed or
+    // spawn-failed run) — every completed run's report carries one (SC-002).
+    FindingsWikiCoverage? WikiCoverage = null);
 
 /// <summary>
 /// Writer for the <c>grimoire-findings/1</c> Findings Report format
@@ -82,6 +94,19 @@ public static class FindingsReportFormat
         }
 
         sb.Append("inbound_links_refreshed: ").Append(report.InboundLinksRefreshed).Append('\n');
+
+        if (report.WikiCoverage is { } coverage)
+        {
+            sb.Append("wiki_coverage:\n");
+            sb.Append("  pages_total: ").Append(coverage.PagesTotal).Append('\n');
+            sb.Append("  pages_considered: ").Append(coverage.PagesConsidered).Append('\n');
+            sb.Append("  status: ").Append(coverage.Status).Append('\n');
+        }
+        else
+        {
+            sb.Append("wiki_coverage: null\n");
+        }
+
         sb.Append(CommentClose).Append('\n');
         sb.Append('\n');
 

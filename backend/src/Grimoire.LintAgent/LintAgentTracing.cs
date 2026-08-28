@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using Grimoire.AgentRuntime.RunEvents;
 using Grimoire.AgentRuntime.Telemetry;
 
 namespace Grimoire.LintAgent;
@@ -20,4 +21,20 @@ public static class LintAgentTracing
 
     public static Activity? StartRunActivity(string runId)
         => _tracing.StartRunActivity(runId);
+
+    /// <summary>
+    /// 028-lint-at-scale (US2, FR-003): tags the current <c>lint_agent.run</c> root span
+    /// (<see cref="Activity.Current"/> — <c>RunLintRunAsync</c>'s <c>runSpan</c> is still
+    /// the ambient activity at the point <c>LintIntentHandler</c> computes this, since
+    /// every nested tool-call span it started along the way has already stopped and
+    /// restored it) with the harness-computed coverage report. A no-op when tracing is
+    /// disabled (no current activity) — mirrors every other <c>?.SetTag</c> call site.
+    /// </summary>
+    public static void RecordCoverageOnCurrentRun(WikiCoverage coverage)
+    {
+        var activity = Activity.Current;
+        activity?.SetTag("coverage.pages_total", coverage.PagesTotal);
+        activity?.SetTag("coverage.pages_considered", coverage.PagesConsidered);
+        activity?.SetTag("coverage.status", coverage.Status);
+    }
 }

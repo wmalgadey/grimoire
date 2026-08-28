@@ -189,7 +189,7 @@ more cheaply (write side) — never to decide.
 | Metric name | Type | Description | Labels |
 |-------------|------|-------------|--------|
 | `wiki.lint.coverage_ratio` | Histogram | `pages_considered / pages_total` for one completed Lint run (0.0–1.0) | `agent=lint` |
-| `wiki.lint.runs_total` | Counter | Completed Lint runs, by coverage status | `agent=lint`, `coverage_status=complete\|partial` |
+| `wiki.lint.coverage_runs_total` | Counter | Completed Lint runs, by coverage status. **Corrected during implementation (Layer 2) from the originally planned name `wiki.lint.runs_total`**: that name is already an existing Hub-side metric (`HubMetrics.cs`, labeled `outcome`, one increment per terminal run regardless of coverage) — reusing it here for a second, differently-labeled agent-side counter would double-count runs under one metric name. Renamed instead of reused; no behavior this feature depends on changed. | `agent=lint`, `coverage_status=complete\|partial` |
 | `wiki.log.format_deviation_total` | Counter | A `log.md` write committed despite deviating from the activity-log format contract's expected shape (FR-011/FR-016, Clarifications 2026-08-27) — extends the existing `Grimoire.AgentRuntime.WikiLog.WikiLogMetrics` component, mirroring its `wiki.log.unlogged_change_total` pattern | `agent=ingest\|query\|lint`, `mode=replace\|prepend`, `reason` (one of the existing denial-reason codes, now repurposed as deviation codes: `log_entry_not_prepended`, `log_entry_malformed_heading`, `log_entry_missing_paragraph`) |
 
 **Write-side (US3): one new metric, above.** Reversing the pre-clarify plan's "no new
@@ -278,7 +278,7 @@ backend/
 │   │   ├── Program.cs                        # LintIntentHandler computes WikiCoverage at completion
 │   │   ├── Instructions/system-prompt.md     # "Reconciling index.md and log.md" step updated to use mode: "prepend"
 │   │   ├── RunEvents/RunEventEmitter.cs      # RunCompletionMetadata + terminal-event payload gain WikiCoverage
-│   │   ├── LintAgentMetrics.cs               # + wiki.lint.coverage_ratio, wiki.lint.runs_total
+│   │   ├── LintAgentMetrics.cs               # + wiki.lint.coverage_ratio, wiki.lint.coverage_runs_total
 │   │   ├── LintAgentTracing.cs               # + coverage.* attributes on lint_agent.run
 │   │   └── LintAgentInstrumentation.cs       # wires the above
 │   ├── Grimoire.IngestAgent/

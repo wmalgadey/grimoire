@@ -295,6 +295,12 @@ internal sealed class LintIntentHandler : IAgentIntentHandler
             new("user", kickoffMessage),
         };
 
+        // 028-lint-at-scale (US2, FR-003/FR-004): snapshotted before the run so the run's
+        // own writes (a new page created, one deleted) cannot change the denominator
+        // WikiCoverage is scored against (data-model.md "a page-count snapshot taken at
+        // run start").
+        var pagesTotal = LintPaths.CountMarkdownPages(_options.WikiRoot);
+
         var result = await loop.RunAsync(
             instructions.SystemPrompt.Content,
             initialConversation,
@@ -306,6 +312,11 @@ internal sealed class LintIntentHandler : IAgentIntentHandler
         // the terminal event — loop mechanics only; the actionability judgment and every
         // word of the proposals are agent-authored (Constitution Principle V).
         var (narrative, proposedActions) = ProposedActionsBlock.Extract(result.Narrative);
+
+        // 028-lint-at-scale (US2, FR-003/FR-004): computed from the harness's own
+        // ConsideredPaths accumulator, never the agent's narrative (Constitution
+        // Principle V) — contracts/coverage-signal.md.
+        var wikiCoverage = WikiCoverage.Compute(pagesTotal, executor.ConsideredPaths.Count);
 
         // Mechanical reporting only (Constitution Principle V): the harness's own journal
         // (GuardedToolExecutor.TouchedPaths) already recorded every write this run
@@ -325,7 +336,16 @@ internal sealed class LintIntentHandler : IAgentIntentHandler
             TurnsUsed: result.TurnsUsed,
             DeniedActions: executor.Denials,
             CreatedArtifacts: executor.TouchedPaths,
-            ProposedActions: proposedActions.Count > 0 ? proposedActions : null));
+            ProposedActions: proposedActions.Count > 0 ? proposedActions : null,
+            WikiCoverage: wikiCoverage));
+
+        // T011/T012 (028-lint-at-scale, US2): recorded here — the agent process, not the
+        // Hub — mirroring every other lint_agent.* metric/span in this file; the
+        // structured log event (T014) is emitted Hub-side, alongside
+        // PersistFindingsReportAsync, since that is where the run's completion is
+        // durably recorded.
+        LintAgentMetrics.RecordCoverage(wikiCoverage);
+        LintAgentTracing.RecordCoverageOnCurrentRun(wikiCoverage);
         return 0;
     }
 

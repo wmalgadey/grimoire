@@ -70,7 +70,10 @@ Trigger a Lint run to completion, then confirm:
   `pages_considered`, `coverage_status`, and its `run_id` matches the span's own run
   correlation attribute.
 - `wiki.lint.coverage_ratio` records one observation for the run.
-- `wiki.lint.runs_total{status=complete|partial}` increments with the correct label.
+- `wiki.lint.coverage_runs_total{coverage_status=complete|partial}` increments with the
+  correct label (renamed from the originally planned `wiki.lint.runs_total` during Layer 2
+  implementation — that name already exists as an unrelated Hub-side metric; see plan.md ##
+  Observability).
 
 Trigger a `log.md` write with a deliberately malformed entry (via any of Ingest/Query/Lint),
 then confirm:

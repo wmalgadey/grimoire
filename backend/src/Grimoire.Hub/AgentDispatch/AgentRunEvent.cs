@@ -15,6 +15,17 @@ public sealed record AgentRunEventProposedAction(
     [property: JsonPropertyName("description")] string Description,
     [property: JsonPropertyName("targetPath")] string? TargetPath = null);
 
+/// <summary>
+/// 028-lint-at-scale (US2, contracts/coverage-signal.md): one Lint run's harness-computed
+/// coverage report, as reported on the run's terminal <c>completed</c> event. Absent
+/// (<c>null</c>) on every event that never computed one — a liveness-failed or
+/// spawn-failed run, and every non-Lint agent.
+/// </summary>
+public sealed record AgentRunEventWikiCoverage(
+    [property: JsonPropertyName("pagesTotal")] int PagesTotal,
+    [property: JsonPropertyName("pagesConsidered")] int PagesConsidered,
+    [property: JsonPropertyName("status")] string Status);
+
 /// <summary>One denied tool action, as reported on a Query terminal event (data-model.md DeniedActionRecord).</summary>
 public sealed record AgentRunEventDeniedAction(
     [property: JsonPropertyName("action")] string Action,
@@ -68,6 +79,9 @@ public sealed record AgentRunEvent(
     [property: JsonPropertyName("proposedActions")]
     [property: JsonConverter(typeof(TolerantProposedActionListConverter))]
     IReadOnlyList<AgentRunEventProposedAction>? ProposedActions = null,
+    // 028-lint-at-scale (US2, FR-003): rides the terminal event like deniedActions/
+    // createdPages/proposedActions above; null for every run that computed no coverage.
+    [property: JsonPropertyName("wikiCoverage")] AgentRunEventWikiCoverage? WikiCoverage = null,
     // ADR-018: the remediation-execution mode's re-verification judgment on its terminal
     // completed event — "applied" | "not_applicable" (reason reuses the existing Reason
     // field). Transported only, never computed by the harness (Principle V).
