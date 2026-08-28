@@ -294,7 +294,7 @@ static IReadOnlyList<QueryScenarioDefinition> ResolveQueryScenarios(IReadOnlyLis
 
 static IReadOnlyList<LintScenarioDefinition> ResolveLintScenarios(IReadOnlyList<string> requested)
     => requested.Count == 0
-        ? LintScenarioDefinitions.All
+        ? LintScenarioDefinitions.DefaultSet
         : requested.Select(LintScenarioDefinitions.Find).Where(s => s is not null).Cast<LintScenarioDefinition>().ToList();
 
 static IReadOnlyList<RemediationReVerificationScenarioDefinition> ResolveRemediationReVerificationScenarios(IReadOnlyList<string> requested)

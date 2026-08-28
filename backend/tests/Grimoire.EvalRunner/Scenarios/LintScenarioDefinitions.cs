@@ -84,8 +84,12 @@ public static class LintScenarioDefinitions
     /// regardless of corpus size" property generalizes across more than one point on the
     /// budget-to-content-size relation, without generating a second, larger corpus
     /// (research.md R3: a large corpus was judged disproportionate to what this needs
-    /// proven). Reading-volume growth between this and <see cref="AtScaleSurvey"/> must not
-    /// be super-linear as the budget fraction shrinks.
+    /// proven). Intended for comparing reading-volume growth against
+    /// <see cref="AtScaleSurvey"/> as the budget fraction shrinks — analysis to be done by
+    /// a human reading both scenarios' recorded evidence side by side; neither this
+    /// definition nor <c>lint-at-scale-survey</c>'s scorer enforces any cross-scenario
+    /// comparison, since each run is scored only against its own
+    /// <see cref="LintScenarioDefinition.ContextBudgetTokens"/>.
     /// </summary>
     public static readonly LintScenarioDefinition AtScaleSurveyTightBudget = new(
         Id: "lint-at-scale-survey-tight-budget",
@@ -94,7 +98,22 @@ public static class LintScenarioDefinitions
         ScorerId: "lint-at-scale-survey",
         ContextBudgetTokens: 10_000);
 
+    /// <summary>Every known Lint scenario id, captured or not — used to validate an explicit
+    /// <c>--scenario</c> request (so a typo is rejected rather than silently ignored) and by
+    /// <see cref="Find"/>. Not the set run when no <c>--scenario</c> filter is given; see
+    /// <see cref="DefaultSet"/>.</summary>
     public static readonly IReadOnlyList<LintScenarioDefinition> All = [AtScaleSurvey, AtScaleSurveyTightBudget];
+
+    /// <summary>
+    /// The scenarios run by <c>capture</c>/<c>replay</c> when no <c>--scenario</c> filter is
+    /// given. Excludes <see cref="AtScaleSurveyTightBudget"/>, which has no committed
+    /// recording yet (028-lint-at-scale T003 — blocked on eval-capture credentials no
+    /// session implementing this feature has had): including it here would make the
+    /// default command fail by default for every user until a capture is run. Run it
+    /// explicitly with <c>--scenario lint-at-scale-survey-tight-budget</c> (e.g. for its
+    /// first capture); once a recording exists it can move into this set.
+    /// </summary>
+    public static readonly IReadOnlyList<LintScenarioDefinition> DefaultSet = [AtScaleSurvey];
 
     public static LintScenarioDefinition? Find(string scenarioId)
         => All.FirstOrDefault(s => string.Equals(s.Id, scenarioId, StringComparison.OrdinalIgnoreCase));

@@ -7,14 +7,17 @@ using Grimoire.LintAgent;
 namespace Grimoire.IntegrationTests;
 
 /// <summary>
-/// 028-lint-at-scale, US1 (FR-001, FR-008, SC-001) — proves the mechanism this feature
-/// relies on (ADR-030's guarded retrieval tools + PR #179's frontmatter-first prompt
-/// rewrite, both already shipped) keeps a Lint run's per-turn context small and constant
-/// regardless of how many pages the wiki has, so a run completes without breaching
-/// <see cref="AgentLoop"/>'s caps. This is a hermetic mechanics test — no live/recorded
-/// LLM call, no eval fixture — mirroring <c>AgentLoopCapTests</c>'s scripted-turn idiom,
-/// scoped to <see cref="LintToolRegistry"/> and a realistic small context cap rather than
-/// the loop's production defaults.
+/// 028-lint-at-scale, US1 (FR-001, FR-008, SC-001) — proves that <em>given</em> the
+/// small, roughly constant per-turn context the frontmatter-first strategy (ADR-030's
+/// guarded retrieval tools + PR #179's prompt rewrite, both already shipped) is designed
+/// to produce, a Lint run completes over an arbitrary number of turns without breaching
+/// <see cref="AgentLoop"/>'s context cap. This test scripts turn sizes directly via
+/// <see cref="FakeModelClient"/> and asserts nothing about actual wiki reads or prompt
+/// behavior — it is a hermetic mechanics test of <c>AgentLoop</c>'s cap enforcement under
+/// that shape, not a verification that the frontmatter-first strategy itself produces it.
+/// No live/recorded LLM call, no eval fixture — mirroring <c>AgentLoopCapTests</c>'s
+/// scripted-turn idiom, scoped to <see cref="LintToolRegistry"/> and a realistic small
+/// context cap rather than the loop's production defaults.
 /// </summary>
 public class LintAtScaleCompletionTests : IDisposable
 {
@@ -85,6 +88,13 @@ public class LintAtScaleCompletionTests : IDisposable
 
         Assert.Equal(10, result.TurnsUsed);
         Assert.Equal("Wiki health check complete.", result.Narrative);
+
+        // Makes the "Lint-shaped" wiring explicit — without this, the test above exercises
+        // only AgentLoop's generic cap mechanics and would pass identically for any
+        // registry, duplicating AgentLoopCapTests with no Lint-specific coverage.
+        Assert.Equal(
+            LintToolRegistry.Default.Tools.Select(t => t.Name),
+            fake.Calls[0].Tools.Select(t => t.Name));
     }
 
     [Fact]
