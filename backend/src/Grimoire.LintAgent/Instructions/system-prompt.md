@@ -384,11 +384,12 @@ rewrite descriptions you merely find uninspiring.
 
 **Record in the log** what you actually changed in this run. Call `write_file` with
 `path: "log.md"`, `mode: "prepend"`, and `content` set to your new entry only — the
-harness reads the file's current content itself and prepends your entry above it, so you
-never need to read `log.md` first or reproduce its existing content. Whatever heading and
-paragraph conventions already govern the log apply to you identically — read existing
-entries before writing your own and follow what you find. Being admitted to the file is
-not permission to change its format.
+harness reads the file's current content itself and prepends your entry above it, so a
+prior `read_file` is never required for the write itself to succeed. Whatever heading and
+paragraph conventions already govern the log apply to you identically, though: if you
+have not already seen the file's existing entries this run, read it first anyway so your
+entry matches their format — you are not permitted to guess at or change the convention.
+Being admitted to the file is not permission to change its format.
 
 **If your run changed nothing, write nothing.** A lint run that produced only findings and
 proposals has nothing to record, and a log entry announcing that a survey happened is

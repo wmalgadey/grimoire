@@ -169,6 +169,10 @@ public class QueryWriteConflictRejectionAdr017MetricsTests
             Assert.Equal("replace", logEntry.Fields["mode"]);
             Assert.Equal(logPath, logEntry.Fields["path"]);
             Assert.Equal(expectedReason, logEntry.Fields["reason"]);
+            // Copilot review (PR #208): task_id/turn must correlate a deviation to the run
+            // that produced it, matching sibling events like wiki.log.change_not_logged.
+            Assert.Equal("t-deviation-metric", logEntry.Fields["task_id"]?.ToString());
+            Assert.Equal("2", logEntry.Fields["turn"]?.ToString());
         }
         finally
         {

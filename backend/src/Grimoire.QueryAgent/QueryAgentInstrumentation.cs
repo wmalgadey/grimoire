@@ -116,6 +116,6 @@ public sealed class QueryToolCallInstrumentation : IToolCallInstrumentation
     {
         var reason = string.Join(",", reasons);
         WikiLogMetrics.RecordFormatDeviation(QueryAgentMetrics.Meter, "query", mode, reason);
-        WikiLogEvents.LogFormatDeviation(_logger, QueryAgentTracing.ActivitySource, "query", mode, path, reason);
+        WikiLogEvents.LogFormatDeviation(_logger, QueryAgentTracing.ActivitySource, "query", mode, path, reason, taskId, turn);
     }
 }

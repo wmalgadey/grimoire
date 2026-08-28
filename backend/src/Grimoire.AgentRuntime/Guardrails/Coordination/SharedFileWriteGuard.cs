@@ -191,10 +191,44 @@ public sealed class SharedFileWriteGuard
 
         if (isPrepend)
         {
-            var currentContent = File.Exists(canonicalPath)
+            // Copilot review (PR #208): prepend is a different call SHAPE for write_file, not
+            // a different authority — it must honor the same CreateOnly/FrontmatterOnly scope
+            // restrictions a full-content write already does below, or a CreateOnly/
+            // FrontmatterOnly-scoped agent (e.g. Query's create-only content scope,
+            // policy.json) could use `mode: "prepend"` to bypass them entirely: modify an
+            // existing target under CreateOnly, or add body content under FrontmatterOnly.
+            // Only the CAS/stale-read check is genuinely prepend-exempt (research.md R8:
+            // prepend has no baseline-read dependency — the harness re-reads fresh under
+            // this lock instead).
+            var existsForPrepend = File.Exists(canonicalPath);
+
+            if (mode == WriteMode.CreateOnly && existsForPrepend)
+            {
+                handle.Dispose();
+                return WriteGuardDecision.Denied("create_only_target_exists");
+            }
+
+            if (mode == WriteMode.FrontmatterOnly && !existsForPrepend)
+            {
+                handle.Dispose();
+                return WriteGuardDecision.Denied("frontmatter_only_target_missing");
+            }
+
+            var currentContent = existsForPrepend
                 ? await File.ReadAllTextAsync(canonicalPath, cancellationToken)
                 : string.Empty;
             var assembled = proposedContent + currentContent;
+
+            if (mode == WriteMode.FrontmatterOnly)
+            {
+                var frontmatterDenialReason = EvaluateFrontmatterPreservation(Encoding.UTF8.GetBytes(currentContent), assembled);
+                if (frontmatterDenialReason is not null)
+                {
+                    handle.Dispose();
+                    return WriteGuardDecision.Denied(frontmatterDenialReason);
+                }
+            }
+
             var deviations = EvaluateLogFormatDeviations(canonicalPath, currentContent, assembled);
 
             return WriteGuardDecision.Allowed(

@@ -382,6 +382,119 @@ public class SharedFileWriteGuardPrependTests
         }
     }
 
+    // ── CreateOnly/FrontmatterOnly scope still applies to prepend (Copilot review, PR #208) ──
+    //
+    // Prepend is a different call SHAPE, not a different authority: a scope's WriteMode
+    // (data-model.md "Two distinct 'mode' concepts") must gate a prepend write exactly as it
+    // gates a replace write, or a CreateOnly/FrontmatterOnly-scoped agent (e.g. Query's
+    // create-only content scope, policy.json) could use mode: "prepend" to bypass its own
+    // scope restriction entirely.
+
+    [Fact]
+    public async Task CreateOnlyScope_PrependAgainstAnExistingTarget_IsDenied()
+    {
+        var (executor, wikiRoot) = BuildExecutorWithWriteMode(WriteMode.CreateOnly);
+        var targetPath = Path.Combine(wikiRoot, "pages", "existing.md");
+        Directory.CreateDirectory(Path.GetDirectoryName(targetPath)!);
+        const string existing = "# Existing page\n\nAlready here.\n";
+        await File.WriteAllTextAsync(targetPath, existing);
+
+        try
+        {
+            var result = await executor.ExecuteAsync(
+                ToolRegistry.WriteFile,
+                JsonSerializer.Serialize(new { path = "pages/existing.md", mode = "prepend", content = "New content.\n" }),
+                turn: 1, CancellationToken.None);
+
+            Assert.True(result.IsError);
+            Assert.Single(executor.Denials);
+            Assert.Equal("create_only_target_exists", executor.Denials[0].Reason);
+            Assert.Equal(existing, await File.ReadAllTextAsync(targetPath));
+        }
+        finally
+        {
+            CleanUp(wikiRoot);
+        }
+    }
+
+    [Fact]
+    public async Task CreateOnlyScope_PrependAgainstANewTarget_IsAllowed_MatchingReplaceModesOwnCreateBehavior()
+    {
+        var (executor, wikiRoot) = BuildExecutorWithWriteMode(WriteMode.CreateOnly);
+        var targetPath = Path.Combine(wikiRoot, "pages", "brand-new.md");
+
+        try
+        {
+            var result = await executor.ExecuteAsync(
+                ToolRegistry.WriteFile,
+                JsonSerializer.Serialize(new { path = "pages/brand-new.md", mode = "prepend", content = "Whole file.\n" }),
+                turn: 1, CancellationToken.None);
+
+            Assert.False(result.IsError);
+            Assert.Empty(executor.Denials);
+            Assert.Equal("Whole file.\n", await File.ReadAllTextAsync(targetPath));
+        }
+        finally
+        {
+            CleanUp(wikiRoot);
+        }
+    }
+
+    [Fact]
+    public async Task FrontmatterOnlyScope_PrependAgainstAnExistingTarget_IsDenied()
+    {
+        var (executor, wikiRoot) = BuildExecutorWithWriteMode(WriteMode.FrontmatterOnly);
+        var targetPath = Path.Combine(wikiRoot, "pages", "existing.md");
+        Directory.CreateDirectory(Path.GetDirectoryName(targetPath)!);
+        const string existing = "---\ntitle: Existing\n---\n\nBody paragraph.\n";
+        await File.WriteAllTextAsync(targetPath, existing);
+
+        try
+        {
+            var result = await executor.ExecuteAsync(
+                ToolRegistry.WriteFile,
+                JsonSerializer.Serialize(new { path = "pages/existing.md", mode = "prepend", content = "Injected body text.\n" }),
+                turn: 1, CancellationToken.None);
+
+            Assert.True(result.IsError);
+            Assert.Single(executor.Denials);
+            // Prepending puts the new entry before the "---" frontmatter delimiter, so the
+            // assembled content no longer parses as frontmatter at all — a stronger, more
+            // specific denial than "frontmatter_only_body_changed" for the same underlying
+            // violation (a body-content change under a frontmatter-only scope).
+            Assert.Equal("frontmatter_only_malformed_document", executor.Denials[0].Reason);
+            Assert.Equal(existing, await File.ReadAllTextAsync(targetPath));
+        }
+        finally
+        {
+            CleanUp(wikiRoot);
+        }
+    }
+
+    [Fact]
+    public async Task FrontmatterOnlyScope_PrependAgainstAMissingTarget_IsDenied()
+    {
+        var (executor, wikiRoot) = BuildExecutorWithWriteMode(WriteMode.FrontmatterOnly);
+        var targetPath = Path.Combine(wikiRoot, "pages", "missing.md");
+
+        try
+        {
+            var result = await executor.ExecuteAsync(
+                ToolRegistry.WriteFile,
+                JsonSerializer.Serialize(new { path = "pages/missing.md", mode = "prepend", content = "New body.\n" }),
+                turn: 1, CancellationToken.None);
+
+            Assert.True(result.IsError);
+            Assert.Single(executor.Denials);
+            Assert.Equal("frontmatter_only_target_missing", executor.Denials[0].Reason);
+            Assert.False(File.Exists(targetPath));
+        }
+        finally
+        {
+            CleanUp(wikiRoot);
+        }
+    }
+
     private static (GuardedToolExecutor Executor, string WikiRoot) BuildExecutor()
     {
         var root = Path.Combine(Path.GetTempPath(), $"prepend-write-{Guid.NewGuid():N}");
@@ -389,6 +502,26 @@ public class SharedFileWriteGuardPrependTests
         Directory.CreateDirectory(wikiRoot);
 
         var executor = BuildExecutorSharing(wikiRoot, Path.Combine(root, "write-locks"));
+        return (executor, wikiRoot);
+    }
+
+    private static (GuardedToolExecutor Executor, string WikiRoot) BuildExecutorWithWriteMode(WriteMode mode)
+    {
+        var root = Path.Combine(Path.GetTempPath(), $"prepend-write-mode-{Guid.NewGuid():N}");
+        var wikiRoot = Path.Combine(root, "wiki");
+        Directory.CreateDirectory(wikiRoot);
+
+        var policy = new SafetyPolicy(
+            wikiRoot,
+            readPrefixes: [wikiRoot + Path.DirectorySeparatorChar],
+            writeRules: [new WriteRule(wikiRoot + Path.DirectorySeparatorChar, mode)]);
+
+        var executor = new GuardedToolExecutor(
+            policy, new WriteJournal(), wikiRoot,
+            writeLocksDir: Path.Combine(root, "write-locks"),
+            logPath: Path.Combine(wikiRoot, "log.md"),
+            indexPath: Path.Combine(wikiRoot, "index.md"));
+
         return (executor, wikiRoot);
     }
 

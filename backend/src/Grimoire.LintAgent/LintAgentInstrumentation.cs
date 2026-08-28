@@ -110,7 +110,7 @@ public sealed class LintToolCallInstrumentation : IToolCallInstrumentation
     {
         var reason = string.Join(",", reasons);
         WikiLogMetrics.RecordFormatDeviation(LintAgentMetrics.Meter, "lint", mode, reason);
-        WikiLogEvents.LogFormatDeviation(_logger, LintAgentTracing.ActivitySource, "lint", mode, path, reason);
+        WikiLogEvents.LogFormatDeviation(_logger, LintAgentTracing.ActivitySource, "lint", mode, path, reason, taskId, turn);
     }
 
     // ── 026-guarded-tool-surface (ADR-030/ADR-031): registered here (T014) ahead of the

@@ -108,6 +108,6 @@ public sealed class IngestToolCallInstrumentation : IToolCallInstrumentation
     {
         var reason = string.Join(",", reasons);
         WikiLogMetrics.RecordFormatDeviation(IngestAgentMetrics.Meter, "ingest", mode, reason);
-        WikiLogEvents.LogFormatDeviation(_logger, IngestAgentTracing.ActivitySource, "ingest", mode, path, reason);
+        WikiLogEvents.LogFormatDeviation(_logger, IngestAgentTracing.ActivitySource, "ingest", mode, path, reason, taskId, turn);
     }
 }
