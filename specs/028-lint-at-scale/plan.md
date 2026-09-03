@@ -204,7 +204,7 @@ attribute alone cannot provide.
 | Event | Level | Trigger | Mandatory fields |
 |-------|-------|---------|-----------------|
 | `lint.run.coverage_computed` | INFO | Once per completed Lint run, when `WikiCoverage` is computed (Hub side, alongside `PersistFindingsReportAsync`) | `run_id`, `pages_total`, `pages_considered`, `coverage_status` |
-| `wiki.log.format_deviation` | WARN | Once per `log.md` write whose content deviates from the activity-log format contract's expected shape, immediately after the (non-denying) format check runs — extends `Grimoire.AgentRuntime.WikiLog.WikiLogEvents`, mirroring its `wiki.log.change_not_logged` idiom (FR-011/FR-016) | `agent`, `mode`, `path`, `reason` (comma-joined if more than one check deviated) |
+| `wiki.log.format_deviation` | WARN | Once per `log.md` write whose content deviates from the activity-log format contract's expected shape, immediately after the (non-denying) format check runs — extends `Grimoire.AgentRuntime.WikiLog.WikiLogEvents`, mirroring its `wiki.log.change_not_logged` idiom (FR-011/FR-016) | `agent`, `mode`, `path`, `reason` (comma-joined if more than one check deviated), `task_id`, `turn` (added during PR review on PR #208, closing a correlation gap the initial four fields left: without them a deviation could not be tied back to the run/turn that produced it, unlike sibling event `wiki.log.change_not_logged`) |
 
 **Derivation rule (MANDATORY)**: `tasks.md` MUST include, for each of these two rows: (1) an
 implementation task emitting the event with a stable event name and these

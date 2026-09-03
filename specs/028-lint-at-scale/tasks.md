@@ -165,6 +165,7 @@ No new production code for this story — Direction A's mechanism (ADR-030's `se
   - `wiki.log.format_deviation_total`: T028 implements, `QueryWriteConflictRejectionAdr017MetricsTests.GuardedWrite_WithFormatDeviatingLogEntry_...`/`..._WithConformingLogEntry_EmitsNoFormatDeviationSignal` test (real `QueryToolCallInstrumentation`)
   - `wiki.log.format_deviation` log event: T029 implements, the same test class asserts event name/level/fields
   - No gap found.
+  - **T044 addendum**: `wiki.log.format_deviation` later gained two more mandatory fields, `task_id`/`turn`, added during PR review on PR #208 (commit `38e5362`) after this audit was first written — `plan.md`'s row and this audit both now list all six fields; the same `QueryWriteConflictRejectionAdr017MetricsTests` class asserts them.
 - [x] T038 Logging contract CI enforcement (MANDATORY — Constitution Principle IV): `Grimoire.IntegrationTests` runs unconditionally in `.github/workflows/ci.yml`'s standard PR job — T015's and T021's tests need no separate wiring
 - [x] T039 Trace contract CI enforcement (MANDATORY — Constitution Principle IV): same `ci.yml` job covers T016's test — no separate wiring needed
 - [x] T040 [US3] CI enforcement for the write-side deviation tests: same `ci.yml` job covers `SharedFileWriteGuardPrependTests.cs` and every rewritten pre-existing file (FR-016, SC-009)
@@ -282,4 +283,4 @@ This is a recorded intent, not yet an invoked `stacked-pr` skill run — that in
 
 ## Phase 7: Convergence
 
-- [ ] T044 [P] Update `plan.md`'s Observability § Structured Log Events row for `wiki.log.format_deviation` to list `task_id` and `turn` among its mandatory fields, and note in T037's audit that the row now matches shipped code — both fields were added to `WikiLogEvents.LogFormatDeviation` and asserted by `QueryWriteConflictRejectionAdr017MetricsTests` during PR review (commit `38e5362`), after T037's audit and plan.md's field list were both written, per plan.md: Observability § Structured Log Events (partial)
+- [x] T044 [P] Update `plan.md`'s Observability § Structured Log Events row for `wiki.log.format_deviation` to list `task_id` and `turn` among its mandatory fields, and note in T037's audit that the row now matches shipped code — both fields were added to `WikiLogEvents.LogFormatDeviation` and asserted by `QueryWriteConflictRejectionAdr017MetricsTests` during PR review (commit `38e5362`), after T037's audit and plan.md's field list were both written, per plan.md: Observability § Structured Log Events (partial)
