@@ -277,3 +277,9 @@ This is a recorded intent, not yet an invoked `stacked-pr` skill run — that in
 - Every task cites at least one `FR-###`/`SC-###` identifier, per this template's traceability convention.
 - Commit after each task or logical group; stop at any checkpoint to validate a story independently.
 - No task in this list touches ADR files or the constitution — that work is already complete (research.md R11-R15).
+
+---
+
+## Phase 7: Convergence
+
+- [ ] T044 [P] Update `plan.md`'s Observability § Structured Log Events row for `wiki.log.format_deviation` to list `task_id` and `turn` among its mandatory fields, and note in T037's audit that the row now matches shipped code — both fields were added to `WikiLogEvents.LogFormatDeviation` and asserted by `QueryWriteConflictRejectionAdr017MetricsTests` during PR review (commit `38e5362`), after T037's audit and plan.md's field list were both written, per plan.md: Observability § Structured Log Events (partial)
