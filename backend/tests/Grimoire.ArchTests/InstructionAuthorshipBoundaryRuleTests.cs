@@ -4,32 +4,40 @@ using Mono.Cecil.Cil;
 namespace Grimoire.ArchTests;
 
 /// <summary>
-/// Structural boundary rule R3 for ADR-022, extended by ADR-053: no production type
-/// outside the allow-listed namespaces may reference an agent-instruction filename
-/// literal (<c>system-prompt.md</c>, <c>default-user-prompt.md</c>, <c>policy.json</c>,
-/// <c>foundation-prompt.md</c>) as a write target. Nothing may *author* instruction
-/// content; the two allow-listed namespaces only ever compose paths
-/// (<c>Grimoire.Hub.Runtime.Paths</c>) or persist bytes received whole from outside the
-/// system (<c>Grimoire.Hub.WikiIdentity</c>, the wiki-identity wizard's custodian —
-/// ADR-053's Boundary Rule bullet). Neither namespace authors content
-/// (Constitution Principle V).
+/// Structural boundary rule R3 for ADR-022, extended by ADR-053: no production type may
+/// reference an agent-instruction filename literal (<c>system-prompt.md</c>,
+/// <c>default-user-prompt.md</c>, <c>policy.json</c>, <c>foundation-prompt.md</c>) as a
+/// write target, except where a narrow allow-list says exactly which literal(s) that
+/// namespace may legitimately touch. Nothing may *author* instruction content:
+/// <c>Grimoire.Hub.Runtime.Paths</c> is exempt for every literal (it only ever composes
+/// paths, never writes); <c>Grimoire.Hub.WikiIdentity</c> — the wiki-identity wizard's
+/// custodian — is exempt for <c>foundation-prompt.md</c> only, since ADR-053's Boundary
+/// Rule and FR-019 both say the wizard persists bytes received whole for that one
+/// document and nothing else. A WikiIdentity type that also referenced, say,
+/// <c>system-prompt.md</c> alongside a write call would still be flagged: the exemption
+/// is per-literal, not per-namespace, so it cannot silently widen to cover a future
+/// Principle V violation in that namespace (Constitution Principle V).
 ///
 /// Precise write-target dataflow analysis is out of scope for an IL tripwire; instead
-/// this rule flags any method body — outside the allowed namespaces — that contains BOTH
-/// one of the forbidden literals AND a call to a known file-write API. That is a
-/// deliberately coarse heuristic (a method could reference the literal for an unrelated,
-/// read-only reason while also happening to write some other file), but it is exactly
-/// the shape a Principle V violation would take, and the allowed-namespace exemption
-/// keeps the legitimate path-composition and custodian code — which never authors
-/// content — out of scope entirely.
+/// this rule flags any method body that contains BOTH one of the forbidden literals AND
+/// a call to a known file-write API, unless every referenced literal is one that
+/// method's namespace is allow-listed for. That is a deliberately coarse heuristic (a
+/// method could reference the literal for an unrelated, read-only reason while also
+/// happening to write some other file), but it is exactly the shape a Principle V
+/// violation would take.
 /// </summary>
 public class InstructionAuthorshipBoundaryRuleTests
 {
-    private static readonly string[] _allowedNamespacePrefixes =
-    [
-        "Grimoire.Hub.Runtime.Paths",
-        "Grimoire.Hub.WikiIdentity",
-    ];
+    private const string PathsNamespacePrefix = "Grimoire.Hub.Runtime.Paths";
+    private const string WikiIdentityNamespacePrefix = "Grimoire.Hub.WikiIdentity";
+
+    /// <summary>
+    /// The only instruction-filename literal <see cref="WikiIdentityNamespacePrefix"/> may
+    /// legitimately reference alongside a file-write call — the document the wizard
+    /// custodies (ADR-053's Boundary Rule, FR-019). Referencing any other literal there
+    /// still trips the rule.
+    /// </summary>
+    private const string WikiIdentityAllowedLiteral = "foundation-prompt.md";
 
     private static readonly string[] _instructionFilenameLiterals =
     [
@@ -61,8 +69,12 @@ public class InstructionAuthorshipBoundaryRuleTests
             {
                 foreach (var (type, effectiveNamespace) in module.Types.SelectMany(t => FlattenTypesWithNamespace(t, t.Namespace)))
                 {
-                    if (_allowedNamespacePrefixes.Any(p => effectiveNamespace.StartsWith(p, StringComparison.Ordinal)))
+                    if (effectiveNamespace.StartsWith(PathsNamespacePrefix, StringComparison.Ordinal))
                         continue;
+
+                    string[] allowedLiteralsForNamespace = effectiveNamespace.StartsWith(WikiIdentityNamespacePrefix, StringComparison.Ordinal)
+                        ? [WikiIdentityAllowedLiteral]
+                        : [];
 
                     foreach (var method in type.Methods)
                     {
@@ -90,11 +102,12 @@ public class InstructionAuthorshipBoundaryRuleTests
                             }
                         }
 
-                        if (referencedLiterals.Count > 0 && callsWriteApi)
+                        var unallowedLiterals = referencedLiterals.Distinct().Except(allowedLiteralsForNamespace).ToList();
+                        if (unallowedLiterals.Count > 0 && callsWriteApi)
                         {
                             violations.Add(
                                 $"{assembly.Name.Name}: {type.FullName}.{method.Name} references " +
-                                $"[{string.Join(", ", referencedLiterals.Distinct())}] and calls a file-write API");
+                                $"[{string.Join(", ", unallowedLiterals)}] and calls a file-write API");
                         }
                     }
                 }
@@ -103,11 +116,11 @@ public class InstructionAuthorshipBoundaryRuleTests
 
         Assert.True(
             violations.Count == 0,
-            "ADR-022 rule R3 (extended by ADR-053): no production type outside " +
-            "Grimoire.Hub.Runtime.Paths or Grimoire.Hub.WikiIdentity may write an " +
-            "instruction filename (Constitution Principle V — the hub composes " +
-            "instruction paths and persists custodied bytes, never authors instruction " +
-            "content). Violations:\n" + string.Join("\n", violations));
+            "ADR-022 rule R3 (extended by ADR-053): no production type may write an " +
+            "instruction filename it isn't allow-listed for — Grimoire.Hub.Runtime.Paths " +
+            "for every literal, Grimoire.Hub.WikiIdentity for foundation-prompt.md only " +
+            "(Constitution Principle V — the hub composes instruction paths and persists " +
+            "custodied bytes, never authors instruction content). Violations:\n" + string.Join("\n", violations));
     }
 
     private static IEnumerable<string> ProductionAssemblyPaths() =>
