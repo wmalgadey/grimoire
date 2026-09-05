@@ -79,10 +79,14 @@ mean the ADR's decision no longer governs.
 - Recording an extension or a topical cross-reference (Constitution v2.0.1): these are
   optional and never change `status`. Use `Extended by ADR-N` in the target ADR's row
   when a later ADR used more of an already-decided boundary or technology (add the
-  reciprocal `Extends ADR-N` callout to the later ADR itself, in the same change). Use
+  reciprocal `Extends ADR-N` bullet to the later ADR itself, in the same change). Use
   `Related: ADR-N` on either or both rows when two ADRs are worth reading together but
   neither extends, amends, or supersedes the other. If in doubt whether a change is an
   extension or an invalidation, apply Principle III's Invalidation test — an
   invalidation always needs whole-ADR supersession, never one of these two notes.
+  In the ADR body itself, this is always one bullet added to that ADR's single
+  top-of-file "Status notes" block (creating the block on its first note) — never a
+  new, separate blockquote stacked underneath; see `docs/adr/TEMPLATE.md` for the exact
+  format.
 - Periodic review (Constitution Principle III "Review cadence"): externally observable
   ADRs at least every 90 days, purely internal-architecture ADRs at least every 365 days.
