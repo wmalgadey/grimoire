@@ -37,7 +37,7 @@ public sealed record AgentRuntimePaths(
 /// The fully resolved and validated set of runtime locations (ADR-022), produced once at
 /// startup by <see cref="GrimoirePathResolver"/> and registered as the only path source in
 /// DI. Replaces the repo-root parameters of the former <c>ContentRootPaths</c> /
-/// <c>RawStoragePaths</c> — those types now project from this record.
+/// <c>IngestRawStoragePaths</c> — those types now project from this record.
 /// </summary>
 public sealed record ResolvedGrimoirePaths(
     string DataDir,

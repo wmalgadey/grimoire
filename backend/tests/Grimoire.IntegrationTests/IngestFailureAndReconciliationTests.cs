@@ -103,7 +103,7 @@ public class IngestFailureAndReconciliationTests
         var dbPath = Path.Combine(root, "operational-state.db");
         var repository = new OperationalStateRepository(dbPath);
         await repository.InitializeAsync();
-        await repository.UpsertIngestTaskStateAsync(new OperationalTaskState(taskId, "running", 100, DateTimeOffset.UtcNow));
+        await repository.UpsertIngestTaskStateAsync(new IngestOperationalTaskState(taskId, "running", 100, DateTimeOffset.UtcNow));
 
         var reconciler = new RestartReconciler(repository);
         var count = await reconciler.ReconcileRunningIngestTasksAsync(tasksDir);

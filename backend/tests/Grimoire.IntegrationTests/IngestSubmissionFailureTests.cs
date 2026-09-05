@@ -32,7 +32,7 @@ public class IngestSubmissionFailureTests
         await fixture.WaitForStatusAsync(taskId, s => s is "completed" or "failed");
 
         var markdown = await File.ReadAllTextAsync(fixture.TaskArtifactPathFor(taskId));
-        var final = TaskArtifactFrontmatter.TryParse(markdown);
+        var final = IngestTaskArtifactFrontmatter.TryParse(markdown);
         Assert.Equal("failed", final!.Status);
         Assert.NotNull(final.FailureReason);
         Assert.DoesNotContain("Traceback", final.FailureReason);
@@ -54,7 +54,7 @@ public class IngestSubmissionFailureTests
         await fixture.WaitForStatusAsync(taskId, s => s is "completed" or "failed");
 
         var markdown = await File.ReadAllTextAsync(fixture.TaskArtifactPathFor(taskId));
-        var final = TaskArtifactFrontmatter.TryParse(markdown);
+        var final = IngestTaskArtifactFrontmatter.TryParse(markdown);
         Assert.Equal("failed", final!.Status);
         Assert.Contains("404", final.FailureReason);
         Assert.False(File.Exists(fixture.RawPaths.NormalizedMarkdownPathFor(taskId)));
@@ -67,7 +67,7 @@ public class IngestSubmissionFailureTests
     [InlineData("single line reason", "single line reason")]
     public void ConversionFailureClassifier_ReturnsLastMeaningfulLine(string raw, string expected)
     {
-        Assert.Equal(expected, ConversionFailureClassifier.Classify(raw));
+        Assert.Equal(expected, IngestConversionFailureClassifier.Classify(raw));
     }
 
     private sealed class NotFoundHandler : HttpMessageHandler

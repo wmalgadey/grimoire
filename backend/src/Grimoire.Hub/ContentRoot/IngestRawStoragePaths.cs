@@ -8,9 +8,9 @@ namespace Grimoire.Hub.ContentRoot;
 /// rather than inside it — these are pre-agent intake artifacts, not wiki content. A flat
 /// projection of the single-composition-point <see cref="ResolvedGrimoirePaths"/>.
 /// </summary>
-public sealed record RawStoragePaths(string OriginalsDir, string SourcesDir)
+public sealed record IngestRawStoragePaths(string OriginalsDir, string SourcesDir)
 {
-    public static RawStoragePaths FromResolved(ResolvedGrimoirePaths resolved) =>
+    public static IngestRawStoragePaths FromResolved(ResolvedGrimoirePaths resolved) =>
         new(OriginalsDir: resolved.RawOriginalsDir, SourcesDir: resolved.RawSourcesDir);
 
     public string OriginalPathFor(string taskId, string extension) =>

@@ -14,25 +14,25 @@ namespace Grimoire.Hub.Realtime;
 /// (contracts/task-record-changed-event.md). Observe-only: this watcher never writes a
 /// file itself (ADR-002/ADR-003 — each writer owns its own artifact I/O).
 /// </summary>
-public sealed class TaskRecordWatcher : BackgroundService
+public sealed class IngestTaskRecordWatcher : BackgroundService
 {
     private static readonly TimeSpan DebounceWindow = TimeSpan.FromMilliseconds(300);
     private static readonly TimeSpan RestartDelay = TimeSpan.FromSeconds(1);
 
     private readonly ResolvedGrimoirePaths _paths;
     private readonly IngestLifecyclePublisher _publisher;
-    private readonly ILogger<TaskRecordWatcher> _logger;
+    private readonly ILogger<IngestTaskRecordWatcher> _logger;
     private readonly ConcurrentDictionary<string, CancellationTokenSource> _pendingDebounces = new(StringComparer.Ordinal);
 
     private FileSystemWatcher? _watcher;
     private string? _watchDir;
     private CancellationToken _stoppingToken;
 
-    public TaskRecordWatcher(ResolvedGrimoirePaths paths, IngestLifecyclePublisher publisher, ILogger<TaskRecordWatcher>? logger = null)
+    public IngestTaskRecordWatcher(ResolvedGrimoirePaths paths, IngestLifecyclePublisher publisher, ILogger<IngestTaskRecordWatcher>? logger = null)
     {
         _paths = paths;
         _publisher = publisher;
-        _logger = logger ?? NullLogger<TaskRecordWatcher>.Instance;
+        _logger = logger ?? NullLogger<IngestTaskRecordWatcher>.Instance;
     }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -125,7 +125,7 @@ public sealed class TaskRecordWatcher : BackgroundService
     {
         var fileName = Path.GetFileName(fullPath);
 
-        // Writer temp-name convention (HubTaskArtifactWriter: ".{name}.{guid}.tmp") never
+        // Writer temp-name convention (HubIngestTaskArtifactWriter: ".{name}.{guid}.tmp") never
         // produces events (contracts/task-record-changed-event.md).
         if (fileName.StartsWith('.') || fileName.EndsWith(".tmp", StringComparison.OrdinalIgnoreCase))
         {

@@ -379,7 +379,7 @@ public class HubCliCommandTests
     // commands (specs/018-hub-cli-commands/contracts/cli-commands.md "ingest-retrigger"/
     // "ingest-resume"), each exercised through the production command class exactly like
     // Lint/Remediation above, against a real IngestRunCoordinator/
-    // OperationalStateRepository/KanbanBoardProjectionStore (backed by real Task Artifact
+    // OperationalStateRepository/IngestKanbanBoardProjectionStore (backed by real Task Artifact
     // files on disk) and a scriptable FakeAgentProcessLauncher.
 
     [Theory]
@@ -835,7 +835,7 @@ internal sealed class HubCliIngestTestHarness : IDisposable
     public FakeAgentProcessLauncher Launcher => _fixture.Launcher;
     public OperationalStateRepository Repository => _fixture.Repository;
     public IngestRunCoordinator Coordinator => _fixture.Coordinator;
-    public KanbanBoardProjectionStore Store => _fixture.BoardStore;
+    public IngestKanbanBoardProjectionStore Store => _fixture.BoardStore;
     public IngestContentPaths ContentPaths => _fixture.ContentPaths;
 
     public static HubCliIngestTestHarness Create(FakeAgentProcessLauncher? launcher = null) =>
@@ -846,7 +846,7 @@ internal sealed class HubCliIngestTestHarness : IDisposable
     /// <see cref="IngestRunQueueTests"/> uses), bypassing the submission pipeline's
     /// fetch/convert stages — these commands only care about queue/terminal-state
     /// transitions, not submission parsing/validation. Unlike <c>IngestRunQueueTests</c>
-    /// (which never looks a task up by id through <see cref="KanbanBoardProjectionStore"/>),
+    /// (which never looks a task up by id through <see cref="IngestKanbanBoardProjectionStore"/>),
     /// <see cref="IngestRetriggerCommand"/>/<see cref="IngestResumeCommand"/> need a real
     /// Task Artifact file to read a "not found"/current-column answer from — so this helper
     /// writes the "queued" stage artifact <see cref="IngestSubmissionPipeline.ProcessAsync"/>
@@ -858,9 +858,9 @@ internal sealed class HubCliIngestTestHarness : IDisposable
     {
         var effectiveSourceRef = sourceRef ?? Path.Combine(_fixture.Root, $"{taskId}.md");
         var artifactPath = Path.Combine(ContentPaths.TasksDir, $"{taskId}.md");
-        await new HubTaskArtifactWriter().WriteAsync(
+        await new HubIngestTaskArtifactWriter().WriteAsync(
             artifactPath,
-            new HubTaskArtifactDocument(
+            new HubIngestTaskArtifactDocument(
                 TaskId: taskId,
                 Status: "queued",
                 StartedAt: DateTimeOffset.UtcNow,

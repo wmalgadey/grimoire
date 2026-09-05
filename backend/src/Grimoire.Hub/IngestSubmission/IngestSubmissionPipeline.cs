@@ -36,8 +36,8 @@ public sealed record IngestSubmissionInput(
 /// </summary>
 public sealed class IngestSubmissionPipeline
 {
-    private readonly HubTaskArtifactWriter _taskArtifactWriter;
-    private readonly SourceArtifactStore _sourceArtifactStore;
+    private readonly HubIngestTaskArtifactWriter _taskArtifactWriter;
+    private readonly IngestSourceArtifactStore _sourceArtifactStore;
     private readonly IMarkdownConverter _converter;
     private readonly IUrlContentFetcher _urlFetcher;
     private readonly IngestLifecyclePublisher _publisher;
@@ -46,8 +46,8 @@ public sealed class IngestSubmissionPipeline
     private readonly ILogger<IngestSubmissionPipeline> _logger;
 
     public IngestSubmissionPipeline(
-        HubTaskArtifactWriter taskArtifactWriter,
-        SourceArtifactStore sourceArtifactStore,
+        HubIngestTaskArtifactWriter taskArtifactWriter,
+        IngestSourceArtifactStore sourceArtifactStore,
         IMarkdownConverter converter,
         IUrlContentFetcher urlFetcher,
         IngestLifecyclePublisher publisher,
@@ -81,7 +81,7 @@ public sealed class IngestSubmissionPipeline
         var submittedAt = DateTimeOffset.UtcNow;
 
         var promptSource = input.UserPrompt is null ? "default" : "custom";
-        var effectiveSteps = ConvertStepRegistry.ResolveEffective(KindLabel(input.Kind), input.ConvertSteps);
+        var effectiveSteps = IngestConvertStepRegistry.ResolveEffective(KindLabel(input.Kind), input.ConvertSteps);
 
         // 023 T020 (FR-003/FR-001): what the operator actually submitted. Built here rather
         // than at conversion time (#130) — the label chain has nothing but the task id until
@@ -89,8 +89,8 @@ public sealed class IngestSubmissionPipeline
         // `converting` window and permanently if conversion failed. It is known at
         // acceptance; the first artifact write below now carries it.
         var submission = input.Kind == IngestSubmissionKind.Url
-            ? new SourceSubmissionMetadata(SourceUrl: input.Url)
-            : new SourceSubmissionMetadata(OriginalFileName: input.FileName);
+            ? new IngestSourceSubmissionMetadata(SourceUrl: input.Url)
+            : new IngestSourceSubmissionMetadata(OriginalFileName: input.FileName);
 
         var context = new PipelineContext(
             taskId, taskArtifactPath, submittedAt, promptSource, input.UserPrompt, effectiveSteps, submission);
@@ -131,7 +131,7 @@ public sealed class IngestSubmissionPipeline
             await _publisher.PublishAsync(taskId, "received", "converting", cancellationToken: cancellationToken);
 
             var conversionStarted = Stopwatch.GetTimestamp();
-            var markItDownEnabled = ApplyConvertConfig(context, ConvertStepRegistry.MarkItDown);
+            var markItDownEnabled = ApplyConvertConfig(context, IngestConvertStepRegistry.MarkItDown);
 
             // Recorded in the manifest too, so the label chain and the source link still have
             // it once conversion has written one.
@@ -169,8 +169,8 @@ public sealed class IngestSubmissionPipeline
         }
     }
 
-    private async Task<SourceArtifactSet?> ProcessUrlSubmissionAsync(
-        PipelineContext context, IngestSubmissionInput input, bool markItDownEnabled, SourceSubmissionMetadata submission, CancellationToken cancellationToken)
+    private async Task<IngestSourceArtifactSet?> ProcessUrlSubmissionAsync(
+        PipelineContext context, IngestSubmissionInput input, bool markItDownEnabled, IngestSourceSubmissionMetadata submission, CancellationToken cancellationToken)
     {
         var taskId = context.TaskId;
 
@@ -213,8 +213,8 @@ public sealed class IngestSubmissionPipeline
         return await PersistNormalizedAsync(taskId, originalPath, originalContentType, originalSize, conversion, cancellationToken, submission);
     }
 
-    private async Task<SourceArtifactSet> ProcessMarkdownFileSubmissionAsync(
-        PipelineContext context, IngestSubmissionInput input, SourceSubmissionMetadata submission, CancellationToken cancellationToken)
+    private async Task<IngestSourceArtifactSet> ProcessMarkdownFileSubmissionAsync(
+        PipelineContext context, IngestSubmissionInput input, IngestSourceSubmissionMetadata submission, CancellationToken cancellationToken)
     {
         var taskId = context.TaskId;
         var extension = Path.GetExtension(input.FileName) is { Length: > 0 } ext ? ext : ".md";
@@ -226,8 +226,8 @@ public sealed class IngestSubmissionPipeline
         return await PersistNormalizedBytesAsync(taskId, originalPath, originalContentType, originalSize, input.FileBytes!, cancellationToken, submission);
     }
 
-    private async Task<SourceArtifactSet?> ProcessConvertibleFileSubmissionAsync(
-        PipelineContext context, IngestSubmissionInput input, SourceSubmissionMetadata submission, CancellationToken cancellationToken)
+    private async Task<IngestSourceArtifactSet?> ProcessConvertibleFileSubmissionAsync(
+        PipelineContext context, IngestSubmissionInput input, IngestSourceSubmissionMetadata submission, CancellationToken cancellationToken)
     {
         // PDF/Office: the convert step is required (FR-013) — the validator rejected
         // any disabled configuration before a task was created.
@@ -279,9 +279,9 @@ public sealed class IngestSubmissionPipeline
         return conversion.Markdown;
     }
 
-    private async Task<SourceArtifactSet> PersistNormalizedAsync(
+    private async Task<IngestSourceArtifactSet> PersistNormalizedAsync(
         string taskId, string originalPath, string originalContentType, long originalSize, string normalizedMarkdown,
-        CancellationToken cancellationToken, SourceSubmissionMetadata submission)
+        CancellationToken cancellationToken, IngestSourceSubmissionMetadata submission)
     {
         using var storeNormalizedSpan = HubTracing.ActivitySource.StartActivity("hub.ingest_submission.store_normalized");
         storeNormalizedSpan?.SetTag("task_id", taskId);
@@ -292,9 +292,9 @@ public sealed class IngestSubmissionPipeline
         return artifactSet;
     }
 
-    private async Task<SourceArtifactSet> PersistNormalizedBytesAsync(
+    private async Task<IngestSourceArtifactSet> PersistNormalizedBytesAsync(
         string taskId, string originalPath, string originalContentType, long originalSize, byte[] normalizedBytes,
-        CancellationToken cancellationToken, SourceSubmissionMetadata submission)
+        CancellationToken cancellationToken, IngestSourceSubmissionMetadata submission)
     {
         using var storeNormalizedSpan = HubTracing.ActivitySource.StartActivity("hub.ingest_submission.store_normalized");
         storeNormalizedSpan?.SetTag("task_id", taskId);
@@ -335,9 +335,9 @@ public sealed class IngestSubmissionPipeline
         // to the task id; the extracted heading supersedes it from `queued` onward.
         var manifest = await _sourceArtifactStore.TryReadMetadataAsync(context.TaskId, cancellationToken);
         var submitted = context.Submission.OriginalFileName ?? context.Submission.SourceUrl;
-        var title = KanbanBoardProjectionStore.ResolveTitle(context.TaskId, manifest, submitted);
+        var title = IngestKanbanBoardProjectionStore.ResolveTitle(context.TaskId, manifest, submitted);
 
-        var document = new HubTaskArtifactDocument(
+        var document = new HubIngestTaskArtifactDocument(
             TaskId: context.TaskId,
             Status: status,
             StartedAt: context.SubmittedAt,
@@ -382,5 +382,5 @@ public sealed class IngestSubmissionPipeline
         string PromptSource,
         string? UserPrompt,
         IReadOnlyDictionary<string, bool> ConvertSteps,
-        SourceSubmissionMetadata Submission);
+        IngestSourceSubmissionMetadata Submission);
 }

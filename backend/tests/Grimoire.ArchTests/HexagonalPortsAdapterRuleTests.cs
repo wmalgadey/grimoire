@@ -10,7 +10,7 @@ namespace Grimoire.ArchTests;
 /// 006-hexagonal-arch-tasks-ui: C2-C5 and the port-presence checks have genuine active
 /// violations when this file is first introduced (nothing yet resides under an
 /// <c>.Adapters.</c> namespace, the two new ports do not exist, and
-/// <c>SubmissionService</c> depends on the concrete <c>AgentProcessHost</c>). Only C1 has
+/// <c>IngestSubmissionService</c> depends on the concrete <c>AgentProcessHost</c>). Only C1 has
 /// no active violation. User Story 1 turns every rule Green through a move-only,
 /// interface-extraction restructuring; T018 then re-proves each rule live via a
 /// synthetic Red/Green probe.

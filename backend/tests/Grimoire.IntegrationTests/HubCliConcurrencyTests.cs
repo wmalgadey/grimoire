@@ -63,7 +63,7 @@ public class HubCliConcurrencyTests
 
             // Must not throw: the busy_timeout hardening (T012) makes this wait for the
             // holder's COMMIT above instead of surfacing SqliteException(SQLITE_BUSY).
-            await repository.UpsertIngestTaskStateAsync(new OperationalTaskState(taskId, "running", 4242, DateTimeOffset.UtcNow));
+            await repository.UpsertIngestTaskStateAsync(new IngestOperationalTaskState(taskId, "running", 4242, DateTimeOffset.UtcNow));
             stopwatch.Stop();
 
             await releaseTask;

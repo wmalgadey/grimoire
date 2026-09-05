@@ -95,7 +95,7 @@ public class IngestSubmissionApiTests
         Assert.False(string.IsNullOrWhiteSpace(taskId));
 
         var markdown = await File.ReadAllTextAsync(fixture.TaskArtifactPathFor(taskId));
-        var frontmatter = TaskArtifactFrontmatter.TryParse(markdown);
+        var frontmatter = IngestTaskArtifactFrontmatter.TryParse(markdown);
         Assert.NotNull(frontmatter);
         Assert.NotEqual("completed", frontmatter!.Status);
         Assert.NotEqual("failed", frontmatter.Status);
@@ -111,7 +111,7 @@ public class IngestSubmissionApiTests
             new IngestSubmissionInput(IngestSubmissionKind.MarkdownFile, null, "note.md", bytes, "text/markdown"));
 
         var markdown = await File.ReadAllTextAsync(fixture.TaskArtifactPathFor(taskId));
-        var frontmatter = TaskArtifactFrontmatter.TryParse(markdown);
+        var frontmatter = IngestTaskArtifactFrontmatter.TryParse(markdown);
         Assert.NotNull(frontmatter);
         Assert.NotEqual("completed", frontmatter!.Status);
         Assert.NotEqual("failed", frontmatter.Status);

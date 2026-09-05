@@ -23,7 +23,7 @@ public class IngestSubmissionLifecycleTests
 
         // Immediately after AcceptAsync returns, the task must already be visible (SC-001).
         var immediate = await File.ReadAllTextAsync(fixture.TaskArtifactPathFor(taskId));
-        var immediateStatus = Grimoire.Hub.IngestSubmission.TaskArtifactFrontmatter.TryParse(immediate);
+        var immediateStatus = Grimoire.Hub.IngestSubmission.IngestTaskArtifactFrontmatter.TryParse(immediate);
         Assert.NotNull(immediateStatus);
         Assert.Contains(immediateStatus!.Status, new[] { "received", "converting", "queued", "running", "completed" });
 
@@ -33,7 +33,7 @@ public class IngestSubmissionLifecycleTests
         await fixture.WaitForPublishedEventAsync(taskId, e => e.ToStatus == "completed");
 
         var finalMarkdown = await File.ReadAllTextAsync(fixture.TaskArtifactPathFor(taskId));
-        var final = Grimoire.Hub.IngestSubmission.TaskArtifactFrontmatter.TryParse(finalMarkdown);
+        var final = Grimoire.Hub.IngestSubmission.IngestTaskArtifactFrontmatter.TryParse(finalMarkdown);
         Assert.NotNull(final);
         Assert.Equal("completed", final!.Status);
 
@@ -63,7 +63,7 @@ public class IngestSubmissionLifecycleTests
         await fixture.WaitForStatusAsync(taskId, s => s is "completed" or "failed");
 
         var finalMarkdown = await File.ReadAllTextAsync(fixture.TaskArtifactPathFor(taskId));
-        var final = Grimoire.Hub.IngestSubmission.TaskArtifactFrontmatter.TryParse(finalMarkdown);
+        var final = Grimoire.Hub.IngestSubmission.IngestTaskArtifactFrontmatter.TryParse(finalMarkdown);
         Assert.Equal("failed", final!.Status);
         Assert.NotNull(final.FailureReason);
 

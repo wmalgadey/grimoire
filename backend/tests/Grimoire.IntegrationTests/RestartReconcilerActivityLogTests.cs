@@ -56,7 +56,7 @@ public class RestartReconcilerActivityLogTests
 
             var repository = new OperationalStateRepository(Path.Combine(root, "operational-state.db"));
             await repository.InitializeAsync();
-            await repository.UpsertIngestTaskStateAsync(new OperationalTaskState(taskId, "running", 100, DateTimeOffset.UtcNow));
+            await repository.UpsertIngestTaskStateAsync(new IngestOperationalTaskState(taskId, "running", 100, DateTimeOffset.UtcNow));
 
             var reconciler = new RestartReconciler(repository);
             var count = await reconciler.ReconcileRunningIngestTasksAsync(tasksDir);
@@ -114,7 +114,7 @@ public class RestartReconcilerActivityLogTests
 
             var repository = new OperationalStateRepository(Path.Combine(root, "operational-state.db"));
             await repository.InitializeAsync();
-            await repository.UpsertIngestTaskStateAsync(new OperationalTaskState(taskId, "running", 100, DateTimeOffset.UtcNow));
+            await repository.UpsertIngestTaskStateAsync(new IngestOperationalTaskState(taskId, "running", 100, DateTimeOffset.UtcNow));
 
             var reconciler = new RestartReconciler(repository);
             await reconciler.ReconcileRunningIngestTasksAsync(tasksDir);

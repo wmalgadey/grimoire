@@ -227,7 +227,7 @@ public class IngestObservabilityLogTests
         var dbPath = Path.Combine(root, "state.db");
         var repository = new OperationalStateRepository(dbPath);
         await repository.InitializeAsync();
-        await repository.UpsertIngestTaskStateAsync(new OperationalTaskState(taskId, "running", null, DateTimeOffset.UtcNow));
+        await repository.UpsertIngestTaskStateAsync(new IngestOperationalTaskState(taskId, "running", null, DateTimeOffset.UtcNow));
 
         var logger = new CaptureLogger<RestartReconciler>();
         var reconciler = new RestartReconciler(repository, logger);
@@ -261,7 +261,7 @@ public class IngestObservabilityLogTests
         var dbPath = Path.Combine(root, "state.db");
         var repository = new OperationalStateRepository(dbPath);
         await repository.InitializeAsync();
-        await repository.UpsertIngestTaskStateAsync(new OperationalTaskState(taskId, "running", null, DateTimeOffset.UtcNow));
+        await repository.UpsertIngestTaskStateAsync(new IngestOperationalTaskState(taskId, "running", null, DateTimeOffset.UtcNow));
 
         var logger = new CaptureLogger<RestartReconciler>();
         var reconciler = new RestartReconciler(repository, logger);

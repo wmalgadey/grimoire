@@ -9,7 +9,7 @@ using Microsoft.Extensions.DependencyInjection;
 namespace Grimoire.IntegrationTests;
 
 /// <summary>
-/// T031 (US3) — TaskRecordWatcher publishes a debounced `taskRecordChanged` event per
+/// T031 (US3) — IngestTaskRecordWatcher publishes a debounced `taskRecordChanged` event per
 /// atomic-rename write (contracts/task-record-changed-event.md), coalesces rapid
 /// successive writes, ignores writer temp files, and self-restarts after a simulated IO
 /// failure. Uses a real Kestrel host + a real SignalR client, like
@@ -103,13 +103,13 @@ public class IngestTaskRecordWatcherTests
     {
         private readonly WebApplication _app;
         private readonly HubConnection _connection;
-        private readonly List<TaskRecordChangedEvent> _received = [];
+        private readonly List<IngestTaskRecordChangedEvent> _received = [];
         private readonly object _lock = new();
 
         public string TasksDir { get; }
-        public TaskRecordWatcher Watcher { get; }
+        public IngestTaskRecordWatcher Watcher { get; }
 
-        private Harness(WebApplication app, HubConnection connection, string tasksDir, TaskRecordWatcher watcher)
+        private Harness(WebApplication app, HubConnection connection, string tasksDir, IngestTaskRecordWatcher watcher)
         {
             _app = app;
             _connection = connection;
@@ -140,9 +140,9 @@ public class IngestTaskRecordWatcherTests
                 .Build();
 
             var harness = new Harness(app, connection, tasksDir,
-                new TaskRecordWatcher(resolvedPaths, new IngestLifecyclePublisher(app.Services.GetRequiredService<IHubContext<IngestLifecycleHub>>())));
+                new IngestTaskRecordWatcher(resolvedPaths, new IngestLifecyclePublisher(app.Services.GetRequiredService<IHubContext<IngestLifecycleHub>>())));
 
-            connection.On<TaskRecordChangedEvent>("taskRecordChanged", e =>
+            connection.On<IngestTaskRecordChangedEvent>("taskRecordChanged", e =>
             {
                 lock (harness._lock) { harness._received.Add(e); }
             });
@@ -205,12 +205,12 @@ public class IngestTaskRecordWatcherTests
             File.Move(tempPath, path, overwrite: true);
         }
 
-        public List<TaskRecordChangedEvent> EventsFor(string taskId)
+        public List<IngestTaskRecordChangedEvent> EventsFor(string taskId)
         {
             lock (_lock) { return [.. _received.Where(e => e.TaskId == taskId)]; }
         }
 
-        public async Task<List<TaskRecordChangedEvent>> WaitForEventsAsync(string taskId, int expectedCount, TimeSpan timeout)
+        public async Task<List<IngestTaskRecordChangedEvent>> WaitForEventsAsync(string taskId, int expectedCount, TimeSpan timeout)
         {
             await PollAsync.WaitAsync(
                 () => EventsFor(taskId).Count >= expectedCount,

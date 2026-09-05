@@ -70,7 +70,7 @@ public class IngestObservabilityTraceTests
         var dbPath = Path.Combine(root, "state.db");
         var repository = new OperationalStateRepository(dbPath);
         await repository.InitializeAsync();
-        await repository.UpsertIngestTaskStateAsync(new OperationalTaskState(taskId, "running", null, DateTimeOffset.UtcNow));
+        await repository.UpsertIngestTaskStateAsync(new IngestOperationalTaskState(taskId, "running", null, DateTimeOffset.UtcNow));
 
         var reconciler = new RestartReconciler(repository);
         await reconciler.ReconcileRunningIngestTasksAsync(tasksDir);

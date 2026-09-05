@@ -23,16 +23,16 @@ public sealed class IngestSubmissionPipelineFixture : IDisposable
 {
     public string Root { get; }
     public IngestContentPaths ContentPaths { get; }
-    public RawStoragePaths RawPaths { get; }
+    public IngestRawStoragePaths RawPaths { get; }
     public ResolvedGrimoirePaths ResolvedPaths { get; }
-    public SourceArtifactStore SourceArtifactStore { get; }
-    public KanbanBoardProjectionStore BoardStore { get; }
+    public IngestSourceArtifactStore IngestSourceArtifactStore { get; }
+    public IngestKanbanBoardProjectionStore BoardStore { get; }
     public FakeAgentProcessLauncher Launcher { get; }
     public OperationalStateRepository Repository { get; }
     public IngestRunCoordinator Coordinator { get; }
     public IngestSubmissionPipeline Pipeline { get; }
     public IngestSubmissionValidator Validator { get; } = new();
-    public List<RealtimeLifecycleEvent> PublishedEvents { get; } = [];
+    public List<IngestRealtimeLifecycleEvent> PublishedEvents { get; } = [];
     public List<(string Method, object? Payload, DateTimeOffset ReceivedAt)> PublishedActivity { get; } = [];
     public CaptureLogger<IngestSubmissionPipeline> Logger { get; } = new();
     public CaptureLogger<IngestRunCoordinator> CoordinatorLogger { get; } = new();
@@ -55,7 +55,7 @@ public sealed class IngestSubmissionPipelineFixture : IDisposable
         TimeProvider? timeProvider = null,
         IngestContentPaths? contentPaths = null,
         ResolvedGrimoirePaths? resolvedPaths = null,
-        RawStoragePaths? rawPaths = null,
+        IngestRawStoragePaths? rawPaths = null,
         string? root = null,
         IMarkdownConverter? converter = null,
         IUrlContentFetcher? urlFetcher = null,
@@ -64,12 +64,12 @@ public sealed class IngestSubmissionPipelineFixture : IDisposable
         Root = root ?? Path.Combine(Path.GetTempPath(), $"grimoire-ingest-submission-{Guid.NewGuid():N}");
         Directory.CreateDirectory(Root);
 
-        RawPaths = rawPaths ?? new RawStoragePaths(
+        RawPaths = rawPaths ?? new IngestRawStoragePaths(
             OriginalsDir: Path.Combine(Root, "raw", "originals"),
             SourcesDir: Path.Combine(Root, "raw", "sources"));
-        SourceArtifactStore = new SourceArtifactStore(RawPaths);
+        IngestSourceArtifactStore = new IngestSourceArtifactStore(RawPaths);
         // 023 T021: the board label is resolved from the manifest, exactly as in production.
-        BoardStore = new KanbanBoardProjectionStore(SourceArtifactStore);
+        BoardStore = new IngestKanbanBoardProjectionStore(IngestSourceArtifactStore);
 
         if (resolvedPaths is not null)
         {
@@ -168,7 +168,7 @@ public sealed class IngestSubmissionPipelineFixture : IDisposable
             Repository,
             Launcher,
             publisher,
-            new HubTaskArtifactWriter(),
+            new HubIngestTaskArtifactWriter(),
             ContentPaths,
             ResolvedPaths,
             timeProvider,
@@ -177,7 +177,7 @@ public sealed class IngestSubmissionPipelineFixture : IDisposable
             reactivationDelays,
             // 023 T045: same manifest store the board resolves the label from, exactly as
             // in production — the Hub's own artifact writes must not disagree with the UI.
-            SourceArtifactStore);
+            IngestSourceArtifactStore);
         Coordinator.InitializeAsync().GetAwaiter().GetResult();
 
         var httpClient = new HttpClient(urlFetchHandler ?? new NotFoundHandler());
@@ -185,8 +185,8 @@ public sealed class IngestSubmissionPipelineFixture : IDisposable
         var effectiveConverter = converter ?? new MarkItDownConverter(new MarkItDownOptions(markItDownExecutablePath, TimeSpan.FromSeconds(30)));
 
         Pipeline = new IngestSubmissionPipeline(
-            new HubTaskArtifactWriter(),
-            SourceArtifactStore,
+            new HubIngestTaskArtifactWriter(),
+            IngestSourceArtifactStore,
             effectiveConverter,
             effectiveUrlFetcher,
             publisher,
@@ -207,7 +207,7 @@ public sealed class IngestSubmissionPipelineFixture : IDisposable
                     return false;
                 }
 
-                var frontmatter = TaskArtifactFrontmatter.TryParse(await File.ReadAllTextAsync(path));
+                var frontmatter = IngestTaskArtifactFrontmatter.TryParse(await File.ReadAllTextAsync(path));
                 return frontmatter is not null && predicate(frontmatter.Status);
             },
             timeout ?? TimeSpan.FromSeconds(10),
@@ -220,7 +220,7 @@ public sealed class IngestSubmissionPipelineFixture : IDisposable
     /// re-read in between), so tests asserting on published events must wait on the events, not
     /// the file, to avoid racing that gap.
     /// </summary>
-    public async Task WaitForPublishedEventAsync(string taskId, Func<RealtimeLifecycleEvent, bool> predicate, TimeSpan? timeout = null) =>
+    public async Task WaitForPublishedEventAsync(string taskId, Func<IngestRealtimeLifecycleEvent, bool> predicate, TimeSpan? timeout = null) =>
         await PollAsync.WaitAsync(
             () =>
             {
@@ -245,14 +245,14 @@ public sealed class IngestSubmissionPipelineFixture : IDisposable
 
     /// <summary>Minimal <see cref="IHubContext{IngestLifecycleHub}"/> that records published events instead of broadcasting over a real connection.</summary>
     private sealed class RecordingHubContext(
-        List<RealtimeLifecycleEvent> sink,
+        List<IngestRealtimeLifecycleEvent> sink,
         List<(string Method, object? Payload, DateTimeOffset ReceivedAt)> activitySink) : IHubContext<IngestLifecycleHub>
     {
         public IHubClients Clients { get; } = new RecordingClients(sink, activitySink);
         public IGroupManager Groups => throw new NotSupportedException();
 
         private sealed class RecordingClients(
-            List<RealtimeLifecycleEvent> sink,
+            List<IngestRealtimeLifecycleEvent> sink,
             List<(string Method, object? Payload, DateTimeOffset ReceivedAt)> activitySink) : IHubClients
         {
             public IClientProxy All { get; } = new RecordingClientProxy(sink, activitySink);
@@ -267,12 +267,12 @@ public sealed class IngestSubmissionPipelineFixture : IDisposable
         }
 
         private sealed class RecordingClientProxy(
-            List<RealtimeLifecycleEvent> sink,
+            List<IngestRealtimeLifecycleEvent> sink,
             List<(string Method, object? Payload, DateTimeOffset ReceivedAt)> activitySink) : IClientProxy
         {
             public Task SendCoreAsync(string method, object?[] args, CancellationToken cancellationToken = default)
             {
-                if (args.Length > 0 && args[0] is RealtimeLifecycleEvent lifecycleEvent)
+                if (args.Length > 0 && args[0] is IngestRealtimeLifecycleEvent lifecycleEvent)
                 {
                     lock (sink) { sink.Add(lifecycleEvent); }
                 }

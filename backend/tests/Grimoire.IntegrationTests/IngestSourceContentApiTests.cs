@@ -80,7 +80,7 @@ public class IngestSourceContentApiTests
             Encoding.UTF8.GetBytes("# Gone\n\nBody.\n"), "text/markdown"));
         await fixture.WaitForPublishedEventAsync(taskId, e => e.ToStatus == "completed");
 
-        var manifest = await fixture.SourceArtifactStore.TryReadMetadataAsync(taskId);
+        var manifest = await fixture.IngestSourceArtifactStore.TryReadMetadataAsync(taskId);
         Assert.NotNull(manifest);
         File.Delete(manifest!.OriginalPath);
 
@@ -133,7 +133,7 @@ public class IngestSourceContentApiTests
             Encoding.UTF8.GetBytes("# Vanish\n\nBody.\n"), "text/markdown"));
         await fixture.WaitForPublishedEventAsync(taskId, e => e.ToStatus == "completed");
 
-        var manifest = await fixture.SourceArtifactStore.TryReadMetadataAsync(taskId);
+        var manifest = await fixture.IngestSourceArtifactStore.TryReadMetadataAsync(taskId);
         File.Delete(manifest!.OriginalPath);
 
         var response = await client.GetAsync($"/api/ingest-submissions/{taskId}/source/original");

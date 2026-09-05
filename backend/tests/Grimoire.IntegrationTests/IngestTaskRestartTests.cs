@@ -98,7 +98,7 @@ public class IngestTaskRestartTests
         var client = host.GetTestClient();
 
         var taskId = await FailATaskAsync(fixture, launcher);
-        var manifest = await fixture.SourceArtifactStore.TryReadMetadataAsync(taskId);
+        var manifest = await fixture.IngestSourceArtifactStore.TryReadMetadataAsync(taskId);
         File.Delete(manifest!.NormalizedMarkdownPath);
 
         var response = await client.PostAsync($"/api/ingest-submissions/{taskId}/restart", content: null);

@@ -388,7 +388,7 @@ public sealed class OperationalStateRepository
         return affected == 1;
     }
 
-    public async Task UpsertIngestTaskStateAsync(OperationalTaskState state, CancellationToken cancellationToken = default)
+    public async Task UpsertIngestTaskStateAsync(IngestOperationalTaskState state, CancellationToken cancellationToken = default)
     {
         await using var connection = await OpenConnectionAsync(cancellationToken);
 
@@ -421,7 +421,7 @@ public sealed class OperationalStateRepository
     /// <see cref="TryTransitionRemediationTaskAsync"/> (ADR-018), applied to a row whose
     /// absence — not a state value — is what marks a task as restartable.
     /// </summary>
-    public async Task<bool> TryClaimIngestTaskStateAsync(OperationalTaskState state, CancellationToken cancellationToken = default)
+    public async Task<bool> TryClaimIngestTaskStateAsync(IngestOperationalTaskState state, CancellationToken cancellationToken = default)
     {
         await using var connection = await OpenConnectionAsync(cancellationToken);
 
@@ -441,7 +441,7 @@ public sealed class OperationalStateRepository
         return await command.ExecuteNonQueryAsync(cancellationToken) == 1;
     }
 
-    public async Task<IReadOnlyList<OperationalTaskState>> GetIngestTaskStatesByStatusAsync(string status, CancellationToken cancellationToken = default)
+    public async Task<IReadOnlyList<IngestOperationalTaskState>> GetIngestTaskStatesByStatusAsync(string status, CancellationToken cancellationToken = default)
     {
         await using var connection = await OpenConnectionAsync(cancellationToken);
 
@@ -454,7 +454,7 @@ public sealed class OperationalStateRepository
             """;
         command.Parameters.AddWithValue("$status", status);
 
-        var results = new List<OperationalTaskState>();
+        var results = new List<IngestOperationalTaskState>();
         await using var reader = await command.ExecuteReaderAsync(cancellationToken);
         while (await reader.ReadAsync(cancellationToken))
         {
@@ -465,7 +465,7 @@ public sealed class OperationalStateRepository
     }
 
     /// <summary>One task's operational row, or null when it holds no run slot right now.</summary>
-    public async Task<OperationalTaskState?> GetIngestTaskStateByTaskIdAsync(string taskId, CancellationToken cancellationToken = default)
+    public async Task<IngestOperationalTaskState?> GetIngestTaskStateByTaskIdAsync(string taskId, CancellationToken cancellationToken = default)
     {
         await using var connection = await OpenConnectionAsync(cancellationToken);
 
@@ -482,7 +482,7 @@ public sealed class OperationalStateRepository
         return await reader.ReadAsync(cancellationToken) ? ReadTaskState(reader) : null;
     }
 
-    private static OperationalTaskState ReadTaskState(System.Data.Common.DbDataReader reader) =>
+    private static IngestOperationalTaskState ReadTaskState(System.Data.Common.DbDataReader reader) =>
         new(reader.GetString(0),
             reader.GetString(1),
             reader.IsDBNull(2) ? null : reader.GetInt32(2),

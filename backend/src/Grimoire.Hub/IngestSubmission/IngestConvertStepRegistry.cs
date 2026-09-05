@@ -5,7 +5,7 @@ namespace Grimoire.Hub.IngestSubmission;
 /// it applies to, for which kinds it is required (binary formats cannot skip conversion,
 /// FR-013), and its default state.
 /// </summary>
-public sealed record ConvertStepDefinition(
+public sealed record IngestConvertStepDefinition(
     string Name,
     IReadOnlySet<string> AppliesTo,
     IReadOnlySet<string> RequiredFor,
@@ -16,24 +16,24 @@ public sealed record ConvertStepDefinition(
 /// feature 004 — document-to-Markdown conversion — but the model is a named set so
 /// future steps are additive, not a redesign (research R5).
 /// </summary>
-public static class ConvertStepRegistry
+public static class IngestConvertStepRegistry
 {
     public const string MarkItDown = "markitdown";
 
-    public static readonly IReadOnlyList<ConvertStepDefinition> All =
+    public static readonly IReadOnlyList<IngestConvertStepDefinition> All =
     [
-        new ConvertStepDefinition(
+        new IngestConvertStepDefinition(
             Name: MarkItDown,
             AppliesTo: new HashSet<string>(StringComparer.Ordinal) { "url", "pdf_file", "office_file" },
             RequiredFor: new HashSet<string>(StringComparer.Ordinal) { "pdf_file", "office_file" },
             DefaultEnabled: true),
     ];
 
-    public static ConvertStepDefinition? TryGet(string name)
+    public static IngestConvertStepDefinition? TryGet(string name)
         => All.FirstOrDefault(step => string.Equals(step.Name, name, StringComparison.Ordinal));
 
     /// <summary>Steps applicable to the given source kind label (url, markdown_file, pdf_file, office_file).</summary>
-    public static IReadOnlyList<ConvertStepDefinition> StepsFor(string kindLabel)
+    public static IReadOnlyList<IngestConvertStepDefinition> StepsFor(string kindLabel)
         => All.Where(step => step.AppliesTo.Contains(kindLabel)).ToList();
 
     /// <summary>

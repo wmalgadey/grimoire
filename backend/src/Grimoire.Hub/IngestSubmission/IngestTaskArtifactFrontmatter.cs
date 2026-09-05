@@ -5,10 +5,10 @@ namespace Grimoire.Hub.IngestSubmission;
 /// (contracts/task-artifact-format.md). Deliberately independent of
 /// <c>Grimoire.IngestAgent.TaskArtifact.TaskArtifactDocument</c> (T001 boundary): the board only
 /// needs a handful of fields and must be able to read files written by either
-/// <c>HubTaskArtifactWriter</c> (pre-agent stages) or the Ingest agent's own writer
+/// <c>HubIngestTaskArtifactWriter</c> (pre-agent stages) or the Ingest agent's own writer
 /// (agent-owned stages), which share the same frontmatter shape but not the same type.
 /// </summary>
-public sealed record TaskArtifactFrontmatter(
+public sealed record IngestTaskArtifactFrontmatter(
     string TaskId,
     string Status,
     DateTimeOffset StartedAt,
@@ -23,7 +23,7 @@ public sealed record TaskArtifactFrontmatter(
     // before this feature — "defaults of their time" — which read back as null.
     string? Title = null)
 {
-    public static TaskArtifactFrontmatter? TryParse(string markdown)
+    public static IngestTaskArtifactFrontmatter? TryParse(string markdown)
     {
         var sections = markdown.Split("---", 3, StringSplitOptions.None);
         if (sections.Length < 3)
@@ -52,7 +52,7 @@ public sealed record TaskArtifactFrontmatter(
                 ? parsedCompleted
                 : (DateTimeOffset?)null;
 
-        return new TaskArtifactFrontmatter(
+        return new IngestTaskArtifactFrontmatter(
             TaskId: taskId,
             Status: status,
             StartedAt: startedAt,
@@ -68,7 +68,7 @@ public sealed record TaskArtifactFrontmatter(
 
     /// <summary>
     /// Extracts the effective steering prompt from the artifact's `## User Prompt` body
-    /// section (written by both HubTaskArtifactWriter and the agent's own writer). Tasks
+    /// section (written by both HubIngestTaskArtifactWriter and the agent's own writer). Tasks
     /// created before feature 004 have no such section — "defaults of their time".
     /// </summary>
     public static string? TryExtractUserPrompt(string markdown)

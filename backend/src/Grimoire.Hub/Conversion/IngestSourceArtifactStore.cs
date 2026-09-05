@@ -6,16 +6,16 @@ namespace Grimoire.Hub.Conversion;
 
 /// <summary>
 /// Persists the original payload and normalized markdown for one accepted ingest submission
-/// (data-model.md SourceArtifactSet, contracts/source-artifact-reference.md). Also records a
-/// small JSON sidecar of the SourceArtifactSet metadata next to the original payload, so the
+/// (data-model.md IngestSourceArtifactSet, contracts/source-artifact-reference.md). Also records a
+/// small JSON sidecar of the IngestSourceArtifactSet metadata next to the original payload, so the
 /// board/detail view can read provenance independently of the Task Artifact frontmatter (which
 /// the Ingest agent later overwrites with its own agent-owned fields).
 /// </summary>
-public sealed class SourceArtifactStore
+public sealed class IngestSourceArtifactStore
 {
-    private readonly RawStoragePaths _paths;
+    private readonly IngestRawStoragePaths _paths;
 
-    public SourceArtifactStore(RawStoragePaths paths)
+    public IngestSourceArtifactStore(IngestRawStoragePaths paths)
     {
         _paths = paths;
     }
@@ -35,17 +35,17 @@ public sealed class SourceArtifactStore
     }
 
     /// <summary>
-    /// Persists the normalized markdown (step 2) and writes the SourceArtifactSet manifest
-    /// (data-model.md SourceArtifactSet, contracts/source-artifact-reference.md).
+    /// Persists the normalized markdown (step 2) and writes the IngestSourceArtifactSet manifest
+    /// (data-model.md IngestSourceArtifactSet, contracts/source-artifact-reference.md).
     /// </summary>
-    public async Task<SourceArtifactSet> PersistNormalizedAsync(
+    public async Task<IngestSourceArtifactSet> PersistNormalizedAsync(
         string taskId,
         string originalPath,
         string originalContentType,
         long originalSizeBytes,
         string normalizedMarkdown,
         CancellationToken cancellationToken = default,
-        SourceSubmissionMetadata? submission = null)
+        IngestSourceSubmissionMetadata? submission = null)
     {
         Directory.CreateDirectory(_paths.SourcesDir);
         var normalizedPath = _paths.NormalizedMarkdownPathFor(taskId);
@@ -62,7 +62,7 @@ public sealed class SourceArtifactStore
             throw;
         }
 
-        var set = new SourceArtifactSet(
+        var set = new IngestSourceArtifactSet(
             TaskId: taskId,
             OriginalPath: originalPath,
             OriginalContentType: originalContentType,
@@ -83,14 +83,14 @@ public sealed class SourceArtifactStore
     /// pass-through path when the document-to-Markdown convert step is disabled
     /// (004 FR-012, SC-004). Checksum is computed over the unmodified bytes.
     /// </summary>
-    public async Task<SourceArtifactSet> PersistNormalizedBytesAsync(
+    public async Task<IngestSourceArtifactSet> PersistNormalizedBytesAsync(
         string taskId,
         string originalPath,
         string originalContentType,
         long originalSizeBytes,
         byte[] normalizedBytes,
         CancellationToken cancellationToken = default,
-        SourceSubmissionMetadata? submission = null)
+        IngestSourceSubmissionMetadata? submission = null)
     {
         Directory.CreateDirectory(_paths.SourcesDir);
         var normalizedPath = _paths.NormalizedMarkdownPathFor(taskId);
@@ -106,7 +106,7 @@ public sealed class SourceArtifactStore
             throw;
         }
 
-        var set = new SourceArtifactSet(
+        var set = new IngestSourceArtifactSet(
             TaskId: taskId,
             OriginalPath: originalPath,
             OriginalContentType: originalContentType,
@@ -202,7 +202,7 @@ public sealed class SourceArtifactStore
     /// turned a routine board poll during the conversion window into a 500.
     /// </para>
     /// </summary>
-    public async Task<SourceArtifactSet?> TryReadMetadataAsync(string taskId, CancellationToken cancellationToken = default)
+    public async Task<IngestSourceArtifactSet?> TryReadMetadataAsync(string taskId, CancellationToken cancellationToken = default)
     {
         var metadataPath = MetadataPathFor(taskId);
         if (!File.Exists(metadataPath))
@@ -219,7 +219,7 @@ public sealed class SourceArtifactStore
             await using var stream = new FileStream(
                 metadataPath, FileMode.Open, FileAccess.Read,
                 FileShare.ReadWrite | FileShare.Delete);
-            return await JsonSerializer.DeserializeAsync<SourceArtifactSet>(stream, cancellationToken: cancellationToken);
+            return await JsonSerializer.DeserializeAsync<IngestSourceArtifactSet>(stream, cancellationToken: cancellationToken);
         }
         catch (IOException)
         {
@@ -241,12 +241,12 @@ public sealed class SourceArtifactStore
     /// new one.
     /// <para>
     /// Same shape, same reason, and the same temp-name convention as
-    /// <see cref="Grimoire.Hub.IngestTaskArtifact.HubTaskArtifactWriter"/>, which already does this
+    /// <see cref="Grimoire.Hub.IngestTaskArtifact.HubIngestTaskArtifactWriter"/>, which already does this
     /// for the task-artifact files the board reads. The manifest sidecar the board reads alongside
     /// them was simply missed at the time.
     /// </para>
     /// </summary>
-    private async Task WriteMetadataAsync(string taskId, SourceArtifactSet set, CancellationToken cancellationToken)
+    private async Task WriteMetadataAsync(string taskId, IngestSourceArtifactSet set, CancellationToken cancellationToken)
     {
         var metadataPath = MetadataPathFor(taskId);
         var tempPath = Path.Combine(

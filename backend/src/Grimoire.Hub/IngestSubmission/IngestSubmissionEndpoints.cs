@@ -105,7 +105,7 @@ public static class IngestSubmissionEndpoints
             sourceKind = "url",
             acceptedAt = DateTimeOffset.UtcNow,
             userPromptSource = normalizedPrompt is null ? "default" : "custom",
-            convertSteps = ConvertStepRegistry.ResolveEffective("url", body.ConvertSteps),
+            convertSteps = IngestConvertStepRegistry.ResolveEffective("url", body.ConvertSteps),
         });
     }
 
@@ -173,7 +173,7 @@ public static class IngestSubmissionEndpoints
             sourceKind = rawKind,
             acceptedAt = DateTimeOffset.UtcNow,
             userPromptSource = normalizedPrompt is null ? "default" : "custom",
-            convertSteps = ConvertStepRegistry.ResolveEffective(rawKind, convertSteps),
+            convertSteps = IngestConvertStepRegistry.ResolveEffective(rawKind, convertSteps),
         });
     }
 
@@ -235,7 +235,7 @@ public static class IngestSubmissionEndpoints
         {
             defaultUserPrompt = defaultUserPrompt.Trim(),
             userPromptMaxLength = IngestSubmissionValidator.UserPromptMaxLength,
-            convertSteps = ConvertStepRegistry.All.Select(step => new
+            convertSteps = IngestConvertStepRegistry.All.Select(step => new
             {
                 name = step.Name,
                 appliesTo = step.AppliesTo.Order().ToArray(),
@@ -246,7 +246,7 @@ public static class IngestSubmissionEndpoints
     }
 
     private static async Task<IResult> GetBoardAsync(
-        [FromServices] KanbanBoardProjectionStore store,
+        [FromServices] IngestKanbanBoardProjectionStore store,
         [FromServices] IngestContentPaths contentPaths,
         [FromServices] IngestRunCoordinator coordinator,
         CancellationToken cancellationToken)
@@ -273,8 +273,8 @@ public static class IngestSubmissionEndpoints
 
     private static async Task<IResult> GetTaskDetailAsync(
         string taskId,
-        [FromServices] KanbanBoardProjectionStore store,
-        [FromServices] Conversion.SourceArtifactStore sourceArtifactStore,
+        [FromServices] IngestKanbanBoardProjectionStore store,
+        [FromServices] Conversion.IngestSourceArtifactStore sourceArtifactStore,
         [FromServices] IngestContentPaths contentPaths,
         [FromServices] IngestRunCoordinator coordinator,
         // Explicit: without it Minimal APIs infer a complex type as the request body, which
@@ -293,13 +293,13 @@ public static class IngestSubmissionEndpoints
         // 004: prompt/config recorded on the artifact (FR-009/FR-014); pre-004 tasks
         // return nulls — "defaults of their time".
         var artifactPath = Path.Combine(contentPaths.TasksDir, $"{taskId}.md");
-        TaskArtifactFrontmatter? frontmatter = null;
+        IngestTaskArtifactFrontmatter? frontmatter = null;
         string? userPrompt = null;
         if (File.Exists(artifactPath))
         {
             var markdown = await File.ReadAllTextAsync(artifactPath, cancellationToken);
-            frontmatter = TaskArtifactFrontmatter.TryParse(markdown);
-            userPrompt = TaskArtifactFrontmatter.TryExtractUserPrompt(markdown);
+            frontmatter = IngestTaskArtifactFrontmatter.TryParse(markdown);
+            userPrompt = IngestTaskArtifactFrontmatter.TryExtractUserPrompt(markdown);
         }
 
         var activity = coordinator.GetActivity(taskId);
@@ -351,7 +351,7 @@ public static class IngestSubmissionEndpoints
     /// still exist, so <c>available:false</c> is exactly the condition FR-002 needs the
     /// client to render as "unavailable" instead of a link that 404s when clicked.
     /// </summary>
-    private static object ResolveSourceLink(string taskId, Conversion.SourceArtifactSet? artifactSet)
+    private static object ResolveSourceLink(string taskId, Conversion.IngestSourceArtifactSet? artifactSet)
     {
         if (artifactSet?.SourceUrl is { Length: > 0 } url)
         {
@@ -375,7 +375,7 @@ public static class IngestSubmissionEndpoints
     /// </summary>
     private static async Task<IResult> GetSourceOriginalAsync(
         string taskId,
-        [FromServices] Conversion.SourceArtifactStore sourceArtifactStore,
+        [FromServices] Conversion.IngestSourceArtifactStore sourceArtifactStore,
         ILoggerFactory loggerFactory,
         CancellationToken cancellationToken)
     {
@@ -427,7 +427,7 @@ public static class IngestSubmissionEndpoints
     /// </summary>
     private static async Task<IResult> GetTaskRecordAsync(
         string taskId,
-        [FromServices] TaskRecordReadModel readModel,
+        [FromServices] IngestTaskRecordReadModel readModel,
         ILoggerFactory loggerFactory,
         CancellationToken cancellationToken)
     {
@@ -439,9 +439,9 @@ public static class IngestSubmissionEndpoints
         var result = await readModel.ReadAsync(taskId, cancellationToken);
         var outcome = result.Outcome switch
         {
-            TaskRecordOutcome.Ok => "ok",
-            TaskRecordOutcome.Missing => "missing",
-            TaskRecordOutcome.Unparseable => "unparseable",
+            IngestTaskRecordOutcome.Ok => "ok",
+            IngestTaskRecordOutcome.Missing => "missing",
+            IngestTaskRecordOutcome.Unparseable => "unparseable",
             _ => "unknown",
         };
         span?.SetTag("outcome", outcome);
@@ -450,7 +450,7 @@ public static class IngestSubmissionEndpoints
         IngestSubmissionLogEvents.LogTaskRecordServed(logger, taskId, outcome, contentLength);
         HubMetrics.RecordIngestTaskRecordRead(outcome);
 
-        if (result.Outcome != TaskRecordOutcome.Ok)
+        if (result.Outcome != IngestTaskRecordOutcome.Ok)
         {
             return ApiErrorResults.Problem(ApiErrorCatalogue.IngestTaskRecordUnavailable);
         }
@@ -477,7 +477,7 @@ public static class IngestSubmissionEndpoints
     private static async Task<IResult> PostRetriggerAsync(
         string taskId,
         [FromServices] IngestRunCoordinator coordinator,
-        [FromServices] KanbanBoardProjectionStore store,
+        [FromServices] IngestKanbanBoardProjectionStore store,
         [FromServices] IngestContentPaths contentPaths,
         CancellationToken cancellationToken)
     {
@@ -502,8 +502,8 @@ public static class IngestSubmissionEndpoints
     private static async Task<IResult> PostRestartAsync(
         string taskId,
         [FromServices] IngestRunCoordinator coordinator,
-        [FromServices] KanbanBoardProjectionStore store,
-        [FromServices] Conversion.SourceArtifactStore sourceArtifactStore,
+        [FromServices] IngestKanbanBoardProjectionStore store,
+        [FromServices] Conversion.IngestSourceArtifactStore sourceArtifactStore,
         [FromServices] IngestContentPaths contentPaths,
         ILoggerFactory loggerFactory,
         CancellationToken cancellationToken)
@@ -535,7 +535,7 @@ public static class IngestSubmissionEndpoints
 
         var artifactPath = Path.Combine(contentPaths.TasksDir, $"{taskId}.md");
         string? userPrompt = File.Exists(artifactPath)
-            ? TaskArtifactFrontmatter.TryExtractUserPrompt(await File.ReadAllTextAsync(artifactPath, cancellationToken))
+            ? IngestTaskArtifactFrontmatter.TryExtractUserPrompt(await File.ReadAllTextAsync(artifactPath, cancellationToken))
             : null;
 
         var accepted = await coordinator.RestartFailedAsync(taskId, manifest.NormalizedMarkdownPath, userPrompt, cancellationToken);
@@ -578,7 +578,7 @@ public static class IngestSubmissionEndpoints
     private static async Task<IResult> PostCancelAsync(
         string taskId,
         [FromServices] IngestRunCoordinator coordinator,
-        [FromServices] KanbanBoardProjectionStore store,
+        [FromServices] IngestKanbanBoardProjectionStore store,
         [FromServices] IngestContentPaths contentPaths,
         CancellationToken cancellationToken)
     {

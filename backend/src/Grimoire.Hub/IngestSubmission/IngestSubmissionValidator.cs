@@ -125,7 +125,7 @@ public sealed class IngestSubmissionValidator
 
         foreach (var (name, enabled) in requestedSteps)
         {
-            var step = ConvertStepRegistry.TryGet(name);
+            var step = IngestConvertStepRegistry.TryGet(name);
             if (step is null)
             {
                 return new IngestSubmissionValidationResult(false,

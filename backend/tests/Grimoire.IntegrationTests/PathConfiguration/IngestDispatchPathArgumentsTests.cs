@@ -29,7 +29,7 @@ public class IngestDispatchPathArgumentsTests
             var resolvedPaths = GrimoirePathResolver.Resolve(options, configRoot, NullLogger.Instance);
 
             var contentPaths = IngestContentPaths.FromResolved(resolvedPaths);
-            var rawPaths = RawStoragePaths.FromResolved(resolvedPaths);
+            var rawPaths = IngestRawStoragePaths.FromResolved(resolvedPaths);
             var launcher = new FakeAgentProcessLauncher();
 
             using var fixture = new IngestSubmissionPipelineFixture(

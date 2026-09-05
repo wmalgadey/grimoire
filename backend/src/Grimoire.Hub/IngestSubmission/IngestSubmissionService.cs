@@ -8,20 +8,20 @@ using Grimoire.Hub.IngestDispatch;
 
 namespace Grimoire.Hub.IngestSubmission;
 
-public sealed class SubmissionService
+public sealed class IngestSubmissionService
 {
     private readonly OperationalStateRepository _repository;
     private readonly IAgentProcessLauncher _processHost;
-    private readonly ILogger<SubmissionService> _logger;
+    private readonly ILogger<IngestSubmissionService> _logger;
 
-    public SubmissionService(OperationalStateRepository repository, IAgentProcessLauncher processHost, ILogger<SubmissionService>? logger = null)
+    public IngestSubmissionService(OperationalStateRepository repository, IAgentProcessLauncher processHost, ILogger<IngestSubmissionService>? logger = null)
     {
         _repository = repository;
         _processHost = processHost;
-        _logger = logger ?? NullLogger<SubmissionService>.Instance;
+        _logger = logger ?? NullLogger<IngestSubmissionService>.Instance;
     }
 
-    public async Task<string> SubmitAsync(SubmitSourceOptions options, IngestContentPaths contentPaths, ResolvedGrimoirePaths resolvedPaths, CancellationToken cancellationToken = default)
+    public async Task<string> SubmitAsync(IngestSubmitSourceOptions options, IngestContentPaths contentPaths, ResolvedGrimoirePaths resolvedPaths, CancellationToken cancellationToken = default)
     {
         var taskId = $"{DateTime.UtcNow:yyyy-MM-dd}-ingest-{Guid.NewGuid():N}";
         var normalizedSourceRef = ResolveSourcePath(options.Path);
@@ -41,7 +41,7 @@ public sealed class SubmissionService
             "Ingest task created: {task_id}, source: {source_ref}", taskId, normalizedSourceRef);
 
         await _repository.UpsertIngestTaskStateAsync(
-            new OperationalTaskState(taskId, "running", null, DateTimeOffset.UtcNow),
+            new IngestOperationalTaskState(taskId, "running", null, DateTimeOffset.UtcNow),
             cancellationToken);
 
         var request = new IngestAgentRequest(

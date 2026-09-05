@@ -26,7 +26,7 @@ public class IngestRunFailureVisibilityTests
         await fixture.WaitForPublishedEventAsync(taskId, e => e.ToStatus == "failed");
 
         var markdown = await File.ReadAllTextAsync(fixture.TaskArtifactPathFor(taskId));
-        var final = TaskArtifactFrontmatter.TryParse(markdown);
+        var final = IngestTaskArtifactFrontmatter.TryParse(markdown);
         Assert.Equal("failed", final!.Status);
         Assert.Equal(agentFailureReason, final.FailureReason);
 
@@ -60,7 +60,7 @@ public class IngestRunFailureVisibilityTests
         await fixture.WaitForPublishedEventAsync(taskId, e => e.ToStatus == "failed", TimeSpan.FromSeconds(10));
 
         var markdown = await File.ReadAllTextAsync(fixture.TaskArtifactPathFor(taskId));
-        var final = TaskArtifactFrontmatter.TryParse(markdown);
+        var final = IngestTaskArtifactFrontmatter.TryParse(markdown);
         Assert.Equal("failed", final!.Status);
         Assert.Contains("Failed to start ingest agent process.", final.FailureReason);
     }
