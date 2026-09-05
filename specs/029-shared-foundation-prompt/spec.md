@@ -1,4 +1,4 @@
-# Feature Specification: Shared Foundation Prompt and Deployment Identity Wizard
+# Feature Specification: Shared Foundation Prompt and Wiki-Identity Wizard
 
 **Feature Branch**: `claude/shared-foundation-prompt-j3jdwi`
 
@@ -67,6 +67,27 @@ Add a command to `deploy/server/grimoire-server` that walks an operator through 
   reaches the agent unmodified) and FR-005 (fail-closed) stay in the spec: they constrain what the
   system may do to instruction content rather than describing a mechanism, and the fixed order comes
   from the feature request itself.
+- Q: Should the spec require that evaluation and replay runs resolve and compose the foundation
+  document exactly as a dispatched run does? → A: no — evaluation is internal machinery, not a
+  spec-level requirement. US1-AS4 and FR-007 are removed and SC-003's evaluation clause dropped. The
+  obligation itself does not disappear: it moves to `plan.md` and the resolution ADR, where the eval
+  runner's repository-source resolution is decided.
+- Q: Where does the identity wizard live — in the deployment script, or in the system itself? → A: in
+  the system. It already has the operator interface and console integration the wizard needs, and
+  putting it there is what lets a later user-facing surface expose the same wizard instead of
+  reimplementing it (a separate, future spec). The deployment script *starts* the system's wizard and
+  surfaces the identity the system reports; it implements no wizard of its own. Consequence recorded in
+  Assumptions: the wizard is system code and carries the full constitutional obligations, and only the
+  thin glue in the deployment script keeps the relaxed shell-script conventions.
+- Q: Where does the agent session that drafts a specialised foundation document run? → A: on the deploy
+  host, not inside the system. The system produces the drafting brief and accepts the drafted document
+  back through a second invocation; it neither spawns nor remote-controls the drafting agent. This
+  keeps the deployment image, its credential scoping and the external-system boundary untouched, and it
+  means this feature is **not** a partial implementation of issue #102 — the framing "the system
+  remote-controls Claude Code" does not survive this answer, and the spec says hand-off instead.
+- Q: Who answers "which wiki identity steers this deployment"? → A: the system reports it (FR-018) and
+  the deployment script surfaces that answer rather than working it out itself (FR-018a). The same
+  report is what a later user-facing surface would show.
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -98,90 +119,96 @@ statement — and that the per-agent files were not edited to achieve it.
 3. **Given** a shared foundation document that is missing, unreadable or effectively empty, **When** a
    run is dispatched, **Then** the run fails before any wiki write, naming the document that could not
    be loaded.
-4. **Given** an evaluation or replay run started without any operator-specific configuration, **When**
-   it resolves the agent's instructions, **Then** it resolves and composes the shared foundation
-   document exactly as a real dispatched run does.
 
 ---
 
-### User Story 2 - An operator decides what wiki this instance maintains, while deploying it (Priority: P2)
+### User Story 2 - An operator decides what wiki this instance maintains (Priority: P2)
 
-An operator bringing up a deployment is asked one question: keep the default general-knowledge wiki, or
-maintain a specialised wiki. Keeping the default is a complete answer and leaves the instance
-indistinguishable from one that was never asked. Choosing "specialised" lets the operator describe, in
-their own words, the wiki they want maintained, and the deployment ends up steered by a foundation
-document that says so — without the operator hand-editing any product file.
+An operator bringing up a deployment is asked one question by the system itself: keep the default
+general-knowledge wiki, or maintain a specialised one. Keeping the default is a complete answer and
+leaves the instance indistinguishable from one that was never asked. Choosing "specialised" lets the
+operator describe, in their own words, the wiki they want maintained; the description is turned into a
+foundation document by an agent session, and the system puts it in place for this instance — without
+the operator hand-editing any product file.
 
 **Why this priority**: It is what makes the shared document per-instance rather than merely
 deduplicated, and it is the operator-facing half of the feature. It depends on US1 being in place.
 
-**Independent Test**: On a fresh deployment, run the wizard choosing "default" and confirm the instance
-is byte-identical to one that never ran it; then run it choosing "specialised" with a description, and
-confirm the running deployment's agents are steered by a foundation document reflecting that
-description.
+**Independent Test**: On a fresh deployment, run the identity wizard choosing "default" and confirm the
+instance is indistinguishable from one that never ran it; then run it choosing "specialised" with a
+description, and confirm the running deployment's agents are steered by a foundation document
+reflecting that description.
 
 **Acceptance Scenarios**:
 
-1. **Given** a deployment that has never run the wizard, **When** the operator runs it and chooses the
-   default wiki identity, **Then** no instruction content is added, changed or removed anywhere in the
-   instance, and subsequent runs load the shipped default foundation document.
-2. **Given** a deployment that has never run the wizard, **When** the operator chooses a specialised
-   wiki and supplies a description, **Then** the instance's foundation document reflects that
-   description and every subsequent agent run of every type loads it in place of the shipped default.
+1. **Given** a deployment that has never run the identity wizard, **When** the operator runs it and
+   chooses the default wiki identity, **Then** no instruction content is added, changed or removed
+   anywhere in the instance, and subsequent runs operate under the shipped default foundation document.
+2. **Given** a deployment that has never run the identity wizard, **When** the operator chooses a
+   specialised wiki and supplies a description, **Then** the system produces a drafting brief from that
+   description, and once a document drafted from that brief is handed back, every subsequent agent run
+   of every type operates under it in place of the shipped default.
 3. **Given** an instance whose foundation document was already set (by an earlier wizard run or by
    hand), **When** the wizard runs again, **Then** it reports what is already in place and does not
    replace it until the operator explicitly decides to.
 4. **Given** an instance-specific foundation document in place, **When** the deployment is redeployed to
    another ref or rolled back, **Then** the document survives and still steers the agents.
+5. **Given** the operator drives the deployment through the deployment script rather than the system's
+   own interface, **When** they ask it to set the wiki identity, **Then** the script starts the
+   system's wizard rather than implementing one of its own.
 
 ---
 
-### User Story 3 - The wizard works from a session that has no terminal (Priority: P2)
+### User Story 3 - The wizard works where nobody can answer a prompt (Priority: P2)
 
-`grimoire-server` is routinely driven from a non-interactive Claude Code session on the deploy host.
-The wizard must therefore be fully usable without a terminal: every answer it would otherwise prompt for
-can be supplied up front, and when it is asked to prompt with no terminal attached it says so and exits
-instead of hanging.
+The wizard is routinely started from contexts with no terminal attached — a deployment script, an
+automated session, a container exec. It must therefore be fully usable without one: every answer it
+would otherwise prompt for can be supplied up front, and when it is asked to prompt with no terminal
+attached it says so and exits instead of hanging.
 
-**Why this priority**: Without it the wizard is unusable in the way this deployment is actually
-operated. It is a distinct, independently testable behavior of the same command as US2.
+**Why this priority**: Without it the wizard is unusable in the way it will almost always be invoked.
+It is a distinct, independently testable behavior of the same command as US2.
 
-**Independent Test**: Run the wizard with stdin redirected from `/dev/null`, once with every answer
-supplied as flags (succeeds) and once with an answer missing (fails immediately with a message naming
-the missing answer, rather than blocking).
+**Independent Test**: Run the wizard with no terminal attached, once with every answer supplied up
+front (succeeds) and once with an answer missing (fails immediately with a message naming the missing
+answer, rather than blocking).
 
 **Acceptance Scenarios**:
 
-1. **Given** no terminal on stdin, **When** the wizard is invoked with all answers supplied as flags,
+1. **Given** no terminal on stdin, **When** the wizard is invoked with all answers supplied up front,
    **Then** it completes without prompting and produces the same outcome as the interactive run with the
    same answers.
 2. **Given** no terminal on stdin, **When** the wizard is invoked without an answer it needs, **Then** it
-   exits non-zero within seconds with a message naming what to supply, and changes nothing.
+   exits with a failure within seconds, naming what to supply, and changes nothing.
 3. **Given** an existing foundation document and a non-interactive invocation that does not carry an
    explicit decision to replace it, **When** the wizard runs, **Then** it exits non-zero without touching
    the existing document.
 
 ---
 
-### User Story 4 - "What is running on this host?" includes which wiki it maintains (Priority: P3)
+### User Story 4 - "What is running here?" includes which wiki it maintains (Priority: P3)
 
-An operator running `grimoire-server status` sees the deployed ref, the tool version and the stack's
-health. Two hosts on the same commit can maintain entirely different wikis, so the status report also
-names the wiki identity currently steering the deployment.
+Two deployments of the same commit can maintain entirely different wikis. The system therefore reports
+which wiki identity is currently steering it — the shipped default, or an instance-specific document —
+and the deployment script surfaces that answer alongside the deployed ref and the tool version, rather
+than working it out for itself.
 
 **Why this priority**: It is an operator-visibility improvement on top of US2, valuable but not required
 for the identity mechanism to work.
 
-**Independent Test**: Run `status` on a deployment left at the default and on one with an
-instance-specific identity, and confirm the two reports differ in exactly that line.
+**Independent Test**: Ask a deployment left at the default and one with an instance-specific identity
+which identity steers it, and confirm the two answers differ; then confirm the deployment script's own
+status output carries the same answer.
 
 **Acceptance Scenarios**:
 
-1. **Given** a deployment left at the default identity, **When** `status` runs, **Then** it reports that
-   the instance is steered by the shipped default foundation document.
-2. **Given** a deployment with an instance-specific identity, **When** `status` runs, **Then** it reports
-   that an instance-specific foundation document is in effect, with enough detail (a title or summary
+1. **Given** a deployment left at the default identity, **When** its identity is queried, **Then** it
+   reports that the instance is steered by the shipped default foundation document.
+2. **Given** a deployment with an instance-specific identity, **When** its identity is queried, **Then**
+   it reports that an instance-specific document is in effect, with enough detail (a title or summary
    line, and when it was set) to tell two instances apart.
+3. **Given** either of the above, **When** the operator asks the deployment script what is running,
+   **Then** the same answer appears there, obtained from the system rather than recomputed.
 
 ---
 
@@ -203,10 +230,15 @@ instance-specific identity, and confirm the two reports differ in exactly that l
   unaffected by instruction content, and the attempt changes nothing about what the agent is permitted
   to do.
 - **Very large operator description**: the wizard's output is an instruction document like any other;
-  an unusably large one is an operator-visible problem (surfaced by the same recorded content hash and
-  by the agents' own behavior), not a harness failure mode.
-- **Wizard invoked on a host with no deployment checkout or no state directory**: it fails with the same
-  kind of message the tool's other commands already give, and changes nothing.
+  an unusably large one is an operator-visible problem (surfaced by the run's recorded version and by
+  the agents' own behavior), not a harness failure mode.
+- **Drafting brief produced but never answered**: the operator asks for a specialised wiki, the brief is
+  emitted, and no drafted document is ever handed back. The instance stays on the shipped default —
+  emitting a brief changes nothing on its own — and the wizard can be re-run from the beginning.
+- **A drafted document is handed back that is empty or unreadable**: it is rejected and nothing is
+  placed; the instance keeps whatever identity it had.
+- **Wizard invoked against an instance whose deployment cannot be reached**: it fails with a message
+  naming what it could not reach, and changes nothing.
 
 ## Requirements *(mandatory)*
 
@@ -231,8 +263,6 @@ instance-specific identity, and confirm the two reports differ in exactly that l
   and in which exact version, distinguishably per document — so a change in behaviour can be attributed
   to the shared statement or to one agent's role document. How that is recorded is a plan-level
   decision, not a requirement here.
-- **FR-007**: Evaluation and replay runs MUST resolve and compose the foundation document by the same
-  mechanism as a dispatched run, with no additional operator configuration.
 - **FR-008**: The system MUST ship a default foundation document whose content describes the wiki
   Grimoire maintains today — a general, personal-knowledge LLM-wiki — and MUST use it whenever the
   instance has not set one of its own.
@@ -250,17 +280,19 @@ instance-specific identity, and confirm the two reports differ in exactly that l
 
 #### Deployment identity wizard (Part 2)
 
-- **FR-011**: `grimoire-server` MUST offer a command that asks the operator one question — keep the
-  default knowledge wiki, or maintain a specialised one — and puts the resulting foundation document in
-  place for that instance.
+- **FR-011**: The system itself MUST offer an identity wizard that asks the operator one question —
+  keep the default knowledge wiki, or maintain a specialised one — and puts the resulting foundation
+  document in place for that instance. It MUST be reachable through the system's own operator
+  interface, so that a later user-facing surface can expose the same wizard without reimplementing it.
 - **FR-012**: Choosing the default MUST be a complete, valid outcome that leaves the instance
-  byte-identical to one that never ran the wizard.
+  indistinguishable from one that never ran the wizard.
 - **FR-013**: Choosing "specialised" MUST collect the operator's own plain-language description of the
-  wiki they want maintained and produce the instance's foundation document from it.
-- **FR-013a**: The wizard MUST NOT author the foundation document's content itself from a template.
-  It MUST emit a drafting brief — the operator's description plus the document's required shape — for
-  an agent session on the deploy host to draft from, and MUST accept an already-drafted document as
-  input. The wizard's own responsibilities are validation, safe placement and recording that it ran.
+  wiki they want maintained, and the instance's foundation document MUST be produced from it.
+- **FR-013a**: The system MUST NOT author the foundation document's content itself, neither from a
+  template nor by running an agent loop of its own. It MUST emit a drafting brief — the operator's
+  description plus the document's required shape — for an agent session to draft from, and MUST accept
+  the drafted document back as input. The system's own responsibilities are producing the brief,
+  validating what comes back, placing it safely and recording that it did.
 - **FR-014**: The wizard MUST be safe to re-run: when a foundation document is already in place — set by
   an earlier run or hand-edited afterwards — it MUST report what is there and MUST NOT replace it
   without an explicit operator decision to do so.
@@ -270,9 +302,11 @@ instance-specific identity, and confirm the two reports differ in exactly that l
   with a message naming the answer to supply, and MUST NOT hang and MUST NOT change anything.
 - **FR-017**: An instance-specific foundation document MUST survive redeployment, rollback and restart
   of the deployment it belongs to.
-- **FR-018**: `grimoire-server status` MUST report which wiki identity the running deployment is
-  steered by — the shipped default, or an instance-specific document identified well enough to tell two
-  instances apart.
+- **FR-018**: The system MUST report which wiki identity is currently steering it — the shipped
+  default, or an instance-specific document identified well enough to tell two instances apart.
+- **FR-018a**: The deployment script MUST start the system's wizard rather than implementing one of its
+  own, and MUST surface the identity the system reports (FR-018) alongside the deployment facts it
+  already shows. It MUST NOT determine that identity by its own means.
 
 #### Declined scope, recorded
 
@@ -290,8 +324,12 @@ instance-specific identity, and confirm the two reports differ in exactly that l
   document.
 - **Composed instruction context**: what an agent actually receives — foundation document plus that
   agent's system prompt, in a fixed documented order.
+- **Drafting brief**: what the system produces from the operator's description — the description plus
+  the foundation document's required shape — for an agent session to draft the document from. It is an
+  input to drafting, never itself the foundation document.
 - **Instance identity**: the deployment-level fact of which foundation document is in effect (default or
-  instance-specific), reportable by the deployment tool and durable across redeployments.
+  instance-specific), reported by the system, surfaced by the deployment script, and durable across
+  redeployments.
 
 ## Success Criteria *(mandatory)*
 
@@ -304,15 +342,15 @@ instance-specific identity, and confirm the two reports differ in exactly that l
   unreadable or effectively empty fail before any wiki write, with a failure reason naming the
   foundation document.
 - **SC-003** *(deterministic harness guarantee)*: in 100% of runs the agent operates under the two
-  documents' content byte-for-byte as it stands on disk, in the documented order — for every agent type
-  and for evaluation and replay runs alike.
+  documents' content byte-for-byte as it stands on disk, in the documented order, for every agent type.
 - **SC-004** *(deterministic harness guarantee)*: 100% of wizard runs that choose the default leave the
-  instance byte-identical to one that never ran the wizard.
+  instance's instruction content and effective configuration identical to one that never ran the
+  wizard.
 - **SC-005** *(deterministic harness guarantee)*: 100% of wizard re-runs against an instance that
   already has a foundation document either leave that document untouched or replace it only under an
   explicit operator decision — never silently.
 - **SC-006** *(deterministic harness guarantee)*: 100% of wizard invocations with no terminal attached
-  either complete from supplied answers or exit non-zero with a message naming the missing answer;
+  either complete from answers supplied up front or fail with a message naming the missing answer;
   none block waiting for input.
 - **SC-007** *(deterministic harness guarantee)*: after a redeployment, rollback or restart, 100% of an
   instance's runs still load the instance-specific foundation document that was in place before.
@@ -334,21 +372,35 @@ instance-specific identity, and confirm the two reports differ in exactly that l
 - An operator hand-editing the effective foundation document is a supported action, exactly as
   hand-editing any instruction file is today. The wizard is a convenience for producing one, not the
   only sanctioned way to have one.
-- "Byte-identical to a deployment that never ran the wizard" (FR-012) is about the instance's
-  instruction content and effective configuration, not about the deployment tool's own operator-state
-  bookkeeping, which may record that the wizard ran.
+- "Indistinguishable from a deployment that never ran the wizard" (FR-012) is about the instance's
+  instruction content and effective configuration, not about bookkeeping that records the wizard ran.
 - Issue #137's guard-enforced shapes stay product-owned: the `index.md` catalog-entry line shape, the
   append-only log ordering, and the three per-agent write scopes are enforced at the guarded tool
   boundary and are not weakened, extended or made configurable by this feature. FR-010 states this as a
   requirement rather than leaving it implied.
-- `deploy/server/grimoire-server` is an operator helper, not a system component: per the user's explicit
-  direction it is delivered under the repository's existing shell-script conventions (its own
-  `grimoire-server.test.sh` suite and README), and is not subject to the backend's architecture-test,
-  observability-contract and eval requirements. The backend half of this feature (Part 1) carries the
-  full constitutional obligations.
-- The eval runner and replay path already resolve agent instructions from the build-distributed agent
-  artifacts without operator configuration (ADR-043); this feature keeps that property rather than
-  introducing an eval-specific resolution rule.
+- The identity wizard is **system code**, not deployment tooling (2026-09-05 clarification). It
+  therefore carries the full constitutional obligations — ADRs, hermetic tests, observability contract,
+  hexagonal boundaries — exactly as Part 1 does. The earlier assumption that this half could be built
+  under the deployment script's relaxed conventions no longer applies to it.
+- What remains in `deploy/server/grimoire-server` is thin glue: it starts the system's wizard and
+  surfaces the identity the system reports (FR-018a). That glue stays an operator helper under the
+  repository's existing shell-script conventions (its own `grimoire-server.test.sh` suite and README),
+  and is not subject to the backend's architecture-test, observability-contract and eval requirements.
+  It contains no wizard logic of its own to be relaxed about.
+- The system does not run an agent loop of its own for drafting, and it does not spawn or remote-control
+  a drafting agent (2026-09-05 clarification): it hands out a brief and takes a document back. An agent
+  session on the deploy host does the drafting. This feature is therefore **not** an implementation,
+  partial or otherwise, of issue #102 (replacing the in-process agent loop with Claude Code headless) —
+  it introduces no new external system, no new port, and no second agent runtime. #102 remains open and
+  untouched.
+- The operator can hand the drafted document back at a later time and from a different session than the
+  one that asked for it. Emitting a brief is not a state the instance is stuck in: until a document is
+  handed back and accepted, the instance simply keeps the identity it already had.
+- Evaluation and replay runs are internal machinery, not a spec-level requirement (2026-09-05
+  clarification): the spec no longer states how they resolve instructions. They must still resolve and
+  compose the foundation document the same way a dispatched run does, with no operator configuration —
+  that obligation now lives in `plan.md` and the resolution ADR, where the eval runner's existing
+  repository-source resolution is already decided.
 - Every recorded-replay eval recording goes stale with this feature, unavoidably: the instruction text
   an agent receives changes for all three agent types the moment a second document is composed into
   it, and the replay path compares that text's hash against the recording. This is the documented
@@ -360,5 +412,6 @@ instance-specific identity, and confirm the two reports differ in exactly that l
   can complete on its own.
 - Where the shared document physically lives, and how an instance-specific one reaches a containerized
   deployment, are deliberately left to `/speckit-plan` — the user's description names both candidate
-  shapes and requires both to be weighed. This spec constrains the outcome only through FR-007, FR-008
-  and FR-017.
+  shapes and requires both to be weighed. This spec constrains the outcome only through FR-008 (a
+  shipped default applies when the instance sets nothing) and FR-017 (an instance-specific document
+  survives redeployment).
