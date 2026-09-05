@@ -61,10 +61,14 @@ enforceability.
 | `IUrlContentFetcher` (new) | `Grimoire.Hub.IngestSubmission` | `UrlContentFetcher` → `Grimoire.Hub.IngestSubmission.Adapters.HttpFetch` | `FakeUrlContentFetcher` |
 | `IModelClient` | `Grimoire.IngestAgent.AgentCore` | `AnthropicModelClient` → `Grimoire.IngestAgent.AgentCore.Adapters.Anthropic` | `FakeModelClient` |
 
-> This `IModelClient` row was superseded by ADR-011's "Hexagonal ports and containment
-> (amends ADR-010)" section (008-query-agent): the port and its Anthropic adapter moved
-> to `Grimoire.AgentRuntime.Core`/`Grimoire.AgentRuntime.Core.Adapters.Anthropic` when the
-> Ingest/Query shared runtime was extracted. See ADR-011 for the current table entry.
+> This `IModelClient` row is extended, not reversed: the port and its Anthropic adapter
+> now live at `Grimoire.AgentRuntime.Core`/`Grimoire.AgentRuntime.Core.Adapters.Anthropic`
+> (see [ADR-044](ADR-044-shared-agent-runtime-library.md)) since the Ingest/Query shared
+> runtime was extracted — the same port-owned-by-consumer, adapter-one-level-below scheme
+> this ADR decided, applied to the new consuming namespace. (The row passed through
+> ADR-011 before ADR-044 restated it as current truth — see ADR-011's own frontmatter for
+> the chain.) The namespace scheme and containment rules C1–C5 this ADR decided are
+> unchanged.
 
 ### Containment rules (enforced in `Grimoire.ArchTests`, each with a Red/Green probe)
 

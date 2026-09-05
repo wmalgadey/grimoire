@@ -4,22 +4,26 @@ status: accepted
 
 # ADR-006: Agent Tool-Use Loop and Guarded Tool Boundary
 
-> **Amended by [ADR-009](ADR-009-runtime-path-configuration.md)**: the policy file this
-> ADR's guarded tool boundary reads becomes content-root-relative under ADR-009's path
-> configuration (portable `policy.json` prefixes); the guarded tool-use loop and
-> deny-by-default policy model themselves are unchanged.
+> **Extended by [ADR-043](ADR-043-build-distributed-agent-artifacts.md)**: the policy file
+> this ADR's guarded tool boundary reads is distributed as part of the agent's
+> build-published instruction surface (`<AgentDir>/<agent-id>/Instructions/policy.json`);
+> the guarded tool-use loop and deny-by-default policy model themselves are unchanged.
+> (This location detail passed through ADR-009, then ADR-022, before ADR-043 restated it
+> as current truth — see those ADRs' own frontmatter for the chain.)
 
-> **Amended by [ADR-030](ADR-030-guarded-retrieval-tool-surface.md)**: the "exactly three
+> **Extended by [ADR-030](ADR-030-guarded-retrieval-tool-surface.md)**: the "exactly three
 > file-level tools" decision is widened to six — `search_files`, a read-only `batch`, and
 > optional range parameters on `read_file` are added, and
 > [ADR-031](ADR-031-lint-full-wiki-write-scope.md) adds `delete_file`. The guarded tool-use
 > loop, the deny-by-default policy model, the write journal, and the rule that content
-> semantics stay in instruction files are all unchanged; ADR-006 names adding a tool as the
-> sanctioned form of backend extension.
+> semantics stay in instruction files are all unchanged; ADR-006 itself names adding a tool
+> as the sanctioned form of backend extension, so growing the tool count is exactly this
+> ADR's own Change Triggers at work, not a change to what it decided.
 >
-> **Amended by [ADR-031](ADR-031-lint-full-wiki-write-scope.md)**: the write journal gains
+> **Extended by [ADR-031](ADR-031-lint-full-wiki-write-scope.md)**: the write journal gains
 > deletion — a journaled delete records the removed content so reverse-order rollback can
-> restore it.
+> restore it. Additive to the journal mechanism this ADR defines; the mechanism itself is
+> unchanged.
 
 ## Context and Problem Statement
 

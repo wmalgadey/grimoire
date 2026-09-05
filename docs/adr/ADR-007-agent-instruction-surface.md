@@ -4,23 +4,27 @@ status: accepted
 
 # ADR-007: Agent Instruction Surface — Single System Prompt and Versioned Default User Prompt
 
-> **Amended by [ADR-009](ADR-009-runtime-path-configuration.md)**: gains the `--wiki-root`
-> argument and a policy-prefix anchor from ADR-009's path configuration; the instruction
-> surface (system prompt, default user prompt, policy) this ADR defines is unchanged.
+> **Extended by [ADR-041](ADR-041-independent-directory-roots.md)**: agent CLI paths
+> resolve under ADR-041's independent-roots model (the wiki and agent roots each carry
+> their own switch); the instruction surface (system prompt, default user prompt,
+> policy) this ADR defines is unchanged. (This detail passed through ADR-009, then
+> ADR-022, before ADR-041 restated it as current truth — see those ADRs' own
+> frontmatter for the chain.)
 
-> **Amended by [ADR-029](ADR-029-harness-operator-turn-delimiter.md)**: names a third
+> **Extended by [ADR-029](ADR-029-harness-operator-turn-delimiter.md)**: names a third
 > kind of harness-authored text — the *harness operator turn*, a steering message the
 > agent loop sends mid-conversation — and delimits it with
 > `<harness-instruction>...</harness-instruction>` inside the user channel; the
 > instruction surface (system prompt, default user prompt, policy) this ADR defines is
 > unchanged, as is the rule that the scaffold stays in harness code.
 
-> **Amended by [ADR-022](ADR-022-minimal-directory-configuration-surface.md)**:
-> instruction files now live as agent-project sources
+> **Extended by [ADR-043](ADR-043-build-distributed-agent-artifacts.md)**: instruction
+> files now live as agent-project sources
 > (`backend/src/Grimoire.*Agent/Instructions/`), copied to the configured `AgentDir` by
 > the agent build (`PublishAgentRuntime`) rather than tracked under `data/agents/<id>/`
 > — the instruction surface (system prompt, default user prompt, policy) this ADR
-> defines is unchanged; only where the authoritative copy is versioned moved.
+> defines is unchanged; only where the authoritative copy is versioned moved. (This
+> detail passed through ADR-022 before ADR-043 restated it as current truth.)
 
 ## Context and Problem Statement
 

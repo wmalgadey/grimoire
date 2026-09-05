@@ -4,12 +4,12 @@ status: accepted
 
 # ADR-012: Standalone Eval Runner and Recorded-Replay at the Model Port
 
-> **Amended by [ADR-022](ADR-022-minimal-directory-configuration-surface.md)**:
-> recordings now live under `backend/tests/Grimoire.AgentEvals/Fixtures/recordings/`
-> (test-project sources) instead of `data/evals/recordings/`; the eval runner's
-> `--recordings-root` switch was removed along with the rest of the retired path-switch
-> surface. The recorded-replay format and provenance model this ADR defines are
-> unchanged.
+> **Extended by [ADR-043](ADR-043-build-distributed-agent-artifacts.md)**: recordings
+> live under `backend/tests/Grimoire.AgentEvals/Fixtures/recordings/` (test-project
+> sources), repo-anchored so an eval run needs neither a prior agent build nor any hub
+> configuration; the eval runner's `--recordings-root` switch no longer exists. The
+> recorded-replay format and provenance model this ADR defines are unchanged. (This
+> location detail passed through ADR-022 before ADR-043 restated it as current truth.)
 
 ## Context and Problem Statement
 
