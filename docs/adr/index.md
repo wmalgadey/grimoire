@@ -68,6 +68,9 @@ mean the ADR's decision no longer governs.
 | [ADR-050](ADR-050-cli-hub-concurrency-locking.md) | Cross-Process CLI–Hub Coordination via OS-Level Locks | Accepted | Supersedes ADR-020 | — |
 | [ADR-051](ADR-051-backend-test-tier-taxonomy.md) | Backend Test Tier Taxonomy, Deterministic-Wait Convention, and Suite Concurrency Levers | Accepted | Supersedes ADR-021 | — |
 | [ADR-052](ADR-052-memory-directory-root.md) | Memory Directory — A Fourth Independent Root for Agent Process Bookkeeping | Accepted | Supersedes ADR-024 | — |
+| [ADR-053](ADR-053-agent-system-prompt-composition.md) | An Agent's System Prompt Is a Shared Foundation Document Composed With Its Role Document | Proposed | Supersedes ADR-007 (on acceptance) | — |
+| [ADR-054](ADR-054-default-user-prompt-and-message-scaffold.md) | Per-Run Steering Is a Versioned Default User Prompt Inside a Harness-Owned Scaffold | Proposed | Supersedes ADR-007 (on acceptance) | — |
+| [ADR-055](ADR-055-foundation-document-resolution.md) | The Effective Foundation Document Is the Build-Distributed Default Unless One Configured Override Replaces It | Proposed | — | — |
 
 ## Maintenance
 
