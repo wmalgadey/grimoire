@@ -70,7 +70,7 @@ mean the ADR's decision no longer governs.
 | [ADR-052](ADR-052-memory-directory-root.md) | Memory Directory — A Fourth Independent Root for Agent Process Bookkeeping | Accepted | Supersedes ADR-024 | — |
 | [ADR-053](ADR-053-agent-system-prompt-composition.md) | An Agent's System Prompt Is a Shared Foundation Document Composed With Its Role Document | Proposed | Supersedes ADR-007 (on acceptance) | — |
 | [ADR-054](ADR-054-default-user-prompt-and-message-scaffold.md) | Per-Run Steering Is a Versioned Default User Prompt Inside a Harness-Owned Scaffold | Proposed | Supersedes ADR-007 (on acceptance) | — |
-| [ADR-055](ADR-055-foundation-document-resolution.md) | The Effective Foundation Document Is the Build-Distributed Default Unless an Instance Document Exists | Proposed | — | — |
+| [ADR-055](ADR-055-foundation-document-resolution.md) | The Effective Foundation Document Is the Build-Distributed Default Unless an Instance Document Exists | Declined | — | — |
 | [ADR-056](ADR-056-instance-instruction-custody.md) | One Named Custodian May Persist an Instruction Document It Received Whole, and Nothing May Author One | Proposed | — | — |
 
 ## Maintenance
