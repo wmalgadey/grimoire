@@ -105,12 +105,14 @@ jobs:
           # translate the comma/space-separated input into one flag per id; empty input
           # keeps the previous behaviour of capturing everything.
           args=()
+          scenario_count=0
           for scenario in ${SCENARIOS//,/ }; do
             args+=(--scenario "$scenario")
+            scenario_count=$((scenario_count + 1))
           done
 
-          if [ ${#args[@]} -gt 0 ]; then
-            echo "Capturing ${#args[@]} selected scenario(s): ${SCENARIOS}"
+          if [ "$scenario_count" -gt 0 ]; then
+            echo "Capturing ${scenario_count} selected scenario(s): ${SCENARIOS}"
           else
             echo "No scenario filter given — capturing every scenario."
           fi

@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Text.Json;
 using Grimoire.EvalRunner.Providers;
 
 namespace Grimoire.EvalRunner.Workspace;
@@ -24,8 +25,13 @@ public sealed record AgentModelMode
     public static AgentModelMode Capture(string capturePath, ProviderConfiguration provider) => new(null, capturePath, provider);
 }
 
-/// <summary>Result of one spawned agent run.</summary>
-public sealed record AgentRunResult(int ExitCode, bool TimedOut, string StdErr);
+/// <summary>
+/// Result of one spawned agent run. <see cref="FailureReason"/> is the agent's own terminal
+/// `failed` event `reason` (read from stdout, per <c>RunEventEmitter</c> contract) — null when
+/// the process never reached a terminal event, in which case <see cref="StdErr"/> is the only
+/// diagnostic available (e.g. an unhandled crash before the CLI's own error handling runs).
+/// </summary>
+public sealed record AgentRunResult(int ExitCode, bool TimedOut, string StdErr, string? FailureReason = null);
 
 /// <summary>
 /// Spawns the real <c>Grimoire.IngestAgent</c> executable per sample through its
@@ -204,8 +210,40 @@ public sealed class IngestAgentProcessInvoker
             return new AgentRunResult(ExitCode: -1, TimedOut: true, StdErr: SafeResult(stdErrTask));
         }
 
-        _ = SafeResult(stdOutTask);
-        return new AgentRunResult(process.ExitCode, TimedOut: false, StdErr: SafeResult(stdErrTask));
+        var failureReason = ParseFailureReason(SafeResult(stdOutTask));
+        return new AgentRunResult(process.ExitCode, TimedOut: false, StdErr: SafeResult(stdErrTask), failureReason);
+    }
+
+    /// <summary>
+    /// Reads the terminal `failed` event's `reason` field off stdout — mirrors
+    /// <c>LintAgentProcessInvoker.ParseTerminalEvent</c>, narrowed to the one field this
+    /// invoker's callers need (#214: capture pipelines were reporting `StdErr`, which the
+    /// agent never writes to, instead of this).
+    /// </summary>
+    internal static string? ParseFailureReason(string stdout)
+    {
+        foreach (var line in stdout.Split('\n', StringSplitOptions.RemoveEmptyEntries))
+        {
+            var trimmed = line.Trim();
+            if (trimmed.Length == 0)
+            {
+                continue;
+            }
+
+            using var document = JsonDocument.Parse(trimmed);
+            var root = document.RootElement;
+            if (!root.TryGetProperty("type", out var typeProperty) || typeProperty.GetString() != "failed")
+            {
+                continue;
+            }
+
+            return root.TryGetProperty("reason", out var reasonProperty)
+                && reasonProperty.ValueKind == JsonValueKind.String
+                ? reasonProperty.GetString()
+                : null;
+        }
+
+        return null;
     }
 
     private static void AddOption(ProcessStartInfo startInfo, string name, string value)

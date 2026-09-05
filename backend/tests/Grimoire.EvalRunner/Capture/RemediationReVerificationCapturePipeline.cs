@@ -161,7 +161,8 @@ public sealed class RemediationReVerificationCapturePipeline
                 return RemediationSampleSlot.Failed(new RemediationReVerificationCaptureSampleResult(
                     sampleNumber, runId, Captured: false, Pass: null,
                     Detail: $"Sample {sampleNumber} produced no captured run " +
-                        $"(exit {run.ExitCode}, completed={run.Completed}): {Truncate(run.StdErr)}"));
+                        $"(exit {run.ExitCode}, completed={run.Completed}): " +
+                        $"{Truncate(run.FailureReason ?? run.StdErr)}"));
             }
 
             var rawCapture = RecordingSerialization.Load(capturePath);

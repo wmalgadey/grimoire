@@ -160,7 +160,8 @@ public sealed class LintCapturePipeline
                 return LintSampleSlot.Failed(new LintCaptureSampleResult(
                     sampleNumber, runId, Captured: false, Pass: null,
                     Detail: $"Sample {sampleNumber} produced no captured run " +
-                        $"(exit {run.ExitCode}, completed={run.Completed}): {Truncate(run.StdErr)}"));
+                        $"(exit {run.ExitCode}, completed={run.Completed}): " +
+                        $"{Truncate(run.FailureReason ?? run.StdErr)}"));
             }
 
             var rawCapture = RecordingSerialization.Load(capturePath);

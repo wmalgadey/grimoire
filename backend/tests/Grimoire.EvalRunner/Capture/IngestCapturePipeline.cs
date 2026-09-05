@@ -224,7 +224,8 @@ public sealed class IngestCapturePipeline
         {
             return SampleSlot.Failed(new CaptureSampleResult(sampleNumber, taskId, Captured: false, Pass: null,
                 OutOfScopeWriteSucceeded: false,
-                Detail: $"The agent produced no captured turns (exit {run.ExitCode}): {Truncate(run.StdErr)}"));
+                Detail: $"The agent produced no captured turns (exit {run.ExitCode}): " +
+                    $"{Truncate(run.FailureReason ?? run.StdErr)}"));
         }
 
         var artifactPath = Path.Combine(workspace.TasksDir, $"{taskId}.md");
