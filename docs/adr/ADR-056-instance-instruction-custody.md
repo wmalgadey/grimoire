@@ -61,9 +61,9 @@ Chosen option: **Option 1.**
   constraints:
   - it writes **only bytes it received whole** from outside the system — it never constructs, edits or
     merges content;
-  - it writes **only the instance foundation document**, at the single location the feature's own
-    artifacts fix (`specs/029-shared-foundation-prompt/contracts/foundation-document.md`) — this ADR
-    binds the custodian to *one* document at *one* location, not to which location that is;
+  - it writes **only the instance foundation document**, and only at one location — this ADR binds the
+    custodian to *one* document at *one* place, and deliberately does not decide which place that is,
+    because a file's location constrains nothing and is not an architectural decision;
   - its validation is limited to what custody requires — the document is readable and not effectively
     empty — never to what the content says;
   - it refuses to replace an existing document without an explicit operator decision, so custody never
@@ -105,13 +105,16 @@ Chosen option: **Option 1.**
 
 ## More Information
 
-The location this custodian writes to, and how the effective document is resolved from it, are feature
-behaviour rather than an architectural decision, and live in the feature's own artifacts
-(`specs/029-shared-foundation-prompt/plan.md`, `data-model.md`,
-`contracts/foundation-document.md`), with the alternatives weighed in that feature's `research.md`
-R1/R6. The Boundary Rule's literal set and allow-list live with the instruction surface in
+Two things this ADR deliberately does not decide, so a reader knows where its authority ends. Where the
+instance document physically sits, and how the effective one is resolved, is feature behaviour and is
+fixed by whichever feature introduces it — this ADR constrains only that there is exactly one such
+document and one such place. And the mechanics of the structural test — its literal set and its
+allow-list — live with the instruction surface in
 [ADR-053](ADR-053-agent-system-prompt-composition.md); this ADR decides *that* an allow-list entry
-exists and on what terms, not the mechanics of the test.
+exists and on what terms.
 
-The reasoning that led here — why ADR-043's rejection of "hub writes instruction files" does not settle
-this case — is recorded in `specs/029-shared-foundation-prompt/research.md` R7.
+[ADR-006](ADR-006-agent-tool-loop-guarded-boundary.md) is the precedent this decision rests on: it is
+where authorship and custody were first separated, one layer down, for wiki content.
+[ADR-043](ADR-043-build-distributed-agent-artifacts.md) is the decision this one has to be read
+against, because its rejection of "instruction files written out by the hub" is what made the question
+live at all.

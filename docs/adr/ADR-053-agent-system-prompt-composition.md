@@ -121,8 +121,8 @@ prompt and message-scaffold aspect is re-decided, unchanged in substance, in
 [ADR-054](ADR-054-default-user-prompt-and-message-scaffold.md). Nothing is inherited from ADR-007 by
 reference.
 
-Where the *effective* foundation document comes from — the build-distributed default and the optional
-instance document — is feature behaviour, not an architectural decision, and is fixed in
-`specs/029-shared-foundation-prompt/contracts/foundation-document.md`. This ADR fixes only which
-documents constitute a system prompt and how they are composed. Who may *write* the instance document
-is a boundary decision and is in [ADR-056](ADR-056-instance-instruction-custody.md).
+Where the *effective* foundation document comes from — which copy of it a given run resolves — is
+feature behaviour, not an architectural decision, and is fixed by whichever feature introduces it. This
+ADR fixes only which documents constitute a system prompt and how they are composed. Who may *write*
+such a document is a boundary decision and is in
+[ADR-056](ADR-056-instance-instruction-custody.md).
