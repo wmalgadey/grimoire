@@ -153,6 +153,6 @@ the instruction-change merge gate working as designed, not a defect.
 
 ## Boundary probe (Phase 0, run once)
 
-Add a class outside the custodian's namespace that writes `foundation-prompt.md`, run
+Add a class outside the wizard's namespace that writes `foundation-prompt.md`, run
 `Grimoire.ArchTests`, confirm it **fails**, then delete the class and confirm it passes. A rule that has
 never been seen to fail is not a guard.

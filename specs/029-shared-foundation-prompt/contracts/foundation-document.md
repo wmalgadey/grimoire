@@ -10,7 +10,7 @@
 | Format | Markdown, no frontmatter |
 | Name | `foundation-prompt.md`, everywhere it appears |
 | Default location | `<AgentDir>/<agentId>/Instructions/foundation-prompt.md` (build-delivered, one per agent) |
-| Instance location | `<DataDir>/foundation-prompt.md` (optional, written only by the custodian) |
+| Instance location | `<DataDir>/foundation-prompt.md` (optional, written only by the wizard) |
 | Valid | Readable, not effectively empty. Nothing validates what it says |
 
 ## Resolution

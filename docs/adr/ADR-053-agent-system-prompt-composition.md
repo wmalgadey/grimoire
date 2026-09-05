@@ -78,12 +78,12 @@ harness's job purely mechanical — read two files, join them, hand the result o
   dependency direction, and is verified by classicist behavioral tests — a real run of each agent
   type asserting the composed text and the recorded entries — never by reflecting over types or IL.
 - **Boundary Rule** (Principle III, existing rule extended): no production type may author instruction
-  content, and only the namespaces on an explicit allow-list may write a file named by an
-  agent-instruction filename literal. `foundation-prompt.md` joins `system-prompt.md`,
-  `default-user-prompt.md` and `policy.json` in that rule's literal set, and the rule keeps its
-  Red/Green probe — extended to cover the new literal specifically. The allow-list's second entry, and
-  the terms on which a component may hold custody of an instruction document at all, are decided in
-  [ADR-056](ADR-056-instance-instruction-custody.md); this ADR owns the rule, not its exceptions.
+  content — composing, templating, interpolating, summarizing, defaulting or merging the text of an
+  instruction document is forbidden everywhere. `foundation-prompt.md` joins `system-prompt.md`,
+  `default-user-prompt.md` and `policy.json` in the literal set of the structural test that enforces
+  it, and the rule keeps its Red/Green probe, extended to cover the new literal specifically. Writing
+  a document the system received whole from outside is not authorship and does not engage this rule;
+  where such a write is legitimate, the writing namespace joins the test's allow-list.
 
 ### Consequences
 

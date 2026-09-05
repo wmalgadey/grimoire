@@ -1,6 +1,6 @@
 # Contract: `wiki-identity` Hub CLI command
 
-**Feature**: 029-shared-foundation-prompt | ADR-048, ADR-049, ADR-056
+**Feature**: 029-shared-foundation-prompt | ADR-048, ADR-049
 
 One command in the Hub's existing catalog, with the established exit-code convention. It runs
 in-process against the shared composition root like every other Hub command.
@@ -45,7 +45,8 @@ not have to survive a shell quoting round-trip.
 - `--default` leaves the instance's instruction content and effective configuration identical to one
   that never ran the command.
 - A document handed back is persisted **verbatim** — the bytes read from `--from-file` are the bytes
-  written. Validation is limited to "readable and not effectively empty".
+  written. Validation is limited to "readable and not effectively empty"; nothing inspects, templates
+  or rewrites the content, which is what keeps the wizard a helper rather than an author.
 - An existing instance document is never replaced without `--replace`; on refusal the bytes on disk are
   unchanged and the exit code is `StateConflict`.
 - Emitting a brief changes nothing, so the command can be re-run from the beginning at any point.
