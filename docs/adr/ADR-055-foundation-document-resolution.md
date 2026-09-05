@@ -1,8 +1,24 @@
 ---
-status: proposed
+status: declined
+reason: >-
+  Not a boundary or technology decision. It fixed where one file lives and that its presence
+  decides which document is effective — feature-level behaviour, which Constitution Principle III
+  ("Single-aspect ADRs; no feature content") assigns to spec.md, plan.md and tasks.md. It
+  introduced no external system, no infrastructure, no configuration key and no new root, so
+  nothing in it needed an ADR to be binding. Kept as the record of the alternatives that were
+  weighed; the decision itself now lives in plan.md, data-model.md and
+  contracts/foundation-document.md, and the reasoning in research.md R1/R6.
 ---
 
 # ADR-055: The Effective Foundation Document Is the Build-Distributed Default Unless an Instance Document Exists
+
+> **Declined — not superseded.** This record was drafted as an ADR and rejected in review on
+> 2026-09-05 for not being an architectural decision at all: it fixes a file location and a presence
+> check, which is feature behaviour. Nothing below is binding. It is kept because the alternatives it
+> weighs (a fifth path root, a configuration key, the wiki root) are worth not re-litigating, and
+> because ADR numbers are never reused. What is actually in force is recorded in
+> `specs/029-shared-foundation-prompt/plan.md`, `data-model.md` and
+> `contracts/foundation-document.md`.
 
 > **Status notes** (informational, no status change):
 > - Extends [ADR-043](ADR-043-build-distributed-agent-artifacts.md): the default copy is a new file in

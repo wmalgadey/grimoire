@@ -122,6 +122,7 @@ prompt and message-scaffold aspect is re-decided, unchanged in substance, in
 reference.
 
 Where the *effective* foundation document comes from — the build-distributed default and the optional
-per-instance override — is a separate aspect, decided in
-[ADR-055](ADR-055-foundation-document-resolution.md). This ADR fixes only which documents constitute a
-system prompt and how they are composed.
+instance document — is feature behaviour, not an architectural decision, and is fixed in
+`specs/029-shared-foundation-prompt/contracts/foundation-document.md`. This ADR fixes only which
+documents constitute a system prompt and how they are composed. Who may *write* the instance document
+is a boundary decision and is in [ADR-056](ADR-056-instance-instruction-custody.md).
