@@ -177,7 +177,8 @@ public sealed class QueryCapturePipeline
                 {
                     allTurnsCaptured = false;
                     failureDetail = $"Sample {sampleNumber} turn {turnPosition} produced no captured turn " +
-                        $"(exit {run.ExitCode}, completed={run.Completed}): {Truncate(run.StdErr)}";
+                        $"(exit {run.ExitCode}, completed={run.Completed}): " +
+                        $"{Truncate(run.FailureReason ?? run.StdErr)}";
                     break;
                 }
 

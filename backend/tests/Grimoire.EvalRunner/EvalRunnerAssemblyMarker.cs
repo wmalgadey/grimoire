@@ -5,6 +5,10 @@ using System.Runtime.CompilerServices;
 // spawning a live process.
 [assembly: InternalsVisibleTo("Grimoire.AgentEvals")]
 
+// #214: lets Grimoire.IntegrationTests assert against IngestAgentProcessInvoker's stdout
+// NDJSON parsing directly, without spawning a live agent process.
+[assembly: InternalsVisibleTo("Grimoire.IntegrationTests")]
+
 namespace Grimoire.EvalRunner;
 
 /// <summary>Anchor type for assembly-level structural tests (ADR-012 C7/C8).</summary>

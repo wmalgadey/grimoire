@@ -144,6 +144,53 @@ describe('lane placement', () => {
 		expect(lanes.completed.map((i) => i.kind)).toEqual(['lint']);
 		expect(lanes.received.map((i) => i.kind)).toEqual(['remediation']);
 	});
+
+	test('within a lane, items sort by updatedAt descending regardless of kind', () => {
+		// Reproduces #215: a lint run finished minutes ago must not land below week-old ingest
+		// tasks just because buildBoardItems appends streams in a fixed kind order.
+		const lanes = groupByLane(
+			buildBoardItems({
+				tasks: [
+					task({ taskId: 'ing-old', status: 'completed', updatedAt: '2026-08-18T08:54:54Z' }),
+					task({ taskId: 'ing-newer', status: 'completed', updatedAt: '2026-08-23T06:30:30Z' })
+				],
+				lintRun: lintRun({
+					status: 'completed',
+					triggeredAt: '2026-08-29T20:50:00Z',
+					completedAt: '2026-08-29T20:51:51Z'
+				}),
+				remediationTasks: [
+					remediation({
+						taskId: 'rem-1',
+						state: 'completed',
+						updatedAt: '2026-08-23T15:48:20Z'
+					})
+				]
+			})
+		);
+
+		expect(lanes.completed.map((i) => i.key)).toEqual([
+			'lint:lint-24',
+			'remediation:rem-1',
+			'ingest:ing-newer',
+			'ingest:ing-old'
+		]);
+	});
+
+	test('an unparseable updatedAt sorts to the bottom of its lane', () => {
+		const lanes = groupByLane(
+			buildBoardItems({
+				tasks: [
+					task({ taskId: 'ing-good', status: 'completed', updatedAt: '2026-08-23T06:30:30Z' }),
+					task({ taskId: 'ing-bad', status: 'completed', updatedAt: 'not-a-date' })
+				],
+				lintRun: null,
+				remediationTasks: []
+			})
+		);
+
+		expect(lanes.completed.map((i) => i.id)).toEqual(['ing-good', 'ing-bad']);
+	});
 });
 
 describe('filters', () => {

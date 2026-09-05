@@ -1,4 +1,5 @@
-import { existsSync } from 'node:fs';
+import { existsSync, realpathSync } from 'node:fs';
+import path from 'node:path';
 import tailwindcss from '@tailwindcss/vite';
 import { defineConfig } from 'vitest/config';
 import { playwright } from '@vitest/browser-playwright';
@@ -30,6 +31,27 @@ const hubProxy = {
 	}
 };
 
+// #194: Stryker mutation-tests a *symlinked* copy of node_modules from inside a sandbox
+// directory it creates under this one (the real files stay put; only the sandbox is
+// temporary). Vite's dev server — which is what actually serves every module to the
+// `client` project's real Chromium over HTTP — denies a request once it resolves (through
+// the symlink) to a real path outside its configured root, and does so as a plain 404 with
+// no warning: the `server` project never notices, because a Node worker imports modules
+// directly and never goes through this HTTP layer at all. `fs.allow` normally covers only
+// the workspace root and its ancestors, which does not include a sibling sandbox
+// directory — so it needs the *real*, symlink-resolved location added explicitly. Outside
+// a Stryker sandbox this resolves to the same directory `fs.allow` already defaults to, so
+// it changes nothing for `vite dev`/`vite preview`/a plain `vitest run`.
+//
+// Guarded rather than assumed present: every other import above already requires
+// node_modules to exist (Node resolves them from it before this line ever runs), so a
+// missing directory here is unreachable in practice — but falling back to cwd rather than
+// letting realpathSync throw costs nothing and keeps this config loadable standalone.
+const nodeModulesPath = path.resolve('node_modules');
+const realNodeModulesDir = existsSync(nodeModulesPath)
+	? path.dirname(realpathSync(nodeModulesPath))
+	: process.cwd();
+
 export default defineConfig({
 	plugins: [
 		tailwindcss(),
@@ -51,7 +73,8 @@ export default defineConfig({
 		})
 	],
 	server: {
-		proxy: hubProxy
+		proxy: hubProxy,
+		fs: { allow: [process.cwd(), realNodeModulesDir] }
 	},
 	// Vite's `server.proxy` does not carry over to `vite preview` (npm run build && npm run
 	// preview) — it needs its own, otherwise that workflow silently drops all Hub/SignalR traffic.
