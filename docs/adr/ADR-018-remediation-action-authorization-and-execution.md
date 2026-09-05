@@ -4,14 +4,10 @@ status: accepted
 
 # ADR-018: Human-Authorized Remediation Action Execution
 
-> **Related decision: [ADR-031](ADR-031-lint-full-wiki-write-scope.md)** widened Lint's
-> write scope so an unattended survey run holds the same authority a human-authorized
-> remediation execution does. This does not change anything ADR-018 itself decided: the
-> state machine, the dispatch-precondition authorization gate (SC-005), and FIFO execution
-> order are unaffected — ADR-018 never made authorization the moment write authority is
-> *acquired*, only the precondition for a remediation-execution process to be *spawned*.
-> A remediation task remains what the agent raises when it decides to leave an action to
-> the user, not a permission it must obtain before acting elsewhere.
+> **Related: [ADR-031](ADR-031-lint-full-wiki-write-scope.md)** widened Lint's write scope
+> elsewhere; ADR-018's own decision — the state machine and dispatch-precondition
+> authorization gate (SC-005) — is unaffected, since authorization here was always the
+> precondition to *spawn* execution, never the moment write authority is acquired.
 
 ## Context and Problem Statement
 
