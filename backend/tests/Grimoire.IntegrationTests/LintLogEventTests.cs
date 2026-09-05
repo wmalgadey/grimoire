@@ -31,6 +31,21 @@ public class LintLogEventTests
     }
 
     [Fact]
+    public void RunCoverageComputedEvent_EmitsExpectedNameLevelAndFields()
+    {
+        // 028-lint-at-scale (US2, T015, FR-003): the harness-computed coverage report,
+        // emitted alongside PersistFindingsReportAsync — never the agent's narrative
+        // (Constitution Principle V).
+        var logger = new CaptureLogger<LintRunCoordinator>();
+
+        LintLifecycleLogEvents.LogRunCoverageComputed(
+            logger, runId: "2026-07-30-lint-abc", pagesTotal: 633, pagesConsidered: 611, coverageStatus: "partial");
+
+        AssertEvent(logger.Entries, "lint.run.coverage_computed", LogLevel.Information,
+            ["run_id", "pages_total", "pages_considered", "coverage_status"]);
+    }
+
+    [Fact]
     public void FindingsReportCreatedEvent_EmitsExpectedNameLevelAndFields()
     {
         var logger = new CaptureLogger<FindingsReportStore>();

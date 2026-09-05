@@ -1,3 +1,5 @@
+using System.Linq;
+
 namespace Grimoire.LintAgent;
 
 /// <summary>
@@ -21,4 +23,38 @@ internal static class LintPaths
     public static string IndexPath(string wikiRoot) => Path.Combine(wikiRoot, "index.md");
 
     public static string LogPath(string wikiRoot) => Path.Combine(wikiRoot, "log.md");
+
+    /// <summary>
+    /// 028-lint-at-scale (US2, FR-003/FR-004): the `WikiCoverage.PagesTotal` snapshot — a
+    /// recursive count of markdown pages under the wiki root, taken at run start (before
+    /// the agent loop runs, so a run's own writes cannot change the denominator it is
+    /// scored against). Missing/unreadable subdirectories are skipped rather than failing
+    /// the run, matching <c>GuardedToolExecutor.EnumerateSearchCandidates</c>'s tolerance.
+    /// </summary>
+    public static int CountMarkdownPages(string wikiRoot)
+    {
+        if (!Directory.Exists(wikiRoot))
+        {
+            return 0;
+        }
+
+        // Copilot review (PR #207): Directory.EnumerateFiles is lazily evaluated, so wrapping
+        // .Count() in one try/catch let a permission-denied subdirectory anywhere in the tree
+        // abort the whole count — the opposite of "skipped" above. Counting via a manual
+        // foreach and returning what was already counted before the failure is what actually
+        // gives that tolerance (mirrors GuardedToolExecutor.EnumerateSearchCandidates).
+        var count = 0;
+        try
+        {
+            foreach (var _ in Directory.EnumerateFiles(wikiRoot, "*.md", SearchOption.AllDirectories))
+            {
+                count++;
+            }
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+        }
+
+        return count;
+    }
 }

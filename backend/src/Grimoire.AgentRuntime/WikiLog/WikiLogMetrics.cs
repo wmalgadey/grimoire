@@ -35,4 +35,28 @@ public static class WikiLogMetrics
 
         counter.Add(1, new KeyValuePair<string, object?>("type", type));
     }
+
+    private const string FormatDeviationMetricName = "wiki.log.format_deviation_total";
+
+    private static readonly ConcurrentDictionary<Meter, Counter<long>> FormatDeviationCounters = new();
+
+    /// <summary>
+    /// 028-lint-at-scale (US3, FR-016, SC-009, Clarifications 2026-08-27): increments
+    /// <c>wiki.log.format_deviation_total</c>, labeled <c>agent</c>/<c>mode</c>/<c>reason</c>
+    /// — a <c>log.md</c> write committed despite deviating from the activity-log format
+    /// contract's expected shape (contracts/log-prepend-write.md). Never called for a
+    /// conforming write. <paramref name="reason"/> is the comma-joined reason code(s), for
+    /// a write that carried more than one.
+    /// </summary>
+    public static void RecordFormatDeviation(Meter meter, string agent, string mode, string reason)
+    {
+        var counter = FormatDeviationCounters.GetOrAdd(meter, static m => m.CreateCounter<long>(
+            FormatDeviationMetricName,
+            description: "A log.md write committed despite deviating from the activity-log format contract's expected shape"));
+
+        counter.Add(1,
+            new KeyValuePair<string, object?>("agent", agent),
+            new KeyValuePair<string, object?>("mode", mode),
+            new KeyValuePair<string, object?>("reason", reason));
+    }
 }

@@ -16,20 +16,18 @@ namespace Grimoire.AgentRuntime.Guardrails;
 /// <c>frontmatter_only_malformed_document</c> (the current on-disk content or the proposed
 /// content is not a well-formed two-delimiter frontmatter document), or
 /// <c>frontmatter_only_body_changed</c> (the content after the closing <c>---</c> differs
-/// between current and proposed); or, since ADR-017 (014-wiki-storage-restructure), one of
-/// the <c>log.md</c> format-validation reasons also produced by
-/// <see cref="Coordination.SharedFileWriteGuard"/>: <c>log_entry_not_prepended</c> (the
-/// proposed <c>log.md</c> content does not end with the current on-disk content
-/// byte-for-byte — the file is prepend-only, so a new entry goes on top and existing
-/// entries survive unchanged below it: ADR-028, FR-003/FR-004),
-/// <c>log_entry_malformed_heading</c>
-/// (the prepended head's first non-blank line does not match
-/// <c>^## \[\d{4}-\d{2}-\d{2}\] .+ \| .+$</c>), or <c>log_entry_missing_paragraph</c> (a
-/// heading was prepended with no following non-blank paragraph line); or, since ADR-017's
-/// US4 extension (014-wiki-storage-restructure), <c>catalog_entry_malformed</c> (a newly
-/// added <c>index.md</c> line starting with <c>- [</c> — present in the proposed content
-/// but absent, byte-for-byte, from the current content — does not match
+/// between current and proposed); or, since ADR-017's US4 extension
+/// (014-wiki-storage-restructure), <c>catalog_entry_malformed</c> (a newly added
+/// <c>index.md</c> line starting with <c>- [</c> — present in the proposed content but
+/// absent, byte-for-byte, from the current content — does not match
 /// <c>^- \[.+\]\(.+\) — .+ — .+$</c>).
+///
+/// <c>log.md</c>'s own format/ordering reasons (<c>log_entry_not_prepended</c>,
+/// <c>log_entry_malformed_heading</c>, <c>log_entry_missing_paragraph</c>) were denial
+/// reasons under ADR-017/ADR-028 but never appear here since 028-lint-at-scale
+/// (Clarifications 2026-08-27, FSI-3) — a non-conforming <c>log.md</c> write commits, and
+/// those reasons surface instead as <see cref="Coordination.WriteGuardDecision.FormatDeviationReasons"/>
+/// on the allowed decision, never as a <see cref="DeniedActionRecord"/>.
 /// </summary>
 public sealed record DeniedActionRecord(
     string Action,

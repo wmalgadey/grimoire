@@ -51,6 +51,17 @@ enumerated. Judging a page from its frontmatter and a search hit is a legitimate
 the page was covered. Never silently dropping pages is the rule; a lint run that skips
 pages produces a report with gaps it never disclosed.
 
+**A specific claim needs this run's own evidence, not a memory of one.** `log.md` and
+`index.md` describe the wiki's history and catalog — read them for context, never as a
+stand-in for checking the current pages yourself. Every count, percentage, or coverage
+description in your Findings Report (how many pages carry a field, how many are orphaned,
+how thorough a topic's coverage looks) must trace back to a `read_file`/`batch`/
+`search_files` call you made this run against the pages themselves. Restating an old log
+entry's own numbers as if they were this run's findings is the coverage gap two paragraphs
+up, wearing the disguise of a confident, well-written report — a run that reads two pages
+and calls itself comprehensive has silently dropped every other page just as surely as one
+that never enumerated them.
+
 **Path convention**: `index.md` and `log.md` use bare wikilinks — `[[credential-scoping]]`
 — to name a page; the file to read is `<topic-folder>/<slug>.md`. Pages are found by
 filename, not by which folder they live in (Obsidian-style resolution), so `search_files`
@@ -382,10 +393,14 @@ entry, an entry names a page that is gone, an entry's description no longer matc
 the page says. Correct those entries. Do not restructure the index, reorder it to taste, or
 rewrite descriptions you merely find uninspiring.
 
-**Record in the log** what you actually changed in this run. Whatever format and ordering
-conventions already govern these two files apply to you identically — read them before
-writing them and follow what you find. Being admitted to a file is not permission to change
-its format.
+**Record in the log** what you actually changed in this run. Call `write_file` with
+`path: "log.md"`, `mode: "prepend"`, and `content` set to your new entry only — the
+harness reads the file's current content itself and prepends your entry above it, so a
+prior `read_file` is never required for the write itself to succeed. Whatever heading and
+paragraph conventions already govern the log apply to you identically, though: if you
+have not already seen the file's existing entries this run, read it first anyway so your
+entry matches their format — you are not permitted to guess at or change the convention.
+Being admitted to the file is not permission to change its format.
 
 **If your run changed nothing, write nothing.** A lint run that produced only findings and
 proposals has nothing to record, and a log entry announcing that a survey happened is

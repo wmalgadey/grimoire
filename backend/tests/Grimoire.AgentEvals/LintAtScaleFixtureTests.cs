@@ -20,16 +20,40 @@ public class LintAtScaleFixtureTests
     {
         var paths = EvalPaths.Discover();
 
-        LintAtScaleFixture.Ensure(paths.FixturesRoot);
-        var first = HashTree(paths.FixtureWikiRoot(LintAtScaleFixture.FixtureName));
+        // Generate into a private fixtures root seeded with a copy of the source fixture,
+        // never the shared one. The claim under test needs a full regeneration rather than
+        // the stamp's short-circuit — the bytes must be reproducible, not merely cached —
+        // but forcing that by deleting the shared tree raced every other test class that
+        // reaches the same generated fixture through EvalPaths.FixtureWikiRoot, since xUnit
+        // runs collections in parallel: one class deleted the tree recursively while
+        // another regenerated into it. A private root makes the regeneration unobservable
+        // to them, and proves determinism across roots rather than only within one.
+        var scratchRoot = Path.Combine(
+            Path.GetTempPath(), "grimoire-lint-at-scale-determinism", Guid.NewGuid().ToString("N"));
+        try
+        {
+            CopyDirectory(
+                Path.Combine(paths.FixturesRoot, LintAtScaleFixture.SourceFixtureName),
+                Path.Combine(scratchRoot, LintAtScaleFixture.SourceFixtureName));
 
-        // Force a full regeneration rather than letting the stamp short-circuit it: the
-        // claim under test is that the bytes are reproducible, not that they are cached.
-        Directory.Delete(Path.Combine(paths.FixturesRoot, LintAtScaleFixture.FixtureName), recursive: true);
-        LintAtScaleFixture.Ensure(paths.FixturesRoot);
-        var second = HashTree(paths.FixtureWikiRoot(LintAtScaleFixture.FixtureName));
+            var generatedWiki = Path.Combine(scratchRoot, LintAtScaleFixture.FixtureName, "wiki");
 
-        Assert.Equal(first, second);
+            LintAtScaleFixture.Ensure(scratchRoot);
+            var first = HashTree(generatedWiki);
+
+            Directory.Delete(Path.Combine(scratchRoot, LintAtScaleFixture.FixtureName), recursive: true);
+            LintAtScaleFixture.Ensure(scratchRoot);
+            var second = HashTree(generatedWiki);
+
+            Assert.Equal(first, second);
+        }
+        finally
+        {
+            if (Directory.Exists(scratchRoot))
+            {
+                Directory.Delete(scratchRoot, recursive: true);
+            }
+        }
     }
 
     [Fact]
@@ -83,6 +107,16 @@ public class LintAtScaleFixtureTests
             $"Reading the whole generated wiki (~{approximateTokens} tokens) must cost well over the "
             + $"scenario's {budget}-token budget, or SC-011 tests nothing. Raise "
             + $"{nameof(LintAtScaleFixture)}.{nameof(LintAtScaleFixture.FillerPageCount)}.");
+    }
+
+    private static void CopyDirectory(string source, string destination)
+    {
+        foreach (var file in Directory.EnumerateFiles(source, "*", SearchOption.AllDirectories))
+        {
+            var target = Path.Combine(destination, Path.GetRelativePath(source, file));
+            Directory.CreateDirectory(Path.GetDirectoryName(target)!);
+            File.Copy(file, target, overwrite: true);
+        }
     }
 
     private static string HashTree(string root)

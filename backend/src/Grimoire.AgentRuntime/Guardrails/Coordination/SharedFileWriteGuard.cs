@@ -14,18 +14,36 @@ namespace Grimoire.AgentRuntime.Guardrails.Coordination;
 /// just the check. On denial, the lock has already been released internally; there is
 /// nothing left for the caller to hold or dispose.
 /// </summary>
-public sealed record WriteGuardDecision(bool IsAllowed, string? DenialReason, IDisposable? LockHandle, string? Detail = null)
+public sealed record WriteGuardDecision(
+    bool IsAllowed,
+    string? DenialReason,
+    IDisposable? LockHandle,
+    string? Detail = null,
+    // 028-lint-at-scale (US3, FR-010): the caller's own `content` for `mode: "replace"`
+    // (equal to what the caller already had); the assembled `entry + currentContent` for
+    // `mode: "prepend"`, read fresh under the lock — the caller writes exactly this to
+    // disk (data-model.md "Prepend-mode write assembly"). Meaningless on a denied decision.
+    string? ResolvedContent = null,
+    // 028-lint-at-scale (US3, FR-011/FR-016, Clarifications 2026-08-27, FSI-3): the
+    // activity-log format/ordering check's result on an ALLOWED write — never a denial
+    // reason. Null when the write is not to log.md, or conforms; one or more of
+    // log_entry_not_prepended/log_entry_malformed_heading/log_entry_missing_paragraph
+    // otherwise (research.md R15).
+    IReadOnlyList<string>? FormatDeviationReasons = null)
 {
-    public static WriteGuardDecision Allowed(IDisposable lockHandle) => new(true, null, lockHandle);
+    public static WriteGuardDecision Allowed(
+        IDisposable lockHandle, string? resolvedContent = null, IReadOnlyList<string>? formatDeviationReasons = null)
+        => new(true, null, lockHandle, ResolvedContent: resolvedContent, FormatDeviationReasons: formatDeviationReasons);
 
     /// <param name="reason">
     /// One of: <c>create_only_target_exists</c>, <c>write_conflict_stale_read</c>,
     /// <c>write_coordination_timeout</c>, or, since ADR-016 (013-lint-agent):
     /// <c>frontmatter_only_target_missing</c>, <c>frontmatter_only_malformed_document</c>,
-    /// <c>frontmatter_only_body_changed</c>; or, since ADR-017
-    /// (014-wiki-storage-restructure, amended by ADR-028): <c>log_entry_not_prepended</c>,
-    /// <c>log_entry_malformed_heading</c>, <c>log_entry_missing_paragraph</c>, or (US4)
-    /// <c>catalog_entry_malformed</c>.
+    /// <c>frontmatter_only_body_changed</c>; or (US4) <c>catalog_entry_malformed</c>.
+    /// The three log.md format/ordering reasons (<c>log_entry_not_prepended</c>,
+    /// <c>log_entry_malformed_heading</c>, <c>log_entry_missing_paragraph</c>) are never
+    /// passed here since 028-lint-at-scale (Clarifications 2026-08-27) — see
+    /// <see cref="FormatDeviationReasons"/> instead.
     /// </param>
     /// <param name="detail">
     /// Issue #182: the locating detail the format check already has at the point of
@@ -80,7 +98,7 @@ public sealed class SharedFileWriteGuard
     /// the format-validation step entirely, matching every caller written before this
     /// feature. Must already be canonicalized the same way <paramref name="logPath"/>-argument
     /// callers canonicalize every other guarded-write target, so ordinal equality against
-    /// <see cref="EvaluateWriteAsync(string, Grimoire.Domain.Guardrails.WriteMode, string, CancellationToken)"/>'s
+    /// <see cref="EvaluateWriteAsync(string, Grimoire.Domain.Guardrails.WriteMode, string, CancellationToken, bool)"/>'s
     /// <c>canonicalPath</c> is reliable.
     /// </param>
     /// <param name="indexPath">
@@ -89,7 +107,7 @@ public sealed class SharedFileWriteGuard
     /// disables the catalog-entry format-validation step entirely, matching every caller
     /// written before US4. Must already be canonicalized the same way every other
     /// guarded-write target is, so ordinal equality against
-    /// <see cref="EvaluateWriteAsync(string, Grimoire.Domain.Guardrails.WriteMode, string, CancellationToken)"/>'s
+    /// <see cref="EvaluateWriteAsync(string, Grimoire.Domain.Guardrails.WriteMode, string, CancellationToken, bool)"/>'s
     /// <c>canonicalPath</c> is reliable.
     /// </param>
     /// <param name="activitySource">
@@ -122,7 +140,7 @@ public sealed class SharedFileWriteGuard
     /// <summary>
     /// Pre-ADR-016 boolean-mode overload, retained for source compatibility with every
     /// existing call site and test written against the two-mode (create-only/read-write)
-    /// shape. Delegates to <see cref="EvaluateWriteAsync(string, WriteMode, string, CancellationToken)"/>
+    /// shape. Delegates to <see cref="EvaluateWriteAsync(string, WriteMode, string, CancellationToken, bool)"/>
     /// with an empty proposed content — never dereferenced for these two modes, since the
     /// frontmatter/body check only runs for <see cref="WriteMode.FrontmatterOnly"/>.
     /// </summary>
@@ -143,13 +161,25 @@ public sealed class SharedFileWriteGuard
     /// then <see cref="IDisposable.Dispose"/>, both inside the caller's <c>finally</c>.
     /// </summary>
     /// <param name="proposedContent">
-    /// The write call's proposed new content. Only inspected for
-    /// <see cref="WriteMode.FrontmatterOnly"/> (ADR-016) — <see cref="WriteMode.ReadWrite"/>
+    /// The write call's proposed new content for <c>mode: "replace"</c> — only inspected
+    /// for <see cref="WriteMode.FrontmatterOnly"/> (ADR-016) — <see cref="WriteMode.ReadWrite"/>
     /// and <see cref="WriteMode.CreateOnly"/> ignore it entirely, matching their pre-ADR-016
-    /// behavior exactly.
+    /// behavior exactly. For <paramref name="isPrepend"/>, this is the new entry only — see
+    /// its own doc comment.
+    /// </param>
+    /// <param name="isPrepend">
+    /// 028-lint-at-scale (US3, FR-010): the <c>write_file</c> call's own <c>mode</c> was
+    /// <c>"prepend"</c> — <paramref name="proposedContent"/> is the new entry alone, and
+    /// this method reads the target's current content itself, fresh, under the lock (no
+    /// <see cref="OnReadFile"/> baseline, no compare-and-swap — research.md R8: there is no
+    /// staleness scenario for a prepend to be stale against), assembles
+    /// <c>entry + currentContent</c>, and returns it as
+    /// <see cref="WriteGuardDecision.ResolvedContent"/>. Bypasses the create-only/CAS/
+    /// frontmatter-only checks entirely — a distinct write shape, not a mode combination.
+    /// Default <c>false</c> so every pre-existing positional call site is unaffected.
     /// </param>
     public async Task<WriteGuardDecision> EvaluateWriteAsync(
-        string canonicalPath, WriteMode mode, string proposedContent, CancellationToken cancellationToken)
+        string canonicalPath, WriteMode mode, string proposedContent, CancellationToken cancellationToken, bool isPrepend = false)
     {
         var handle = await CrossProcessFileLock.TryAcquireAsync(
             _writeLocksDir, canonicalPath, _backoffCap, cancellationToken);
@@ -157,6 +187,52 @@ public sealed class SharedFileWriteGuard
         if (handle is null)
         {
             return WriteGuardDecision.Denied("write_coordination_timeout");
+        }
+
+        if (isPrepend)
+        {
+            // Copilot review (PR #208): prepend is a different call SHAPE for write_file, not
+            // a different authority — it must honor the same CreateOnly/FrontmatterOnly scope
+            // restrictions a full-content write already does below, or a CreateOnly/
+            // FrontmatterOnly-scoped agent (e.g. Query's create-only content scope,
+            // policy.json) could use `mode: "prepend"` to bypass them entirely: modify an
+            // existing target under CreateOnly, or add body content under FrontmatterOnly.
+            // Only the CAS/stale-read check is genuinely prepend-exempt (research.md R8:
+            // prepend has no baseline-read dependency — the harness re-reads fresh under
+            // this lock instead).
+            var existsForPrepend = File.Exists(canonicalPath);
+
+            if (mode == WriteMode.CreateOnly && existsForPrepend)
+            {
+                handle.Dispose();
+                return WriteGuardDecision.Denied("create_only_target_exists");
+            }
+
+            if (mode == WriteMode.FrontmatterOnly && !existsForPrepend)
+            {
+                handle.Dispose();
+                return WriteGuardDecision.Denied("frontmatter_only_target_missing");
+            }
+
+            var currentContent = existsForPrepend
+                ? await File.ReadAllTextAsync(canonicalPath, cancellationToken)
+                : string.Empty;
+            var assembled = proposedContent + currentContent;
+
+            if (mode == WriteMode.FrontmatterOnly)
+            {
+                var frontmatterDenialReason = EvaluateFrontmatterPreservation(Encoding.UTF8.GetBytes(currentContent), assembled);
+                if (frontmatterDenialReason is not null)
+                {
+                    handle.Dispose();
+                    return WriteGuardDecision.Denied(frontmatterDenialReason);
+                }
+            }
+
+            var deviations = EvaluateLogFormatDeviations(canonicalPath, currentContent, assembled);
+
+            return WriteGuardDecision.Allowed(
+                handle, resolvedContent: assembled, formatDeviationReasons: deviations.Count > 0 ? deviations : null);
         }
 
         var exists = File.Exists(canonicalPath);
@@ -169,36 +245,41 @@ public sealed class SharedFileWriteGuard
                 return WriteGuardDecision.Denied("create_only_target_exists");
             }
 
-            return WriteGuardDecision.Allowed(handle);
+            return WriteGuardDecision.Allowed(handle, resolvedContent: proposedContent);
         }
 
-        var (denialReason, denialDetail) = await EvaluateExistingTargetChecksAsync(canonicalPath, mode, proposedContent, exists, cancellationToken);
+        var (denialReason, denialDetail, formatDeviations) =
+            await EvaluateExistingTargetChecksAsync(canonicalPath, mode, proposedContent, exists, cancellationToken);
         if (denialReason is not null)
         {
             handle.Dispose();
             return WriteGuardDecision.Denied(denialReason, denialDetail);
         }
 
-        return WriteGuardDecision.Allowed(handle);
+        return WriteGuardDecision.Allowed(
+            handle, resolvedContent: proposedContent, formatDeviationReasons: formatDeviations.Count > 0 ? formatDeviations : null);
     }
 
     /// <summary>
-    /// The read-write/frontmatter-only half of <see cref="EvaluateWriteAsync(string, WriteMode, string, CancellationToken)"/>
+    /// The read-write/frontmatter-only half of <see cref="EvaluateWriteAsync(string, WriteMode, string, CancellationToken, bool)"/>
     /// — every check that only applies once create-only mode has been ruled out: the
     /// frontmatter-only missing-target check, the compare-and-swap read-hash check
-    /// (ADR-015), the frontmatter/body-preservation check (ADR-016), and the log.md/
-    /// index.md format-validation checks (ADR-017). Returns the first denial reason
-    /// encountered, or <c>null</c> once every applicable check has passed — the caller
-    /// still owns disposing the lock handle on either outcome.
+    /// (ADR-015), the frontmatter/body-preservation check (ADR-016), and index.md's
+    /// catalog-entry format check (ADR-017) — all of which still deny. log.md's own
+    /// format/ordering check runs here too but never denies (028-lint-at-scale US3,
+    /// Clarifications 2026-08-27, FSI-3) — its result rides back as
+    /// <c>FormatDeviations</c> instead. Returns the first denial reason encountered (or
+    /// <c>null</c> once every denying check has passed) alongside whatever log-format
+    /// deviations were found — the caller still owns disposing the lock handle either way.
     /// </summary>
-    private async Task<(string? Reason, string? Detail)> EvaluateExistingTargetChecksAsync(
+    private async Task<(string? Reason, string? Detail, IReadOnlyList<string> FormatDeviations)> EvaluateExistingTargetChecksAsync(
         string canonicalPath, WriteMode mode, string proposedContent, bool exists, CancellationToken cancellationToken)
     {
         // ADR-016: a frontmatter-only write always targets a page that already exists —
         // Lint never creates pages, so a missing target is denied before any content check.
         if (mode == WriteMode.FrontmatterOnly && !exists)
         {
-            return ("frontmatter_only_target_missing", null);
+            return ("frontmatter_only_target_missing", null, []);
         }
 
         byte[]? currentBytes = null;
@@ -209,7 +290,7 @@ public sealed class SharedFileWriteGuard
             var casDenialReason = EvaluateCompareAndSwap(canonicalPath, currentBytes);
             if (casDenialReason is not null)
             {
-                return (casDenialReason, null);
+                return (casDenialReason, null, []);
             }
         }
 
@@ -221,30 +302,27 @@ public sealed class SharedFileWriteGuard
             var frontmatterDenialReason = EvaluateFrontmatterPreservation(currentBytes!, proposedContent);
             if (frontmatterDenialReason is not null)
             {
-                return (frontmatterDenialReason, null);
+                return (frontmatterDenialReason, null, []);
             }
         }
 
         var currentContent = exists ? Encoding.UTF8.GetString(currentBytes!) : string.Empty;
 
-        // ADR-017 (014-wiki-storage-restructure): format-validation step, gated on the
-        // canonical target being log.md/index.md, run after every existence/CAS/WriteMode
-        // check above and before the write is committed (contract §3 order). Composes
-        // with, never replaces, the checks above.
-        //
-        // Issue #182: each validator returns a locating detail alongside its reason (the
-        // log checks encode "which of prepend/heading/paragraph failed" in the reason
-        // itself, so their detail is always null; the catalog check's detail is the
-        // offending `- [` line) so the harness can tell the agent exactly what to fix
-        // instead of just naming the reason code.
-        var logResult = EvaluateFormatIfTarget(canonicalPath, _logPath, "log", currentContent, proposedContent, WrapLogValidator);
-        return logResult.Reason is not null
-            ? logResult
-            : EvaluateFormatIfTarget(canonicalPath, _indexPath, "index", currentContent, proposedContent, ValidateCatalogEntryFormat);
-    }
+        // ADR-017 (014-wiki-storage-restructure): log.md's format/ordering check, gated on
+        // the canonical target being log.md, run after every existence/CAS/WriteMode check
+        // above and before the write is committed (contract §3 order) — composes with,
+        // never replaces, the checks above. Never denies (FSI-3): its result is a
+        // deviation report, not a gate.
+        var logDeviations = EvaluateLogFormatDeviations(canonicalPath, currentContent, proposedContent);
 
-    private static (string? Reason, string? Detail) WrapLogValidator(string currentContent, string proposedContent)
-        => (ValidateLogEntryFormat(currentContent, proposedContent), null);
+        // index.md's catalog-entry check — unchanged, still denies. Issue #182: it returns
+        // a locating detail alongside its reason (the offending `- [` line) so the harness
+        // can tell the agent exactly what to fix instead of just naming the reason code.
+        var catalogResult = EvaluateFormatIfTarget(canonicalPath, _indexPath, "index", currentContent, proposedContent, ValidateCatalogEntryFormat);
+        return catalogResult.Reason is not null
+            ? (catalogResult.Reason, catalogResult.Detail, logDeviations)
+            : (null, null, logDeviations);
+    }
 
     private string? EvaluateCompareAndSwap(string canonicalPath, byte[] currentBytes)
     {
@@ -273,10 +351,11 @@ public sealed class SharedFileWriteGuard
 
     /// <summary>
     /// Runs <paramref name="validate"/> and emits the <c>guardrails.format_validate</c>
-    /// span when <paramref name="canonicalPath"/> is <paramref name="targetPath"/> (either
-    /// <see cref="_logPath"/> or <see cref="_indexPath"/>) — a no-op returning <c>null</c>
-    /// otherwise. Shared by both the log.md and index.md format checks, distinguished only
-    /// by <paramref name="targetLabel"/>.
+    /// span when <paramref name="canonicalPath"/> is <paramref name="targetPath"/> — a
+    /// no-op returning <c>null</c> otherwise. Used only for index.md's catalog-entry check
+    /// (still denies) — log.md's own format check has its own non-denying counterpart,
+    /// <see cref="EvaluateLogFormatDeviations"/> (028-lint-at-scale US3, FSI-3), since this
+    /// helper's shape assumes a single denial-or-allow outcome that no longer fits log.md.
     /// </summary>
     private (string? Reason, string? Detail) EvaluateFormatIfTarget(
         string canonicalPath, string? targetPath, string targetLabel,
@@ -302,27 +381,83 @@ public sealed class SharedFileWriteGuard
     }
 
     /// <summary>
-    /// ADR-017, amended by ADR-028 (025-agent-owned-log): the log.md structural shape
-    /// check — prepend-only (FR-003, FR-004), then heading pattern, then a following
-    /// non-blank paragraph (contracts/activity-log-write-contract.md). The current
-    /// content must be an unchanged <em>suffix</em> of the proposed content, so a new
-    /// entry lands at the top and every existing entry survives byte-for-byte below it;
-    /// the checks then run over the prepended <em>head</em>. Empty current content
-    /// (missing or zero-length file) satisfies the rule trivially, so the first agent
-    /// write creates the file (FR-010).
+    /// Runs <see cref="ComputeLogFormatDeviations"/> when <paramref name="canonicalPath"/>
+    /// is <see cref="_logPath"/> (a no-op returning an empty list otherwise) and emits the
+    /// <c>guardrails.format_validate</c> span — <c>outcome</c> <c>conforming</c>/<c>deviated</c>
+    /// (028-lint-at-scale US3, T030: retargeted from <c>allowed</c>/<c>denied</c>, since this
+    /// check no longer gates the write). Shared by the replace-mode path
+    /// (<see cref="EvaluateExistingTargetChecksAsync"/>, where <paramref name="proposedContent"/>
+    /// is the full file) and the prepend-mode path (<see cref="EvaluateWriteAsync(string, WriteMode, string, CancellationToken, bool)"/>,
+    /// where it is <c>entry + currentContent</c> assembled fresh under the lock).
+    /// </summary>
+    private IReadOnlyList<string> EvaluateLogFormatDeviations(string canonicalPath, string currentContent, string proposedContent)
+    {
+        if (_logPath is null || !string.Equals(canonicalPath, _logPath, StringComparison.Ordinal))
+        {
+            return [];
+        }
+
+        var deviations = ComputeLogFormatDeviations(currentContent, proposedContent);
+
+        using var formatSpan = _activitySource?.StartActivity("guardrails.format_validate");
+        formatSpan?.SetTag("path", canonicalPath);
+        formatSpan?.SetTag("target", "log");
+        formatSpan?.SetTag("outcome", deviations.Count == 0 ? "conforming" : "deviated");
+        if (deviations.Count > 0)
+        {
+            formatSpan?.SetTag("reason", string.Join(",", deviations));
+        }
+
+        return deviations;
+    }
+
+    /// <summary>
+    /// ADR-017, amended by ADR-028 (025-agent-owned-log) and 028-lint-at-scale
+    /// (Clarifications 2026-08-27, FSI-3): the log.md structural shape check — prepend
+    /// order (FR-003, FR-004), then heading pattern, then a following non-blank paragraph
+    /// (contracts/log-prepend-write.md). The current content must be an unchanged
+    /// <em>suffix</em> of the proposed content, so a new entry lands at the top and every
+    /// existing entry survives byte-for-byte below it; the checks then run over the
+    /// prepended <em>head</em>. When the ordering itself is wrong there is no well-defined
+    /// head to subtract, so the heading/paragraph check runs over the whole proposed
+    /// content instead — a malformed heading is still surfaced even when the ordering is
+    /// also wrong (both reasons can apply to the same write). Empty current content
+    /// (missing or zero-length file) satisfies the ordering rule trivially, so the first
+    /// agent write creates the file (FR-010).
     ///
     /// Pure string/regex operation over content already resident in memory (no I/O, no
     /// judgment about whether a given SUMMARY/paragraph is good — Constitution Principle
-    /// V). Returns the denial reason, or <c>null</c> if the proposed content conforms.
+    /// V). Returns every applicable reason code — empty if the proposed content conforms —
+    /// never a single early-return reason, since a non-conforming write commits regardless
+    /// and every deviation it carries is worth reporting (data-model.md "Format/ordering
+    /// deviation signal": "one write may carry more than one").
     /// </summary>
-    internal static string? ValidateLogEntryFormat(string currentContent, string proposedContent)
+    private static IReadOnlyList<string> ComputeLogFormatDeviations(string currentContent, string proposedContent)
     {
+        var reasons = new List<string>();
+
+        string head;
         if (!proposedContent.EndsWith(currentContent, StringComparison.Ordinal))
         {
-            return "log_entry_not_prepended";
+            reasons.Add("log_entry_not_prepended");
+            head = proposedContent;
+        }
+        else
+        {
+            head = proposedContent[..^currentContent.Length];
         }
 
-        var head = proposedContent[..^currentContent.Length];
+        var headingOrParagraphReason = ValidateLogHeadShape(head);
+        if (headingOrParagraphReason is not null)
+        {
+            reasons.Add(headingOrParagraphReason);
+        }
+
+        return reasons;
+    }
+
+    private static string? ValidateLogHeadShape(string head)
+    {
         var lines = head.Split('\n');
 
         var i = 0;

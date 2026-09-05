@@ -19,7 +19,8 @@ public class LintFindingsReportFormatTests
         bool partial = false,
         string? failureReason = null,
         IReadOnlyList<FindingsDeniedAction>? deniedActions = null,
-        string narrative = "## Content Quality\n\nNo content-quality findings.\n") => new(
+        string narrative = "## Content Quality\n\nNo content-quality findings.\n",
+        FindingsWikiCoverage? wikiCoverage = null) => new(
         RunId: "2026-07-30-lint-a1b2c3d4",
         TriggeredAt: new DateTimeOffset(2026, 7, 30, 10, 0, 0, TimeSpan.Zero),
         CompletedAt: new DateTimeOffset(2026, 7, 30, 10, 4, 12, TimeSpan.Zero),
@@ -30,7 +31,8 @@ public class LintFindingsReportFormatTests
         InstructionFileSha256: "7f2adeadbeef",
         DeniedActions: deniedActions ?? [],
         InboundLinksRefreshed: 42,
-        Narrative: narrative);
+        Narrative: narrative,
+        WikiCoverage: wikiCoverage);
 
     [Fact]
     public void Build_ProducesTheDocumentedFrontmatterAndBookkeepingLayout()
@@ -116,6 +118,31 @@ public class LintFindingsReportFormatTests
 
         Assert.Contains("# Lint Run 2026-07-30-lint-a1b2c3d4 — failed\n", content, StringComparison.Ordinal);
         Assert.DoesNotContain("failed (partial)", content, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Build_WithWikiCoverage_WritesTheBookkeepingBlockEntry()
+    {
+        // 028-lint-at-scale (US2, T010, contracts/coverage-signal.md): the wiki_coverage
+        // mapping is additive and sibling to inbound_links_refreshed — orthogonal to the
+        // existing `partial` field (data-model.md).
+        var content = FindingsReportFormat.Build(MakeReport(
+            wikiCoverage: new FindingsWikiCoverage(PagesTotal: 633, PagesConsidered: 611, Status: "partial")));
+
+        Assert.Contains(
+            "wiki_coverage:\n  pages_total: 633\n  pages_considered: 611\n  status: partial\n",
+            content, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Build_WithoutWikiCoverage_WritesAnExplicitNull()
+    {
+        // A run whose terminal event never carried a coverage report (liveness/spawn
+        // failure) still produces a parseable, explicit value — never a silently omitted
+        // key (mirrors failure_reason's NullableString convention).
+        var content = FindingsReportFormat.Build(MakeReport());
+
+        Assert.Contains("wiki_coverage: null\n", content, StringComparison.Ordinal);
     }
 
     [Fact]

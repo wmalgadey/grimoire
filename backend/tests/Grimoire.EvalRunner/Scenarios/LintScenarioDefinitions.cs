@@ -77,7 +77,48 @@ public static class LintScenarioDefinitions
         ScorerId: "lint-at-scale-survey",
         ContextBudgetTokens: 20_000);
 
-    public static readonly IReadOnlyList<LintScenarioDefinition> All = [AtScaleSurvey];
+    /// <summary>
+    /// 028-lint-at-scale (US1, FR-008/SC-003): the same fixture and scorer as
+    /// <see cref="AtScaleSurvey"/>, with the budget lever turned tighter — half the context
+    /// budget against the identical, unchanged fixture. Proves the "reading stays bounded
+    /// regardless of corpus size" property generalizes across more than one point on the
+    /// budget-to-content-size relation, without generating a second, larger corpus
+    /// (research.md R3: a large corpus was judged disproportionate to what this needs
+    /// proven). Intended for comparing reading-volume growth against
+    /// <see cref="AtScaleSurvey"/> as the budget fraction shrinks — analysis to be done by
+    /// a human reading both scenarios' recorded evidence side by side; neither this
+    /// definition nor <c>lint-at-scale-survey</c>'s scorer enforces any cross-scenario
+    /// comparison, since each run is scored only against its own
+    /// <see cref="LintScenarioDefinition.ContextBudgetTokens"/>.
+    /// </summary>
+    public static readonly LintScenarioDefinition AtScaleSurveyTightBudget = new(
+        Id: "lint-at-scale-survey-tight-budget",
+        FixtureName: Workspace.LintAtScaleFixture.FixtureName,
+        Threshold: 0.90,
+        ScorerId: "lint-at-scale-survey",
+        ContextBudgetTokens: 10_000);
+
+    /// <summary>Every known Lint scenario id, captured or not — used to validate an explicit
+    /// <c>--scenario</c> request (so a typo is rejected rather than silently ignored) and by
+    /// <see cref="Find"/>. Not the set run when no <c>--scenario</c> filter is given; see
+    /// <see cref="DefaultSet"/>.</summary>
+    public static readonly IReadOnlyList<LintScenarioDefinition> All = [AtScaleSurvey, AtScaleSurveyTightBudget];
+
+    /// <summary>
+    /// The scenarios run by <c>capture</c>/<c>replay</c> when no <c>--scenario</c> filter is
+    /// given. Excludes <see cref="AtScaleSurveyTightBudget"/>, and the reason changed on
+    /// 2026-09-05: it was originally excluded for having no committed recording, which its
+    /// first capture resolved — but <c>replay</c> gates on <c>IsTrustedPass</c>, which folds
+    /// in <c>ThresholdMet</c>, and per spec.md's 2026-09-05 clarification this scenario is
+    /// deliberately not threshold-gated. It is the second point on SC-003's budget relation,
+    /// whose comparison is evaluated by observation rather than asserted as a success rate.
+    /// Including it here would reimpose exactly the gate that clarification removed. Its
+    /// recording is still kept fresh and CI-enforced — by
+    /// <c>LintReplayEvalTests.SC003_AtScaleSurveyTightBudget_HasTrustedRecordedEvidence</c>,
+    /// which asserts trust without asserting a threshold. Refresh it explicitly with
+    /// <c>--scenario lint-at-scale-survey-tight-budget</c>.
+    /// </summary>
+    public static readonly IReadOnlyList<LintScenarioDefinition> DefaultSet = [AtScaleSurvey];
 
     public static LintScenarioDefinition? Find(string scenarioId)
         => All.FirstOrDefault(s => string.Equals(s.Id, scenarioId, StringComparison.OrdinalIgnoreCase));

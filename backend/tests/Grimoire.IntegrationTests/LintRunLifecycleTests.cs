@@ -117,6 +117,46 @@ public class LintRunLifecycleTests
     }
 
     [Fact]
+    public async Task TriggerAsync_CompletedRun_WithWikiCoverageOnTheTerminalEvent_PersistsItOnTheFindingsReport()
+    {
+        // 028-lint-at-scale (US2, T009/T010, contracts/coverage-signal.md): the
+        // harness-computed coverage report rides the terminal `completed` event
+        // (camelCase `wikiCoverage`, exactly as Grimoire.LintAgent's RunEventEmitter
+        // serializes it) and is threaded, unmodified, onto the persisted Findings Report.
+        using var harness = LintCoordinatorHarness.Create();
+        harness.Launcher.ScriptedLintTerminalMetadata = new Dictionary<string, object?>
+        {
+            ["wikiCoverage"] = new { pagesTotal = 633, pagesConsidered = 611, status = "partial" },
+        };
+
+        var result = await harness.Coordinator.TriggerAsync();
+        var accepted = Assert.IsType<LintSubmissionResult.Accepted>(result);
+        var runId = accepted.Run.RunId;
+
+        await harness.WaitForTerminalAsync(runId);
+
+        var content = await File.ReadAllTextAsync(harness.Paths.FindingsReportPathFor(runId));
+        Assert.Contains(
+            "wiki_coverage:\n  pages_total: 633\n  pages_considered: 611\n  status: partial\n",
+            content, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task TriggerAsync_CompletedRun_WithNoWikiCoverageOnTheTerminalEvent_PersistsAnExplicitNull()
+    {
+        using var harness = LintCoordinatorHarness.Create();
+
+        var result = await harness.Coordinator.TriggerAsync();
+        var accepted = Assert.IsType<LintSubmissionResult.Accepted>(result);
+        var runId = accepted.Run.RunId;
+
+        await harness.WaitForTerminalAsync(runId);
+
+        var content = await File.ReadAllTextAsync(harness.Paths.FindingsReportPathFor(runId));
+        Assert.Contains("wiki_coverage: null\n", content, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public async Task TriggerAsync_WhileARunIsActive_IsRejectedImmediately_WithoutQueuing()
     {
         using var harness = LintCoordinatorHarness.Create(

@@ -1,4 +1,5 @@
 using System.Diagnostics.Metrics;
+using Grimoire.AgentRuntime.RunEvents;
 
 namespace Grimoire.LintAgent;
 
@@ -60,6 +61,30 @@ public static class LintAgentMetrics
     private static readonly Counter<long> _pageDeletionsTotal =
         Meter.CreateCounter<long>("wiki.page.deletions_total",
             description: "Pages deleted through the guarded boundary");
+
+    // ── 028-lint-at-scale (US2, FR-003, plan.md ## Observability) ───────────────────────
+    // wiki.lint.runs_total already exists Hub-side (HubMetrics.cs), labeled `outcome` and
+    // counting one increment per terminal run regardless of coverage — reusing that exact
+    // name here for a second, differently-labeled counter would double-count runs under
+    // one metric name. Named distinctly instead; plan.md's Observability table is corrected
+    // to match (see this feature's Final Phase completeness audit).
+
+    private static readonly Histogram<double> _coverageRatio =
+        Meter.CreateHistogram<double>("wiki.lint.coverage_ratio",
+            description: "pages_considered / pages_total for one completed Lint run");
+
+    private static readonly Counter<long> _coverageRunsTotal =
+        Meter.CreateCounter<long>("wiki.lint.coverage_runs_total",
+            description: "Completed Lint runs, by coverage status");
+
+    public static void RecordCoverage(WikiCoverage coverage)
+    {
+        var ratio = coverage.PagesTotal > 0 ? (double)coverage.PagesConsidered / coverage.PagesTotal : 0.0;
+        _coverageRatio.Record(ratio, new KeyValuePair<string, object?>("agent", "lint"));
+        _coverageRunsTotal.Add(1,
+            new KeyValuePair<string, object?>("agent", "lint"),
+            new KeyValuePair<string, object?>("coverage_status", coverage.Status));
+    }
 
     public static void RecordSearchInvocation(string outcome, int matchesReturned, int filesScanned)
     {

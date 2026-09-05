@@ -55,12 +55,31 @@ public static class LintAtScaleFixture
     private const int GeneratorVersion = 2;
 
     /// <summary>
+    /// Serializes generation across the process. Every consumer reaches the generated
+    /// fixture through <c>EvalPaths.FixtureWikiRoot</c>, which calls <see cref="Ensure"/>,
+    /// and xUnit runs test classes in parallel collections — so without this two callers
+    /// can enter the rebuild path at once, one deleting the tree recursively while the
+    /// other writes into it (<c>IOException: Directory not empty</c>) or hashes it
+    /// half-built. The lock is what actually makes the "no caller can observe a half-built
+    /// tree" guarantee documented on <c>FixtureWikiRoot</c> true.
+    /// </summary>
+    private static readonly Lock GenerationGate = new();
+
+    /// <summary>
     /// Materializes the fixture if it is absent or was produced by different generator
     /// inputs. Idempotent and cheap on the common path: a stamp file records the hash of
     /// the generator's version, parameters and source tree, and a matching stamp short-
     /// circuits before any file is written.
     /// </summary>
     public static void Ensure(string fixturesRoot)
+    {
+        lock (GenerationGate)
+        {
+            EnsureCore(fixturesRoot);
+        }
+    }
+
+    private static void EnsureCore(string fixturesRoot)
     {
         var wikiRoot = Path.Combine(fixturesRoot, FixtureName, "wiki");
         var sourceWiki = Path.Combine(fixturesRoot, SourceFixtureName, "wiki");

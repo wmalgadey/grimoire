@@ -29,6 +29,10 @@ public sealed record RunCompletionMetadata(
     // the judgment lives in the agent's instructions, never here (Principle V).
     // Null/empty for a run that proposed nothing; only Lint's lint-run mode sets it.
     IReadOnlyList<ProposedActionRecord>? ProposedActions = null,
+    // 028-lint-at-scale (US2, FR-003): the lint-run mode's harness-computed coverage
+    // report (contracts/coverage-signal.md `wiki_coverage`). Null for every other
+    // agent/mode; only Lint's lint-run mode sets it.
+    WikiCoverage? WikiCoverage = null,
     // T035 (015-lint-board-parity, ADR-018, FR-018): the remediation-execution mode's
     // re-verification judgment on its terminal `completed` event — "applied" |
     // "not_applicable" (contracts/remediation-lifecycle-events.md). Transported only,
@@ -168,6 +172,12 @@ public sealed class RunEventEmitter : IDisposable
                 description = p.Description,
                 targetPath = p.TargetPath,
             }).ToList(),
+            // 028-lint-at-scale (US2, FR-003): rides the terminal event like
+            // deniedActions/createdPages/proposedActions above; null for every run that
+            // did not compute a coverage report.
+            wikiCoverage = metadata?.WikiCoverage is { } coverage
+                ? new { pagesTotal = coverage.PagesTotal, pagesConsidered = coverage.PagesConsidered, status = coverage.Status }
+                : null,
             // T035 (015-lint-board-parity, ADR-018): remediation-execution mode's
             // re-verification outcome, null for every other agent/mode.
             remediationOutcome = metadata?.RemediationOutcome,

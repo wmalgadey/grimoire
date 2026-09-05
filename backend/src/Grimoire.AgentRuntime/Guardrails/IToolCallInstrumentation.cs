@@ -66,6 +66,23 @@ public interface IToolCallInstrumentation
     /// </summary>
     void RecordWriteLockAcquisition(string taskId, string path, string outcome, double waitSeconds, int turn) { }
 
+    /// <summary>
+    /// 028-lint-at-scale (US3, FR-016, SC-009, Clarifications 2026-08-27): a <c>log.md</c>
+    /// write committed despite deviating from the activity-log format contract's expected
+    /// shape (<paramref name="reasons"/> — one or more of <c>log_entry_not_prepended</c>/
+    /// <c>log_entry_malformed_heading</c>/<c>log_entry_missing_paragraph</c>). Mirrors
+    /// <see cref="RecordWriteConflictRejected"/>'s placement: <see cref="GuardedToolExecutor"/>
+    /// calls this once it has an ALLOWED <see cref="Coordination.WriteGuardDecision"/> whose
+    /// <see cref="Coordination.WriteGuardDecision.FormatDeviationReasons"/> is non-empty —
+    /// never for a conforming write. <paramref name="mode"/> is the call's own
+    /// <c>"replace"</c>/<c>"prepend"</c> shape. Emits <c>wiki.log.format_deviation</c> (WARN)
+    /// and increments <c>wiki.log.format_deviation_total</c> — extends the existing
+    /// <c>Grimoire.AgentRuntime.WikiLog.WikiLogEvents</c>/<c>WikiLogMetrics</c> components.
+    /// Default no-op: only an agent whose policy admits it to <c>log.md</c> (Ingest, Query,
+    /// Lint) ever calls this.
+    /// </summary>
+    void RecordFormatDeviation(string taskId, string path, string mode, IReadOnlyList<string> reasons, int turn) { }
+
     // ── 026-guarded-tool-surface (ADR-030/ADR-031): search, ranged read, batch, deletion ──
     // signals. All default no-op, mirroring the ADR-015 signals above: only Lint (the sole
     // agent that declares these tools, ADR-030 R6/ADR-031 R3) ever calls them.

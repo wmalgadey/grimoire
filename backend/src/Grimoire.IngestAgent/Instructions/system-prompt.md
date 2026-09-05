@@ -318,13 +318,14 @@ Keep the body current:
 `log.md` is the wiki's own record of what changed, and it is yours alone — no part of the
 harness ever writes it. It is **prepend-only**: your new entry goes above all existing
 content, and every byte already in the file is preserved unchanged below it. Never edit,
-reorder, or remove an existing entry; the guarded write boundary structurally enforces
-this (a write whose proposed content does not end with the current content byte-for-byte
-is denied `log_entry_not_prepended`).
+reorder, or remove an existing entry.
 
-To add an entry, read `log.md`, then write your new entry followed by exactly what you
-read. If the file does not exist yet, your entry is the whole file — that is a normal
-first write, not an error.
+To add an entry, call `write_file` with `path: "log.md"`, `mode: "prepend"`, and
+`content` set to **your new entry only** — never the whole file. The harness reads
+`log.md`'s current content itself and prepends your entry above it, so you never need to
+read the file first or reproduce its existing content to add one entry. If the file does
+not exist yet, your entry becomes the whole file — that is a normal first write, not an
+error.
 
 **Log only real changes.** Write an entry when this run created, updated, or superseded a
 page, or updated `index.md`. A run that only answered a question, produced no writes, or

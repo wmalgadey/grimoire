@@ -70,6 +70,11 @@ public sealed class GuardedToolExecutor
     private readonly List<string> _touchedPaths = [];
     private readonly List<string> _createdPaths = [];
     private readonly List<(string Path, int Turn)> _deletedPaths = [];
+    // 028-lint-at-scale (US2, FR-004): canonical paths named in a successful read_file
+    // result (any mode), a batch member's read result, or a search_files match — never a
+    // denied path, never a bare list_files result (data-model.md ConsideredPaths). Feeds
+    // WikiCoverage, computed once at run completion.
+    private readonly HashSet<string> _consideredPaths = new(StringComparer.Ordinal);
 
     /// <param name="writeLocksDir">
     /// ADR-015: base directory for cross-process write-coordination lock files. When
@@ -195,6 +200,15 @@ public sealed class GuardedToolExecutor
         && _touchedPaths.Contains(_canonicalLogPath, StringComparer.Ordinal);
 
     /// <summary>
+    /// 028-lint-at-scale (US2, FR-004): every distinct canonical page path this run
+    /// actually opened — via <c>read_file</c> (any mode), a <c>batch</c> member's read, or
+    /// a <c>search_files</c> match. A path named only in a <c>list_files</c> result is
+    /// never added (data-model.md ConsideredPaths). Feeds <c>WikiCoverage</c>, computed
+    /// once at run completion — never self-reported by the agent.
+    /// </summary>
+    public IReadOnlySet<string> ConsideredPaths => _consideredPaths;
+
+    /// <summary>
     /// Executes one tool call, applying policy, journaling, and telemetry.
     /// </summary>
     public async Task<ToolExecutionResult> ExecuteAsync(
@@ -316,6 +330,11 @@ public sealed class GuardedToolExecutor
         }
 
         var content = await File.ReadAllTextAsync(canonical, Encoding.UTF8, cancellationToken);
+
+        // Copilot review (PR #207): recorded only once the read has actually succeeded — a
+        // path is not "considered" (ConsideredPaths' contract, above) if ReadAllTextAsync
+        // throws (IO/permissions) before this line is reached.
+        _consideredPaths.Add(canonical);
 
         if (!range.HasOffset && !range.HasLimit && !range.FrontmatterOnly)
         {
@@ -461,6 +480,15 @@ public sealed class GuardedToolExecutor
             return new ToolExecutionResult(true, "Missing required property: content");
         }
 
+        // 028-lint-at-scale (US3, FSI-1, FR-010): optional call-shape parameter, distinct
+        // from the policy-level Grimoire.Domain.Guardrails.WriteMode (data-model.md "Two
+        // distinct 'mode' concepts"). Anything other than exactly "prepend" (omitted,
+        // "replace", or an unrecognized value) is treated as the default, unchanged
+        // full-content behavior — fails open to the pre-existing shape rather than
+        // erroring on a malformed value (Constitution V host stability guarantee).
+        var isPrepend = TryGetStringProperty(inputJson, "mode", out var modeValue)
+            && string.Equals(modeValue, "prepend", StringComparison.Ordinal);
+
         if (!TryCanonicalize(relativePath, out var canonical, out var canonicalizationDenialReason))
         {
             return RecordDenial(ToolRegistry.WriteFile, relativePath, relativePath, canonicalizationDenialReason!, turn);
@@ -476,7 +504,8 @@ public sealed class GuardedToolExecutor
         // ADR-015: coordinate with other writers (Ingest/Query/future Lint) sharing the
         // same guarded tool boundary. Absent (no writeLocksDir supplied), this is a no-op
         // and behavior is unchanged from before this feature.
-        var lockAcquisition = await AcquireWriteLockAsync(relativePath, canonical, policyResult.Mode, content, turn, cancellationToken);
+        var lockAcquisition = await AcquireWriteLockAsync(
+            relativePath, canonical, policyResult.Mode, content, isPrepend, turn, cancellationToken);
         if (lockAcquisition.Denial is not null)
         {
             return lockAcquisition.Denial;
@@ -485,7 +514,7 @@ public sealed class GuardedToolExecutor
         bool published;
         try
         {
-            published = await WriteFileAtomicallyAsync(canonical, content, cancellationToken);
+            published = await WriteFileAtomicallyAsync(canonical, lockAcquisition.ResolvedContent, cancellationToken);
         }
         finally
         {
@@ -531,12 +560,27 @@ public sealed class GuardedToolExecutor
     /// <see cref="TryParseReadRangeRequest"/>'s doc comment on why a new type declaration
     /// here risks confusing the CI complexity tool's lightweight C# parser.
     /// </summary>
-    private async Task<(IDisposable? LockHandle, ToolExecutionResult? Denial)> AcquireWriteLockAsync(
-        string relativePath, string canonical, WriteMode mode, string content, int turn, CancellationToken cancellationToken)
+    private async Task<(IDisposable? LockHandle, ToolExecutionResult? Denial, string ResolvedContent)> AcquireWriteLockAsync(
+        string relativePath, string canonical, WriteMode mode, string content, bool isPrepend, int turn, CancellationToken cancellationToken)
     {
         if (_writeGuard is null)
         {
-            return (null, null);
+            // 028-lint-at-scale (US3): prepend mode has no baseline/coordination
+            // dependency of its own (research.md R8) — without a configured write guard
+            // there is simply no lock to coordinate under, matching every other
+            // guard-optional behavior in this method. No format-deviation signal fires on
+            // this path either, mirroring the pre-existing "no guard configured ⇒ no
+            // format check at all" behavior the logPath/indexPath parameters already
+            // document.
+            if (!isPrepend)
+            {
+                return (null, null, content);
+            }
+
+            var currentContentNoGuard = File.Exists(canonical)
+                ? await File.ReadAllTextAsync(canonical, Utf8NoBom, cancellationToken)
+                : string.Empty;
+            return (null, null, content + currentContentNoGuard);
         }
 
         // T042 (012-query-synthesis-writes, US3): plan.md's `guardrails.acquire_write_lock`
@@ -547,7 +591,7 @@ public sealed class GuardedToolExecutor
         // is not yet Activity.Current here; see IToolCallInstrumentation's doc comment.
         using var lockActivity = _instrumentation.StartAcquireWriteLockActivity(_taskId, canonical, turn);
         var stopwatch = Stopwatch.StartNew();
-        var guardDecision = await _writeGuard.EvaluateWriteAsync(canonical, mode, content, cancellationToken);
+        var guardDecision = await _writeGuard.EvaluateWriteAsync(canonical, mode, content, cancellationToken, isPrepend);
         stopwatch.Stop();
 
         // "timeout" only for write_coordination_timeout — every other denial reason
@@ -572,27 +616,39 @@ public sealed class GuardedToolExecutor
             // from the pre-existing out_of_scope/no_rule/traversal policy-scope denials
             // (their own established RecordDenied-only signals) — plan.md's
             // wiki.write_conflict.rejected/wiki.write_conflict.rejections_total rows.
-            // ADR-017 (014-wiki-storage-restructure) extends this same signal to all
-            // four of its new denial reasons (plan.md ## Observability: "reused
-            // unchanged for ADR-017's four new denial reasons") — three from US3's
-            // log.md format check and one, catalog_entry_malformed, from US4's
-            // index.md check (found missing here by /speckit-analyze's T060
-            // remediation, which needed all four wired to write a passing test).
+            // ADR-017 (014-wiki-storage-restructure) extended this same signal to
+            // index.md's catalog_entry_malformed denial (found missing here by
+            // /speckit-analyze's T060 remediation, which needed it wired to write a
+            // passing test). 028-lint-at-scale (US3, Clarifications 2026-08-27):
+            // log.md's three format-check reasons (log_entry_not_prepended/
+            // log_entry_malformed_heading/log_entry_missing_paragraph) no longer reach
+            // this branch at all — they never deny — so they were removed from
+            // IsWriteConflictReason below rather than left as dead cases.
             if (IsWriteConflictReason(reason))
             {
                 _instrumentation.RecordWriteConflictRejected(_taskId, canonical, reason, turn);
             }
 
-            return (null, RecordDenial(ToolRegistry.WriteFile, relativePath, canonical, reason, turn, guardDecision.Detail));
+            return (null, RecordDenial(ToolRegistry.WriteFile, relativePath, canonical, reason, turn, guardDecision.Detail), content);
         }
 
-        return (guardDecision.LockHandle, null);
+        // 028-lint-at-scale (US3, FR-016, SC-009): a write that committed despite
+        // deviating from the activity-log format contract's expected shape — recorded,
+        // never denied. Mirrors RecordWriteConflictRejected's placement: the harness
+        // owns turning a guard-reported fact into the agent-specific
+        // metric/log-event/span signal (Constitution Principle V — no wiki-content
+        // judgment here, just relaying what the guard found).
+        if (guardDecision.FormatDeviationReasons is { Count: > 0 } deviations)
+        {
+            _instrumentation.RecordFormatDeviation(
+                _taskId, canonical, isPrepend ? "prepend" : "replace", deviations, turn);
+        }
+
+        return (guardDecision.LockHandle, null, guardDecision.ResolvedContent ?? content);
     }
 
     private static bool IsWriteConflictReason(string reason) =>
-        reason is "create_only_target_exists" or "write_conflict_stale_read"
-            or "log_entry_not_prepended" or "log_entry_malformed_heading" or "log_entry_missing_paragraph"
-            or "catalog_entry_malformed";
+        reason is "create_only_target_exists" or "write_conflict_stale_read" or "catalog_entry_malformed";
 
     /// <summary>
     /// The atomic-write half of <see cref="ExecuteWriteFileAsync"/>'s executor obligations
@@ -1097,6 +1153,7 @@ public sealed class GuardedToolExecutor
 
                 var relativeMatchPath = Path.GetRelativePath(_repositoryRoot, candidateFile).Replace('\\', '/');
                 matches.Add($"{relativeMatchPath}:{lineNumber}:{line}");
+                _consideredPaths.Add(candidateFile);
 
                 if (matches.Count >= cap)
                 {
@@ -1166,14 +1223,18 @@ public sealed class GuardedToolExecutor
         return new ToolExecutionResult(true, BuildDenialMessage(reason, detail));
     }
 
-    // Issue #182: catalog_entry_malformed and the three log_entry_* reasons are ADR-017/
-    // ADR-028 format rejections, not policy-scope denials — the write is exactly what the
-    // agent is supposed to be doing, only the proposed content's shape was wrong. Telling
-    // the agent those are "outside the safety policy" and to "continue with your remaining
-    // allowed work" describes a different, unfixable situation and instructs it to abandon
-    // a write that is one edit away from being accepted. Every other denial reason (scope,
-    // traversal, create-only-exists, stale-read, coordination timeout, frontmatter
-    // preservation) genuinely has nothing to correct, so it keeps the original message.
+    // Issue #182: catalog_entry_malformed is an ADR-017 format rejection, not a
+    // policy-scope denial — the write is exactly what the agent is supposed to be doing,
+    // only the proposed content's shape was wrong. Telling the agent it is "outside the
+    // safety policy" and to "continue with your remaining allowed work" describes a
+    // different, unfixable situation and instructs it to abandon a write that is one edit
+    // away from being accepted. Every other denial reason (scope, traversal,
+    // create-only-exists, stale-read, coordination timeout, frontmatter preservation)
+    // genuinely has nothing to correct, so it keeps the original message. 028-lint-at-scale
+    // (US3, Clarifications 2026-08-27): log.md's own three format reasons
+    // (log_entry_not_prepended/log_entry_malformed_heading/log_entry_missing_paragraph)
+    // no longer reach this method at all — they never deny — so their hints were removed
+    // as dead cases rather than left unreachable.
     private static string BuildDenialMessage(string reason, string? detail)
     {
         var hint = reason switch
@@ -1182,18 +1243,6 @@ public sealed class GuardedToolExecutor
                 "The write was rejected because a new index.md catalog line did not match the " +
                 "required \"- [Title](path) — description — status\" shape, not because it is " +
                 "out of scope. Fix that line's shape and reissue this write.",
-            "log_entry_not_prepended" =>
-                "The write was rejected because log.md's existing content must survive unchanged " +
-                "as a suffix of the proposed content — new entries are prepended above it, never " +
-                "replacing what is already there — not because it is out of scope. Fix the content " +
-                "and reissue this write.",
-            "log_entry_malformed_heading" =>
-                "The write was rejected because the prepended entry's first non-blank line did not " +
-                "match the required \"## [YYYY-MM-DD] TYPE | SUMMARY\" heading shape, not because " +
-                "it is out of scope. Fix the heading and reissue this write.",
-            "log_entry_missing_paragraph" =>
-                "The write was rejected because the prepended entry's heading was not followed by a " +
-                "paragraph, not because it is out of scope. Add the paragraph and reissue this write.",
             _ => (string?)null,
         };
 

@@ -292,11 +292,19 @@ public sealed class LintRunCoordinator
                 .Select(d => new FindingsDeniedAction(d.Action, d.RequestedTarget, d.CanonicalTarget, d.Reason, d.Turn))
                 .ToList();
 
+            // 028-lint-at-scale (US2, FR-003): harness-computed, transported verbatim
+            // (Constitution Principle V) — null for a run whose terminal event never
+            // carried one.
+            var wikiCoverage = terminalEvent.WikiCoverage is { } coverage
+                ? new FindingsWikiCoverage(coverage.PagesTotal, coverage.PagesConsidered, coverage.Status)
+                : null;
+
             await FinishRunAsync(
                 runId, status, terminalEvent.Reason, terminalEvent.Summary, terminalEvent.SystemPromptSha256, deniedActions,
                 terminalEvent.CreatedPages ?? [], CancellationToken.None,
                 // T022 (FR-007): proposals ride the terminal event verbatim (research.md R3).
-                terminalEvent.ProposedActions);
+                terminalEvent.ProposedActions,
+                wikiCoverage);
         }
 
         await handle.DisposeAsync();
@@ -312,7 +320,8 @@ public sealed class LintRunCoordinator
         IReadOnlyList<FindingsDeniedAction> deniedActions,
         IReadOnlyList<string> touchedPaths,
         CancellationToken cancellationToken,
-        IReadOnlyList<AgentDispatch.AgentRunEventProposedAction>? proposedActions = null)
+        IReadOnlyList<AgentDispatch.AgentRunEventProposedAction>? proposedActions = null,
+        FindingsWikiCoverage? wikiCoverage = null)
     {
         if (!_runs.TryGetValue(runId, out var run))
         {
@@ -357,7 +366,8 @@ public sealed class LintRunCoordinator
         // for the same reason T022 materializes proposed actions there — a run that reports
         // `completed` must already have the artifact a caller will immediately ask for.
         var effectiveNarrative = await PersistFindingsReportAsync(
-            run, outcome, status, failureReason, narrative, systemPromptSha256, deniedActions, touchedPaths, completedAt);
+            run, outcome, status, failureReason, narrative, systemPromptSha256, deniedActions, touchedPaths, completedAt,
+            wikiCoverage);
         var findingsCount = FindingsNarrativeStats.CountFindings(effectiveNarrative);
 
         if (!run.TryTransitionTo(status, failureReason, completedAt))
@@ -388,6 +398,15 @@ public sealed class LintRunCoordinator
             HubMetrics.RecordLintFindings(category, count);
         }
         HubMetrics.RecordLintInboundLinksRefreshed(touchedPaths.Count);
+
+        // 028-lint-at-scale (US2, FR-003, plan.md ## Observability): emitted once per
+        // completed run — absent (no event, no gap in coverage) for a run whose terminal
+        // event never carried a coverage report (liveness/spawn failure).
+        if (wikiCoverage is { } coverageForLog)
+        {
+            LintLifecycleLogEvents.LogRunCoverageComputed(
+                _logger, runId, coverageForLog.PagesTotal, coverageForLog.PagesConsidered, coverageForLog.Status);
+        }
 
         if (status == LintRunStatus.Completed)
         {
@@ -433,7 +452,8 @@ public sealed class LintRunCoordinator
         string? systemPromptSha256,
         IReadOnlyList<FindingsDeniedAction> deniedActions,
         IReadOnlyList<string> touchedPaths,
-        DateTimeOffset completedAt)
+        DateTimeOffset completedAt,
+        FindingsWikiCoverage? wikiCoverage = null)
     {
         // A failed run (incl. liveness failure) never produced a final narrative — the
         // report is still persisted, clearly marked partial (spec edge case: "What
@@ -452,7 +472,8 @@ public sealed class LintRunCoordinator
             InstructionFileSha256: systemPromptSha256,
             DeniedActions: deniedActions,
             InboundLinksRefreshed: touchedPaths.Count,
-            Narrative: effectiveNarrative);
+            Narrative: effectiveNarrative,
+            WikiCoverage: wikiCoverage);
 
         try
         {

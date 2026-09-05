@@ -302,10 +302,12 @@ public class LintWriteScopeDenialTests
 
     /// <summary>
     /// The reasons here are the ones that survive policy v2: escaping the content root, and
-    /// the two format rules that still govern <c>index.md</c>/<c>log.md</c> (FR-016b). The
-    /// v1 version of this test drove <c>frontmatter_only_body_changed</c> and
-    /// <c>frontmatter_only_target_missing</c> alongside them; those writes are now grants,
-    /// asserted as such above.
+    /// index.md's own format rule (FR-016b). The v1 version of this test drove
+    /// <c>frontmatter_only_body_changed</c> and <c>frontmatter_only_target_missing</c>
+    /// alongside them; those writes are now grants, asserted as such above. 028-lint-at-scale
+    /// (US3, Clarifications 2026-08-27, FSI-3) removed the third: log.md's own ordering
+    /// check no longer denies — that write now commits, with the deviation reported instead
+    /// (covered by <see cref="LogEntryFormatEnforcementTests"/>, not duplicated here).
     /// </summary>
     [Fact]
     public async Task MultipleDeniedAttemptsInOneRun_AllRecordedWithDistinctReasons_RunStillCompletes()
@@ -321,7 +323,8 @@ public class LintWriteScopeDenialTests
                 FakeModelClient.ReadFileTurn("t2", "index.md"),
                 FakeModelClient.WriteFileTurn("t3", "index.md", ExistingCatalog + MalformedCatalogLine),
                 FakeModelClient.ReadFileTurn("t4", "log.md"),
-                // The old append-at-the-bottom shape, which the prepend rule rejects.
+                // The old append-at-the-bottom shape — no longer denied, commits with a
+                // reported deviation (LogEntryFormatEnforcementTests covers the signal).
                 FakeModelClient.WriteFileTurn("t5", "log.md", ExistingLogEntry + ConformingLogEntry),
                 FakeModelClient.FinalTurn("Every rejected attempt was recorded; here is my complete report."),
             ]);
@@ -337,14 +340,14 @@ public class LintWriteScopeDenialTests
             // The run reached its own natural end (end_turn), unaffected by any denial.
             Assert.Equal("Every rejected attempt was recorded; here is my complete report.", result.Narrative);
 
-            Assert.Equal(3, executor.Denials.Count);
+            Assert.Equal(2, executor.Denials.Count);
             Assert.Equal(
-                new HashSet<string> { "traversal", "catalog_entry_malformed", "log_entry_not_prepended" },
+                new HashSet<string> { "traversal", "catalog_entry_malformed" },
                 executor.Denials.Select(d => d.Reason).ToHashSet());
 
-            // Nothing the denials targeted was modified.
+            // The two denied targets were untouched; the log.md write committed.
             Assert.Equal(ExistingCatalog, await File.ReadAllTextAsync(Path.Combine(wikiRoot, "index.md")));
-            Assert.Equal(ExistingLogEntry, await File.ReadAllTextAsync(Path.Combine(wikiRoot, "log.md")));
+            Assert.Equal(ExistingLogEntry + ConformingLogEntry, await File.ReadAllTextAsync(Path.Combine(wikiRoot, "log.md")));
         }
         finally
         {

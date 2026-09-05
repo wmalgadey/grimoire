@@ -120,13 +120,14 @@ public class LintWriteScopeParityTests
         }
     }
 
-    // ── T039: index.md/log.md stay held to the ADR-017/ADR-028 format checks ───────────
-    // under Lint's read-write mode, exactly as they are under any other agent's — the
-    // format check (SharedFileWriteGuard) runs after the WriteMode-specific check and does
-    // not vary by mode.
+    // ── T039, reclassified by 028-lint-at-scale (US3, Clarifications 2026-08-27, FSI-3):
+    // index.md stays held to ADR-017's catalog-entry format check under Lint's read-write
+    // mode, exactly as under any other agent's; log.md's own format/ordering check no
+    // longer denies at all — a non-conforming write commits, and the deviation is
+    // observed, never gated — the same for Lint as for every other agent (research.md R15).
 
     [Fact]
-    public async Task WriteToLogMd_NotAppendOnly_IsDenied_LogEntryNotAppended_EvenUnderReadWriteMode()
+    public async Task WriteToLogMd_NotAppendOnly_Commits_AndReportsDeviation_EvenUnderReadWriteMode()
     {
         var root = CreateTempRoot();
         try
@@ -155,15 +156,17 @@ public class LintWriteScopeParityTests
                 JsonSerializer.Serialize(new { path = "log.md" }),
                 turn: 1, CancellationToken.None);
 
-            // Rewrites the file instead of prepending to it — violates the append-only
-            // invariant regardless of write mode.
+            // Rewrites the file instead of prepending to it — violates the ordering
+            // invariant regardless of write mode, but still commits (FSI-3).
+            var replacementContent = "## [2026-08-02] Replaced everything | Lint\n\nGone.\n";
             var result = await executor.ExecuteAsync(
                 ToolRegistry.WriteFile,
-                JsonSerializer.Serialize(new { path = "log.md", content = "## [2026-08-02] Replaced everything | Lint\n\nGone.\n" }),
+                JsonSerializer.Serialize(new { path = "log.md", content = replacementContent }),
                 turn: 2, CancellationToken.None);
 
-            Assert.True(result.IsError);
-            Assert.Equal("log_entry_not_prepended", Assert.Single(executor.Denials).Reason);
+            Assert.False(result.IsError);
+            Assert.Empty(executor.Denials);
+            Assert.Equal(replacementContent, await File.ReadAllTextAsync(logPath));
         }
         finally
         {

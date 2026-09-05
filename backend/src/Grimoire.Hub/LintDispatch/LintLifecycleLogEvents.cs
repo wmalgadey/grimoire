@@ -18,6 +18,7 @@ public static class LintLifecycleLogEvents
     private static readonly EventId LifecyclePublishedEvent = new(84, "lint.lifecycle.published");
     private static readonly EventId RunBlockedEvent = new(85, "lint.run.blocked");
     private static readonly EventId RemediationTaskProposedEvent = new(86, "hub.lint.remediation_task_proposed");
+    private static readonly EventId RunCoverageComputedEvent = new(87, "lint.run.coverage_computed");
 
     public static void LogRunTriggered(ILogger logger, string runId)
     {
@@ -98,6 +99,25 @@ public static class LintLifecycleLogEvents
 
         logger.LogInformation(LifecyclePublishedEvent,
             "Lint lifecycle published: {run_id} {from_status} -> {to_status}", runId, fromStatus, toStatus);
+    }
+
+    /// <summary>
+    /// 028-lint-at-scale (US2, FR-003, plan.md ## Observability): emitted once per
+    /// completed Lint run, alongside <c>PersistFindingsReportAsync</c> — the harness's own
+    /// computed coverage report, never the agent's narrative (Constitution Principle V).
+    /// </summary>
+    public static void LogRunCoverageComputed(
+        ILogger logger, string runId, int pagesTotal, int pagesConsidered, string coverageStatus)
+    {
+        using var span = StartLogEventSpan("lint.run.coverage_computed", "Information");
+        span?.SetTag("run_id", runId);
+        span?.SetTag("pages_total", pagesTotal);
+        span?.SetTag("pages_considered", pagesConsidered);
+        span?.SetTag("coverage_status", coverageStatus);
+
+        logger.LogInformation(RunCoverageComputedEvent,
+            "Lint run coverage computed. run_id={run_id} pages_total={pages_total} pages_considered={pages_considered} coverage_status={coverage_status}",
+            runId, pagesTotal, pagesConsidered, coverageStatus);
     }
 
     private static Activity? StartLogEventSpan(string eventName, string level)
