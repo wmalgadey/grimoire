@@ -21,9 +21,10 @@ and Constitution Principle III's whole-ADR supersession rule allows no partial r
 goes to Superseded as a whole, and every aspect of it that is still valid must be re-decided as its
 own independent, single-aspect ADR rather than inherited by reference.
 
-This ADR is that re-decision for the user-channel aspect. Its substance is unchanged from ADR-007;
-what changes is that it now stands on its own, so a reader of the current ADR set finds the rule
-without having to reconstruct it from a superseded document.
+That is why this file exists. What it *decides* is the question ADR-007 answered for the user channel
+and which now needs an owner of its own: **how does per-run steering text reach the agent?** The answer
+below is the same one that has been in force, re-examined against its alternatives rather than copied
+across.
 
 ## Decision Drivers
 
@@ -38,14 +39,24 @@ without having to reconstruct it from a superseded document.
 
 ## Considered Options
 
-1. **Re-decide ADR-007's user-channel rules unchanged, as their own ADR.**
-2. Fold these rules into ADR-053 so one ADR covers the whole instruction surface again.
-3. Drop the default-user-prompt document and hardcode steering text in the backend again.
+How per-run steering text reaches the agent:
+
+1. **A versioned instruction document per agent, wrapped by a harness-owned scaffold, with a bounded
+   per-run override.** The default lives in a file delivered alongside the agent's other instruction
+   documents; a submission may replace the text within a length bound, never the framing around it.
+2. **Steering text in backend code** — a constant or template compiled into the harness, with the
+   per-run override as the only way to change it.
+3. **No default at all** — every run must supply its steering text, and a run that supplies none is a
+   usage error.
+4. **Steering text folded into the system prompt**, delivered as part of the instruction surface rather
+   than through the user channel.
+5. **An unbounded per-run override** that may replace the harness's framing — headers, source
+   delimiters, untrusted-data framing — as well as the steering text itself.
 
 ## Decision Outcome
 
-Chosen option: **Option 1** — the rules are re-stated here, unchanged in substance, as a single
-aspect: how per-run steering text reaches the agent.
+Chosen option: **Option 1**, because it is the only one that keeps a change of default steering a
+reviewable instruction-file change while leaving the harness's framing beyond a submission's reach.
 
 - **`default-user-prompt.md`** is the versioned default per-run steering text for any agent whose
   profile declares it. It is delivered by the agent build alongside the agent's other instruction
@@ -69,11 +80,20 @@ aspect: how per-run steering text reaches the agent.
 
 - Good, because steering defaults stay reviewable, versioned instruction files rather than code.
 - Good, because the current ADR set states the rule directly instead of pointing at a superseded ADR.
-- Neutral, because nothing about the running system changes: this is a re-decision at the same
-  substance, forced by the whole-ADR supersession rule, not a new decision.
+- Good, because Option 5's failure mode is closed by construction rather than by review: no submission
+  input can reach the framing, so a per-run override cannot smuggle out the untrusted-data delimiters.
+- Bad, because a run's effective steering is now assembled from two places — a file and an optional
+  override — so "what did this run actually execute under?" is answered by the run record rather than
+  by reading one file. Accepted: the record carries which of the two was used.
+- Bad, because Option 3 (no default) would have forced every caller to state its steering explicitly,
+  which is more honest about what a run executes; rejected because it moves steering authorship into
+  the Hub's submission form, which is the code-authorship problem in a different location.
 - Bad, because the instruction surface is now described by two ADRs where one used to do, so a reader
   needs both. Mitigated by the cross-references here and in ADR-053, and by the fact that the split
   is exactly the single-aspect boundary the constitution asks for.
+- Neutral, because nothing about the running system changes: this option was already in force under
+  ADR-007, and re-deciding it here is forced by the whole-ADR supersession rule, not by a change of
+  mind.
 
 ## Change Triggers
 
@@ -86,6 +106,14 @@ aspect: how per-run steering text reaches the agent.
 
 ## More Information
 
+Rejected options in detail: Option 2 puts a wiki-behaviour change behind a backend release, the
+Principle V boundary smell test's worked example. Option 4 conflates two surfaces with different
+lifetimes — the system prompt is per-agent and stable, steering is per-run and variable — and would
+make every steering change invalidate the instruction surface's recorded identity. Option 5 is the one
+option that is not merely worse but unsafe: the framing it would expose is what marks submitted content
+as data rather than instruction.
+
 Supersedes [ADR-007](ADR-007-agent-instruction-surface.md) whole, jointly with
 [ADR-053](ADR-053-agent-system-prompt-composition.md), which re-decides ADR-007's system-prompt aspect
-and explains why the supersession was required.
+and explains why the supersession was required. That supersession is the reason this ADR exists as a
+separate file; it is not the decision this ADR records.
