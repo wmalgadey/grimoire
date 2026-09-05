@@ -51,7 +51,7 @@ public class CaptureHygieneTests : IDisposable
             Model: "probe-model",
             Turns:
             [
-                new RecordedTurn(1, "sha256:0", [], [], "end_turn", [],
+                new QueryRecordedTurn(1, "sha256:0", [], [], "end_turn", [],
                     AssistantText: $"error mentioning {fakeKey}", InputTokens: 1, OutputTokens: 1),
             ],
             JudgeVerdicts: null,

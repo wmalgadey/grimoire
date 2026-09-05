@@ -117,13 +117,13 @@ public class QueryLivenessSupervisionTests
         // parallelization, fixed at the root): File.Exists becoming true does not mean the
         // write has finished — poll for a successful structured parse too.
         await PollAsync.WaitAsync(
-            () => File.Exists(recordPath) && Grimoire.Hub.QueryConversations.ConversationRecordFormat.Parse(File.ReadAllText(recordPath))
-                is Grimoire.Hub.QueryConversations.ConversationRecordParseResult.Parsed { Turns.Count: >= 1 },
+            () => File.Exists(recordPath) && Grimoire.Hub.QueryConversations.QueryConversationRecordFormat.Parse(File.ReadAllText(recordPath))
+                is Grimoire.Hub.QueryConversations.QueryConversationRecordParseResult.Parsed { Turns.Count: >= 1 },
             TimeSpan.FromSeconds(10),
             $"Expected the Conversation Record at '{recordPath}' to exist and parse with at least one turn within 10s.");
 
-        var parsed = Assert.IsType<Grimoire.Hub.QueryConversations.ConversationRecordParseResult.Parsed>(
-            Grimoire.Hub.QueryConversations.ConversationRecordFormat.Parse(await File.ReadAllTextAsync(recordPath)));
+        var parsed = Assert.IsType<Grimoire.Hub.QueryConversations.QueryConversationRecordParseResult.Parsed>(
+            Grimoire.Hub.QueryConversations.QueryConversationRecordFormat.Parse(await File.ReadAllTextAsync(recordPath)));
         var recordedTurn = Assert.Single(parsed.Turns);
         Assert.Equal("failed", recordedTurn.State);
         Assert.Contains("liveness", recordedTurn.FailureReason, StringComparison.OrdinalIgnoreCase);
@@ -160,15 +160,15 @@ public class QueryLivenessSupervisionTests
         var paths = QueryTurnSubmissionApiTests.BuildResolvedPaths(root);
         var recordPath = paths.ConversationRecordPathFor("c-liveness-empty");
         await PollAsync.WaitAsync(
-            () => File.Exists(recordPath) && Grimoire.Hub.QueryConversations.ConversationRecordFormat.Parse(File.ReadAllText(recordPath))
-                is Grimoire.Hub.QueryConversations.ConversationRecordParseResult.Parsed { Turns.Count: >= 1 },
+            () => File.Exists(recordPath) && Grimoire.Hub.QueryConversations.QueryConversationRecordFormat.Parse(File.ReadAllText(recordPath))
+                is Grimoire.Hub.QueryConversations.QueryConversationRecordParseResult.Parsed { Turns.Count: >= 1 },
             TimeSpan.FromSeconds(10),
             $"Expected the Conversation Record at '{recordPath}' to exist and parse with at least one turn within 10s.");
 
         var content = await File.ReadAllTextAsync(recordPath);
         Assert.Contains("answer_chars: 0", content, StringComparison.Ordinal);
-        var parsed = Assert.IsType<Grimoire.Hub.QueryConversations.ConversationRecordParseResult.Parsed>(
-            Grimoire.Hub.QueryConversations.ConversationRecordFormat.Parse(content));
+        var parsed = Assert.IsType<Grimoire.Hub.QueryConversations.QueryConversationRecordParseResult.Parsed>(
+            Grimoire.Hub.QueryConversations.QueryConversationRecordFormat.Parse(content));
         Assert.Equal(string.Empty, Assert.Single(parsed.Turns).Answer);
     }
 

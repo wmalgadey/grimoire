@@ -255,7 +255,7 @@ public static class HubMetrics
     public static void RecordLintTriggerRejected() => _lintTriggersRejectedTotal.Add(1);
 
     /// <summary>T037 (013-lint-agent, US2): findings tallied per category, mechanically
-    /// counted from the agent's own narrative headings (<c>FindingsNarrativeStats</c>) —
+    /// counted from the agent's own narrative headings (<c>LintFindingsNarrativeStats</c>) —
     /// never a judgment about what counts as a finding (Constitution Principle V).</summary>
     private static readonly Counter<long> _lintFindingsTotal =
         Meter.CreateCounter<long>("wiki.lint.findings_total",

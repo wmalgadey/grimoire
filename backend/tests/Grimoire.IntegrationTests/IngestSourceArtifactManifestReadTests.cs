@@ -19,7 +19,7 @@ namespace Grimoire.IntegrationTests;
 /// a board poll.
 /// </para>
 /// </summary>
-public class SourceArtifactManifestReadTests : IDisposable
+public class IngestSourceArtifactManifestReadTests : IDisposable
 {
     private readonly string _root = Path.Combine(
         Path.GetTempPath(), $"grimoire-manifest-read-{Guid.NewGuid():n}");
@@ -27,7 +27,7 @@ public class SourceArtifactManifestReadTests : IDisposable
     private readonly IngestSourceArtifactStore _store;
     private readonly string _originalsDir;
 
-    public SourceArtifactManifestReadTests()
+    public IngestSourceArtifactManifestReadTests()
     {
         _originalsDir = Path.Combine(_root, "raw", "originals");
         Directory.CreateDirectory(_originalsDir);

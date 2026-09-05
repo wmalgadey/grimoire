@@ -125,7 +125,7 @@ public class HubCliConcurrencyTests
             var launcherA = new FakeAgentProcessLauncher(simulatedRunDuration: TimeSpan.FromSeconds(1));
             var coordinatorA = new LintRunCoordinator(
                 launcherA,
-                new FindingsReportStore(paths, NullLogger<FindingsReportStore>.Instance),
+                new LintFindingsReportStore(paths, NullLogger<LintFindingsReportStore>.Instance),
                 paths,
                 logger: NullLogger<LintRunCoordinator>.Instance);
 
@@ -134,7 +134,7 @@ public class HubCliConcurrencyTests
             var launcherB = new FakeAgentProcessLauncher();
             var coordinatorB = new LintRunCoordinator(
                 launcherB,
-                new FindingsReportStore(paths, NullLogger<FindingsReportStore>.Instance),
+                new LintFindingsReportStore(paths, NullLogger<LintFindingsReportStore>.Instance),
                 paths,
                 logger: NullLogger<LintRunCoordinator>.Instance);
 

@@ -137,13 +137,13 @@ public class QueryReadOnlyGuardrailTests
         var recordPath = resolvedPaths.ConversationRecordPathFor("c-denial-record");
         await PollAsync.WaitAsync(
             () => File.Exists(recordPath)
-                  && Grimoire.Hub.QueryConversations.ConversationRecordFormat.Parse(File.ReadAllText(recordPath))
-                      is Grimoire.Hub.QueryConversations.ConversationRecordParseResult.Parsed { Turns.Count: >= 1 },
+                  && Grimoire.Hub.QueryConversations.QueryConversationRecordFormat.Parse(File.ReadAllText(recordPath))
+                      is Grimoire.Hub.QueryConversations.QueryConversationRecordParseResult.Parsed { Turns.Count: >= 1 },
             TimeSpan.FromSeconds(5),
             $"Expected the Conversation Record at '{recordPath}' to parse with at least one turn within 5s.");
 
-        var parsed = Assert.IsType<Grimoire.Hub.QueryConversations.ConversationRecordParseResult.Parsed>(
-            Grimoire.Hub.QueryConversations.ConversationRecordFormat.Parse(await File.ReadAllTextAsync(recordPath)));
+        var parsed = Assert.IsType<Grimoire.Hub.QueryConversations.QueryConversationRecordParseResult.Parsed>(
+            Grimoire.Hub.QueryConversations.QueryConversationRecordFormat.Parse(await File.ReadAllTextAsync(recordPath)));
         var recordedTurn = Assert.Single(parsed.Turns);
         var denial = Assert.Single(recordedTurn.DeniedActions);
         Assert.Equal("read_file", denial.Action);

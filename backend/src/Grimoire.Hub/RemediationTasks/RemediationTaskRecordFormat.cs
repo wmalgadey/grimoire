@@ -20,7 +20,7 @@ public abstract record RemediationTaskRecordEntry
     public sealed record Outcome(string State, string? Reason, DateTimeOffset CompletedAt, string Summary) : RemediationTaskRecordEntry;
 }
 
-/// <summary>Result of parsing a Remediation Task Record file (mirrors <c>ConversationRecordParseResult</c>, ADR-014 parsing rules).</summary>
+/// <summary>Result of parsing a Remediation Task Record file (mirrors <c>QueryConversationRecordParseResult</c>, ADR-014 parsing rules).</summary>
 public abstract record RemediationTaskRecordParseResult
 {
     /// <summary>
@@ -43,7 +43,7 @@ public abstract record RemediationTaskRecordParseResult
 /// scans body content for headings or comment markers, so untrusted agent- or
 /// human-authored text containing <c>&lt;!-- grimoire:proposal --&gt;</c> or <c>##</c>
 /// headings cannot break or forge structure (same mechanism as
-/// <c>ConversationRecordFormat</c>). String values inside bookkeeping comments are
+/// <c>QueryConversationRecordFormat</c>). String values inside bookkeeping comments are
 /// JSON-escaped with <c>--&gt;</c> neutralized.
 /// </summary>
 public static class RemediationTaskRecordFormat
@@ -167,7 +167,7 @@ public static class RemediationTaskRecordFormat
     /// <summary>
     /// Double-quoted JSON-escaped string; the default encoder escapes <c>&gt;</c>, so
     /// <c>--&gt;</c> can never appear literally inside a bookkeeping comment (same guard
-    /// as <c>ConversationRecordFormat.EscapeString</c>).
+    /// as <c>QueryConversationRecordFormat.EscapeString</c>).
     /// </summary>
     private static string EscapeString(string value)
     {

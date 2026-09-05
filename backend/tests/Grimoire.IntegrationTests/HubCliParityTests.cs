@@ -433,10 +433,10 @@ public class HubCliParityTests
         await WaitForFileAsync(httpRecordPath);
         await WaitForFileAsync(cliRecordPath);
 
-        var httpParsed = Assert.IsType<ConversationRecordParseResult.Parsed>(
-            ConversationRecordFormat.Parse(await File.ReadAllTextAsync(httpRecordPath)));
-        var cliParsed = Assert.IsType<ConversationRecordParseResult.Parsed>(
-            ConversationRecordFormat.Parse(await File.ReadAllTextAsync(cliRecordPath)));
+        var httpParsed = Assert.IsType<QueryConversationRecordParseResult.Parsed>(
+            QueryConversationRecordFormat.Parse(await File.ReadAllTextAsync(httpRecordPath)));
+        var cliParsed = Assert.IsType<QueryConversationRecordParseResult.Parsed>(
+            QueryConversationRecordFormat.Parse(await File.ReadAllTextAsync(cliRecordPath)));
         var httpTurn = Assert.Single(httpParsed.Turns);
         var cliTurn = Assert.Single(cliParsed.Turns);
 

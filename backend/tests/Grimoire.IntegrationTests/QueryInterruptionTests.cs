@@ -147,8 +147,8 @@ public class QueryInterruptionTests
         var recordPath = paths.ConversationRecordPathFor("c-interrupt-record");
         await PollAsync.WaitAsync(
             () => File.Exists(recordPath)
-                  && Grimoire.Hub.QueryConversations.ConversationRecordFormat.Parse(File.ReadAllText(recordPath))
-                      is Grimoire.Hub.QueryConversations.ConversationRecordParseResult.Parsed { Turns.Count: >= 1 },
+                  && Grimoire.Hub.QueryConversations.QueryConversationRecordFormat.Parse(File.ReadAllText(recordPath))
+                      is Grimoire.Hub.QueryConversations.QueryConversationRecordParseResult.Parsed { Turns.Count: >= 1 },
             TimeSpan.FromSeconds(5),
             $"Expected the Conversation Record at '{recordPath}' to parse with at least one turn within 5s.");
 
@@ -158,8 +158,8 @@ public class QueryInterruptionTests
         // watchdog chose not to act". Exempt from the fixed-wait ban (FR-005).
         await Task.Delay(500);
 
-        var parsed = Assert.IsType<Grimoire.Hub.QueryConversations.ConversationRecordParseResult.Parsed>(
-            Grimoire.Hub.QueryConversations.ConversationRecordFormat.Parse(await File.ReadAllTextAsync(recordPath)));
+        var parsed = Assert.IsType<Grimoire.Hub.QueryConversations.QueryConversationRecordParseResult.Parsed>(
+            Grimoire.Hub.QueryConversations.QueryConversationRecordFormat.Parse(await File.ReadAllTextAsync(recordPath)));
         var recordedTurn = Assert.Single(parsed.Turns);
         Assert.Equal(turnId, recordedTurn.TurnId);
         Assert.Equal("interrupted", recordedTurn.State);

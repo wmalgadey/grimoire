@@ -70,7 +70,7 @@ public class LintRunLifecycleTests
 
         var content = await File.ReadAllTextAsync(harness.Paths.FindingsReportPathFor(runId));
         Assert.Contains("outcome_state: failed", content, StringComparison.Ordinal);
-        // JSON-escaped (mirrors ConversationRecordFormat's escaping rule, e.g. the
+        // JSON-escaped (mirrors QueryConversationRecordFormat's escaping rule, e.g. the
         // apostrophes in the reason text become ') — assert the unescaped prefix
         // rather than the literal reason string.
         Assert.Contains("failure_reason: \"Instruction document not found at", content, StringComparison.Ordinal);
@@ -321,7 +321,7 @@ internal sealed class LintCoordinatorHarness : IDisposable
         Directory.CreateDirectory(paths.FindingsDir);
 
         var effectiveLauncher = launcher ?? new FakeAgentProcessLauncher(autoPlay: true);
-        var reportStore = new FindingsReportStore(paths, NullLogger<FindingsReportStore>.Instance);
+        var reportStore = new LintFindingsReportStore(paths, NullLogger<LintFindingsReportStore>.Instance);
         var coordinator = new LintRunCoordinator(
             effectiveLauncher, reportStore, paths, livenessWindow: livenessWindow,
             reviewWindowOptions: reviewWindowOptions, logger: NullLogger<LintRunCoordinator>.Instance,

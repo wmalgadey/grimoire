@@ -31,7 +31,7 @@ namespace Grimoire.IntegrationTests;
 ///
 /// Exercises the production <see cref="LintRunCommand"/> class directly against a real
 /// <see cref="LintRunCoordinator"/>/<see cref="OperationalStateRepository"/>/
-/// <see cref="FindingsReportStore"/> (temp-dir SQLite + findings dir) and
+/// <see cref="LintFindingsReportStore"/> (temp-dir SQLite + findings dir) and
 /// <see cref="FakeAgentProcessLauncher"/> — the same "real composed service graph" idiom
 /// <c>LintTriggerPreconditionTests</c>/<c>LintRunLifecycleTests</c> use for the HTTP
 /// path — invoked through the public <see cref="ICommand{TSettings}"/> interface (rather
@@ -601,7 +601,7 @@ internal sealed class HubCliLintTestHarness : IDisposable
         var repository = new OperationalStateRepository(paths.StateDbPath);
         repository.InitializeAsync().GetAwaiter().GetResult();
 
-        var reportStore = new FindingsReportStore(paths, NullLogger<FindingsReportStore>.Instance);
+        var reportStore = new LintFindingsReportStore(paths, NullLogger<LintFindingsReportStore>.Instance);
         var coordinator = new LintRunCoordinator(
             effectiveLauncher, reportStore, paths,
             logger: NullLogger<LintRunCoordinator>.Instance,

@@ -18,14 +18,14 @@ namespace Grimoire.IntegrationTests;
 /// updated. Asserting only the non-write would be satisfied by a reconciler that did
 /// nothing at all.
 /// </summary>
-public class RestartReconcilerActivityLogTests
+public class IngestRestartReconcilerActivityLogTests
 {
     private const string SeededLog =
         "## [2026-08-01] ingest | created retrieval-patterns\n\n" +
         "Created [[concepts/retrieval-patterns]] from source \"notes.md\". Task: task-earlier.\n";
 
     [Fact]
-    public async Task ReconcileRunningTasks_LeavesActivityLogByteForByteUnchanged_WhileFailingTheTask()
+    public async Task ReconcileRunningIngestTasks_LeavesActivityLogByteForByteUnchanged_WhileFailingTheTask()
     {
         var root = Path.Combine(Path.GetTempPath(), $"reconciler-log-{Guid.NewGuid():N}");
         var tasksDir = Path.Combine(root, "tasks");
@@ -89,7 +89,7 @@ public class RestartReconcilerActivityLogTests
     /// the activity log either. The first write is the agent's.
     /// </summary>
     [Fact]
-    public async Task ReconcileRunningTasks_DoesNotCreateTheActivityLog_WhenItDoesNotExist()
+    public async Task ReconcileRunningIngestTasks_DoesNotCreateTheActivityLog_WhenItDoesNotExist()
     {
         var root = Path.Combine(Path.GetTempPath(), $"reconciler-log-{Guid.NewGuid():N}");
         var tasksDir = Path.Combine(root, "tasks");

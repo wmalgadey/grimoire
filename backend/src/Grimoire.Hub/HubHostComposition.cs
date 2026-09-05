@@ -170,14 +170,14 @@ internal static class HubHostComposition
             builder.Services.AddSingleton<QueryLifecyclePublisher>(sp => new QueryLifecyclePublisher(
                 sp.GetRequiredService<IHubContext<QueryLifecycleHub>>(),
                 sp.GetRequiredService<ILogger<QueryLifecyclePublisher>>()));
-            builder.Services.AddSingleton<ConversationRecordStore>(sp => new ConversationRecordStore(
+            builder.Services.AddSingleton<QueryConversationRecordStore>(sp => new QueryConversationRecordStore(
                 resolvedPaths,
-                logger: sp.GetRequiredService<ILogger<ConversationRecordStore>>()));
+                logger: sp.GetRequiredService<ILogger<QueryConversationRecordStore>>()));
             builder.Services.AddSingleton<QuerySubmissionValidator>();
             builder.Services.AddSingleton<QueryRunCoordinator>(sp => new QueryRunCoordinator(
                 sp.GetRequiredService<IAgentProcessLauncher>(),
                 sp.GetRequiredService<QueryLifecyclePublisher>(),
-                sp.GetRequiredService<ConversationRecordStore>(),
+                sp.GetRequiredService<QueryConversationRecordStore>(),
                 resolvedPaths,
                 sp.GetRequiredService<QueryConcurrencyOptions>(),
                 logger: sp.GetRequiredService<ILogger<QueryRunCoordinator>>()));
@@ -186,8 +186,8 @@ internal static class HubHostComposition
             // fully decoupled from Ingest's and Query's coordinators — its own Findings
             // Report store as the run's sole persistent artifact (data-model.md "Lint Run"
             // note: no separate run record file).
-            builder.Services.AddSingleton<FindingsReportStore>(sp => new FindingsReportStore(
-                resolvedPaths, logger: sp.GetRequiredService<ILogger<FindingsReportStore>>()));
+            builder.Services.AddSingleton<LintFindingsReportStore>(sp => new LintFindingsReportStore(
+                resolvedPaths, logger: sp.GetRequiredService<ILogger<LintFindingsReportStore>>()));
             // 015-lint-board-parity T011: lint's own board lifecycle channel, mirroring the
             // Ingest/Query publisher wiring above (research.md R1 — /hubs/ingest-lifecycle
             // is never touched, FR-015).
@@ -196,7 +196,7 @@ internal static class HubHostComposition
                 sp.GetRequiredService<ILogger<LintLifecyclePublisher>>()));
             builder.Services.AddSingleton<LintRunCoordinator>(sp => new LintRunCoordinator(
                 sp.GetRequiredService<IAgentProcessLauncher>(),
-                sp.GetRequiredService<FindingsReportStore>(),
+                sp.GetRequiredService<LintFindingsReportStore>(),
                 resolvedPaths,
                 reviewWindowOptions: sp.GetRequiredService<LintReviewWindowOptions>(),
                 logger: sp.GetRequiredService<ILogger<LintRunCoordinator>>(),

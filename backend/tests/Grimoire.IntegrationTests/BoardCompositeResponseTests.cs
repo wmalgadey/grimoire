@@ -406,11 +406,11 @@ internal sealed class BoardHostHarness : IDisposable
                         contentPaths,
                         paths,
                         logger: NullLogger<IngestRunCoordinator>.Instance));
-                    services.AddSingleton<FindingsReportStore>(sp =>
-                        new FindingsReportStore(paths, NullLogger<FindingsReportStore>.Instance));
+                    services.AddSingleton<LintFindingsReportStore>(sp =>
+                        new LintFindingsReportStore(paths, NullLogger<LintFindingsReportStore>.Instance));
                     services.AddSingleton<LintRunCoordinator>(sp => new LintRunCoordinator(
                         sp.GetRequiredService<Grimoire.Hub.AgentDispatch.IAgentProcessLauncher>(),
-                        sp.GetRequiredService<FindingsReportStore>(),
+                        sp.GetRequiredService<LintFindingsReportStore>(),
                         paths,
                         logger: NullLogger<LintRunCoordinator>.Instance));
                     // T021/T024 (US3): the remediation task record store backing the

@@ -38,7 +38,7 @@ public class QueryConversationMetricsTests
     private static string? TagValue((long Value, KeyValuePair<string, object?>[] Tags) m, string key)
         => m.Tags.FirstOrDefault(t => t.Key == key).Value?.ToString();
 
-    private static RecordedTurn MakeTurn(int position, string state) => new(
+    private static QueryRecordedTurn MakeTurn(int position, string state) => new(
         TurnId: $"t-metrics-{position}",
         Position: position,
         State: state,
@@ -56,12 +56,12 @@ public class QueryConversationMetricsTests
         Prompt: $"P{position}?",
         Answer: $"A{position}.");
 
-    private static (ConversationRecordStore Store, ResolvedGrimoirePaths Paths) CreateStore()
+    private static (QueryConversationRecordStore Store, ResolvedGrimoirePaths Paths) CreateStore()
     {
         var root = Path.Combine(Path.GetTempPath(), $"grimoire-conv-metrics-{Guid.NewGuid():N}");
         Directory.CreateDirectory(root);
         var paths = QueryTurnSubmissionApiTests.BuildResolvedPaths(root);
-        return (new ConversationRecordStore(paths), paths);
+        return (new QueryConversationRecordStore(paths), paths);
     }
 
     [Fact]
@@ -106,12 +106,12 @@ public class QueryConversationMetricsTests
         var (store, _) = CreateStore();
 
         // New conversation: no record file yet.
-        var empty = Assert.IsType<ConversationContextResult.Loaded>(await store.LoadContextAsync("c-m2"));
+        var empty = Assert.IsType<QueryConversationContextResult.Loaded>(await store.LoadContextAsync("c-m2"));
         Assert.Equal("empty", empty.Source);
 
         // After an append the cache serves the load.
         await store.AppendTurnAsync("c-m2", MakeTurn(1, "completed"));
-        var memory = Assert.IsType<ConversationContextResult.Loaded>(await store.LoadContextAsync("c-m2"));
+        var memory = Assert.IsType<QueryConversationContextResult.Loaded>(await store.LoadContextAsync("c-m2"));
         Assert.Equal("memory", memory.Source);
 
         lock (measurements)
@@ -131,8 +131,8 @@ public class QueryConversationMetricsTests
         await store.AppendTurnAsync("c-m3", MakeTurn(1, "completed"));
 
         // Restart: fresh store over the same paths — cold cache, hydrates from file.
-        var restarted = new ConversationRecordStore(paths);
-        var loaded = Assert.IsType<ConversationContextResult.Loaded>(await restarted.LoadContextAsync("c-m3"));
+        var restarted = new QueryConversationRecordStore(paths);
+        var loaded = Assert.IsType<QueryConversationContextResult.Loaded>(await restarted.LoadContextAsync("c-m3"));
         Assert.Equal("record", loaded.Source);
 
         lock (measurements)
@@ -151,7 +151,7 @@ public class QueryConversationMetricsTests
         Directory.CreateDirectory(paths.ConversationsDir);
         await File.WriteAllTextAsync(paths.ConversationRecordPathFor("c-m4"), "not a record at all");
 
-        Assert.IsType<ConversationContextResult.Unreadable>(await store.LoadContextAsync("c-m4"));
+        Assert.IsType<QueryConversationContextResult.Unreadable>(await store.LoadContextAsync("c-m4"));
 
         lock (measurements)
         {

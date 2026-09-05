@@ -173,3 +173,48 @@ containment rules keep their anchor).
   reference analysis confirms no single-agent ownership).
 - `IngestSubmissionPipelineFixture` (in `Fakes/`) — already carries the Ingest
   token; conformant.
+
+## Type-level agent tokens in cross-agent namespaces
+
+Rule N1 above classifies ownership at two levels: test types in the shared assemblies
+carry the agent token in their name, and every `Grimoire.Hub` namespace is mapped to an
+owner. For cross-agent namespaces the map is deliberately the whole statement — the
+section on the Hub namespace map notes that in `Realtime`, `OperationalState` and
+friends "the namespace, not the type name, is the ownership statement".
+
+That holds for the structural rule, but it leaves a readability gap the rule was never
+meant to cover: a namespace is visible in the file header, and nowhere else. At a use
+site — a constructor parameter, a DI registration, an `await` on a repository — the
+reader sees only the type name. `TaskRecordWatcher` sitting beside `IngestLifecycleHub`
+and `IngestLifecyclePublisher` said nothing about whose task records it watched;
+`SubmitSourceCommand` sat among `IngestResumeCommand`, `LintRunCommand` and
+`QueryCommand` without saying which agent it submitted to.
+
+**Convention.** A type bound to exactly one agent carries that agent's token in its own
+name, in every namespace — not only in the ones N1's map calls agent-owned. This
+extends N1; it does not change it, and it introduces no new structural test: N1 keeps
+enforcing the namespace map and the test-type rule exactly as before.
+
+Two limits keep this from over-applying:
+
+- **Genuinely shared types stay unprefixed.** `IAgentProcessLauncher`, `AgentRunEvent`,
+  `AgentProcessHost`, `RestartReconciler`, `OperationalStateRepository`, `HubMetrics`
+  and the `Grimoire.AgentRuntime` primitives serve every agent. Where such a type has
+  per-agent *members*, the token goes on the member instead — `StartIngestProcess`
+  beside `StartLintProcess`, `ReconcileRunningIngestTasksAsync` beside
+  `ReconcileRemediationTasksAsync`.
+- **Domain vocabulary is not a substitute for the token.** "Conversation" belongs to
+  Query and "Findings" to Lint in the Ubiquitous Language, but a reader who does not
+  already know that cannot tell from `ConversationRecordStore` or `FindingsReportStore`
+  which agent owns them — the same reason `RemediationTaskRecordStore` was named that
+  way from the start. These now read `QueryConversationRecordStore` and
+  `LintFindingsReportStore`.
+
+Ports named after a technology capability rather than an agent (`IMarkdownConverter`,
+`IUrlContentFetcher`, and their `MarkItDown`/HTTP adapters) keep their names even though
+only ingest submission consumes them today: the port describes what it does, and a
+second consumer would not make the name wrong.
+
+Prior ADRs and merged `specs/` artifacts still refer to the pre-rename type names. That
+is intentional — an Accepted ADR's decision content is immutable (Constitution
+Principle III), and the `specs/` tree is the historical record of what each feature did.

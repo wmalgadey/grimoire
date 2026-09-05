@@ -13,7 +13,7 @@ public sealed class TurnCaptureModelClient : IModelClient
 {
     private readonly IModelClient _inner;
     private readonly string _capturePath;
-    private readonly List<RecordedTurn> _turns = [];
+    private readonly List<QueryRecordedTurn> _turns = [];
 
     public TurnCaptureModelClient(IModelClient inner, string capturePath)
     {
@@ -32,7 +32,7 @@ public sealed class TurnCaptureModelClient : IModelClient
     {
         var turn = await _inner.NextTurnAsync(systemPrompt, conversation, tools, cancellationToken, onTextDelta);
 
-        // #173: RecordedTurn has no field for ModelTurn.HasIncompleteToolCall, and
+        // #173: QueryRecordedTurn has no field for ModelTurn.HasIncompleteToolCall, and
         // ReplayModelClient always reconstructs it as false — persisting this turn as-is
         // would capture a recording that replays a different harness nudge
         // (ContinuePrompt) than the one the live run actually took
@@ -64,7 +64,7 @@ public sealed class TurnCaptureModelClient : IModelClient
                 "without that context would diverge from this run). Re-run the capture.");
         }
 
-        _turns.Add(new RecordedTurn(
+        _turns.Add(new QueryRecordedTurn(
             Turn: _turns.Count + 1,
             SystemPromptSha256: RecordingSerialization.Hash(systemPrompt),
             Conversation: conversation.Select(m => new RecordedMessage(m.Role, RecordingSerialization.HashMessage(m))).ToList(),

@@ -75,7 +75,7 @@ public static class SyntheticRecordings
                 ? "deliberately divergent conversation content"
                 : FirstUserMessage(taskId, sourceRef, userPrompt, spec.SourceContent));
 
-        var turn = new RecordedTurn(
+        var turn = new QueryRecordedTurn(
             Turn: 1,
             SystemPromptSha256: RecordingSerialization.Hash(systemPrompt),
             Conversation: [new RecordedMessage("user", RecordingSerialization.HashMessage(firstMessage))],
