@@ -58,7 +58,7 @@ public class FoundationPromptFailClosedTests
                 HeartbeatSeconds: 30,
                 DefaultUserPromptPath: defaultUserPromptPath);
             using var writer = new StringWriter();
-            var runEvents = new RunEventEmitter(writer, "run-fail-closed");
+            using var runEvents = new RunEventEmitter(writer, "run-fail-closed");
 
             // Snapshot before the run: everything below belongs to test setup, not to the
             // run under test — the wiki-root-unchanged assertion below is against this.
@@ -131,7 +131,7 @@ public class FoundationPromptFailClosedTests
                 HeartbeatSeconds: 30,
                 DefaultUserPromptPath: defaultUserPromptPath);
             using var writer = new StringWriter();
-            var runEvents = new RunEventEmitter(writer, "run-reaches-agent");
+            using var runEvents = new RunEventEmitter(writer, "run-reaches-agent");
 
             var exitCode = await host.RunAsync(run, runEvents, intent, CancellationToken.None);
 

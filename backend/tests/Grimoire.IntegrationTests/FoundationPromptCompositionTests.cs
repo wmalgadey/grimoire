@@ -60,7 +60,7 @@ public class FoundationPromptCompositionTests
                 HeartbeatSeconds: 30,
                 DefaultUserPromptPath: defaultUserPromptPath);
             using var writer = new StringWriter();
-            var runEvents = new RunEventEmitter(writer, "run-composition");
+            using var runEvents = new RunEventEmitter(writer, "run-composition");
 
             var exitCode = await host.RunAsync(run, runEvents, intent, CancellationToken.None);
 
@@ -120,7 +120,7 @@ public class FoundationPromptCompositionTests
                 HeartbeatSeconds: 30,
                 DefaultUserPromptPath: defaultUserPromptPath);
             using var writer = new StringWriter();
-            var runEvents = new RunEventEmitter(writer, "run-order");
+            using var runEvents = new RunEventEmitter(writer, "run-order");
 
             await host.RunAsync(run, runEvents, intent, CancellationToken.None);
 

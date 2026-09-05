@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using Grimoire.Hub.AgentDispatch;
 using Grimoire.Hub.QueryConversations;
 using Grimoire.Hub.Realtime;
 using Grimoire.Hub.Runtime.Paths;
@@ -389,22 +390,34 @@ public sealed class QueryRunCoordinator
             CompletedAt: turn.CompletedAt,
             Model: metadata?.Model,
             TurnsUsed: metadata?.TurnsUsed,
-            FoundationFilePath: metadata?.FoundationPromptSha256 is null ? null : "agents/query/foundation-prompt.md",
+            FoundationFilePath: DocumentPathIfPresent(metadata?.FoundationPromptSha256, "agents/query/foundation-prompt.md"),
             FoundationFileSha256: metadata?.FoundationPromptSha256,
-            InstructionFilePath: metadata?.SystemPromptSha256 is null ? null : "agents/query/system-prompt.md",
+            InstructionFilePath: DocumentPathIfPresent(metadata?.SystemPromptSha256, "agents/query/system-prompt.md"),
             InstructionFileSha256: metadata?.SystemPromptSha256,
             PolicyPath: metadata?.PolicyPath,
             PolicyVersion: metadata?.PolicyVersion,
             PolicySha256: metadata?.PolicySha256,
-            DeniedActions: [.. (metadata?.DeniedActions ?? []).Select(d =>
-                new QueryRecordedDeniedAction(d.Action, d.RequestedTarget, d.CanonicalTarget, d.Reason, d.Turn))],
+            DeniedActions: BuildRecordedDeniedActions(metadata?.DeniedActions),
             Prompt: turn.Prompt,
             Answer: turn.Answer,
             // ADR-015 (012-query-synthesis-writes): the agent process reports canonical
             // (absolute) paths; the record stores wiki-root-relative paths
             // (data-model.md "Run Completion Metadata").
-            CreatedPages: [.. (metadata?.CreatedPages ?? []).Select(canonical => ToWikiRelative(canonical, wikiRoot))]);
+            CreatedPages: BuildRecordedCreatedPages(metadata?.CreatedPages, wikiRoot));
     }
+
+    /// <summary>The recorded path for a document identity field, present only when its
+    /// hash was reported — mirrors the task artifact's instruction_files entries, which
+    /// likewise only exist for a document that actually loaded.</summary>
+    private static string? DocumentPathIfPresent(string? sha256, string path) => sha256 is null ? null : path;
+
+    private static IReadOnlyList<QueryRecordedDeniedAction> BuildRecordedDeniedActions(
+        IReadOnlyList<AgentRunEventDeniedAction>? deniedActions)
+        => [.. (deniedActions ?? []).Select(d =>
+            new QueryRecordedDeniedAction(d.Action, d.RequestedTarget, d.CanonicalTarget, d.Reason, d.Turn))];
+
+    private static IReadOnlyList<string> BuildRecordedCreatedPages(IReadOnlyList<string>? createdPages, string wikiRoot)
+        => [.. (createdPages ?? []).Select(canonical => ToWikiRelative(canonical, wikiRoot))];
 
     private static string ToWikiRelative(string canonicalPath, string wikiRoot)
         => Path.GetRelativePath(wikiRoot, canonicalPath).Replace('\\', '/');

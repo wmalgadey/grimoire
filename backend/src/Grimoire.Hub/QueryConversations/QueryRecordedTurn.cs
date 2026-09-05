@@ -67,25 +67,34 @@ public sealed record QueryRecordedTurn(
     /// </summary>
     public bool Equals(QueryRecordedTurn? other) =>
         other is not null &&
+        IdentityAndTimingEqual(other) &&
+        DocumentIdentityEqual(other) &&
+        PolicyAndTranscriptEqual(other) &&
+        DeniedActions.SequenceEqual(other.DeniedActions) &&
+        CreatedPagesOrEmpty.SequenceEqual(other.CreatedPagesOrEmpty);
+
+    private bool IdentityAndTimingEqual(QueryRecordedTurn other) =>
         TurnId == other.TurnId &&
         Position == other.Position &&
         State == other.State &&
         FailureReason == other.FailureReason &&
         StartedAt.Equals(other.StartedAt) &&
-        Nullable.Equals(CompletedAt, other.CompletedAt) &&
+        Nullable.Equals(CompletedAt, other.CompletedAt);
+
+    private bool DocumentIdentityEqual(QueryRecordedTurn other) =>
         Model == other.Model &&
         TurnsUsed == other.TurnsUsed &&
         FoundationFilePath == other.FoundationFilePath &&
         FoundationFileSha256 == other.FoundationFileSha256 &&
         InstructionFilePath == other.InstructionFilePath &&
-        InstructionFileSha256 == other.InstructionFileSha256 &&
+        InstructionFileSha256 == other.InstructionFileSha256;
+
+    private bool PolicyAndTranscriptEqual(QueryRecordedTurn other) =>
         PolicyPath == other.PolicyPath &&
         PolicyVersion == other.PolicyVersion &&
         PolicySha256 == other.PolicySha256 &&
         Prompt == other.Prompt &&
-        Answer == other.Answer &&
-        DeniedActions.SequenceEqual(other.DeniedActions) &&
-        CreatedPagesOrEmpty.SequenceEqual(other.CreatedPagesOrEmpty);
+        Answer == other.Answer;
 
     public override int GetHashCode() => HashCode.Combine(TurnId, Position, State, Prompt, Answer);
 }
