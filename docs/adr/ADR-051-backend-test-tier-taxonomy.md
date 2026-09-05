@@ -38,8 +38,12 @@ as one current-truth ADR, rather than left split across an Accepted parent and a
   parallelization.
 - Replay-eval concurrency must not alter sample counts, scorers, scores, or thresholds; per-sample
   isolation (own workspace, fixture copy, recordings) must be preserved.
-- Constitution Principle III: every rule needs an automated structural test with a Red/Green probe;
-  an ADR without one must not be cited as an active constraint.
+- Constitution Principle III: a Dependency & Layering Boundary Rule needs a permanent,
+  Red/Green-probed reflection/IL structural test; a Feature-Scoped Invariant — a rule protecting
+  this feature's current surface shape, not a dependency direction — MUST instead be proven by a
+  classicist, state-based behavioral test and MUST NOT be given a reflection/IL structural test to
+  count. An ADR without the correctly-categorized proof for its own rule must not be cited as an
+  active constraint.
 - Constitution Principle II: the SlowEval tier holds only genuine agent-judgment replay-eval
   scenarios; a scenario removed under the lower-stakes eval-tiering rule leaves the tier's
   enumeration, not its taxonomy.
@@ -82,12 +86,37 @@ no trait — their entire content is fast/architectural by construction. `Grimoi
 needs no trait either — the whole project is the Integration tier. Only `Grimoire.AgentEvals` is
 genuinely mixed and needs per-class tagging.
 
-**Boundary Rule — SlowEval membership is an exact enumeration.** `AgentEvalsTierMembershipRuleTests`
-asserts that the SlowEval tier contains exactly the four classes named above, declared by
-`[Trait("Tier","SlowEval")]`, and no other class carries that trait. The enumeration itself is
-Accepted decision content: adding or removing a genuine replay-eval scenario class changes what
-this ADR decided and is recorded by a new superseding ADR (as ADR-033 did to this ADR's
-predecessor, ADR-021), never by editing the table above in place.
+**Feature-Scoped Invariant — Fast/SlowEval trait membership is an exact enumeration.**
+`AgentEvalsTierMembershipRuleTests` asserts that the SlowEval tier contains exactly the four
+classes named above (and, symmetrically, that the Fast tier's hermetic-mechanics set carries no
+overlap with them), declared by `[Trait("Tier", ...)]`. This is a Feature-Scoped Invariant, not a
+Boundary Rule: it protects this feature's current surface shape — an enumerated tier membership
+expected to change the next time a replay-eval scenario is added or removed, as ADR-033 already
+did once — not a durable dependency direction. Per Principle III it MUST be proven by a
+classicist, state-based test against real observable behavior, never by reflecting over a type's
+custom-attribute data.
+
+**This is a carried-over enforcement-style gap, not a new one.** The existing
+`AgentEvalsTierMembershipRuleTests` inspects `Type.GetCustomAttributesData()` in-process — exactly
+the reflection-based enforcement Principle III forbids for a Feature-Scoped Invariant — inherited
+unchanged from ADR-021/ADR-033, which (pre-dating this ADR) both mischaracterized it as a Boundary
+Rule to justify keeping it. This ADR corrects the classification without silently re-asserting
+that today's enforcement already complies: migrating to a classicist test that verifies what
+`dotnet test --filter "Tier=SlowEval"` (and `Tier=Fast`) actually selects, out-of-process against
+the built assembly — mirroring the precedent [ADR-032](ADR-032-behavioral-enforcement-for-path-surface-invariants.md)
+set for path-surface invariants (`HubHelpUsageTests` spawning the real binary) — is a recognized,
+tracked follow-up, not something restating this decision correctly requires first.
+[Issue #180](https://github.com/wmalgadey/grimoire/issues/180) already plans to replace trait-based
+tier membership with assembly-based tier membership entirely (superseding this ADR's
+tier-membership mechanism) and explicitly commits its own Feature-Scoped Invariants to no
+reflection-based test — whichever lands first (a narrower behavioral rewrite of this test, or
+#180's assembly restructuring) closes this gap; a separate tracking issue is not opened to avoid
+fragmenting that work.
+
+The enumeration itself is Accepted decision content regardless of enforcement style: adding or
+removing a genuine replay-eval scenario class changes what this ADR decided and is recorded by a
+new superseding ADR (as ADR-033 did to this ADR's predecessor, ADR-021), never by editing the
+table above in place.
 
 ### Fixed-wait convention and enforcement
 
@@ -126,9 +155,16 @@ directory, and recordings — isolation is unchanged.
   naming/ownership rules.
 - Good, because the fixed-wait ban reuses a proven, already-accepted enforcement idiom (Mono.Cecil
   IL scan + allow-list + Red/Green probe).
-- Good, because the SlowEval enumeration is a Boundary Rule with an exact, currently-correct class
-  set, kept honest by requiring a new ADR (as ADR-033 did once already) rather than silent
-  divergence between the accepted table and the enforced test whenever the set changes.
+- Good, because the Fast/SlowEval trait enumeration is a Feature-Scoped Invariant with an exact,
+  currently-correct class set, kept honest by requiring a new ADR (as ADR-033 did once already)
+  rather than silent divergence between the accepted table and the enforced test whenever the set
+  changes.
+- Bad, because its current enforcement (`AgentEvalsTierMembershipRuleTests`) is reflection-based —
+  a pre-existing mismatch with Principle III's Feature-Scoped Invariant enforcement rule inherited
+  from ADR-021/ADR-033, not introduced here. Migrating to a classicist, out-of-process behavioral
+  test — or superseding the mechanism entirely, per [issue #180](https://github.com/wmalgadey/grimoire/issues/180) —
+  is a recognized, tracked follow-up (see Decision Outcome), not a blocker on restating the
+  decision correctly.
 - Bad, because `Grimoire.IntegrationTests` and `Grimoire.AgentEvals` run under looser
   parallelization defaults than a fully-serialized suite, which depends on the one-time audit
   behind this decision having correctly identified every shared-state case; a missed one surfaces
@@ -155,3 +191,9 @@ Supersedes [ADR-021](ADR-021-test-tier-taxonomy-and-deterministic-wait-enforceme
 the SlowEval class-set reduction [ADR-033](ADR-033-sloweval-replay-class-set-reduction.md) recorded
 against it. Detailed rationale for the original taxonomy: `specs/019-fast-test-tier/research.md`
 (R1–R10).
+
+Related: [issue #180](https://github.com/wmalgadey/grimoire/issues/180) proposes replacing
+trait-based tier membership with assembly-based tier membership entirely — an Invalidation per
+this ADR's own Change Triggers, and the tracked path to both a Feature-Scoped-Invariant-correct
+enforcement mechanism and a genuinely enforceable "a fast-tier test must not build a host" rule
+this trait-based scheme cannot express.
