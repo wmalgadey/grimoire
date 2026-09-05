@@ -5,6 +5,13 @@ supersedes: ADR-022
 
 # ADR-041: Independent Cwd-Anchored Directory Roots
 
+> **Extends [ADR-004](ADR-004-credential-scoping.md), [ADR-007](ADR-007-agent-instruction-surface.md),
+> [ADR-019](ADR-019-devcontainer-host-runtime-and-credential-access.md)**: this ADR is the current
+> owner of the `SecretsFile` path detail those three ADRs' credential/instruction/path handling
+> depends on (working-directory-anchored, default `.env`, belonging to no root — see Consequences
+> below), and of the agent/wiki root switches ADR-007's agent CLI paths resolve under. Nothing
+> those three ADRs themselves decided is reversed or narrowed.
+
 ## Context and Problem Statement
 
 Every durable thing the Hub touches on disk — runtime data, the wiki, the agent runtime,

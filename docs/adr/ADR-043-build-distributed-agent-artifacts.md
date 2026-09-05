@@ -5,6 +5,14 @@ supersedes: ADR-022
 
 # ADR-043: Build-Distributed Agent Artifacts and Single Launch Mode
 
+> **Extends [ADR-006](ADR-006-agent-tool-loop-guarded-boundary.md), [ADR-007](ADR-007-agent-instruction-surface.md),
+> [ADR-012](ADR-012-eval-runner-recorded-replay.md)**: this ADR is the current owner of where the
+> guarded tool boundary's policy file (ADR-006), the instruction-surface documents (ADR-007), and
+> the eval recordings (ADR-012) physically live — the build-distributed `Instructions/` directory
+> and the repo-anchored `Fixtures/recordings/` path, respectively. Nothing those three ADRs
+> themselves decided (the deny-by-default policy model, the instruction-surface document set, the
+> recorded-replay format) is reversed or narrowed.
+
 ## Context and Problem Statement
 
 The Hub spawns each agent as a child process (ADR-036), which raises the question this ADR

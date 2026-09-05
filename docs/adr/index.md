@@ -56,10 +56,10 @@ mean the ADR's decision no longer governs.
 | [ADR-038](ADR-038-heartbeat-run-supervision.md) | Heartbeat Liveness as the Sole Run-Failure-Detection Authority | Accepted | Supersedes ADR-008 | — |
 | [ADR-039](ADR-039-persistent-run-queue.md) | Persistent FIFO Run Queue in the Operational-State Database | Accepted | Supersedes ADR-008 | — |
 | [ADR-040](ADR-040-runtime-path-composition.md) | Runtime Path Composition at One Explicit Configuration Point with Fail-Fast Validation | Accepted | Supersedes ADR-009 | — |
-| [ADR-041](ADR-041-independent-directory-roots.md) | Independent Cwd-Anchored Directory Roots | Accepted | Supersedes ADR-022 | — |
+| [ADR-041](ADR-041-independent-directory-roots.md) | Independent Cwd-Anchored Directory Roots | Accepted | Supersedes ADR-022; extends ADR-004, ADR-007, ADR-019 | — |
 | [ADR-042](ADR-042-mandatory-configuration-file.md) | Mandatory Configuration File as the Sole Source of Configuration Defaults | Accepted | Supersedes ADR-022 | — |
-| [ADR-043](ADR-043-build-distributed-agent-artifacts.md) | Build-Distributed Agent Artifacts and Single Launch Mode | Accepted | Supersedes ADR-022 | — |
-| [ADR-044](ADR-044-shared-agent-runtime-library.md) | Shared Agent Runtime Library | Accepted | Supersedes ADR-011 | — |
+| [ADR-043](ADR-043-build-distributed-agent-artifacts.md) | Build-Distributed Agent Artifacts and Single Launch Mode | Accepted | Supersedes ADR-022; extends ADR-006, ADR-007, ADR-012 | — |
+| [ADR-044](ADR-044-shared-agent-runtime-library.md) | Shared Agent Runtime Library | Accepted | Supersedes ADR-011; extends ADR-010 | — |
 | [ADR-045](ADR-045-token-level-answer-streaming.md) | Token-Level Answer Streaming over the Agent Event Channel | Accepted | Supersedes ADR-011 | — |
 | [ADR-046](ADR-046-query-dispatch-and-bounded-concurrency.md) | Query Dispatch — Bounded Concurrency, Immediate Rejection, and Interruption | Accepted | Supersedes ADR-011 | — |
 | [ADR-047](ADR-047-query-realtime-delivery.md) | Query Realtime Delivery over a Dedicated SignalR Connection | Accepted | Supersedes ADR-011 | — |
