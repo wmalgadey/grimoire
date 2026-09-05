@@ -21,6 +21,13 @@ set -euo pipefail
 
 # Configuration is all environment, all optional — see `usage` at the bottom.
 SCRIPT_PATH="${BASH_SOURCE[0]}"
+# #202: captured now, before any command has a chance to run `git checkout` — reading
+# $SCRIPT_PATH back off disk later (inside warn_tool_drift, after cmd_deploy's checkout)
+# would silently self-compare when this tool is invoked straight out of the checkout: the
+# checkout overwrites the very file SCRIPT_PATH names, so a same-path `cmp` would always
+# "match" even though the bash interpreter actually running this invocation is still the
+# old in-memory copy. Snapshotting the content once, up front, is immune to that.
+RUNNING_SCRIPT_CONTENT="$(cat "$SCRIPT_PATH" 2>/dev/null || true)"
 MIN_COMPOSE_VERSION="2.24.0" # `!override` in the server compose overlay
 
 # This tool's own SemVer, and the one number in this repository that is not computed.
@@ -925,16 +932,25 @@ warn_tool_drift() {
   local repo="$1" ref="${2:-}"
   local checked_out="$repo/deploy/server/grimoire-server" checked_out_version
   [[ -f "$checked_out" ]] || return 0
-  cmp -s "$checked_out" "$SCRIPT_PATH" && return 0
+  # Compared against the startup snapshot, never against $SCRIPT_PATH read back off disk:
+  # when this tool runs straight out of the checkout, $SCRIPT_PATH names the very file a
+  # checkout just overwrote, so re-reading it here would compare that file to itself and
+  # always "match" regardless of what actually changed underneath the running interpreter.
+  [[ "$(cat "$checked_out" 2>/dev/null)" == "$RUNNING_SCRIPT_CONTENT" ]] && return 0
 
+  # Deliberately not claiming which copy is older: a rollback deploys a ref whose
+  # grimoire-server can easily be older than the one already running here, and getting
+  # that backwards would be worse than saying nothing about direction at all.
   checked_out_version="$(script_version_of "$checked_out")"
   if [[ -n "$ref" ]]; then
     warn "$ref carries grimoire-server ${checked_out_version:-unknown}, this process is running \
-$GRIMOIRE_SERVER_VERSION — the version stamp and the deploy steps come from the older copy. \
+$GRIMOIRE_SERVER_VERSION — they differ, so the version stamp and the deploy steps just used \
+came from whichever this process loaded at startup, not from $ref. \
 Afterwards: grimoire-server update && grimoire-server deploy $ref"
   else
     warn "the checkout carries grimoire-server ${checked_out_version:-unknown}, this process is \
-running $GRIMOIRE_SERVER_VERSION — refresh the installed copy with: grimoire-server update"
+running $GRIMOIRE_SERVER_VERSION — they differ. Refresh the installed copy with: \
+grimoire-server update"
   fi
 }
 

@@ -300,11 +300,12 @@ assert_equals "$(script_version_of "$work/unversioned")" "" "script_version_of o
 drift_repo="$work/drift-repo"
 mkdir -p "$drift_repo/deploy/server"
 
-# SCRIPT_PATH stands in for "this running process" — a copy elsewhere on disk, distinct
-# from the checkout's own file, exactly like a `~/.local/bin/grimoire-server` install.
-# shellcheck disable=SC2034 # SCRIPT_PATH is read by the sourced script's own functions.
-SCRIPT_PATH="$work/running-grimoire-server"
-cp "$script_dir/grimoire-server" "$SCRIPT_PATH"
+# RUNNING_SCRIPT_CONTENT stands in for "what this process actually loaded at startup" —
+# captured once, the same way the real script captures it before `cmd_deploy` can ever run
+# a `git checkout`. Overriding it here is what lets these tests simulate "running an older
+# copy" without needing a second real file on disk.
+# shellcheck disable=SC2034 # RUNNING_SCRIPT_CONTENT is read by the sourced script's own functions.
+RUNNING_SCRIPT_CONTENT="$(cat "$script_dir/grimoire-server")"
 
 # The common case: the running copy and the checked-out copy have identical content.
 cp "$script_dir/grimoire-server" "$drift_repo/deploy/server/grimoire-server"
@@ -323,12 +324,31 @@ case "$drift_output" in
 *"0.9.0"*"$GRIMOIRE_SERVER_VERSION"*"grimoire-server update && grimoire-server deploy main"*) ;;
 *) fail "warn_tool_drift on a mismatch: expected old/new versions and the update+deploy hint, got [$drift_output]" ;;
 esac
+case "$drift_output" in
+*"older"*) fail "warn_tool_drift asserted a direction ('older') it never verified: [$drift_output]" ;;
+esac
 
 # Same drift, no ref to suggest a follow-up deploy for (status with nothing deployed yet).
 no_ref_output="$(warn_tool_drift "$drift_repo" 2>&1)"
 case "$no_ref_output" in
 *"grimoire-server update"*) ;;
 *) fail "warn_tool_drift without a ref: expected the update hint, got [$no_ref_output]" ;;
+esac
+
+# The case a same-path `cmp` would miss entirely: this tool invoked straight out of the
+# checkout, so $SCRIPT_PATH and the checked-out file are the *same path* — cmd_deploy's own
+# `git checkout` overwrites that path with the new commit's content, and re-reading
+# $SCRIPT_PATH at that point would just compare the file to itself. Comparing against the
+# startup snapshot instead of $SCRIPT_PATH is what has to catch this.
+self_path_repo="$work/self-path-repo"
+mkdir -p "$self_path_repo/deploy/server"
+cp "$script_dir/grimoire-server" "$self_path_repo/deploy/server/grimoire-server"
+RUNNING_SCRIPT_CONTENT="$(cat "$self_path_repo/deploy/server/grimoire-server")"
+printf 'GRIMOIRE_SERVER_VERSION="0.9.0"\n' >"$self_path_repo/deploy/server/grimoire-server"
+same_path_output="$(warn_tool_drift "$self_path_repo" main 2>&1)"
+case "$same_path_output" in
+*"0.9.0"*) ;;
+*) fail "warn_tool_drift missed drift when the checked-out path equals the running path: got [$same_path_output]" ;;
 esac
 case "$no_ref_output" in
 *"deploy"*) fail "warn_tool_drift without a ref should not suggest a deploy target: got [$no_ref_output]" ;;
