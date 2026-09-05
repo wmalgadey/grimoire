@@ -198,6 +198,8 @@ public sealed class AgentProcessHost : IAgentProcessLauncher
         startInfo.ArgumentList.Add(request.RunId);
         startInfo.ArgumentList.Add("--wiki-root");
         startInfo.ArgumentList.Add(request.WikiRoot);
+        startInfo.ArgumentList.Add("--foundation-prompt-path");
+        startInfo.ArgumentList.Add(request.FoundationPromptPath);
         startInfo.ArgumentList.Add("--system-prompt-path");
         startInfo.ArgumentList.Add(request.SystemPromptPath);
         startInfo.ArgumentList.Add("--policy-path");
@@ -265,6 +267,8 @@ public sealed class AgentProcessHost : IAgentProcessLauncher
         startInfo.ArgumentList.Add(request.RunId);
         startInfo.ArgumentList.Add("--wiki-root");
         startInfo.ArgumentList.Add(request.WikiRoot);
+        startInfo.ArgumentList.Add("--foundation-prompt-path");
+        startInfo.ArgumentList.Add(request.FoundationPromptPath);
         startInfo.ArgumentList.Add("--system-prompt-path");
         startInfo.ArgumentList.Add(request.SystemPromptPath);
         startInfo.ArgumentList.Add("--policy-path");
@@ -330,6 +334,8 @@ public sealed class AgentProcessHost : IAgentProcessLauncher
         startInfo.ArgumentList.Add(request.RunId);
         startInfo.ArgumentList.Add("--wiki-root");
         startInfo.ArgumentList.Add(request.WikiRoot);
+        startInfo.ArgumentList.Add("--foundation-prompt-path");
+        startInfo.ArgumentList.Add(request.FoundationPromptPath);
         startInfo.ArgumentList.Add("--system-prompt-path");
         startInfo.ArgumentList.Add(request.SystemPromptPath);
         startInfo.ArgumentList.Add("--policy-path");
@@ -430,6 +436,8 @@ public sealed class AgentProcessHost : IAgentProcessLauncher
         startInfo.ArgumentList.Add(request.IndexPath);
         startInfo.ArgumentList.Add("--log-path");
         startInfo.ArgumentList.Add(request.LogPath);
+        startInfo.ArgumentList.Add("--foundation-prompt-path");
+        startInfo.ArgumentList.Add(request.FoundationPromptPath);
         startInfo.ArgumentList.Add("--system-prompt-path");
         startInfo.ArgumentList.Add(request.SystemPromptPath);
         startInfo.ArgumentList.Add("--policy-path");
@@ -531,6 +539,8 @@ public sealed class AgentProcessHost : IAgentProcessLauncher
         startInfo.ArgumentList.Add(request.IndexPath);
         startInfo.ArgumentList.Add("--log-path");
         startInfo.ArgumentList.Add(request.LogPath);
+        startInfo.ArgumentList.Add("--foundation-prompt-path");
+        startInfo.ArgumentList.Add(request.FoundationPromptPath);
         startInfo.ArgumentList.Add("--system-prompt-path");
         startInfo.ArgumentList.Add(request.SystemPromptPath);
         startInfo.ArgumentList.Add("--default-user-prompt-path");

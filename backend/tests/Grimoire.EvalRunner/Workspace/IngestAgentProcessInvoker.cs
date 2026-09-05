@@ -130,6 +130,7 @@ public sealed class IngestAgentProcessInvoker
         AddOption(startInfo, "--tasks-dir", workspace.TasksDir);
         AddOption(startInfo, "--index-path", workspace.IndexPath);
         AddOption(startInfo, "--log-path", workspace.LogPath);
+        AddOption(startInfo, "--foundation-prompt-path", workspace.FoundationPromptPath);
         AddOption(startInfo, "--system-prompt-path", workspace.SystemPromptPath);
         AddOption(startInfo, "--default-user-prompt-path", workspace.DefaultUserPromptPath);
         AddOption(startInfo, "--policy-path", workspace.PolicyPath);

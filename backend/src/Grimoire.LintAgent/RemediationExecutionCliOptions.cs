@@ -13,6 +13,7 @@ public sealed record RemediationExecutionCliOptions(
     string TaskId,
     string RunId,
     string WikiRoot,
+    string FoundationPromptPath,
     string SystemPromptPath,
     string PolicyPath,
     string WriteLocksDir,

@@ -19,16 +19,22 @@ public static class SyntheticRecordings
 {
     public const string Model = "synthetic-test-model";
 
-    /// <summary>Mirrors the workspace's system-prompt mutation (EvalWorkspace.Create).</summary>
+    /// <summary>
+    /// Mirrors the workspace's system-prompt mutation (EvalWorkspace.Create) plus
+    /// AgentHost's foundation+role composition (029-shared-foundation-prompt,
+    /// <c>LoadedInstructions.ComposedSystemPrompt</c>) — the text the agent actually hands
+    /// the model, which is what a replay's fingerprint must match.
+    /// </summary>
     public static string EffectiveSystemPrompt(EvalPaths paths, string? appendix)
     {
+        var foundation = File.ReadAllText(paths.FoundationPromptPath);
         var baseline = File.ReadAllText(paths.SystemPromptPath);
-        if (string.IsNullOrEmpty(appendix) || baseline.Contains(appendix, StringComparison.Ordinal))
+        if (!string.IsNullOrEmpty(appendix) && !baseline.Contains(appendix, StringComparison.Ordinal))
         {
-            return baseline;
+            baseline = baseline.TrimEnd() + "\n\n" + appendix + "\n";
         }
 
-        return baseline.TrimEnd() + "\n\n" + appendix + "\n";
+        return foundation + "\n\n" + baseline;
     }
 
     /// <summary>

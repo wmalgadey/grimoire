@@ -12,6 +12,12 @@ namespace Grimoire.AgentRuntime.RunEvents;
 /// </summary>
 public sealed record RunCompletionMetadata(
     string? SystemPromptSha256 = null,
+    // 029-shared-foundation-prompt (ADR-053): the shared foundation document's hash,
+    // reported alongside SystemPromptSha256 (which keeps its existing meaning — the
+    // agent's own role document) so a write-less agent's Hub-side record can name both
+    // documents distinguishably (FR-006, SC-001), the same way Ingest's task artifact
+    // already does with its two-entry instruction_files list.
+    string? FoundationPromptSha256 = null,
     string? PolicyPath = null,
     int? PolicyVersion = null,
     string? PolicySha256 = null,
@@ -150,6 +156,7 @@ public sealed class RunEventEmitter : IDisposable
             reason,
             text,
             systemPromptSha256 = metadata?.SystemPromptSha256,
+            foundationPromptSha256 = metadata?.FoundationPromptSha256,
             policyPath = metadata?.PolicyPath,
             policyVersion = metadata?.PolicyVersion,
             policySha256 = metadata?.PolicySha256,

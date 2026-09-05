@@ -18,6 +18,7 @@ public sealed record QueryAgentRequest(
     string ContentRoot,
     string IndexPath,
     string LogPath,
+    string FoundationPromptPath,
     string SystemPromptPath,
     string PolicyPath,
     // ADR-015 (012-query-synthesis-writes): the cross-process write-coordination lock

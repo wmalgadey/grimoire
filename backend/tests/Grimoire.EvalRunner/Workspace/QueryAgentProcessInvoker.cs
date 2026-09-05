@@ -113,6 +113,7 @@ public sealed class QueryAgentProcessInvoker
         AddOption(startInfo, "--content-root", wikiRoot);
         AddOption(startInfo, "--index-path", Path.Combine(wikiRoot, "index.md"));
         AddOption(startInfo, "--log-path", Path.Combine(wikiRoot, "log.md"));
+        AddOption(startInfo, "--foundation-prompt-path", paths.FoundationPromptPath);
         AddOption(startInfo, "--system-prompt-path", paths.QuerySystemPromptPath);
         AddOption(startInfo, "--policy-path", paths.QueryPolicyPath);
         AddOption(startInfo, "--write-locks-dir", writeLocksDir);

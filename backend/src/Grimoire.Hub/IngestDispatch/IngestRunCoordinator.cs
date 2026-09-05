@@ -411,6 +411,7 @@ public sealed class IngestRunCoordinator
             IndexPath: _contentPaths.IndexPath,
             LogPath: _contentPaths.LogPath,
             PastedText: null,
+            FoundationPromptPath: _resolvedPaths.ResolveEffectiveFoundationPrompt(_resolvedPaths.Ingest).Path,
             SystemPromptPath: _resolvedPaths.Ingest.SystemPromptPath,
             DefaultUserPromptPath: _resolvedPaths.Ingest.DefaultUserPromptPath!,
             PolicyPath: _resolvedPaths.Ingest.PolicyPath,

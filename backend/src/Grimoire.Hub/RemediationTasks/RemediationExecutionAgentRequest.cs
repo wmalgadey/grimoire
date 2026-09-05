@@ -19,6 +19,7 @@ public sealed record RemediationExecutionAgentRequest(
     string Description,
     string? TargetPath,
     string WikiRoot,
+    string FoundationPromptPath,
     string SystemPromptPath,
     string PolicyPath,
     string WriteLocksDir,

@@ -29,6 +29,10 @@ public class StalenessTests : IDisposable
         var real = EvalPaths.Discover();
 
         CopyDirectory(real.AgentInstructionsDir, Path.Combine(_fakeRepoRoot, "backend", "src", "Grimoire.IngestAgent", "Instructions"));
+        var fakeFoundationPromptPath = Path.Combine(
+            _fakeRepoRoot, "backend", "src", "Grimoire.AgentRuntime", "Instructions", "foundation-prompt.md");
+        Directory.CreateDirectory(Path.GetDirectoryName(fakeFoundationPromptPath)!);
+        File.Copy(real.FoundationPromptPath, fakeFoundationPromptPath);
         // FixturesRoot already contains recordings/ on disk (ADR-022: relocated from
         // data/evals/recordings/), so this one copy carries both fixtures and recordings
         // into the fake repo root.

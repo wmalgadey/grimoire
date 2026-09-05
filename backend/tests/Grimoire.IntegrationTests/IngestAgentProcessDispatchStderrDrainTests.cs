@@ -44,6 +44,7 @@ public class IngestAgentProcessDispatchStderrDrainTests
                 IndexPath: Path.Combine(root, "index.md"),
                 LogPath: Path.Combine(root, "log.md"),
                 PastedText: null,
+                FoundationPromptPath: Path.Combine(root, "foundation-prompt.md"),
                 SystemPromptPath: Path.Combine(root, "system-prompt.md"),
                 DefaultUserPromptPath: Path.Combine(root, "default-user-prompt.md"),
                 PolicyPath: Path.Combine(root, "policy.json"),

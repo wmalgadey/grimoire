@@ -71,6 +71,7 @@ var intent = new IngestIntentHandler(
 return await new AgentHost(profile).RunAsync(
     new AgentHostRun(
         WikiRoot: options.WikiRoot,
+        FoundationPromptPath: options.FoundationPromptPath,
         SystemPromptPath: options.SystemPromptPath,
         PolicyPath: options.PolicyPath,
         HeartbeatSeconds: options.HeartbeatSeconds,
@@ -99,6 +100,7 @@ static IngestCliOptions ReadCliOptions(string[] args)
         IndexPath: reader.GetRequired("--index-path"),
         LogPath: reader.GetRequired("--log-path"),
         PastedText: pastedText,
+        FoundationPromptPath: reader.GetRequired("--foundation-prompt-path"),
         SystemPromptPath: reader.GetRequired("--system-prompt-path"),
         DefaultUserPromptPath: reader.GetRequired("--default-user-prompt-path"),
         UserPrompt: reader.GetOptional("--user-prompt"),
@@ -247,7 +249,7 @@ internal sealed class IngestIntentHandler : IAgentIntentHandler
             eventEmitter: _runEvents,
             registry: _profile.ToolRegistry,
             instrumentation: new IngestAgentLoopInstrumentation());
-        var systemPrompt = instructions.SystemPrompt.Content;
+        var systemPrompt = instructions.ComposedSystemPrompt;
 
         AgentLoopResult loopResult;
         try
@@ -261,7 +263,7 @@ internal sealed class IngestIntentHandler : IAgentIntentHandler
             var rollbackOutcome = await RollbackAsync();
             await FinalizeFailedAsync(
                 capEx.Message, _journal, rolledBack: rollbackOutcome,
-                systemPrompt: instructions.SystemPrompt, policy: instructions.Policy,
+                foundationPrompt: instructions.FoundationPrompt, systemPrompt: instructions.SystemPrompt, policy: instructions.Policy,
                 modelId: _modelClient!.ModelId, deniedActions: _executor.Denials,
                 userPromptSource: instructions.UserPromptSource, userPrompt: instructions.EffectiveUserPrompt);
             _runEvents.EmitFailed(capEx.Message);
@@ -273,7 +275,7 @@ internal sealed class IngestIntentHandler : IAgentIntentHandler
             const string allDeniedReason = "All attempted write actions were denied by the safety policy; no result was produced.";
             await FinalizeFailedAsync(
                 allDeniedReason, _journal, rolledBack: false,
-                systemPrompt: instructions.SystemPrompt, policy: instructions.Policy,
+                foundationPrompt: instructions.FoundationPrompt, systemPrompt: instructions.SystemPrompt, policy: instructions.Policy,
                 modelId: _modelClient!.ModelId, deniedActions: _executor.Denials,
                 userPromptSource: instructions.UserPromptSource, userPrompt: instructions.EffectiveUserPrompt);
             _runEvents.EmitFailed(allDeniedReason);
@@ -307,7 +309,7 @@ internal sealed class IngestIntentHandler : IAgentIntentHandler
                 PagesUpdated: pagesUpdated.Select(p => Path.GetRelativePath(wikiRoot, p)).ToList(),
                 PagesSuperseded: pagesSuperseded.Select(p => Path.GetRelativePath(wikiRoot, p)).ToList(),
                 DeniedActions: _executor.Denials.Select(d => new DeniedActionEntry(d.Action, d.RequestedTarget, d.CanonicalTarget, d.Reason, d.Turn)).ToList(),
-                InstructionFiles: [new InstructionFileRecord(instructions.SystemPrompt.Path, instructions.SystemPrompt.Sha256)],
+                InstructionFiles: BuildInstructionFiles(instructions.FoundationPrompt, instructions.SystemPrompt),
                 Policy: new PolicyRecord(instructions.Policy.Identity.Path, instructions.Policy.Identity.Version, instructions.Policy.Identity.Sha256),
                 Model: _modelClient!.ModelId,
                 Turns: loopResult.TurnsUsed,
@@ -371,10 +373,31 @@ internal sealed class IngestIntentHandler : IAgentIntentHandler
         }
     }
 
+    /// <summary>
+    /// The task artifact's existing <c>instruction_files</c> list gains a second entry
+    /// (ADR-053): foundation document first, then the role document — each present only
+    /// when it actually loaded. List shape is unchanged; it simply carries two entries
+    /// where it carried one (FR-006, SC-001).
+    /// </summary>
+    private static IReadOnlyList<InstructionFileRecord>? BuildInstructionFiles(LoadedSystemPrompt? foundationPrompt, LoadedSystemPrompt? systemPrompt)
+    {
+        List<InstructionFileRecord>? files = null;
+        if (foundationPrompt is not null)
+        {
+            (files ??= []).Add(new InstructionFileRecord(foundationPrompt.Path, foundationPrompt.Sha256));
+        }
+        if (systemPrompt is not null)
+        {
+            (files ??= []).Add(new InstructionFileRecord(systemPrompt.Path, systemPrompt.Sha256));
+        }
+        return files;
+    }
+
     private async Task FinalizeFailedAsync(
         string failureReason,
         WriteJournal? journal,
         bool rolledBack,
+        LoadedSystemPrompt? foundationPrompt = null,
         LoadedSystemPrompt? systemPrompt = null,
         LoadedPolicy? policy = null,
         string? modelId = null,
@@ -403,7 +426,7 @@ internal sealed class IngestIntentHandler : IAgentIntentHandler
                 PagesUpdated: [],
                 PagesSuperseded: [],
                 DeniedActions: deniedActions?.Select(d => new DeniedActionEntry(d.Action, d.RequestedTarget, d.CanonicalTarget, d.Reason, d.Turn)).ToList() ?? [],
-                InstructionFiles: systemPrompt is null ? null : [new InstructionFileRecord(systemPrompt.Path, systemPrompt.Sha256)],
+                InstructionFiles: BuildInstructionFiles(foundationPrompt, systemPrompt),
                 Policy: policy is null ? null : new PolicyRecord(policy.Identity.Path, policy.Identity.Version, policy.Identity.Sha256),
                 Model: modelId,
                 Turns: null,

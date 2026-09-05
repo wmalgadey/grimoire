@@ -54,6 +54,7 @@ public sealed class IngestSubmissionService
             IndexPath: contentPaths.IndexPath,
             LogPath: contentPaths.LogPath,
             PastedText: options.PastedText,
+            FoundationPromptPath: resolvedPaths.ResolveEffectiveFoundationPrompt(resolvedPaths.Ingest).Path,
             SystemPromptPath: resolvedPaths.Ingest.SystemPromptPath,
             DefaultUserPromptPath: resolvedPaths.Ingest.DefaultUserPromptPath!,
             PolicyPath: resolvedPaths.Ingest.PolicyPath,

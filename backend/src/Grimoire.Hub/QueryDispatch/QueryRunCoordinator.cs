@@ -156,6 +156,7 @@ public sealed class QueryRunCoordinator
             ContentRoot: _paths.WikiDir,
             IndexPath: _paths.IndexPath,
             LogPath: _paths.LogPath,
+            FoundationPromptPath: _paths.ResolveEffectiveFoundationPrompt(_paths.Query).Path,
             SystemPromptPath: _paths.Query.SystemPromptPath,
             PolicyPath: _paths.Query.PolicyPath,
             WriteLocksDir: _paths.WriteLocksDir);

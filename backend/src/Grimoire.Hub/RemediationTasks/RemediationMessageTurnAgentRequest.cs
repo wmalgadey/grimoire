@@ -27,6 +27,7 @@ public sealed record RemediationMessageTurnAgentRequest(
     string Description,
     string? TargetPath,
     string WikiRoot,
+    string FoundationPromptPath,
     string SystemPromptPath,
     string PolicyPath,
     string WriteLocksDir,

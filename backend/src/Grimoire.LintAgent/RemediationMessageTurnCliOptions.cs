@@ -16,6 +16,7 @@ public sealed record RemediationMessageTurnCliOptions(
     string TaskId,
     string RunId,
     string WikiRoot,
+    string FoundationPromptPath,
     string SystemPromptPath,
     string PolicyPath,
     string WriteLocksDir,
