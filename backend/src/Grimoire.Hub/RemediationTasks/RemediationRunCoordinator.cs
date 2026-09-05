@@ -192,6 +192,10 @@ public sealed class RemediationRunCoordinator
             attachedContext = RemediationTaskRecordContext.BuildAttachedContext(parsed.Entries);
         }
 
+        var foundation = _paths.ResolveEffectiveFoundationPrompt(_paths.Lint);
+        HubMetrics.RecordFoundationResolved(foundation.Source);
+        GrimoirePathLogEvents.LogFoundationResolved(_logger, "lint", foundation.Source, foundation.Path, foundation.Sha256);
+
         var request = new RemediationExecutionAgentRequest(
             TaskId: row.TaskId,
             RunId: row.RunId,
@@ -199,7 +203,7 @@ public sealed class RemediationRunCoordinator
             Description: row.Description,
             TargetPath: row.TargetPath,
             WikiRoot: _paths.WikiDir,
-            FoundationPromptPath: _paths.ResolveEffectiveFoundationPrompt(_paths.Lint).Path,
+            FoundationPromptPath: foundation.Path,
             SystemPromptPath: _paths.Lint.SystemPromptPath,
             PolicyPath: _paths.Lint.PolicyPath,
             WriteLocksDir: _paths.WriteLocksDir,

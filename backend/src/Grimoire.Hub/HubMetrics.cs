@@ -404,4 +404,14 @@ public static class HubMetrics
         => _apiErrorsTotal.Add(1,
             new KeyValuePair<string, object?>("code", code),
             new KeyValuePair<string, object?>("status", status));
+
+    // --- 029-shared-foundation-prompt (plan.md ## Observability > Business Metrics) ---
+
+    /// <summary>Foundation document resolutions, by which source was effective (FR-018).</summary>
+    private static readonly Counter<long> _foundationResolvedTotal =
+        Meter.CreateCounter<long>("wiki.identity.foundation_resolved_total",
+            description: "Foundation document resolutions, by which source was effective");
+
+    public static void RecordFoundationResolved(string source)
+        => _foundationResolvedTotal.Add(1, new KeyValuePair<string, object?>("source", source));
 }

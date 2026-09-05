@@ -401,6 +401,10 @@ public sealed class IngestRunCoordinator
     /// </summary>
     private async Task LaunchAgentAsync(QueuedIngestRun run, int attempt, CancellationToken cancellationToken)
     {
+        var foundation = _resolvedPaths.ResolveEffectiveFoundationPrompt(_resolvedPaths.Ingest);
+        HubMetrics.RecordFoundationResolved(foundation.Source);
+        GrimoirePathLogEvents.LogFoundationResolved(_logger, "ingest", foundation.Source, foundation.Path, foundation.Sha256);
+
         var request = new IngestAgentRequest(
             TaskId: run.TaskId,
             SourceRef: run.SourceRef,
@@ -411,7 +415,7 @@ public sealed class IngestRunCoordinator
             IndexPath: _contentPaths.IndexPath,
             LogPath: _contentPaths.LogPath,
             PastedText: null,
-            FoundationPromptPath: _resolvedPaths.ResolveEffectiveFoundationPrompt(_resolvedPaths.Ingest).Path,
+            FoundationPromptPath: foundation.Path,
             SystemPromptPath: _resolvedPaths.Ingest.SystemPromptPath,
             DefaultUserPromptPath: _resolvedPaths.Ingest.DefaultUserPromptPath!,
             PolicyPath: _resolvedPaths.Ingest.PolicyPath,

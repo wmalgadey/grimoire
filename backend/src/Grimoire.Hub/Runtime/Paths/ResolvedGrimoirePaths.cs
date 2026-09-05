@@ -44,8 +44,11 @@ public sealed record AgentRuntimePaths(
 /// contracts/foundation-document.md). <see cref="Source"/> is exactly <c>"default"</c> or
 /// <c>"instance"</c> — the vocabulary the <c>wiki_identity_foundation_resolved</c> log
 /// event and the <c>wiki.identity.foundation_resolved_total</c> metric report.
+/// <see cref="Sha256"/> is the document's content hash, computed at resolution time — the
+/// version identity this dispatch's <c>wiki_identity_foundation_resolved</c> event and
+/// per-run instruction record both carry (data-model.md §4/§5).
 /// </summary>
-public sealed record EffectiveFoundationPrompt(string Path, string Source);
+public sealed record EffectiveFoundationPrompt(string Path, string Source, string Sha256);
 
 /// <summary>
 /// The fully resolved and validated set of runtime locations (ADR-022), produced once at
@@ -89,9 +92,15 @@ public sealed record ResolvedGrimoirePaths(
     /// FR-008, FR-017).
     /// </summary>
     public EffectiveFoundationPrompt ResolveEffectiveFoundationPrompt(AgentRuntimePaths agentPaths)
-        => File.Exists(InstanceFoundationPromptPath)
-            ? new EffectiveFoundationPrompt(InstanceFoundationPromptPath, "instance")
-            : new EffectiveFoundationPrompt(agentPaths.FoundationPromptPath, "default");
+    {
+        var (path, source) = File.Exists(InstanceFoundationPromptPath)
+            ? (InstanceFoundationPromptPath, "instance")
+            : (agentPaths.FoundationPromptPath, "default");
+        return new EffectiveFoundationPrompt(path, source, ComputeSha256(path));
+    }
+
+    private static string ComputeSha256(string path)
+        => Convert.ToHexStringLower(System.Security.Cryptography.SHA256.HashData(File.ReadAllBytes(path)));
 
     /// <summary>Per-conversation Conversation Record path within <see cref="ConversationsDir"/> (ADR-014, 011-query-conversations data-model.md).</summary>
     public string ConversationRecordPathFor(string conversationId)

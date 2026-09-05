@@ -147,6 +147,10 @@ public sealed class QueryRunCoordinator
 
         QueryLifecycleLogEvents.LogTurnCreated(_logger, conversationId, turnId);
 
+        var foundation = _paths.ResolveEffectiveFoundationPrompt(_paths.Query);
+        HubMetrics.RecordFoundationResolved(foundation.Source);
+        GrimoirePathLogEvents.LogFoundationResolved(_logger, "query", foundation.Source, foundation.Path, foundation.Sha256);
+
         var request = new QueryAgentRequest(
             TurnId: turnId,
             ConversationId: conversationId,
@@ -156,7 +160,7 @@ public sealed class QueryRunCoordinator
             ContentRoot: _paths.WikiDir,
             IndexPath: _paths.IndexPath,
             LogPath: _paths.LogPath,
-            FoundationPromptPath: _paths.ResolveEffectiveFoundationPrompt(_paths.Query).Path,
+            FoundationPromptPath: foundation.Path,
             SystemPromptPath: _paths.Query.SystemPromptPath,
             PolicyPath: _paths.Query.PolicyPath,
             WriteLocksDir: _paths.WriteLocksDir);

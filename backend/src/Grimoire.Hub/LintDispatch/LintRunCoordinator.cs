@@ -190,10 +190,14 @@ public sealed class LintRunCoordinator
                     runId, fromStatus: null, toStatus: "running", failureReason: null, cancellationToken);
             }
 
+            var foundation = _paths.ResolveEffectiveFoundationPrompt(_paths.Lint);
+            HubMetrics.RecordFoundationResolved(foundation.Source);
+            GrimoirePathLogEvents.LogFoundationResolved(_logger, "lint", foundation.Source, foundation.Path, foundation.Sha256);
+
             var request = new LintAgentRequest(
                 RunId: runId,
                 WikiRoot: _paths.WikiDir,
-                FoundationPromptPath: _paths.ResolveEffectiveFoundationPrompt(_paths.Lint).Path,
+                FoundationPromptPath: foundation.Path,
                 SystemPromptPath: _paths.Lint.SystemPromptPath,
                 PolicyPath: _paths.Lint.PolicyPath,
                 WriteLocksDir: _paths.WriteLocksDir,

@@ -44,6 +44,10 @@ public sealed class IngestSubmissionService
             new IngestOperationalTaskState(taskId, "running", null, DateTimeOffset.UtcNow),
             cancellationToken);
 
+        var foundation = resolvedPaths.ResolveEffectiveFoundationPrompt(resolvedPaths.Ingest);
+        HubMetrics.RecordFoundationResolved(foundation.Source);
+        GrimoirePathLogEvents.LogFoundationResolved(_logger, "ingest", foundation.Source, foundation.Path, foundation.Sha256);
+
         var request = new IngestAgentRequest(
             TaskId: taskId,
             SourceRef: normalizedSourceRef,
@@ -54,7 +58,7 @@ public sealed class IngestSubmissionService
             IndexPath: contentPaths.IndexPath,
             LogPath: contentPaths.LogPath,
             PastedText: options.PastedText,
-            FoundationPromptPath: resolvedPaths.ResolveEffectiveFoundationPrompt(resolvedPaths.Ingest).Path,
+            FoundationPromptPath: foundation.Path,
             SystemPromptPath: resolvedPaths.Ingest.SystemPromptPath,
             DefaultUserPromptPath: resolvedPaths.Ingest.DefaultUserPromptPath!,
             PolicyPath: resolvedPaths.Ingest.PolicyPath,
