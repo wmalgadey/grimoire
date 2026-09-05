@@ -54,3 +54,14 @@ Chosen option: **<option>**, because <justification>.
 <Cross-references to other ADRs this one depends on or is expected to be read alongside. MUST NOT
 restate or narrow their decisions — see Constitution Principle III's "Extension is not
 invalidation.">
+
+<!-- Optional relationship notes (Constitution Principle III, "Cross-reference notes"), prose only,
+     never a frontmatter field:
+     - `Extends ADR-N` on this ADR / `Extended by ADR-N` added to ADR-N in the same change — this
+       ADR uses more of an already-decided boundary or technology ADR-N covers (a new consumer, an
+       additional row, a new switch). Carries no supersede obligation on either side.
+     - `Related: ADR-N` (or `Relates to ADR-N`) — worth reading alongside ADR-N, but neither
+       extends, amends, or supersedes the other: topical adjacency, no decision dependency.
+     Neither note may be used for what the Invalidation test classifies as an invalidation — that
+     always requires whole-ADR supersession (`supersedes`/`superseded_by` frontmatter), regardless
+     of how the note is worded. -->

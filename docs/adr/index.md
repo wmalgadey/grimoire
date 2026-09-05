@@ -5,6 +5,15 @@ Maintenance"): number, title, current status, and supersede chain. Updated in th
 change as any ADR whose status or existence changes. Pre-v2.0.0 `Amends` entries are
 historical record (Governance non-retroactivity), not a pattern for new ADRs.
 
+The last two columns also carry two optional, informational notes (Constitution Principle
+III, "Cross-reference notes") alongside `Supersedes`/`Superseded by`: **`Extended by
+ADR-N`** — ADR-N used more of an already-decided boundary or technology this ADR covers
+(a new consumer, an additional row, a new switch); the extended ADR's own decision is
+unchanged and its status stays whatever it already was. **`Related: ADR-N`** — worth
+reading alongside ADR-N, but neither extends, amends, or supersedes the other; purely
+topical adjacency. Neither note is a status change — only `Superseded`/`Deprecated` rows
+mean the ADR's decision no longer governs.
+
 | ADR | Title | Status | Supersedes / Amends | Superseded by / Amended by |
 | --- | --- | --- | --- | --- |
 | [ADR-001](ADR-001-backend-frontend-tech-stack.md) | Backend and Frontend Technology Stack | Accepted | — | — |
@@ -67,5 +76,13 @@ historical record (Governance non-retroactivity), not a pattern for new ADRs.
 - Superseding an ADR: always whole-ADR, never partial (Constitution v2.0.0). Set the new
   ADR's `supersedes`, add it to the old ADR's `superseded_by` with a `reason` and
   `status: superseded` in the same change, then update both rows here.
+- Recording an extension or a topical cross-reference (Constitution v2.0.1): these are
+  optional and never change `status`. Use `Extended by ADR-N` in the target ADR's row
+  when a later ADR used more of an already-decided boundary or technology (add the
+  reciprocal `Extends ADR-N` callout to the later ADR itself, in the same change). Use
+  `Related: ADR-N` on either or both rows when two ADRs are worth reading together but
+  neither extends, amends, or supersedes the other. If in doubt whether a change is an
+  extension or an invalidation, apply Principle III's Invalidation test — an
+  invalidation always needs whole-ADR supersession, never one of these two notes.
 - Periodic review (Constitution Principle III "Review cadence"): externally observable
   ADRs at least every 90 days, purely internal-architecture ADRs at least every 365 days.
