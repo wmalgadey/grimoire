@@ -1,16 +1,10 @@
 ---
-status: accepted
+status: superseded
+superseded_by: [ADR-051]
+reason: ADR-033 narrowed this ADR's enforced SlowEval class enumeration from five to four — a real reversal of decided, structurally-enforced content, not mere extension. Per Constitution v2.0.0 whole-ADR supersession, the still-live taxonomy is re-decided as current truth in ADR-051.
 ---
 
 # ADR-021: Backend Test Tier Taxonomy, Deterministic-Wait Convention, and Suite Concurrency Levers
-
-> **Amended by [ADR-033](ADR-033-sloweval-replay-class-set-reduction.md)**: the SlowEval
-> tier's enumerated replay-eval class set shrinks from five to four
-> (`LintRemediationProposalRelevanceEvalTests` deleted with its only scenario under
-> constitution v1.12.0's lower-stakes eval removal). The taxonomy, fixed-wait
-> convention, and concurrency levers are unchanged; where the Decision Outcome below
-> still lists five classes, that enumeration is historical — ADR-033 carries the
-> current set.
 
 ## Context and Problem Statement
 

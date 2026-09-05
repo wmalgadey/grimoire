@@ -1,5 +1,7 @@
 ---
-status: accepted
+status: superseded
+superseded_by: [ADR-052]
+reason: ADR-032 reversed part of this ADR's own decided content (the M1/M2/M4 enforcement mechanism, reflection/IL tests, replaced by classicist behavioral tests) while the rule substance stood — a genuine partial invalidation, not mere extension. Per Constitution v2.0.0 whole-ADR supersession, the still-live four-root memory decision is re-decided as current truth in ADR-052.
 ---
 
 # ADR-024: Memory Directory — A Fourth Independent Root for Agent Process Bookkeeping

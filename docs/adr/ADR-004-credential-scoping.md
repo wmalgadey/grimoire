@@ -4,10 +4,12 @@ status: accepted
 
 # ADR-004: Credential Scoping for the LLM API Key
 
-> **Amended by [ADR-009](ADR-009-runtime-path-configuration.md)**: the secrets file this
-> ADR scopes gets an explicit, centrally resolved path under ADR-009's runtime path
-> configuration; the credential-injection model and scoping decision themselves are
-> unchanged.
+> **Extended by [ADR-041](ADR-041-independent-directory-roots.md)**: the secrets file
+> this ADR scopes gets an explicit, working-directory-anchored path
+> (`SecretsFile`, default `.env`) under ADR-041's independent-roots model; the
+> credential-injection model and scoping decision themselves are unchanged. (This
+> location detail passed through ADR-009, then ADR-022, before ADR-041 restated it as
+> current truth — see those ADRs' own frontmatter for the chain.)
 
 ## Context and Problem Statement
 
