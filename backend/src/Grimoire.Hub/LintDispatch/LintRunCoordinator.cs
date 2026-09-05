@@ -213,6 +213,7 @@ public sealed class LintRunCoordinator
                 dispatchStarted = true;
                 await FinishRunAsync(runId, LintRunStatus.Failed,
                     $"Lint agent process could not be started: {ex.Message}", narrative: null, systemPromptSha256: null,
+                    foundationPromptSha256: null,
                     deniedActions: [], touchedPaths: [], CancellationToken.None);
                 return new LintSubmissionResult.Accepted(run);
             }
@@ -284,6 +285,7 @@ public sealed class LintRunCoordinator
             handle.Terminate();
             var reason = $"Lint agent run showed no liveness for {(long)_livenessWindow.TotalSeconds} seconds and was terminated.";
             await FinishRunAsync(runId, LintRunStatus.Failed, reason, narrative: null, systemPromptSha256: null,
+                foundationPromptSha256: null,
                 deniedActions: [], touchedPaths: [], CancellationToken.None);
         }
         else
@@ -305,7 +307,8 @@ public sealed class LintRunCoordinator
                 : null;
 
             await FinishRunAsync(
-                runId, status, terminalEvent.Reason, terminalEvent.Summary, terminalEvent.SystemPromptSha256, deniedActions,
+                runId, status, terminalEvent.Reason, terminalEvent.Summary, terminalEvent.SystemPromptSha256,
+                terminalEvent.FoundationPromptSha256, deniedActions,
                 terminalEvent.CreatedPages ?? [], CancellationToken.None,
                 // T022 (FR-007): proposals ride the terminal event verbatim (research.md R3).
                 terminalEvent.ProposedActions,
@@ -322,6 +325,7 @@ public sealed class LintRunCoordinator
         string? failureReason,
         string? narrative,
         string? systemPromptSha256,
+        string? foundationPromptSha256,
         IReadOnlyList<LintFindingsDeniedAction> deniedActions,
         IReadOnlyList<string> touchedPaths,
         CancellationToken cancellationToken,
@@ -371,8 +375,8 @@ public sealed class LintRunCoordinator
         // for the same reason T022 materializes proposed actions there — a run that reports
         // `completed` must already have the artifact a caller will immediately ask for.
         var effectiveNarrative = await PersistFindingsReportAsync(
-            run, outcome, status, failureReason, narrative, systemPromptSha256, deniedActions, touchedPaths, completedAt,
-            wikiCoverage);
+            run, outcome, status, failureReason, narrative, systemPromptSha256, foundationPromptSha256, deniedActions,
+            touchedPaths, completedAt, wikiCoverage);
         var findingsCount = LintFindingsNarrativeStats.CountFindings(effectiveNarrative);
 
         // #212: recorded BEFORE the terminal transition below, for the same reason as the
@@ -462,6 +466,7 @@ public sealed class LintRunCoordinator
         string? failureReason,
         string? narrative,
         string? systemPromptSha256,
+        string? foundationPromptSha256,
         IReadOnlyList<LintFindingsDeniedAction> deniedActions,
         IReadOnlyList<string> touchedPaths,
         DateTimeOffset completedAt,
@@ -480,6 +485,8 @@ public sealed class LintRunCoordinator
             OutcomeState: outcome,
             FailureReason: failureReason,
             Partial: partial,
+            FoundationFilePath: foundationPromptSha256 is null ? null : "agents/lint/foundation-prompt.md",
+            FoundationFileSha256: foundationPromptSha256,
             InstructionFilePath: systemPromptSha256 is null ? null : "agents/lint/system-prompt.md",
             InstructionFileSha256: systemPromptSha256,
             DeniedActions: deniedActions,

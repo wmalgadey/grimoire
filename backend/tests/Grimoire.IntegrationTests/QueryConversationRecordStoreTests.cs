@@ -30,6 +30,8 @@ public class QueryConversationRecordStoreTests
         CompletedAt: DateTimeOffset.UtcNow,
         Model: "claude-sonnet-4-5",
         TurnsUsed: 2,
+        FoundationFilePath: "agents/query/foundation-prompt.md",
+        FoundationFileSha256: "found123",
         InstructionFilePath: "agents/query/system-prompt.md",
         InstructionFileSha256: "abc123",
         PolicyPath: "agents/query/policy.json",

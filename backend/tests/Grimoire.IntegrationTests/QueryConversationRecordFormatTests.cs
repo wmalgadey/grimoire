@@ -26,6 +26,8 @@ public class QueryConversationRecordFormatTests
         CompletedAt: new DateTimeOffset(2026, 7, 29, 9, 0, 7, TimeSpan.Zero),
         Model: "claude-sonnet-4-5",
         TurnsUsed: 3,
+        FoundationFilePath: "agents/query/foundation-prompt.md",
+        FoundationFileSha256: "9f0d2222",
         InstructionFilePath: "agents/query/system-prompt.md",
         InstructionFileSha256: "3b7a1111",
         PolicyPath: "agents/query/policy.json",

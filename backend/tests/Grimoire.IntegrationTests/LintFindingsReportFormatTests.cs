@@ -27,6 +27,8 @@ public class LintFindingsReportFormatTests
         OutcomeState: outcomeState,
         FailureReason: failureReason,
         Partial: partial,
+        FoundationFilePath: "agents/lint/foundation-prompt.md",
+        FoundationFileSha256: "found7f2a",
         InstructionFilePath: "agents/lint/system-prompt.md",
         InstructionFileSha256: "7f2adeadbeef",
         DeniedActions: deniedActions ?? [],

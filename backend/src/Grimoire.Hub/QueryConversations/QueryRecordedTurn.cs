@@ -29,6 +29,11 @@ public sealed record QueryRecordedTurn(
     DateTimeOffset? CompletedAt,
     string? Model,
     int? TurnsUsed,
+    // 029-shared-foundation-prompt (FR-006, SC-001): the foundation document's own
+    // path/hash, recorded distinguishably from the role document below — foundation
+    // first, mirroring the task-artifact instruction_files list's ordering.
+    string? FoundationFilePath,
+    string? FoundationFileSha256,
     string? InstructionFilePath,
     string? InstructionFileSha256,
     string? PolicyPath,
@@ -70,6 +75,8 @@ public sealed record QueryRecordedTurn(
         Nullable.Equals(CompletedAt, other.CompletedAt) &&
         Model == other.Model &&
         TurnsUsed == other.TurnsUsed &&
+        FoundationFilePath == other.FoundationFilePath &&
+        FoundationFileSha256 == other.FoundationFileSha256 &&
         InstructionFilePath == other.InstructionFilePath &&
         InstructionFileSha256 == other.InstructionFileSha256 &&
         PolicyPath == other.PolicyPath &&

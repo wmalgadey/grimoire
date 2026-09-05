@@ -9,6 +9,10 @@ namespace Grimoire.Hub.QueryDispatch;
 /// </summary>
 public sealed record QueryTurnCompletionMetadata(
     string? SystemPromptSha256,
+    // 029-shared-foundation-prompt: the foundation document's hash, alongside
+    // SystemPromptSha256 (the role document's, unchanged meaning) so the Conversation
+    // Record can name both documents distinguishably (FR-006, SC-001).
+    string? FoundationPromptSha256,
     string? PolicyPath,
     int? PolicyVersion,
     string? PolicySha256,

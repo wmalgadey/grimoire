@@ -279,6 +279,7 @@ public sealed class QueryRunCoordinator
             supervisionSpan?.SetTag("outcome", status.ToString().ToLowerInvariant());
             var metadata = new QueryTurnCompletionMetadata(
                 terminalEvent.SystemPromptSha256,
+                terminalEvent.FoundationPromptSha256,
                 terminalEvent.PolicyPath,
                 terminalEvent.PolicyVersion,
                 terminalEvent.PolicySha256,
@@ -388,6 +389,8 @@ public sealed class QueryRunCoordinator
             CompletedAt: turn.CompletedAt,
             Model: metadata?.Model,
             TurnsUsed: metadata?.TurnsUsed,
+            FoundationFilePath: metadata?.FoundationPromptSha256 is null ? null : "agents/query/foundation-prompt.md",
+            FoundationFileSha256: metadata?.FoundationPromptSha256,
             InstructionFilePath: metadata?.SystemPromptSha256 is null ? null : "agents/query/system-prompt.md",
             InstructionFileSha256: metadata?.SystemPromptSha256,
             PolicyPath: metadata?.PolicyPath,
