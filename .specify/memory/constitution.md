@@ -1,6 +1,59 @@
 <!--
 SYNC IMPACT REPORT
 ==================
+Version change: 2.0.0 → 2.0.1 (2026-09-05)
+
+Principles modified:
+  - III. ADR-Driven & Test-Enforced Architecture ("Extension is not invalidation" NEW
+    bullet "Cross-reference notes (`Extended by`, `Related`)": names two further
+    optional, informational, non-frontmatter ADR-relationship notes that were already
+    in ad hoc use but never defined by the constitution. `Extended by ADR-N` is the
+    reciprocal of the already-sanctioned `Extends ADR-N` note, addable to the extended
+    ADR in the same change that creates the extending one. `Related: ADR-N` /
+    `Relates to ADR-N` covers two ADRs worth reading together where neither extends,
+    amends, or supersedes the other — topical adjacency with no decision dependency.
+    Both are recorded as prose (a top-of-file callout and/or a `docs/adr/index.md`
+    row), carry no status obligation on either side, and MUST NOT be used to record
+    what the Invalidation test classifies as an invalidation.)
+
+Principles added: none
+
+Sections modified: none
+
+Sections removed: none
+
+Templates assessed:
+  - `docs/adr/TEMPLATE.md` ✅ updated — "More Information" guidance now names the
+    `Extends`/`Extended by`/`Related` note conventions
+  - `docs/adr/index.md` ✅ updated — header note and Maintenance section now document
+    when to use `Extended by` vs. `Related` vs. `Supersedes`/`Superseded by`
+  - `.specify/templates/plan-template.md` ✅ no change required (ADR-reading gate is
+    unaffected by which optional notes an ADR carries)
+  - `.specify/templates/tasks-template.md` ✅ no change required
+  - `.specify/templates/spec-template.md` ✅ no change required (specs name no ADRs)
+  - `.specify/templates/checklist-template.md` ✅ no change required
+
+Rationale for PATCH bump: this documents an already-permitted practice (the
+constitution already sanctioned `Extends ADR-N` since v2.0.0) rather than changing what
+is or is not allowed — no ADR's obligations change, no new gate is added, and no
+existing rule is redefined. It is a clarification and a naming of prior art, squarely
+PATCH per the Governance versioning policy.
+
+Trigger (2026-09-05, user request): while resolving ADR-004/006/007/010/012/018/019's
+stale `Amended by` callouts (the follow-up ADR-restructuring pass the v2.0.0 amendment's
+Deferred TODOs had recommended but not mandated), two annotation needs recurred that the
+constitution had no name for: (1) an ADR whose content grew via another ADR's own
+sanctioned extension mechanism needed a way to say so on the target ADR itself, not only
+on the extending one; (2) two ADRs turned out to be merely topically adjacent — a later
+ADR changed something *elsewhere* that a reader might otherwise assume touched the
+first ADR's own decision, and it did not. Ad hoc wording (`Extended by:`, `Related:`)
+was used in that pass's commit; this amendment gives both a constitutional name so
+future ADR authors and reviewers use consistent wording instead of reinventing it.
+
+--------------------------------------------------------------------------
+PREVIOUS AMENDMENTS
+--------------------------------------------------------------------------
+
 Version change: 1.12.0 → 2.0.0 (2026-08-25)
 
 Principles modified:
@@ -1010,6 +1063,20 @@ decision content itself.
   author expects would be mere extensions versus which would invalidate the decision —
   the basis on which later authors and reviewers apply the test above rather than
   guessing after the fact.
+- **Cross-reference notes (`Extended by`, `Related`).** Two further optional,
+  informational notes document ADR relationships that are not supersession and carry no
+  status obligation on either side — neither is a frontmatter field; both are prose,
+  recorded as a top-of-file callout on the ADR and/or a row in `docs/adr/index.md`.
+  `Extended by ADR-N` is the reciprocal of `Extends ADR-N` above: it MAY be added to the
+  extended ADR in the same change that creates the extending ADR, so a reader who opens
+  the extended ADR first also learns of the extension without having to discover it by
+  searching the index. `Related: ADR-N` (or `Relates to ADR-N`) is for two ADRs worth
+  reading together where neither extends, amends, or supersedes the other — no boundary
+  or technology reuse, no decision dependency, purely topical adjacency (e.g. two ADRs
+  whose subject areas intersect without either building on the other's decision).
+  Neither note MUST be used to record what the Invalidation test above classifies as an
+  invalidation; that always requires whole-ADR supersession regardless of how the note
+  attached to it is worded.
 - **Lifecycle and frontmatter contract.** Every ADR carries a `status` from exactly
   {`proposed`, `accepted`, `declined`, `deprecated`, `superseded`}. **Declined** is a
   `proposed` ADR that was not accepted — a rejected proposal, kept as a record of what
@@ -1290,4 +1357,4 @@ the amendment closes a live defect in the merged feature, not when it adds a new
 or ceremony. (Concretely: the final-phase completeness-audit task introduced in v1.5.0 is
 absent from specs 001–009, all authored earlier; that absence is not a violation.)
 
-**Version**: 2.0.0 | **Ratified**: 2026-06-23 | **Last Amended**: 2026-08-25
+**Version**: 2.0.1 | **Ratified**: 2026-06-23 | **Last Amended**: 2026-09-05
