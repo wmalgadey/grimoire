@@ -370,20 +370,13 @@ public sealed class LintRunCoordinator
             wikiCoverage);
         var findingsCount = FindingsNarrativeStats.CountFindings(effectiveNarrative);
 
-        if (!run.TryTransitionTo(status, failureReason, completedAt))
-        {
-            // Idempotence: only the first terminal transition wins.
-            return;
-        }
-
-        _handles.TryRemove(runId, out _);
-        // 018-hub-cli-commands (ADR-020, research.md D1a): release the cross-process
-        // lock at the same point the in-process slot releases — the lock's lifetime is
-        // the run's full duration on both entry paths.
-        _pidLock?.Dispose();
-        _pidLock = null;
-        _slot.Release();
-
+        // #212: recorded BEFORE the terminal transition below, for the same reason as the
+        // findings report above — an observer polling run status for "terminal" (this
+        // method's own idempotence check included, on any run that re-enters it) must never
+        // be able to see the transition without these measurements already recorded. Metrics
+        // and the transition have no shared lock, so ordering them the other way around left
+        // only a happens-after relationship on the thread doing the finishing — invisible, and
+        // therefore unreliable, to a second thread reading `run.Status`.
         HubMetrics.RecordLintRun(outcome);
 
         // T037 (013-lint-agent, US2, plan.md ## Observability): mechanical counting only
@@ -398,6 +391,20 @@ public sealed class LintRunCoordinator
             HubMetrics.RecordLintFindings(category, count);
         }
         HubMetrics.RecordLintInboundLinksRefreshed(touchedPaths.Count);
+
+        if (!run.TryTransitionTo(status, failureReason, completedAt))
+        {
+            // Idempotence: only the first terminal transition wins.
+            return;
+        }
+
+        _handles.TryRemove(runId, out _);
+        // 018-hub-cli-commands (ADR-020, research.md D1a): release the cross-process
+        // lock at the same point the in-process slot releases — the lock's lifetime is
+        // the run's full duration on both entry paths.
+        _pidLock?.Dispose();
+        _pidLock = null;
+        _slot.Release();
 
         // 028-lint-at-scale (US2, FR-003, plan.md ## Observability): emitted once per
         // completed run — absent (no event, no gap in coverage) for a run whose terminal
