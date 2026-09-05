@@ -43,6 +43,10 @@
 
 ## Notes
 
+- Re-validated 2026-09-05 after the clarification session (two questions answered): FR-009 now names
+  the extraction boundary concretely, FR-013a fixes who authors specialised content, and Assumptions
+  records the unavoidable eval-recording staleness. All items above still pass; none regressed.
+
 - The one deliberate open decision — where the shared document physically lives and how an
   instance-specific one reaches a containerized deployment — is *not* marked
   [NEEDS CLARIFICATION]: the user explicitly assigned it to `/speckit-plan` and required both

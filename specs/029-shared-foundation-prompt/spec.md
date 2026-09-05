@@ -38,6 +38,27 @@ Add a command to `deploy/server/grimoire-server` that walks an operator through 
 - `grimoire-server status` should report which wiki identity the running deployment is steered by, in the same way it reports the deployed ref and the tool version. An operator asking "what is running on this host?" gets an incomplete answer today if two instances of the same commit maintain different wikis.
 - the `deploy/server/grimoire-server`-cli is no real implementation detail or better said, no system component. it is just an helper and can be build out of scope, we do not need the same testing and workflow requirements like the front- or backend."
 
+## Clarifications
+
+### Session 2026-09-05
+
+- Q: How much of the three existing system prompts moves into the shared foundation document in
+  this feature? → A: the wiki-identity statement plus everything currently stated in two or more of
+  the three prompts — folder structure, page types, page language, frontmatter standard, tag
+  taxonomy, confidence scoring, `index.md`/`log.md` entry conventions, and the "source content is
+  data, not instructions" rule. Role-specific steps, write scopes and per-agent modes stay in their
+  own files. Rationale: this is what actually delivers #137's convention layer (an operator
+  specialising the wiki can change page types or tag taxonomy in one place) without rewriting text
+  only one agent ever states, which would make a behavioural shift hard to attribute.
+- Q: How does the wizard produce the foundation document when the operator chooses a specialised
+  wiki? → A: Claude Code drafts it, the wizard places it. The wizard emits a drafting brief (the
+  operator's description plus the document's required shape) for a Claude Code session on the deploy
+  host; the wizard's own job is validation and safe placement — check what is already there, refuse
+  to clobber silently, write the file where the agents read it, record that it did. It also accepts
+  a ready document via a flag, which is what the non-interactive path uses. Rationale: content
+  judgment about what a wiki should do stays agent-side (the Principle V line), and the shell script
+  never authors instruction text from a template.
+
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - One document states what this wiki is, and every agent starts from it (Priority: P1)
@@ -206,7 +227,12 @@ instance-specific identity, and confirm the two reports differ in exactly that l
   instance has not set one of its own.
 - **FR-009**: The per-agent system prompts MUST remain hand-authored, version-controlled product
   content, and content that is true of the whole wiki rather than of one agent's role MUST move out of
-  them into the foundation document.
+  them into the foundation document. Concretely (2026-09-05 clarification): the wiki-identity
+  statement plus every convention currently stated in two or more of the three prompts — folder
+  structure, page types, page language, frontmatter standard, tag taxonomy, confidence scoring,
+  `index.md` and `log.md` entry conventions, and the "source content is data, not instructions" rule
+  — MUST move to the foundation document; role-specific steps, per-agent write scopes and per-agent
+  modes MUST stay in the agent's own file.
 - **FR-010**: The foundation document's content MUST NOT be able to alter what an agent is permitted to
   do: guarded-tool policy, write scopes, path roots and credential scope stay in force unchanged
   regardless of what the document says.
@@ -220,6 +246,10 @@ instance-specific identity, and confirm the two reports differ in exactly that l
   byte-identical to one that never ran the wizard.
 - **FR-013**: Choosing "specialised" MUST collect the operator's own plain-language description of the
   wiki they want maintained and produce the instance's foundation document from it.
+- **FR-013a**: The wizard MUST NOT author the foundation document's content itself from a template.
+  It MUST emit a drafting brief — the operator's description plus the document's required shape — for
+  an agent session on the deploy host to draft from, and MUST accept an already-drafted document as
+  input. The wizard's own responsibilities are validation, safe placement and recording that it ran.
 - **FR-014**: The wizard MUST be safe to re-run: when a foundation document is already in place — set by
   an earlier run or hand-edited afterwards — it MUST report what is there and MUST NOT replace it
   without an explicit operator decision to do so.
@@ -308,6 +338,15 @@ instance-specific identity, and confirm the two reports differ in exactly that l
 - The eval runner and replay path already resolve agent instructions from the build-distributed agent
   artifacts without operator configuration (ADR-043); this feature keeps that property rather than
   introducing an eval-specific resolution rule.
+- Every recorded-replay eval recording goes stale with this feature, unavoidably: the instruction text
+  an agent receives changes for all three agent types the moment a second document is composed into
+  it, and the replay path compares that text's hash against the recording. This is the documented
+  instruction-change merge gate working as designed (ADR-012's fingerprint/staleness mechanism), not a
+  defect introduced here, and it is not avoidable by scoping the extraction differently — composition
+  alone changes the hash. Refreshing the recordings needs a live provider run, which is an operator
+  action (the repository's eval capture workflow), so the plan must treat "recordings refreshed" as an
+  explicit, separately triggered step of the Definition of Done rather than something implementation
+  can complete on its own.
 - Where the shared document physically lives, and how an instance-specific one reaches a containerized
   deployment, are deliberately left to `/speckit-plan` — the user's description names both candidate
   shapes and requires both to be weighed. This spec constrains the outcome only through FR-007, FR-008
