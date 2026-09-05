@@ -67,13 +67,14 @@ RUN set -eux; \
       aarch64|arm64) arch="linux-arm64" ;; \
       *) echo "unsupported architecture: $(uname -m)" >&2; exit 1 ;; \
     esac; \
+    archive="node-v${NODE_VERSION}-${arch}.tar.xz"; \
     tmp="$(mktemp -d)"; \
     base="https://nodejs.org/dist/v${NODE_VERSION}"; \
-    curl -fsSL -o "$tmp/node.tar.xz" "$base/node-v${NODE_VERSION}-${arch}.tar.xz"; \
+    curl -fsSL -o "$tmp/$archive" "$base/$archive"; \
     curl -fsSL -o "$tmp/SHASUMS256.txt" "$base/SHASUMS256.txt"; \
-    (cd "$tmp" && grep " node-v${NODE_VERSION}-${arch}.tar.xz\$" SHASUMS256.txt | sha256sum -c -); \
+    (cd "$tmp" && grep " $archive\$" SHASUMS256.txt | sha256sum -c -); \
     mkdir -p /usr/local/node; \
-    tar -xJf "$tmp/node.tar.xz" -C /usr/local/node --strip-components=1; \
+    tar -xJf "$tmp/$archive" -C /usr/local/node --strip-components=1; \
     rm -rf "$tmp"
 ENV PATH=/usr/local/node/bin:$PATH
 
