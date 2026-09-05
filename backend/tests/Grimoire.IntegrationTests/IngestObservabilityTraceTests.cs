@@ -70,10 +70,10 @@ public class IngestObservabilityTraceTests
         var dbPath = Path.Combine(root, "state.db");
         var repository = new OperationalStateRepository(dbPath);
         await repository.InitializeAsync();
-        await repository.UpsertAsync(new OperationalTaskState(taskId, "running", null, DateTimeOffset.UtcNow));
+        await repository.UpsertIngestTaskStateAsync(new IngestOperationalTaskState(taskId, "running", null, DateTimeOffset.UtcNow));
 
         var reconciler = new RestartReconciler(repository);
-        await reconciler.ReconcileRunningTasksAsync(tasksDir);
+        await reconciler.ReconcileRunningIngestTasksAsync(tasksDir);
 
         Assert.Contains("ingest.instructions.loaded", spanNames);
         Assert.Contains("wiki.ingest.tool_calls_total", spanNames);
@@ -125,7 +125,7 @@ public class IngestObservabilityTraceTests
                 loadSpan?.SetTag("file_count", 2);
             }
 
-            await loop.RunAsync(
+            await loop.RunIngestSourceAsync(
                 systemPrompt: "You are a test agent.",
                 userPrompt: "Integrate the source.",
                 taskId: "task-123",

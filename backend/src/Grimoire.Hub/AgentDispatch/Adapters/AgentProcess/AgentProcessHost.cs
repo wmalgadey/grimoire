@@ -60,7 +60,7 @@ public sealed class AgentProcessHost : IAgentProcessLauncher
 
     public async Task<IAgentProcessHandle> StartAsync(IngestAgentRequest request, CancellationToken cancellationToken = default)
     {
-        var process = StartProcess(request);
+        var process = StartIngestProcess(request);
 
         if (request.SourceKind == "pasted_text" && !string.IsNullOrWhiteSpace(request.PastedText))
         {
@@ -78,7 +78,7 @@ public sealed class AgentProcessHost : IAgentProcessLauncher
     /// </summary>
     public async Task<int> RunToExitAsync(IngestAgentRequest request, CancellationToken cancellationToken = default)
     {
-        using var process = StartProcess(request);
+        using var process = StartIngestProcess(request);
 
         if (request.SourceKind == "pasted_text" && !string.IsNullOrWhiteSpace(request.PastedText))
         {
@@ -462,7 +462,7 @@ public sealed class AgentProcessHost : IAgentProcessLauncher
 
     /// <summary>
     /// Query's own credential/model-scoping (ADR-004) and trace-propagation (Constitution
-    /// IV) env-var build — parallels <see cref="BuildChildEnvironment"/> but with
+    /// IV) env-var build — parallels <see cref="BuildIngestChildEnvironment"/> but with
     /// <c>GRIMOIRE_QUERY_*</c> names so Query's env stays independent of Ingest's, even
     /// though both read the same <c>ANTHROPIC_AUTH_TOKEN</c> secret. Exposed so tests can
     /// assert the precedence rule without spawning a real process.
@@ -502,7 +502,7 @@ public sealed class AgentProcessHost : IAgentProcessLauncher
         return env;
     }
 
-    private Process StartProcess(IngestAgentRequest request)
+    private Process StartIngestProcess(IngestAgentRequest request)
     {
         var startInfo = new ProcessStartInfo
         {
@@ -566,7 +566,7 @@ public sealed class AgentProcessHost : IAgentProcessLauncher
                 baseEnv[key] = value;
         }
 
-        var childEnv = BuildChildEnvironment(
+        var childEnv = BuildIngestChildEnvironment(
             baseEnv, authToken, ingestBaseUrl, ingestModel, ingestTokenCap, ingestMaxOutputTokens,
             Activity.Current, _logger, ingestSpendCap);
         startInfo.Environment.Clear();
@@ -697,7 +697,7 @@ public sealed class AgentProcessHost : IAgentProcessLauncher
     /// process can parent its own root span to it (Constitution IV: end-to-end trace chain).
     /// Exposed internally so tests can assert both guarantees without spawning a real process.
     /// </summary>
-    public static Dictionary<string, string> BuildChildEnvironment(
+    public static Dictionary<string, string> BuildIngestChildEnvironment(
         IDictionary<string, string> baseEnv,
         string? authToken,
         string? ingestBaseUrl = null,

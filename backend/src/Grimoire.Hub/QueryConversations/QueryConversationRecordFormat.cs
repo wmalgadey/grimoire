@@ -8,22 +8,22 @@ namespace Grimoire.Hub.QueryConversations;
 /// Result of parsing a Conversation Record file
 /// (contracts/conversation-record-format.md "Parsing").
 /// </summary>
-public abstract record ConversationRecordParseResult
+public abstract record QueryConversationRecordParseResult
 {
     /// <summary>
     /// All complete turn blocks, in file order. <see cref="DroppedTrailingFragment"/> is
     /// true when a trailing incomplete block (crash mid-append) was dropped — the file
     /// is still readable, but the caller must emit a WARN diagnostic (Parsing rule 4).
     /// </summary>
-    public sealed record Parsed(IReadOnlyList<RecordedTurn> Turns, bool DroppedTrailingFragment)
-        : ConversationRecordParseResult;
+    public sealed record Parsed(IReadOnlyList<QueryRecordedTurn> Turns, bool DroppedTrailingFragment)
+        : QueryConversationRecordParseResult;
 
     /// <summary>
     /// Structural violation (bad frontmatter, malformed bookkeeping, body shorter than
     /// declared length) — the record is unreadable and context loading MUST fail closed
     /// (Parsing rule 5, FR-006).
     /// </summary>
-    public sealed record Unreadable(string Reason) : ConversationRecordParseResult;
+    public sealed record Unreadable(string Reason) : QueryConversationRecordParseResult;
 }
 
 /// <summary>
@@ -36,7 +36,7 @@ public abstract record ConversationRecordParseResult
 /// String values inside the bookkeeping comment are JSON-escaped with <c>--&gt;</c>
 /// neutralized, so agent-chosen content can never terminate the comment early.
 /// </summary>
-public static class ConversationRecordFormat
+public static class QueryConversationRecordFormat
 {
     public const string RecordFormatVersion = "grimoire-conversation/1";
     public const string TurnSentinel = "<!-- grimoire:turn";
@@ -69,7 +69,7 @@ public static class ConversationRecordFormat
     /// bookkeeping comment, turn heading, verbatim prompt/answer bodies with their
     /// exact UTF-16 code-unit lengths declared in <c>prompt_chars</c>/<c>answer_chars</c>.
     /// </summary>
-    public static string BuildTurnBlock(RecordedTurn turn)
+    public static string BuildTurnBlock(QueryRecordedTurn turn)
     {
         var sb = new StringBuilder();
         sb.Append(TurnSentinel).Append('\n');
@@ -167,20 +167,20 @@ public static class ConversationRecordFormat
     /// incomplete block is dropped (readable, flagged); any other structural violation
     /// classifies the record as unreadable.
     /// </summary>
-    public static ConversationRecordParseResult Parse(string content)
+    public static QueryConversationRecordParseResult Parse(string content)
     {
         var pos = 0;
 
         // Rule 1: frontmatter with the exact record_format handshake.
         if (!TryParseFrontmatter(content, ref pos, out var frontmatterError))
         {
-            return new ConversationRecordParseResult.Unreadable(frontmatterError);
+            return new QueryConversationRecordParseResult.Unreadable(frontmatterError);
         }
 
         // Rule 2: scan for turn sentinels strictly outside body ranges — bodies below are
         // consumed by declared length, and scanning resumes only after each block's
         // trailing newline.
-        var turns = new List<RecordedTurn>();
+        var turns = new List<QueryRecordedTurn>();
         var droppedTrailingFragment = false;
 
         while (true)
@@ -195,7 +195,7 @@ public static class ConversationRecordFormat
             var block = ParseTurnBlock(content, ref pos);
             if (block is TurnBlockResult.Unreadable unreadable)
             {
-                return new ConversationRecordParseResult.Unreadable(unreadable.Reason);
+                return new QueryConversationRecordParseResult.Unreadable(unreadable.Reason);
             }
 
             if (block is not TurnBlockResult.Parsed parsedBlock)
@@ -209,7 +209,7 @@ public static class ConversationRecordFormat
             turns.Add(parsedBlock.Turn);
         }
 
-        return new ConversationRecordParseResult.Parsed(turns, droppedTrailingFragment);
+        return new QueryConversationRecordParseResult.Parsed(turns, droppedTrailingFragment);
     }
 
     // ------------------------------------------------------------ parser internals
@@ -221,7 +221,7 @@ public static class ConversationRecordFormat
     /// </summary>
     private abstract record TurnBlockResult
     {
-        public sealed record Parsed(RecordedTurn Turn) : TurnBlockResult { }
+        public sealed record Parsed(QueryRecordedTurn Turn) : TurnBlockResult { }
 
         public sealed record TrailingFragment : TurnBlockResult { }
 
@@ -333,7 +333,7 @@ public static class ConversationRecordFormat
             return new TurnBlockResult.Unreadable("expected blank line after answer body");
         }
 
-        return new TurnBlockResult.Parsed(new RecordedTurn(
+        return new TurnBlockResult.Parsed(new QueryRecordedTurn(
             TurnId: bookkeeping.TurnId!,
             Position: bookkeeping.Position,
             State: bookkeeping.State!,
@@ -398,7 +398,7 @@ public static class ConversationRecordFormat
         public string? PolicyPath;
         public int? PolicyVersion;
         public string? PolicySha256;
-        public List<RecordedDeniedAction> DeniedActions = [];
+        public List<QueryRecordedDeniedAction> DeniedActions = [];
         // ADR-015 (012-query-synthesis-writes): absent on records predating this feature —
         // stays the default empty list (forward-compat, ADR-014), tolerated by the
         // "unknown key" dictionary-miss path below for old records that omit the key entirely.
@@ -646,7 +646,7 @@ public static class ConversationRecordFormat
     }
 
     private static bool TryParseDeniedActionEntries(
-        BookkeepingCursor cursor, List<RecordedDeniedAction> deniedActions)
+        BookkeepingCursor cursor, List<QueryRecordedDeniedAction> deniedActions)
     {
         while (cursor.Index < cursor.Lines.Count &&
                cursor.Lines[cursor.Index].StartsWith("  - ", StringComparison.Ordinal))
@@ -670,7 +670,7 @@ public static class ConversationRecordFormat
                 return cursor.Fail("denied_actions entry is missing a valid 'turn' field");
             }
 
-            deniedActions.Add(new RecordedDeniedAction(
+            deniedActions.Add(new QueryRecordedDeniedAction(
                 action ?? string.Empty,
                 requestedTarget ?? string.Empty,
                 canonicalTarget ?? string.Empty,

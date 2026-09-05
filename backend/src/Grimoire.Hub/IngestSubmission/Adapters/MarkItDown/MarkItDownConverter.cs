@@ -48,7 +48,7 @@ public sealed class MarkItDownConverter : IMarkdownConverter
             if (process.ExitCode != 0)
             {
                 var rawReason = string.IsNullOrWhiteSpace(stderr) ? $"markitdown exited with code {process.ExitCode}" : stderr;
-                return new MarkItDownConversionResult(false, null, ConversionFailureClassifier.Classify(rawReason));
+                return new MarkItDownConversionResult(false, null, IngestConversionFailureClassifier.Classify(rawReason));
             }
 
             if (string.IsNullOrWhiteSpace(stdout))

@@ -42,7 +42,7 @@ public class IngestRepoLessStartupTests
             AssertUnderBase(baseDir, resolvedPaths.Ingest.Dir);
 
             var contentPaths = IngestContentPaths.FromResolved(resolvedPaths);
-            var rawPaths = RawStoragePaths.FromResolved(resolvedPaths);
+            var rawPaths = IngestRawStoragePaths.FromResolved(resolvedPaths);
 
             using var fixture = new IngestSubmissionPipelineFixture(
                 contentPaths: contentPaths, rawPaths: rawPaths, root: baseDir, resolvedPaths: resolvedPaths);

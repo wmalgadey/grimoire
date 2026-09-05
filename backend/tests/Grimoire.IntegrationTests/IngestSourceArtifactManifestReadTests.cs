@@ -19,20 +19,20 @@ namespace Grimoire.IntegrationTests;
 /// a board poll.
 /// </para>
 /// </summary>
-public class SourceArtifactManifestReadTests : IDisposable
+public class IngestSourceArtifactManifestReadTests : IDisposable
 {
     private readonly string _root = Path.Combine(
         Path.GetTempPath(), $"grimoire-manifest-read-{Guid.NewGuid():n}");
 
-    private readonly SourceArtifactStore _store;
+    private readonly IngestSourceArtifactStore _store;
     private readonly string _originalsDir;
 
-    public SourceArtifactManifestReadTests()
+    public IngestSourceArtifactManifestReadTests()
     {
         _originalsDir = Path.Combine(_root, "raw", "originals");
         Directory.CreateDirectory(_originalsDir);
-        _store = new SourceArtifactStore(
-            new RawStoragePaths(_originalsDir, Path.Combine(_root, "raw", "sources")));
+        _store = new IngestSourceArtifactStore(
+            new IngestRawStoragePaths(_originalsDir, Path.Combine(_root, "raw", "sources")));
     }
 
     public void Dispose()
@@ -83,7 +83,7 @@ public class SourceArtifactManifestReadTests : IDisposable
     public async Task ReadableManifest_IsStillReturned_NotSwallowedByTheTolerantRead()
     {
         const string taskId = "2026-08-22-ingest-complete";
-        var written = new SourceArtifactSet(
+        var written = new IngestSourceArtifactSet(
             TaskId: taskId,
             OriginalPath: Path.Combine(_originalsDir, $"{taskId}.md"),
             OriginalContentType: "text/markdown",

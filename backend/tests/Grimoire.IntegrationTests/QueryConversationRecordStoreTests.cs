@@ -5,7 +5,7 @@ using Grimoire.Hub.Runtime.Paths;
 namespace Grimoire.IntegrationTests;
 
 /// <summary>
-/// T010 (011-query-conversations, Phase 2) — <see cref="ConversationRecordStore"/>
+/// T010 (011-query-conversations, Phase 2) — <see cref="QueryConversationRecordStore"/>
 /// against a real temp filesystem: create-on-first-append vs. append-on-later,
 /// never-rewrite of earlier bytes (FR-003), strictly increasing positions, cache
 /// behavior across appends/misses/restarts, missing-file empty context, fail-closed
@@ -13,15 +13,15 @@ namespace Grimoire.IntegrationTests;
 /// </summary>
 public class QueryConversationRecordStoreTests
 {
-    private static (ConversationRecordStore Store, ResolvedGrimoirePaths Paths, string Root) CreateStore(string? existingRoot = null)
+    private static (QueryConversationRecordStore Store, ResolvedGrimoirePaths Paths, string Root) CreateStore(string? existingRoot = null)
     {
         var root = existingRoot ?? Path.Combine(Path.GetTempPath(), $"grimoire-record-store-{Guid.NewGuid():N}");
         Directory.CreateDirectory(root);
         var paths = QueryTurnSubmissionApiTests.BuildResolvedPaths(root);
-        return (new ConversationRecordStore(paths), paths, root);
+        return (new QueryConversationRecordStore(paths), paths, root);
     }
 
-    private static RecordedTurn MakeTurn(int position, string state = "completed", string? answer = null) => new(
+    private static QueryRecordedTurn MakeTurn(int position, string state = "completed", string? answer = null) => new(
         TurnId: $"2026-07-29-query-store{position:D2}",
         Position: position,
         State: state,
@@ -80,7 +80,7 @@ public class QueryConversationRecordStoreTests
         await store.AppendTurnAsync("c-positions", MakeTurn(3));
 
         var content = await File.ReadAllTextAsync(paths.ConversationRecordPathFor("c-positions"));
-        var parsed = Assert.IsType<ConversationRecordParseResult.Parsed>(ConversationRecordFormat.Parse(content));
+        var parsed = Assert.IsType<QueryConversationRecordParseResult.Parsed>(QueryConversationRecordFormat.Parse(content));
         Assert.Equal([1, 2, 3], parsed.Turns.Select(t => t.Position));
     }
 
@@ -96,7 +96,7 @@ public class QueryConversationRecordStoreTests
 
         var result = await store.LoadContextAsync("c-cache");
 
-        var loaded = Assert.IsType<ConversationContextResult.Loaded>(result);
+        var loaded = Assert.IsType<QueryConversationContextResult.Loaded>(result);
         Assert.Equal("memory", loaded.Source);
         Assert.Equal(2, loaded.Turns.Count);
         Assert.Equal(new QueryPriorTurn(1, "Prompt 1?", "Answer 1.", "completed"), loaded.Turns[0]);
@@ -114,13 +114,13 @@ public class QueryConversationRecordStoreTests
         var (restartedStore, _, _) = CreateStore(existingRoot: root);
         var result = await restartedStore.LoadContextAsync("c-restart");
 
-        var loaded = Assert.IsType<ConversationContextResult.Loaded>(result);
+        var loaded = Assert.IsType<QueryConversationContextResult.Loaded>(result);
         Assert.Equal("record", loaded.Source);
         Assert.Equal(2, loaded.Turns.Count);
         Assert.Equal(new QueryPriorTurn(2, "Prompt 2?", "partial ans", "interrupted"), loaded.Turns[1]);
 
         // The hydrated turns are now cached: a second load serves from memory.
-        var second = Assert.IsType<ConversationContextResult.Loaded>(await restartedStore.LoadContextAsync("c-restart"));
+        var second = Assert.IsType<QueryConversationContextResult.Loaded>(await restartedStore.LoadContextAsync("c-restart"));
         Assert.Equal("memory", second.Source);
     }
 
@@ -131,7 +131,7 @@ public class QueryConversationRecordStoreTests
 
         var result = await store.LoadContextAsync("c-brand-new");
 
-        var loaded = Assert.IsType<ConversationContextResult.Loaded>(result);
+        var loaded = Assert.IsType<QueryConversationContextResult.Loaded>(result);
         Assert.Equal("empty", loaded.Source);
         Assert.Empty(loaded.Turns);
     }
@@ -147,7 +147,7 @@ public class QueryConversationRecordStoreTests
 
         var result = await store.LoadContextAsync("c-corrupt");
 
-        var unreadable = Assert.IsType<ConversationContextResult.Unreadable>(result);
+        var unreadable = Assert.IsType<QueryConversationContextResult.Unreadable>(result);
         Assert.False(string.IsNullOrWhiteSpace(unreadable.Reason));
     }
 
@@ -170,8 +170,8 @@ public class QueryConversationRecordStoreTests
         var contentA = await File.ReadAllTextAsync(paths.ConversationRecordPathFor("c-concurrent-a"));
         var contentB = await File.ReadAllTextAsync(paths.ConversationRecordPathFor("c-concurrent-b"));
 
-        var parsedA = Assert.IsType<ConversationRecordParseResult.Parsed>(ConversationRecordFormat.Parse(contentA));
-        var parsedB = Assert.IsType<ConversationRecordParseResult.Parsed>(ConversationRecordFormat.Parse(contentB));
+        var parsedA = Assert.IsType<QueryConversationRecordParseResult.Parsed>(QueryConversationRecordFormat.Parse(contentA));
+        var parsedB = Assert.IsType<QueryConversationRecordParseResult.Parsed>(QueryConversationRecordFormat.Parse(contentB));
 
         Assert.Equal(5, parsedA.Turns.Count);
         Assert.Equal(5, parsedB.Turns.Count);

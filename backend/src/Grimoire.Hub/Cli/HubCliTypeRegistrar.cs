@@ -36,7 +36,7 @@ namespace Grimoire.Hub.Cli;
 /// the supplementary container's own activation</b> (018-hub-cli-commands T017 fix):
 /// Spectre's <c>TypeRegistrarExtensions.RegisterDependencies</c> calls
 /// <see cref="Register"/> with <c>service == implementation</c> for every command and
-/// settings type in the model (<c>LintRunCommand</c>, <c>SubmitSourceCommand</c>, …).
+/// settings type in the model (<c>LintRunCommand</c>, <c>IngestSubmitSourceCommand</c>, …).
 /// Handing those straight to <c>IServiceCollection.AddSingleton(Type, Type)</c> would
 /// make the supplementary container responsible for resolving that command's OWN
 /// constructor dependencies (e.g. <c>LintRunCoordinator</c>) — dependencies that live

@@ -9,15 +9,15 @@ namespace Grimoire.IntegrationTests;
 /// denied-action escaping, trailing-fragment recovery, and the unreadable
 /// classifications of Parsing rule 5.
 /// </summary>
-public class ConversationRecordFormatTests
+public class QueryConversationRecordFormatTests
 {
-    private static RecordedTurn MakeTurn(
+    private static QueryRecordedTurn MakeTurn(
         int position = 1,
         string state = "completed",
         string prompt = "What does ADR-004 decide?",
         string answer = "ADR-004 decides that the key is scoped to the child process.",
         string? failureReason = null,
-        IReadOnlyList<RecordedDeniedAction>? deniedActions = null) => new(
+        IReadOnlyList<QueryRecordedDeniedAction>? deniedActions = null) => new(
         TurnId: $"2026-07-29-query-{position:D2}aabbccddeeff",
         Position: position,
         State: state,
@@ -35,21 +35,21 @@ public class ConversationRecordFormatTests
         Prompt: prompt,
         Answer: answer);
 
-    private static string BuildRecord(params RecordedTurn[] turns)
+    private static string BuildRecord(params QueryRecordedTurn[] turns)
     {
-        var content = ConversationRecordFormat.BuildRecordHeader(
+        var content = QueryConversationRecordFormat.BuildRecordHeader(
             "c-format", new DateTimeOffset(2026, 7, 29, 9, 0, 0, TimeSpan.Zero));
         foreach (var turn in turns)
         {
-            content += ConversationRecordFormat.BuildTurnBlock(turn);
+            content += QueryConversationRecordFormat.BuildTurnBlock(turn);
         }
 
         return content;
     }
 
-    private static IReadOnlyList<RecordedTurn> ParseOk(string content, bool expectDroppedFragment = false)
+    private static IReadOnlyList<QueryRecordedTurn> ParseOk(string content, bool expectDroppedFragment = false)
     {
-        var result = Assert.IsType<ConversationRecordParseResult.Parsed>(ConversationRecordFormat.Parse(content));
+        var result = Assert.IsType<QueryConversationRecordParseResult.Parsed>(QueryConversationRecordFormat.Parse(content));
         Assert.Equal(expectDroppedFragment, result.DroppedTrailingFragment);
         return result.Turns;
     }
@@ -57,7 +57,7 @@ public class ConversationRecordFormatTests
     [Fact]
     public void RoundTrip_PreservesEveryBookkeepingFieldAndBodyVerbatim()
     {
-        var denied = new RecordedDeniedAction(
+        var denied = new QueryRecordedDeniedAction(
             "read_file", "../secrets/.env", "/base/secrets/.env", "outside read scope", 2);
         var original = MakeTurn(
             position: 1,
@@ -121,7 +121,7 @@ public class ConversationRecordFormatTests
     [Fact]
     public void HostileDeniedActionStrings_CannotTerminateTheCommentEarly_AndUnescapeToOriginals()
     {
-        var hostile = new RecordedDeniedAction(
+        var hostile = new QueryRecordedDeniedAction(
             "read_file",
             "--> \"quoted\" and\nnewline --> more",
             "/canonical/--> path",
@@ -129,7 +129,7 @@ public class ConversationRecordFormatTests
             4);
         var original = MakeTurn(deniedActions: [hostile]);
 
-        var block = ConversationRecordFormat.BuildTurnBlock(original);
+        var block = QueryConversationRecordFormat.BuildTurnBlock(original);
 
         // The comment close sequence appears exactly once on disk: the real closing line.
         var closeCount = block.Split("-->").Length - 1;
@@ -167,7 +167,7 @@ public class ConversationRecordFormatTests
     {
         var first = MakeTurn(position: 1);
         var second = MakeTurn(position: 2, prompt: "Second?", answer: "Second answer.");
-        var fullSecondBlock = ConversationRecordFormat.BuildTurnBlock(second);
+        var fullSecondBlock = QueryConversationRecordFormat.BuildTurnBlock(second);
 
         // Crash mid-append: only a prefix of the second block (inside the bookkeeping
         // comment, before its closing '-->') made it to disk.
@@ -182,7 +182,7 @@ public class ConversationRecordFormatTests
     public void UnknownBookkeepingKeys_AreTolerated_ForwardCompatibility()
     {
         var original = MakeTurn();
-        var block = ConversationRecordFormat.BuildTurnBlock(original);
+        var block = QueryConversationRecordFormat.BuildTurnBlock(original);
 
         // A genuinely unrecognized scalar key (a hypothetical future field, not
         // feature 012's now-recognized `created_pages:`, which is covered by its own
@@ -191,7 +191,7 @@ public class ConversationRecordFormatTests
             "prompt_chars:",
             "future_scalar: 42\nprompt_chars:",
             StringComparison.Ordinal);
-        var content = ConversationRecordFormat.BuildRecordHeader("c-format", DateTimeOffset.UtcNow) + extended;
+        var content = QueryConversationRecordFormat.BuildRecordHeader("c-format", DateTimeOffset.UtcNow) + extended;
 
         var turns = ParseOk(content);
 
@@ -228,13 +228,13 @@ public class ConversationRecordFormatTests
     public void RecordPredatingFeature012_WithNoCreatedPagesKeyAtAll_ParsesWithEmptyCreatedPages()
     {
         var original = MakeTurn();
-        var block = ConversationRecordFormat.BuildTurnBlock(original);
+        var block = QueryConversationRecordFormat.BuildTurnBlock(original);
 
         // Simulates a record written before this feature: no created_pages: line at all
         // (ADR-014 forward-compat — absence, not an empty list, is the pre-feature shape).
         var withoutCreatedPages = block.Replace("created_pages: []\n", string.Empty, StringComparison.Ordinal);
         Assert.DoesNotContain("created_pages", withoutCreatedPages, StringComparison.Ordinal);
-        var content = ConversationRecordFormat.BuildRecordHeader("c-format", DateTimeOffset.UtcNow) + withoutCreatedPages;
+        var content = QueryConversationRecordFormat.BuildRecordHeader("c-format", DateTimeOffset.UtcNow) + withoutCreatedPages;
 
         var parsed = Assert.Single(ParseOk(content));
 
@@ -248,7 +248,7 @@ public class ConversationRecordFormatTests
         var record = BuildRecord(MakeTurn());
         var truncated = record[..record.IndexOf("record_format", StringComparison.Ordinal)];
 
-        var result = Assert.IsType<ConversationRecordParseResult.Unreadable>(ConversationRecordFormat.Parse(truncated));
+        var result = Assert.IsType<QueryConversationRecordParseResult.Unreadable>(QueryConversationRecordFormat.Parse(truncated));
         Assert.Contains("frontmatter", result.Reason, StringComparison.OrdinalIgnoreCase);
     }
 
@@ -258,7 +258,7 @@ public class ConversationRecordFormatTests
         var record = BuildRecord(MakeTurn())
             .Replace("record_format: grimoire-conversation/1", "record_format: grimoire-conversation/2", StringComparison.Ordinal);
 
-        var result = Assert.IsType<ConversationRecordParseResult.Unreadable>(ConversationRecordFormat.Parse(record));
+        var result = Assert.IsType<QueryConversationRecordParseResult.Unreadable>(QueryConversationRecordFormat.Parse(record));
         Assert.Contains("record_format", result.Reason, StringComparison.OrdinalIgnoreCase);
     }
 
@@ -268,7 +268,7 @@ public class ConversationRecordFormatTests
         var record = BuildRecord(MakeTurn())
             .Replace("position: 1", "position: not-a-number", StringComparison.Ordinal);
 
-        var result = Assert.IsType<ConversationRecordParseResult.Unreadable>(ConversationRecordFormat.Parse(record));
+        var result = Assert.IsType<QueryConversationRecordParseResult.Unreadable>(QueryConversationRecordFormat.Parse(record));
         Assert.Contains("bookkeeping", result.Reason, StringComparison.OrdinalIgnoreCase);
     }
 
@@ -279,7 +279,7 @@ public class ConversationRecordFormatTests
         var turnIdLine = record.Split('\n').Single(l => l.StartsWith("turn_id:", StringComparison.Ordinal));
         record = record.Replace(turnIdLine + "\n", string.Empty, StringComparison.Ordinal);
 
-        var result = Assert.IsType<ConversationRecordParseResult.Unreadable>(ConversationRecordFormat.Parse(record));
+        var result = Assert.IsType<QueryConversationRecordParseResult.Unreadable>(QueryConversationRecordFormat.Parse(record));
         Assert.Contains("bookkeeping", result.Reason, StringComparison.OrdinalIgnoreCase);
     }
 
@@ -290,7 +290,7 @@ public class ConversationRecordFormatTests
         var record = BuildRecord(turn)
             .Replace($"answer_chars: {turn.Answer.Length}", $"answer_chars: {turn.Answer.Length + 500}", StringComparison.Ordinal);
 
-        var result = Assert.IsType<ConversationRecordParseResult.Unreadable>(ConversationRecordFormat.Parse(record));
+        var result = Assert.IsType<QueryConversationRecordParseResult.Unreadable>(QueryConversationRecordFormat.Parse(record));
         Assert.Contains("shorter than declared", result.Reason, StringComparison.OrdinalIgnoreCase);
     }
 

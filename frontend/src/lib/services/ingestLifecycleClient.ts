@@ -7,7 +7,7 @@ import type {
 	TaskRecordChangedEvent
 } from '$lib/types';
 import { isLifecycleStage } from '$lib/types';
-import { listBoard } from './ingestSubmissionsApi';
+import { listIngestBoard } from './ingestSubmissionsApi';
 
 const HUB_PATH = '/hubs/ingest-lifecycle';
 
@@ -60,7 +60,7 @@ export function createIngestLifecycleClient(hubUrl: string = HUB_PATH): IngestLi
 		},
 		onTaskRecordChanged(handler) {
 			// 006 (contracts/task-record-changed-event.md): dedupe by eventId, consistent
-			// with applyLifecycleEvent's seenEventKeys handling for taskLifecycleChanged.
+			// with applyIngestLifecycleEvent's seenEventKeys handling for taskLifecycleChanged.
 			const seenEventIds = new Set<string>();
 			const wrapped = (event: TaskRecordChangedEvent) => {
 				if (seenEventIds.has(event.eventId)) return;
@@ -99,7 +99,7 @@ export function createIngestLifecycleClient(hubUrl: string = HUB_PATH): IngestLi
  * `taskId` is authoritative (an out-of-order/stale event is ignored). Pure function — easy to unit
  * test independently of the SignalR transport.
  */
-export function applyLifecycleEvent(
+export function applyIngestLifecycleEvent(
 	tasks: BoardTask[],
 	event: LifecycleEvent,
 	seenEventKeys: Set<string>
@@ -153,7 +153,7 @@ export interface BoardLifecycleStream {
  * Also forwards live `runActivityChanged` events (004 FR-018) so callers can render loop
  * activity for the currently running task without a separate detail page.
  */
-export function createBoardLifecycleStream(
+export function createIngestBoardLifecycleStream(
 	onTasksChanged: (tasks: BoardTask[]) => void,
 	options?: {
 		hubUrl?: string;
@@ -168,12 +168,12 @@ export function createBoardLifecycleStream(
 	const client = options?.client ?? createIngestLifecycleClient(options?.hubUrl);
 
 	async function refresh() {
-		tasks = await listBoard(options?.fetchImpl);
+		tasks = await listIngestBoard(options?.fetchImpl);
 		onTasksChanged(tasks);
 	}
 
 	client.onLifecycleChanged((event) => {
-		tasks = applyLifecycleEvent(tasks, event, seenEventKeys);
+		tasks = applyIngestLifecycleEvent(tasks, event, seenEventKeys);
 		onTasksChanged(tasks);
 	});
 	if (options?.onRunActivityChanged) {

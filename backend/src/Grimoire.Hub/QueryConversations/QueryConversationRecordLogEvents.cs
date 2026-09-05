@@ -9,7 +9,7 @@ namespace Grimoire.Hub.QueryConversations;
 /// <c>QueryLifecycleLogEvents</c> idiom: stable event names, mandatory fields, each
 /// emission wrapped in a log-event span carrying the same fields (ADR-005).
 /// </summary>
-public static class ConversationRecordLogEvents
+public static class QueryConversationRecordLogEvents
 {
     private static readonly EventId RecordCreatedEvent = new(60, "query.conversation.record_created");
     private static readonly EventId TurnRecordedEvent = new(61, "query.conversation.turn_recorded");

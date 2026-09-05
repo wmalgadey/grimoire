@@ -7,7 +7,7 @@ namespace Grimoire.Hub.QueryConversations;
 /// (data-model.md Turn Bookkeeping, SC-002) — same shape the retired Query Run
 /// Artifact recorded and the ADR-006 terminal-event metadata reports.
 /// </summary>
-public sealed record RecordedDeniedAction(
+public sealed record QueryRecordedDeniedAction(
     string Action,
     string RequestedTarget,
     string CanonicalTarget,
@@ -20,7 +20,7 @@ public sealed record RecordedDeniedAction(
 /// Produced by the coordinator on a turn's terminal transition (append path) and by
 /// the contract parser (context-recovery path).
 /// </summary>
-public sealed record RecordedTurn(
+public sealed record QueryRecordedTurn(
     string TurnId,
     int Position,
     string State,
@@ -34,7 +34,7 @@ public sealed record RecordedTurn(
     string? PolicyPath,
     int? PolicyVersion,
     string? PolicySha256,
-    IReadOnlyList<RecordedDeniedAction> DeniedActions,
+    IReadOnlyList<QueryRecordedDeniedAction> DeniedActions,
     string Prompt,
     string Answer,
     // ADR-015 (012-query-synthesis-writes): wiki-root-relative paths of pages this turn
@@ -60,7 +60,7 @@ public sealed record RecordedTurn(
     /// would compare the list by reference) — writer→parser round-trip tests compare
     /// whole turns.
     /// </summary>
-    public bool Equals(RecordedTurn? other) =>
+    public bool Equals(QueryRecordedTurn? other) =>
         other is not null &&
         TurnId == other.TurnId &&
         Position == other.Position &&

@@ -184,7 +184,7 @@ public class IngestModelProviderErrorReportingTests
                     "The agent run did not emit a `failed` event with a reason.");
 
                 var artifact = await File.ReadAllTextAsync(fixture.TaskArtifactPathFor(taskId));
-                var frontmatter = Grimoire.Hub.IngestSubmission.TaskArtifactFrontmatter.TryParse(artifact);
+                var frontmatter = Grimoire.Hub.IngestSubmission.IngestTaskArtifactFrontmatter.TryParse(artifact);
                 Assert.NotNull(frontmatter);
                 Assert.Equal("failed", frontmatter!.Status);
 

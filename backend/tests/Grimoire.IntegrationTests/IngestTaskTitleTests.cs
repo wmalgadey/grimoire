@@ -138,7 +138,7 @@ public class IngestTaskTitleTests
     public async Task TaskArtifact_AtAHubWrittenStage_CarriesTheSameTitleTheDetailEndpointServes()
     {
         // autoPlay: false — the agent never takes the artifact over, so the file under
-        // assertion is exactly what HubTaskArtifactWriter wrote for the `queued` stage.
+        // assertion is exactly what HubIngestTaskArtifactWriter wrote for the `queued` stage.
         using var fixture = new IngestSubmissionPipelineFixture(
             launcher: new FakeAgentProcessLauncher(autoPlay: false));
         using var host = await IngestApiHost.BuildAsync(fixture);
@@ -232,7 +232,7 @@ public class IngestTaskTitleTests
     /// <summary>
     /// The frontmatter value is a quoted string, so a heading containing the two characters
     /// that can break it — <c>:</c> (key/value separator) and <c>"</c> (the quote itself) —
-    /// must survive the write/read round trip through <see cref="TaskArtifactFrontmatter"/>,
+    /// must survive the write/read round trip through <see cref="IngestTaskArtifactFrontmatter"/>,
     /// which is what the board and detail responses read.
     /// </summary>
     [Fact]
@@ -295,11 +295,11 @@ public class IngestTaskTitleTests
         Assert.Equal("Late Heading", await ArtifactTitleAsync(fixture, taskId));
     }
 
-    private static async Task<TaskArtifactFrontmatter> ReadFrontmatterAsync(
+    private static async Task<IngestTaskArtifactFrontmatter> ReadFrontmatterAsync(
         IngestSubmissionPipelineFixture fixture, string taskId)
     {
         var markdown = await File.ReadAllTextAsync(fixture.TaskArtifactPathFor(taskId));
-        return TaskArtifactFrontmatter.TryParse(markdown)
+        return IngestTaskArtifactFrontmatter.TryParse(markdown)
             ?? throw new InvalidOperationException($"Task artifact for '{taskId}' did not parse.");
     }
 

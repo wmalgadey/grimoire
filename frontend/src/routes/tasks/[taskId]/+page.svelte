@@ -7,10 +7,10 @@
 	import TaskRecordView from '$lib/components/TaskRecordView.svelte';
 	import { createIngestLifecycleClient } from '$lib/services/ingestLifecycleClient';
 	import {
-		getTaskDetail,
-		getTaskRecord,
+		getIngestTaskDetail,
+		getIngestTaskRecord,
 		IngestSubmissionApiError,
-		restartTask
+		restartIngestTask
 	} from '$lib/services/ingestSubmissionsApi';
 	import { fetchRemediationTaskMessages, getRemediationTask } from '$lib/services/remediationApi';
 	import { createRemediationLifecycleClient } from '$lib/services/remediationLifecycleClient';
@@ -45,14 +45,14 @@
 	let client: ReturnType<typeof createIngestLifecycleClient> | undefined;
 
 	async function refresh() {
-		const result = await getTaskRecord(data.taskId);
+		const result = await getIngestTaskRecord(data.taskId);
 		record = result.status === 'ok' ? result.record : null;
 		loaded = true;
 	}
 
 	async function refreshDetail() {
 		try {
-			detail = await getTaskDetail(data.taskId);
+			detail = await getIngestTaskDetail(data.taskId);
 		} catch (err) {
 			// 024 FR-011: a background refresh is deliberately not routed to the shared error
 			// presentation — it must not displace the restart error the user is reading. Only the
@@ -73,7 +73,7 @@
 		restarting = true;
 		restartError = null;
 		try {
-			await restartTask(data.taskId);
+			await restartIngestTask(data.taskId);
 		} catch (err) {
 			restartError = toPresentedError(err);
 		} finally {

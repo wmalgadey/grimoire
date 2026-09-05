@@ -10,7 +10,7 @@ namespace Grimoire.Hub.LintFindings;
 /// field (plan.md ## Observability) and, from T037 onward, the
 /// <c>wiki.lint.findings_total{category}</c> metric's per-category breakdown.
 /// </summary>
-public static class FindingsNarrativeStats
+public static class LintFindingsNarrativeStats
 {
     private const string ContentQualityHeading = "## Content Quality";
     private const string MetadataHygieneHeading = "## Metadata Hygiene";

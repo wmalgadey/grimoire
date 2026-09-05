@@ -244,10 +244,10 @@ public class HubApiErrorObservabilityTests
                     services.AddSingleton(fixture.ContentPaths);
                     services.AddSingleton(fixture.RawPaths);
                     services.AddSingleton(fixture.ResolvedPaths);
-                    services.AddSingleton(fixture.SourceArtifactStore);
+                    services.AddSingleton(fixture.IngestSourceArtifactStore);
                     services.AddSingleton(fixture.Coordinator);
                     services.AddSingleton(fixture.Repository);
-                    services.AddSingleton(new TaskRecordReadModel(fixture.ResolvedPaths));
+                    services.AddSingleton(new IngestTaskRecordReadModel(fixture.ResolvedPaths));
                 });
                 webHost.Configure(app =>
                 {

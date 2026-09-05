@@ -9,16 +9,16 @@ namespace Grimoire.Hub.IngestTaskArtifact;
 /// values) so the file is a valid artifact immediately, and so the Ingest agent's own writer
 /// can safely overwrite it once triggered (ADR-002: each process owns its own artifact I/O).
 /// </summary>
-public sealed class HubTaskArtifactWriter
+public sealed class HubIngestTaskArtifactWriter
 {
-    public async Task WriteAsync(string filePath, HubTaskArtifactDocument document, CancellationToken cancellationToken = default)
+    public async Task WriteAsync(string filePath, HubIngestTaskArtifactDocument document, CancellationToken cancellationToken = default)
     {
         var directory = Path.GetDirectoryName(filePath) ?? ".";
         Directory.CreateDirectory(directory);
         var content = BuildMarkdown(document);
 
         // Write to a sibling temp file, then atomically rename it over the target. The board
-        // projection (KanbanBoardProjectionStore) reads these task-artifact files while the pipeline
+        // projection (IngestKanbanBoardProjectionStore) reads these task-artifact files while the pipeline
         // concurrently rewrites a stage; File.WriteAllText truncates in place, so a reader can catch
         // a half-written file, TryParse to null, and transiently drop the task from the board or 404
         // its detail (FR-007/FR-008). An atomic rename guarantees every reader sees either the whole
@@ -40,7 +40,7 @@ public sealed class HubTaskArtifactWriter
         }
     }
 
-    private static string BuildMarkdown(HubTaskArtifactDocument doc)
+    private static string BuildMarkdown(HubIngestTaskArtifactDocument doc)
     {
         var completedAt = doc.CompletedAt.HasValue ? doc.CompletedAt.Value.ToString("O") : "null";
         var failureFirstLine = string.IsNullOrWhiteSpace(doc.FailureReason) ? doc.FailureReason : doc.FailureReason.Split('\n')[0];

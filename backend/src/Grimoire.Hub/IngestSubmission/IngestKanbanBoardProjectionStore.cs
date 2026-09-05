@@ -3,39 +3,39 @@ using Grimoire.Hub.Conversion;
 namespace Grimoire.Hub.IngestSubmission;
 
 /// <summary>
-/// Builds the <see cref="KanbanBoardProjection"/> read model from the Task Artifact files under
-/// the content root's tasks directory (data-model.md KanbanBoardProjection, FR-007). Reads
+/// Builds the <see cref="IngestKanbanBoardProjection"/> read model from the Task Artifact files under
+/// the content root's tasks directory (data-model.md IngestKanbanBoardProjection, FR-007). Reads
 /// whichever writer (Hub pre-agent stages or the Ingest agent's own writer) most recently wrote
 /// each file — the board does not care which process owns the current stage, only what it is.
 /// </summary>
-public sealed class KanbanBoardProjectionStore
+public sealed class IngestKanbanBoardProjectionStore
 {
-    private readonly SourceArtifactStore? _sourceArtifactStore;
+    private readonly IngestSourceArtifactStore? _sourceArtifactStore;
 
     /// <param name="sourceArtifactStore">
     /// 023-task-ui-improvements T021 (FR-003): supplies the Hub-owned manifest the human-readable
     /// label comes from. Optional so board tests that only care about columns need not wire it;
     /// without it every row falls through the chain to its task id.
     /// </param>
-    public KanbanBoardProjectionStore(SourceArtifactStore? sourceArtifactStore = null)
+    public IngestKanbanBoardProjectionStore(IngestSourceArtifactStore? sourceArtifactStore = null)
     {
         _sourceArtifactStore = sourceArtifactStore;
     }
 
-    public async Task<IReadOnlyList<KanbanBoardProjection>> GetAllAsync(string tasksDir, CancellationToken cancellationToken = default)
+    public async Task<IReadOnlyList<IngestKanbanBoardProjection>> GetAllAsync(string tasksDir, CancellationToken cancellationToken = default)
     {
         if (!Directory.Exists(tasksDir))
         {
             return [];
         }
 
-        var projections = new List<KanbanBoardProjection>();
+        var projections = new List<IngestKanbanBoardProjection>();
         foreach (var path in Directory.EnumerateFiles(tasksDir, "*.md"))
         {
             cancellationToken.ThrowIfCancellationRequested();
 
             var markdown = await File.ReadAllTextAsync(path, cancellationToken);
-            var frontmatter = TaskArtifactFrontmatter.TryParse(markdown);
+            var frontmatter = IngestTaskArtifactFrontmatter.TryParse(markdown);
             if (frontmatter is null)
             {
                 continue;
@@ -47,7 +47,7 @@ public sealed class KanbanBoardProjectionStore
         return projections.OrderByDescending(p => p.UpdatedAt).ToList();
     }
 
-    public async Task<KanbanBoardProjection?> GetByTaskIdAsync(string tasksDir, string taskId, CancellationToken cancellationToken = default)
+    public async Task<IngestKanbanBoardProjection?> GetByTaskIdAsync(string tasksDir, string taskId, CancellationToken cancellationToken = default)
     {
         var path = Path.Combine(tasksDir, $"{taskId}.md");
         if (!File.Exists(path))
@@ -56,21 +56,21 @@ public sealed class KanbanBoardProjectionStore
         }
 
         var markdown = await File.ReadAllTextAsync(path, cancellationToken);
-        var frontmatter = TaskArtifactFrontmatter.TryParse(markdown);
+        var frontmatter = IngestTaskArtifactFrontmatter.TryParse(markdown);
         return frontmatter is null
             ? null
             : await ToProjectionAsync(frontmatter, File.GetLastWriteTimeUtc(path), cancellationToken);
     }
 
-    private async Task<KanbanBoardProjection> ToProjectionAsync(
-        TaskArtifactFrontmatter frontmatter, DateTime lastWriteUtc, CancellationToken cancellationToken)
+    private async Task<IngestKanbanBoardProjection> ToProjectionAsync(
+        IngestTaskArtifactFrontmatter frontmatter, DateTime lastWriteUtc, CancellationToken cancellationToken)
     {
         var manifest = _sourceArtifactStore is null
             ? null
             : await _sourceArtifactStore.TryReadMetadataAsync(frontmatter.TaskId, cancellationToken);
         var subtitle = frontmatter.OriginalRef is not null ? Path.GetFileName(frontmatter.OriginalRef) : null;
 
-        return new KanbanBoardProjection(
+        return new IngestKanbanBoardProjection(
             TaskId: frontmatter.TaskId,
             Column: frontmatter.Status,
             Title: ResolveTitle(frontmatter.TaskId, manifest, frontmatter.Title),
@@ -105,7 +105,7 @@ public sealed class KanbanBoardProjectionStore
     /// pinning it.
     /// </para>
     /// </summary>
-    internal static string ResolveTitle(string taskId, SourceArtifactSet? manifest, string? artifactTitle = null) =>
+    internal static string ResolveTitle(string taskId, IngestSourceArtifactSet? manifest, string? artifactTitle = null) =>
         Coalesce(manifest?.Title, manifest?.OriginalFileName, manifest?.SourceUrl, artifactTitle) ?? taskId;
 
     private static string? Coalesce(params string?[] candidates) =>

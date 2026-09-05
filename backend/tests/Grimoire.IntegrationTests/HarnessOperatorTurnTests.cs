@@ -84,7 +84,7 @@ public class HarnessOperatorTurnTests
 
         try
         {
-            await loop.RunAsync(
+            await loop.RunIngestSourceAsync(
                 systemPrompt: "You are a test agent.",
                 userPrompt: "Integrate the source.",
                 taskId: "task-harness-turn",

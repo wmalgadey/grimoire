@@ -26,7 +26,7 @@ namespace Grimoire.IntegrationTests;
 /// mutually distinct messages and exit codes.
 ///
 /// Exercises the production <see cref="QueryCommand"/> class directly against a real
-/// <see cref="QueryRunCoordinator"/>/<see cref="ConversationRecordStore"/> and a real
+/// <see cref="QueryRunCoordinator"/>/<see cref="QueryConversationRecordStore"/> and a real
 /// (unconnected) SignalR hub context for <see cref="Grimoire.Hub.Realtime.QueryLifecyclePublisher"/>
 /// — mirroring <see cref="HubCliRemediationTestHarness"/>'s idiom in
 /// <c>HubCliCommandTests.cs</c> — invoked through the public <see cref="ICommand{TSettings}"/>
@@ -274,7 +274,7 @@ public class HubCliQueryCommandTests
 /// Hermetic <see cref="QueryRunCoordinator"/> + CLI command harness (018-hub-cli-commands
 /// T034), mirroring <c>HubCliRemediationTestHarness</c>'s idiom (a real, unconnected
 /// SignalR hub context for the lifecycle publisher) for <see cref="QueryCommand"/>: a real
-/// <see cref="ConversationRecordStore"/>/<see cref="QueryRunCoordinator"/> and a
+/// <see cref="QueryConversationRecordStore"/>/<see cref="QueryRunCoordinator"/> and a
 /// scriptable <see cref="FakeAgentProcessLauncher"/>. Invokes the production command
 /// class via <see cref="ICommand{TSettings}"/> directly, capturing stdout/stderr via
 /// injected writers instead of the process-global <see cref="Console"/>.
@@ -286,7 +286,7 @@ internal sealed class HubCliQueryTestHarness : IDisposable
 
     private HubCliQueryTestHarness(
         string root, WebApplication hubHost, ResolvedGrimoirePaths paths, FakeAgentProcessLauncher launcher,
-        ConversationRecordStore recordStore, QueryRunCoordinator coordinator)
+        QueryConversationRecordStore recordStore, QueryRunCoordinator coordinator)
     {
         _root = root;
         _hubHost = hubHost;
@@ -298,7 +298,7 @@ internal sealed class HubCliQueryTestHarness : IDisposable
 
     public ResolvedGrimoirePaths Paths { get; }
     public FakeAgentProcessLauncher Launcher { get; }
-    public ConversationRecordStore RecordStore { get; }
+    public QueryConversationRecordStore RecordStore { get; }
     public QueryRunCoordinator Coordinator { get; }
 
     public static async Task<HubCliQueryTestHarness> CreateAsync(
@@ -309,7 +309,7 @@ internal sealed class HubCliQueryTestHarness : IDisposable
         Directory.CreateDirectory(paths.ConversationsDir);
 
         var effectiveLauncher = launcher ?? new FakeAgentProcessLauncher();
-        var recordStore = new ConversationRecordStore(paths);
+        var recordStore = new QueryConversationRecordStore(paths);
 
         // Real (unconnected) SignalR hub context, mirroring HubCliRemediationTestHarness/
         // RemediationObservabilityTests.StartHubHostAsync — publishing never needs an

@@ -47,7 +47,7 @@ public class QueryFollowUpContextTests
         var recordPath = paths.ConversationRecordPathFor("c-followup");
         await QueryConversationRecordLifecycleTests.WaitUntilAsync(() => Task.FromResult(
             File.Exists(recordPath) &&
-            ConversationRecordFormat.Parse(File.ReadAllText(recordPath)) is ConversationRecordParseResult.Parsed { Turns.Count: 2 }));
+            QueryConversationRecordFormat.Parse(File.ReadAllText(recordPath)) is QueryConversationRecordParseResult.Parsed { Turns.Count: 2 }));
 
         // Turn 3: the follow-up — capture the QueryAgentRequest handed to the launcher.
         await QueryConversationRecordLifecycleTests.SubmitAsync(client, "c-followup", "How do those two relate?");
@@ -55,8 +55,8 @@ public class QueryFollowUpContextTests
         var request = launcher.QueryRequests[^1];
         Assert.Equal("How do those two relate?", request.Prompt);
 
-        var parsed = Assert.IsType<ConversationRecordParseResult.Parsed>(
-            ConversationRecordFormat.Parse(await File.ReadAllTextAsync(recordPath)));
+        var parsed = Assert.IsType<QueryConversationRecordParseResult.Parsed>(
+            QueryConversationRecordFormat.Parse(await File.ReadAllTextAsync(recordPath)));
         var expectedContext = parsed.Turns.Select(t => t.ToPriorTurn()).ToList();
 
         Assert.Equal(expectedContext, request.PriorTurns);

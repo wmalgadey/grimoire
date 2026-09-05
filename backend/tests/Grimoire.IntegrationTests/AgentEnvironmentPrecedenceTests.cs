@@ -70,7 +70,7 @@ public class AgentEnvironmentPrecedenceTests
         string agent, string variable, string? value, IDictionary<string, string> baseEnv, ILogger? logger = null)
         => agent switch
         {
-            "ingest" => AgentProcessHost.BuildChildEnvironment(
+            "ingest" => AgentProcessHost.BuildIngestChildEnvironment(
                 baseEnv,
                 authToken: null,
                 ingestBaseUrl: value is not null && variable.EndsWith("BASE_URL", StringComparison.Ordinal) ? value : null,
@@ -133,7 +133,7 @@ public class AgentEnvironmentPrecedenceTests
         ILogger? logger = null)
         => agent switch
         {
-            "ingest" => AgentProcessHost.BuildChildEnvironment(
+            "ingest" => AgentProcessHost.BuildIngestChildEnvironment(
                 baseEnv, authToken: null, ingestBaseUrl: baseUrl, ingestModel: model, logger: logger),
             "query" => AgentProcessHost.BuildQueryChildEnvironment(
                 baseEnv, authToken: null, queryBaseUrl: baseUrl, queryModel: model, logger: logger),
@@ -243,7 +243,7 @@ public class AgentEnvironmentPrecedenceTests
     [Fact]
     public void TheSecretsFileCap_Wins_OverACanonicalSpendCapInTheHubEnvironment()
     {
-        var childEnv = AgentProcessHost.BuildChildEnvironment(
+        var childEnv = AgentProcessHost.BuildIngestChildEnvironment(
             BaseEnv(("GRIMOIRE_INGEST_SPEND_CAP", "200")),
             authToken: null,
             ingestTokenCap: "100");
@@ -258,7 +258,7 @@ public class AgentEnvironmentPrecedenceTests
     [Fact]
     public void TheSecretsFileCanSetTheCanonicalCapName()
     {
-        var childEnv = AgentProcessHost.BuildChildEnvironment(
+        var childEnv = AgentProcessHost.BuildIngestChildEnvironment(
             BaseEnv(), authToken: null, ingestSpendCap: "250000");
 
         Assert.Equal("250000", childEnv["GRIMOIRE_INGEST_SPEND_CAP"]);
@@ -268,7 +268,7 @@ public class AgentEnvironmentPrecedenceTests
     [Fact]
     public void TheCanonicalCapName_WinsOverTheLegacyAlias_WithinTheSecretsFile()
     {
-        var childEnv = AgentProcessHost.BuildChildEnvironment(
+        var childEnv = AgentProcessHost.BuildIngestChildEnvironment(
             BaseEnv(), authToken: null, ingestTokenCap: "100", ingestSpendCap: "250000");
 
         Assert.Equal("250000", childEnv["GRIMOIRE_INGEST_SPEND_CAP"]);
@@ -278,7 +278,7 @@ public class AgentEnvironmentPrecedenceTests
     [Fact]
     public void TheLegacyAlias_IsStillAccepted_AndForwardedUnderTheCanonicalName()
     {
-        var inherited = AgentProcessHost.BuildChildEnvironment(
+        var inherited = AgentProcessHost.BuildIngestChildEnvironment(
             BaseEnv(("GRIMOIRE_INGEST_TOKEN_CAP", "777")), authToken: null);
 
         Assert.Equal("777", inherited["GRIMOIRE_INGEST_SPEND_CAP"]);

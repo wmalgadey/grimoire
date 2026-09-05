@@ -25,7 +25,7 @@ public class CredentialScopingTests
         };
 
         // authToken=null simulates LocalSecretsLoader returning null (empty/absent secrets file).
-        var childEnv = AgentProcessHost.BuildChildEnvironment(parentEnv, authToken: null);
+        var childEnv = AgentProcessHost.BuildIngestChildEnvironment(parentEnv, authToken: null);
 
         Assert.False(childEnv.ContainsKey("ANTHROPIC_AUTH_TOKEN"),
             "ANTHROPIC_AUTH_TOKEN must not be present in child env when secrets file returns null.");
@@ -41,7 +41,7 @@ public class CredentialScopingTests
             ["PATH"] = "/usr/bin",
         };
 
-        var childEnv = AgentProcessHost.BuildChildEnvironment(parentEnv, authToken: "sk-ant-from-file");
+        var childEnv = AgentProcessHost.BuildIngestChildEnvironment(parentEnv, authToken: "sk-ant-from-file");
 
         Assert.Equal("sk-ant-from-file", childEnv["ANTHROPIC_AUTH_TOKEN"]);
     }
@@ -55,7 +55,7 @@ public class CredentialScopingTests
     [Fact]
     public void Dispatcher_InjectsTheOutputCeiling_FromTheSecretsFile()
     {
-        var childEnv = AgentProcessHost.BuildChildEnvironment(
+        var childEnv = AgentProcessHost.BuildIngestChildEnvironment(
             new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase) { ["PATH"] = "/usr/bin" },
             authToken: "sk-ant-from-file",
             ingestMaxOutputTokens: "32000");
@@ -66,7 +66,7 @@ public class CredentialScopingTests
     [Fact]
     public void Dispatcher_OmitsTheOutputCeiling_WhenTheSecretsFileConfiguresNone()
     {
-        var childEnv = AgentProcessHost.BuildChildEnvironment(
+        var childEnv = AgentProcessHost.BuildIngestChildEnvironment(
             new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase) { ["PATH"] = "/usr/bin" },
             authToken: "sk-ant-from-file");
 

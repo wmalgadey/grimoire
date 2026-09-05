@@ -154,11 +154,11 @@ public class LintConcurrencyAndLivenessTests
                     services.AddLogging();
                     services.AddSingleton<IAgentProcessLauncher>(launcher);
                     services.AddSingleton(resolvedPaths);
-                    services.AddSingleton<FindingsReportStore>(sp => new FindingsReportStore(
-                        resolvedPaths, NullLogger<FindingsReportStore>.Instance));
+                    services.AddSingleton<LintFindingsReportStore>(sp => new LintFindingsReportStore(
+                        resolvedPaths, NullLogger<LintFindingsReportStore>.Instance));
                     services.AddSingleton<LintRunCoordinator>(sp => new LintRunCoordinator(
                         sp.GetRequiredService<IAgentProcessLauncher>(),
-                        sp.GetRequiredService<FindingsReportStore>(),
+                        sp.GetRequiredService<LintFindingsReportStore>(),
                         resolvedPaths,
                         livenessWindow: livenessWindow,
                         logger: NullLogger<LintRunCoordinator>.Instance));

@@ -28,7 +28,7 @@ public class TraceContextPropagationTests
         using var triggerSpan = HubTracing.ActivitySource.StartActivity("hub.ingest_run.trigger");
         Assert.NotNull(triggerSpan);
 
-        var childEnv = AgentProcessHost.BuildChildEnvironment(
+        var childEnv = AgentProcessHost.BuildIngestChildEnvironment(
             new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase),
             authToken: null,
             currentActivity: triggerSpan);
@@ -40,7 +40,7 @@ public class TraceContextPropagationTests
     [Fact]
     public void BuildChildEnvironment_OmitsTraceParent_WhenNoCurrentActivity()
     {
-        var childEnv = AgentProcessHost.BuildChildEnvironment(
+        var childEnv = AgentProcessHost.BuildIngestChildEnvironment(
             new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase),
             authToken: null,
             currentActivity: null);
@@ -64,7 +64,7 @@ public class TraceContextPropagationTests
         unsampledActivity.Start();
         Assert.False(unsampledActivity.Recorded);
 
-        var childEnv = AgentProcessHost.BuildChildEnvironment(
+        var childEnv = AgentProcessHost.BuildIngestChildEnvironment(
             new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase),
             authToken: null,
             currentActivity: unsampledActivity);

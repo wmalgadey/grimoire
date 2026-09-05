@@ -14,7 +14,7 @@ namespace Grimoire.IntegrationTests.PathConfiguration;
 /// <see cref="PathSwitchCatalog"/> binds that switch to — AddCommandLine and
 /// AddInMemoryCollection populate <see cref="IConfiguration"/> identically), a real
 /// agent-produced artifact (a Findings Report, via
-/// <see cref="LintRunCoordinator"/>/<see cref="FindingsReportStore"/>) is written to disk
+/// <see cref="LintRunCoordinator"/>/<see cref="LintFindingsReportStore"/>) is written to disk
 /// under the default memory directory — NOT the custom wiki directory, since bookkeeping
 /// anchors at <c>MemoryDir</c> — while <c>DataDir</c>/<c>AgentDir</c>/<c>MemoryDir</c> stay
 /// at their unset, cwd-anchored defaults.
@@ -54,7 +54,7 @@ public class LintWikiDirEndToEndContentTests
 
             var repository = new OperationalStateRepository(resolved.StateDbPath);
             await repository.InitializeAsync();
-            var reportStore = new FindingsReportStore(resolved, NullLogger<FindingsReportStore>.Instance);
+            var reportStore = new LintFindingsReportStore(resolved, NullLogger<LintFindingsReportStore>.Instance);
             var coordinator = new LintRunCoordinator(
                 new FakeAgentProcessLauncher(autoPlay: true), reportStore, resolved,
                 logger: NullLogger<LintRunCoordinator>.Instance, stateRepository: repository);

@@ -25,7 +25,7 @@ public sealed class RestartReconciler
     /// <c>RemediationRunCoordinator.InitializeAsync</c> (called after this, mirroring
     /// <c>IngestRunCoordinator.InitializeAsync</c>) is what pauses the queue for them.
     /// Runs before the SignalR hubs are mapped (Program.cs), so — like
-    /// <see cref="ReconcileRunningTasksAsync"/> — this performs no live broadcast; the
+    /// <see cref="ReconcileRunningIngestTasksAsync"/> — this performs no live broadcast; the
     /// board's initial-state REST fetch (<c>GET /api/remediation-tasks</c>) is the
     /// recovery path for any client that connects afterward.
     /// </summary>
@@ -73,21 +73,21 @@ public sealed class RestartReconciler
     /// Principle V); the harness-composed entry this method used to append is deleted, and
     /// with it the <c>logPath</c> parameter that existed only to locate it.
     /// </summary>
-    public async Task<int> ReconcileRunningTasksAsync(string tasksDir, CancellationToken cancellationToken = default)
+    public async Task<int> ReconcileRunningIngestTasksAsync(string tasksDir, CancellationToken cancellationToken = default)
     {
-        var running = await _repository.GetByStatusAsync("running", cancellationToken);
+        var running = await _repository.GetIngestTaskStatesByStatusAsync("running", cancellationToken);
         foreach (var state in running)
         {
             var reason = "Hub restarted while task was running.";
 
-            await UpdateTaskArtifactAsync(tasksDir, state.TaskId, reason, cancellationToken);
+            await UpdateIngestTaskArtifactAsync(tasksDir, state.TaskId, reason, cancellationToken);
 
             // Delete the stale row after the durable write succeeds; the task artifact is
             // the permanent record (ADR-003). Deleting last keeps the row retryable if the
             // write above fails on a transient IO error.
-            await _repository.DeleteAsync(state.TaskId, cancellationToken);
+            await _repository.DeleteIngestTaskStateAsync(state.TaskId, cancellationToken);
 
-            HubMetrics.RecordTaskReconciled();
+            HubMetrics.RecordIngestTaskReconciled();
             using var reconciledSpan = HubTracing.ActivitySource.StartActivity("ingest.task.reconciled");
             reconciledSpan?.SetTag("signal_type", "log");
             reconciledSpan?.SetTag("event_name", "ingest.task.reconciled");
@@ -103,7 +103,7 @@ public sealed class RestartReconciler
         return running.Count;
     }
 
-    private static async Task UpdateTaskArtifactAsync(string tasksDir, string taskId, string reason, CancellationToken cancellationToken)
+    private static async Task UpdateIngestTaskArtifactAsync(string tasksDir, string taskId, string reason, CancellationToken cancellationToken)
     {
         var taskPath = Path.Combine(tasksDir, $"{taskId}.md");
         if (!File.Exists(taskPath))

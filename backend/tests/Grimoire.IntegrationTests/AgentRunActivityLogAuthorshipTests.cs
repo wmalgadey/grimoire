@@ -45,7 +45,7 @@ public class AgentRunActivityLogAuthorshipTests
             var executor = NewExecutor(root, wikiDir, logPath);
             var loop = new AgentLoop(fake, executor);
 
-            await Assert.ThrowsAnyAsync<Exception>(() => loop.RunAsync(
+            await Assert.ThrowsAnyAsync<Exception>(() => loop.RunIngestSourceAsync(
                 systemPrompt: "You are a test agent.",
                 userPrompt: "Integrate the source.",
                 taskId: "task-failing",
@@ -87,7 +87,7 @@ public class AgentRunActivityLogAuthorshipTests
             var executor = NewExecutor(root, wikiDir, logPath);
             var loop = new AgentLoop(fake, executor);
 
-            var result = await loop.RunAsync(
+            var result = await loop.RunIngestSourceAsync(
                 systemPrompt: "You are a test agent.",
                 userPrompt: "What do we know about retrieval patterns?",
                 taskId: "turn-no-write",
@@ -131,7 +131,7 @@ public class AgentRunActivityLogAuthorshipTests
             var executor = NewExecutor(root, wikiDir, logPath);
             var loop = new AgentLoop(fake, executor);
 
-            await loop.RunAsync(
+            await loop.RunIngestSourceAsync(
                 systemPrompt: "You are a test agent.",
                 userPrompt: "Integrate the source.",
                 taskId: "task-logging",

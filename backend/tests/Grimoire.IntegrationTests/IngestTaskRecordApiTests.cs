@@ -132,7 +132,7 @@ public class IngestTaskRecordApiTests
         var taskId = "2026-07-18-ingest-torn01";
         var recordPath = Path.Combine(fixture.ContentPaths.TasksDir, $"{taskId}.md");
         // Torn / pre-atomic-write legacy file: an opening frontmatter fence with no closing
-        // fence, exactly the shape TaskArtifactFrontmatter.TryParse rejects (< 3 sections).
+        // fence, exactly the shape IngestTaskArtifactFrontmatter.TryParse rejects (< 3 sections).
         await File.WriteAllTextAsync(recordPath,
             """
             ---
@@ -211,11 +211,11 @@ public class IngestTaskRecordApiTests
                     services.AddSingleton(fixture.Pipeline);
                     services.AddSingleton(fixture.BoardStore);
                     services.AddSingleton(fixture.ContentPaths);
-                    services.AddSingleton(fixture.SourceArtifactStore);
+                    services.AddSingleton(fixture.IngestSourceArtifactStore);
                     services.AddSingleton(fixture.Coordinator);
                     // 023: the detail endpoint reads the task's status history from the operational store.
                     services.AddSingleton(fixture.Repository);
-                    services.AddSingleton(new TaskRecordReadModel(fixture.ResolvedPaths));
+                    services.AddSingleton(new IngestTaskRecordReadModel(fixture.ResolvedPaths));
                 });
                 webHost.Configure(app =>
                 {

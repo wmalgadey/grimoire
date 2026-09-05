@@ -145,10 +145,10 @@ public class IngestRestartObservabilityTests
                     services.AddSingleton(fixture.Pipeline);
                     services.AddSingleton(fixture.BoardStore);
                     services.AddSingleton(fixture.ContentPaths);
-                    services.AddSingleton(fixture.SourceArtifactStore);
+                    services.AddSingleton(fixture.IngestSourceArtifactStore);
                     services.AddSingleton(fixture.Coordinator);
                     services.AddSingleton(fixture.Repository);
-                    services.AddSingleton(new TaskRecordReadModel(fixture.ResolvedPaths));
+                    services.AddSingleton(new IngestTaskRecordReadModel(fixture.ResolvedPaths));
                 });
                 webHost.Configure(app =>
                 {

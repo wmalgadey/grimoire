@@ -252,7 +252,7 @@ internal sealed class IngestIntentHandler : IAgentIntentHandler
         AgentLoopResult loopResult;
         try
         {
-            loopResult = await loop.RunAsync(
+            loopResult = await loop.RunIngestSourceAsync(
                 systemPrompt, instructions.EffectiveUserPrompt!, _options.TaskId, _options.SourceRef, readSource.Content, CancellationToken.None);
         }
         catch (AgentLoopCapException capEx)

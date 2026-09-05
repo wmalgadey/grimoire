@@ -34,13 +34,13 @@ const { restartTaskMock, getBoardMock, TestApiError } = vi.hoisted(() => ({
 
 vi.mock('$lib/services/ingestSubmissionsApi', async (importOriginal) => ({
 	...(await importOriginal<typeof import('$lib/services/ingestSubmissionsApi')>()),
-	getBoard: () => getBoardMock(),
-	restartTask: (taskId: string) => restartTaskMock(taskId),
+	getIngestBoard: () => getBoardMock(),
+	restartIngestTask: (taskId: string) => restartTaskMock(taskId),
 	IngestSubmissionApiError: TestApiError
 }));
 
 vi.mock('$lib/services/ingestLifecycleClient', () => ({
-	createBoardLifecycleStream: (onTasksChanged: (tasks: BoardTask[]) => void) => {
+	createIngestBoardLifecycleStream: (onTasksChanged: (tasks: BoardTask[]) => void) => {
 		onTasksChangedHandlers.push(onTasksChanged);
 		return {
 			start: async () => {
@@ -110,7 +110,7 @@ function remediation(
 
 function emitTasks(tasks: BoardTask[]) {
 	const handler = onTasksChangedHandlers.at(-1);
-	if (!handler) throw new Error('createBoardLifecycleStream was never started');
+	if (!handler) throw new Error('createIngestBoardLifecycleStream was never started');
 	handler(tasks);
 }
 

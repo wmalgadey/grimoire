@@ -184,7 +184,7 @@ public class QuerySynthesisWriteTests
         Assert.Contains("created_pages: []", content, StringComparison.Ordinal);
     }
 
-    private static async Task<RecordedTurn> ReadSingleTurnAsync(string root, string conversationId)
+    private static async Task<QueryRecordedTurn> ReadSingleTurnAsync(string root, string conversationId)
     {
         var paths = QueryTurnSubmissionApiTests.BuildResolvedPaths(root);
         var recordPath = paths.ConversationRecordPathFor(conversationId);
@@ -193,7 +193,7 @@ public class QuerySynthesisWriteTests
         // parallelization, fixed at the root): File.Exists becoming true does not mean the
         // write has finished — poll for a successful structured parse too, not just
         // existence, to avoid reading mid-write content under heavy concurrent-suite load.
-        ConversationRecordParseResult.Parsed? parsed = null;
+        QueryConversationRecordParseResult.Parsed? parsed = null;
         await PollAsync.WaitAsync(
             async () =>
             {
@@ -202,7 +202,7 @@ public class QuerySynthesisWriteTests
                     return false;
                 }
 
-                return ConversationRecordFormat.Parse(await File.ReadAllTextAsync(recordPath)) is ConversationRecordParseResult.Parsed { Turns.Count: >= 1 } p
+                return QueryConversationRecordFormat.Parse(await File.ReadAllTextAsync(recordPath)) is QueryConversationRecordParseResult.Parsed { Turns.Count: >= 1 } p
                     && (parsed = p) is not null;
             },
             TimeSpan.FromSeconds(10),

@@ -75,7 +75,7 @@ public static class LintSubmissionEndpoints
         }));
     }
 
-    private static async Task<IResult> GetFindingsAsync(string runId, [FromServices] FindingsReportStore store, CancellationToken cancellationToken)
+    private static async Task<IResult> GetFindingsAsync(string runId, [FromServices] LintFindingsReportStore store, CancellationToken cancellationToken)
     {
         var content = await store.TryReadAsync(runId, cancellationToken);
         if (content is null)

@@ -94,7 +94,7 @@ public class IngestRunLifecycleTests
             var loop = new AgentLoop(fake, executor);
 
             // Act
-            var result = await loop.RunAsync(
+            var result = await loop.RunIngestSourceAsync(
                 systemPrompt: "You are a test agent.",
                 userPrompt: "Integrate the source.",
                 taskId: "test-task-1",
@@ -159,7 +159,7 @@ public class IngestRunLifecycleTests
             var executor = new GuardedToolExecutor(policy, journal, root);
             var loop = new AgentLoop(fake, executor);
 
-            await Assert.ThrowsAsync<InvalidOperationException>(() => loop.RunAsync(
+            await Assert.ThrowsAsync<InvalidOperationException>(() => loop.RunIngestSourceAsync(
                 "prompt",
                 "Integrate the source.",
                 "task-midrun-failure",
@@ -209,7 +209,7 @@ public class IngestRunLifecycleTests
             var executor = new GuardedToolExecutor(policy, journal, root);
             var loop = new AgentLoop(fake, executor, turnCap: 1);
 
-            var ex = await Assert.ThrowsAsync<AgentLoopCapException>(() => loop.RunAsync(
+            var ex = await Assert.ThrowsAsync<AgentLoopCapException>(() => loop.RunIngestSourceAsync(
                 "prompt",
                 "Integrate the source.",
                 "task-cap",
@@ -295,7 +295,7 @@ public class IngestRunLifecycleTests
             var loop = new AgentLoop(fake, executor);
 
             // Act
-            var result = await loop.RunAsync(
+            var result = await loop.RunIngestSourceAsync(
                 systemPrompt: "Test.",
                 userPrompt: "Integrate the source.",
                 taskId: "test-task-3",
@@ -373,7 +373,7 @@ public class IngestRunLifecycleTests
             var loop = new AgentLoop(fake, executor);
 
             // Act
-            var result = await loop.RunAsync(
+            var result = await loop.RunIngestSourceAsync(
                 systemPrompt: "You are a test agent.",
                 userPrompt: "Integrate the source.",
                 taskId: "minimal-test",
@@ -433,7 +433,7 @@ public class IngestRunLifecycleTests
             var loop = new AgentLoop(fake, executor);
 
             // Act
-            var result = await loop.RunAsync(
+            var result = await loop.RunIngestSourceAsync(
                 systemPrompt: "Test.",
                 userPrompt: "Integrate the source.",
                 taskId: "test-task-no-empty-user",
@@ -500,7 +500,7 @@ public class IngestRunLifecycleTests
             var loop = new AgentLoop(fake, executor);
 
             // Act / Assert
-            var ex = await Assert.ThrowsAsync<InvalidOperationException>(() => loop.RunAsync(
+            var ex = await Assert.ThrowsAsync<InvalidOperationException>(() => loop.RunIngestSourceAsync(
                 systemPrompt: "Test.",
                 userPrompt: "Integrate the source.",
                 taskId: "test-task-stop-sequence",
@@ -547,7 +547,7 @@ public class IngestRunLifecycleTests
             var loop = new AgentLoop(fake, executor);
 
             // Act / Assert
-            var ex = await Assert.ThrowsAsync<InvalidOperationException>(() => loop.RunAsync(
+            var ex = await Assert.ThrowsAsync<InvalidOperationException>(() => loop.RunIngestSourceAsync(
                 systemPrompt: "Test.",
                 userPrompt: "Integrate the source.",
                 taskId: "test-task-tool-use-no-blocks",
@@ -593,7 +593,7 @@ public class IngestRunLifecycleTests
             var loop = new AgentLoop(fake, executor);
 
             // Act / Assert
-            var ex = await Assert.ThrowsAsync<InvalidOperationException>(() => loop.RunAsync(
+            var ex = await Assert.ThrowsAsync<InvalidOperationException>(() => loop.RunIngestSourceAsync(
                 systemPrompt: "Test.",
                 userPrompt: "Integrate the source.",
                 taskId: "test-task-empty-stop-reason",

@@ -35,9 +35,9 @@ public class IngestLifecycleRealtimeTests
             .WithUrl($"{baseUrl}/hubs/ingest-lifecycle")
             .Build();
 
-        var received = new List<RealtimeLifecycleEvent>();
+        var received = new List<IngestRealtimeLifecycleEvent>();
         var lockObj = new object();
-        connection.On<RealtimeLifecycleEvent>("taskLifecycleChanged", e =>
+        connection.On<IngestRealtimeLifecycleEvent>("taskLifecycleChanged", e =>
         {
             lock (lockObj) { received.Add(e); }
         });
@@ -60,7 +60,7 @@ public class IngestLifecycleRealtimeTests
             TimeSpan.FromSeconds(10),
             "Expected 3 ingest lifecycle events within 10s.");
 
-        List<RealtimeLifecycleEvent> snapshot;
+        List<IngestRealtimeLifecycleEvent> snapshot;
         lock (lockObj) { snapshot = [.. received]; }
 
         Assert.Equal(3, snapshot.Count);

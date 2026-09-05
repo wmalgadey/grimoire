@@ -8,8 +8,8 @@
 	import QueryPromptForm from '$lib/components/QueryPromptForm.svelte';
 	import { toPresentedError, type PresentedError } from '$lib/services/apiError';
 	import {
-		applyAnswerChunk,
-		applyTurnChanged,
+		applyQueryAnswerChunk,
+		applyQueryTurnChanged,
 		createQueryLifecycleClient,
 		type QueryLifecycleClient
 	} from '$lib/services/queryLifecycleClient';
@@ -156,14 +156,14 @@
 		client.onAnswerChunk((event) => {
 			const lastSequence = lastAppliedSequenceByTurnId.get(event.turnId) ?? 0;
 			conversations.updateTurn(event.turnId, (turn) => {
-				const { answer, lastAppliedSequence } = applyAnswerChunk(turn.answer, event, lastSequence);
+				const { answer, lastAppliedSequence } = applyQueryAnswerChunk(turn.answer, event, lastSequence);
 				lastAppliedSequenceByTurnId.set(event.turnId, lastAppliedSequence);
 				return { ...turn, answer };
 			});
 		});
 
 		client.onTurnChanged((event) => {
-			if (!applyTurnChanged(event, seenTurnChangedKeys)) return;
+			if (!applyQueryTurnChanged(event, seenTurnChangedKeys)) return;
 
 			conversations.updateTurn(event.turnId, (turn) => ({
 				...turn,

@@ -48,7 +48,7 @@ public class LintLogEventTests
     [Fact]
     public void FindingsReportCreatedEvent_EmitsExpectedNameLevelAndFields()
     {
-        var logger = new CaptureLogger<FindingsReportStore>();
+        var logger = new CaptureLogger<LintFindingsReportStore>();
 
         LintFindingsLogEvents.LogFindingsReportCreated(logger, runId: "2026-07-30-lint-abc", path: "/data/findings/2026-07-30-lint-abc.md");
 

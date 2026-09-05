@@ -55,7 +55,7 @@ public class QueryConversationRecordLifecycleTests
         var paths = QueryTurnSubmissionApiTests.BuildResolvedPaths(root);
         var recordPath = paths.ConversationRecordPathFor("c-lifecycle");
         await PollAsync.WaitAsync(
-            () => File.Exists(recordPath) && ConversationRecordFormat.Parse(File.ReadAllText(recordPath)) is ConversationRecordParseResult.Parsed { Turns.Count: >= 3 },
+            () => File.Exists(recordPath) && QueryConversationRecordFormat.Parse(File.ReadAllText(recordPath)) is QueryConversationRecordParseResult.Parsed { Turns.Count: >= 3 },
             TimeSpan.FromSeconds(10),
             $"Expected the Conversation Record at '{recordPath}' to exist and parse with all 3 turns within 10s.");
 
@@ -67,7 +67,7 @@ public class QueryConversationRecordLifecycleTests
         var content = await File.ReadAllTextAsync(recordPath);
         Assert.Contains("record_format: grimoire-conversation/1", content, StringComparison.Ordinal);
 
-        var parsed = Assert.IsType<ConversationRecordParseResult.Parsed>(ConversationRecordFormat.Parse(content));
+        var parsed = Assert.IsType<QueryConversationRecordParseResult.Parsed>(QueryConversationRecordFormat.Parse(content));
         Assert.False(parsed.DroppedTrailingFragment);
         Assert.Equal(3, parsed.Turns.Count);
         Assert.Equal([1, 2, 3], parsed.Turns.Select(t => t.Position));
@@ -128,15 +128,15 @@ public class QueryConversationRecordLifecycleTests
         var recordPathA = paths.ConversationRecordPathFor("c-cross-a");
         var recordPathB = paths.ConversationRecordPathFor("c-cross-b");
         await PollAsync.WaitAsync(
-            () => File.Exists(recordPathA) && ConversationRecordFormat.Parse(File.ReadAllText(recordPathA)) is ConversationRecordParseResult.Parsed { Turns.Count: >= 1 }
-                && File.Exists(recordPathB) && ConversationRecordFormat.Parse(File.ReadAllText(recordPathB)) is ConversationRecordParseResult.Parsed { Turns.Count: >= 1 },
+            () => File.Exists(recordPathA) && QueryConversationRecordFormat.Parse(File.ReadAllText(recordPathA)) is QueryConversationRecordParseResult.Parsed { Turns.Count: >= 1 }
+                && File.Exists(recordPathB) && QueryConversationRecordFormat.Parse(File.ReadAllText(recordPathB)) is QueryConversationRecordParseResult.Parsed { Turns.Count: >= 1 },
             TimeSpan.FromSeconds(10),
             "Expected both Conversation Records to exist and parse with at least one turn within 10s.");
 
-        var parsedA = Assert.IsType<ConversationRecordParseResult.Parsed>(
-            ConversationRecordFormat.Parse(await File.ReadAllTextAsync(recordPathA)));
-        var parsedB = Assert.IsType<ConversationRecordParseResult.Parsed>(
-            ConversationRecordFormat.Parse(await File.ReadAllTextAsync(recordPathB)));
+        var parsedA = Assert.IsType<QueryConversationRecordParseResult.Parsed>(
+            QueryConversationRecordFormat.Parse(await File.ReadAllTextAsync(recordPathA)));
+        var parsedB = Assert.IsType<QueryConversationRecordParseResult.Parsed>(
+            QueryConversationRecordFormat.Parse(await File.ReadAllTextAsync(recordPathB)));
 
         var turnA = Assert.Single(parsedA.Turns);
         Assert.Equal("Question for A?", turnA.Prompt);
@@ -180,7 +180,7 @@ public class QueryConversationRecordLifecycleTests
         var recordPath = paths.ConversationRecordPathFor("c-retired");
         await WaitUntilAsync(() => Task.FromResult(
             File.Exists(recordPath) &&
-            ConversationRecordFormat.Parse(File.ReadAllText(recordPath)) is ConversationRecordParseResult.Parsed { Turns.Count: 3 }));
+            QueryConversationRecordFormat.Parse(File.ReadAllText(recordPath)) is QueryConversationRecordParseResult.Parsed { Turns.Count: 3 }));
 
         // SC-004 runtime half: the retired location gained no files at all.
         var queryRunsDir = Path.Combine(root, "query-runs");
@@ -228,7 +228,7 @@ public class QueryConversationRecordLifecycleTests
 
         // 019-fast-test-tier (ADR-021 edge case: genuine race surfaced by suite
         // parallelization, fixed at the root, not papered over): the turn's in-memory
-        // status flips before ConversationRecordStore.AppendTurnAsync's file-write-plus-
+        // status flips before QueryConversationRecordStore.AppendTurnAsync's file-write-plus-
         // cache-update completes (documented gap, see QueryInstructionLoadTests et al.).
         // Callers that immediately submit the NEXT turn on the same conversation read
         // `priorTurns` from that same cache (QueryRunCoordinator.SubmitTurnAsync) — under
@@ -240,8 +240,8 @@ public class QueryConversationRecordLifecycleTests
         {
             var recordPath = QueryTurnSubmissionApiTests.BuildResolvedPaths(root).ConversationRecordPathFor(conversationId);
             await PollAsync.WaitAsync(
-                () => File.Exists(recordPath) && ConversationRecordFormat.Parse(File.ReadAllText(recordPath))
-                    is ConversationRecordParseResult.Parsed parsed && parsed.Turns.Any(t => t.TurnId == turnId),
+                () => File.Exists(recordPath) && QueryConversationRecordFormat.Parse(File.ReadAllText(recordPath))
+                    is QueryConversationRecordParseResult.Parsed parsed && parsed.Turns.Any(t => t.TurnId == turnId),
                 TimeSpan.FromSeconds(10),
                 $"Expected the Conversation Record at '{recordPath}' to contain turn '{turnId}' within 10s.");
         }

@@ -25,7 +25,7 @@ public class IngestSourceArtifactPersistenceTests
         // parallel load the default 10 s budget is too tight on a busy dev machine.
         await fixture.WaitForStatusAsync(taskId, s => s is "completed" or "failed", TimeSpan.FromSeconds(30));
 
-        var artifactSet = await fixture.SourceArtifactStore.TryReadMetadataAsync(taskId);
+        var artifactSet = await fixture.IngestSourceArtifactStore.TryReadMetadataAsync(taskId);
         Assert.NotNull(artifactSet);
         Assert.True(File.Exists(artifactSet!.OriginalPath), "Original artifact must be persisted under raw/originals.");
         Assert.True(File.Exists(artifactSet.NormalizedMarkdownPath), "Normalized artifact must be persisted under raw/sources.");

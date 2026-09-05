@@ -51,14 +51,14 @@ public static class HubCliCommands
         // 017-hub-help-usage parity (HubHelpUsageTests.ExpectedSwitches): the description
         // deliberately names --path/--source-kind so root help keeps surfacing them, like
         // the retired BuildUsageText's flat usage blob did — submit-source's own --help
-        // (Spectre-generated from SubmitSourceSettings, which inherits HubPathSettings)
+        // (Spectre-generated from IngestSubmitSourceSettings, which inherits HubPathSettings)
         // covers full option detail, including every ADR-009 path switch. No square
         // brackets here: Spectre renders ICommandInfo.Description as markup internally
         // (both the root Commands: table and each command's own description header), and
         // '[...]' is markup-tag syntax there, not literal text.
         new("submit-source",
             "Submit a source document for ingest into the wiki via --path <path>, with optional --source-kind <kind>.",
-            typeof(SubmitSourceCommand)),
+            typeof(IngestSubmitSourceCommand)),
     ];
 
     static HubCliCommands()

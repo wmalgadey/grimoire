@@ -431,7 +431,7 @@ public sealed class GuardedToolExecutor
 
     /// <summary>
     /// "The frontmatter block" is the content between a leading document's first two
-    /// <c>---</c> delimiters (the same convention <c>TaskArtifactFrontmatter</c> parses).
+    /// <c>---</c> delimiters (the same convention <c>IngestTaskArtifactFrontmatter</c> parses).
     /// A document with no frontmatter (no leading <c>---</c>, or no closing delimiter)
     /// has none to return.
     /// </summary>

@@ -109,7 +109,7 @@ export async function fetchLintRunFromBoard(
  * Applies one `lintRunLifecycleChanged` event to the board's current lint run view, per
  * contracts/remediation-lifecycle-events.md `## Rules`: idempotent by `(eventId, runId)`,
  * stale/out-of-order events ignored. Pure function — testable independently of the
- * SignalR transport (mirrors `applyLifecycleEvent`).
+ * SignalR transport (mirrors `applyIngestLifecycleEvent`).
  */
 export function applyLintRunLifecycleEvent(
 	run: LintRun | null,
@@ -158,7 +158,7 @@ export interface LintRunStream {
  * Bootstraps the board's lint run view from `GET /api/board`, then applies live
  * `lintRunLifecycleChanged` events on top, idempotently. On reconnect, refreshes from
  * the composite response before resuming the stream (same bootstrap-then-stream rule as
- * `createBoardLifecycleStream`, spec edge case: connection drop must recover correct
+ * `createIngestBoardLifecycleStream`, spec edge case: connection drop must recover correct
  * state, SC-002).
  */
 export function createLintRunStream(

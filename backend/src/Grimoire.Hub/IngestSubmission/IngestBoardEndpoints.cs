@@ -14,12 +14,12 @@ namespace Grimoire.Hub.IngestSubmission;
 /// load and on every SignalR reconnect, before resuming the lifecycle streams (research.md
 /// R9). Sibling file to <see cref="IngestSubmissionEndpoints"/> so the existing ingest
 /// endpoints stay byte-for-byte untouched (FR-015/SC-008): ingest entries are composed
-/// from the same unchanged <see cref="KanbanBoardProjectionStore"/> +
+/// from the same unchanged <see cref="IngestKanbanBoardProjectionStore"/> +
 /// <see cref="IngestRunCoordinator"/> sources as `GET /api/ingest-submissions`, carrying
 /// exactly today's row field set plus `kind`. T024 (US3) adds `remediation_task` entries
 /// here.
 /// </summary>
-public static class BoardEndpoints
+public static class IngestBoardEndpoints
 {
     public static RouteGroupBuilder MapBoardEndpoints(this RouteGroupBuilder group)
     {
@@ -28,7 +28,7 @@ public static class BoardEndpoints
     }
 
     private static async Task<IResult> GetCompositeBoardAsync(
-        [FromServices] KanbanBoardProjectionStore store,
+        [FromServices] IngestKanbanBoardProjectionStore store,
         [FromServices] IngestContentPaths contentPaths,
         [FromServices] IngestRunCoordinator ingestCoordinator,
         [FromServices] LintRunCoordinator lintCoordinator,

@@ -433,10 +433,10 @@ public class HubCliParityTests
         await WaitForFileAsync(httpRecordPath);
         await WaitForFileAsync(cliRecordPath);
 
-        var httpParsed = Assert.IsType<ConversationRecordParseResult.Parsed>(
-            ConversationRecordFormat.Parse(await File.ReadAllTextAsync(httpRecordPath)));
-        var cliParsed = Assert.IsType<ConversationRecordParseResult.Parsed>(
-            ConversationRecordFormat.Parse(await File.ReadAllTextAsync(cliRecordPath)));
+        var httpParsed = Assert.IsType<QueryConversationRecordParseResult.Parsed>(
+            QueryConversationRecordFormat.Parse(await File.ReadAllTextAsync(httpRecordPath)));
+        var cliParsed = Assert.IsType<QueryConversationRecordParseResult.Parsed>(
+            QueryConversationRecordFormat.Parse(await File.ReadAllTextAsync(cliRecordPath)));
         var httpTurn = Assert.Single(httpParsed.Turns);
         var cliTurn = Assert.Single(cliParsed.Turns);
 
@@ -504,11 +504,11 @@ internal sealed class IngestEndpointHostHarness : IDisposable
                     services.AddSingleton(fixture.Pipeline);
                     services.AddSingleton(fixture.BoardStore);
                     services.AddSingleton(fixture.ContentPaths);
-                    services.AddSingleton(fixture.SourceArtifactStore);
+                    services.AddSingleton(fixture.IngestSourceArtifactStore);
                     services.AddSingleton(fixture.Coordinator);
                     // 023: the detail endpoint reads the task's status history from the operational store.
                     services.AddSingleton(fixture.Repository);
-                    services.AddSingleton(new TaskRecordReadModel(fixture.ResolvedPaths));
+                    services.AddSingleton(new IngestTaskRecordReadModel(fixture.ResolvedPaths));
                 });
                 webHost.Configure(app =>
                 {
@@ -541,9 +541,9 @@ internal sealed class IngestEndpointHostHarness : IDisposable
 
         var sourceRef = Path.Combine(Fixture.Root, $"{taskId}.md");
         var artifactPath = Path.Combine(Fixture.ContentPaths.TasksDir, $"{taskId}.md");
-        await new HubTaskArtifactWriter().WriteAsync(
+        await new HubIngestTaskArtifactWriter().WriteAsync(
             artifactPath,
-            new HubTaskArtifactDocument(
+            new HubIngestTaskArtifactDocument(
                 TaskId: taskId,
                 Status: "queued",
                 StartedAt: DateTimeOffset.UtcNow,

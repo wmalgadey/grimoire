@@ -2,8 +2,8 @@ using Grimoire.Hub.Runtime.Paths;
 
 namespace Grimoire.Hub.IngestSubmission;
 
-/// <summary>Parsed frontmatter presented to the detail view (data-model.md TaskRecord).</summary>
-public sealed record TaskRecordMetadata(
+/// <summary>Parsed frontmatter presented to the detail view (data-model.md IngestTaskRecord).</summary>
+public sealed record IngestTaskRecordMetadata(
     string Status,
     string? Agent,
     DateTimeOffset StartedAt,
@@ -13,19 +13,19 @@ public sealed record TaskRecordMetadata(
     string? FailureReason);
 
 /// <summary>The per-task markdown record, metadata parsed and body with frontmatter stripped.</summary>
-public sealed record TaskRecord(string TaskId, TaskRecordMetadata Metadata, string Body);
+public sealed record IngestTaskRecord(string TaskId, IngestTaskRecordMetadata Metadata, string Body);
 
-public enum TaskRecordOutcome
+public enum IngestTaskRecordOutcome
 {
     Ok,
     Missing,
     Unparseable,
 }
 
-public sealed record TaskRecordResult(TaskRecordOutcome Outcome, TaskRecord? Record)
+public sealed record IngestTaskRecordResult(IngestTaskRecordOutcome Outcome, IngestTaskRecord? Record)
 {
-    public static readonly TaskRecordResult Missing = new(TaskRecordOutcome.Missing, null);
-    public static readonly TaskRecordResult Unparseable = new(TaskRecordOutcome.Unparseable, null);
+    public static readonly IngestTaskRecordResult Missing = new(IngestTaskRecordOutcome.Missing, null);
+    public static readonly IngestTaskRecordResult Unparseable = new(IngestTaskRecordOutcome.Unparseable, null);
 }
 
 /// <summary>
@@ -36,21 +36,21 @@ public sealed record TaskRecordResult(TaskRecordOutcome Outcome, TaskRecord? Rec
 /// code performs no wiki-content judgment here (Principle V) — it only parses and strips
 /// the existing frontmatter block.
 /// </summary>
-public sealed class TaskRecordReadModel
+public sealed class IngestTaskRecordReadModel
 {
     private readonly ResolvedGrimoirePaths _paths;
 
-    public TaskRecordReadModel(ResolvedGrimoirePaths paths)
+    public IngestTaskRecordReadModel(ResolvedGrimoirePaths paths)
     {
         _paths = paths;
     }
 
-    public async Task<TaskRecordResult> ReadAsync(string taskId, CancellationToken cancellationToken = default)
+    public async Task<IngestTaskRecordResult> ReadAsync(string taskId, CancellationToken cancellationToken = default)
     {
         var path = _paths.TaskArtifactPathFor(taskId);
         if (!File.Exists(path))
         {
-            return TaskRecordResult.Missing;
+            return IngestTaskRecordResult.Missing;
         }
 
         string markdown;
@@ -62,18 +62,18 @@ public sealed class TaskRecordReadModel
         {
             // Concurrent delete/rename between the existence check and the read: treat as
             // missing rather than surfacing a 5xx (contracts/task-record-api.md).
-            return TaskRecordResult.Missing;
+            return IngestTaskRecordResult.Missing;
         }
 
-        var frontmatter = TaskArtifactFrontmatter.TryParse(markdown);
+        var frontmatter = IngestTaskArtifactFrontmatter.TryParse(markdown);
         if (frontmatter is null)
         {
-            return TaskRecordResult.Unparseable;
+            return IngestTaskRecordResult.Unparseable;
         }
 
-        var record = new TaskRecord(
+        var record = new IngestTaskRecord(
             TaskId: frontmatter.TaskId,
-            Metadata: new TaskRecordMetadata(
+            Metadata: new IngestTaskRecordMetadata(
                 Status: frontmatter.Status,
                 Agent: frontmatter.Agent,
                 StartedAt: frontmatter.StartedAt,
@@ -83,7 +83,7 @@ public sealed class TaskRecordReadModel
                 FailureReason: frontmatter.FailureReason),
             Body: StripFrontmatter(markdown));
 
-        return new TaskRecordResult(TaskRecordOutcome.Ok, record);
+        return new IngestTaskRecordResult(IngestTaskRecordOutcome.Ok, record);
     }
 
     private static string StripFrontmatter(string markdown)

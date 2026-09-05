@@ -67,7 +67,7 @@ public sealed class IngestLifecyclePublisher
         {
             try
             {
-                await _stateRepository.AppendStatusHistoryAsync(
+                await _stateRepository.AppendIngestStatusHistoryAsync(
                     taskId, toStatus, _timeProvider.GetUtcNow(), historyDetail ?? failureReason, cancellationToken);
             }
             catch (Exception ex)
@@ -78,7 +78,7 @@ public sealed class IngestLifecyclePublisher
             }
         }
 
-        var lifecycleEvent = new RealtimeLifecycleEvent(
+        var lifecycleEvent = new IngestRealtimeLifecycleEvent(
             EventId: Guid.NewGuid().ToString("N"),
             TaskId: taskId,
             FromStatus: fromStatus,
@@ -104,7 +104,7 @@ public sealed class IngestLifecyclePublisher
 
     /// <summary>
     /// Publishes a debounced task-record change notification (006 FR-009/FR-010,
-    /// contracts/task-record-changed-event.md). Called by <c>TaskRecordWatcher</c> — a
+    /// contracts/task-record-changed-event.md). Called by <c>IngestTaskRecordWatcher</c> — a
     /// watcher-initiated root span (no ambient HTTP request to parent to), correlated to
     /// its log event and metric via <paramref name="taskId"/>/the generated event id.
     /// </summary>
@@ -115,10 +115,10 @@ public sealed class IngestLifecyclePublisher
         span?.SetTag("task_id", taskId);
         span?.SetTag("event_id", eventId);
 
-        var changedEvent = new TaskRecordChangedEvent(eventId, taskId, changedAt);
+        var changedEvent = new IngestTaskRecordChangedEvent(eventId, taskId, changedAt);
         await _hubContext.Clients.All.SendAsync("taskRecordChanged", changedEvent, cancellationToken);
 
-        HubMetrics.RecordTaskRecordChangeEvent();
+        HubMetrics.RecordIngestTaskRecordChangeEvent();
         IngestSubmissionLogEvents.LogTaskRecordChangePublished(_logger, taskId, eventId, changedAt);
     }
 

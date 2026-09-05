@@ -63,7 +63,7 @@ public class HubCliConcurrencyTests
 
             // Must not throw: the busy_timeout hardening (T012) makes this wait for the
             // holder's COMMIT above instead of surfacing SqliteException(SQLITE_BUSY).
-            await repository.UpsertAsync(new OperationalTaskState(taskId, "running", 4242, DateTimeOffset.UtcNow));
+            await repository.UpsertIngestTaskStateAsync(new IngestOperationalTaskState(taskId, "running", 4242, DateTimeOffset.UtcNow));
             stopwatch.Stop();
 
             await releaseTask;
@@ -73,7 +73,7 @@ public class HubCliConcurrencyTests
                 $"The write returned after {stopwatch.Elapsed}, well before the {holdDuration} hold released its " +
                 "lock — it did not genuinely wait for the other writer, so this test did not exercise busy_timeout.");
 
-            var stored = await repository.GetByStatusAsync("running");
+            var stored = await repository.GetIngestTaskStatesByStatusAsync("running");
             Assert.Contains(stored, row => row.TaskId == taskId);
         }
         finally
@@ -125,7 +125,7 @@ public class HubCliConcurrencyTests
             var launcherA = new FakeAgentProcessLauncher(simulatedRunDuration: TimeSpan.FromSeconds(1));
             var coordinatorA = new LintRunCoordinator(
                 launcherA,
-                new FindingsReportStore(paths, NullLogger<FindingsReportStore>.Instance),
+                new LintFindingsReportStore(paths, NullLogger<LintFindingsReportStore>.Instance),
                 paths,
                 logger: NullLogger<LintRunCoordinator>.Instance);
 
@@ -134,7 +134,7 @@ public class HubCliConcurrencyTests
             var launcherB = new FakeAgentProcessLauncher();
             var coordinatorB = new LintRunCoordinator(
                 launcherB,
-                new FindingsReportStore(paths, NullLogger<FindingsReportStore>.Instance),
+                new LintFindingsReportStore(paths, NullLogger<LintFindingsReportStore>.Instance),
                 paths,
                 logger: NullLogger<LintRunCoordinator>.Instance);
 

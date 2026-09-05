@@ -51,7 +51,7 @@ vi.mock('$lib/services/queryLifecycleClient', () => ({
 		},
 		onConnectionStateChanged: () => () => {}
 	}),
-	applyAnswerChunk: (
+	applyQueryAnswerChunk: (
 		currentAnswer: string,
 		event: { text: string; sequence: number },
 		lastAppliedSequence: number
@@ -60,7 +60,7 @@ vi.mock('$lib/services/queryLifecycleClient', () => ({
 			return { answer: currentAnswer, lastAppliedSequence };
 		return { answer: currentAnswer + event.text, lastAppliedSequence: event.sequence };
 	},
-	applyTurnChanged: (event: { eventId: string; turnId: string }, seen: Set<string>) => {
+	applyQueryTurnChanged: (event: { eventId: string; turnId: string }, seen: Set<string>) => {
 		const key = `${event.eventId}:${event.turnId}`;
 		if (seen.has(key)) return false;
 		seen.add(key);

@@ -34,14 +34,14 @@ public abstract record QuerySubmissionResult
 /// operational state (Query runs are not queued the way Ingest runs are, R7), and no
 /// artifact write path in the agent process — on every terminal transition the Hub
 /// appends the turn to the Conversation Record via
-/// <see cref="ConversationRecordStore"/> (ADR-014), which is also the single source of
+/// <see cref="QueryConversationRecordStore"/> (ADR-014), which is also the single source of
 /// the prior-turn context handed to the agent on follow-ups (research.md R1).
 /// </summary>
 public sealed class QueryRunCoordinator
 {
     private readonly AgentDispatch.IAgentProcessLauncher _launcher;
     private readonly QueryLifecyclePublisher _publisher;
-    private readonly ConversationRecordStore _recordStore;
+    private readonly QueryConversationRecordStore _recordStore;
     private readonly ResolvedGrimoirePaths _paths;
     private readonly TimeProvider _timeProvider;
     private readonly TimeSpan _livenessWindow;
@@ -55,7 +55,7 @@ public sealed class QueryRunCoordinator
     public QueryRunCoordinator(
         AgentDispatch.IAgentProcessLauncher launcher,
         QueryLifecyclePublisher publisher,
-        ConversationRecordStore recordStore,
+        QueryConversationRecordStore recordStore,
         ResolvedGrimoirePaths paths,
         QueryConcurrencyOptions concurrencyOptions,
         TimeProvider? timeProvider = null,
@@ -126,7 +126,7 @@ public sealed class QueryRunCoordinator
             loadSpan?.SetTag("conversation_id", conversationId);
 
             var contextResult = await _recordStore.LoadContextAsync(conversationId, cancellationToken);
-            if (contextResult is ConversationContextResult.Unreadable unreadable)
+            if (contextResult is QueryConversationContextResult.Unreadable unreadable)
             {
                 loadSpan?.SetTag("source", "unreadable");
                 _activeTurnByConversation.TryRemove(new KeyValuePair<string, string>(conversationId, turnId));
@@ -134,7 +134,7 @@ public sealed class QueryRunCoordinator
                 return new QuerySubmissionResult.RecordUnreadable(unreadable.Reason);
             }
 
-            var loaded = (ConversationContextResult.Loaded)contextResult;
+            var loaded = (QueryConversationContextResult.Loaded)contextResult;
             priorTurns = loaded.Turns;
             loadSpan?.SetTag("turn_count", priorTurns.Count);
             loadSpan?.SetTag("source", loaded.Source);
@@ -357,8 +357,8 @@ public sealed class QueryRunCoordinator
         }
         catch (Exception ex)
         {
-            ConversationRecordLogEvents.LogRecordAppendFailed(_logger, turn.ConversationId, turnId, ex.Message);
-            HubMetrics.RecordConversationRecordAppendFailure();
+            QueryConversationRecordLogEvents.LogRecordAppendFailed(_logger, turn.ConversationId, turnId, ex.Message);
+            HubMetrics.RecordQueryConversationRecordAppendFailure();
         }
 
         var fromState = "running";
@@ -371,10 +371,10 @@ public sealed class QueryRunCoordinator
     /// identity, model, turns used, denied actions from the ADR-006 terminal-event
     /// metadata) to its Recorded Turn (data-model.md Turn Bookkeeping).
     /// </summary>
-    private static RecordedTurn BuildRecordedTurn(QueryTurnState turn, string outcome, string wikiRoot)
+    private static QueryRecordedTurn BuildRecordedTurn(QueryTurnState turn, string outcome, string wikiRoot)
     {
         var metadata = turn.CompletionMetadata;
-        return new RecordedTurn(
+        return new QueryRecordedTurn(
             TurnId: turn.TurnId,
             Position: turn.Position,
             State: outcome,
@@ -389,7 +389,7 @@ public sealed class QueryRunCoordinator
             PolicyVersion: metadata?.PolicyVersion,
             PolicySha256: metadata?.PolicySha256,
             DeniedActions: [.. (metadata?.DeniedActions ?? []).Select(d =>
-                new RecordedDeniedAction(d.Action, d.RequestedTarget, d.CanonicalTarget, d.Reason, d.Turn))],
+                new QueryRecordedDeniedAction(d.Action, d.RequestedTarget, d.CanonicalTarget, d.Reason, d.Turn))],
             Prompt: turn.Prompt,
             Answer: turn.Answer,
             // ADR-015 (012-query-synthesis-writes): the agent process reports canonical

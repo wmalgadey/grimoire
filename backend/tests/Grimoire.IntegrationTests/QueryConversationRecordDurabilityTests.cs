@@ -45,7 +45,7 @@ public class QueryConversationRecordDurabilityTests
 
             await QueryConversationRecordLifecycleTests.WaitUntilAsync(() => Task.FromResult(
                 File.Exists(recordPath) &&
-                ConversationRecordFormat.Parse(File.ReadAllText(recordPath)) is ConversationRecordParseResult.Parsed { Turns.Count: 3 }));
+                QueryConversationRecordFormat.Parse(File.ReadAllText(recordPath)) is QueryConversationRecordParseResult.Parsed { Turns.Count: 3 }));
 
             bytesBeforeRestart = await File.ReadAllBytesAsync(recordPath);
         }
@@ -54,8 +54,8 @@ public class QueryConversationRecordDurabilityTests
         var bytesAfterRestart = await File.ReadAllBytesAsync(recordPath);
         Assert.Equal(bytesBeforeRestart, bytesAfterRestart);
 
-        var parsed = Assert.IsType<ConversationRecordParseResult.Parsed>(
-            ConversationRecordFormat.Parse(await File.ReadAllTextAsync(recordPath)));
+        var parsed = Assert.IsType<QueryConversationRecordParseResult.Parsed>(
+            QueryConversationRecordFormat.Parse(await File.ReadAllTextAsync(recordPath)));
         Assert.False(parsed.DroppedTrailingFragment);
         Assert.Equal(3, parsed.Turns.Count);
 
@@ -95,7 +95,7 @@ public class QueryConversationRecordDurabilityTests
 
             await QueryConversationRecordLifecycleTests.WaitUntilAsync(() => Task.FromResult(
                 File.Exists(recordPath) &&
-                ConversationRecordFormat.Parse(File.ReadAllText(recordPath)) is ConversationRecordParseResult.Parsed { Turns.Count: 2 }));
+                QueryConversationRecordFormat.Parse(File.ReadAllText(recordPath)) is QueryConversationRecordParseResult.Parsed { Turns.Count: 2 }));
         }
 
         // Restart: fresh host + fresh store (cold cache) over the same base dir.
@@ -118,8 +118,8 @@ public class QueryConversationRecordDurabilityTests
         });
         meterListener.Start();
 
-        var storeLogger = new CaptureLogger<ConversationRecordStore>();
-        var restartedStore = new ConversationRecordStore(
+        var storeLogger = new CaptureLogger<QueryConversationRecordStore>();
+        var restartedStore = new QueryConversationRecordStore(
             QueryTurnSubmissionApiTests.BuildResolvedPaths(root), logger: storeLogger);
         var restartedLauncher = new FakeAgentProcessLauncher(autoPlay: true, simulatedRunDuration: TimeSpan.FromSeconds(5));
         using var restartedHost = await QueryTurnSubmissionApiTests.BuildHostAsync(
@@ -129,8 +129,8 @@ public class QueryConversationRecordDurabilityTests
         await QueryConversationRecordLifecycleTests.SubmitAsync(restartedClient, "c-rehydrate", "How do those relate?");
 
         var request = Assert.Single(restartedLauncher.QueryRequests);
-        var parsed = Assert.IsType<ConversationRecordParseResult.Parsed>(
-            ConversationRecordFormat.Parse(await File.ReadAllTextAsync(recordPath)));
+        var parsed = Assert.IsType<QueryConversationRecordParseResult.Parsed>(
+            QueryConversationRecordFormat.Parse(await File.ReadAllTextAsync(recordPath)));
         Assert.Equal(parsed.Turns.Select(t => t.ToPriorTurn()).ToList(), request.PriorTurns);
         Assert.Equal("Partial second ", request.PriorTurns[1].Answer);
         Assert.Equal("interrupted", request.PriorTurns[1].State);

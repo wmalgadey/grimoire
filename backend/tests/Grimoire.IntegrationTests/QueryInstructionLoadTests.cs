@@ -98,14 +98,14 @@ public class QueryInstructionLoadTests
         var recordPath = resolvedPaths.ConversationRecordPathFor("c-fail");
         await PollAsync.WaitAsync(
             () => File.Exists(recordPath)
-                  && Grimoire.Hub.QueryConversations.ConversationRecordFormat.Parse(File.ReadAllText(recordPath))
-                      is Grimoire.Hub.QueryConversations.ConversationRecordParseResult.Parsed { Turns.Count: >= 1 },
+                  && Grimoire.Hub.QueryConversations.QueryConversationRecordFormat.Parse(File.ReadAllText(recordPath))
+                      is Grimoire.Hub.QueryConversations.QueryConversationRecordParseResult.Parsed { Turns.Count: >= 1 },
             TimeSpan.FromSeconds(5),
             $"Expected the Conversation Record at '{recordPath}' to parse with at least one turn within 5s.");
 
         var record = await File.ReadAllTextAsync(recordPath);
-        var parsed = Assert.IsType<Grimoire.Hub.QueryConversations.ConversationRecordParseResult.Parsed>(
-            Grimoire.Hub.QueryConversations.ConversationRecordFormat.Parse(record));
+        var parsed = Assert.IsType<Grimoire.Hub.QueryConversations.QueryConversationRecordParseResult.Parsed>(
+            Grimoire.Hub.QueryConversations.QueryConversationRecordFormat.Parse(record));
         var recordedTurn = Assert.Single(parsed.Turns);
         Assert.Equal("failed", recordedTurn.State);
         Assert.Equal(reason, recordedTurn.FailureReason);

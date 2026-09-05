@@ -7,5 +7,5 @@ namespace Grimoire.Hub.OperationalState;
 /// rest of the row (deleted in <c>FinishRunAsync</c>) — the durable record of an attempt
 /// is the <c>ingest_status_history</c> entry's detail text.
 /// </param>
-public sealed record OperationalTaskState(
+public sealed record IngestOperationalTaskState(
     string TaskId, string Status, int? ProcessId, DateTimeOffset UpdatedAt, int Attempt = 0);

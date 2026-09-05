@@ -2,7 +2,7 @@ namespace Grimoire.Hub.Conversion;
 
 /// <summary>
 /// Persisted provenance + ingest input produced by the ingest-submission pipeline
-/// (data-model.md SourceArtifactSet). Recorded independently of the Task Artifact so the
+/// (data-model.md IngestSourceArtifactSet). Recorded independently of the Task Artifact so the
 /// board/detail view keeps original/normalized references even after the Ingest agent
 /// overwrites the task-artifact file with its own (agent-owned) fields.
 /// </summary>
@@ -24,7 +24,7 @@ namespace Grimoire.Hub.Conversion;
 /// operator actually submitted has nowhere else to live — and both the label fallback
 /// chain (FR-003) and the detail view's source link (FR-001) need it.
 /// </param>
-public sealed record SourceArtifactSet(
+public sealed record IngestSourceArtifactSet(
     string TaskId,
     string OriginalPath,
     string OriginalContentType,
@@ -41,4 +41,4 @@ public sealed record SourceArtifactSet(
 /// manifest (023-task-ui-improvements). Exactly one of the two is set: a file submission has
 /// a filename, a URL submission has a URL.
 /// </summary>
-public sealed record SourceSubmissionMetadata(string? OriginalFileName = null, string? SourceUrl = null);
+public sealed record IngestSourceSubmissionMetadata(string? OriginalFileName = null, string? SourceUrl = null);

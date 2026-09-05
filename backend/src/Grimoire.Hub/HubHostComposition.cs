@@ -32,7 +32,7 @@ using Microsoft.AspNetCore.SignalR;
 ///
 /// Extracted verbatim from what was previously the top of <c>Program.cs</c> (017/018):
 /// the only behavior change is the removal of the inline <c>submit-source</c> special
-/// case, which 018 migrates to <c>Grimoire.Hub.Cli.SubmitSourceCommand</c> — dispatched by
+/// case, which 018 migrates to <c>Grimoire.Hub.Cli.IngestSubmitSourceCommand</c> — dispatched by
 /// the same <c>CommandApp</c> as every other command instead of living inside this
 /// composition step.
 ///
@@ -77,11 +77,11 @@ internal static class HubHostComposition
         builder.Services.AddHttpClient<IUrlContentFetcher, UrlContentFetcher>();
         builder.Services.AddSingleton(sp => MarkItDownOptions.FromConfiguration(sp.GetRequiredService<IConfiguration>()));
         builder.Services.AddSingleton<IMarkdownConverter, MarkItDownConverter>();
-        builder.Services.AddSingleton<HubTaskArtifactWriter>();
+        builder.Services.AddSingleton<HubIngestTaskArtifactWriter>();
         // 023 T021: the board's human-readable label comes from the source-artifact manifest,
         // so the projection store is constructed with it (registered further down, once the
         // resolved paths exist).
-        builder.Services.AddSingleton(sp => new KanbanBoardProjectionStore(sp.GetRequiredService<SourceArtifactStore>()));
+        builder.Services.AddSingleton(sp => new IngestKanbanBoardProjectionStore(sp.GetRequiredService<IngestSourceArtifactStore>()));
 
         // ADR-022: every runtime location is composed in exactly one place, resolved before
         // the host is built (no repository/project-structure discovery, FR-002/FR-003). The
@@ -112,13 +112,13 @@ internal static class HubHostComposition
             var resolvedPaths = GrimoirePathResolver.Resolve(pathOptions, builder.Configuration, pathLogger);
 
             var contentPaths = IngestContentPaths.FromResolved(resolvedPaths);
-            var rawStoragePaths = RawStoragePaths.FromResolved(resolvedPaths);
+            var rawStoragePaths = IngestRawStoragePaths.FromResolved(resolvedPaths);
 
             builder.Services.AddSingleton(resolvedPaths);
             builder.Services.AddSingleton(rawStoragePaths);
-            builder.Services.AddSingleton<SourceArtifactStore>();
-            builder.Services.AddSingleton<TaskRecordReadModel>();
-            builder.Services.AddHostedService<TaskRecordWatcher>();
+            builder.Services.AddSingleton<IngestSourceArtifactStore>();
+            builder.Services.AddSingleton<IngestTaskRecordReadModel>();
+            builder.Services.AddHostedService<IngestTaskRecordWatcher>();
 
             var repository = new OperationalStateRepository(resolvedPaths.StateDbPath);
             await repository.InitializeAsync();
@@ -147,21 +147,21 @@ internal static class HubHostComposition
                 sp.GetRequiredService<OperationalStateRepository>(),
                 sp.GetRequiredService<IAgentProcessLauncher>(),
                 sp.GetRequiredService<IngestLifecyclePublisher>(),
-                sp.GetRequiredService<HubTaskArtifactWriter>(),
+                sp.GetRequiredService<HubIngestTaskArtifactWriter>(),
                 sp.GetRequiredService<IngestContentPaths>(),
                 sp.GetRequiredService<ResolvedGrimoirePaths>(),
                 sp.GetRequiredService<TimeProvider>(),
                 logger: sp.GetRequiredService<ILogger<IngestRunCoordinator>>(),
                 // 023 T045 (FR-003): the manifest the human-readable label is resolved from,
                 // so the Hub's own restart/failure artifact writes mirror what the UI shows.
-                sourceArtifactStore: sp.GetRequiredService<SourceArtifactStore>()));
+                sourceArtifactStore: sp.GetRequiredService<IngestSourceArtifactStore>()));
             builder.Services.AddSingleton<IngestSubmissionValidator>();
             builder.Services.AddSingleton<IngestSubmissionPipeline>();
-            // 018-hub-cli-commands T010: SubmitSourceCommand resolves this via DI instead
+            // 018-hub-cli-commands T010: IngestSubmitSourceCommand resolves this via DI instead
             // of constructing its own instance (unlike the retired inline Program.cs
             // special case) — same "same coordinators the HTTP endpoints use" model every
             // other command follows.
-            builder.Services.AddSingleton<SubmissionService>();
+            builder.Services.AddSingleton<IngestSubmissionService>();
 
             // 008-query-agent: fully decoupled from Ingest's coordinator (no shared
             // lock/slot, ADR-011/SC-006) — its own SignalR channel, bounded-concurrency
@@ -170,14 +170,14 @@ internal static class HubHostComposition
             builder.Services.AddSingleton<QueryLifecyclePublisher>(sp => new QueryLifecyclePublisher(
                 sp.GetRequiredService<IHubContext<QueryLifecycleHub>>(),
                 sp.GetRequiredService<ILogger<QueryLifecyclePublisher>>()));
-            builder.Services.AddSingleton<ConversationRecordStore>(sp => new ConversationRecordStore(
+            builder.Services.AddSingleton<QueryConversationRecordStore>(sp => new QueryConversationRecordStore(
                 resolvedPaths,
-                logger: sp.GetRequiredService<ILogger<ConversationRecordStore>>()));
+                logger: sp.GetRequiredService<ILogger<QueryConversationRecordStore>>()));
             builder.Services.AddSingleton<QuerySubmissionValidator>();
             builder.Services.AddSingleton<QueryRunCoordinator>(sp => new QueryRunCoordinator(
                 sp.GetRequiredService<IAgentProcessLauncher>(),
                 sp.GetRequiredService<QueryLifecyclePublisher>(),
-                sp.GetRequiredService<ConversationRecordStore>(),
+                sp.GetRequiredService<QueryConversationRecordStore>(),
                 resolvedPaths,
                 sp.GetRequiredService<QueryConcurrencyOptions>(),
                 logger: sp.GetRequiredService<ILogger<QueryRunCoordinator>>()));
@@ -186,8 +186,8 @@ internal static class HubHostComposition
             // fully decoupled from Ingest's and Query's coordinators — its own Findings
             // Report store as the run's sole persistent artifact (data-model.md "Lint Run"
             // note: no separate run record file).
-            builder.Services.AddSingleton<FindingsReportStore>(sp => new FindingsReportStore(
-                resolvedPaths, logger: sp.GetRequiredService<ILogger<FindingsReportStore>>()));
+            builder.Services.AddSingleton<LintFindingsReportStore>(sp => new LintFindingsReportStore(
+                resolvedPaths, logger: sp.GetRequiredService<ILogger<LintFindingsReportStore>>()));
             // 015-lint-board-parity T011: lint's own board lifecycle channel, mirroring the
             // Ingest/Query publisher wiring above (research.md R1 — /hubs/ingest-lifecycle
             // is never touched, FR-015).
@@ -196,7 +196,7 @@ internal static class HubHostComposition
                 sp.GetRequiredService<ILogger<LintLifecyclePublisher>>()));
             builder.Services.AddSingleton<LintRunCoordinator>(sp => new LintRunCoordinator(
                 sp.GetRequiredService<IAgentProcessLauncher>(),
-                sp.GetRequiredService<FindingsReportStore>(),
+                sp.GetRequiredService<LintFindingsReportStore>(),
                 resolvedPaths,
                 reviewWindowOptions: sp.GetRequiredService<LintReviewWindowOptions>(),
                 logger: sp.GetRequiredService<ILogger<LintRunCoordinator>>(),
@@ -242,7 +242,7 @@ internal static class HubHostComposition
                 logger: sp.GetRequiredService<ILogger<RemediationMessageTurnCoordinator>>()));
 
             var reconciler = new RestartReconciler(repository);
-            await reconciler.ReconcileRunningTasksAsync(contentPaths.TasksDir);
+            await reconciler.ReconcileRunningIngestTasksAsync(contentPaths.TasksDir);
             // T034: Executing remediation rows with no live process are failed the same
             // way, before RemediationRunCoordinator.InitializeAsync (below, after
             // app.Build()) pauses the queue for any surviving Authorized rows.

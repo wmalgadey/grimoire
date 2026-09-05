@@ -530,7 +530,7 @@ public sealed class FakeAgentProcessLauncher : IAgentProcessLauncher
 
     /// <summary>
     /// Manual CLI path test double: mirrors the auto-play artifact write without a
-    /// scripted handle/event stream (SubmissionService only calls this method, never
+    /// scripted handle/event stream (IngestSubmissionService only calls this method, never
     /// StartAsync). Returns 0 (success) unless <c>throwOnStart</c> was configured.
     /// </summary>
     public async Task<int> RunToExitAsync(IngestAgentRequest request, CancellationToken cancellationToken = default)
@@ -562,7 +562,7 @@ public sealed class FakeAgentProcessLauncher : IAgentProcessLauncher
         var convertStepsLine = "null";
         if (File.Exists(path))
         {
-            var existing = Grimoire.Hub.IngestSubmission.TaskArtifactFrontmatter.TryParse(await File.ReadAllTextAsync(path));
+            var existing = Grimoire.Hub.IngestSubmission.IngestTaskArtifactFrontmatter.TryParse(await File.ReadAllTextAsync(path));
             if (existing?.ConvertSteps is { Count: > 0 } steps)
             {
                 var entries = steps.OrderBy(s => s.Key, StringComparer.Ordinal)
@@ -607,8 +607,8 @@ public sealed class FakeAgentProcessLauncher : IAgentProcessLauncher
             Fake agent run ({status}).
             """;
 
-        // Atomic temp-file + rename, mirroring HubTaskArtifactWriter.WriteAsync: a reader
-        // (KanbanBoardProjectionStore) may be concurrently polling this same path, and an
+        // Atomic temp-file + rename, mirroring HubIngestTaskArtifactWriter.WriteAsync: a reader
+        // (IngestKanbanBoardProjectionStore) may be concurrently polling this same path, and an
         // in-place File.WriteAllTextAsync can hand it a torn read (truncated-then-partially-
         // written content) that fails TryParse and looks like "file gone" — rare under full
         // suite serialization, reachable once 019 (ADR-021) enabled collection parallelization.

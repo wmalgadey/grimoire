@@ -12,7 +12,7 @@ namespace Grimoire.Hub.RemediationTasks;
 /// directly injected — persistence exemption (Constitution I / ADR-010); confined to
 /// <c>Grimoire.Hub.RemediationTasks</c> (containment-tested by
 /// RemediationTasksContainmentRuleTests). The per-task lock mirrors
-/// <c>ConversationRecordStore</c>'s defense-in-depth serialization.
+/// <c>QueryConversationRecordStore</c>'s defense-in-depth serialization.
 /// </summary>
 public sealed class RemediationTaskRecordStore
 {

@@ -103,10 +103,10 @@ public class IngestFailureAndReconciliationTests
         var dbPath = Path.Combine(root, "operational-state.db");
         var repository = new OperationalStateRepository(dbPath);
         await repository.InitializeAsync();
-        await repository.UpsertAsync(new OperationalTaskState(taskId, "running", 100, DateTimeOffset.UtcNow));
+        await repository.UpsertIngestTaskStateAsync(new IngestOperationalTaskState(taskId, "running", 100, DateTimeOffset.UtcNow));
 
         var reconciler = new RestartReconciler(repository);
-        var count = await reconciler.ReconcileRunningTasksAsync(tasksDir);
+        var count = await reconciler.ReconcileRunningIngestTasksAsync(tasksDir);
 
         Assert.Equal(1, count);
 
@@ -122,9 +122,9 @@ public class IngestFailureAndReconciliationTests
 
         // After successful reconciliation the stale operational-state row is deleted;
         // the task artifact is the durable record (ADR-003).
-        var running = await repository.GetByStatusAsync("running");
+        var running = await repository.GetIngestTaskStatesByStatusAsync("running");
         Assert.DoesNotContain(running, x => x.TaskId == taskId);
-        var failed = await repository.GetByStatusAsync("failed");
+        var failed = await repository.GetIngestTaskStatesByStatusAsync("failed");
         Assert.DoesNotContain(failed, x => x.TaskId == taskId);
     }
 

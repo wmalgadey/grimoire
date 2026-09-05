@@ -6,7 +6,7 @@
 		toPresentedError,
 		type PresentedError
 	} from '$lib/services/apiError';
-	import { restartTask } from '$lib/services/ingestSubmissionsApi';
+	import { restartIngestTask } from '$lib/services/ingestSubmissionsApi';
 	import {
 		authorizeRemediationTask,
 		dismissRemediationTask,
@@ -163,7 +163,7 @@
 				type="button"
 				class="rounded bg-blue-600 px-3 py-1 text-xs font-medium text-white disabled:opacity-50"
 				disabled={busy}
-				onclick={() => run(() => restartTask(item.id), { refresh: true })}
+				onclick={() => run(() => restartIngestTask(item.id), { refresh: true })}
 				data-testid="card-popover-restart">{busy ? 'Restarting…' : 'Restart'}</button
 			>
 		{/if}
