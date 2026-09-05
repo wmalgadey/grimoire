@@ -6,6 +6,12 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  # A pull request that gets pushed to ten times only needs the tenth run's verdict; the
+  # nine superseded ones are pure spend. Matches the grouping complexity.yml already uses.
+  group: ci-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
 env:
   DOTNET_NOLOGO: true
   ANTHROPIC_AUTH_TOKEN: ""
@@ -73,6 +79,17 @@ jobs:
       # provider config/secrets). SC-008: zero skipped eval tests.
       # A stale/missing recording fails here — that failure IS the FR-016 merge gate for
       # instruction-file changes (refresh via the EvalRunner capture command or eval.yml).
+      #
+      # This step runs on every push, deliberately. Gating it was tried and reverted: a
+      # merge queue is unavailable here (GitHub offers it only for organization-owned
+      # repositories, and this one belongs to a personal account), and path-based gating
+      # would have to treat all of backend/src as eval-relevant anyway — the runtime, the
+      # guardrails and the replay client all move the outcome — so it would rarely skip
+      # while permanently risking a false green on exactly the gate FR-016 asks for.
+      # Measured on run 33983235186, the whole tier costs 41s of a 3:30 job, less than
+      # `dotnet format` at 50s. That is not worth buying with a weaker gate. If the tier
+      # ever grows to dominate this job, revisit — until then, always-on is the cheap and
+      # correct answer.
       - name: Run replay agent evals (hermetic, zero skips)
         timeout-minutes: 10
         run: |
