@@ -4,10 +4,11 @@ status: accepted
 
 # ADR-018: Human-Authorized Remediation Action Execution
 
-> **Related: [ADR-031](ADR-031-lint-full-wiki-write-scope.md)** widened Lint's write scope
-> elsewhere; ADR-018's own decision — the state machine and dispatch-precondition
-> authorization gate (SC-005) — is unaffected, since authorization here was always the
-> precondition to *spawn* execution, never the moment write authority is acquired.
+> **Status notes** (informational, no status change):
+> - Related: [ADR-031](ADR-031-lint-full-wiki-write-scope.md) widened Lint's write scope
+>   elsewhere; ADR-018's own decision — the state machine and dispatch-precondition
+>   authorization gate (SC-005) — is unaffected, since authorization here was always the
+>   precondition to *spawn* execution, never the moment write authority is acquired.
 
 ## Context and Problem Statement
 

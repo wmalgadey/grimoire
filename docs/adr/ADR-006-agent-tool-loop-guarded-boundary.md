@@ -4,15 +4,15 @@ status: accepted
 
 # ADR-006: Agent Tool-Use Loop and Guarded Tool Boundary
 
-> **Extended by [ADR-043](ADR-043-build-distributed-agent-artifacts.md)**: the guarded tool
-> boundary's policy file now lives under the agent's build-distributed instruction surface
-> (`Instructions/policy.json`); the loop and policy model here are unchanged.
->
-> **Extended by [ADR-030](ADR-030-guarded-retrieval-tool-surface.md) and
-> [ADR-031](ADR-031-lint-full-wiki-write-scope.md)**: the tool surface grows past the
-> original three (`search_files`, ranged `read_file`, `batch`, `delete_file`) and the write
-> journal gains deletion — both using the extension mechanism this ADR itself names
-> ("adding a tool"). Nothing here is reversed.
+> **Status notes** (informational, no status change):
+> - Extended by [ADR-043](ADR-043-build-distributed-agent-artifacts.md): the guarded tool
+>   boundary's policy file now lives under the agent's build-distributed instruction
+>   surface (`Instructions/policy.json`); the loop and policy model here are unchanged.
+> - Extended by [ADR-030](ADR-030-guarded-retrieval-tool-surface.md) and
+>   [ADR-031](ADR-031-lint-full-wiki-write-scope.md): the tool surface grows past the
+>   original three (`search_files`, ranged `read_file`, `batch`, `delete_file`) and the
+>   write journal gains deletion — both using the extension mechanism this ADR itself
+>   names ("adding a tool"). Nothing here is reversed.
 
 ## Context and Problem Statement
 

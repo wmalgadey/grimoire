@@ -4,9 +4,10 @@ status: accepted
 
 # ADR-004: Credential Scoping for the LLM API Key
 
-> **Extended by [ADR-041](ADR-041-independent-directory-roots.md)**: the secrets file's path
-> (`SecretsFile`, default `.env`) is defined there; the credential-scoping decision here is
-> unchanged.
+> **Status notes** (informational, no status change):
+> - Extended by [ADR-041](ADR-041-independent-directory-roots.md): the secrets file's path
+>   (`SecretsFile`, default `.env`) is defined there; the credential-scoping decision here
+>   is unchanged.
 
 ## Context and Problem Statement
 
