@@ -1,18 +1,15 @@
 using System.Diagnostics.Metrics;
 using Grimoire.Hub;
-using Grimoire.Hub.Runtime.Paths;
-using Microsoft.Extensions.Logging;
 
 namespace Grimoire.IntegrationTests;
 
 /// <summary>
-/// T032 + T033 (029-shared-foundation-prompt, US1, FR-018/SC-001): the
-/// <c>wiki.identity.foundation_resolved_total{source}</c> counter and the
-/// <c>wiki_identity_foundation_resolved</c> (INFO) log event — name, level, and every
-/// mandatory field (<c>source</c>, <c>resolved_path</c>, <c>sha256</c>, <c>agent_id</c>).
-/// Mirrors <c>LintMetricsTests</c>'s in-process <see cref="MeterListener"/> pattern and
-/// <c>LintRemediationObservabilityTests</c>'s direct-call <see cref="CaptureLogger{T}"/>
-/// pattern for a log-events helper invoked directly rather than through a full dispatch.
+/// T032 (029-shared-foundation-prompt, US1, FR-018): the
+/// <c>wiki.identity.foundation_resolved_total{source}</c> counter. Mirrors
+/// <c>LintMetricsTests</c>'s in-process <see cref="MeterListener"/> pattern. The
+/// <c>wiki_identity_foundation_resolved</c> log event's own test (T033) now lives in
+/// <see cref="WikiIdentityLoggingContractTests"/> alongside the wizard's four log events
+/// (T052 folds the five-row Structured Log Events contract into one class).
 /// </summary>
 public class FoundationPromptObservabilityTests
 {
@@ -50,27 +47,5 @@ public class FoundationPromptObservabilityTests
 
         Assert.Contains(snapshot, m => m.Value == 1L && m.Source == "default");
         Assert.Contains(snapshot, m => m.Value == 1L && m.Source == "instance");
-    }
-
-    [Fact]
-    public void LogFoundationResolved_EmitsExpectedNameLevelAndAllMandatoryFields()
-    {
-        var logger = new CaptureLogger<FoundationPromptObservabilityTests>();
-
-        GrimoirePathLogEvents.LogFoundationResolved(
-            logger, agentId: "query", source: "instance", resolvedPath: "/data/foundation-prompt.md", sha256: "abc123");
-
-        var entry = Assert.Single(logger.Entries.Where(e => e.EventName == "wiki_identity_foundation_resolved"));
-        Assert.Equal(LogLevel.Information, entry.Level);
-
-        Assert.True(entry.Fields.ContainsKey("agent_id"), "Missing mandatory field 'agent_id'.");
-        Assert.True(entry.Fields.ContainsKey("source"), "Missing mandatory field 'source'.");
-        Assert.True(entry.Fields.ContainsKey("resolved_path"), "Missing mandatory field 'resolved_path'.");
-        Assert.True(entry.Fields.ContainsKey("sha256"), "Missing mandatory field 'sha256'.");
-
-        Assert.Equal("query", entry.Fields["agent_id"]?.ToString());
-        Assert.Equal("instance", entry.Fields["source"]?.ToString());
-        Assert.Equal("/data/foundation-prompt.md", entry.Fields["resolved_path"]?.ToString());
-        Assert.Equal("abc123", entry.Fields["sha256"]?.ToString());
     }
 }

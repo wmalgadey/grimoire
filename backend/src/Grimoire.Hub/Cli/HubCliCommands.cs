@@ -59,6 +59,13 @@ public static class HubCliCommands
         new("submit-source",
             "Submit a source document for ingest into the wiki via --path <path>, with optional --source-kind <kind>.",
             typeof(IngestSubmitSourceCommand)),
+        // 029-shared-foundation-prompt (US2, T038/T039): only the `set` action lands in
+        // this layer (the wizard); `wiki-identity` with no action reports the identity in
+        // effect and is US3's own task (T054) — WikiIdentitySettings already requires an
+        // action, so that invocation is a usage error until T054 relaxes it.
+        new("wiki-identity",
+            "Report or set which wiki this instance maintains.",
+            typeof(WikiIdentityCommand)),
     ];
 
     static HubCliCommands()

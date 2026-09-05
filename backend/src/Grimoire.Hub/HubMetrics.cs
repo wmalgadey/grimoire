@@ -414,4 +414,12 @@ public static class HubMetrics
 
     public static void RecordFoundationResolved(string source)
         => _foundationResolvedTotal.Add(1, new KeyValuePair<string, object?>("source", source));
+
+    /// <summary>Wiki-identity wizard invocations by terminal outcome (T046, FR-011).</summary>
+    private static readonly Counter<long> _wizardOutcomesTotal =
+        Meter.CreateCounter<long>("wiki.identity.wizard_outcomes_total",
+            description: "Wiki-identity wizard invocations by terminal outcome");
+
+    public static void RecordWikiIdentityWizardOutcome(string outcome)
+        => _wizardOutcomesTotal.Add(1, new KeyValuePair<string, object?>("outcome", outcome));
 }

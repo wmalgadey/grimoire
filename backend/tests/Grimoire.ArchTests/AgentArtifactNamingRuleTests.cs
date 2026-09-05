@@ -251,6 +251,11 @@ public class AgentArtifactNamingRuleTests
         // unhandled-exception path, so it is cross-agent by construction — and per BR1 it
         // is the only namespace permitted to produce an error result at all.
         "Grimoire.Hub.ApiErrors",
+        // 029-shared-foundation-prompt (ADR-053, N1): the wiki-identity wizard places the
+        // one foundation document every agent type resolves — cross-agent by construction,
+        // and per the InstructionAuthorshipBoundaryRuleTests allow-list, the only namespace
+        // outside GrimoirePathResolver permitted to write foundation-prompt.md.
+        "Grimoire.Hub.WikiIdentity",
     ];
 
     [Fact]
