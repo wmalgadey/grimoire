@@ -10,16 +10,19 @@ internal sealed record SeededRequiredInputs(
     string AgentDir,
     string MemoryDir,
     string IngestDir,
+    string FoundationPromptPath,
     string SystemPromptPath,
     string DefaultUserPromptPath,
     string PolicyPath,
     string SecretsFilePath,
     string AgentWorkerPath,
     string QueryDir,
+    string QueryFoundationPromptPath,
     string QuerySystemPromptPath,
     string QueryPolicyPath,
     string QueryAgentWorkerPath,
     string LintDir,
+    string LintFoundationPromptPath,
     string LintSystemPromptPath,
     string LintPolicyPath,
     string LintAgentWorkerPath);
@@ -147,11 +150,11 @@ internal static class PathConfigurationTestHelpers
 
     private static SeededRequiredInputs SeedRequiredInputFiles(string dataDir, string wikiDir, string agentDir, string memoryDir, string secretsFile)
     {
-        var (ingestDir, systemPromptPath, defaultUserPromptPath, policyPath, agentWorker) =
+        var (ingestDir, foundationPromptPath, systemPromptPath, defaultUserPromptPath, policyPath, agentWorker) =
             SeedAgentType(agentDir, "ingest", GrimoirePathOptions.DefaultAgentWorkerFileName, includeDefaultUserPrompt: true);
-        var (queryDir, querySystemPromptPath, _, queryPolicyPath, queryAgentWorker) =
+        var (queryDir, queryFoundationPromptPath, querySystemPromptPath, _, queryPolicyPath, queryAgentWorker) =
             SeedAgentType(agentDir, "query", GrimoirePathOptions.DefaultQueryAgentWorkerFileName, includeDefaultUserPrompt: false);
-        var (lintDir, lintSystemPromptPath, _, lintPolicyPath, lintAgentWorker) =
+        var (lintDir, lintFoundationPromptPath, lintSystemPromptPath, _, lintPolicyPath, lintAgentWorker) =
             SeedAgentType(agentDir, "lint", GrimoirePathOptions.DefaultLintAgentWorkerFileName, includeDefaultUserPrompt: false);
 
         var secretsFileDir = Path.GetDirectoryName(secretsFile);
@@ -168,16 +171,19 @@ internal static class PathConfigurationTestHelpers
             AgentDir: agentDir,
             MemoryDir: memoryDir,
             IngestDir: ingestDir,
+            FoundationPromptPath: foundationPromptPath,
             SystemPromptPath: systemPromptPath,
             DefaultUserPromptPath: defaultUserPromptPath,
             PolicyPath: policyPath,
             SecretsFilePath: secretsFile,
             AgentWorkerPath: agentWorker,
             QueryDir: queryDir,
+            QueryFoundationPromptPath: queryFoundationPromptPath,
             QuerySystemPromptPath: querySystemPromptPath,
             QueryPolicyPath: queryPolicyPath,
             QueryAgentWorkerPath: queryAgentWorker,
             LintDir: lintDir,
+            LintFoundationPromptPath: lintFoundationPromptPath,
             LintSystemPromptPath: lintSystemPromptPath,
             LintPolicyPath: lintPolicyPath,
             LintAgentWorkerPath: lintAgentWorker);
@@ -202,17 +208,19 @@ internal static class PathConfigurationTestHelpers
     /// (data-model.md §2/§6 build contract — the hub reads this shape, the real agent
     /// build produces it).
     /// </summary>
-    private static (string Dir, string SystemPromptPath, string DefaultUserPromptPath, string PolicyPath, string WorkerPath) SeedAgentType(
+    private static (string Dir, string FoundationPromptPath, string SystemPromptPath, string DefaultUserPromptPath, string PolicyPath, string WorkerPath) SeedAgentType(
         string agentDir, string agentId, string workerFileName, bool includeDefaultUserPrompt)
     {
         var dir = Path.Combine(agentDir, agentId);
         var instructionsDir = Path.Combine(dir, "Instructions");
+        var foundationPromptPath = Path.Combine(instructionsDir, "foundation-prompt.md");
         var systemPromptPath = Path.Combine(instructionsDir, "system-prompt.md");
         var defaultUserPromptPath = Path.Combine(instructionsDir, "default-user-prompt.md");
         var policyPath = Path.Combine(instructionsDir, "policy.json");
         var workerPath = Path.Combine(dir, workerFileName);
 
         Directory.CreateDirectory(instructionsDir);
+        File.WriteAllText(foundationPromptPath, "# Test foundation prompt\nWiki-wide rules.\n");
         File.WriteAllText(systemPromptPath, $"# Test {agentId} system prompt\nRules.\n");
         if (includeDefaultUserPrompt)
         {
@@ -221,6 +229,6 @@ internal static class PathConfigurationTestHelpers
         File.WriteAllText(policyPath, ValidPolicyJson);
         File.WriteAllText(workerPath, "stub");
 
-        return (dir, systemPromptPath, defaultUserPromptPath, policyPath, workerPath);
+        return (dir, foundationPromptPath, systemPromptPath, defaultUserPromptPath, policyPath, workerPath);
     }
 }

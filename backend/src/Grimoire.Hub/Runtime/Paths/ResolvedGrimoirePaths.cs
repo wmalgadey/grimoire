@@ -23,15 +23,29 @@ public sealed record PathLocation(
 /// <summary>
 /// Everything one agent type needs to run — its subfolder, its worker DLL, and its
 /// instruction surface (ADR-022, data-model.md §3). <see cref="DefaultUserPromptPath"/> is
-/// non-null for Ingest only.
+/// non-null for Ingest only. <see cref="FoundationPromptPath"/> (ADR-053,
+/// 029-shared-foundation-prompt) is this agent's own build-distributed copy of the shared
+/// foundation document — the fallback an instance uses when it has set no document of its
+/// own; see <see cref="ResolvedGrimoirePaths.ResolveEffectiveFoundationPrompt"/> for which
+/// one actually wins for a given dispatch.
 /// </summary>
 public sealed record AgentRuntimePaths(
     string Dir,
     string WorkerPath,
     string InstructionsDir,
+    string FoundationPromptPath,
     string SystemPromptPath,
     string PolicyPath,
     string? DefaultUserPromptPath);
+
+/// <summary>
+/// The foundation document a dispatch actually operates under, and which of the two
+/// possible sources it came from (029-shared-foundation-prompt,
+/// contracts/foundation-document.md). <see cref="Source"/> is exactly <c>"default"</c> or
+/// <c>"instance"</c> — the vocabulary the <c>wiki_identity_foundation_resolved</c> log
+/// event and the <c>wiki.identity.foundation_resolved_total</c> metric report.
+/// </summary>
+public sealed record EffectiveFoundationPrompt(string Path, string Source);
 
 /// <summary>
 /// The fully resolved and validated set of runtime locations (ADR-022), produced once at
@@ -56,6 +70,7 @@ public sealed record ResolvedGrimoirePaths(
     string IndexPath,
     string LogPath,
     string SecretsFilePath,
+    string InstanceFoundationPromptPath,
     AgentRuntimePaths Ingest,
     AgentRuntimePaths Query,
     AgentRuntimePaths Lint,
@@ -63,6 +78,20 @@ public sealed record ResolvedGrimoirePaths(
 {
     /// <summary>Per-task artifact path within <see cref="TasksDir"/> (mirrors IngestCliOptions.TaskArtifactPath).</summary>
     public string TaskArtifactPathFor(string taskId) => Path.Combine(TasksDir, $"{taskId}.md");
+
+    /// <summary>
+    /// The effective foundation document for one agent's dispatch (029-shared-foundation-prompt,
+    /// contracts/foundation-document.md): <see cref="InstanceFoundationPromptPath"/> when it
+    /// exists, wins for every agent identically; otherwise <paramref name="agentPaths"/>'s own
+    /// build-distributed default. Deliberately re-checked with <see cref="File.Exists(string?)"/>
+    /// on every call rather than cached anywhere on this record — an instance document the
+    /// wizard writes must take effect on the very next dispatch, with no Hub restart (FR-002,
+    /// FR-008, FR-017).
+    /// </summary>
+    public EffectiveFoundationPrompt ResolveEffectiveFoundationPrompt(AgentRuntimePaths agentPaths)
+        => File.Exists(InstanceFoundationPromptPath)
+            ? new EffectiveFoundationPrompt(InstanceFoundationPromptPath, "instance")
+            : new EffectiveFoundationPrompt(agentPaths.FoundationPromptPath, "default");
 
     /// <summary>Per-conversation Conversation Record path within <see cref="ConversationsDir"/> (ADR-014, 011-query-conversations data-model.md).</summary>
     public string ConversationRecordPathFor(string conversationId)

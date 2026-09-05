@@ -35,6 +35,7 @@ internal static class TestResolvedGrimoirePathsFactory
             IndexPath: Path.Combine(wikiDir, "index.md"),
             LogPath: Path.Combine(wikiDir, "log.md"),
             SecretsFilePath: Path.Combine(root, ".env"),
+            InstanceFoundationPromptPath: Path.Combine(root, "foundation-prompt.md"),
             Ingest: CreateAgentRuntimePaths(agentDir, "ingest", hasDefaultUserPrompt: true),
             Query: CreateAgentRuntimePaths(agentDir, "query", hasDefaultUserPrompt: false),
             Lint: CreateAgentRuntimePaths(agentDir, "lint", hasDefaultUserPrompt: false),
@@ -50,6 +51,7 @@ internal static class TestResolvedGrimoirePathsFactory
             Dir: dir,
             WorkerPath: "unused",
             InstructionsDir: instructionsDir,
+            FoundationPromptPath: Path.Combine(instructionsDir, "foundation-prompt.md"),
             SystemPromptPath: Path.Combine(instructionsDir, "system-prompt.md"),
             PolicyPath: Path.Combine(instructionsDir, "policy.json"),
             DefaultUserPromptPath: hasDefaultUserPrompt ? Path.Combine(instructionsDir, "default-user-prompt.md") : null);
