@@ -211,7 +211,8 @@ public sealed class IngestAgentProcessInvoker
         }
 
         var failureReason = ParseFailureReason(SafeResult(stdOutTask));
-        return new AgentRunResult(process.ExitCode, TimedOut: false, StdErr: SafeResult(stdErrTask), failureReason);
+        return new AgentRunResult(
+            process.ExitCode, TimedOut: false, StdErr: SafeResult(stdErrTask), FailureReason: failureReason);
     }
 
     /// <summary>
