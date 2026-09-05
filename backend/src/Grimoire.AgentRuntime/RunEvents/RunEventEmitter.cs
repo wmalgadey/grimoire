@@ -162,33 +162,42 @@ public sealed class RunEventEmitter : IDisposable
             policySha256 = metadata?.PolicySha256,
             model = metadata?.Model,
             turnsUsed = metadata?.TurnsUsed,
-            deniedActions = metadata?.DeniedActions?.Select(d => new
-            {
-                action = d.Action,
-                requestedTarget = d.RequestedTarget,
-                canonicalTarget = d.CanonicalTarget,
-                reason = d.Reason,
-                turn = d.Turn,
-            }).ToList(),
+            deniedActions = BuildDeniedActions(metadata?.DeniedActions),
             createdPages = metadata?.CreatedArtifacts,
             // ADR-018 (015-lint-board-parity): rides the terminal event like
             // deniedActions/createdPages above; null when the run proposed nothing.
-            proposedActions = metadata?.ProposedActions?.Select(p => new
-            {
-                title = p.Title,
-                description = p.Description,
-                targetPath = p.TargetPath,
-            }).ToList(),
+            proposedActions = BuildProposedActions(metadata?.ProposedActions),
             // 028-lint-at-scale (US2, FR-003): rides the terminal event like
             // deniedActions/createdPages/proposedActions above; null for every run that
             // did not compute a coverage report.
-            wikiCoverage = metadata?.WikiCoverage is { } coverage
-                ? new { pagesTotal = coverage.PagesTotal, pagesConsidered = coverage.PagesConsidered, status = coverage.Status }
-                : null,
+            wikiCoverage = BuildWikiCoverage(metadata?.WikiCoverage),
             // T035 (015-lint-board-parity, ADR-018): remediation-execution mode's
             // re-verification outcome, null for every other agent/mode.
             remediationOutcome = metadata?.RemediationOutcome,
         };
+
+    private static object? BuildDeniedActions(IReadOnlyList<DeniedActionRecord>? deniedActions)
+        => deniedActions?.Select(d => new
+        {
+            action = d.Action,
+            requestedTarget = d.RequestedTarget,
+            canonicalTarget = d.CanonicalTarget,
+            reason = d.Reason,
+            turn = d.Turn,
+        }).ToList();
+
+    private static object? BuildProposedActions(IReadOnlyList<ProposedActionRecord>? proposedActions)
+        => proposedActions?.Select(p => new
+        {
+            title = p.Title,
+            description = p.Description,
+            targetPath = p.TargetPath,
+        }).ToList();
+
+    private static object? BuildWikiCoverage(WikiCoverage? wikiCoverage)
+        => wikiCoverage is { } coverage
+            ? new { pagesTotal = coverage.PagesTotal, pagesConsidered = coverage.PagesConsidered, status = coverage.Status }
+            : null;
 
     private void Emit(object payload)
     {
