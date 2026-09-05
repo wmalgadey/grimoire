@@ -48,7 +48,7 @@ public class IngestInstructionContextTests
             var executor = new GuardedToolExecutor(policy, new WriteJournal(), root);
             var loop = new AgentLoop(fake, executor);
 
-            _ = await loop.RunAsync(loaded.Content, "Integrate the source.", "task-ctx-1", "source.md", "source", CancellationToken.None);
+            _ = await loop.RunIngestSourceAsync(loaded.Content, "Integrate the source.", "task-ctx-1", "source.md", "source", CancellationToken.None);
 
             Assert.Equal(1, fake.CallCount);
             // Byte-exact: the model receives exactly the file content, nothing added.

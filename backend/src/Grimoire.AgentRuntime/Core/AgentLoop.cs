@@ -121,7 +121,7 @@ public sealed class AgentLoop
     /// delimiters — ADR-007's scaffold). Returns the agent's final narrative message on
     /// success. Throws <see cref="AgentLoopCapException"/> on cap breach.
     /// </summary>
-    public Task<AgentLoopResult> RunAsync(
+    public Task<AgentLoopResult> RunIngestSourceAsync(
         string systemPrompt,
         string userPrompt,
         string taskId,
@@ -129,7 +129,7 @@ public sealed class AgentLoop
         string sourceContent,
         CancellationToken cancellationToken)
     {
-        var userMessage = BuildUserMessage(taskId, sourceRef, userPrompt, sourceContent);
+        var userMessage = BuildIngestUserMessage(taskId, sourceRef, userPrompt, sourceContent);
         var initialConversation = new List<ConversationMessage>
         {
             new("user", [new ConversationTextBlock(userMessage)]),
@@ -493,7 +493,7 @@ public sealed class AgentLoop
         }
     }
 
-    private static string BuildUserMessage(string taskId, string sourceRef, string userPrompt, string sourceContent)
+    private static string BuildIngestUserMessage(string taskId, string sourceRef, string userPrompt, string sourceContent)
     {
         return $"""
             Task ID: {taskId}

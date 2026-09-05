@@ -36,7 +36,7 @@ public class IngestRunReactivationTests
         time.Advance(LivenessWindow + TimeSpan.FromSeconds(1));
         await WaitForHistoryAsync(fixture, "task-silent", h => h.Any(e => e.Status == IngestHistoryStatuses.LivenessInterrupted));
 
-        var history = await fixture.Repository.GetStatusHistoryAsync("task-silent");
+        var history = await fixture.Repository.GetIngestStatusHistoryAsync("task-silent");
         var interruption = Assert.Single(history, e => e.Status == IngestHistoryStatuses.LivenessInterrupted);
         Assert.Contains("attempt 1", interruption.Detail);
 
@@ -50,7 +50,7 @@ public class IngestRunReactivationTests
         // The run slot stays held: the queue neither advances nor reorders while a
         // reactivation is pending (ADR-008's single-slot FIFO model is undisturbed).
         Assert.Equal("task-silent", fixture.Coordinator.RunningTaskId);
-        Assert.Equal(["task-next"], (await fixture.Repository.GetQueuedAsync()).Select(q => q.TaskId));
+        Assert.Equal(["task-next"], (await fixture.Repository.GetQueuedIngestRunsAsync()).Select(q => q.TaskId));
         Assert.Single(launcher.Handles);
 
         // The interrupted process is terminated rather than left running (FR-007).
@@ -91,12 +91,12 @@ public class IngestRunReactivationTests
             await WaitForHistoryAsync(fixture, "task-backoff",
                 h => h.Count(e => e.Status == IngestHistoryStatuses.Reactivated) == attempt);
 
-            var reactivationEntry = (await fixture.Repository.GetStatusHistoryAsync("task-backoff"))
+            var reactivationEntry = (await fixture.Repository.GetIngestStatusHistoryAsync("task-backoff"))
                 .Last(e => e.Status == IngestHistoryStatuses.Reactivated);
             Assert.Contains($"attempt {attempt}", reactivationEntry.Detail);
         }
 
-        var history = await fixture.Repository.GetStatusHistoryAsync("task-backoff");
+        var history = await fixture.Repository.GetIngestStatusHistoryAsync("task-backoff");
         // Every reactivation is followed by a `running` entry: the path reads as a loop.
         var statuses = history.Select(e => e.Status).ToList();
         for (var i = 0; i < statuses.Count - 1; i++)
@@ -125,7 +125,7 @@ public class IngestRunReactivationTests
 
         await DriveToExhaustionAsync(fixture, launcher, time, "task-exhausted");
 
-        var history = await fixture.Repository.GetStatusHistoryAsync("task-exhausted");
+        var history = await fixture.Repository.GetIngestStatusHistoryAsync("task-exhausted");
         Assert.Equal("failed", history[^1].Status);
         Assert.Equal(3, history.Count(e => e.Status == IngestHistoryStatuses.Reactivated));
         // SC-005: every interruption is recorded — including the last one, which is exactly
@@ -175,7 +175,7 @@ public class IngestRunReactivationTests
         time.Advance(TimeSpan.FromSeconds(10));
         await fixture.WaitForPublishedEventAsync("task-recovers", e => e.ToStatus == "completed");
 
-        var statuses = (await fixture.Repository.GetStatusHistoryAsync("task-recovers")).Select(e => e.Status).ToList();
+        var statuses = (await fixture.Repository.GetIngestStatusHistoryAsync("task-recovers")).Select(e => e.Status).ToList();
         Assert.Equal("completed", statuses[^1]);
         Assert.DoesNotContain("failed", statuses);
         Assert.Null(fixture.Coordinator.RunningTaskId);
@@ -229,7 +229,7 @@ public class IngestRunReactivationTests
         return PollAsync.WaitAsync(
             async () =>
             {
-                var history = await fixture.Repository.GetStatusHistoryAsync(taskId);
+                var history = await fixture.Repository.GetIngestStatusHistoryAsync(taskId);
                 lastSeen = [.. history.Select(e => e.Status)];
                 return predicate(history);
             },

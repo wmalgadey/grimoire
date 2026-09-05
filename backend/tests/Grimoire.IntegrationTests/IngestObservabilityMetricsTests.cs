@@ -49,7 +49,7 @@ public class IngestObservabilityMetricsTests
         listener.SetMeasurementEventCallback<long>((_, value, _, _) => AddSynchronized(measurements, value));
         listener.Start();
 
-        HubMetrics.RecordTaskReconciled();
+        HubMetrics.RecordIngestTaskReconciled();
 
         Assert.Contains(Snapshot(measurements), v => v == 1L);
     }
@@ -124,7 +124,7 @@ public class IngestObservabilityMetricsTests
             FakeModelClient.FinalTurn("Metrics split run complete.")]);
         var loop = new AgentLoop(fake, executor);
 
-        await loop.RunAsync(
+        await loop.RunIngestSourceAsync(
             systemPrompt: "You are a test agent.",
             userPrompt: "Integrate the source.",
             taskId: "task-metrics",
@@ -273,7 +273,7 @@ public class IngestObservabilityMetricsTests
         });
         listener.Start();
 
-        HubMetrics.RecordUserPrompt("custom");
+        HubMetrics.RecordIngestUserPrompt("custom");
 
         Assert.Contains(Snapshot(measurements), m => m.Value == 1L && m.Source == "custom");
     }
@@ -299,7 +299,7 @@ public class IngestObservabilityMetricsTests
         });
         listener.Start();
 
-        HubMetrics.RecordConvertStepDisabled("markitdown");
+        HubMetrics.RecordIngestConvertStepDisabled("markitdown");
 
         Assert.Contains(Snapshot(measurements), m => m.Value == 1L && m.Step == "markitdown");
     }
@@ -325,7 +325,7 @@ public class IngestObservabilityMetricsTests
         });
         listener.Start();
 
-        HubMetrics.RecordRunEvent("heartbeat");
+        HubMetrics.RecordIngestRunEvent("heartbeat");
 
         Assert.Contains(Snapshot(measurements), m => m.Value == 1L && m.EventType == "heartbeat");
     }
@@ -369,7 +369,7 @@ public class IngestObservabilityMetricsTests
         listener.SetMeasurementEventCallback<long>((_, value, _, _) => AddSynchronized(measurements, value));
         listener.Start();
 
-        HubMetrics.RecordQueueDepth(7);
+        HubMetrics.RecordIngestQueueDepth(7);
 
         Assert.Contains(Snapshot(measurements), v => v == 7L);
     }

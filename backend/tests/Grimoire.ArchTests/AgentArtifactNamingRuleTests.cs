@@ -91,7 +91,7 @@ public class AgentArtifactNamingRuleTests
         "HexagonalPortsAdapterRuleTests",
         "RuntimePathsBoundaryRuleTests",
         // T028 classification: exercises only the shared spawn/credential machinery
-        // (AgentProcessHost.BuildChildEnvironment, LocalSecretsLoader) in cross-agent
+        // (AgentProcessHost.BuildIngestChildEnvironment, LocalSecretsLoader) in cross-agent
         // Grimoire.Hub.AgentDispatch — the ADR-004 credential scoping applies to every
         // agent spawn, so the test is cross-agent and stays unprefixed.
         "CredentialScopingTests",

@@ -27,7 +27,7 @@ public class IngestTaskRestartTests
         var client = host.GetTestClient();
 
         var taskId = await FailATaskAsync(fixture, launcher);
-        var historyBeforeRestart = await fixture.Repository.GetStatusHistoryAsync(taskId);
+        var historyBeforeRestart = await fixture.Repository.GetIngestStatusHistoryAsync(taskId);
 
         var response = await client.PostAsync($"/api/ingest-submissions/{taskId}/restart", content: null);
 
@@ -42,7 +42,7 @@ public class IngestTaskRestartTests
 
         await fixture.WaitForPublishedEventAsync(taskId, e => e.ToStatus == "completed");
 
-        var historyAfterRestart = await fixture.Repository.GetStatusHistoryAsync(taskId);
+        var historyAfterRestart = await fixture.Repository.GetIngestStatusHistoryAsync(taskId);
 
         // Prior failure entries are retained (FR-013) — never truncated.
         Assert.Equal(
@@ -123,13 +123,13 @@ public class IngestTaskRestartTests
         Assert.Single(responses, r => r.StatusCode == HttpStatusCode.Accepted);
         Assert.Equal(concurrentRequests - 1, responses.Count(r => r.StatusCode == HttpStatusCode.Conflict));
 
-        var history = await fixture.Repository.GetStatusHistoryAsync(taskId);
+        var history = await fixture.Repository.GetIngestStatusHistoryAsync(taskId);
         Assert.Single(history, h => h.Status == "restarted");
 
         // Exactly one queue insertion: with no other task occupying the slot, the winning
         // restart is dequeued and started immediately — so the task is either still queued
         // or has already become the running task, never both, never neither.
-        var queued = await fixture.Repository.GetQueuedAsync();
+        var queued = await fixture.Repository.GetQueuedIngestRunsAsync();
         var stillQueued = queued.Count(q => q.TaskId == taskId);
         var isRunning = fixture.Coordinator.RunningTaskId == taskId ? 1 : 0;
         Assert.Equal(1, stillQueued + isRunning);

@@ -56,7 +56,7 @@ public class IngestTaskCancelTests
         // Never reactivated: exactly the one process this test spawned, no automatic
         // relaunch — a deliberate cancel is not a liveness incident (ADR-025 untouched).
         Assert.Single(launcher.Handles);
-        var history = await fixture.Repository.GetStatusHistoryAsync(taskId);
+        var history = await fixture.Repository.GetIngestStatusHistoryAsync(taskId);
         Assert.DoesNotContain(history, e => e.Status is "liveness_interrupted" or "reactivated");
     }
 

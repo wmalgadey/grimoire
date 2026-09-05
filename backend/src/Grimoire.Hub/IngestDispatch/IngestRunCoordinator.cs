@@ -114,7 +114,7 @@ public sealed class IngestRunCoordinator
     /// </summary>
     public async Task InitializeAsync(CancellationToken cancellationToken = default)
     {
-        var queued = await _repository.GetQueuedAsync(cancellationToken);
+        var queued = await _repository.GetQueuedIngestRunsAsync(cancellationToken);
         if (queued.Count > 0)
         {
             await _repository.SetFlagAsync(QueuePausedFlag, true, cancellationToken);
@@ -150,7 +150,7 @@ public sealed class IngestRunCoordinator
         try
         {
             return _runningTaskId is null
-                && (await _repository.GetQueuedAsync(cancellationToken)).Count == 0;
+                && (await _repository.GetQueuedIngestRunsAsync(cancellationToken)).Count == 0;
         }
         finally
         {
@@ -161,7 +161,7 @@ public sealed class IngestRunCoordinator
     /// <summary>FIFO position (1-based) of a queued task, or null when not queued.</summary>
     public async Task<IReadOnlyDictionary<string, int>> GetQueuePositionsAsync(CancellationToken cancellationToken = default)
     {
-        var queued = await _repository.GetQueuedAsync(cancellationToken);
+        var queued = await _repository.GetQueuedIngestRunsAsync(cancellationToken);
         return queued.Select((run, index) => (run.TaskId, Position: index + 1))
             .ToDictionary(x => x.TaskId, x => x.Position);
     }
@@ -172,11 +172,11 @@ public sealed class IngestRunCoordinator
     /// </summary>
     public async Task EnqueueAsync(string taskId, string sourceRef, string? userPrompt, CancellationToken cancellationToken = default)
     {
-        await _repository.EnqueueAsync(
+        await _repository.EnqueueIngestRunAsync(
             new QueuedIngestRun(taskId, _timeProvider.GetUtcNow(), sourceRef, userPrompt), cancellationToken);
 
-        var queued = await _repository.GetQueuedAsync(cancellationToken);
-        HubMetrics.RecordQueueDepth(queued.Count);
+        var queued = await _repository.GetQueuedIngestRunsAsync(cancellationToken);
+        HubMetrics.RecordIngestQueueDepth(queued.Count);
         var position = queued.ToList().FindIndex(q => q.TaskId == taskId) + 1;
         IngestSubmissionLogEvents.LogQueueEnqueued(_logger, taskId, position);
 
@@ -189,7 +189,7 @@ public sealed class IngestRunCoordinator
         await _repository.SetFlagAsync(QueuePausedFlag, false, cancellationToken);
         IngestSubmissionLogEvents.LogQueueResumed(_logger, taskId: "", scope: "queue");
         await TryStartNextAsync(cancellationToken);
-        var queued = await _repository.GetQueuedAsync(cancellationToken);
+        var queued = await _repository.GetQueuedIngestRunsAsync(cancellationToken);
         return queued.Count;
     }
 
@@ -200,7 +200,7 @@ public sealed class IngestRunCoordinator
     /// </summary>
     public async Task<bool> RetriggerAsync(string taskId, CancellationToken cancellationToken = default)
     {
-        var queued = await _repository.GetQueuedAsync(cancellationToken);
+        var queued = await _repository.GetQueuedIngestRunsAsync(cancellationToken);
         if (queued.All(q => q.TaskId != taskId))
         {
             return false;
@@ -268,7 +268,7 @@ public sealed class IngestRunCoordinator
     public async Task<bool> RestartFailedAsync(
         string taskId, string normalizedSourceRef, string? userPrompt, CancellationToken cancellationToken = default)
     {
-        var claimed = await _repository.TryClaimTaskStateAsync(
+        var claimed = await _repository.TryClaimIngestTaskStateAsync(
             new OperationalTaskState(taskId, "restarting", null, _timeProvider.GetUtcNow(), Attempt: 0), cancellationToken);
         if (!claimed)
         {
@@ -355,15 +355,15 @@ public sealed class IngestRunCoordinator
                 return;
             }
 
-            var queued = await _repository.GetQueuedAsync(cancellationToken);
+            var queued = await _repository.GetQueuedIngestRunsAsync(cancellationToken);
             if (queued.Count == 0)
             {
                 return;
             }
 
             next = queued[0];
-            await _repository.RemoveQueuedAsync(next.TaskId, cancellationToken);
-            HubMetrics.RecordQueueDepth(queued.Count - 1);
+            await _repository.RemoveQueuedIngestRunAsync(next.TaskId, cancellationToken);
+            HubMetrics.RecordIngestQueueDepth(queued.Count - 1);
             _runningTaskId = next.TaskId;
         }
         finally
@@ -386,7 +386,7 @@ public sealed class IngestRunCoordinator
         IngestSubmissionLogEvents.LogRunTriggered(_logger, run.TaskId, queuedDurationMs);
 
         // A fresh run occupancy starts with no reactivation attempts spent (data-model.md §2).
-        await _repository.UpsertAsync(
+        await _repository.UpsertIngestTaskStateAsync(
             new OperationalTaskState(run.TaskId, "running", null, _timeProvider.GetUtcNow(), Attempt: 0), cancellationToken);
         await _publisher.PublishAsync(run.TaskId, "queued", "running", cancellationToken: cancellationToken);
 
@@ -599,7 +599,7 @@ public sealed class IngestRunCoordinator
         // otherwise be unexplained.
         supervisionSpan?.SetTag("outcome", "liveness_failed");
         HubMetrics.RecordLivenessFailure();
-        HubMetrics.RecordReactivation("exhausted");
+        HubMetrics.RecordIngestReactivation("exhausted");
         IngestSubmissionLogEvents.LogRunLivenessFailed(_logger, taskId, (long)silentSeconds, (long)_livenessWindow.TotalSeconds);
         IngestSubmissionLogEvents.LogReactivationExhausted(_logger, taskId, _reactivationDelays.Count);
 
@@ -626,7 +626,7 @@ public sealed class IngestRunCoordinator
         var delay = _reactivationDelays[attempt - 1];
 
         IngestSubmissionLogEvents.LogRunLivenessInterrupted(_logger, run.TaskId, attempt, (long)delay.TotalSeconds);
-        await _repository.UpsertAsync(
+        await _repository.UpsertIngestTaskStateAsync(
             new OperationalTaskState(run.TaskId, "running", null, _timeProvider.GetUtcNow(), Attempt: attempt),
             cancellationToken);
         await _publisher.PublishAsync(
@@ -668,7 +668,7 @@ public sealed class IngestRunCoordinator
         span?.SetTag("attempt", attempt);
         span?.SetTag("delay_seconds", (long)_reactivationDelays[attempt - 1].TotalSeconds);
 
-        HubMetrics.RecordReactivation("attempted");
+        HubMetrics.RecordIngestReactivation("attempted");
         IngestSubmissionLogEvents.LogRunReactivated(_logger, run.TaskId, attempt);
 
         // Loop activity belongs to the process that produced it; the re-launched run starts
@@ -690,7 +690,7 @@ public sealed class IngestRunCoordinator
         span?.SetTag("task_id", taskId);
         span?.SetTag("event_type", runEvent.Type);
 
-        HubMetrics.RecordRunEvent(runEvent.Type);
+        HubMetrics.RecordIngestRunEvent(runEvent.Type);
 
         if (_runningTaskId != taskId)
         {
@@ -736,7 +736,7 @@ public sealed class IngestRunCoordinator
             await WriteHubFailureArtifactAsync(taskId, failureReason ?? "Ingest run failed.", cancellationToken);
         }
 
-        await _repository.DeleteAsync(taskId, cancellationToken);
+        await _repository.DeleteIngestTaskStateAsync(taskId, cancellationToken);
         _activity.TryRemove(taskId, out _);
         await _publisher.PublishAsync(taskId, "running", status, failureReason, cancellationToken);
 

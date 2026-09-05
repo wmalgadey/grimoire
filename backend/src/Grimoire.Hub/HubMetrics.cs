@@ -11,7 +11,7 @@ public static class HubMetrics
         Meter.CreateCounter<long>("wiki.ingest.tasks_reconciled_total",
             description: "Number of running tasks reconciled to failed on Hub restart");
 
-    public static void RecordTaskReconciled()
+    public static void RecordIngestTaskReconciled()
     {
         using var span = HubTracing.ActivitySource.StartActivity("wiki.ingest.tasks_reconciled_total");
         span?.SetTag("signal_type", "metric");
@@ -79,7 +79,7 @@ public static class HubMetrics
         Meter.CreateCounter<long>("wiki.ingest.user_prompt_total",
             description: "Accepted submissions by prompt origin");
 
-    public static void RecordUserPrompt(string source)
+    public static void RecordIngestUserPrompt(string source)
     {
         _userPromptTotal.Add(1, new KeyValuePair<string, object?>("source", source));
     }
@@ -88,7 +88,7 @@ public static class HubMetrics
         Meter.CreateCounter<long>("wiki.ingest.convert_step_disabled_total",
             description: "Accepted submissions that disabled a convert step");
 
-    public static void RecordConvertStepDisabled(string step)
+    public static void RecordIngestConvertStepDisabled(string step)
     {
         _convertStepDisabledTotal.Add(1, new KeyValuePair<string, object?>("step", step));
     }
@@ -97,7 +97,7 @@ public static class HubMetrics
         Meter.CreateCounter<long>("wiki.ingest.run_events_total",
             description: "Agent Run Events received by the Hub");
 
-    public static void RecordRunEvent(string eventType)
+    public static void RecordIngestRunEvent(string eventType)
     {
         _runEventsTotal.Add(1, new KeyValuePair<string, object?>("event_type", eventType));
     }
@@ -115,7 +115,7 @@ public static class HubMetrics
         Meter.CreateGauge<long>("wiki.ingest.queue_depth",
             description: "Tasks currently waiting in the Run Queue");
 
-    public static void RecordQueueDepth(long depth)
+    public static void RecordIngestQueueDepth(long depth)
     {
         _queueDepth.Record(depth);
     }
@@ -126,7 +126,7 @@ public static class HubMetrics
         Meter.CreateCounter<long>("hub.task_record_reads_total",
             description: "Task-record API reads");
 
-    public static void RecordTaskRecordRead(string outcome)
+    public static void RecordIngestTaskRecordRead(string outcome)
     {
         _taskRecordReadsTotal.Add(1, new KeyValuePair<string, object?>("outcome", outcome));
     }
@@ -135,7 +135,7 @@ public static class HubMetrics
         Meter.CreateCounter<long>("hub.task_record_change_events_total",
             description: "taskRecordChanged events published");
 
-    public static void RecordTaskRecordChangeEvent()
+    public static void RecordIngestTaskRecordChangeEvent()
     {
         _taskRecordChangeEventsTotal.Add(1);
     }
@@ -198,7 +198,7 @@ public static class HubMetrics
         Meter.CreateCounter<long>("query.conversation.turns_recorded_total",
             description: "Turns appended to a Conversation Record");
 
-    public static void RecordConversationTurnRecorded(string outcome)
+    public static void RecordQueryConversationTurnRecorded(string outcome)
     {
         _conversationTurnsRecordedTotal.Add(1, new KeyValuePair<string, object?>("outcome", outcome));
     }
@@ -207,7 +207,7 @@ public static class HubMetrics
         Meter.CreateCounter<long>("query.conversation.record_append_failures_total",
             description: "Failed record appends (turn outcome unaffected)");
 
-    public static void RecordConversationRecordAppendFailure()
+    public static void RecordQueryConversationRecordAppendFailure()
     {
         _conversationRecordAppendFailuresTotal.Add(1);
     }
@@ -216,7 +216,7 @@ public static class HubMetrics
         Meter.CreateCounter<long>("query.conversation.context_loads_total",
             description: "Prior-turn context loads at submission");
 
-    public static void RecordConversationContextLoad(string source)
+    public static void RecordQueryConversationContextLoad(string source)
     {
         _conversationContextLoadsTotal.Add(1, new KeyValuePair<string, object?>("source", source));
     }
@@ -225,7 +225,7 @@ public static class HubMetrics
         Meter.CreateCounter<long>("query.conversation.record_load_failures_total",
             description: "Fail-closed context loads (unreadable record)");
 
-    public static void RecordConversationRecordLoadFailure()
+    public static void RecordQueryConversationRecordLoadFailure()
     {
         _conversationRecordLoadFailuresTotal.Add(1);
     }
@@ -352,7 +352,7 @@ public static class HubMetrics
         Meter.CreateCounter<long>("wiki.ingest.reactivations_total",
             description: "Automatic reactivation attempts after liveness interruption");
 
-    public static void RecordReactivation(string outcome)
+    public static void RecordIngestReactivation(string outcome)
         => _reactivationsTotal.Add(1, new KeyValuePair<string, object?>("outcome", outcome));
 
     /// <summary>T031 (US5): manual restart requests for finally-failed tasks, by whether the
@@ -361,7 +361,7 @@ public static class HubMetrics
         Meter.CreateCounter<long>("wiki.ingest.restarts_total",
             description: "Manual restart requests for finally-failed tasks");
 
-    public static void RecordRestart(string outcome)
+    public static void RecordIngestRestart(string outcome)
         => _restartsTotal.Add(1, new KeyValuePair<string, object?>("outcome", outcome));
 
     /// <summary>T025 (US4): reads of the source-content endpoint over the persisted raw copy,
@@ -370,7 +370,7 @@ public static class HubMetrics
         Meter.CreateCounter<long>("hub.source_content_reads_total",
             description: "Source-content endpoint serves of the persisted raw copy");
 
-    public static void RecordSourceContentRead(string result)
+    public static void RecordIngestSourceContentRead(string result)
         => _sourceContentReadsTotal.Add(1, new KeyValuePair<string, object?>("result", result));
 
     // --- 020-simplify-hub-config (plan.md ## Observability > Business Metrics) ---

@@ -306,7 +306,7 @@ public static class IngestSubmissionEndpoints
 
         // 023 T008 (FR-006/SC-004): the ordered status "path". Empty for a task with no
         // recorded transitions.
-        var statusHistory = await stateRepository.GetStatusHistoryAsync(taskId, cancellationToken);
+        var statusHistory = await stateRepository.GetIngestStatusHistoryAsync(taskId, cancellationToken);
 
         // 023 T024 (FR-001/FR-002, SC-001/SC-002): derived server-side so the URL-vs-file
         // split and the availability check live in exactly one tested place — the client
@@ -388,12 +388,12 @@ public static class IngestSubmissionEndpoints
         if (manifest is null || !File.Exists(manifest.OriginalPath))
         {
             span?.SetTag("result", "not_found");
-            HubMetrics.RecordSourceContentRead("not_found");
+            HubMetrics.RecordIngestSourceContentRead("not_found");
             return ApiErrorResults.Problem(ApiErrorCatalogue.IngestSourceContentNotFound);
         }
 
         span?.SetTag("result", "served");
-        HubMetrics.RecordSourceContentRead("served");
+        HubMetrics.RecordIngestSourceContentRead("served");
         IngestSubmissionLogEvents.LogSourceServed(logger, taskId, manifest.OriginalContentType);
 
         // Results.File's FileDownloadName always writes `Content-Disposition: attachment`;
@@ -448,7 +448,7 @@ public static class IngestSubmissionEndpoints
 
         var contentLength = result.Record?.Body.Length ?? 0;
         IngestSubmissionLogEvents.LogTaskRecordServed(logger, taskId, outcome, contentLength);
-        HubMetrics.RecordTaskRecordRead(outcome);
+        HubMetrics.RecordIngestTaskRecordRead(outcome);
 
         if (result.Outcome != TaskRecordOutcome.Ok)
         {
@@ -546,7 +546,7 @@ public static class IngestSubmissionEndpoints
         }
 
         span?.SetTag("outcome", "accepted");
-        HubMetrics.RecordRestart("accepted");
+        HubMetrics.RecordIngestRestart("accepted");
         IngestSubmissionLogEvents.LogTaskRestarted(logger, taskId);
 
         return Results.Accepted(value: new { taskId, status = "queued" });
@@ -563,7 +563,7 @@ public static class IngestSubmissionEndpoints
         System.Diagnostics.Activity? span, ILogger logger, string taskId, string currentStatus, string code)
     {
         span?.SetTag("outcome", "rejected");
-        HubMetrics.RecordRestart("rejected");
+        HubMetrics.RecordIngestRestart("rejected");
         IngestSubmissionLogEvents.LogTaskRestartRejected(logger, taskId, currentStatus);
         return ApiErrorResults.Problem(code);
     }

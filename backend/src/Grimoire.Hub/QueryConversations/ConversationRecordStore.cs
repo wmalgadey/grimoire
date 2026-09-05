@@ -90,7 +90,7 @@ public sealed class ConversationRecordStore
             }
 
             ConversationRecordLogEvents.LogTurnRecorded(_logger, conversationId, turn.TurnId, turn.Position, turn.State);
-            HubMetrics.RecordConversationTurnRecorded(turn.State);
+            HubMetrics.RecordQueryConversationTurnRecorded(turn.State);
         }
         finally
         {
@@ -110,7 +110,7 @@ public sealed class ConversationRecordStore
         if (_contextCache.TryGetValue(conversationId, out var cached))
         {
             ConversationRecordLogEvents.LogContextLoaded(_logger, conversationId, cached.Count, "memory");
-            HubMetrics.RecordConversationContextLoad("memory");
+            HubMetrics.RecordQueryConversationContextLoad("memory");
             return new ConversationContextResult.Loaded(cached, "memory");
         }
 
@@ -121,7 +121,7 @@ public sealed class ConversationRecordStore
             if (_contextCache.TryGetValue(conversationId, out cached))
             {
                 ConversationRecordLogEvents.LogContextLoaded(_logger, conversationId, cached.Count, "memory");
-                HubMetrics.RecordConversationContextLoad("memory");
+                HubMetrics.RecordQueryConversationContextLoad("memory");
                 return new ConversationContextResult.Loaded(cached, "memory");
             }
 
@@ -129,7 +129,7 @@ public sealed class ConversationRecordStore
             if (!File.Exists(path))
             {
                 ConversationRecordLogEvents.LogContextLoaded(_logger, conversationId, 0, "empty");
-                HubMetrics.RecordConversationContextLoad("empty");
+                HubMetrics.RecordQueryConversationContextLoad("empty");
                 return new ConversationContextResult.Loaded([], "empty");
             }
 
@@ -146,13 +146,13 @@ public sealed class ConversationRecordStore
                         IReadOnlyList<QueryPriorTurn> turns = [.. parsed.Turns.Select(t => t.ToPriorTurn())];
                         _contextCache[conversationId] = turns;
                         ConversationRecordLogEvents.LogContextLoaded(_logger, conversationId, turns.Count, "record");
-                        HubMetrics.RecordConversationContextLoad("record");
+                        HubMetrics.RecordQueryConversationContextLoad("record");
                         return new ConversationContextResult.Loaded(turns, "record");
                     }
 
                 case ConversationRecordParseResult.Unreadable unreadable:
                     ConversationRecordLogEvents.LogRecordLoadFailed(_logger, conversationId, unreadable.Reason);
-                    HubMetrics.RecordConversationRecordLoadFailure();
+                    HubMetrics.RecordQueryConversationRecordLoadFailure();
                     return new ConversationContextResult.Unreadable(unreadable.Reason);
 
                 default:

@@ -89,7 +89,7 @@ public class QueryConversationMetricsTests
         var measurements = new List<(long, KeyValuePair<string, object?>[])>();
         using var listener = ListenTo<long>("query.conversation.record_append_failures_total", measurements);
 
-        HubMetrics.RecordConversationRecordAppendFailure();
+        HubMetrics.RecordQueryConversationRecordAppendFailure();
 
         lock (measurements)
         {

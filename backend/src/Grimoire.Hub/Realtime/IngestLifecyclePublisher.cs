@@ -67,7 +67,7 @@ public sealed class IngestLifecyclePublisher
         {
             try
             {
-                await _stateRepository.AppendStatusHistoryAsync(
+                await _stateRepository.AppendIngestStatusHistoryAsync(
                     taskId, toStatus, _timeProvider.GetUtcNow(), historyDetail ?? failureReason, cancellationToken);
             }
             catch (Exception ex)
@@ -118,7 +118,7 @@ public sealed class IngestLifecyclePublisher
         var changedEvent = new TaskRecordChangedEvent(eventId, taskId, changedAt);
         await _hubContext.Clients.All.SendAsync("taskRecordChanged", changedEvent, cancellationToken);
 
-        HubMetrics.RecordTaskRecordChangeEvent();
+        HubMetrics.RecordIngestTaskRecordChangeEvent();
         IngestSubmissionLogEvents.LogTaskRecordChangePublished(_logger, taskId, eventId, changedAt);
     }
 

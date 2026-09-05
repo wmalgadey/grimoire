@@ -18,11 +18,11 @@ public class IngestOperationalStateAndDispatchTests
         await repository.InitializeAsync();
 
         var taskId = "task-1";
-        await repository.UpsertAsync(new OperationalTaskState(taskId, "running", 1234, DateTimeOffset.UtcNow));
-        await repository.UpsertAsync(new OperationalTaskState(taskId, "completed", null, DateTimeOffset.UtcNow));
+        await repository.UpsertIngestTaskStateAsync(new OperationalTaskState(taskId, "running", 1234, DateTimeOffset.UtcNow));
+        await repository.UpsertIngestTaskStateAsync(new OperationalTaskState(taskId, "completed", null, DateTimeOffset.UtcNow));
 
-        var running = await repository.GetByStatusAsync("running");
-        var completed = await repository.GetByStatusAsync("completed");
+        var running = await repository.GetIngestTaskStatesByStatusAsync("running");
+        var completed = await repository.GetIngestTaskStatesByStatusAsync("completed");
 
         Assert.Empty(running);
         Assert.Contains(completed, x => x.TaskId == taskId);

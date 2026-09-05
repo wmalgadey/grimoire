@@ -40,7 +40,7 @@ public sealed class SubmissionService
         _logger.LogInformation(new EventId(1, "ingest.task.created"),
             "Ingest task created: {task_id}, source: {source_ref}", taskId, normalizedSourceRef);
 
-        await _repository.UpsertAsync(
+        await _repository.UpsertIngestTaskStateAsync(
             new OperationalTaskState(taskId, "running", null, DateTimeOffset.UtcNow),
             cancellationToken);
 
@@ -70,7 +70,7 @@ public sealed class SubmissionService
 
         // Task has reached a terminal state; delete the row so the DB doesn't grow unboundedly.
         // History is captured in the task artifact and log.md (ADR-003).
-        await _repository.DeleteAsync(taskId, cancellationToken);
+        await _repository.DeleteIngestTaskStateAsync(taskId, cancellationToken);
 
         return taskId;
     }

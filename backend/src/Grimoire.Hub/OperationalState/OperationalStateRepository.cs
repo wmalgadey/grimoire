@@ -119,7 +119,7 @@ public sealed class OperationalStateRepository
     /// <c>ConcurrentAppends_ForOneTask_AllPersist_WithDistinctSequentialSeq</c> pins this.
     /// Returns the assigned sequence number.
     /// </summary>
-    public async Task<long> AppendStatusHistoryAsync(
+    public async Task<long> AppendIngestStatusHistoryAsync(
         string taskId, string status, DateTimeOffset enteredAt, string? detail = null, CancellationToken cancellationToken = default)
     {
         await using var connection = await OpenConnectionAsync(cancellationToken);
@@ -147,7 +147,7 @@ public sealed class OperationalStateRepository
     /// this feature — the detail view falls back to rendering its current status as a
     /// single entry rather than treating the absence as an error.
     /// </summary>
-    public async Task<IReadOnlyList<IngestStatusHistoryEntry>> GetStatusHistoryAsync(
+    public async Task<IReadOnlyList<IngestStatusHistoryEntry>> GetIngestStatusHistoryAsync(
         string taskId, CancellationToken cancellationToken = default)
     {
         await using var connection = await OpenConnectionAsync(cancellationToken);
@@ -179,7 +179,7 @@ public sealed class OperationalStateRepository
 
     // ── Run Queue (ADR-008: persistent FIFO, ordered by acceptance time) ──────────
 
-    public async Task EnqueueAsync(QueuedIngestRun run, CancellationToken cancellationToken = default)
+    public async Task EnqueueIngestRunAsync(QueuedIngestRun run, CancellationToken cancellationToken = default)
     {
         await using var connection = await OpenConnectionAsync(cancellationToken);
 
@@ -198,7 +198,7 @@ public sealed class OperationalStateRepository
         await command.ExecuteNonQueryAsync(cancellationToken);
     }
 
-    public async Task<IReadOnlyList<QueuedIngestRun>> GetQueuedAsync(CancellationToken cancellationToken = default)
+    public async Task<IReadOnlyList<QueuedIngestRun>> GetQueuedIngestRunsAsync(CancellationToken cancellationToken = default)
     {
         await using var connection = await OpenConnectionAsync(cancellationToken);
 
@@ -224,7 +224,7 @@ public sealed class OperationalStateRepository
         return results;
     }
 
-    public async Task RemoveQueuedAsync(string taskId, CancellationToken cancellationToken = default)
+    public async Task RemoveQueuedIngestRunAsync(string taskId, CancellationToken cancellationToken = default)
     {
         await using var connection = await OpenConnectionAsync(cancellationToken);
 
@@ -388,7 +388,7 @@ public sealed class OperationalStateRepository
         return affected == 1;
     }
 
-    public async Task UpsertAsync(OperationalTaskState state, CancellationToken cancellationToken = default)
+    public async Task UpsertIngestTaskStateAsync(OperationalTaskState state, CancellationToken cancellationToken = default)
     {
         await using var connection = await OpenConnectionAsync(cancellationToken);
 
@@ -421,7 +421,7 @@ public sealed class OperationalStateRepository
     /// <see cref="TryTransitionRemediationTaskAsync"/> (ADR-018), applied to a row whose
     /// absence — not a state value — is what marks a task as restartable.
     /// </summary>
-    public async Task<bool> TryClaimTaskStateAsync(OperationalTaskState state, CancellationToken cancellationToken = default)
+    public async Task<bool> TryClaimIngestTaskStateAsync(OperationalTaskState state, CancellationToken cancellationToken = default)
     {
         await using var connection = await OpenConnectionAsync(cancellationToken);
 
@@ -441,7 +441,7 @@ public sealed class OperationalStateRepository
         return await command.ExecuteNonQueryAsync(cancellationToken) == 1;
     }
 
-    public async Task<IReadOnlyList<OperationalTaskState>> GetByStatusAsync(string status, CancellationToken cancellationToken = default)
+    public async Task<IReadOnlyList<OperationalTaskState>> GetIngestTaskStatesByStatusAsync(string status, CancellationToken cancellationToken = default)
     {
         await using var connection = await OpenConnectionAsync(cancellationToken);
 
@@ -465,7 +465,7 @@ public sealed class OperationalStateRepository
     }
 
     /// <summary>One task's operational row, or null when it holds no run slot right now.</summary>
-    public async Task<OperationalTaskState?> GetByTaskIdAsync(string taskId, CancellationToken cancellationToken = default)
+    public async Task<OperationalTaskState?> GetIngestTaskStateByTaskIdAsync(string taskId, CancellationToken cancellationToken = default)
     {
         await using var connection = await OpenConnectionAsync(cancellationToken);
 
@@ -489,7 +489,7 @@ public sealed class OperationalStateRepository
             DateTimeOffset.Parse(reader.GetString(3)),
             reader.IsDBNull(4) ? 0 : reader.GetInt32(4));
 
-    public async Task DeleteAsync(string taskId, CancellationToken cancellationToken = default)
+    public async Task DeleteIngestTaskStateAsync(string taskId, CancellationToken cancellationToken = default)
     {
         await using var connection = await OpenConnectionAsync(cancellationToken);
 

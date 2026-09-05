@@ -358,7 +358,7 @@ public sealed class QueryRunCoordinator
         catch (Exception ex)
         {
             ConversationRecordLogEvents.LogRecordAppendFailed(_logger, turn.ConversationId, turnId, ex.Message);
-            HubMetrics.RecordConversationRecordAppendFailure();
+            HubMetrics.RecordQueryConversationRecordAppendFailure();
         }
 
         var fromState = "running";

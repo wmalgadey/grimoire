@@ -103,14 +103,14 @@ public sealed class IngestSubmissionPipeline
         IngestSubmissionLogEvents.LogSubmissionAccepted(_logger, taskId, KindLabel(input.Kind), submittedAt);
 
         // 004 prompt/convert configuration is recorded at acceptance (SC-003).
-        HubMetrics.RecordUserPrompt(promptSource);
+        HubMetrics.RecordIngestUserPrompt(promptSource);
         IngestSubmissionLogEvents.LogPromptConfig(_logger, taskId, promptSource, input.UserPrompt?.Length ?? 0);
         foreach (var (step, enabled) in effectiveSteps)
         {
             IngestSubmissionLogEvents.LogConvertConfig(_logger, taskId, step, enabled);
             if (!enabled)
             {
-                HubMetrics.RecordConvertStepDisabled(step);
+                HubMetrics.RecordIngestConvertStepDisabled(step);
             }
         }
 

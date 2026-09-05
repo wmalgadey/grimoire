@@ -56,10 +56,10 @@ public class RestartReconcilerActivityLogTests
 
             var repository = new OperationalStateRepository(Path.Combine(root, "operational-state.db"));
             await repository.InitializeAsync();
-            await repository.UpsertAsync(new OperationalTaskState(taskId, "running", 100, DateTimeOffset.UtcNow));
+            await repository.UpsertIngestTaskStateAsync(new OperationalTaskState(taskId, "running", 100, DateTimeOffset.UtcNow));
 
             var reconciler = new RestartReconciler(repository);
-            var count = await reconciler.ReconcileRunningTasksAsync(tasksDir);
+            var count = await reconciler.ReconcileRunningIngestTasksAsync(tasksDir);
 
             Assert.Equal(1, count);
 
@@ -76,7 +76,7 @@ public class RestartReconcilerActivityLogTests
                 StringComparison.Ordinal);
 
             // The stale running row is gone from operational state.
-            Assert.DoesNotContain(await repository.GetByStatusAsync("running"), x => x.TaskId == taskId);
+            Assert.DoesNotContain(await repository.GetIngestTaskStatesByStatusAsync("running"), x => x.TaskId == taskId);
         }
         finally
         {
@@ -114,10 +114,10 @@ public class RestartReconcilerActivityLogTests
 
             var repository = new OperationalStateRepository(Path.Combine(root, "operational-state.db"));
             await repository.InitializeAsync();
-            await repository.UpsertAsync(new OperationalTaskState(taskId, "running", 100, DateTimeOffset.UtcNow));
+            await repository.UpsertIngestTaskStateAsync(new OperationalTaskState(taskId, "running", 100, DateTimeOffset.UtcNow));
 
             var reconciler = new RestartReconciler(repository);
-            await reconciler.ReconcileRunningTasksAsync(tasksDir);
+            await reconciler.ReconcileRunningIngestTasksAsync(tasksDir);
 
             Assert.False(File.Exists(logPath));
 

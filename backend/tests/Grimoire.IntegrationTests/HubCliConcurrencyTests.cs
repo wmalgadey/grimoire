@@ -63,7 +63,7 @@ public class HubCliConcurrencyTests
 
             // Must not throw: the busy_timeout hardening (T012) makes this wait for the
             // holder's COMMIT above instead of surfacing SqliteException(SQLITE_BUSY).
-            await repository.UpsertAsync(new OperationalTaskState(taskId, "running", 4242, DateTimeOffset.UtcNow));
+            await repository.UpsertIngestTaskStateAsync(new OperationalTaskState(taskId, "running", 4242, DateTimeOffset.UtcNow));
             stopwatch.Stop();
 
             await releaseTask;
@@ -73,7 +73,7 @@ public class HubCliConcurrencyTests
                 $"The write returned after {stopwatch.Elapsed}, well before the {holdDuration} hold released its " +
                 "lock — it did not genuinely wait for the other writer, so this test did not exercise busy_timeout.");
 
-            var stored = await repository.GetByStatusAsync("running");
+            var stored = await repository.GetIngestTaskStatesByStatusAsync("running");
             Assert.Contains(stored, row => row.TaskId == taskId);
         }
         finally
