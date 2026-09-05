@@ -58,6 +58,10 @@
   need watching at plan time rather than here: the wizard is now system code, so its ADR and
   observability obligations are real (Principle III/IV), and the spec's own carve-out for relaxed
   conventions now covers only the deployment script's glue.
+- Re-validated 2026-09-05 after the fifth clarification (scope held at one document; the role-specific
+  gap filed as issue #224): "Scope is clearly bounded" holds more strongly — FR-019 now says explicitly
+  that the wizard writes the foundation document and nothing else, and names where the excluded part
+  lives. No item changed state.
 
 - The one deliberate open decision — where the shared document physically lives and how an
   instance-specific one reaches a containerized deployment — is *not* marked

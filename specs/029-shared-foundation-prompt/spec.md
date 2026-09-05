@@ -88,6 +88,17 @@ Add a command to `deploy/server/grimoire-server` that walks an operator through 
 - Q: Who answers "which wiki identity steers this deployment"? → A: the system reports it (FR-018) and
   the deployment script surfaces that answer rather than working it out itself (FR-018a). The same
   report is what a later user-facing surface would show.
+- Q: Should the wizard also write the per-agent role documents, so a specialised wiki can carry its own
+  frontmatter, categories or labels? → A: no — scope stays at one document, and the gap this question
+  points at is filed as issue #224. Two reasons. The examples given (frontmatter, categories, labels)
+  are wiki-wide conventions and already move into the foundation document under the extraction
+  clarification above, so a specialised instance changes them in one place today. And a wizard that
+  writes the role documents *is* the one-shot setup tool FR-019 declines: those three files are
+  version-controlled product content, and an instance that gets its own copies is a fork cut off from
+  every later improvement to them. What genuinely has no home is a *role-specific* per-instance delta
+  (#217's own example: for a travel wiki, Query should combine wiki history with external research) —
+  that is #224, and it needs its own ADR decision, because composing a third document into the system
+  prompt is listed in ADR-053's Change Triggers as an invalidation requiring full supersession.
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -312,7 +323,10 @@ status output carries the same answer.
 
 - **FR-019**: The per-agent system-prompt generator described in issue #217 MUST NOT be built, in any
   form (runtime, build-time, or one-shot setup tool that rewrites the three agent prompts), and the
-  decline MUST be recorded on issue #217 itself so the board stops carrying it as pending work.
+  decline MUST be recorded on issue #217 itself so the board stops carrying it as pending work. This
+  holds for the identity wizard too: it writes the foundation document and nothing else. A
+  role-specific per-instance layer — the part of #217's motivation that the foundation document
+  cannot express — is out of scope here and tracked as issue #224.
 
 ### Key Entities
 
