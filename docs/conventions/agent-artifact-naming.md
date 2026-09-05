@@ -218,3 +218,19 @@ second consumer would not make the name wrong.
 Prior ADRs and merged `specs/` artifacts still refer to the pre-rename type names. That
 is intentional — an Accepted ADR's decision content is immutable (Constitution
 Principle III), and the `specs/` tree is the historical record of what each feature did.
+
+### Worked example: two `RecordedTurn`s
+
+The convention says "a type bound to exactly one agent carries that agent's token". Deciding
+whether a type *is* so bound has to happen per declaration, not per name — two unrelated types
+can share a name, and a solution-wide identifier rename cannot tell them apart:
+
+| Type | What it is | Token? |
+| --- | --- | --- |
+| `Grimoire.AgentRuntime.Core.Adapters.Replay.RecordedTurn` | One captured model round-trip for eval replay: turn index, system-prompt and conversation hashes, tool names, stop reason, tool uses, assistant text, token counts (`specs/009` recording-format.md) | **No** — every agent's captures replay through it |
+| `Grimoire.Hub.QueryConversations.QueryRecordedTurn` | One terminal turn of a Conversation Record: turn id, position, state, timestamps, instruction-file and policy provenance, denied actions, prompt/answer transcript, created pages | **Yes** — Query's durable conversation history |
+
+They share only the word "turn": one is an LLM request/response capture that exists so a replayed
+run is deterministic, the other a user-facing Q&A record persisted as markdown. Before applying
+the token, check whether the name is unique in the solution — if it is not, only the
+single-agent declaration gets it.

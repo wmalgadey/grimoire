@@ -121,7 +121,7 @@ public class ReplayAdapterTests : IDisposable
     [Fact]
     public async Task Capture_RejectsATurnWithAnIncompleteToolCall_RatherThanRecordingIt()
     {
-        // #173 (Copilot review on #178): QueryRecordedTurn has no field for
+        // #173 (Copilot review on #178): RecordedTurn has no field for
         // ModelTurn.HasIncompleteToolCall, and ReplayModelClient always reconstructs it as
         // false. Capturing this turn as-is would produce a recording that replays a
         // different harness nudge than the live run actually took, diverging on the very

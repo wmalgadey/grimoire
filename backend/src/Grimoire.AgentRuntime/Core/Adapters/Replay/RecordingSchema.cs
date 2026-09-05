@@ -17,7 +17,7 @@ public sealed record RecordedMessage(string Role, string ContentSha256);
 public sealed record RecordedToolUse(string ToolUseId, string ToolName, string InputJson);
 
 /// <summary>One captured model turn: request fingerprints + verbatim response.</summary>
-public sealed record QueryRecordedTurn(
+public sealed record RecordedTurn(
     int Turn,
     string SystemPromptSha256,
     IReadOnlyList<RecordedMessage> Conversation,
@@ -43,7 +43,7 @@ public sealed record RecordedSample(
     int Sample,
     string TaskId,
     string Model,
-    IReadOnlyList<QueryRecordedTurn> Turns,
+    IReadOnlyList<RecordedTurn> Turns,
     IReadOnlyList<JudgeVerdict>? JudgeVerdicts,
     RecordedOutcome? Outcome);
 
