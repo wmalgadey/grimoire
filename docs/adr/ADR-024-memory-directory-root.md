@@ -1,5 +1,5 @@
 ---
-status: Accepted
+status: accepted
 ---
 
 # ADR-024: Memory Directory — A Fourth Independent Root for Agent Process Bookkeeping
