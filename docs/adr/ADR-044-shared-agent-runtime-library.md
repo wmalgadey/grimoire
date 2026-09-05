@@ -5,12 +5,9 @@ supersedes: ADR-011
 
 # ADR-044: Shared Agent Runtime Library
 
-> **Extends [ADR-010](ADR-010-hexagonal-ports-adapter-namespaces.md)**: the `IModelClient` port
-> and its Anthropic adapter this ADR places at `Grimoire.AgentRuntime.Core`/
-> `Grimoire.AgentRuntime.Core.Adapters.Anthropic` are the current entry for the port row ADR-010's
-> table originally listed under `Grimoire.IngestAgent.AgentCore` — the same port-owned-by-consumer,
-> adapter-one-level-below scheme ADR-010 decided, applied to this ADR's new consuming namespace.
-> ADR-010's namespace scheme and containment rules C1–C5 are unchanged.
+> **Extends [ADR-010](ADR-010-hexagonal-ports-adapter-namespaces.md)**: owns the current
+> `IModelClient` port-table entry (`Grimoire.AgentRuntime.Core.Adapters.Anthropic`), applying
+> ADR-010's own namespace scheme to this ADR's new consuming namespace.
 
 ## Context and Problem Statement
 

@@ -4,26 +4,15 @@ status: accepted
 
 # ADR-006: Agent Tool-Use Loop and Guarded Tool Boundary
 
-> **Extended by [ADR-043](ADR-043-build-distributed-agent-artifacts.md)**: the policy file
-> this ADR's guarded tool boundary reads is distributed as part of the agent's
-> build-published instruction surface (`<AgentDir>/<agent-id>/Instructions/policy.json`);
-> the guarded tool-use loop and deny-by-default policy model themselves are unchanged.
-> (This location detail passed through ADR-009, then ADR-022, before ADR-043 restated it
-> as current truth — see those ADRs' own frontmatter for the chain.)
-
-> **Extended by [ADR-030](ADR-030-guarded-retrieval-tool-surface.md)**: the "exactly three
-> file-level tools" decision is widened to six — `search_files`, a read-only `batch`, and
-> optional range parameters on `read_file` are added, and
-> [ADR-031](ADR-031-lint-full-wiki-write-scope.md) adds `delete_file`. The guarded tool-use
-> loop, the deny-by-default policy model, the write journal, and the rule that content
-> semantics stay in instruction files are all unchanged; ADR-006 itself names adding a tool
-> as the sanctioned form of backend extension, so growing the tool count is exactly this
-> ADR's own Change Triggers at work, not a change to what it decided.
+> **Extended by [ADR-043](ADR-043-build-distributed-agent-artifacts.md)**: the guarded tool
+> boundary's policy file now lives under the agent's build-distributed instruction surface
+> (`Instructions/policy.json`); the loop and policy model here are unchanged.
 >
-> **Extended by [ADR-031](ADR-031-lint-full-wiki-write-scope.md)**: the write journal gains
-> deletion — a journaled delete records the removed content so reverse-order rollback can
-> restore it. Additive to the journal mechanism this ADR defines; the mechanism itself is
-> unchanged.
+> **Extended by [ADR-030](ADR-030-guarded-retrieval-tool-surface.md) and
+> [ADR-031](ADR-031-lint-full-wiki-write-scope.md)**: the tool surface grows past the
+> original three (`search_files`, ranged `read_file`, `batch`, `delete_file`) and the write
+> journal gains deletion — both using the extension mechanism this ADR itself names
+> ("adding a tool"). Nothing here is reversed.
 
 ## Context and Problem Statement
 

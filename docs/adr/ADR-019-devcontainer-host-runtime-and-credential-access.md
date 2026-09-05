@@ -5,13 +5,9 @@ status: accepted
 # ADR-019: Devcontainer Host Container-Runtime and Credential Access
 
 > **Extended by [ADR-041](ADR-041-independent-directory-roots.md)**: the secrets file
-> this ADR anchors at `<base>/data/.env` now lives at `<repo-root>/.env` —
-> `SecretsFile` is deliberately anchored at the process working directory, independent
-> of any of ADR-041's directory roots, so relocating runtime data, the agent
-> directory, the wiki, or the memory root never separates an operator from their
-> credentials. The credential-delivery mechanism itself (devcontainer `secrets` →
-> `.env`) is unchanged. (This location detail passed through ADR-022 before ADR-041
-> restated it as current truth.)
+> this ADR anchors now lives at `<repo-root>/.env`, deliberately outside any of
+> ADR-041's roots so relocating one never separates an operator from their
+> credentials. The credential-delivery mechanism here is unchanged.
 
 ## Context and Problem Statement
 

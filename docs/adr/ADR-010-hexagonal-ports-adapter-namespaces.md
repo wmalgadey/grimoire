@@ -4,14 +4,10 @@ status: accepted
 
 # ADR-010: Hexagonal Ports and Adapter Namespaces for External Systems
 
-> **Extended by [ADR-044](ADR-044-shared-agent-runtime-library.md)**: the `IModelClient` row in
-> the Ports and adapters table below is stale — it (and the note beneath it) point at ADR-011,
-> which is itself now superseded. The port and its Anthropic adapter currently live at
-> `Grimoire.AgentRuntime.Core`/`Grimoire.AgentRuntime.Core.Adapters.Anthropic`, per ADR-044 — the
-> same port-owned-by-consumer, adapter-one-level-below scheme this ADR decided, applied to the new
-> consuming namespace since the Ingest/Query shared runtime was extracted. The namespace scheme
-> and containment rules C1–C5 this ADR decided are unchanged; the table row and its note below are
-> left as originally recorded, per ADR immutability.
+> **Extended by [ADR-044](ADR-044-shared-agent-runtime-library.md)**: the `IModelClient` row
+> below (and its note, pointing at now-superseded ADR-011) is stale — the port and its
+> Anthropic adapter currently live at `Grimoire.AgentRuntime.Core.Adapters.Anthropic`, per
+> ADR-044. The namespace scheme and containment rules C1–C5 here are unchanged.
 
 ## Context and Problem Statement
 
