@@ -42,7 +42,15 @@ const hubProxy = {
 // directory — so it needs the *real*, symlink-resolved location added explicitly. Outside
 // a Stryker sandbox this resolves to the same directory `fs.allow` already defaults to, so
 // it changes nothing for `vite dev`/`vite preview`/a plain `vitest run`.
-const realNodeModulesDir = path.dirname(realpathSync(path.resolve('node_modules')));
+//
+// Guarded rather than assumed present: every other import above already requires
+// node_modules to exist (Node resolves them from it before this line ever runs), so a
+// missing directory here is unreachable in practice — but falling back to cwd rather than
+// letting realpathSync throw costs nothing and keeps this config loadable standalone.
+const nodeModulesPath = path.resolve('node_modules');
+const realNodeModulesDir = existsSync(nodeModulesPath)
+	? path.dirname(realpathSync(nodeModulesPath))
+	: process.cwd();
 
 export default defineConfig({
 	plugins: [
