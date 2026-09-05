@@ -62,6 +62,16 @@ set -eo pipefail
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$REPO_ROOT"
 
+# #194: scripts/mutation-test.Dockerfile installs Bun to /usr/local/bun (root-owned) so the
+# binary is there for every user, but that also makes it Bun's *cache* root by default —
+# and mutation-test-docker.sh deliberately runs the container as the invoking user
+# (--user "$(id -u):$(id -g)"), so `bun install` failed there with an AccessDenied on the
+# cache directory. $HOME is always writable (the wrapper bind-mounts it to its own host
+# cache directory and sets it explicitly; running this script directly on a host outside
+# Docker just uses that host's real $HOME, equally writable), so pointing the cache there
+# fixes the container case without changing anything outside it.
+export BUN_INSTALL_CACHE_DIR="${BUN_INSTALL_CACHE_DIR:-$HOME/.cache/bun-install}"
+
 OUT_DIR="docs/reports/mutation"
 
 # name | lane | working directory | --project (dotnet lane) | extra arguments
@@ -214,10 +224,19 @@ for line in "${selected[@]}"; do
     # outlives the checkout, so "the directory is there" does not mean "it matches the
     # lockfile in front of me". `bun install --frozen-lockfile` is a fast no-op when it
     # already does, and the only thing that notices a dependency bump when it does not.
-    ( cd "$dir" && bun install --frozen-lockfile )
-    ( cd "$dir" && bunx stryker run \
-        --concurrency "$frontend_concurrency" \
-        "${extra_args[@]}" ) 2>&1 | tee "$target_out/run.log" || failed+=("$name")
+    #
+    # #194: this used to run unguarded, so under `set -eo pipefail` a failing install (e.g.
+    # the AccessDenied the container hit before BUN_INSTALL_CACHE_DIR was fixed above)
+    # aborted the whole script instead of just marking this one target failed, the way every
+    # Stryker invocation already does. Its output now also lands in run.log for the same
+    # reason the Stryker run's does — the failure's cause belongs with the target's report.
+    if ! ( cd "$dir" && bun install --frozen-lockfile ) 2>&1 | tee "$target_out/run.log"; then
+      failed+=("$name")
+    else
+      ( cd "$dir" && bunx stryker run \
+          --concurrency "$frontend_concurrency" \
+          "${extra_args[@]}" ) 2>&1 | tee -a "$target_out/run.log" || failed+=("$name")
+    fi
   fi
 
   elapsed=$(( SECONDS - started ))

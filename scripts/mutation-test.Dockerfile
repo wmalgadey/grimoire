@@ -17,7 +17,7 @@ FROM mcr.microsoft.com/dotnet/sdk:10.0
 # together. Leaving it out does not fail loudly: those tests go red, and a red test under
 # Stryker reports as mutants "only covered by failing tests", quietly dropped from the score.
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends python3-pip curl unzip ca-certificates \
+    && apt-get install -y --no-install-recommends python3-pip curl unzip xz-utils ca-certificates \
     && rm -rf /var/lib/apt/lists/* \
     && pip3 install --break-system-packages "markitdown==0.1.7"
 
@@ -50,6 +50,32 @@ RUN set -eux; \
     chmod 755 "$BUN_INSTALL/bin/bun"; \
     ln -sf "$BUN_INSTALL/bin/bun" "$BUN_INSTALL/bin/bunx"; \
     rm -rf "$tmp"
+
+# #194: `bunx` runs a package's bin script through whatever interpreter its shebang names
+# (`#!/usr/bin/env node` for Stryker and Playwright's CLIs alike) when that interpreter
+# resolves on PATH — and falls back to Bun's own engine, silently, when it does not. With
+# no Node in this image, `bunx stryker run` executed Stryker under Bun, where
+# `@stryker-mutator/vitest-runner` throws loading its plugin ("First argument must be an
+# Error object") and Stryker degrades that to a warning rather than failing. Installing
+# Node — the version frontend/.nvmrc pins, the same one `actions/setup-node@v4` resolves
+# in CI — is the whole fix; nothing about how `bunx` is invoked elsewhere needs to change.
+# Verified against the published SHASUMS256.txt, same reasoning as the Bun install above.
+ARG NODE_VERSION=22.23.2
+RUN set -eux; \
+    case "$(uname -m)" in \
+      x86_64) arch="linux-x64" ;; \
+      aarch64|arm64) arch="linux-arm64" ;; \
+      *) echo "unsupported architecture: $(uname -m)" >&2; exit 1 ;; \
+    esac; \
+    tmp="$(mktemp -d)"; \
+    base="https://nodejs.org/dist/v${NODE_VERSION}"; \
+    curl -fsSL -o "$tmp/node.tar.xz" "$base/node-v${NODE_VERSION}-${arch}.tar.xz"; \
+    curl -fsSL -o "$tmp/SHASUMS256.txt" "$base/SHASUMS256.txt"; \
+    (cd "$tmp" && grep " node-v${NODE_VERSION}-${arch}.tar.xz\$" SHASUMS256.txt | sha256sum -c -); \
+    mkdir -p /usr/local/node; \
+    tar -xJf "$tmp/node.tar.xz" -C /usr/local/node --strip-components=1; \
+    rm -rf "$tmp"
+ENV PATH=/usr/local/node/bin:$PATH
 
 # The frontend's `client` Vitest project drives a real Chromium through Playwright, so the
 # browser and its system libraries belong in the image — the same
