@@ -1,6 +1,6 @@
 # Contract: the foundation document
 
-**Feature**: 029-shared-foundation-prompt | ADR-053, ADR-055
+**Feature**: 029-shared-foundation-prompt | ADR-053
 
 ## File contract
 

@@ -60,7 +60,7 @@ status line.
 |---|---|
 | **I — Domain architecture & hexagonal boundaries** | No new external system is introduced. The drafting agent runs on the deploy host and is never invoked by the Hub (spec Assumptions), so no new port, adapter namespace or containment rule is needed. Infrastructure containment is untouched: the wizard uses the filesystem directly, which the persistence exemption already covers. **Gate: pass.** |
 | **II — Pragmatic testing** | Harness contracts (composition, fail-closed load, resolution, custody, wizard outcomes) are tested deterministically and hermetically against real files in temp dirs and real spawned agent processes. Agent judgment (SC-008/SC-009) is classified lower-stakes in the spec and is covered by the user-reported correction loop, not a new eval suite. Classicist/state-based throughout; no mocking framework; no new double. **Gate: pass.** |
-| **III — ADR-driven & test-enforced** | Three ADRs (053, 054, 056), all in the Mandatory format, each deciding one aspect; a fourth (055) was drafted and declined for recording feature behaviour rather than a decision. One Boundary Rule (instruction authorship, existing, widened) gets the Phase 0 Red/Green probe; everything else is tagged Feature-Scoped Invariant and covered behaviorally. **Gate: pass, conditional on the three remaining ADRs reaching Accepted before `/speckit-tasks`.** |
+| **III — ADR-driven & test-enforced** | Three ADRs (053, 054, 056), all in the Mandatory format, each deciding one aspect; a fourth was drafted for the document's location and dropped in review as feature behaviour rather than a decision. One Boundary Rule (instruction authorship, existing, widened) gets the Phase 0 Red/Green probe; everything else is tagged Feature-Scoped Invariant and covered behaviorally. **Gate: pass, conditional on the three remaining ADRs reaching Accepted before `/speckit-tasks`.** |
 | **IV — Behavioral & observable** | `## Observability` below enumerates 2 metrics, 5 log events and 2 spans, each with the three task categories the constitution derives. No new infrastructure. **Gate: pass.** |
 | **V — Agentic core & deterministic harness** | The foundation document is instruction content; the harness resolves, loads, composes, hashes and reports it and never interprets it. The wizard's content judgment is exercised by an agent session outside the system; the Hub's contribution is custody of bytes received whole, enforced structurally (ADR-056). Guardrails, write scopes, path roots and credential scope are untouched by document content (FR-010). **Gate: pass.** |
 
@@ -74,8 +74,7 @@ status line.
 |-----|-------|---------------------------|
 | [ADR-053](../../docs/adr/ADR-053-agent-system-prompt-composition.md) | An Agent's System Prompt Is a Shared Foundation Document Composed With Its Role Document | **New, drafted here.** Fixes the two-document surface, the composition order, verbatim/fail-closed loading, per-document recording, and the explicit CLI path per document. Supersedes ADR-007. |
 | [ADR-054](../../docs/adr/ADR-054-default-user-prompt-and-message-scaffold.md) | Per-Run Steering Is a Versioned Default User Prompt Inside a Harness-Owned Scaffold | **New, drafted here.** Re-decides ADR-007's user-channel aspect unchanged in substance, as the whole-ADR supersession rule requires. Constrains this feature only by staying true: nothing here touches the user channel. |
-| [ADR-055](../../docs/adr/ADR-055-foundation-document-resolution.md) | (declined) The Effective Foundation Document Is the Build-Distributed Default Unless an Instance Document Exists | **Drafted here and declined in review**: it fixed a file location and a presence check, which is feature behaviour, not a boundary or technology decision (Principle III, "no feature content"). It constrains nothing. Where the effective document comes from is fixed by [contracts/foundation-document.md](./contracts/foundation-document.md) and [data-model.md](./data-model.md) instead. |
-| [ADR-056](../../docs/adr/ADR-056-instance-instruction-custody.md) | One Named Custodian May Persist an Instruction Document It Received Whole, and Nothing May Author One | **New, drafted here.** Permits exactly one component to write the instance document, only with bytes received whole, and keeps authorship forbidden everywhere. Widens the instruction-authorship Boundary Rule's allow-list by one entry — a change to what production code may do, enforced by a structural test, which is why this one *is* an ADR where ADR-055 was not. |
+| [ADR-056](../../docs/adr/ADR-056-instance-instruction-custody.md) | One Named Custodian May Persist an Instruction Document It Received Whole, and Nothing May Author One | **New, drafted here.** Permits exactly one component to write the instance document, only with bytes received whole, and keeps authorship forbidden everywhere. Widens the instruction-authorship Boundary Rule's allow-list by one entry — a change to what production code may do, enforced by a structural test, which is what makes it an architectural decision rather than feature behaviour. |
 | [ADR-007](../../docs/adr/ADR-007-agent-instruction-surface.md) | Agent Instruction Surface (single system prompt) | **Superseded by ADR-053 + ADR-054 in this feature.** Its "entire system prompt, one file" decision is what this feature contradicts; `superseded_by` and `reason` are set on it in the same change. |
 | [ADR-043](../../docs/adr/ADR-043-build-distributed-agent-artifacts.md) | Build-Distributed Agent Artifacts | Constrains where the default lives: the agent build delivers it, the Hub never seeds or materializes it. Pure extension ("new files in an agent's build output" is in its own Change Triggers) — no status change. |
 | [ADR-041](../../docs/adr/ADR-041-independent-directory-roots.md) / [ADR-052](../../docs/adr/ADR-052-memory-directory-root.md) | Independent roots; memory root | Constrain where the instance document may live. It is a derived filename under the existing data root — no fifth root, and not under the memory root, whose scope is per-run bookkeeping. |
@@ -94,17 +93,16 @@ the whole-ADR supersession of ADR-007) and ADR-056 (the authorship/custody Bound
 must reach **Accepted** before `/speckit-tasks` is invoked, and ADR-007 must carry
 `status: superseded`, `superseded_by: [ADR-053, ADR-054]` and a `reason` in the same change.
 
-A fourth was drafted and **declined in review**: ADR-055 recorded where the foundation document lives
-and how it is resolved, which is feature behaviour rather than an architectural decision. The test that
-separates them is what the record *constrains*: ADR-056 changes what production code is permitted to do
-and is enforced by a structural test; ADR-055 changed where a file sits, which `plan.md`,
-`data-model.md` and `contracts/foundation-document.md` are the right home for. The declined file is kept
-as the record of the alternatives weighed (Principle III: ADR numbers are permanent, `declined` is a
-first-class status).
+A fourth record was drafted for where the foundation document lives and how it is resolved, and was
+dropped in review: that is feature behaviour, not an architectural decision, and it belongs in this plan
+(see "Resolution of the effective foundation document" below), `data-model.md` and
+`contracts/foundation-document.md`. The test that separates the two is what a record *constrains*:
+ADR-056 changes what production code is permitted to do and is enforced by a structural test; where a
+file sits constrains nothing and needs no ADR.
 
 ## Resolution of the effective foundation document
 
-Not an ADR (see above) — recorded here, with the full alternatives in
+Not an ADR — it constrains no boundary and no technology. Recorded here, with the full alternatives in
 [research.md](./research.md) R1/R6 and the normative shape in
 [contracts/foundation-document.md](./contracts/foundation-document.md):
 
@@ -253,7 +251,7 @@ backend/
     └── Grimoire.EvalRunner/                  # + foundation_prompt fingerprint
 
 deploy/server/grimoire-server                 # thin glue: start the Hub wizard, show identity
-docs/adr/ADR-053, ADR-054, ADR-056            # the three ADRs (055 drafted, declined)
+docs/adr/ADR-053, ADR-054, ADR-056            # the three ADRs this feature needs
 ```
 
 **Structure Decision**: no new project and no new assembly. The composition work lands in the shared
@@ -274,9 +272,9 @@ Re-evaluated after Phase 1 with the design fixed:
   outcomes, composed text, exit codes, persisted bytes, emitted signals — and none re-verifies
   Spectre.Console, the configuration binder or the filesystem. **Pass.**
 - **Principle III**: three single-aspect ADRs, one Boundary Rule with a Red/Green probe in Phase 0, and
-  every other rule tagged Feature-Scoped Invariant with a behavioral test. The declined fourth is the
-  rule working: an ADR that fixed feature behaviour was caught in review rather than accepted. **Pass,
-  gated on acceptance.**
+  every other rule tagged Feature-Scoped Invariant with a behavioral test. The dropped fourth is the
+  rule working: a record that fixed feature behaviour was caught in review before it became an ADR.
+  **Pass, gated on acceptance.**
 - **Principle IV**: 2 metrics, 5 log events, 2 spans, each with its three derived task categories, and
   the span tests bound to the production composition root. **Pass.**
 - **Principle V**: the harness gained custody, not authorship, and the gain is fenced by a structural

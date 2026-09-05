@@ -15,7 +15,7 @@ the conventions that hold across every agent's work.
 | Format | UTF-8 markdown, no frontmatter |
 | Authored default | `backend/src/Grimoire.AgentRuntime/Instructions/foundation-prompt.md` — one source file, version-controlled product content |
 | Delivered default | `<AgentDir>/<agentId>/Instructions/foundation-prompt.md`, one copy per agent, written by the agent build (ADR-043) |
-| Instance document | `<DataDir>/foundation-prompt.md` — optional; when present it is the effective document for **every** agent (ADR-055) |
+| Instance document | `<DataDir>/foundation-prompt.md` — optional; when present it is the effective document for **every** agent |
 | Validity | Readable and not effectively empty (whitespace-only counts as empty). Nothing validates what it *says* |
 | Identity per run | The document's content hash, recorded per run distinguishably from the role document |
 

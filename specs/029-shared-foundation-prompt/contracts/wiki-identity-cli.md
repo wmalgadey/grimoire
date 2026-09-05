@@ -1,6 +1,6 @@
 # Contract: `wiki-identity` Hub CLI command
 
-**Feature**: 029-shared-foundation-prompt | ADR-048, ADR-049, ADR-055, ADR-056
+**Feature**: 029-shared-foundation-prompt | ADR-048, ADR-049, ADR-056
 
 One command in the Hub's existing catalog, with the established exit-code convention. It runs
 in-process against the shared composition root like every other Hub command.

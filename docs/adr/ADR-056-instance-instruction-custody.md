@@ -108,9 +108,8 @@ Chosen option: **Option 1.**
 The location this custodian writes to, and how the effective document is resolved from it, are feature
 behaviour rather than an architectural decision, and live in the feature's own artifacts
 (`specs/029-shared-foundation-prompt/plan.md`, `data-model.md`,
-`contracts/foundation-document.md`). ADR-055 drafted them as an ADR and was declined in review for
-exactly that reason; it is kept only as the record of the alternatives weighed. The Boundary Rule's
-literal set and allow-list live with the instruction surface in
+`contracts/foundation-document.md`), with the alternatives weighed in that feature's `research.md`
+R1/R6. The Boundary Rule's literal set and allow-list live with the instruction surface in
 [ADR-053](ADR-053-agent-system-prompt-composition.md); this ADR decides *that* an allow-list entry
 exists and on what terms, not the mechanics of the test.
 
