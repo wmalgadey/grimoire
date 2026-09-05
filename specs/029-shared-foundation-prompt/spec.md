@@ -58,6 +58,15 @@ Add a command to `deploy/server/grimoire-server` that walks an operator through 
   a ready document via a flag, which is what the non-interactive path uses. Rationale: content
   judgment about what a wiki should do stays agent-side (the Principle V line), and the shell script
   never authors instruction text from a template.
+- Q: How far should the mechanism — the shape of the per-run record and how the two documents are
+  composed — move out of the spec into `plan.md`/the ADRs? → A: the evidence *form* moves out, the
+  trust properties stay. US1-AS1, FR-006, SC-001 and SC-003 now state the outcome ("after a run it is
+  determinable which instruction documents it operated under and in which version, distinguishably per
+  document"); how that is recorded — two entries in the task artifact, each with its own SHA-256 — is
+  a plan-level decision. FR-003 (one fixed, documented order for every agent type), FR-004 (content
+  reaches the agent unmodified) and FR-005 (fail-closed) stay in the spec: they constrain what the
+  system may do to instruction content rather than describing a mechanism, and the fixed order comes
+  from the feature request itself.
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -75,17 +84,17 @@ behavior. Part 2 has nothing to set without it. It also stands alone: shipped wi
 and no wizard at all, the system behaves exactly as it does today while removing the triplication.
 
 **Independent Test**: Edit the single shared document to state something the per-agent files do not
-say, dispatch one run of each agent type, and confirm from each run's own record that the loaded
-instruction set contained that statement — and that the per-agent files were not edited to achieve it.
+say, dispatch one run of each agent type, and confirm for each run that it operated under that
+statement — and that the per-agent files were not edited to achieve it.
 
 **Acceptance Scenarios**:
 
 1. **Given** a deployment with the shipped default foundation document, **When** an ingest, a query and
-   a lint run are dispatched, **Then** each run's task record lists both the shared foundation document
-   and that agent's own system prompt, each with its own content hash.
+   a lint run are dispatched, **Then** it is afterwards determinable, for each run, which instruction
+   documents it operated under and in which version — the shared foundation document included.
 2. **Given** the shared foundation document and an agent's own system prompt, **When** any agent run
-   starts, **Then** the instruction text the agent receives contains both documents' content verbatim,
-   in the same documented order for every agent type.
+   starts, **Then** the agent operates under both documents' content unmodified, in the same documented
+   order for every agent type.
 3. **Given** a shared foundation document that is missing, unreadable or effectively empty, **When** a
    run is dispatched, **Then** the run fails before any wiki write, naming the document that could not
    be loaded.
@@ -218,8 +227,10 @@ instance-specific identity, and confirm the two reports differ in exactly that l
 - **FR-005**: Loading MUST be fail-closed: a missing, unreadable or effectively empty foundation
   document MUST fail the run before any wiki write, with a failure reason naming the foundation
   document.
-- **FR-006**: Each run's task record MUST list both loaded instruction documents with their individual
-  content hashes, so the exact instruction set a run executed under is recoverable after the fact.
+- **FR-006**: After a run, it MUST be determinable which instruction documents that run operated under
+  and in which exact version, distinguishably per document — so a change in behaviour can be attributed
+  to the shared statement or to one agent's role document. How that is recorded is a plan-level
+  decision, not a requirement here.
 - **FR-007**: Evaluation and replay runs MUST resolve and compose the foundation document by the same
   mechanism as a dispatched run, with no additional operator configuration.
 - **FR-008**: The system MUST ship a default foundation document whose content describes the wiki
@@ -273,7 +284,7 @@ instance-specific identity, and confirm the two reports differ in exactly that l
 
 - **Foundation document**: the single per-instance instruction document stating what this wiki is, what
   it is for, and the conventions holding across all agents. Has content, an identity (default vs.
-  instance-specific) and a content hash recorded per run.
+  instance-specific) and a version that is determinable per run.
 - **Per-agent system prompt**: the existing hand-authored, version-controlled instruction document for
   one agent's role. Unchanged in its role; loses the whole-wiki statements that move to the foundation
   document.
@@ -286,14 +297,14 @@ instance-specific identity, and confirm the two reports differ in exactly that l
 
 ### Measurable Outcomes
 
-- **SC-001** *(deterministic harness guarantee)*: 100% of agent runs, of every agent type, load the
-  foundation document in addition to the agent's own system prompt, and record both documents with
-  their individual content hashes in the run's task record.
+- **SC-001** *(deterministic harness guarantee)*: 100% of agent runs, of every agent type, operate
+  under the foundation document in addition to the agent's own system prompt, and for 100% of runs both
+  documents and their exact versions are determinable afterwards, distinguishably per document.
 - **SC-002** *(deterministic harness guarantee)*: 100% of runs whose foundation document is missing,
   unreadable or effectively empty fail before any wiki write, with a failure reason naming the
   foundation document.
-- **SC-003** *(deterministic harness guarantee)*: 100% of runs receive the two documents' content
-  verbatim in the documented order — byte-for-byte identical to the files on disk, for every agent type
+- **SC-003** *(deterministic harness guarantee)*: in 100% of runs the agent operates under the two
+  documents' content byte-for-byte as it stands on disk, in the documented order — for every agent type
   and for evaluation and replay runs alike.
 - **SC-004** *(deterministic harness guarantee)*: 100% of wizard runs that choose the default leave the
   instance byte-identical to one that never ran the wizard.
