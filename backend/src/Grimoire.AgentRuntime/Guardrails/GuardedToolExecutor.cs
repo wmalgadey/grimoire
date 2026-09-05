@@ -245,27 +245,67 @@ public sealed class GuardedToolExecutor
         }
     }
 
+    /// <summary>
+    /// The canonicalize-or-deny → policy-evaluate-or-deny sequence shared by every
+    /// dispatch method that authorizes a single path (list_files/read_file/write_file/
+    /// delete_file). Does not record the allowed telemetry itself: write_file defers
+    /// that until after the write actually commits, so callers emit
+    /// <see cref="IToolCallInstrumentation.RecordAllowed"/> themselves once authorized.
+    /// </summary>
+    private bool TryAuthorize(
+        string toolName,
+        string relativePath,
+        Func<string, PolicyDecision> evaluate,
+        int turn,
+        out string canonical,
+        out PolicyDecision policyResult,
+        out ToolExecutionResult? denial)
+    {
+        if (!TryCanonicalize(relativePath, out canonical, out var canonicalizationDenialReason))
+        {
+            policyResult = PolicyDecision.Deny(canonicalizationDenialReason!);
+            denial = RecordDenial(toolName, relativePath, relativePath, canonicalizationDenialReason!, turn);
+            return false;
+        }
+
+        policyResult = evaluate(canonical);
+        if (!policyResult.IsAllowed)
+        {
+            denial = RecordDenial(toolName, relativePath, canonical, policyResult.DenialReason!, turn);
+            return false;
+        }
+
+        denial = null;
+        return true;
+    }
+
+    /// <summary>Shared "path" property extraction for every single-path dispatch method.</summary>
+    private static bool TryGetRequiredPath(string inputJson, out string relativePath, out ToolExecutionResult? missingError)
+    {
+        if (!TryGetStringProperty(inputJson, "path", out relativePath) || string.IsNullOrWhiteSpace(relativePath))
+        {
+            missingError = new ToolExecutionResult(true, "Missing required property: path");
+            return false;
+        }
+
+        missingError = null;
+        return true;
+    }
+
     // ── list_files ───────────────────────────────────────────────────────────────
 
     private async Task<ToolExecutionResult> ExecuteListFilesAsync(
         string inputJson, int turn, CancellationToken cancellationToken)
     {
-        if (!TryGetStringProperty(inputJson, "path", out var relativePath) ||
-            string.IsNullOrWhiteSpace(relativePath))
+        if (!TryGetRequiredPath(inputJson, out var relativePath, out var missingError))
         {
-            return new ToolExecutionResult(true, "Missing required property: path");
+            return missingError!;
         }
 
-        if (!TryCanonicalize(relativePath, out var canonical, out var canonicalizationDenialReason))
+        if (!TryAuthorize(ToolRegistry.ListFiles, relativePath, p => _policy.Evaluate(p, isWrite: false), turn,
+            out var canonical, out _, out var denial))
         {
-            return RecordDenial(ToolRegistry.ListFiles, relativePath, relativePath, canonicalizationDenialReason!, turn);
-        }
-
-        var policyResult = _policy.Evaluate(canonical, isWrite: false);
-
-        if (!policyResult.IsAllowed)
-        {
-            return RecordDenial(ToolRegistry.ListFiles, relativePath, canonical, policyResult.DenialReason!, turn);
+            return denial!;
         }
 
         _instrumentation.RecordAllowed(_taskId, ToolRegistry.ListFiles, canonical, turn);
@@ -299,10 +339,9 @@ public sealed class GuardedToolExecutor
     private async Task<ToolExecutionResult> ExecuteReadFileAsync(
         string inputJson, int turn, CancellationToken cancellationToken)
     {
-        if (!TryGetStringProperty(inputJson, "path", out var relativePath) ||
-            string.IsNullOrWhiteSpace(relativePath))
+        if (!TryGetRequiredPath(inputJson, out var relativePath, out var missingError))
         {
-            return new ToolExecutionResult(true, "Missing required property: path");
+            return missingError!;
         }
 
         if (!TryParseReadRangeRequest(inputJson, out var range, out var rangeError))
@@ -310,16 +349,10 @@ public sealed class GuardedToolExecutor
             return new ToolExecutionResult(true, rangeError!);
         }
 
-        if (!TryCanonicalize(relativePath, out var canonical, out var canonicalizationDenialReason))
+        if (!TryAuthorize(ToolRegistry.ReadFile, relativePath, p => _policy.Evaluate(p, isWrite: false), turn,
+            out var canonical, out _, out var denial))
         {
-            return RecordDenial(ToolRegistry.ReadFile, relativePath, relativePath, canonicalizationDenialReason!, turn);
-        }
-
-        var policyResult = _policy.Evaluate(canonical, isWrite: false);
-
-        if (!policyResult.IsAllowed)
-        {
-            return RecordDenial(ToolRegistry.ReadFile, relativePath, canonical, policyResult.DenialReason!, turn);
+            return denial!;
         }
 
         _instrumentation.RecordAllowed(_taskId, ToolRegistry.ReadFile, canonical, turn);
@@ -469,10 +502,9 @@ public sealed class GuardedToolExecutor
     private async Task<ToolExecutionResult> ExecuteWriteFileAsync(
         string inputJson, int turn, CancellationToken cancellationToken)
     {
-        if (!TryGetStringProperty(inputJson, "path", out var relativePath) ||
-            string.IsNullOrWhiteSpace(relativePath))
+        if (!TryGetRequiredPath(inputJson, out var relativePath, out var missingError))
         {
-            return new ToolExecutionResult(true, "Missing required property: path");
+            return missingError!;
         }
 
         if (!TryGetStringProperty(inputJson, "content", out var content))
@@ -489,16 +521,10 @@ public sealed class GuardedToolExecutor
         var isPrepend = TryGetStringProperty(inputJson, "mode", out var modeValue)
             && string.Equals(modeValue, "prepend", StringComparison.Ordinal);
 
-        if (!TryCanonicalize(relativePath, out var canonical, out var canonicalizationDenialReason))
+        if (!TryAuthorize(ToolRegistry.WriteFile, relativePath, p => _policy.Evaluate(p, isWrite: true), turn,
+            out var canonical, out var policyResult, out var denial))
         {
-            return RecordDenial(ToolRegistry.WriteFile, relativePath, relativePath, canonicalizationDenialReason!, turn);
-        }
-
-        var policyResult = _policy.Evaluate(canonical, isWrite: true);
-
-        if (!policyResult.IsAllowed)
-        {
-            return RecordDenial(ToolRegistry.WriteFile, relativePath, canonical, policyResult.DenialReason!, turn);
+            return denial!;
         }
 
         // ADR-015: coordinate with other writers (Ingest/Query/future Lint) sharing the
@@ -717,22 +743,15 @@ public sealed class GuardedToolExecutor
     private async Task<ToolExecutionResult> ExecuteDeleteFileAsync(
         string inputJson, int turn, CancellationToken cancellationToken)
     {
-        if (!TryGetStringProperty(inputJson, "path", out var relativePath) ||
-            string.IsNullOrWhiteSpace(relativePath))
+        if (!TryGetRequiredPath(inputJson, out var relativePath, out var missingError))
         {
-            return new ToolExecutionResult(true, "Missing required property: path");
+            return missingError!;
         }
 
-        if (!TryCanonicalize(relativePath, out var canonical, out var canonicalizationDenialReason))
+        if (!TryAuthorize(ToolRegistry.DeleteFile, relativePath, _policy.EvaluateDelete, turn,
+            out var canonical, out _, out var denial))
         {
-            return RecordDenial(ToolRegistry.DeleteFile, relativePath, relativePath, canonicalizationDenialReason!, turn);
-        }
-
-        var policyResult = _policy.EvaluateDelete(canonical);
-
-        if (!policyResult.IsAllowed)
-        {
-            return RecordDenial(ToolRegistry.DeleteFile, relativePath, canonical, policyResult.DenialReason!, turn);
+            return denial!;
         }
 
         // Recorded allowed, and the span opened, before the existence check — mirroring
@@ -905,9 +924,7 @@ public sealed class GuardedToolExecutor
         _instrumentation.RecordBatchInvocation(_taskId, outcome, turn);
         _instrumentation.LogBatchRejected(_taskId, reason, callCount, turn);
 
-        return new ToolExecutionResult(
-            true,
-            $"denied: {reason}. This action is outside the safety policy; continue with your remaining allowed work.");
+        return new ToolExecutionResult(true, DefaultDenialMessage(reason));
     }
 
     // ── search_files ─────────────────────────────────────────────────────────────
@@ -1205,9 +1222,7 @@ public sealed class GuardedToolExecutor
         _instrumentation.RecordSearchInvocation(_taskId, "pattern_rejected", matchesReturned: 0, filesScanned: 0, turn);
         _instrumentation.LogSearchPatternRejected(_taskId, reason, pattern.Length, turn);
 
-        return new ToolExecutionResult(
-            true,
-            $"denied: {reason}. This action is outside the safety policy; continue with your remaining allowed work.");
+        return new ToolExecutionResult(true, DefaultDenialMessage(reason));
     }
 
     // ── helpers ──────────────────────────────────────────────────────────────────
@@ -1248,13 +1263,17 @@ public sealed class GuardedToolExecutor
 
         if (hint is null)
         {
-            return $"denied: {reason}. This action is outside the safety policy; continue with your remaining allowed work.";
+            return DefaultDenialMessage(reason);
         }
 
         return detail is null
             ? $"denied: {reason}. {hint}"
             : $"denied: {reason}. {hint} Offending line: {detail}";
     }
+
+    /// <summary>The generic denial message shared by every reason with no corrective hint.</summary>
+    private static string DefaultDenialMessage(string reason) =>
+        $"denied: {reason}. This action is outside the safety policy; continue with your remaining allowed work.";
 
     // D2 (027-host-stability, research.md): Linux's conventional MAXSYMLINKS/ELOOP limit,
     // reused as the recursion cap for ResolvePhysicalPathInRepository's chained-symlink walk.
@@ -1360,13 +1379,13 @@ public sealed class GuardedToolExecutor
     private string ResolvePhysicalPathInRepository(string fullPath, int hopsRemaining)
     {
         var canonical = Path.GetFullPath(fullPath);
+        var relative = Path.GetRelativePath(_repositoryRoot, canonical);
 
-        if (!IsWithinRepositoryRoot(canonical))
+        if (!IsRelativePathWithinRoot(relative))
         {
             return canonical;
         }
 
-        var relative = Path.GetRelativePath(_repositoryRoot, canonical);
         var parts = relative.Split(Path.DirectorySeparatorChar, StringSplitOptions.RemoveEmptyEntries);
 
         var current = _repositoryRoot;
@@ -1396,26 +1415,24 @@ public sealed class GuardedToolExecutor
         return Path.GetFullPath(current);
     }
 
-    private bool IsWithinRepositoryRoot(string canonicalTarget)
-    {
-        var relative = Path.GetRelativePath(_repositoryRoot, canonicalTarget);
-        return !Path.IsPathRooted(relative) &&
-               !relative.Equals("..", StringComparison.Ordinal) &&
-               !relative.StartsWith($"..{Path.DirectorySeparatorChar}", StringComparison.Ordinal);
-    }
+    private static bool IsRelativePathWithinRoot(string relative) =>
+        !Path.IsPathRooted(relative) &&
+        !relative.Equals("..", StringComparison.Ordinal) &&
+        !relative.StartsWith($"..{Path.DirectorySeparatorChar}", StringComparison.Ordinal);
 
     private static bool TryResolveLinkTarget(string path, out string resolvedTarget)
     {
         resolvedTarget = string.Empty;
+        var isDirectory = Directory.Exists(path);
 
-        if (!File.Exists(path) && !Directory.Exists(path))
+        if (!isDirectory && !File.Exists(path))
         {
             return false;
         }
 
         try
         {
-            FileSystemInfo info = Directory.Exists(path)
+            FileSystemInfo info = isDirectory
                 ? new DirectoryInfo(path)
                 : new FileInfo(path);
 
