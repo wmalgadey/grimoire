@@ -20,6 +20,27 @@
     <GrimoireAgentDir Condition="'$(GrimoireAgentDir)' == ''">$(MSBuildThisFileDirectory)..\.grimoire\agents\</GrimoireAgentDir>
   </PropertyGroup>
 
+  <!--
+    029-shared-foundation-prompt (ADR-053): every agent's system prompt is composed of a
+    shared foundation document plus that agent's own system-prompt.md. The foundation
+    document is authored once in Grimoire.AgentRuntime — the shared runtime library every
+    agent project already references (ADR-044) — never duplicated per project. This one
+    Content item links it into each agent project's own Instructions\ output, so
+    PublishAgentRuntime's existing whole-output copy (below) delivers it to
+    $(GrimoireAgentDir)\<agentId>\Instructions\foundation-prompt.md without any per-project
+    edit — the same build-distribution guarantee ADR-043 already gives every other
+    instruction document.
+
+    $(MSBuildThisFileDirectory) anchors the source at this file's own directory (backend\),
+    not at whichever project imports it, so the path resolves correctly regardless of
+    which agent project is being built.
+  -->
+  <ItemGroup Condition="'$(GrimoireAgentId)' != ''">
+    <Content Include="$(MSBuildThisFileDirectory)src\Grimoire.AgentRuntime\Instructions\foundation-prompt.md"
+             Link="Instructions\foundation-prompt.md"
+             CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
   <Target Name="PublishAgentRuntime"
           AfterTargets="Build"
           Condition="'$(GrimoireAgentId)' != ''">
