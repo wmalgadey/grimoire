@@ -31,7 +31,7 @@ MIN_COMPOSE_VERSION="2.24.0" # `!override` in the server compose overlay
 #
 # It versions the tool, never the stack it deploys — `status` and `version` report that
 # separately, from the deployment record and the checkout.
-GRIMOIRE_SERVER_VERSION="1.1.0"
+GRIMOIRE_SERVER_VERSION="1.2.0"
 
 # --- Output ------------------------------------------------------------------------
 # Progress goes to stderr so that a helper's stdout is only ever its value.
@@ -656,6 +656,13 @@ cmd_deploy() {
   log "Deploying $label — $(short "$sha") $subject"
   git -C "$repo" checkout --detach --quiet "$sha"
 
+  # #202 — a checkout swaps the files on disk, never the already-running interpreter: if
+  # this commit changed the tool itself, everything below (the version stamp, the deploy
+  # steps) still comes from whichever copy of grimoire-server bash actually loaded at
+  # startup, not the one just checked out. Warn rather than re-exec (see README) so the
+  # operator knows to run `update` before trusting this deployment's version stamp.
+  warn_tool_drift "$repo" "$label"
+
   # #158 — the only place the branch being deployed is known, so the version is built here
   # and exported; `compose`'s `${GRIMOIRE_VERSION:-...}` default then picks it up untouched
   # and every other `compose` call site keeps working. After the checkout, so the commit
@@ -720,6 +727,11 @@ cmd_status() {
     [[ "$head" == "$sha" ]] ||
       warn "the checkout is at $(short "$head"), not at the deployed commit — someone moved it by hand"
   fi
+
+  # #202: "what is running?" should say so when the answer is "not what the checkout
+  # would deploy" — the same drift `deploy` now warns about, surfaced here too since this
+  # is the other place an operator looks to find out what is currently true of the host.
+  warn_tool_drift "$repo" "$ref"
 
   if ((fetch == 1)) && [[ -n "$ref" ]]; then
     log "Checking origin for newer commits on $ref"
@@ -899,6 +911,31 @@ read_script_version() {
 script_version_of() {
   [[ -f "$1" ]] || return 0
   read_script_version <"$1"
+}
+
+# #202: a checkout replaces the files on disk, never the bash interpreter already running
+# this invocation — `deploy`'s checkout at the top of `cmd_deploy` puts the correct
+# `grimoire-server` on disk, but the version stamp and the deploy steps six lines later
+# still run from whatever copy was loaded at startup. Every building block this needs
+# already existed for `update` (`script_version_of`, `cmp -s`); this just calls them from
+# `deploy` and `status` too, the two places an operator is actually looking when it
+# matters, rather than only where `update` already reports it (to whoever is already
+# typing `update`, i.e. the one operator who does not need telling).
+warn_tool_drift() {
+  local repo="$1" ref="${2:-}"
+  local checked_out="$repo/deploy/server/grimoire-server" checked_out_version
+  [[ -f "$checked_out" ]] || return 0
+  cmp -s "$checked_out" "$SCRIPT_PATH" && return 0
+
+  checked_out_version="$(script_version_of "$checked_out")"
+  if [[ -n "$ref" ]]; then
+    warn "$ref carries grimoire-server ${checked_out_version:-unknown}, this process is running \
+$GRIMOIRE_SERVER_VERSION — the version stamp and the deploy steps come from the older copy. \
+Afterwards: grimoire-server update && grimoire-server deploy $ref"
+  else
+    warn "the checkout carries grimoire-server ${checked_out_version:-unknown}, this process is \
+running $GRIMOIRE_SERVER_VERSION — refresh the installed copy with: grimoire-server update"
+  fi
 }
 
 # Where the installed copy is: the running script when that is not the checkout's own, and

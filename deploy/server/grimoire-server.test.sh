@@ -294,6 +294,46 @@ assert_equals "$(script_version_of "$work/older")" "0.1.0" "script_version_of on
 printf '#!/usr/bin/env bash\necho hello\n' >"$work/unversioned"
 assert_equals "$(script_version_of "$work/unversioned")" "" "script_version_of on a copy without the constant"
 
+# --- #202: a checkout only changes files on disk, never the already-running interpreter —
+# `warn_tool_drift` is deploy's and status's self-check that the two have actually diverged.
+
+drift_repo="$work/drift-repo"
+mkdir -p "$drift_repo/deploy/server"
+
+# SCRIPT_PATH stands in for "this running process" — a copy elsewhere on disk, distinct
+# from the checkout's own file, exactly like a `~/.local/bin/grimoire-server` install.
+# shellcheck disable=SC2034 # SCRIPT_PATH is read by the sourced script's own functions.
+SCRIPT_PATH="$work/running-grimoire-server"
+cp "$script_dir/grimoire-server" "$SCRIPT_PATH"
+
+# The common case: the running copy and the checked-out copy have identical content.
+cp "$script_dir/grimoire-server" "$drift_repo/deploy/server/grimoire-server"
+assert_equals "$(warn_tool_drift "$drift_repo" main 2>&1)" "" \
+  "warn_tool_drift is silent when the checkout matches the running copy"
+
+# A checkout whose grimoire-server predates this tool: nothing to compare against.
+rm "$drift_repo/deploy/server/grimoire-server"
+assert_equals "$(warn_tool_drift "$drift_repo" main 2>&1)" "" \
+  "warn_tool_drift is silent when the checkout has no grimoire-server at all"
+
+# The drift case: the checkout carries a different copy than the one currently running.
+printf 'GRIMOIRE_SERVER_VERSION="0.9.0"\n' >"$drift_repo/deploy/server/grimoire-server"
+drift_output="$(warn_tool_drift "$drift_repo" main 2>&1)"
+case "$drift_output" in
+*"0.9.0"*"$GRIMOIRE_SERVER_VERSION"*"grimoire-server update && grimoire-server deploy main"*) ;;
+*) fail "warn_tool_drift on a mismatch: expected old/new versions and the update+deploy hint, got [$drift_output]" ;;
+esac
+
+# Same drift, no ref to suggest a follow-up deploy for (status with nothing deployed yet).
+no_ref_output="$(warn_tool_drift "$drift_repo" 2>&1)"
+case "$no_ref_output" in
+*"grimoire-server update"*) ;;
+*) fail "warn_tool_drift without a ref: expected the update hint, got [$no_ref_output]" ;;
+esac
+case "$no_ref_output" in
+*"deploy"*) fail "warn_tool_drift without a ref should not suggest a deploy target: got [$no_ref_output]" ;;
+esac
+
 # --- The installed copy is replaced by rename, not written in place.
 #
 # Bash reads a script as it runs it, so `update` overwriting the running file in place can
