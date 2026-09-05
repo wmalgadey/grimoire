@@ -178,7 +178,7 @@ Consequences worth stating plainly:
   deployment shape. This is a strictly smaller deployment surface than the pre-clarification design.
 - **The Hub now writes a file named like an instruction document**, which the existing instruction-
   authorship Boundary Rule forbids outside one allowed namespace. That is a real boundary decision, not
-  a detail — see R7 and ADR-056.
+  a detail — see R7.
 - **Hand-editing stays possible**: the file sits in a volume an operator can reach with the same tools
   they already use for the wiki, and the Hub reads it fresh per run.
 
@@ -192,7 +192,7 @@ author of instruction content* (Principle V). The existing structural test
 (`InstructionAuthorshipBoundaryRuleTests`) enforces that: no production type outside
 `Grimoire.Hub.Runtime.Paths` may combine an instruction filename literal with a file-write API.
 
-The distinction that resolves it is **authorship versus custody**, and it is the same distinction the
+The distinction that resolves it is **authoring versus writing**, and it is the same distinction the
 harness already lives by everywhere else:
 
 - The agent *authors* wiki pages; the guarded tool layer *persists* the bytes it is handed. Nobody
@@ -203,12 +203,20 @@ harness already lives by everywhere else:
 
 What would violate Principle V is the Hub *producing* instruction text — a template with the operator's
 description interpolated, a default skeleton, a merge of old and new. FR-013a already forbids exactly
-that, and the ADR makes it structural: the custodian writes only bytes it received whole.
+that.
 
-**Decision**: one named custodian namespace is added to the Boundary Rule's allow-list, alongside the
-existing path-composition namespace, and the rule's literal set gains `foundation-prompt.md`. The
-custodian is the only production type permitted to write it, and the Red/Green probe covers both the
-new literal and the still-forbidden namespaces. Recorded as ADR-056.
+**Decision**: no ADR. Re-reading ADR-043's rejection settles it rather than blocking it: that option was
+rejected for making the hub the *author* of instruction content and for destroying the operator's
+ability to read the effective instructions on disk. Here the operator triggers the wizard, an agent
+session drafts the document, the file lands where the operator would otherwise have saved it by hand,
+and it stays readable there. No boundary is crossed, so there is nothing to decide — the wizard is a
+helper that saves the operator a manual file copy.
+
+What remains is maintenance of the structural test that enforces the authorship rule. Its heuristic is
+deliberately broader than the rule (any instruction filename literal in a method that also writes a
+file), so the wizard's namespace joins its allow-list and `foundation-prompt.md` joins its literal set,
+with the Red/Green probe covering the new literal specifically. That is a Phase 0 task, visible in
+`tasks.md` — not a silent widening.
 
 Rejected alternative: having the *operator* place the file by hand and the Hub only report on it. It
 keeps the Boundary Rule untouched, but it hands the operator a path inside a Docker volume to write into
