@@ -22,7 +22,7 @@ mean the ADR's decision no longer governs.
 | [ADR-004](ADR-004-credential-scoping.md) | Credential Scoping for the LLM API Key | Accepted | — | Extended by ADR-041 (secrets-file path detail only) |
 | [ADR-005](ADR-005-observability-backend.md) | Observability Backend (Local and CI) | Accepted | — | — |
 | [ADR-006](ADR-006-agent-tool-loop-guarded-boundary.md) | Agent Tool-Use Loop and Guarded Tool Boundary | Accepted | — | Extended by ADR-043 (policy-file location), ADR-030, ADR-031 (tool-registry growth, both self-declared extensions) |
-| [ADR-007](ADR-007-agent-instruction-surface.md) | Agent Instruction Surface — Single System Prompt and Versioned Default User Prompt | Accepted | — | Extended by ADR-041 (path detail), ADR-043 (instruction-file location), ADR-029 (harness operator turn) |
+| [ADR-007](ADR-007-agent-instruction-surface.md) | Agent Instruction Surface — Single System Prompt and Versioned Default User Prompt | Superseded | — | Superseded by ADR-053, ADR-054; formerly extended by ADR-041 (path detail), ADR-043 (instruction-file location), ADR-029 (harness operator turn) |
 | [ADR-008](ADR-008-agent-event-channel-run-supervision.md) | Agent Event Channel, Run Supervision, and Persistent Run Queue | Superseded | Amends ADR-002 | Superseded by ADR-037, ADR-038, ADR-039; formerly amended by ADR-009, ADR-025 |
 | [ADR-009](ADR-009-runtime-path-configuration.md) | Explicit Runtime Path Configuration and Consolidated Data Directory | Superseded | Supersedes ADR-003 (in part); amends ADR-002, ADR-004, ADR-006, ADR-007, ADR-008 | Superseded by ADR-040; previously superseded in part by ADR-022 |
 | [ADR-010](ADR-010-hexagonal-ports-adapter-namespaces.md) | Hexagonal Ports and Adapter Namespaces for External Systems | Accepted | — | Extended by ADR-044 (`IModelClient` port row moved to a new consumer namespace, scheme unchanged) |
@@ -68,8 +68,8 @@ mean the ADR's decision no longer governs.
 | [ADR-050](ADR-050-cli-hub-concurrency-locking.md) | Cross-Process CLI–Hub Coordination via OS-Level Locks | Accepted | Supersedes ADR-020 | — |
 | [ADR-051](ADR-051-backend-test-tier-taxonomy.md) | Backend Test Tier Taxonomy, Deterministic-Wait Convention, and Suite Concurrency Levers | Accepted | Supersedes ADR-021 | — |
 | [ADR-052](ADR-052-memory-directory-root.md) | Memory Directory — A Fourth Independent Root for Agent Process Bookkeeping | Accepted | Supersedes ADR-024 | — |
-| [ADR-053](ADR-053-agent-system-prompt-composition.md) | An Agent's System Prompt Is a Shared Foundation Document Composed With Its Role Document | Proposed | Supersedes ADR-007 (on acceptance) | — |
-| [ADR-054](ADR-054-default-user-prompt-and-message-scaffold.md) | Per-Run Steering Is a Versioned Default User Prompt Inside a Harness-Owned Scaffold | Proposed | Supersedes ADR-007 (on acceptance) | — |
+| [ADR-053](ADR-053-agent-system-prompt-composition.md) | An Agent's System Prompt Is a Shared Foundation Document Composed With Its Role Document | Accepted | Supersedes ADR-007 | — |
+| [ADR-054](ADR-054-default-user-prompt-and-message-scaffold.md) | Per-Run Steering Is a Versioned Default User Prompt Inside a Harness-Owned Scaffold | Accepted | Supersedes ADR-007 | — |
 
 ## Maintenance
 
