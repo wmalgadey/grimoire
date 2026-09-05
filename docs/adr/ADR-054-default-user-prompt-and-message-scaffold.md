@@ -112,7 +112,3 @@ lifetimes — the system prompt is per-agent and stable, steering is per-run and
 make every steering change invalidate the instruction surface's recorded identity. Option 5 is the one
 option that is not merely worse but unsafe: the framing it would expose is what marks submitted content
 as data rather than instruction.
-
-Supersedes [ADR-007](ADR-007-agent-instruction-surface.md) whole, jointly with
-[ADR-053](ADR-053-agent-system-prompt-composition.md), which re-decides ADR-007's system-prompt aspect
-and explains why the supersession was required.
