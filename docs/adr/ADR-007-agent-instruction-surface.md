@@ -4,15 +4,15 @@ status: accepted
 
 # ADR-007: Agent Instruction Surface — Single System Prompt and Versioned Default User Prompt
 
-> **Extended by [ADR-041](ADR-041-independent-directory-roots.md) and
-> [ADR-043](ADR-043-build-distributed-agent-artifacts.md)**: agent CLI paths resolve under
-> ADR-041's roots, and the instruction files themselves are distributed by ADR-043's
-> agent build (`Instructions/`) rather than tracked under `data/agents/<id>/`. The
-> instruction surface this ADR defines is unchanged; only where paths and files live moved.
-
-> **Extended by [ADR-029](ADR-029-harness-operator-turn-delimiter.md)**: names a third kind
-> of harness-authored text — the *harness operator turn*, a mid-conversation steering
-> message — delimited inside the user channel. The instruction surface here is unchanged.
+> **Status notes** (informational, no status change):
+> - Extended by [ADR-041](ADR-041-independent-directory-roots.md) and
+>   [ADR-043](ADR-043-build-distributed-agent-artifacts.md): agent CLI paths resolve under
+>   ADR-041's roots, and the instruction files themselves are distributed by ADR-043's
+>   agent build (`Instructions/`) rather than tracked under `data/agents/<id>/`. The
+>   instruction surface this ADR defines is unchanged; only where paths and files live moved.
+> - Extended by [ADR-029](ADR-029-harness-operator-turn-delimiter.md): names a third kind
+>   of harness-authored text — the *harness operator turn*, a mid-conversation steering
+>   message — delimited inside the user channel. The instruction surface here is unchanged.
 
 ## Context and Problem Statement
 

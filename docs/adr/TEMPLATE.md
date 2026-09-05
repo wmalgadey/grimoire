@@ -64,4 +64,11 @@ invalidation.">
        extends, amends, or supersedes the other: topical adjacency, no decision dependency.
      Neither note may be used for what the Invalidation test classifies as an invalidation — that
      always requires whole-ADR supersession (`supersedes`/`superseded_by` frontmatter), regardless
-     of how the note is worded. -->
+     of how the note is worded.
+
+     Format: ONE top-of-file blockquote per ADR, headed "**Status notes** (informational, no
+     status change):", with one bulleted `Extends`/`Extended by`/`Related` item per relationship —
+     never a separate blockquote per note. A second such event adds a bullet to the existing block
+     instead of stacking a new blockquote underneath; this is what keeps an ADR with several notes
+     scannable at a glance instead of accreting the old Amends/Amended-by chain's paragraph pile. -->
+

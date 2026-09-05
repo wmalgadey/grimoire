@@ -4,10 +4,11 @@ status: accepted
 
 # ADR-019: Devcontainer Host Container-Runtime and Credential Access
 
-> **Extended by [ADR-041](ADR-041-independent-directory-roots.md)**: the secrets file
-> this ADR anchors now lives at `<repo-root>/.env`, deliberately outside any of
-> ADR-041's roots so relocating one never separates an operator from their
-> credentials. The credential-delivery mechanism here is unchanged.
+> **Status notes** (informational, no status change):
+> - Extended by [ADR-041](ADR-041-independent-directory-roots.md): the secrets file
+>   this ADR anchors now lives at `<repo-root>/.env`, deliberately outside any of
+>   ADR-041's roots so relocating one never separates an operator from their
+>   credentials. The credential-delivery mechanism here is unchanged.
 
 ## Context and Problem Statement
 

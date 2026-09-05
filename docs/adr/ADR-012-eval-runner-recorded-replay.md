@@ -4,9 +4,10 @@ status: accepted
 
 # ADR-012: Standalone Eval Runner and Recorded-Replay at the Model Port
 
-> **Extended by [ADR-043](ADR-043-build-distributed-agent-artifacts.md)**: recordings now
-> live under `Grimoire.AgentEvals/Fixtures/recordings/`, repo-anchored; the
-> `--recordings-root` switch is gone. The recorded-replay format here is unchanged.
+> **Status notes** (informational, no status change):
+> - Extended by [ADR-043](ADR-043-build-distributed-agent-artifacts.md): recordings now
+>   live under `Grimoire.AgentEvals/Fixtures/recordings/`, repo-anchored; the
+>   `--recordings-root` switch is gone. The recorded-replay format here is unchanged.
 
 ## Context and Problem Statement
 

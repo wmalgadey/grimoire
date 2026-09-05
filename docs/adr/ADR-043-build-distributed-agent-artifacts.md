@@ -5,9 +5,10 @@ supersedes: ADR-022
 
 # ADR-043: Build-Distributed Agent Artifacts and Single Launch Mode
 
-> **Extends [ADR-006](ADR-006-agent-tool-loop-guarded-boundary.md), [ADR-007](ADR-007-agent-instruction-surface.md),
-> [ADR-012](ADR-012-eval-runner-recorded-replay.md)**: owns where their policy file, instruction
-> documents, and eval recordings physically live (`Instructions/`, `Fixtures/recordings/`).
+> **Status notes** (informational, no status change):
+> - Extends [ADR-006](ADR-006-agent-tool-loop-guarded-boundary.md), [ADR-007](ADR-007-agent-instruction-surface.md),
+>   [ADR-012](ADR-012-eval-runner-recorded-replay.md): owns where their policy file, instruction
+>   documents, and eval recordings physically live (`Instructions/`, `Fixtures/recordings/`).
 
 ## Context and Problem Statement
 

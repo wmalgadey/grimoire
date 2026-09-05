@@ -5,9 +5,10 @@ supersedes: ADR-022
 
 # ADR-041: Independent Cwd-Anchored Directory Roots
 
-> **Extends [ADR-004](ADR-004-credential-scoping.md), [ADR-007](ADR-007-agent-instruction-surface.md),
-> [ADR-019](ADR-019-devcontainer-host-runtime-and-credential-access.md)**: owns the `SecretsFile`
-> path (see Consequences below) and the agent/wiki root switches those three ADRs reference.
+> **Status notes** (informational, no status change):
+> - Extends [ADR-004](ADR-004-credential-scoping.md), [ADR-007](ADR-007-agent-instruction-surface.md),
+>   [ADR-019](ADR-019-devcontainer-host-runtime-and-credential-access.md): owns the `SecretsFile`
+>   path (see Consequences below) and the agent/wiki root switches those three ADRs reference.
 
 ## Context and Problem Statement
 
