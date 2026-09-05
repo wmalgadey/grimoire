@@ -86,12 +86,20 @@ jobs:
       # A stale/missing recording fails here — that failure IS the FR-016 merge gate for
       # instruction-file changes (refresh via the EvalRunner capture command or eval.yml).
       #
-      # Merge-queue-only by design. These are the SlowEval tier (ADR-021): four replay
-      # scenario classes that each spawn real agent processes, and they dominate this job's
-      # runtime. FR-016 asks for fresh eval evidence *before the merge*, not before every
-      # commit — so the gate belongs where the merge actually happens. In the queue it runs
-      # once per pull request, against the merge commit that is genuinely going to main,
+      # Merge-queue-only by design, and the reason is FR-016's semantics rather than
+      # runtime: fresh eval evidence is asked for *before the merge*, not before every
+      # commit, so the gate belongs where the merge actually happens. In the queue it runs
+      # once per pull request against the merge commit that is genuinely going to main,
       # instead of once per push against a state nobody will ever ship.
+      #
+      # It is worth being precise about the cost this does and does not save, because the
+      # obvious assumption is wrong. Measured on run 33983235186 (the last green backend
+      # job before this change), the SlowEval tier — four replay scenario classes, each
+      # spawning real agent processes (ADR-021) — took 41s of a 3:30 job. `dotnet format`
+      # alone took 50s. So this saves ~41s per push and costs a full extra backend +
+      # frontend run on every queued merge: below roughly five pushes per pull request it
+      # is a net loss on CI minutes, and it pays off through the eval suite growing and
+      # through stacks, where the layer count multiplies every push.
       #
       # The `run-evals` label is the escape hatch: put it on a pull request that touches
       # instruction files or eval scenarios and you get the verdict during review rather
