@@ -148,6 +148,46 @@
             }
         },
         {
+            "label": "lint: backend",
+            "detail": "dotnet format — fixes formatting in place (CI runs the same rules with --verify-no-changes)",
+            "type": "shell",
+            "command": "dotnet format ${workspaceFolder}/backend/Grimoire.slnx --verbosity minimal",
+            "group": "test",
+            "presentation": {
+                "panel": "dedicated",
+                "reveal": "always",
+                "clear": true
+            },
+            "problemMatcher": "$msCompile"
+        },
+        {
+            "label": "lint: frontend",
+            "detail": "prettier --write . && eslint . --fix — fixes in place (CI runs the same rules in check mode)",
+            "type": "shell",
+            "command": "cd ${workspaceFolder}/frontend && bun run format && bunx eslint . --fix",
+            "group": "test",
+            "presentation": {
+                "panel": "dedicated",
+                "reveal": "always",
+                "clear": true
+            },
+            "problemMatcher": "$eslint-stylish"
+        },
+        {
+            "label": "lint: all",
+            "detail": "Run the backend and frontend linters with autofix",
+            "dependsOn": [
+                "lint: backend",
+                "lint: frontend"
+            ],
+            "dependsOrder": "parallel",
+            "group": {
+                "kind": "test",
+                "isDefault": true
+            },
+            "problemMatcher": []
+        },
+        {
             "label": "prelaunch: noproxy",
             "dependsOn": [
                 "start: aspire-dashboard",

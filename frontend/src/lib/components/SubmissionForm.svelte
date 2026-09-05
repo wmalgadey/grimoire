@@ -1,6 +1,10 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { submitIngestFile, submitIngestUrl, getIngestSubmissionDefaults } from '$lib/services/ingestSubmissionsApi';
+	import {
+		submitIngestFile,
+		submitIngestUrl,
+		getIngestSubmissionDefaults
+	} from '$lib/services/ingestSubmissionsApi';
 	import { toPresentedError, type PresentedError } from '$lib/services/apiError';
 	import ApiErrorAlert from './ApiErrorAlert.svelte';
 	import type {
