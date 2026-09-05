@@ -62,6 +62,11 @@
   gap filed as issue #224): "Scope is clearly bounded" holds more strongly — FR-019 now says explicitly
   that the wizard writes the foundation document and nothing else, and names where the excluded part
   lives. No item changed state.
+- Re-validated 2026-09-05 after the sixth clarification (prompting dropped entirely): US3 deleted, its
+  residual guarantee folded into US2 as an acceptance scenario, the former US4 renumbered to US3, and
+  FR-015/FR-016/SC-006 restated without the terminal distinction. "Requirements are testable and
+  unambiguous" improves — SC-006 no longer depends on a runtime condition (terminal attached or not)
+  that the implementation would have had to detect in order to be tested. No item changed state.
 
 - The one deliberate open decision — where the shared document physically lives and how an
   instance-specific one reaches a containerized deployment — is *not* marked

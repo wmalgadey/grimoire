@@ -103,20 +103,21 @@ dotnet run --project backend/src/Grimoire.Hub -- wiki-identity set --from-file .
 **Expected**: exit code **4** (`StateConflict`), a message naming the document already in place, and
 `<data-dir>/foundation-prompt.md` unchanged. With `--replace` appended: exit 0 and the new content.
 
-## S8 — No terminal, no hang
+## S8 — A missing answer fails, it never waits
 
 ```bash
-dotnet run --project backend/src/Grimoire.Hub -- wiki-identity set < /dev/null; echo "exit=$?"
+dotnet run --project backend/src/Grimoire.Hub -- wiki-identity set; echo "exit=$?"
 ```
 
-**Expected**: exit code **2** (`UsageError`) within seconds, naming the option to supply. It does not
-block, and nothing changed.
+**Expected**: exit code **2** (`UsageError`) immediately, naming the option to supply. Nothing changed.
+Run it again with a terminal attached and with stdin from `/dev/null` — the behaviour is identical,
+because the command never asks for input either way.
 
 ```bash
 dotnet run --project backend/src/Grimoire.Hub -- wiki-identity set --default < /dev/null; echo "exit=$?"
 ```
 
-**Expected**: exit code 0 — every answer was supplied, so no prompt was needed.
+**Expected**: exit code 0 — every answer was supplied with the invocation.
 
 ## S9 — The identity survives a restart
 

@@ -102,5 +102,5 @@ agent. A brief that grows such a statement has crossed the Principle V line (pla
 | specialised | the operator's description | Emits a drafting brief. Nothing written |
 | hand-back | a drafted document, optionally an explicit replace decision | Validates and persists it verbatim, or refuses |
 
-Every answer is supplied up front in the non-interactive form; with a terminal attached, a missing
-answer is prompted for instead.
+Every answer is supplied with the invocation. The wizard never prompts, so a missing answer is a usage
+failure naming what to pass, with or without a terminal attached.
