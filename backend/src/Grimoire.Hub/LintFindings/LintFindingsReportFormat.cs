@@ -5,22 +5,22 @@ using System.Text.Json;
 namespace Grimoire.Hub.LintFindings;
 
 /// <summary>One denied tool action, recorded on the Findings Report's bookkeeping block (same shape as every other agent's denials).</summary>
-public sealed record FindingsDeniedAction(string Action, string RequestedTarget, string CanonicalTarget, string Reason, int Turn);
+public sealed record LintFindingsDeniedAction(string Action, string RequestedTarget, string CanonicalTarget, string Reason, int Turn);
 
 /// <summary>
 /// 028-lint-at-scale (US2, FR-003/FR-004, contracts/coverage-signal.md): the persisted
 /// counterpart of the run's harness-computed coverage report. Orthogonal to
-/// <see cref="FindingsReport.Partial"/> (data-model.md) — a completed run can report
+/// <see cref="LintFindingsReport.Partial"/> (data-model.md) — a completed run can report
 /// <see cref="Status"/> <c>"partial"</c> while <c>Partial</c> is <c>false</c>.
 /// </summary>
-public sealed record FindingsWikiCoverage(int PagesTotal, int PagesConsidered, string Status);
+public sealed record LintFindingsWikiCoverage(int PagesTotal, int PagesConsidered, string Status);
 
 /// <summary>
 /// Everything the Hub needs to write one Findings Report file (data-model.md "Findings
 /// Report", contracts/findings-report-format.md). Written exactly once, at the run's
 /// terminal transition — a Findings Report has exactly one "turn": the run itself.
 /// </summary>
-public sealed record FindingsReport(
+public sealed record LintFindingsReport(
     string RunId,
     DateTimeOffset TriggeredAt,
     DateTimeOffset CompletedAt,
@@ -29,23 +29,23 @@ public sealed record FindingsReport(
     bool Partial,
     string? InstructionFilePath,
     string? InstructionFileSha256,
-    IReadOnlyList<FindingsDeniedAction> DeniedActions,
+    IReadOnlyList<LintFindingsDeniedAction> DeniedActions,
     int InboundLinksRefreshed,
     string Narrative,
     // 028-lint-at-scale (US2, FR-003): null only for a run that never reached a terminal
     // `completed` event with a coverage report attached (a liveness-failed or
     // spawn-failed run) — every completed run's report carries one (SC-002).
-    FindingsWikiCoverage? WikiCoverage = null);
+    LintFindingsWikiCoverage? WikiCoverage = null);
 
 /// <summary>
 /// Writer for the <c>grimoire-findings/1</c> Findings Report format
 /// (contracts/findings-report-format.md). Bodies are agent-authored prose — the same
 /// prompt-injection-adjacent surface as the Conversation Record — so this adopts
-/// <c>ConversationRecordFormat</c>'s sentinel-safety discipline for the bookkeeping
+/// <c>QueryConversationRecordFormat</c>'s sentinel-safety discipline for the bookkeeping
 /// block's string values, even though (per the contract's "Parsing" section) no
 /// production code parses a Findings Report back into structured data today: writer only.
 /// </summary>
-public static class FindingsReportFormat
+public static class LintFindingsReportFormat
 {
     public const string RecordFormatVersion = "grimoire-findings/1";
     private const string CommentClose = "-->";
@@ -60,7 +60,7 @@ public static class FindingsReportFormat
     /// comment (run-level facts, JSON-escaped with <c>--&gt;</c> neutralized), and the
     /// agent-authored narrative body verbatim.
     /// </summary>
-    public static string Build(FindingsReport report)
+    public static string Build(LintFindingsReport report)
     {
         var sb = new StringBuilder();
 
@@ -124,7 +124,7 @@ public static class FindingsReportFormat
 
     /// <summary>
     /// Double-quoted JSON-escaped string with the same explicit <c>--&gt;</c> guard as
-    /// <c>ConversationRecordFormat.EscapeString</c> — belt-and-suspenders should the
+    /// <c>QueryConversationRecordFormat.EscapeString</c> — belt-and-suspenders should the
     /// serializer's own <c>&gt;</c> escaping (which already prevents a literal
     /// <c>--&gt;</c>) ever change behavior.
     /// </summary>

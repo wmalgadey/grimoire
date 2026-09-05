@@ -24,14 +24,14 @@ public class IngestTaskDetailHistoryTests
         var taskId = "2026-08-13-ingest-history01";
         await WriteTaskArtifactAsync(fixture, taskId, "failed", failureReason: "Agent run failed.");
 
-        await fixture.Repository.AppendStatusHistoryAsync(taskId, "received", DateTimeOffset.Parse("2026-08-13T07:00:01Z"));
-        await fixture.Repository.AppendStatusHistoryAsync(taskId, "converting", DateTimeOffset.Parse("2026-08-13T07:00:02Z"));
-        await fixture.Repository.AppendStatusHistoryAsync(taskId, "queued", DateTimeOffset.Parse("2026-08-13T07:00:05Z"));
-        await fixture.Repository.AppendStatusHistoryAsync(taskId, "running", DateTimeOffset.Parse("2026-08-13T07:00:06Z"));
-        await fixture.Repository.AppendStatusHistoryAsync(
+        await fixture.Repository.AppendIngestStatusHistoryAsync(taskId, "received", DateTimeOffset.Parse("2026-08-13T07:00:01Z"));
+        await fixture.Repository.AppendIngestStatusHistoryAsync(taskId, "converting", DateTimeOffset.Parse("2026-08-13T07:00:02Z"));
+        await fixture.Repository.AppendIngestStatusHistoryAsync(taskId, "queued", DateTimeOffset.Parse("2026-08-13T07:00:05Z"));
+        await fixture.Repository.AppendIngestStatusHistoryAsync(taskId, "running", DateTimeOffset.Parse("2026-08-13T07:00:06Z"));
+        await fixture.Repository.AppendIngestStatusHistoryAsync(
             taskId, IngestHistoryStatuses.LivenessInterrupted, DateTimeOffset.Parse("2026-08-13T07:01:06Z"),
             "attempt 1; next retry in 10s");
-        await fixture.Repository.AppendStatusHistoryAsync(
+        await fixture.Repository.AppendIngestStatusHistoryAsync(
             taskId, "failed", DateTimeOffset.Parse("2026-08-13T07:05:00Z"), "Agent run failed.");
 
         var detail = await client.GetFromJsonAsync<JsonElement>($"/api/ingest-submissions/{taskId}");

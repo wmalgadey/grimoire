@@ -19,10 +19,10 @@ public class IngestStatusHistoryTests
         await fixture.Coordinator.EnqueueAsync("task-history", Path.Combine(fixture.Root, "src.md"), null);
         await fixture.WaitForPublishedEventAsync("task-history", e => e.ToStatus == "completed");
 
-        var history = await fixture.Repository.GetStatusHistoryAsync("task-history");
+        var history = await fixture.Repository.GetIngestStatusHistoryAsync("task-history");
 
         // FinishRunAsync deletes the transient operational row; history must outlive it.
-        Assert.Null(await fixture.Repository.GetByTaskIdAsync("task-history"));
+        Assert.Null(await fixture.Repository.GetIngestTaskStateByTaskIdAsync("task-history"));
         Assert.Equal(["running", "completed"], history.Select(h => h.Status));
         Assert.Equal([1L, 2L], history.Select(h => h.Seq));
     }
@@ -39,7 +39,7 @@ public class IngestStatusHistoryTests
 
         await fixture.WaitForPublishedEventAsync(taskId, e => e.ToStatus == "completed");
 
-        var history = await fixture.Repository.GetStatusHistoryAsync(taskId);
+        var history = await fixture.Repository.GetIngestStatusHistoryAsync(taskId);
 
         Assert.Equal(
             ["received", "converting", "queued", "running", "completed"],
@@ -61,7 +61,7 @@ public class IngestStatusHistoryTests
         await fixture.Coordinator.EnqueueAsync("task-failing", Path.Combine(fixture.Root, "src.md"), null);
         await fixture.WaitForPublishedEventAsync("task-failing", e => e.ToStatus == "failed");
 
-        var history = await fixture.Repository.GetStatusHistoryAsync("task-failing");
+        var history = await fixture.Repository.GetIngestStatusHistoryAsync("task-failing");
         var failure = Assert.Single(history, h => h.Status == "failed");
         Assert.Equal("Turn cap exceeded.", failure.Detail);
         Assert.Equal(history[^1].Seq, failure.Seq);
@@ -84,10 +84,10 @@ public class IngestStatusHistoryTests
             var repository = new OperationalStateRepository(Path.Combine(root, "operational-state.db"));
             await repository.InitializeAsync();
 
-            var afterRestart = await repository.GetStatusHistoryAsync("task-restarted-hub");
+            var afterRestart = await repository.GetIngestStatusHistoryAsync("task-restarted-hub");
             Assert.Equal(["running", "completed"], afterRestart.Select(h => h.Status));
 
-            var seq = await repository.AppendStatusHistoryAsync(
+            var seq = await repository.AppendIngestStatusHistoryAsync(
                 "task-restarted-hub", IngestHistoryStatuses.Restarted, DateTimeOffset.UtcNow, "manual restart");
             Assert.Equal(afterRestart[^1].Seq + 1, seq);
         }
@@ -102,12 +102,12 @@ public class IngestStatusHistoryTests
     {
         using var fixture = new IngestSubmissionPipelineFixture();
 
-        await fixture.Repository.AppendStatusHistoryAsync("task-a", "received", DateTimeOffset.UtcNow);
-        await fixture.Repository.AppendStatusHistoryAsync("task-b", "received", DateTimeOffset.UtcNow);
-        await fixture.Repository.AppendStatusHistoryAsync("task-a", "converting", DateTimeOffset.UtcNow);
+        await fixture.Repository.AppendIngestStatusHistoryAsync("task-a", "received", DateTimeOffset.UtcNow);
+        await fixture.Repository.AppendIngestStatusHistoryAsync("task-b", "received", DateTimeOffset.UtcNow);
+        await fixture.Repository.AppendIngestStatusHistoryAsync("task-a", "converting", DateTimeOffset.UtcNow);
 
-        Assert.Equal([1L, 2L], (await fixture.Repository.GetStatusHistoryAsync("task-a")).Select(h => h.Seq));
-        Assert.Equal([1L], (await fixture.Repository.GetStatusHistoryAsync("task-b")).Select(h => h.Seq));
+        Assert.Equal([1L, 2L], (await fixture.Repository.GetIngestStatusHistoryAsync("task-a")).Select(h => h.Seq));
+        Assert.Equal([1L], (await fixture.Repository.GetIngestStatusHistoryAsync("task-b")).Select(h => h.Seq));
     }
 
     /// <summary>
@@ -115,7 +115,7 @@ public class IngestStatusHistoryTests
     /// task's own current maximum, so writers that read that maximum before either of them
     /// inserts would compute the same number and the loser would be rejected by the
     /// <c>(task_id, seq)</c> primary key — silently losing a row, because callers treat the
-    /// append as best-effort and continue publishing. <c>AppendStatusHistoryAsync</c> closes
+    /// append as best-effort and continue publishing. <c>AppendIngestStatusHistoryAsync</c> closes
     /// that window by deriving <c>seq</c> inside the INSERT statement itself; this test is
     /// what keeps a later refactor from splitting it back into a SELECT and an INSERT. Probed
     /// Red/Green: making that split fails here with <c>UNIQUE constraint failed</c>.
@@ -138,13 +138,13 @@ public class IngestStatusHistoryTests
 
             var assigned = await Task.WhenAll(Enumerable.Range(0, writers).Select(i =>
                 Task.Factory.StartNew(
-                    () => repository.AppendStatusHistoryAsync(
+                    () => repository.AppendIngestStatusHistoryAsync(
                         "task-concurrent", $"stage-{i}", DateTimeOffset.UtcNow, $"writer {i}"),
                     CancellationToken.None,
                     TaskCreationOptions.LongRunning,
                     TaskScheduler.Default).Unwrap()));
 
-            var history = await repository.GetStatusHistoryAsync("task-concurrent");
+            var history = await repository.GetIngestStatusHistoryAsync("task-concurrent");
 
             Assert.Equal(writers, history.Count);
             Assert.Equal(Enumerable.Range(1, writers).Select(i => (long)i), history.Select(h => h.Seq));
@@ -162,6 +162,6 @@ public class IngestStatusHistoryTests
     {
         using var fixture = new IngestSubmissionPipelineFixture();
 
-        Assert.Empty(await fixture.Repository.GetStatusHistoryAsync("task-that-never-existed"));
+        Assert.Empty(await fixture.Repository.GetIngestStatusHistoryAsync("task-that-never-existed"));
     }
 }

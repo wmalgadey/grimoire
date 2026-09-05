@@ -321,7 +321,7 @@ public class BoardCompositeResponseTests
         // Guard the fixture against drifting from the real ingest artifact shape: the
         // board projection only lists artifacts ingest's own frontmatter reader accepts
         // (this test is genuinely cross-agent — ingest parity + lint entry composition).
-        var parsed = TaskArtifactFrontmatter.TryParse(content);
+        var parsed = IngestTaskArtifactFrontmatter.TryParse(content);
         Assert.NotNull(parsed);
         Assert.Equal(taskId, parsed!.TaskId);
     }
@@ -384,14 +384,14 @@ internal sealed class BoardHostHarness : IDisposable
                     services.AddSingleton(contentPaths);
                     services.AddSingleton(repository);
                     services.AddSingleton<Grimoire.Hub.AgentDispatch.IAgentProcessLauncher>(effectiveLauncher);
-                    services.AddSingleton<KanbanBoardProjectionStore>();
+                    services.AddSingleton<IngestKanbanBoardProjectionStore>();
                     // Registered so minimal-API parameter inference binds the mapped (but
                     // uninvoked) ingest submission handlers' parameters as services — the
                     // ingest group is mapped solely for the FR-015 field-parity assertion.
                     services.AddSingleton<IngestSubmissionValidator>();
-                    services.AddSingleton<TaskRecordReadModel>();
-                    services.AddSingleton<SourceArtifactStore>(sp =>
-                        new SourceArtifactStore(RawStoragePaths.FromResolved(paths)));
+                    services.AddSingleton<IngestTaskRecordReadModel>();
+                    services.AddSingleton<IngestSourceArtifactStore>(sp =>
+                        new IngestSourceArtifactStore(IngestRawStoragePaths.FromResolved(paths)));
                     services.AddSingleton<IMarkdownConverter>(FakeMarkdownConverter.Succeeding("# converted\n"));
                     services.AddSingleton<IUrlContentFetcher>(
                         FakeUrlContentFetcher.Succeeding("<html></html>"u8.ToArray()));
@@ -402,15 +402,15 @@ internal sealed class BoardHostHarness : IDisposable
                         repository,
                         sp.GetRequiredService<Grimoire.Hub.AgentDispatch.IAgentProcessLauncher>(),
                         sp.GetRequiredService<IngestLifecyclePublisher>(),
-                        new HubTaskArtifactWriter(),
+                        new HubIngestTaskArtifactWriter(),
                         contentPaths,
                         paths,
                         logger: NullLogger<IngestRunCoordinator>.Instance));
-                    services.AddSingleton<FindingsReportStore>(sp =>
-                        new FindingsReportStore(paths, NullLogger<FindingsReportStore>.Instance));
+                    services.AddSingleton<LintFindingsReportStore>(sp =>
+                        new LintFindingsReportStore(paths, NullLogger<LintFindingsReportStore>.Instance));
                     services.AddSingleton<LintRunCoordinator>(sp => new LintRunCoordinator(
                         sp.GetRequiredService<Grimoire.Hub.AgentDispatch.IAgentProcessLauncher>(),
-                        sp.GetRequiredService<FindingsReportStore>(),
+                        sp.GetRequiredService<LintFindingsReportStore>(),
                         paths,
                         logger: NullLogger<LintRunCoordinator>.Instance));
                     // T021/T024 (US3): the remediation task record store backing the

@@ -8,7 +8,7 @@ namespace Grimoire.AgentRuntime.RunEvents;
 /// coverage-signal.md). Never self-reported by the agent's own narrative — the agent's
 /// final message plays no role in producing this value (Constitution Principle V).
 ///
-/// Orthogonal to <c>FindingsReport.Partial</c> (which means "this run crashed mid-analysis"):
+/// Orthogonal to <c>LintFindingsReport.Partial</c> (which means "this run crashed mid-analysis"):
 /// a run can finish cleanly (<c>Partial == false</c>) while its own <see cref="Status"/> is
 /// <see cref="StatusPartial"/> — it succeeded, but by design or budget did not touch every
 /// page (data-model.md).

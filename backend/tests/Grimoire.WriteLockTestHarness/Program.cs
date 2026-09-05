@@ -40,7 +40,7 @@ if (args.Length == 6 && args[0] == "guarded-append")
 
 // Issue #183: a stand-in "talkative ingest agent" for
 // AgentProcessDispatchStderrDrainTests — recognizes the exact `--task-id ...` argv
-// shape AgentProcessHost.StartProcess(IngestAgentRequest) always spawns with (no other
+// shape AgentProcessHost.StartIngestProcess(IngestAgentRequest) always spawns with (no other
 // flag here is parsed) so the real dispatch path (StartAsync, not RunToExitAsync) can be
 // pointed at this harness in place of the real Grimoire.IngestAgent worker.
 if (args.Length > 0 && args[0] == "--task-id")

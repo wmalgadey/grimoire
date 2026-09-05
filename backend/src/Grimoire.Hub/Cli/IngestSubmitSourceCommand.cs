@@ -8,12 +8,12 @@ using Spectre.Console.Cli;
 namespace Grimoire.Hub.Cli;
 
 /// <summary>
-/// Settings for <see cref="SubmitSourceCommand"/> (018-hub-cli-commands T010, migrated
+/// Settings for <see cref="IngestSubmitSourceCommand"/> (018-hub-cli-commands T010, migrated
 /// from the inline <c>Program.cs</c> special case). <c>--path</c> is required and
 /// non-empty; a missing/blank value is now a graceful Spectre usage error (exit 2) —
 /// unlike the previous unhandled <see cref="ArgumentException"/> — per FR-009.
 /// </summary>
-public sealed class SubmitSourceSettings : HubPathSettings
+public sealed class IngestSubmitSourceSettings : HubPathSettings
 {
     [CommandOption("--path <PATH>", isRequired: true)]
     [Description("Path to the source file to submit for ingest (required).")]
@@ -32,21 +32,21 @@ public sealed class SubmitSourceSettings : HubPathSettings
 /// <summary>
 /// Submits a source document for ingest — the Hub's original (and, pre-018, only) CLI
 /// command. Unlike the retired inline case in <c>Program.cs</c> (which constructed its
-/// own <c>LocalSecretsLoader</c>/<c>AgentProcessHost</c>/<c>SubmissionService</c>), this
-/// command resolves <see cref="SubmissionService"/> from the same DI container
+/// own <c>LocalSecretsLoader</c>/<c>AgentProcessHost</c>/<c>IngestSubmissionService</c>), this
+/// command resolves <see cref="IngestSubmissionService"/> from the same DI container
 /// <see cref="HubHostComposition"/> builds for every other command and for the HTTP
 /// endpoints — the "same coordinators the HTTP endpoints use" model FR-005 requires.
 /// Execution (in-process run-to-exit via <c>IAgentProcessLauncher.RunToExitAsync</c>,
 /// ADR-008's manual-CLI-path exemption) and the exact output line are unchanged.
 /// </summary>
-public sealed class SubmitSourceCommand : AsyncCommand<SubmitSourceSettings>
+public sealed class IngestSubmitSourceCommand : AsyncCommand<IngestSubmitSourceSettings>
 {
-    private readonly SubmissionService _submissionService;
+    private readonly IngestSubmissionService _submissionService;
     private readonly IngestContentPaths _contentPaths;
     private readonly ResolvedGrimoirePaths _resolvedPaths;
 
-    public SubmitSourceCommand(
-        SubmissionService submissionService, IngestContentPaths contentPaths, ResolvedGrimoirePaths resolvedPaths)
+    public IngestSubmitSourceCommand(
+        IngestSubmissionService submissionService, IngestContentPaths contentPaths, ResolvedGrimoirePaths resolvedPaths)
     {
         _submissionService = submissionService;
         _contentPaths = contentPaths;
@@ -54,7 +54,7 @@ public sealed class SubmitSourceCommand : AsyncCommand<SubmitSourceSettings>
     }
 
     protected override async Task<int> ExecuteAsync(
-        CommandContext context, SubmitSourceSettings settings, CancellationToken cancellationToken)
+        CommandContext context, IngestSubmitSourceSettings settings, CancellationToken cancellationToken)
     {
         string? pastedText = null;
         if (settings.SourceKind == "pasted_text")
@@ -63,7 +63,7 @@ public sealed class SubmitSourceCommand : AsyncCommand<SubmitSourceSettings>
         }
 
         var taskId = await _submissionService.SubmitAsync(
-            new SubmitSourceOptions(settings.Path!, settings.SourceKind, pastedText),
+            new IngestSubmitSourceOptions(settings.Path!, settings.SourceKind, pastedText),
             _contentPaths,
             _resolvedPaths,
             cancellationToken);

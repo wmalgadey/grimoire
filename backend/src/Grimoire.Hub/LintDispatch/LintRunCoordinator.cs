@@ -35,7 +35,7 @@ public abstract record LintSubmissionResult
 public sealed class LintRunCoordinator
 {
     private readonly AgentDispatch.IAgentProcessLauncher _launcher;
-    private readonly FindingsReportStore _reportStore;
+    private readonly LintFindingsReportStore _reportStore;
     private readonly ResolvedGrimoirePaths _paths;
     private readonly TimeProvider _timeProvider;
     private readonly TimeSpan _livenessWindow;
@@ -66,7 +66,7 @@ public sealed class LintRunCoordinator
 
     public LintRunCoordinator(
         AgentDispatch.IAgentProcessLauncher launcher,
-        FindingsReportStore reportStore,
+        LintFindingsReportStore reportStore,
         ResolvedGrimoirePaths paths,
         TimeProvider? timeProvider = null,
         TimeSpan? livenessWindow = null,
@@ -289,14 +289,14 @@ public sealed class LintRunCoordinator
             supervisionSpan?.SetTag("outcome", status.ToString().ToLowerInvariant());
 
             var deniedActions = (terminalEvent.DeniedActions ?? [])
-                .Select(d => new FindingsDeniedAction(d.Action, d.RequestedTarget, d.CanonicalTarget, d.Reason, d.Turn))
+                .Select(d => new LintFindingsDeniedAction(d.Action, d.RequestedTarget, d.CanonicalTarget, d.Reason, d.Turn))
                 .ToList();
 
             // 028-lint-at-scale (US2, FR-003): harness-computed, transported verbatim
             // (Constitution Principle V) — null for a run whose terminal event never
             // carried one.
             var wikiCoverage = terminalEvent.WikiCoverage is { } coverage
-                ? new FindingsWikiCoverage(coverage.PagesTotal, coverage.PagesConsidered, coverage.Status)
+                ? new LintFindingsWikiCoverage(coverage.PagesTotal, coverage.PagesConsidered, coverage.Status)
                 : null;
 
             await FinishRunAsync(
@@ -317,11 +317,11 @@ public sealed class LintRunCoordinator
         string? failureReason,
         string? narrative,
         string? systemPromptSha256,
-        IReadOnlyList<FindingsDeniedAction> deniedActions,
+        IReadOnlyList<LintFindingsDeniedAction> deniedActions,
         IReadOnlyList<string> touchedPaths,
         CancellationToken cancellationToken,
         IReadOnlyList<AgentDispatch.AgentRunEventProposedAction>? proposedActions = null,
-        FindingsWikiCoverage? wikiCoverage = null)
+        LintFindingsWikiCoverage? wikiCoverage = null)
     {
         if (!_runs.TryGetValue(runId, out var run))
         {
@@ -368,7 +368,7 @@ public sealed class LintRunCoordinator
         var effectiveNarrative = await PersistFindingsReportAsync(
             run, outcome, status, failureReason, narrative, systemPromptSha256, deniedActions, touchedPaths, completedAt,
             wikiCoverage);
-        var findingsCount = FindingsNarrativeStats.CountFindings(effectiveNarrative);
+        var findingsCount = LintFindingsNarrativeStats.CountFindings(effectiveNarrative);
 
         // #212: recorded BEFORE the terminal transition below, for the same reason as the
         // findings report above — an observer polling run status for "terminal" (this
@@ -381,12 +381,12 @@ public sealed class LintRunCoordinator
 
         // T037 (013-lint-agent, US2, plan.md ## Observability): mechanical counting only
         // (Constitution Principle V) — the per-category tallies are headings the agent
-        // already wrote (FindingsNarrativeStats), and the refreshed-page count is the
+        // already wrote (LintFindingsNarrativeStats), and the refreshed-page count is the
         // harness's own journal (touchedPaths, ADR-016's sole write rule), never a
         // judgment about wiki content. Emitted across every terminal outcome (including a
         // partial/failed run's narrative-so-far) — "across all runs" per plan.md's metric
         // description.
-        foreach (var (category, count) in FindingsNarrativeStats.CountByCategory(effectiveNarrative))
+        foreach (var (category, count) in LintFindingsNarrativeStats.CountByCategory(effectiveNarrative))
         {
             HubMetrics.RecordLintFindings(category, count);
         }
@@ -457,10 +457,10 @@ public sealed class LintRunCoordinator
         string? failureReason,
         string? narrative,
         string? systemPromptSha256,
-        IReadOnlyList<FindingsDeniedAction> deniedActions,
+        IReadOnlyList<LintFindingsDeniedAction> deniedActions,
         IReadOnlyList<string> touchedPaths,
         DateTimeOffset completedAt,
-        FindingsWikiCoverage? wikiCoverage = null)
+        LintFindingsWikiCoverage? wikiCoverage = null)
     {
         // A failed run (incl. liveness failure) never produced a final narrative — the
         // report is still persisted, clearly marked partial (spec edge case: "What
@@ -468,7 +468,7 @@ public sealed class LintRunCoordinator
         var partial = status == LintRunStatus.Failed;
         var effectiveNarrative = narrative ?? $"Run failed before completion. Reason: {failureReason ?? "unknown"}.";
 
-        var report = new FindingsReport(
+        var report = new LintFindingsReport(
             RunId: run.RunId,
             TriggeredAt: run.TriggeredAt,
             CompletedAt: completedAt,

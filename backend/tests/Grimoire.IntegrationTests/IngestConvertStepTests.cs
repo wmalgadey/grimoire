@@ -55,7 +55,7 @@ public class IngestConvertStepTests
 
         await fixture.WaitForPublishedEventAsync(taskId, e => e.ToStatus is "completed" or "failed", TimeSpan.FromSeconds(15));
 
-        var artifactSet = await fixture.SourceArtifactStore.TryReadMetadataAsync(taskId);
+        var artifactSet = await fixture.IngestSourceArtifactStore.TryReadMetadataAsync(taskId);
         Assert.NotNull(artifactSet);
 
         // SC-004: the normalized artifact is byte-identical to what was received,
@@ -69,7 +69,7 @@ public class IngestConvertStepTests
         Assert.Equal(artifactSet.NormalizedMarkdownPath, request.SourceRef);
 
         // Applied configuration is recorded on the task artifact (FR-014).
-        var artifact = TaskArtifactFrontmatter.TryParse(await File.ReadAllTextAsync(fixture.TaskArtifactPathFor(taskId)));
+        var artifact = IngestTaskArtifactFrontmatter.TryParse(await File.ReadAllTextAsync(fixture.TaskArtifactPathFor(taskId)));
         Assert.NotNull(artifact?.ConvertSteps);
         Assert.False(artifact!.ConvertSteps!["markitdown"]);
 
@@ -92,13 +92,13 @@ public class IngestConvertStepTests
         await fixture.WaitForPublishedEventAsync(taskId, e => e.ToStatus is "completed" or "failed", TimeSpan.FromSeconds(30));
 
         // FR-015: default path converts (real markitdown), exactly as specified in 003.
-        var artifactSet = await fixture.SourceArtifactStore.TryReadMetadataAsync(taskId);
+        var artifactSet = await fixture.IngestSourceArtifactStore.TryReadMetadataAsync(taskId);
         Assert.NotNull(artifactSet);
         var normalized = await File.ReadAllTextAsync(artifactSet!.NormalizedMarkdownPath);
         Assert.Contains("Converted Fixture", normalized, StringComparison.Ordinal);
         Assert.NotEqual(htmlBytes, await File.ReadAllBytesAsync(artifactSet.NormalizedMarkdownPath));
 
-        var artifact = TaskArtifactFrontmatter.TryParse(await File.ReadAllTextAsync(fixture.TaskArtifactPathFor(taskId)));
+        var artifact = IngestTaskArtifactFrontmatter.TryParse(await File.ReadAllTextAsync(fixture.TaskArtifactPathFor(taskId)));
         Assert.NotNull(artifact?.ConvertSteps);
         Assert.True(artifact!.ConvertSteps!["markitdown"]);
     }

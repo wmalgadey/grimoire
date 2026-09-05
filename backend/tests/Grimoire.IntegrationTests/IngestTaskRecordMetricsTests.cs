@@ -50,7 +50,7 @@ public class IngestTaskRecordMetricsTests
         });
         listener.Start();
 
-        HubMetrics.RecordTaskRecordRead(outcome);
+        HubMetrics.RecordIngestTaskRecordRead(outcome);
 
         var measurement = Assert.Single(measurements);
         Assert.Equal(1, measurement.Value);

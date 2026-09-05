@@ -32,7 +32,7 @@ public static class SyntheticRecordings
     }
 
     /// <summary>
-    /// Mirrors the harness-owned first-message scaffold (AgentLoop.BuildUserMessage) —
+    /// Mirrors the harness-owned first-message scaffold (AgentLoop.BuildIngestUserMessage) —
     /// drift between this template and the loop's surfaces as a replay mismatch, which
     /// is exactly the drift signal FR-010 wants.
     /// </summary>

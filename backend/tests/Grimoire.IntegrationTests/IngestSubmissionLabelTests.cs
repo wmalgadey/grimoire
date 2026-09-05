@@ -11,8 +11,8 @@ namespace Grimoire.IntegrationTests;
 /// not only once conversion has produced a manifest.
 ///
 /// <para>
-/// Every tier of the label chain used to come from the <c>SourceArtifactSet</c> manifest,
-/// which <c>SourceArtifactStore.PersistNormalized*</c> writes after the source has been
+/// Every tier of the label chain used to come from the <c>IngestSourceArtifactSet</c> manifest,
+/// which <c>IngestSourceArtifactStore.PersistNormalized*</c> writes after the source has been
 /// fetched and converted. So a card was labelled with its raw task id for the whole
 /// <c>received</c> + <c>converting</c> window — for a URL, an outbound fetch plus a markitdown
 /// run, the most visible phase of the task's life — and a submission whose conversion failed

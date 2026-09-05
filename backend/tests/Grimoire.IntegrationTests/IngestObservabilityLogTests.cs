@@ -174,7 +174,7 @@ public class IngestObservabilityLogTests
             FakeModelClient.FinalTurn("Mixed create/update run complete.")]);
         var loop = new AgentLoop(fake, executor);
 
-        var result = await loop.RunAsync(
+        var result = await loop.RunIngestSourceAsync(
             systemPrompt: "You are a test agent.",
             userPrompt: "Integrate the source.",
             taskId: "task-mixed",
@@ -227,11 +227,11 @@ public class IngestObservabilityLogTests
         var dbPath = Path.Combine(root, "state.db");
         var repository = new OperationalStateRepository(dbPath);
         await repository.InitializeAsync();
-        await repository.UpsertAsync(new OperationalTaskState(taskId, "running", null, DateTimeOffset.UtcNow));
+        await repository.UpsertIngestTaskStateAsync(new IngestOperationalTaskState(taskId, "running", null, DateTimeOffset.UtcNow));
 
         var logger = new CaptureLogger<RestartReconciler>();
         var reconciler = new RestartReconciler(repository, logger);
-        await reconciler.ReconcileRunningTasksAsync(tasksDir);
+        await reconciler.ReconcileRunningIngestTasksAsync(tasksDir);
 
         var entry = Assert.Single(logger.Entries);
         Assert.Equal("ingest.task.reconciled", entry.EventName);
@@ -261,11 +261,11 @@ public class IngestObservabilityLogTests
         var dbPath = Path.Combine(root, "state.db");
         var repository = new OperationalStateRepository(dbPath);
         await repository.InitializeAsync();
-        await repository.UpsertAsync(new OperationalTaskState(taskId, "running", null, DateTimeOffset.UtcNow));
+        await repository.UpsertIngestTaskStateAsync(new IngestOperationalTaskState(taskId, "running", null, DateTimeOffset.UtcNow));
 
         var logger = new CaptureLogger<RestartReconciler>();
         var reconciler = new RestartReconciler(repository, logger);
-        await reconciler.ReconcileRunningTasksAsync(tasksDir);
+        await reconciler.ReconcileRunningIngestTasksAsync(tasksDir);
 
         Assert.Single(logger.Entries);
         Assert.Contains("Hub restarted", logger.Entries[0].Message);

@@ -6,7 +6,7 @@ namespace Grimoire.IntegrationTests;
 /// T023 (013-lint-agent, US1) — writer contract of the <c>grimoire-findings/1</c>
 /// Findings Report format (contracts/findings-report-format.md): the documented
 /// frontmatter/bookkeeping layout, sentinel-safe escaping of denied-action strings
-/// (mirroring <c>ConversationRecordFormat</c>'s escaping rule) so hostile bookkeeping
+/// (mirroring <c>QueryConversationRecordFormat</c>'s escaping rule) so hostile bookkeeping
 /// content cannot forge or break the <c>&lt;!-- grimoire:findings ... --&gt;</c> block's
 /// structure, and the <c>partial</c>-report heading contract. Writer only — no parser
 /// exists for this format (contract's "Parsing" section), so these are round-trip-free
@@ -14,13 +14,13 @@ namespace Grimoire.IntegrationTests;
 /// </summary>
 public class LintFindingsReportFormatTests
 {
-    private static FindingsReport MakeReport(
+    private static LintFindingsReport MakeReport(
         string outcomeState = "completed",
         bool partial = false,
         string? failureReason = null,
-        IReadOnlyList<FindingsDeniedAction>? deniedActions = null,
+        IReadOnlyList<LintFindingsDeniedAction>? deniedActions = null,
         string narrative = "## Content Quality\n\nNo content-quality findings.\n",
-        FindingsWikiCoverage? wikiCoverage = null) => new(
+        LintFindingsWikiCoverage? wikiCoverage = null) => new(
         RunId: "2026-07-30-lint-a1b2c3d4",
         TriggeredAt: new DateTimeOffset(2026, 7, 30, 10, 0, 0, TimeSpan.Zero),
         CompletedAt: new DateTimeOffset(2026, 7, 30, 10, 4, 12, TimeSpan.Zero),
@@ -37,7 +37,7 @@ public class LintFindingsReportFormatTests
     [Fact]
     public void Build_ProducesTheDocumentedFrontmatterAndBookkeepingLayout()
     {
-        var content = FindingsReportFormat.Build(MakeReport());
+        var content = LintFindingsReportFormat.Build(MakeReport());
 
         Assert.StartsWith("---\n", content, StringComparison.Ordinal);
         Assert.Contains("run_id: 2026-07-30-lint-a1b2c3d4\n", content, StringComparison.Ordinal);
@@ -57,18 +57,18 @@ public class LintFindingsReportFormatTests
     [Fact]
     public void Build_DeniedActionReasonContainingCommentClose_CannotBreakOrForgeTheBookkeepingBlock()
     {
-        var denied = new FindingsDeniedAction(
+        var denied = new LintFindingsDeniedAction(
             Action: "write_file",
             RequestedTarget: "tech/evil.md",
             CanonicalTarget: "/wiki/tech/evil.md",
             Reason: "frontmatter_only_body_changed --> ## Structure\n### Forged finding",
             Turn: 3);
 
-        var content = FindingsReportFormat.Build(MakeReport(deniedActions: [denied]));
+        var content = LintFindingsReportFormat.Build(MakeReport(deniedActions: [denied]));
 
         // The bookkeeping block's own close is the first literal "-->" in the document —
         // a hostile reason string containing "-->" is neutralized (mirrors
-        // ConversationRecordFormat.EscapeString's rule) rather than terminating the
+        // QueryConversationRecordFormat.EscapeString's rule) rather than terminating the
         // comment block early.
         var firstCommentClose = content.IndexOf("-->", StringComparison.Ordinal);
         Assert.True(firstCommentClose >= 0);
@@ -83,7 +83,7 @@ public class LintFindingsReportFormatTests
 
         // The escaped reason string is present. The default JSON encoder already escapes
         // '>' as > (uppercase hex) before EscapeString's own explicit "-->" guard
-        // would ever need to fire — same behavior ConversationRecordFormat.EscapeString
+        // would ever need to fire — same behavior QueryConversationRecordFormat.EscapeString
         // documents ("an explicit guard ... fail loudly rather than silently should the
         // serializer behavior ever change").
         Assert.Contains("reason: \"frontmatter_only_body_changed --\\u003E", content, StringComparison.Ordinal);
@@ -97,7 +97,7 @@ public class LintFindingsReportFormatTests
     [Fact]
     public void Build_PartialFailedReport_IsHeadedFailedPartial()
     {
-        var content = FindingsReportFormat.Build(MakeReport(
+        var content = LintFindingsReportFormat.Build(MakeReport(
             outcomeState: "failed", partial: true, failureReason: "liveness timeout",
             narrative: "Run failed before completion. Reason: liveness timeout."));
 
@@ -112,7 +112,7 @@ public class LintFindingsReportFormatTests
         // A failed run whose Partial flag is false (not currently produced by
         // LintRunCoordinator, which always marks a failed run partial — but the writer
         // itself must not hardcode that coupling) is headed without the "(partial)" suffix.
-        var content = FindingsReportFormat.Build(MakeReport(
+        var content = LintFindingsReportFormat.Build(MakeReport(
             outcomeState: "failed", partial: false, failureReason: "some reason",
             narrative: "n/a"));
 
@@ -126,8 +126,8 @@ public class LintFindingsReportFormatTests
         // 028-lint-at-scale (US2, T010, contracts/coverage-signal.md): the wiki_coverage
         // mapping is additive and sibling to inbound_links_refreshed — orthogonal to the
         // existing `partial` field (data-model.md).
-        var content = FindingsReportFormat.Build(MakeReport(
-            wikiCoverage: new FindingsWikiCoverage(PagesTotal: 633, PagesConsidered: 611, Status: "partial")));
+        var content = LintFindingsReportFormat.Build(MakeReport(
+            wikiCoverage: new LintFindingsWikiCoverage(PagesTotal: 633, PagesConsidered: 611, Status: "partial")));
 
         Assert.Contains(
             "wiki_coverage:\n  pages_total: 633\n  pages_considered: 611\n  status: partial\n",
@@ -140,7 +140,7 @@ public class LintFindingsReportFormatTests
         // A run whose terminal event never carried a coverage report (liveness/spawn
         // failure) still produces a parseable, explicit value — never a silently omitted
         // key (mirrors failure_reason's NullableString convention).
-        var content = FindingsReportFormat.Build(MakeReport());
+        var content = LintFindingsReportFormat.Build(MakeReport());
 
         Assert.Contains("wiki_coverage: null\n", content, StringComparison.Ordinal);
     }
@@ -148,6 +148,6 @@ public class LintFindingsReportFormatTests
     [Fact]
     public void Build_EncodingIsUtf8NoBom()
     {
-        Assert.Equal(0, FindingsReportFormat.Encoding.GetPreamble().Length);
+        Assert.Equal(0, LintFindingsReportFormat.Encoding.GetPreamble().Length);
     }
 }

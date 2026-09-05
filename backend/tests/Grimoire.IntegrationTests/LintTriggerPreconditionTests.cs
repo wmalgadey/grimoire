@@ -173,11 +173,11 @@ internal sealed class LintTriggerHostHarness : IDisposable
                     services.AddRouting();
                     services.AddLogging();
                     services.AddSingleton(repository);
-                    services.AddSingleton<FindingsReportStore>(sp =>
-                        new FindingsReportStore(paths, NullLogger<FindingsReportStore>.Instance));
+                    services.AddSingleton<LintFindingsReportStore>(sp =>
+                        new LintFindingsReportStore(paths, NullLogger<LintFindingsReportStore>.Instance));
                     services.AddSingleton<LintRunCoordinator>(sp => new LintRunCoordinator(
                         effectiveLauncher,
-                        sp.GetRequiredService<FindingsReportStore>(),
+                        sp.GetRequiredService<LintFindingsReportStore>(),
                         paths,
                         logger: NullLogger<LintRunCoordinator>.Instance,
                         stateRepository: repository));

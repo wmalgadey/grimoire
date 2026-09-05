@@ -27,11 +27,11 @@ public class QueryConversationLogEventTests
     {
         var logger = new CaptureLogger<QueryConversationLogEventTests>();
 
-        ConversationRecordLogEvents.LogRecordCreated(logger, conversationId: "c-1", path: "/data/conversations/c-1.md");
-        ConversationRecordLogEvents.LogTurnRecorded(logger, conversationId: "c-1", turnId: "t-1", position: 1, outcome: "completed");
-        ConversationRecordLogEvents.LogContextLoaded(logger, conversationId: "c-1", turnCount: 2, source: "memory");
-        ConversationRecordLogEvents.LogRecordAppendFailed(logger, conversationId: "c-1", turnId: "t-2", reason: "disk full");
-        ConversationRecordLogEvents.LogRecordLoadFailed(logger, conversationId: "c-1", reason: "malformed bookkeeping");
+        QueryConversationRecordLogEvents.LogRecordCreated(logger, conversationId: "c-1", path: "/data/conversations/c-1.md");
+        QueryConversationRecordLogEvents.LogTurnRecorded(logger, conversationId: "c-1", turnId: "t-1", position: 1, outcome: "completed");
+        QueryConversationRecordLogEvents.LogContextLoaded(logger, conversationId: "c-1", turnCount: 2, source: "memory");
+        QueryConversationRecordLogEvents.LogRecordAppendFailed(logger, conversationId: "c-1", turnId: "t-2", reason: "disk full");
+        QueryConversationRecordLogEvents.LogRecordLoadFailed(logger, conversationId: "c-1", reason: "malformed bookkeeping");
 
         AssertEvent(logger.Entries, "query.conversation.record_created", LogLevel.Information, ["conversation_id", "path"]);
         AssertEvent(logger.Entries, "query.conversation.turn_recorded", LogLevel.Information, ["conversation_id", "turn_id", "position", "outcome"]);

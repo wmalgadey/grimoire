@@ -9,7 +9,7 @@ namespace Grimoire.Hub.IngestTaskArtifact;
 /// Grimoire.IngestAgent), but writes the identical v2 frontmatter shape from
 /// contracts/task-artifact-format.md so the file is a valid artifact from the first write.
 /// </summary>
-public sealed record HubTaskArtifactDocument(
+public sealed record HubIngestTaskArtifactDocument(
     string TaskId,
     string Status,
     DateTimeOffset StartedAt,
@@ -23,7 +23,7 @@ public sealed record HubTaskArtifactDocument(
     string? UserPrompt = null,
     IReadOnlyDictionary<string, bool>? ConvertSteps = null,
     // 023 T045 (FR-003): the human-readable label, mirrored from the Hub-owned manifest via
-    // KanbanBoardProjectionStore.ResolveTitle so the file on disk and the board/detail views
+    // IngestKanbanBoardProjectionStore.ResolveTitle so the file on disk and the board/detail views
     // cannot disagree. Null only when no caller supplied one — the resolve chain itself always
     // produces a value, falling back to the task id.
     string? Title = null);

@@ -50,7 +50,7 @@ export interface SubmissionOptions {
 	fetchImpl?: typeof fetch;
 }
 
-export async function submitUrl(
+export async function submitIngestUrl(
 	url: string,
 	options: SubmissionOptions = {}
 ): Promise<SubmissionAcceptedResponse> {
@@ -73,7 +73,7 @@ export async function submitUrl(
 	return response.json();
 }
 
-export async function submitFile(
+export async function submitIngestFile(
 	kind: Exclude<IngestSubmissionKind, 'url'>,
 	file: File,
 	options: SubmissionOptions = {}
@@ -94,7 +94,7 @@ export async function submitFile(
 	return response.json();
 }
 
-export async function listBoard(fetchImpl: typeof fetch = fetch): Promise<BoardTask[]> {
+export async function listIngestBoard(fetchImpl: typeof fetch = fetch): Promise<BoardTask[]> {
 	const response = await fetchImpl(BASE_PATH);
 	if (!response.ok) {
 		throw await toApiError(response);
@@ -105,7 +105,7 @@ export async function listBoard(fetchImpl: typeof fetch = fetch): Promise<BoardT
 }
 
 /** Board projection including the queue-paused flag (004 FR-021). */
-export async function getBoard(fetchImpl: typeof fetch = fetch): Promise<BoardResponse> {
+export async function getIngestBoard(fetchImpl: typeof fetch = fetch): Promise<BoardResponse> {
 	const response = await fetchImpl(BASE_PATH);
 	if (!response.ok) {
 		throw await toApiError(response);
@@ -114,7 +114,7 @@ export async function getBoard(fetchImpl: typeof fetch = fetch): Promise<BoardRe
 	return response.json();
 }
 
-export async function getTaskDetail(
+export async function getIngestTaskDetail(
 	taskId: string,
 	fetchImpl: typeof fetch = fetch
 ): Promise<TaskDetail> {
@@ -131,7 +131,7 @@ export async function getTaskDetail(
 // callers render the placeholder state without a try/catch.
 export type TaskRecordResult = { status: 'ok'; record: TaskRecord } | { status: 'unavailable' };
 
-export async function getTaskRecord(
+export async function getIngestTaskRecord(
 	taskId: string,
 	fetchImpl: typeof fetch = fetch
 ): Promise<TaskRecordResult> {
@@ -148,7 +148,7 @@ export async function getTaskRecord(
 }
 
 /** 004: single source of truth for the submission form's prompt editor and step toggles. */
-export async function getSubmissionDefaults(
+export async function getIngestSubmissionDefaults(
 	fetchImpl: typeof fetch = fetch
 ): Promise<IngestSubmissionDefaults> {
 	const response = await fetchImpl(`${BASE_PATH}/defaults`);
@@ -160,7 +160,7 @@ export async function getSubmissionDefaults(
 }
 
 /** 004 FR-021: re-arms a single queued task after a Hub restart. */
-export async function retriggerTask(
+export async function retriggerIngestTask(
 	taskId: string,
 	fetchImpl: typeof fetch = fetch
 ): Promise<void> {
@@ -173,7 +173,7 @@ export async function retriggerTask(
 }
 
 /** 004 FR-021: resumes automatic queue processing after a Hub restart (whole queue). */
-export async function resumeQueue(fetchImpl: typeof fetch = fetch): Promise<void> {
+export async function resumeIngestQueue(fetchImpl: typeof fetch = fetch): Promise<void> {
 	const response = await fetchImpl(`${QUEUE_BASE_PATH}/resume`, { method: 'POST' });
 	if (!response.ok) {
 		throw await toApiError(response);
@@ -186,7 +186,7 @@ export interface RestartTaskResponse {
 	status: 'queued';
 }
 
-export async function restartTask(
+export async function restartIngestTask(
 	taskId: string,
 	fetchImpl: typeof fetch = fetch
 ): Promise<RestartTaskResponse> {

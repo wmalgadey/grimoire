@@ -60,7 +60,7 @@ public class QueryConversationRecordBookkeepingTests
         // write has finished — poll for a successful structured parse too, not just
         // existence, to avoid reading mid-write content under heavy concurrent-suite load.
         await PollAsync.WaitAsync(
-            () => File.Exists(recordPath) && ConversationRecordFormat.Parse(File.ReadAllText(recordPath)) is ConversationRecordParseResult.Parsed { Turns.Count: >= 1 },
+            () => File.Exists(recordPath) && QueryConversationRecordFormat.Parse(File.ReadAllText(recordPath)) is QueryConversationRecordParseResult.Parsed { Turns.Count: >= 1 },
             TimeSpan.FromSeconds(10),
             $"Expected the Conversation Record at '{recordPath}' to exist and parse with at least one turn within 10s.");
 
@@ -71,15 +71,15 @@ public class QueryConversationRecordBookkeepingTests
         var closeCount = content.Split("-->").Length - 1;
         Assert.Equal(1, closeCount);
 
-        var parsed = Assert.IsType<ConversationRecordParseResult.Parsed>(ConversationRecordFormat.Parse(content));
+        var parsed = Assert.IsType<QueryConversationRecordParseResult.Parsed>(QueryConversationRecordFormat.Parse(content));
         var recordedTurn = Assert.Single(parsed.Turns);
         Assert.Equal(2, recordedTurn.DeniedActions.Count);
 
         Assert.Equal(
-            new RecordedDeniedAction("read_file", "../secrets/.env", "/base/secrets/.env", "outside read scope", 2),
+            new QueryRecordedDeniedAction("read_file", "../secrets/.env", "/base/secrets/.env", "outside read scope", 2),
             recordedTurn.DeniedActions[0]);
         Assert.Equal(
-            new RecordedDeniedAction(
+            new QueryRecordedDeniedAction(
                 "read_file",
                 "--> \"hostile\" target\nwith newline",
                 "/canonical/--> path",
@@ -278,7 +278,7 @@ public class QueryConversationRecordBookkeepingTests
         Assert.Null(recordedTurn.PolicySha256);
     }
 
-    private static async Task<RecordedTurn> ReadSingleTurnAsync(string root, string conversationId)
+    private static async Task<QueryRecordedTurn> ReadSingleTurnAsync(string root, string conversationId)
     {
         var paths = QueryTurnSubmissionApiTests.BuildResolvedPaths(root);
         var recordPath = paths.ConversationRecordPathFor(conversationId);
@@ -290,7 +290,7 @@ public class QueryConversationRecordBookkeepingTests
         // CPU/IO contention a read can land mid-write and see an Unreadable/incomplete
         // parse. Poll until the file both exists and parses with the expected turn, not
         // just until it exists.
-        ConversationRecordParseResult.Parsed? parsed = null;
+        QueryConversationRecordParseResult.Parsed? parsed = null;
         await PollAsync.WaitAsync(
             async () =>
             {
@@ -299,7 +299,7 @@ public class QueryConversationRecordBookkeepingTests
                     return false;
                 }
 
-                return ConversationRecordFormat.Parse(await File.ReadAllTextAsync(recordPath)) is ConversationRecordParseResult.Parsed { Turns.Count: >= 1 } p
+                return QueryConversationRecordFormat.Parse(await File.ReadAllTextAsync(recordPath)) is QueryConversationRecordParseResult.Parsed { Turns.Count: >= 1 } p
                     && (parsed = p) is not null;
             },
             TimeSpan.FromSeconds(10),

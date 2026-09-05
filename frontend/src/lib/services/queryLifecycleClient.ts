@@ -76,7 +76,7 @@ export function createQueryLifecycleClient(hubUrl: string = HUB_PATH): QueryLife
  * already-applied position are ignored. `lastAppliedSequence` is the turn's own
  * high-water mark, tracked by the caller per turnId.
  */
-export function applyAnswerChunk(
+export function applyQueryAnswerChunk(
 	currentAnswer: string,
 	event: QueryAnswerChunkEvent,
 	lastAppliedSequence: number
@@ -90,9 +90,9 @@ export function applyAnswerChunk(
 
 /**
  * Applies one `queryTurnChanged` event idempotently by `(eventId, turnId)` — mirrors
- * applyLifecycleEvent's idempotence rule for the ingest lifecycle channel.
+ * applyIngestLifecycleEvent's idempotence rule for the ingest lifecycle channel.
  */
-export function applyTurnChanged(
+export function applyQueryTurnChanged(
 	event: QueryTurnChangedEvent,
 	seenEventKeys: Set<string>
 ): boolean {

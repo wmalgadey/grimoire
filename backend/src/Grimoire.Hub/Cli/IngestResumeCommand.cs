@@ -36,7 +36,7 @@ public sealed class IngestResumeCommand : AsyncCommand<IngestResumeSettings>
     private static readonly TimeSpan PollInterval = TimeSpan.FromMilliseconds(50);
 
     private readonly IngestRunCoordinator _coordinator;
-    private readonly KanbanBoardProjectionStore _store;
+    private readonly IngestKanbanBoardProjectionStore _store;
     private readonly IngestContentPaths _contentPaths;
     private readonly CliStatusRenderer _status;
     private readonly TextWriter _stdout;
@@ -46,14 +46,14 @@ public sealed class IngestResumeCommand : AsyncCommand<IngestResumeSettings>
     // between this constructor and the test seam below.
     [ActivatorUtilitiesConstructor]
     public IngestResumeCommand(
-        IngestRunCoordinator coordinator, KanbanBoardProjectionStore store, IngestContentPaths contentPaths)
+        IngestRunCoordinator coordinator, IngestKanbanBoardProjectionStore store, IngestContentPaths contentPaths)
         : this(coordinator, store, contentPaths, new CliStatusRenderer(), Console.Out)
     {
     }
 
     /// <summary>Test seam: inject a status renderer / stdout writer instead of the real stderr/stdout streams.</summary>
     public IngestResumeCommand(
-        IngestRunCoordinator coordinator, KanbanBoardProjectionStore store, IngestContentPaths contentPaths,
+        IngestRunCoordinator coordinator, IngestKanbanBoardProjectionStore store, IngestContentPaths contentPaths,
         CliStatusRenderer status, TextWriter stdout)
     {
         _coordinator = coordinator;

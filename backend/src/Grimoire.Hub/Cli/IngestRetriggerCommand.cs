@@ -35,7 +35,7 @@ public sealed class IngestRetriggerSettings : HubPathSettings
 /// processing to its terminal state (018-hub-cli-commands T028,
 /// contracts/cli-commands.md "ingest-retrigger", FR-005/SC-005).
 ///
-/// Mirrors the HTTP handler's exact two-step flow: a <see cref="KanbanBoardProjectionStore"/>
+/// Mirrors the HTTP handler's exact two-step flow: a <see cref="IngestKanbanBoardProjectionStore"/>
 /// lookup FIRST for the not-found case (the projection is the only place a task's current
 /// column is known before the coordinator is asked to retrigger it), THEN the coordinator
 /// call for the not-in-queue conflict — which needs the column looked up in step one to
@@ -44,7 +44,7 @@ public sealed class IngestRetriggerSettings : HubPathSettings
 /// Unlike the remediation transition commands' in-memory/repository-row terminal read
 /// side, an ingest task's durable terminal status lives in its Task Artifact markdown
 /// file (written by the agent subprocess itself, never by the Hub for a genuine
-/// completed/failed outcome) — <see cref="KanbanBoardProjectionStore"/> is the read model
+/// completed/failed outcome) — <see cref="IngestKanbanBoardProjectionStore"/> is the read model
 /// over that file, so it is what <see cref="WaitForTerminalAsync"/> polls, mirroring the
 /// established polling idiom (<see cref="LintRunCommand.WaitForTerminalAsync"/> /
 /// <see cref="RemediationAuthorizeCommand.WaitForTerminalAsync"/>) against a different
@@ -55,7 +55,7 @@ public sealed class IngestRetriggerCommand : AsyncCommand<IngestRetriggerSetting
     private static readonly TimeSpan PollInterval = TimeSpan.FromMilliseconds(50);
 
     private readonly IngestRunCoordinator _coordinator;
-    private readonly KanbanBoardProjectionStore _store;
+    private readonly IngestKanbanBoardProjectionStore _store;
     private readonly IngestContentPaths _contentPaths;
     private readonly CliStatusRenderer _status;
     private readonly TextWriter _stdout;
@@ -65,14 +65,14 @@ public sealed class IngestRetriggerCommand : AsyncCommand<IngestRetriggerSetting
     // between this constructor and the test seam below.
     [ActivatorUtilitiesConstructor]
     public IngestRetriggerCommand(
-        IngestRunCoordinator coordinator, KanbanBoardProjectionStore store, IngestContentPaths contentPaths)
+        IngestRunCoordinator coordinator, IngestKanbanBoardProjectionStore store, IngestContentPaths contentPaths)
         : this(coordinator, store, contentPaths, new CliStatusRenderer(), Console.Out)
     {
     }
 
     /// <summary>Test seam: inject a status renderer / stdout writer instead of the real stderr/stdout streams.</summary>
     public IngestRetriggerCommand(
-        IngestRunCoordinator coordinator, KanbanBoardProjectionStore store, IngestContentPaths contentPaths,
+        IngestRunCoordinator coordinator, IngestKanbanBoardProjectionStore store, IngestContentPaths contentPaths,
         CliStatusRenderer status, TextWriter stdout)
     {
         _coordinator = coordinator;
@@ -121,7 +121,7 @@ public sealed class IngestRetriggerCommand : AsyncCommand<IngestRetriggerSetting
     /// contract for an ingest task's outcome, mirroring the test suite's own
     /// <c>IngestSubmissionPipelineFixture.WaitForStatusAsync</c> polling idiom.
     /// </summary>
-    private async Task<KanbanBoardProjection> WaitForTerminalAsync(string taskId, CancellationToken cancellationToken)
+    private async Task<IngestKanbanBoardProjection> WaitForTerminalAsync(string taskId, CancellationToken cancellationToken)
     {
         while (true)
         {

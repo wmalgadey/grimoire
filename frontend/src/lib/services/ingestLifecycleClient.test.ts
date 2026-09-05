@@ -1,7 +1,7 @@
 import { expect, test, vi } from 'vitest';
 import {
-	applyLifecycleEvent,
-	createBoardLifecycleStream,
+	applyIngestLifecycleEvent,
+	createIngestBoardLifecycleStream,
 	createIngestLifecycleClient,
 	type IngestLifecycleClient
 } from './ingestLifecycleClient';
@@ -69,7 +69,7 @@ vi.mock('$lib/services/ingestSubmissionsApi', async () => {
 	);
 	return {
 		...actual,
-		listBoard: vi.fn()
+		listIngestBoard: vi.fn()
 	};
 });
 
@@ -128,20 +128,20 @@ function createFakeClient() {
 	};
 }
 
-test('applyLifecycleEvent applies an event exactly once per (eventId, taskId)', () => {
+test('applyIngestLifecycleEvent applies an event exactly once per (eventId, taskId)', () => {
 	const seen = new Set<string>();
 	const tasks = [task({ status: 'received', updatedAt: '2026-07-08T10:00:00Z' })];
 	const evt = event({ toStatus: 'converting', timestamp: '2026-07-08T10:01:00Z' });
 
-	const afterFirst = applyLifecycleEvent(tasks, evt, seen);
+	const afterFirst = applyIngestLifecycleEvent(tasks, evt, seen);
 	expect(afterFirst[0].status).toBe('converting');
 
-	const afterSecond = applyLifecycleEvent(afterFirst, evt, seen);
+	const afterSecond = applyIngestLifecycleEvent(afterFirst, evt, seen);
 	expect(afterSecond).toBe(afterFirst);
 	expect(afterSecond[0].status).toBe('converting');
 });
 
-test('applyLifecycleEvent ignores a stale/out-of-order event older than the task state it holds', () => {
+test('applyIngestLifecycleEvent ignores a stale/out-of-order event older than the task state it holds', () => {
 	const seen = new Set<string>();
 	const tasks = [task({ status: 'queued', updatedAt: '2026-07-08T12:00:00Z' })];
 	const staleEvent = event({
@@ -150,32 +150,32 @@ test('applyLifecycleEvent ignores a stale/out-of-order event older than the task
 		timestamp: '2026-07-08T10:01:00Z'
 	});
 
-	const result = applyLifecycleEvent(tasks, staleEvent, seen);
+	const result = applyIngestLifecycleEvent(tasks, staleEvent, seen);
 
 	expect(result).toBe(tasks);
 	expect(result[0].status).toBe('queued');
 });
 
-test('applyLifecycleEvent adds a new task for an event whose taskId is not yet on the board', () => {
+test('applyIngestLifecycleEvent adds a new task for an event whose taskId is not yet on the board', () => {
 	const seen = new Set<string>();
 	const evt = event({ taskId: 'task-new', fromStatus: null, toStatus: 'received' });
 
-	const result = applyLifecycleEvent([], evt, seen);
+	const result = applyIngestLifecycleEvent([], evt, seen);
 
 	expect(result).toHaveLength(1);
 	expect(result[0].taskId).toBe('task-new');
 	expect(result[0].status).toBe('received');
 });
 
-test('createBoardLifecycleStream bootstraps from the board API, then applies live events on top', async () => {
+test('createIngestBoardLifecycleStream bootstraps from the board API, then applies live events on top', async () => {
 	const api = await import('$lib/services/ingestSubmissionsApi');
-	vi.mocked(api.listBoard).mockResolvedValue([
+	vi.mocked(api.listIngestBoard).mockResolvedValue([
 		task({ taskId: 'task-1', status: 'received', updatedAt: '2026-07-08T10:00:00Z' })
 	]);
 
 	const fake = createFakeClient();
 	const onTasksChanged = vi.fn();
-	const stream = createBoardLifecycleStream(onTasksChanged, { client: fake.client });
+	const stream = createIngestBoardLifecycleStream(onTasksChanged, { client: fake.client });
 
 	await stream.start();
 	expect(onTasksChanged).toHaveBeenLastCalledWith([
@@ -192,22 +192,22 @@ test('createBoardLifecycleStream bootstraps from the board API, then applies liv
 	]);
 });
 
-test('createBoardLifecycleStream refreshes the board from the REST API on reconnect', async () => {
+test('createIngestBoardLifecycleStream refreshes the board from the REST API on reconnect', async () => {
 	const api = await import('$lib/services/ingestSubmissionsApi');
-	vi.mocked(api.listBoard)
+	vi.mocked(api.listIngestBoard)
 		.mockReset()
 		.mockResolvedValueOnce([task({ taskId: 'task-1', status: 'converting' })])
 		.mockResolvedValueOnce([task({ taskId: 'task-1', status: 'queued' })]);
 
 	const fake = createFakeClient();
 	const onTasksChanged = vi.fn();
-	const stream = createBoardLifecycleStream(onTasksChanged, { client: fake.client });
+	const stream = createIngestBoardLifecycleStream(onTasksChanged, { client: fake.client });
 
 	await stream.start();
-	expect(api.listBoard).toHaveBeenCalledTimes(1);
+	expect(api.listIngestBoard).toHaveBeenCalledTimes(1);
 
 	fake.emitReconnected();
-	await vi.waitFor(() => expect(api.listBoard).toHaveBeenCalledTimes(2));
+	await vi.waitFor(() => expect(api.listIngestBoard).toHaveBeenCalledTimes(2));
 
 	expect(onTasksChanged).toHaveBeenLastCalledWith([
 		expect.objectContaining({ taskId: 'task-1', status: 'queued' })
@@ -216,7 +216,7 @@ test('createBoardLifecycleStream refreshes the board from the REST API on reconn
 
 // T032/T037 (US3, contracts/task-record-changed-event.md): onTaskRecordChanged delivers
 // events from the taskRecordChanged channel and dedupes by eventId, consistent with the
-// applyLifecycleEvent idempotency rule for taskLifecycleChanged.
+// applyIngestLifecycleEvent idempotency rule for taskLifecycleChanged.
 
 function taskRecordChangedEvent(
 	overrides: Partial<TaskRecordChangedEvent> = {}
@@ -320,11 +320,11 @@ test('onConnectionStateChanged emits disconnected when start() rejects', async (
 // view can refresh live. Board consumers must ignore them for column placement: the task
 // stays in `running` across an interruption/reactivation cycle (FR-007, SC-006).
 
-test('applyLifecycleEvent leaves the column unchanged for a liveness_interrupted event', () => {
+test('applyIngestLifecycleEvent leaves the column unchanged for a liveness_interrupted event', () => {
 	const seen = new Set<string>();
 	const tasks = [task({ status: 'running', updatedAt: '2026-08-13T07:00:06Z' })];
 
-	const result = applyLifecycleEvent(
+	const result = applyIngestLifecycleEvent(
 		tasks,
 		event({
 			eventId: 'evt-interrupt',
@@ -339,11 +339,11 @@ test('applyLifecycleEvent leaves the column unchanged for a liveness_interrupted
 	expect(result[0].updatedAt).toBe('2026-08-13T07:00:06Z');
 });
 
-test('applyLifecycleEvent leaves the column unchanged for a reactivated event', () => {
+test('applyIngestLifecycleEvent leaves the column unchanged for a reactivated event', () => {
 	const seen = new Set<string>();
 	const tasks = [task({ status: 'running', updatedAt: '2026-08-13T07:00:06Z' })];
 
-	const result = applyLifecycleEvent(
+	const result = applyIngestLifecycleEvent(
 		tasks,
 		event({
 			eventId: 'evt-reactivated',
@@ -357,11 +357,11 @@ test('applyLifecycleEvent leaves the column unchanged for a reactivated event', 
 	expect(result[0].status).toBe('running');
 });
 
-test('applyLifecycleEvent leaves the column unchanged for a restarted event, and moves it on the following queued', () => {
+test('applyIngestLifecycleEvent leaves the column unchanged for a restarted event, and moves it on the following queued', () => {
 	const seen = new Set<string>();
 	const tasks = [task({ status: 'failed', updatedAt: '2026-08-13T07:05:00Z' })];
 
-	const afterRestarted = applyLifecycleEvent(
+	const afterRestarted = applyIngestLifecycleEvent(
 		tasks,
 		event({
 			eventId: 'evt-restarted',
@@ -373,7 +373,7 @@ test('applyLifecycleEvent leaves the column unchanged for a restarted event, and
 	);
 	expect(afterRestarted[0].status).toBe('failed');
 
-	const afterQueued = applyLifecycleEvent(
+	const afterQueued = applyIngestLifecycleEvent(
 		afterRestarted,
 		event({
 			eventId: 'evt-requeued',
@@ -386,10 +386,10 @@ test('applyLifecycleEvent leaves the column unchanged for a restarted event, and
 	expect(afterQueued[0].status).toBe('queued');
 });
 
-test('applyLifecycleEvent does not add a board card for a history-only event about an unknown task', () => {
+test('applyIngestLifecycleEvent does not add a board card for a history-only event about an unknown task', () => {
 	const seen = new Set<string>();
 
-	const result = applyLifecycleEvent(
+	const result = applyIngestLifecycleEvent(
 		[],
 		event({ taskId: 'task-unknown', toStatus: 'liveness_interrupted' }),
 		seen

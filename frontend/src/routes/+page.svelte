@@ -7,8 +7,8 @@
 	import BoardLane from '$lib/components/BoardLane.svelte';
 	import CardPopover from '$lib/components/CardPopover.svelte';
 	import FindingsDialog from '$lib/components/FindingsDialog.svelte';
-	import { createBoardLifecycleStream } from '$lib/services/ingestLifecycleClient';
-	import { getBoard, resumeQueue } from '$lib/services/ingestSubmissionsApi';
+	import { createIngestBoardLifecycleStream } from '$lib/services/ingestLifecycleClient';
+	import { getIngestBoard, resumeIngestQueue } from '$lib/services/ingestSubmissionsApi';
 	import { createLintRunStream } from '$lib/services/lintLifecycleClient';
 	import { createRemediationTaskStream } from '$lib/services/remediationLifecycleClient';
 	import { toPresentedError, type PresentedError } from '$lib/services/apiError';
@@ -41,7 +41,7 @@
 	// of carrying its own actions.
 
 	let tasks: BoardTask[] = $state([]);
-	let stream: ReturnType<typeof createBoardLifecycleStream> | undefined;
+	let stream: ReturnType<typeof createIngestBoardLifecycleStream> | undefined;
 	let lintRun: LintRun | null = $state(null);
 	let lintStream: ReturnType<typeof createLintRunStream> | undefined;
 	let remediationTasks: RemediationTaskBoardEntry[] = $state([]);
@@ -121,7 +121,7 @@
 
 	async function refreshQueueState() {
 		try {
-			const board = await getBoard();
+			const board = await getIngestBoard();
 			queuePaused = board.queuePaused ?? false;
 		} catch {
 			// 024 FR-011: a background refresh the user did not ask for stays silent rather than
@@ -133,7 +133,7 @@
 	// projection, so the operator ends up looking at the task's true current status.
 	async function refreshBoard() {
 		try {
-			const board = await getBoard();
+			const board = await getIngestBoard();
 			tasks = board.tasks;
 			queuePaused = board.queuePaused ?? false;
 			boardLoaded = true;
@@ -147,7 +147,7 @@
 		resuming = true;
 		resumeError = null;
 		try {
-			await resumeQueue();
+			await resumeIngestQueue();
 			queuePaused = false;
 		} catch (err) {
 			resumeError = toPresentedError(err);
@@ -162,7 +162,7 @@
 	}
 
 	onMount(() => {
-		stream = createBoardLifecycleStream(
+		stream = createIngestBoardLifecycleStream(
 			(updated) => {
 				tasks = updated;
 				boardLoaded = true;

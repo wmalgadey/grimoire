@@ -63,7 +63,7 @@ public class IngestRunQueueTests
             fixture.Repository,
             restartedLauncher,
             fixture.Publisher,
-            new HubTaskArtifactWriter(),
+            new HubIngestTaskArtifactWriter(),
             fixture.ContentPaths,
             fixture.ResolvedPaths);
         await restarted.InitializeAsync();

@@ -10,7 +10,7 @@ namespace Grimoire.IntegrationTests;
 /// <summary>
 /// ADR-022, amended by ADR-024 (US1/US2) — against a fresh checkout, a real task-artifact
 /// write (<see cref="TaskArtifactStore"/>) and a real Conversation Record append
-/// (<see cref="ConversationRecordStore"/>) both land under memory-directory siblings —
+/// (<see cref="QueryConversationRecordStore"/>) both land under memory-directory siblings —
 /// agent output (022-memory-directory-root FR-002) — never nested inside the wiki or
 /// internal data directory; the data directory's own locations (raw intake, operational
 /// state, agent runtime, write-locks) stay anchored exactly where the resolver puts them,
@@ -57,10 +57,10 @@ public class SiblingDirectoryLayoutTests
             // Trigger a conversation-record append via the same store production code uses
             // (Grimoire.Hub.QueryDispatch.QueryRunCoordinator).
             var conversationId = "sibling-layout-conversation-1";
-            var conversationStore = new ConversationRecordStore(resolved);
+            var conversationStore = new QueryConversationRecordStore(resolved);
             await conversationStore.AppendTurnAsync(
                 conversationId,
-                new RecordedTurn(
+                new QueryRecordedTurn(
                     TurnId: "t-1",
                     Position: 1,
                     State: "completed",

@@ -79,7 +79,7 @@ the fixture fails the build.
 | `QueryConcurrencyIndependenceTests` | Ingest/query interaction test: proves Query dispatch never waits on Ingest's single-slot queue; exercises both pipelines (the query surface via HTTP + shared fakes) |
 | `HexagonalPortsAdapterRuleTests` | Solution-wide ADR-010 structural rule; its concrete forbidden-type anchors are incidentally ingest adapters |
 | `RuntimePathsBoundaryRuleTests` | Solution-wide ADR-009 structural rule; anchors incidental, boundary is solution-wide |
-| `CredentialScopingTests` | Exercises only the shared spawn/credential machinery (`AgentProcessHost.BuildChildEnvironment`, `LocalSecretsLoader`) applied to every agent spawn (ADR-004) |
+| `CredentialScopingTests` | Exercises only the shared spawn/credential machinery (`AgentProcessHost.BuildIngestChildEnvironment`, `LocalSecretsLoader`) applied to every agent spawn (ADR-004) |
 | `SiblingDirectoryLayoutTests` | 014-wiki-storage-restructure: triggers a real task-artifact write (ingest-owned) and a real Conversation Record append (query-owned) against one resolved path set to prove SC-002; `Grimoire.Hub.QueryConversations` is not in Part 1's reference-detection prefixes, so without this exemption the scan would see only the ingest reference |
 | `HubCliCommandTests` | 018-hub-cli-commands: the CLI command surface's per-command success/failure contract matrix, growing across every user story (US1 lint-run, US2 remediation, US3 ingest, US4 query) — cross-agent by construction like `Grimoire.Hub.Cli` itself; currently references only lint-owned namespaces because US1 is the only story landed so far |
 | `HubCliConcurrencyTests` | 018-hub-cli-commands: the CLI/Hub dual-writer and cross-process lock concurrency matrix, growing across every user story alongside `HubCliCommandTests` above |
@@ -173,3 +173,64 @@ containment rules keep their anchor).
   reference analysis confirms no single-agent ownership).
 - `IngestSubmissionPipelineFixture` (in `Fakes/`) — already carries the Ingest
   token; conformant.
+
+## Type-level agent tokens in cross-agent namespaces
+
+Rule N1 above classifies ownership at two levels: test types in the shared assemblies
+carry the agent token in their name, and every `Grimoire.Hub` namespace is mapped to an
+owner. For cross-agent namespaces the map is deliberately the whole statement — the
+section on the Hub namespace map notes that in `Realtime`, `OperationalState` and
+friends "the namespace, not the type name, is the ownership statement".
+
+That holds for the structural rule, but it leaves a readability gap the rule was never
+meant to cover: a namespace is visible in the file header, and nowhere else. At a use
+site — a constructor parameter, a DI registration, an `await` on a repository — the
+reader sees only the type name. `TaskRecordWatcher` sitting beside `IngestLifecycleHub`
+and `IngestLifecyclePublisher` said nothing about whose task records it watched;
+`SubmitSourceCommand` sat among `IngestResumeCommand`, `LintRunCommand` and
+`QueryCommand` without saying which agent it submitted to.
+
+**Convention.** A type bound to exactly one agent carries that agent's token in its own
+name, in every namespace — not only in the ones N1's map calls agent-owned. This
+extends N1; it does not change it, and it introduces no new structural test: N1 keeps
+enforcing the namespace map and the test-type rule exactly as before.
+
+Two limits keep this from over-applying:
+
+- **Genuinely shared types stay unprefixed.** `IAgentProcessLauncher`, `AgentRunEvent`,
+  `AgentProcessHost`, `RestartReconciler`, `OperationalStateRepository`, `HubMetrics`
+  and the `Grimoire.AgentRuntime` primitives serve every agent. Where such a type has
+  per-agent *members*, the token goes on the member instead — `StartIngestProcess`
+  beside `StartLintProcess`, `ReconcileRunningIngestTasksAsync` beside
+  `ReconcileRemediationTasksAsync`.
+- **Domain vocabulary is not a substitute for the token.** "Conversation" belongs to
+  Query and "Findings" to Lint in the Ubiquitous Language, but a reader who does not
+  already know that cannot tell from `ConversationRecordStore` or `FindingsReportStore`
+  which agent owns them — the same reason `RemediationTaskRecordStore` was named that
+  way from the start. These now read `QueryConversationRecordStore` and
+  `LintFindingsReportStore`.
+
+Ports named after a technology capability rather than an agent (`IMarkdownConverter`,
+`IUrlContentFetcher`, and their `MarkItDown`/HTTP adapters) keep their names even though
+only ingest submission consumes them today: the port describes what it does, and a
+second consumer would not make the name wrong.
+
+Prior ADRs and merged `specs/` artifacts still refer to the pre-rename type names. That
+is intentional — an Accepted ADR's decision content is immutable (Constitution
+Principle III), and the `specs/` tree is the historical record of what each feature did.
+
+### Worked example: two `RecordedTurn`s
+
+The convention says "a type bound to exactly one agent carries that agent's token". Deciding
+whether a type *is* so bound has to happen per declaration, not per name — two unrelated types
+can share a name, and a solution-wide identifier rename cannot tell them apart:
+
+| Type | What it is | Token? |
+| --- | --- | --- |
+| `Grimoire.AgentRuntime.Core.Adapters.Replay.RecordedTurn` | One captured model round-trip for eval replay: turn index, system-prompt and conversation hashes, tool names, stop reason, tool uses, assistant text, token counts (`specs/009` recording-format.md) | **No** — every agent's captures replay through it |
+| `Grimoire.Hub.QueryConversations.QueryRecordedTurn` | One terminal turn of a Conversation Record: turn id, position, state, timestamps, instruction-file and policy provenance, denied actions, prompt/answer transcript, created pages | **Yes** — Query's durable conversation history |
+
+They share only the word "turn": one is an LLM request/response capture that exists so a replayed
+run is deterministic, the other a user-facing Q&A record persisted as markdown. Before applying
+the token, check whether the name is unique in the solution — if it is not, only the
+single-agent declaration gets it.

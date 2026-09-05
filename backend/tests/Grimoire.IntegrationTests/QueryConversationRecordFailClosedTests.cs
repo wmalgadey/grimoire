@@ -21,10 +21,10 @@ public class QueryConversationRecordFailClosedTests
 {
     private static async Task SeedRecordAsync(string root, string conversationId, int turnCount = 2)
     {
-        var store = new ConversationRecordStore(QueryTurnSubmissionApiTests.BuildResolvedPaths(root));
+        var store = new QueryConversationRecordStore(QueryTurnSubmissionApiTests.BuildResolvedPaths(root));
         for (var position = 1; position <= turnCount; position++)
         {
-            await store.AppendTurnAsync(conversationId, new RecordedTurn(
+            await store.AppendTurnAsync(conversationId, new QueryRecordedTurn(
                 TurnId: $"t-seed-{position}",
                 Position: position,
                 State: "completed",
@@ -84,8 +84,8 @@ public class QueryConversationRecordFailClosedTests
         });
         meterListener.Start();
 
-        var storeLogger = new CaptureLogger<ConversationRecordStore>();
-        var store = new ConversationRecordStore(paths, logger: storeLogger);
+        var storeLogger = new CaptureLogger<QueryConversationRecordStore>();
+        var store = new QueryConversationRecordStore(paths, logger: storeLogger);
         var launcher = new FakeAgentProcessLauncher(autoPlay: true, simulatedRunDuration: TimeSpan.FromSeconds(5));
         using var host = await QueryTurnSubmissionApiTests.BuildHostAsync(launcher, root, recordStore: store);
         var client = host.GetTestClient();
@@ -131,8 +131,8 @@ public class QueryConversationRecordFailClosedTests
         await File.AppendAllTextAsync(recordPath,
             "<!-- grimoire:turn\nturn_id: t-crashed\nposition: 3\nstate: completed\n");
 
-        var storeLogger = new CaptureLogger<ConversationRecordStore>();
-        var store = new ConversationRecordStore(paths, logger: storeLogger);
+        var storeLogger = new CaptureLogger<QueryConversationRecordStore>();
+        var store = new QueryConversationRecordStore(paths, logger: storeLogger);
         var launcher = new FakeAgentProcessLauncher(autoPlay: true, simulatedRunDuration: TimeSpan.FromSeconds(5));
         using var host = await QueryTurnSubmissionApiTests.BuildHostAsync(launcher, root, recordStore: store);
         var client = host.GetTestClient();

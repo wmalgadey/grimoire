@@ -77,7 +77,7 @@ public class LintRemediationObservabilityTests
 
             var coordinator = new LintRunCoordinator(
                 launcher,
-                new FindingsReportStore(paths, NullLogger<FindingsReportStore>.Instance),
+                new LintFindingsReportStore(paths, NullLogger<LintFindingsReportStore>.Instance),
                 paths,
                 logger: NullLogger<LintRunCoordinator>.Instance,
                 stateRepository: repository,

@@ -6,7 +6,7 @@ namespace Grimoire.Hub.Conversion;
 /// last non-empty line — typically the actual exception message — and bounds its length, so the
 /// board never shows a raw traceback as a "human-readable" failure reason.
 /// </summary>
-public static class ConversionFailureClassifier
+public static class IngestConversionFailureClassifier
 {
     private const int MaxReasonLength = 300;
 

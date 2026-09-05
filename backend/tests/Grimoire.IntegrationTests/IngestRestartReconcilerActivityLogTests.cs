@@ -18,14 +18,14 @@ namespace Grimoire.IntegrationTests;
 /// updated. Asserting only the non-write would be satisfied by a reconciler that did
 /// nothing at all.
 /// </summary>
-public class RestartReconcilerActivityLogTests
+public class IngestRestartReconcilerActivityLogTests
 {
     private const string SeededLog =
         "## [2026-08-01] ingest | created retrieval-patterns\n\n" +
         "Created [[concepts/retrieval-patterns]] from source \"notes.md\". Task: task-earlier.\n";
 
     [Fact]
-    public async Task ReconcileRunningTasks_LeavesActivityLogByteForByteUnchanged_WhileFailingTheTask()
+    public async Task ReconcileRunningIngestTasks_LeavesActivityLogByteForByteUnchanged_WhileFailingTheTask()
     {
         var root = Path.Combine(Path.GetTempPath(), $"reconciler-log-{Guid.NewGuid():N}");
         var tasksDir = Path.Combine(root, "tasks");
@@ -56,10 +56,10 @@ public class RestartReconcilerActivityLogTests
 
             var repository = new OperationalStateRepository(Path.Combine(root, "operational-state.db"));
             await repository.InitializeAsync();
-            await repository.UpsertAsync(new OperationalTaskState(taskId, "running", 100, DateTimeOffset.UtcNow));
+            await repository.UpsertIngestTaskStateAsync(new IngestOperationalTaskState(taskId, "running", 100, DateTimeOffset.UtcNow));
 
             var reconciler = new RestartReconciler(repository);
-            var count = await reconciler.ReconcileRunningTasksAsync(tasksDir);
+            var count = await reconciler.ReconcileRunningIngestTasksAsync(tasksDir);
 
             Assert.Equal(1, count);
 
@@ -76,7 +76,7 @@ public class RestartReconcilerActivityLogTests
                 StringComparison.Ordinal);
 
             // The stale running row is gone from operational state.
-            Assert.DoesNotContain(await repository.GetByStatusAsync("running"), x => x.TaskId == taskId);
+            Assert.DoesNotContain(await repository.GetIngestTaskStatesByStatusAsync("running"), x => x.TaskId == taskId);
         }
         finally
         {
@@ -89,7 +89,7 @@ public class RestartReconcilerActivityLogTests
     /// the activity log either. The first write is the agent's.
     /// </summary>
     [Fact]
-    public async Task ReconcileRunningTasks_DoesNotCreateTheActivityLog_WhenItDoesNotExist()
+    public async Task ReconcileRunningIngestTasks_DoesNotCreateTheActivityLog_WhenItDoesNotExist()
     {
         var root = Path.Combine(Path.GetTempPath(), $"reconciler-log-{Guid.NewGuid():N}");
         var tasksDir = Path.Combine(root, "tasks");
@@ -114,10 +114,10 @@ public class RestartReconcilerActivityLogTests
 
             var repository = new OperationalStateRepository(Path.Combine(root, "operational-state.db"));
             await repository.InitializeAsync();
-            await repository.UpsertAsync(new OperationalTaskState(taskId, "running", 100, DateTimeOffset.UtcNow));
+            await repository.UpsertIngestTaskStateAsync(new IngestOperationalTaskState(taskId, "running", 100, DateTimeOffset.UtcNow));
 
             var reconciler = new RestartReconciler(repository);
-            await reconciler.ReconcileRunningTasksAsync(tasksDir);
+            await reconciler.ReconcileRunningIngestTasksAsync(tasksDir);
 
             Assert.False(File.Exists(logPath));
 

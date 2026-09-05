@@ -36,13 +36,13 @@ public sealed class IngestRunCoordinator
     private readonly OperationalStateRepository _repository;
     private readonly IAgentProcessLauncher _launcher;
     private readonly IngestLifecyclePublisher _publisher;
-    private readonly HubTaskArtifactWriter _taskArtifactWriter;
+    private readonly HubIngestTaskArtifactWriter _taskArtifactWriter;
     private readonly IngestContentPaths _contentPaths;
     private readonly ResolvedGrimoirePaths _resolvedPaths;
     private readonly TimeProvider _timeProvider;
     private readonly TimeSpan _livenessWindow;
     private readonly IReadOnlyList<TimeSpan> _reactivationDelays;
-    private readonly SourceArtifactStore? _sourceArtifactStore;
+    private readonly IngestSourceArtifactStore? _sourceArtifactStore;
     private readonly ILogger<IngestRunCoordinator> _logger;
 
     private readonly SemaphoreSlim _slotLock = new(1, 1);
@@ -81,14 +81,14 @@ public sealed class IngestRunCoordinator
         OperationalStateRepository repository,
         IAgentProcessLauncher launcher,
         IngestLifecyclePublisher publisher,
-        HubTaskArtifactWriter taskArtifactWriter,
+        HubIngestTaskArtifactWriter taskArtifactWriter,
         IngestContentPaths contentPaths,
         ResolvedGrimoirePaths resolvedPaths,
         TimeProvider? timeProvider = null,
         TimeSpan? livenessWindow = null,
         ILogger<IngestRunCoordinator>? logger = null,
         IReadOnlyList<TimeSpan>? reactivationDelays = null,
-        SourceArtifactStore? sourceArtifactStore = null)
+        IngestSourceArtifactStore? sourceArtifactStore = null)
     {
         _repository = repository;
         _launcher = launcher;
@@ -114,7 +114,7 @@ public sealed class IngestRunCoordinator
     /// </summary>
     public async Task InitializeAsync(CancellationToken cancellationToken = default)
     {
-        var queued = await _repository.GetQueuedAsync(cancellationToken);
+        var queued = await _repository.GetQueuedIngestRunsAsync(cancellationToken);
         if (queued.Count > 0)
         {
             await _repository.SetFlagAsync(QueuePausedFlag, true, cancellationToken);
@@ -150,7 +150,7 @@ public sealed class IngestRunCoordinator
         try
         {
             return _runningTaskId is null
-                && (await _repository.GetQueuedAsync(cancellationToken)).Count == 0;
+                && (await _repository.GetQueuedIngestRunsAsync(cancellationToken)).Count == 0;
         }
         finally
         {
@@ -161,7 +161,7 @@ public sealed class IngestRunCoordinator
     /// <summary>FIFO position (1-based) of a queued task, or null when not queued.</summary>
     public async Task<IReadOnlyDictionary<string, int>> GetQueuePositionsAsync(CancellationToken cancellationToken = default)
     {
-        var queued = await _repository.GetQueuedAsync(cancellationToken);
+        var queued = await _repository.GetQueuedIngestRunsAsync(cancellationToken);
         return queued.Select((run, index) => (run.TaskId, Position: index + 1))
             .ToDictionary(x => x.TaskId, x => x.Position);
     }
@@ -172,11 +172,11 @@ public sealed class IngestRunCoordinator
     /// </summary>
     public async Task EnqueueAsync(string taskId, string sourceRef, string? userPrompt, CancellationToken cancellationToken = default)
     {
-        await _repository.EnqueueAsync(
+        await _repository.EnqueueIngestRunAsync(
             new QueuedIngestRun(taskId, _timeProvider.GetUtcNow(), sourceRef, userPrompt), cancellationToken);
 
-        var queued = await _repository.GetQueuedAsync(cancellationToken);
-        HubMetrics.RecordQueueDepth(queued.Count);
+        var queued = await _repository.GetQueuedIngestRunsAsync(cancellationToken);
+        HubMetrics.RecordIngestQueueDepth(queued.Count);
         var position = queued.ToList().FindIndex(q => q.TaskId == taskId) + 1;
         IngestSubmissionLogEvents.LogQueueEnqueued(_logger, taskId, position);
 
@@ -189,7 +189,7 @@ public sealed class IngestRunCoordinator
         await _repository.SetFlagAsync(QueuePausedFlag, false, cancellationToken);
         IngestSubmissionLogEvents.LogQueueResumed(_logger, taskId: "", scope: "queue");
         await TryStartNextAsync(cancellationToken);
-        var queued = await _repository.GetQueuedAsync(cancellationToken);
+        var queued = await _repository.GetQueuedIngestRunsAsync(cancellationToken);
         return queued.Count;
     }
 
@@ -200,7 +200,7 @@ public sealed class IngestRunCoordinator
     /// </summary>
     public async Task<bool> RetriggerAsync(string taskId, CancellationToken cancellationToken = default)
     {
-        var queued = await _repository.GetQueuedAsync(cancellationToken);
+        var queued = await _repository.GetQueuedIngestRunsAsync(cancellationToken);
         if (queued.All(q => q.TaskId != taskId))
         {
             return false;
@@ -268,8 +268,8 @@ public sealed class IngestRunCoordinator
     public async Task<bool> RestartFailedAsync(
         string taskId, string normalizedSourceRef, string? userPrompt, CancellationToken cancellationToken = default)
     {
-        var claimed = await _repository.TryClaimTaskStateAsync(
-            new OperationalTaskState(taskId, "restarting", null, _timeProvider.GetUtcNow(), Attempt: 0), cancellationToken);
+        var claimed = await _repository.TryClaimIngestTaskStateAsync(
+            new IngestOperationalTaskState(taskId, "restarting", null, _timeProvider.GetUtcNow(), Attempt: 0), cancellationToken);
         if (!claimed)
         {
             return false;
@@ -293,13 +293,13 @@ public sealed class IngestRunCoordinator
     private async Task WriteRestartArtifactAsync(string taskId, string? userPrompt, CancellationToken cancellationToken)
     {
         var artifactPath = Path.Combine(_contentPaths.TasksDir, $"{taskId}.md");
-        TaskArtifactFrontmatter? existing = null;
+        IngestTaskArtifactFrontmatter? existing = null;
         if (File.Exists(artifactPath))
         {
-            existing = TaskArtifactFrontmatter.TryParse(await File.ReadAllTextAsync(artifactPath, cancellationToken));
+            existing = IngestTaskArtifactFrontmatter.TryParse(await File.ReadAllTextAsync(artifactPath, cancellationToken));
         }
 
-        var document = new HubTaskArtifactDocument(
+        var document = new HubIngestTaskArtifactDocument(
             TaskId: taskId,
             Status: "queued",
             StartedAt: existing?.StartedAt ?? _timeProvider.GetUtcNow(),
@@ -324,7 +324,7 @@ public sealed class IngestRunCoordinator
     /// the same terminal fallback the chain itself has.
     /// </summary>
     private async Task<string> ResolveTitleAsync(
-        string taskId, TaskArtifactFrontmatter? existing, CancellationToken cancellationToken)
+        string taskId, IngestTaskArtifactFrontmatter? existing, CancellationToken cancellationToken)
     {
         if (_sourceArtifactStore is null)
         {
@@ -332,7 +332,7 @@ public sealed class IngestRunCoordinator
         }
 
         var manifest = await _sourceArtifactStore.TryReadMetadataAsync(taskId, cancellationToken);
-        return KanbanBoardProjectionStore.ResolveTitle(taskId, manifest, existing?.Title);
+        return IngestKanbanBoardProjectionStore.ResolveTitle(taskId, manifest, existing?.Title);
     }
 
     /// <summary>Starts the next queued task iff the slot is free and the queue is not paused (FIFO).</summary>
@@ -355,15 +355,15 @@ public sealed class IngestRunCoordinator
                 return;
             }
 
-            var queued = await _repository.GetQueuedAsync(cancellationToken);
+            var queued = await _repository.GetQueuedIngestRunsAsync(cancellationToken);
             if (queued.Count == 0)
             {
                 return;
             }
 
             next = queued[0];
-            await _repository.RemoveQueuedAsync(next.TaskId, cancellationToken);
-            HubMetrics.RecordQueueDepth(queued.Count - 1);
+            await _repository.RemoveQueuedIngestRunAsync(next.TaskId, cancellationToken);
+            HubMetrics.RecordIngestQueueDepth(queued.Count - 1);
             _runningTaskId = next.TaskId;
         }
         finally
@@ -386,8 +386,8 @@ public sealed class IngestRunCoordinator
         IngestSubmissionLogEvents.LogRunTriggered(_logger, run.TaskId, queuedDurationMs);
 
         // A fresh run occupancy starts with no reactivation attempts spent (data-model.md §2).
-        await _repository.UpsertAsync(
-            new OperationalTaskState(run.TaskId, "running", null, _timeProvider.GetUtcNow(), Attempt: 0), cancellationToken);
+        await _repository.UpsertIngestTaskStateAsync(
+            new IngestOperationalTaskState(run.TaskId, "running", null, _timeProvider.GetUtcNow(), Attempt: 0), cancellationToken);
         await _publisher.PublishAsync(run.TaskId, "queued", "running", cancellationToken: cancellationToken);
 
         await LaunchAgentAsync(run, attempt: 0, cancellationToken);
@@ -599,7 +599,7 @@ public sealed class IngestRunCoordinator
         // otherwise be unexplained.
         supervisionSpan?.SetTag("outcome", "liveness_failed");
         HubMetrics.RecordLivenessFailure();
-        HubMetrics.RecordReactivation("exhausted");
+        HubMetrics.RecordIngestReactivation("exhausted");
         IngestSubmissionLogEvents.LogRunLivenessFailed(_logger, taskId, (long)silentSeconds, (long)_livenessWindow.TotalSeconds);
         IngestSubmissionLogEvents.LogReactivationExhausted(_logger, taskId, _reactivationDelays.Count);
 
@@ -626,8 +626,8 @@ public sealed class IngestRunCoordinator
         var delay = _reactivationDelays[attempt - 1];
 
         IngestSubmissionLogEvents.LogRunLivenessInterrupted(_logger, run.TaskId, attempt, (long)delay.TotalSeconds);
-        await _repository.UpsertAsync(
-            new OperationalTaskState(run.TaskId, "running", null, _timeProvider.GetUtcNow(), Attempt: attempt),
+        await _repository.UpsertIngestTaskStateAsync(
+            new IngestOperationalTaskState(run.TaskId, "running", null, _timeProvider.GetUtcNow(), Attempt: attempt),
             cancellationToken);
         await _publisher.PublishAsync(
             run.TaskId, "running", IngestHistoryStatuses.LivenessInterrupted,
@@ -668,7 +668,7 @@ public sealed class IngestRunCoordinator
         span?.SetTag("attempt", attempt);
         span?.SetTag("delay_seconds", (long)_reactivationDelays[attempt - 1].TotalSeconds);
 
-        HubMetrics.RecordReactivation("attempted");
+        HubMetrics.RecordIngestReactivation("attempted");
         IngestSubmissionLogEvents.LogRunReactivated(_logger, run.TaskId, attempt);
 
         // Loop activity belongs to the process that produced it; the re-launched run starts
@@ -690,7 +690,7 @@ public sealed class IngestRunCoordinator
         span?.SetTag("task_id", taskId);
         span?.SetTag("event_type", runEvent.Type);
 
-        HubMetrics.RecordRunEvent(runEvent.Type);
+        HubMetrics.RecordIngestRunEvent(runEvent.Type);
 
         if (_runningTaskId != taskId)
         {
@@ -736,7 +736,7 @@ public sealed class IngestRunCoordinator
             await WriteHubFailureArtifactAsync(taskId, failureReason ?? "Ingest run failed.", cancellationToken);
         }
 
-        await _repository.DeleteAsync(taskId, cancellationToken);
+        await _repository.DeleteIngestTaskStateAsync(taskId, cancellationToken);
         _activity.TryRemove(taskId, out _);
         await _publisher.PublishAsync(taskId, "running", status, failureReason, cancellationToken);
 
@@ -750,16 +750,16 @@ public sealed class IngestRunCoordinator
     private async Task WriteHubFailureArtifactAsync(string taskId, string failureReason, CancellationToken cancellationToken)
     {
         var artifactPath = Path.Combine(_contentPaths.TasksDir, $"{taskId}.md");
-        TaskArtifactFrontmatter? existing = null;
+        IngestTaskArtifactFrontmatter? existing = null;
         string? userPrompt = null;
         if (File.Exists(artifactPath))
         {
             var markdown = await File.ReadAllTextAsync(artifactPath, cancellationToken);
-            existing = TaskArtifactFrontmatter.TryParse(markdown);
-            userPrompt = TaskArtifactFrontmatter.TryExtractUserPrompt(markdown);
+            existing = IngestTaskArtifactFrontmatter.TryParse(markdown);
+            userPrompt = IngestTaskArtifactFrontmatter.TryExtractUserPrompt(markdown);
         }
 
-        var document = new HubTaskArtifactDocument(
+        var document = new HubIngestTaskArtifactDocument(
             TaskId: taskId,
             Status: "failed",
             StartedAt: existing?.StartedAt ?? _timeProvider.GetUtcNow(),

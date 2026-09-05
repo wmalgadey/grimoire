@@ -94,13 +94,13 @@ public class QueryTurnSubmissionApiTests
         await QueryConversationRecordLifecycleTests.WaitForStateAsync(client, firstTurnId, "completed");
         // 019-fast-test-tier (ADR-021 edge case, genuine race surfaced by suite
         // parallelization): the turn's in-memory status flips before
-        // ConversationRecordStore.AppendTurnAsync's cache update completes — the very next
+        // QueryConversationRecordStore.AppendTurnAsync's cache update completes — the very next
         // submission's Hub-assigned position reads that cache, so wait for the append to
         // actually land before submitting the follow-up (mirrors RunScriptedTurnAsync's fix).
         var recordPath = BuildResolvedPaths(root).ConversationRecordPathFor("c-position");
         await PollAsync.WaitAsync(
-            () => File.Exists(recordPath) && Grimoire.Hub.QueryConversations.ConversationRecordFormat.Parse(File.ReadAllText(recordPath))
-                is Grimoire.Hub.QueryConversations.ConversationRecordParseResult.Parsed { Turns.Count: >= 1 },
+            () => File.Exists(recordPath) && Grimoire.Hub.QueryConversations.QueryConversationRecordFormat.Parse(File.ReadAllText(recordPath))
+                is Grimoire.Hub.QueryConversations.QueryConversationRecordParseResult.Parsed { Turns.Count: >= 1 },
             TimeSpan.FromSeconds(10),
             $"Expected the Conversation Record at '{recordPath}' to contain the first turn within 10s.");
 
@@ -202,7 +202,7 @@ public class QueryTurnSubmissionApiTests
         string root,
         int concurrencyLimit = 3,
         TimeSpan? livenessWindow = null,
-        ConversationRecordStore? recordStore = null,
+        QueryConversationRecordStore? recordStore = null,
         ILogger<QueryRunCoordinator>? coordinatorLogger = null)
     {
         var resolvedPaths = BuildResolvedPaths(root);
@@ -219,15 +219,15 @@ public class QueryTurnSubmissionApiTests
                     services.AddSingleton<IAgentProcessLauncher>(launcher);
                     services.AddSingleton(resolvedPaths);
                     services.AddSingleton(new QueryConcurrencyOptions { QueryConcurrencyLimit = concurrencyLimit });
-                    services.AddSingleton<ConversationRecordStore>(sp =>
-                        recordStore ?? new ConversationRecordStore(resolvedPaths));
+                    services.AddSingleton<QueryConversationRecordStore>(sp =>
+                        recordStore ?? new QueryConversationRecordStore(resolvedPaths));
                     services.AddSingleton<QuerySubmissionValidator>();
                     services.AddSingleton<QueryLifecyclePublisher>(sp => new QueryLifecyclePublisher(
                         sp.GetRequiredService<IHubContext<QueryLifecycleHub>>(), NullLogger<QueryLifecyclePublisher>.Instance));
                     services.AddSingleton<QueryRunCoordinator>(sp => new QueryRunCoordinator(
                         sp.GetRequiredService<IAgentProcessLauncher>(),
                         sp.GetRequiredService<QueryLifecyclePublisher>(),
-                        sp.GetRequiredService<ConversationRecordStore>(),
+                        sp.GetRequiredService<QueryConversationRecordStore>(),
                         resolvedPaths,
                         sp.GetRequiredService<QueryConcurrencyOptions>(),
                         livenessWindow: livenessWindow,
