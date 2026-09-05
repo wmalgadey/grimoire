@@ -2,21 +2,15 @@ name: CI
 
 on:
   pull_request:
-  # The merge queue builds each entry as its own `gh-readonly-queue/main/...` ref and runs
-  # this workflow against it. Every check that main's ruleset marks required MUST trigger
-  # here as well — a required check that only triggers on `pull_request` is never reported
-  # for the merge group, and the queue sits on it until it times out and evicts the PR.
-  merge_group:
 
 permissions:
   contents: read
 
 concurrency:
   # A pull request that gets pushed to ten times only needs the tenth run's verdict; the
-  # nine superseded ones are pure spend. Merge-group runs are exempt from cancellation —
-  # the queue is waiting on exactly that run, and cancelling it evicts the PR.
-  group: ci-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+  # nine superseded ones are pure spend. Matches the grouping complexity.yml already uses.
+  group: ci-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
 
 env:
   DOTNET_NOLOGO: true
@@ -86,28 +80,17 @@ jobs:
       # A stale/missing recording fails here — that failure IS the FR-016 merge gate for
       # instruction-file changes (refresh via the EvalRunner capture command or eval.yml).
       #
-      # Merge-queue-only by design, and the reason is FR-016's semantics rather than
-      # runtime: fresh eval evidence is asked for *before the merge*, not before every
-      # commit, so the gate belongs where the merge actually happens. In the queue it runs
-      # once per pull request against the merge commit that is genuinely going to main,
-      # instead of once per push against a state nobody will ever ship.
-      #
-      # It is worth being precise about the cost this does and does not save, because the
-      # obvious assumption is wrong. Measured on run 33983235186 (the last green backend
-      # job before this change), the SlowEval tier — four replay scenario classes, each
-      # spawning real agent processes (ADR-021) — took 41s of a 3:30 job. `dotnet format`
-      # alone took 50s. So this saves ~41s per push and costs a full extra backend +
-      # frontend run on every queued merge: below roughly five pushes per pull request it
-      # is a net loss on CI minutes, and it pays off through the eval suite growing and
-      # through stacks, where the layer count multiplies every push.
-      #
-      # The `run-evals` label is the escape hatch: put it on a pull request that touches
-      # instruction files or eval scenarios and you get the verdict during review rather
-      # than at the merge attempt.
+      # This step runs on every push, deliberately. Gating it was tried and reverted: a
+      # merge queue is unavailable here (GitHub offers it only for organization-owned
+      # repositories, and this one belongs to a personal account), and path-based gating
+      # would have to treat all of backend/src as eval-relevant anyway — the runtime, the
+      # guardrails and the replay client all move the outcome — so it would rarely skip
+      # while permanently risking a false green on exactly the gate FR-016 asks for.
+      # Measured on run 33983235186, the whole tier costs 41s of a 3:30 job, less than
+      # `dotnet format` at 50s. That is not worth buying with a weaker gate. If the tier
+      # ever grows to dominate this job, revisit — until then, always-on is the cheap and
+      # correct answer.
       - name: Run replay agent evals (hermetic, zero skips)
-        if: >-
-          github.event_name == 'merge_group'
-          || contains(github.event.pull_request.labels.*.name, 'run-evals')
         timeout-minutes: 10
         run: |
           set -o pipefail
