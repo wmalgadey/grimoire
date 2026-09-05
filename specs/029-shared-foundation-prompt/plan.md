@@ -230,7 +230,7 @@ specs/029-shared-foundation-prompt/
 │   └── foundation-document.md
 ├── checklists/
 │   └── requirements.md
-└── tasks.md             # /speckit-tasks output — not created here
+└── tasks.md             # /speckit-tasks output — generated after ADR-053/054 acceptance
 ```
 
 ### Source Code (repository root)
