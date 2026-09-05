@@ -44,7 +44,19 @@ public sealed class IngestSubmissionService
             new IngestOperationalTaskState(taskId, "running", null, DateTimeOffset.UtcNow),
             cancellationToken);
 
-        var foundation = resolvedPaths.ResolveEffectiveFoundationPrompt(resolvedPaths.Ingest);
+        EffectiveFoundationPrompt foundation;
+        try
+        {
+            foundation = resolvedPaths.ResolveEffectiveFoundationPrompt(resolvedPaths.Ingest);
+        }
+        catch (Exception)
+        {
+            // The "running" row above must not outlive this submission attempt — nothing
+            // else transitions it to a terminal state on this synchronous CLI path.
+            await _repository.DeleteIngestTaskStateAsync(taskId, cancellationToken);
+            throw;
+        }
+
         HubMetrics.RecordFoundationResolved(foundation.Source);
         GrimoirePathLogEvents.LogFoundationResolved(_logger, "ingest", foundation.Source, foundation.Path, foundation.Sha256);
 

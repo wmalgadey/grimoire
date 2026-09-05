@@ -192,7 +192,18 @@ public sealed class RemediationRunCoordinator
             attachedContext = RemediationTaskRecordContext.BuildAttachedContext(parsed.Entries);
         }
 
-        var foundation = _paths.ResolveEffectiveFoundationPrompt(_paths.Lint);
+        EffectiveFoundationPrompt foundation;
+        try
+        {
+            foundation = _paths.ResolveEffectiveFoundationPrompt(_paths.Lint);
+        }
+        catch (Exception ex)
+        {
+            await FinishRunAsync(row.TaskId, row.RunId, RemediationTaskStates.Failed,
+                $"Foundation document could not be resolved: {ex.Message}", CancellationToken.None);
+            return;
+        }
+
         HubMetrics.RecordFoundationResolved(foundation.Source);
         GrimoirePathLogEvents.LogFoundationResolved(_logger, "lint", foundation.Source, foundation.Path, foundation.Sha256);
 

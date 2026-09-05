@@ -148,7 +148,18 @@ public sealed class QueryRunCoordinator
 
         QueryLifecycleLogEvents.LogTurnCreated(_logger, conversationId, turnId);
 
-        var foundation = _paths.ResolveEffectiveFoundationPrompt(_paths.Query);
+        EffectiveFoundationPrompt foundation;
+        try
+        {
+            foundation = _paths.ResolveEffectiveFoundationPrompt(_paths.Query);
+        }
+        catch (Exception ex)
+        {
+            await FinishTurnAsync(turnId, QueryTurnStatus.Failed,
+                $"Foundation document could not be resolved: {ex.Message}", metadata: null, CancellationToken.None);
+            return new QuerySubmissionResult.Accepted(turn);
+        }
+
         HubMetrics.RecordFoundationResolved(foundation.Source);
         GrimoirePathLogEvents.LogFoundationResolved(_logger, "query", foundation.Source, foundation.Path, foundation.Sha256);
 

@@ -101,7 +101,18 @@ public sealed class RemediationMessageTurnCoordinator
 
         await _publisher.PublishMessageTurnChangedAsync(row.TaskId, turnId, "running", cancellationToken: cancellationToken);
 
-        var foundation = _paths.ResolveEffectiveFoundationPrompt(_paths.Lint);
+        EffectiveFoundationPrompt foundation;
+        try
+        {
+            foundation = _paths.ResolveEffectiveFoundationPrompt(_paths.Lint);
+        }
+        catch (Exception ex)
+        {
+            await FinishTurnAsync(row.TaskId, turnId, answered: false,
+                failureReason: $"Foundation document could not be resolved: {ex.Message}", replyText: null, CancellationToken.None);
+            return new RemediationMessageTurnSubmissionResult.Accepted(turnId, acceptedAt);
+        }
+
         HubMetrics.RecordFoundationResolved(foundation.Source);
         GrimoirePathLogEvents.LogFoundationResolved(_logger, "lint", foundation.Source, foundation.Path, foundation.Sha256);
 

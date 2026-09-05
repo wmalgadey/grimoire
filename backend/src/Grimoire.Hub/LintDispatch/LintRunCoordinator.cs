@@ -190,7 +190,21 @@ public sealed class LintRunCoordinator
                     runId, fromStatus: null, toStatus: "running", failureReason: null, cancellationToken);
             }
 
-            var foundation = _paths.ResolveEffectiveFoundationPrompt(_paths.Lint);
+            EffectiveFoundationPrompt foundation;
+            try
+            {
+                foundation = _paths.ResolveEffectiveFoundationPrompt(_paths.Lint);
+            }
+            catch (Exception ex)
+            {
+                dispatchStarted = true;
+                await FinishRunAsync(runId, LintRunStatus.Failed,
+                    $"Foundation document could not be resolved: {ex.Message}", narrative: null, systemPromptSha256: null,
+                    foundationPromptSha256: null,
+                    deniedActions: [], touchedPaths: [], CancellationToken.None);
+                return new LintSubmissionResult.Accepted(run);
+            }
+
             HubMetrics.RecordFoundationResolved(foundation.Source);
             GrimoirePathLogEvents.LogFoundationResolved(_logger, "lint", foundation.Source, foundation.Path, foundation.Sha256);
 
