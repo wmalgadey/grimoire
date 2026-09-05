@@ -4,30 +4,39 @@ using Mono.Cecil.Cil;
 namespace Grimoire.ArchTests;
 
 /// <summary>
-/// Structural boundary rule R3 for ADR-022: no production type outside
-/// <c>Grimoire.Hub.Runtime.Paths</c> may reference an agent-instruction filename literal
-/// (<c>system-prompt.md</c>, <c>default-user-prompt.md</c>, <c>policy.json</c>) as a
-/// write target. The hub composes instruction *paths*; it must never author instruction
-/// *content* (Constitution Principle V).
+/// Structural boundary rule R3 for ADR-022, extended by ADR-053: no production type
+/// outside the allow-listed namespaces may reference an agent-instruction filename
+/// literal (<c>system-prompt.md</c>, <c>default-user-prompt.md</c>, <c>policy.json</c>,
+/// <c>foundation-prompt.md</c>) as a write target. Nothing may *author* instruction
+/// content; the two allow-listed namespaces only ever compose paths
+/// (<c>Grimoire.Hub.Runtime.Paths</c>) or persist bytes received whole from outside the
+/// system (<c>Grimoire.Hub.WikiIdentity</c>, the wiki-identity wizard's custodian —
+/// ADR-053's Boundary Rule bullet). Neither namespace authors content
+/// (Constitution Principle V).
 ///
 /// Precise write-target dataflow analysis is out of scope for an IL tripwire; instead
-/// this rule flags any method body — outside the allowed namespace — that contains BOTH
+/// this rule flags any method body — outside the allowed namespaces — that contains BOTH
 /// one of the forbidden literals AND a call to a known file-write API. That is a
 /// deliberately coarse heuristic (a method could reference the literal for an unrelated,
 /// read-only reason while also happening to write some other file), but it is exactly
 /// the shape a Principle V violation would take, and the allowed-namespace exemption
-/// keeps the legitimate path-composition code — which only ever *reads* these documents
-/// — out of scope entirely.
+/// keeps the legitimate path-composition and custodian code — which never authors
+/// content — out of scope entirely.
 /// </summary>
 public class InstructionAuthorshipBoundaryRuleTests
 {
-    private const string AllowedNamespacePrefix = "Grimoire.Hub.Runtime.Paths";
+    private static readonly string[] _allowedNamespacePrefixes =
+    [
+        "Grimoire.Hub.Runtime.Paths",
+        "Grimoire.Hub.WikiIdentity",
+    ];
 
     private static readonly string[] _instructionFilenameLiterals =
     [
         "system-prompt.md",
         "default-user-prompt.md",
         "policy.json",
+        "foundation-prompt.md",
     ];
 
     private static readonly string[] _writeApiPrefixes =
@@ -52,7 +61,7 @@ public class InstructionAuthorshipBoundaryRuleTests
             {
                 foreach (var (type, effectiveNamespace) in module.Types.SelectMany(t => FlattenTypesWithNamespace(t, t.Namespace)))
                 {
-                    if (effectiveNamespace.StartsWith(AllowedNamespacePrefix, StringComparison.Ordinal))
+                    if (_allowedNamespacePrefixes.Any(p => effectiveNamespace.StartsWith(p, StringComparison.Ordinal)))
                         continue;
 
                     foreach (var method in type.Methods)
@@ -94,9 +103,11 @@ public class InstructionAuthorshipBoundaryRuleTests
 
         Assert.True(
             violations.Count == 0,
-            "ADR-022 rule R3: no production type outside Grimoire.Hub.Runtime.Paths may " +
-            "write an instruction filename (Constitution Principle V — the hub composes " +
-            "instruction paths, never instruction content). Violations:\n" + string.Join("\n", violations));
+            "ADR-022 rule R3 (extended by ADR-053): no production type outside " +
+            "Grimoire.Hub.Runtime.Paths or Grimoire.Hub.WikiIdentity may write an " +
+            "instruction filename (Constitution Principle V — the hub composes " +
+            "instruction paths and persists custodied bytes, never authors instruction " +
+            "content). Violations:\n" + string.Join("\n", violations));
     }
 
     private static IEnumerable<string> ProductionAssemblyPaths() =>
