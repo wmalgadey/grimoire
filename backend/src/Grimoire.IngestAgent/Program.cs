@@ -348,6 +348,7 @@ internal sealed class IngestIntentHandler : IAgentIntentHandler
         var rollbackOutcome = await RollbackAsync();
         await FinalizeFailedAsync(
             safeMessage, _journal, rolledBack: rollbackOutcome,
+            foundationPrompt: _instructions?.FoundationPrompt, systemPrompt: _instructions?.SystemPrompt,
             modelId: _modelClient?.ModelId, deniedActions: _executor?.Denials);
         return safeMessage;
     }
