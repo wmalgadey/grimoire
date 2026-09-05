@@ -105,14 +105,6 @@ Chosen option: **Option 1.**
 
 ## More Information
 
-Two things this ADR deliberately does not decide, so a reader knows where its authority ends. Where the
-instance document physically sits, and how the effective one is resolved, is feature behaviour and is
-fixed by whichever feature introduces it — this ADR constrains only that there is exactly one such
-document and one such place. And the mechanics of the structural test — its literal set and its
-allow-list — live with the instruction surface in
-[ADR-053](ADR-053-agent-system-prompt-composition.md); this ADR decides *that* an allow-list entry
-exists and on what terms.
-
 [ADR-006](ADR-006-agent-tool-loop-guarded-boundary.md) is the precedent this decision rests on: it is
 where authorship and custody were first separated, one layer down, for wiki content.
 [ADR-043](ADR-043-build-distributed-agent-artifacts.md) is the decision this one has to be read

@@ -120,9 +120,3 @@ whole-ADR supersession rule: ADR-007's system-prompt aspect is re-decided here, 
 prompt and message-scaffold aspect is re-decided, unchanged in substance, in
 [ADR-054](ADR-054-default-user-prompt-and-message-scaffold.md). Nothing is inherited from ADR-007 by
 reference.
-
-Where the *effective* foundation document comes from — which copy of it a given run resolves — is
-feature behaviour, not an architectural decision, and is fixed by whichever feature introduces it. This
-ADR fixes only which documents constitute a system prompt and how they are composed. Who may *write*
-such a document is a boundary decision and is in
-[ADR-056](ADR-056-instance-instruction-custody.md).
