@@ -35,6 +35,20 @@ public class LintReplayEvalTests
     public Task SC011_AtScaleSurvey_ReplaysAtThreshold()
         => AssertScenarioAsync(LintScenarioDefinitions.AtScaleSurvey);
 
+    /// <summary>
+    /// 028-lint-at-scale T003 (FR-007, FR-008, SC-003, SC-006): the same fixture and scorer
+    /// as <see cref="SC011_AtScaleSurvey_ReplaysAtThreshold"/> with the context budget
+    /// halved (10k vs. 20k). Scored on both halves of the property — the survey must still
+    /// find the seeded defects <em>and</em> stay under the tighter budget — so it fails
+    /// both if narrowing degrades into missing defects and if the defects are only found by
+    /// reading everything. spec.md classifies SC-003 and SC-006 as deterministic criteria
+    /// rather than agent-judgment thresholds, so this replay is their actual verification,
+    /// not a correction-loop-exempt nicety.
+    /// </summary>
+    [Fact]
+    public Task SC003_AtScaleSurveyTightBudget_ReplaysAtThreshold()
+        => AssertScenarioAsync(LintScenarioDefinitions.AtScaleSurveyTightBudget);
+
     private static async Task AssertScenarioAsync(LintScenarioDefinition scenario)
     {
         var paths = EvalPaths.Discover();

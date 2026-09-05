@@ -106,14 +106,13 @@ public static class LintScenarioDefinitions
 
     /// <summary>
     /// The scenarios run by <c>capture</c>/<c>replay</c> when no <c>--scenario</c> filter is
-    /// given. Excludes <see cref="AtScaleSurveyTightBudget"/>, which has no committed
-    /// recording yet (028-lint-at-scale T003 — blocked on eval-capture credentials no
-    /// session implementing this feature has had): including it here would make the
-    /// default command fail by default for every user until a capture is run. Run it
-    /// explicitly with <c>--scenario lint-at-scale-survey-tight-budget</c> (e.g. for its
-    /// first capture); once a recording exists it can move into this set.
+    /// given. <see cref="AtScaleSurveyTightBudget"/> was excluded while it had no committed
+    /// recording (028-lint-at-scale T003 — including it would have made the default command
+    /// fail by default for every user until a first capture was run). Its recording was
+    /// captured on 2026-09-05, which is the condition that exclusion named for rejoining the
+    /// set, so it now runs by default like every other scenario.
     /// </summary>
-    public static readonly IReadOnlyList<LintScenarioDefinition> DefaultSet = [AtScaleSurvey];
+    public static readonly IReadOnlyList<LintScenarioDefinition> DefaultSet = [AtScaleSurvey, AtScaleSurveyTightBudget];
 
     public static LintScenarioDefinition? Find(string scenarioId)
         => All.FirstOrDefault(s => string.Equals(s.Id, scenarioId, StringComparison.OrdinalIgnoreCase));
