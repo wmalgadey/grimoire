@@ -156,7 +156,11 @@
 		client.onAnswerChunk((event) => {
 			const lastSequence = lastAppliedSequenceByTurnId.get(event.turnId) ?? 0;
 			conversations.updateTurn(event.turnId, (turn) => {
-				const { answer, lastAppliedSequence } = applyQueryAnswerChunk(turn.answer, event, lastSequence);
+				const { answer, lastAppliedSequence } = applyQueryAnswerChunk(
+					turn.answer,
+					event,
+					lastSequence
+				);
 				lastAppliedSequenceByTurnId.set(event.turnId, lastAppliedSequence);
 				return { ...turn, answer };
 			});
