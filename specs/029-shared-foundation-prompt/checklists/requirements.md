@@ -46,6 +46,10 @@
 - Re-validated 2026-09-05 after the clarification session (two questions answered): FR-009 now names
   the extraction boundary concretely, FR-013a fixes who authors specialised content, and Assumptions
   records the unavoidable eval-recording staleness. All items above still pass; none regressed.
+- Re-validated again 2026-09-05 after the third clarification: US1-AS1, FR-006, SC-001 and SC-003 were
+  restated as outcomes, so "No implementation details" and "Success criteria are technology-agnostic"
+  hold more strictly than before — the per-run record's shape (two task-artifact entries, each with a
+  SHA-256) now lives only in `plan.md`/ADR-053. All items still pass; none regressed.
 
 - The one deliberate open decision — where the shared document physically lives and how an
   instance-specific one reaches a containerized deployment — is *not* marked
