@@ -115,5 +115,4 @@ as data rather than instruction.
 
 Supersedes [ADR-007](ADR-007-agent-instruction-surface.md) whole, jointly with
 [ADR-053](ADR-053-agent-system-prompt-composition.md), which re-decides ADR-007's system-prompt aspect
-and explains why the supersession was required. That supersession is the reason this ADR exists as a
-separate file; it is not the decision this ADR records.
+and explains why the supersession was required.
