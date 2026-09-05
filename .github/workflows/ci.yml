@@ -2,9 +2,21 @@ name: CI
 
 on:
   pull_request:
+  # The merge queue builds each entry as its own `gh-readonly-queue/main/...` ref and runs
+  # this workflow against it. Every check that main's ruleset marks required MUST trigger
+  # here as well — a required check that only triggers on `pull_request` is never reported
+  # for the merge group, and the queue sits on it until it times out and evicts the PR.
+  merge_group:
 
 permissions:
   contents: read
+
+concurrency:
+  # A pull request that gets pushed to ten times only needs the tenth run's verdict; the
+  # nine superseded ones are pure spend. Merge-group runs are exempt from cancellation —
+  # the queue is waiting on exactly that run, and cancelling it evicts the PR.
+  group: ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 env:
   DOTNET_NOLOGO: true
@@ -73,7 +85,21 @@ jobs:
       # provider config/secrets). SC-008: zero skipped eval tests.
       # A stale/missing recording fails here — that failure IS the FR-016 merge gate for
       # instruction-file changes (refresh via the EvalRunner capture command or eval.yml).
+      #
+      # Merge-queue-only by design. These are the SlowEval tier (ADR-021): four replay
+      # scenario classes that each spawn real agent processes, and they dominate this job's
+      # runtime. FR-016 asks for fresh eval evidence *before the merge*, not before every
+      # commit — so the gate belongs where the merge actually happens. In the queue it runs
+      # once per pull request, against the merge commit that is genuinely going to main,
+      # instead of once per push against a state nobody will ever ship.
+      #
+      # The `run-evals` label is the escape hatch: put it on a pull request that touches
+      # instruction files or eval scenarios and you get the verdict during review rather
+      # than at the merge attempt.
       - name: Run replay agent evals (hermetic, zero skips)
+        if: >-
+          github.event_name == 'merge_group'
+          || contains(github.event.pull_request.labels.*.name, 'run-evals')
         timeout-minutes: 10
         run: |
           set -o pipefail
