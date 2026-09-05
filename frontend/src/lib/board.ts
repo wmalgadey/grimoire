@@ -255,12 +255,28 @@ export function applyFilters(
 	});
 }
 
+/**
+ * Sorts newest first. An unparseable `updatedAt` sorts as oldest — the opposite call from
+ * `applyFilters`' "keep rather than drop" rule, but this one needs a total order rather than a
+ * keep/drop decision, and burying the odd timestamp at the bottom is safer than letting `NaN`
+ * comparisons leave the sort order undefined.
+ */
+function byUpdatedAtDescending(a: BoardItem, b: BoardItem): number {
+	const aTime = Date.parse(a.updatedAt);
+	const bTime = Date.parse(b.updatedAt);
+	if (Number.isNaN(aTime) && Number.isNaN(bTime)) return 0;
+	if (Number.isNaN(aTime)) return 1;
+	if (Number.isNaN(bTime)) return -1;
+	return bTime - aTime;
+}
+
 export function groupByLane(items: BoardItem[]): Record<LifecycleStage, BoardItem[]> {
 	const grouped = Object.fromEntries(LANES.map((lane) => [lane, [] as BoardItem[]])) as Record<
 		LifecycleStage,
 		BoardItem[]
 	>;
 	for (const item of items) grouped[item.lane].push(item);
+	for (const lane of LANES) grouped[lane].sort(byUpdatedAtDescending);
 	return grouped;
 }
 
