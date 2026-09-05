@@ -106,13 +106,19 @@ public static class LintScenarioDefinitions
 
     /// <summary>
     /// The scenarios run by <c>capture</c>/<c>replay</c> when no <c>--scenario</c> filter is
-    /// given. <see cref="AtScaleSurveyTightBudget"/> was excluded while it had no committed
-    /// recording (028-lint-at-scale T003 — including it would have made the default command
-    /// fail by default for every user until a first capture was run). Its recording was
-    /// captured on 2026-09-05, which is the condition that exclusion named for rejoining the
-    /// set, so it now runs by default like every other scenario.
+    /// given. Excludes <see cref="AtScaleSurveyTightBudget"/>, and the reason changed on
+    /// 2026-09-05: it was originally excluded for having no committed recording, which its
+    /// first capture resolved — but <c>replay</c> gates on <c>IsTrustedPass</c>, which folds
+    /// in <c>ThresholdMet</c>, and per spec.md's 2026-09-05 clarification this scenario is
+    /// deliberately not threshold-gated. It is the second point on SC-003's budget relation,
+    /// whose comparison is evaluated by observation rather than asserted as a success rate.
+    /// Including it here would reimpose exactly the gate that clarification removed. Its
+    /// recording is still kept fresh and CI-enforced — by
+    /// <c>LintReplayEvalTests.SC003_AtScaleSurveyTightBudget_HasTrustedRecordedEvidence</c>,
+    /// which asserts trust without asserting a threshold. Refresh it explicitly with
+    /// <c>--scenario lint-at-scale-survey-tight-budget</c>.
     /// </summary>
-    public static readonly IReadOnlyList<LintScenarioDefinition> DefaultSet = [AtScaleSurvey, AtScaleSurveyTightBudget];
+    public static readonly IReadOnlyList<LintScenarioDefinition> DefaultSet = [AtScaleSurvey];
 
     public static LintScenarioDefinition? Find(string scenarioId)
         => All.FirstOrDefault(s => string.Equals(s.Id, scenarioId, StringComparison.OrdinalIgnoreCase));
