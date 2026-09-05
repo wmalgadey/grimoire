@@ -88,3 +88,16 @@
   against the updated spec; still passing — the reclassification is expressed narratively
   with a concrete observable signal (FR-016), not a vague adjective, and needs no numeric
   threshold per the lower-stakes tier.
+- **2026-09-05, fourth `/speckit-clarify` pass.** The first capture of
+  `lint-at-scale-survey-tight-budget` produced evidence SC-003's wording could not absorb:
+  the agent finds every seeded defect in 10 of 10 samples while staying under the halved
+  budget in 7 of 10. SC-003 was clarified to separate what is deterministically gated (each
+  point on the relation has recorded evidence that exists and stays trusted) from what is
+  evaluated by observation (the relation *across* points), and its blanket "deterministic
+  harness guarantee" label — which attached a fixed-rate guarantee to an LLM narrowing
+  decision, a spec defect under Constitution v1.12.0 Principle II — was narrowed
+  accordingly. The 2026-08-25 answer that assigned that label is annotated as partially
+  superseded rather than rewritten. All checklist items re-verified: still 16/16 passing.
+  "Success criteria are measurable" and "Requirements are testable and unambiguous" are
+  strengthened by this pass, not weakened — SC-003 now names its verification method per
+  clause instead of asserting one label over a criterion that needed two.

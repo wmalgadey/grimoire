@@ -30,7 +30,11 @@
   optional rather than mandatory for the Definition of Done. SC-001/SC-002/SC-003/SC-006
   remain deterministic harness guarantees, unaffected by this tiering, and SC-003 in
   particular is validated via the same small-fixture relation as the first answer, not a
-  literal-scale corpus, per that same eval-cost concern.
+  literal-scale corpus, per that same eval-cost concern. *(Partially superseded by the
+  2026-09-05 answer below: SC-003's blanket "deterministic harness guarantee" classification
+  did not survive contact with the tighter point's first capture. Its per-point evidence
+  requirement is still deterministically gated; the relation across points is not — see
+  SC-003's own revised note. SC-001/SC-002/SC-006 are unaffected.)*
 - Q: Should issue #201 (log.md's O(file-size) write cost) be a separate feature, or merged
   into this one? → A: merged, at the user's explicit direction, overriding the initial
   recommendation to keep them separate. Rationale recorded for traceability: Lint's own
@@ -84,6 +88,22 @@
   content), and emit both a structured log event and a counter metric identifying which
   check(s), if any, the write deviated from — giving the user-reported correction loop
   (Constitution Principle II) a concrete signal to act on.
+
+### Session 2026-09-05
+
+- Q: How should SC-003's second point on the budget relation be verified — by an
+  independent pass/fail threshold on the tighter scenario, or by comparing the two
+  scenarios' recorded evidence? → A: by comparing the recorded evidence (observational,
+  the same treatment SC-006 already receives). SC-003 asks for a *relation* that holds
+  across more than one point, never for the tighter point to independently clear a fixed
+  success rate; the tighter scenario keeps a captured recording so the comparison can be
+  made, but is not CI-gated at a threshold. What CI does enforce deterministically is that
+  each point's recorded evidence exists and stays trusted. Rationale: whether the agent
+  stays under a given reading budget is an LLM narrowing decision, so gating a second point
+  at a fixed success rate would attach a deterministic guarantee to an agent-judgment
+  outcome — which Constitution v1.12.0 Principle II names a spec defect. Surfaced by the
+  first capture of `lint-at-scale-survey-tight-budget` (2026-09-05): it finds every seeded
+  defect in 10 of 10 samples while staying under the halved budget in 7 of 10.
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -362,7 +382,15 @@ criterion, per Constitution v1.12.0's lower-stakes tiering (see SC-004/SC-005).
   production scale — and holds at more than one point on that relation (e.g., a fixture
   whose budget is set to a smaller fraction of what a full read would need than the
   baseline case), with reading volume not growing super-linearly as that fraction shrinks.
-  *(Deterministic harness guarantee, scale envelope. This is deliberately a cheap,
+  *(Scale envelope. Two different things are verified two different ways, per the
+  2026-09-05 clarification. **Deterministically gated**: each point on the relation has
+  recorded evidence that exists and stays trusted. **Evaluated by observation, not gated**:
+  the relation across those points — reading volume against shrinking budget fraction —
+  compared from the points' recorded evidence, exactly the treatment SC-006 already
+  receives. The tighter point is deliberately NOT asserted against an independent pass/fail
+  success rate: whether the agent stays under a given reading budget is an LLM narrowing
+  decision, and attaching a fixed-rate guarantee to an agent-judgment outcome is what
+  Constitution v1.12.0 Principle II calls a spec defect. This is deliberately a cheap,
   repeatable relation check, not a large generated corpus — see Assumptions.)*
 - **SC-004**: Lint's Findings Report continues to surface cross-page findings (contradictions,
   duplicate content between two pages) once reading is narrowed by Direction A, at least as
