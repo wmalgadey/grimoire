@@ -99,6 +99,19 @@ Add a command to `deploy/server/grimoire-server` that walks an operator through 
   (#217's own example: for a travel wiki, Query should combine wiki history with external research) —
   that is #224, and it needs its own ADR decision, because composing a third document into the system
   prompt is listed in ADR-053's Change Triggers as an invalidation requiring full supersession.
+- Q: Should the wizard prompt for a missing answer when a terminal is attached, and detect the
+  non-interactive case separately? → A: no — drop prompting entirely, as recommended after checking the
+  code: **no Hub CLI command prompts today**. There is no `AnsiConsole.Prompt`, `TextPrompt` or
+  `ConfirmationPrompt` anywhere in the backend; every command takes its input as arguments and options,
+  and the only stdin use is piping pasted text into `submit-source`. Building a prompting path plus TTY
+  detection would add machinery this CLI deliberately never had, for callers — the deployment script, a
+  container exec, later a user-facing surface — that never prompt anyway. One path instead: every answer
+  is supplied with the invocation, and a missing one fails naming what to pass. Consequence: **US3 is
+  deleted** (its premise, "works where nobody can answer a prompt", no longer describes anything
+  special), its residual guarantee becomes a US2 acceptance scenario, the former US4 becomes US3, and
+  FR-015/FR-016 and SC-006 are restated without the terminal distinction. This reverses the earlier
+  answer in this session that kept US3 as its own story — that choice was made while the dual-mode
+  design still stood.
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -167,37 +180,12 @@ reflecting that description.
 5. **Given** the operator drives the deployment through the deployment script rather than the system's
    own interface, **When** they ask it to set the wiki identity, **Then** the script starts the
    system's wizard rather than implementing one of its own.
+6. **Given** an invocation that omits an answer the wizard needs, **When** it runs, **Then** it fails
+   immediately with a message naming what to supply, and changes nothing — it never waits for input.
 
 ---
 
-### User Story 3 - The wizard works where nobody can answer a prompt (Priority: P2)
-
-The wizard is routinely started from contexts with no terminal attached — a deployment script, an
-automated session, a container exec. It must therefore be fully usable without one: every answer it
-would otherwise prompt for can be supplied up front, and when it is asked to prompt with no terminal
-attached it says so and exits instead of hanging.
-
-**Why this priority**: Without it the wizard is unusable in the way it will almost always be invoked.
-It is a distinct, independently testable behavior of the same command as US2.
-
-**Independent Test**: Run the wizard with no terminal attached, once with every answer supplied up
-front (succeeds) and once with an answer missing (fails immediately with a message naming the missing
-answer, rather than blocking).
-
-**Acceptance Scenarios**:
-
-1. **Given** no terminal on stdin, **When** the wizard is invoked with all answers supplied up front,
-   **Then** it completes without prompting and produces the same outcome as the interactive run with the
-   same answers.
-2. **Given** no terminal on stdin, **When** the wizard is invoked without an answer it needs, **Then** it
-   exits with a failure within seconds, naming what to supply, and changes nothing.
-3. **Given** an existing foundation document and a non-interactive invocation that does not carry an
-   explicit decision to replace it, **When** the wizard runs, **Then** it exits non-zero without touching
-   the existing document.
-
----
-
-### User Story 4 - "What is running here?" includes which wiki it maintains (Priority: P3)
+### User Story 3 - "What is running here?" includes which wiki it maintains (Priority: P3)
 
 Two deployments of the same commit can maintain entirely different wikis. The system therefore reports
 which wiki identity is currently steering it — the shipped default, or an instance-specific document —
@@ -307,10 +295,11 @@ status output carries the same answer.
 - **FR-014**: The wizard MUST be safe to re-run: when a foundation document is already in place — set by
   an earlier run or hand-edited afterwards — it MUST report what is there and MUST NOT replace it
   without an explicit operator decision to do so.
-- **FR-015**: The wizard MUST have a non-interactive form in which every answer is supplied up front,
-  producing the same outcome as the interactive run with the same answers.
-- **FR-016**: When the wizard would need to prompt and no terminal is attached, it MUST fail promptly
-  with a message naming the answer to supply, and MUST NOT hang and MUST NOT change anything.
+- **FR-015**: Every answer the wizard needs MUST be supplied up front with the invocation. The wizard
+  MUST NOT prompt for input under any circumstance, so it behaves identically whether or not a terminal
+  is attached and needs no way to tell the difference.
+- **FR-016**: An invocation missing an answer MUST fail promptly with a message naming what to supply,
+  MUST NOT wait for input, and MUST NOT change anything.
 - **FR-017**: An instance-specific foundation document MUST survive redeployment, rollback and restart
   of the deployment it belongs to.
 - **FR-018**: The system MUST report which wiki identity is currently steering it — the shipped
@@ -363,9 +352,9 @@ status output carries the same answer.
 - **SC-005** *(deterministic harness guarantee)*: 100% of wizard re-runs against an instance that
   already has a foundation document either leave that document untouched or replace it only under an
   explicit operator decision — never silently.
-- **SC-006** *(deterministic harness guarantee)*: 100% of wizard invocations with no terminal attached
-  either complete from answers supplied up front or fail with a message naming the missing answer;
-  none block waiting for input.
+- **SC-006** *(deterministic harness guarantee)*: 100% of wizard invocations either complete from the
+  answers supplied with them or fail with a message naming the missing answer; none wait for input,
+  with or without a terminal attached.
 - **SC-007** *(deterministic harness guarantee)*: after a redeployment, rollback or restart, 100% of an
   instance's runs still load the instance-specific foundation document that was in place before.
 - **SC-008** *(lower-stakes agent judgment, narrative)*: with the shipped default foundation document in

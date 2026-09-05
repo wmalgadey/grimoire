@@ -30,15 +30,19 @@ not have to survive a shell quoting round-trip.
 |---|---|---|
 | 0 | `Success` | The requested action completed (including "default kept" and "brief emitted") |
 | 1 | `OperationFailed` | The document could not be written, or an unexpected error occurred |
-| 2 | `UsageError` | An answer the command needs was not supplied and no terminal is attached to prompt for it; or a malformed invocation |
+| 2 | `UsageError` | An answer the command needs was not supplied, or the invocation is malformed |
 | 3 | `NotFound` | `--from-file` names a path that does not exist |
 | 4 | `StateConflict` | An instance document already exists and `--replace` was not given |
 
-## Terminal handling
+## No prompting, ever
 
-- **Terminal attached**: a missing answer is prompted for.
-- **No terminal**: a missing answer is a `UsageError` naming the option to supply. The command never
-  blocks on input it cannot receive, and it changes nothing on that path.
+The command never asks for input. Every answer is supplied with the invocation; a missing one is a
+`UsageError` naming the option to supply, and nothing is changed on that path. Behaviour is identical
+with and without a terminal attached, so the command needs no way to tell the difference.
+
+This matches every other Hub command: none of them prompt, and the only stdin use anywhere in the CLI
+is piping pasted text into `submit-source`. It is also what the callers need — the deployment script,
+a container exec, and later a user-facing surface all drive this without a terminal.
 
 ## Guarantees
 

@@ -46,12 +46,12 @@ beyond the existing port fakes.
 **Performance Goals**: no measurable change. Composition adds one file read and one string join per
 run, on a path that already reads two-to-three instruction files.
 
-**Constraints**: the wizard must never block on a terminal (US3); the instance document must survive
+**Constraints**: the wizard never prompts, so it cannot block on input (FR-015); the instance document must survive
 redeploy/rollback/restart (FR-017); nothing in production code may author instruction content
 (Principle V).
 
 **Scale/Scope**: three agent types, one shared document, one wizard command with three answers, one
-status line.
+status line. No prompting path anywhere: every answer arrives with the invocation.
 
 ## Constitution Check
 
@@ -156,7 +156,7 @@ has crossed the line and belongs in an instruction file instead.
 | **SC-003** the agent operates under both documents byte-for-byte, in the documented order | Deterministic guarantee | Integration test asserting the composed instruction text | existing `FakeModelClient`-style port fake capturing the system prompt it received | two documents with distinctive marker lines | State-based: the captured text equals `foundation + "\n\n" + role`, byte-for-byte |
 | **SC-004** choosing the default leaves the instance indistinguishable | Deterministic guarantee | Hub CLI integration test | none — real data dir in a temp dir | fresh instance | Asserts no file was created under the data root and resolution still reports the default |
 | **SC-005** a re-run never silently replaces an existing document | Deterministic guarantee | Hub CLI integration test, two variants (no explicit decision → refused; explicit decision → replaced) | none | instance document already present, plus a hand-edited variant | Asserts exit code, message, and that the bytes on disk are unchanged in the refusal case |
-| **SC-006** with no terminal, the wizard completes or fails — never blocks | Deterministic guarantee | Hub CLI integration test with no terminal attached | none | — | Asserts a bounded, non-blocking failure naming the missing answer |
+| **SC-006** a missing answer fails naming it; nothing ever waits for input | Deterministic guarantee | Hub CLI integration test, run both with and without a terminal | none | — | Asserts the same bounded failure either way — the command has no prompting path to take |
 | **SC-007** the instance document survives redeploy/rollback/restart | Deterministic guarantee | Integration test over the resolution path + a deployment-script test | none | data root persisted across two Hub startups | The container-level guarantee follows from the data root being volume-backed; the test proves resolution is stable across restarts of the resolving process |
 | **SC-008** default content ⇒ behaviour indistinguishable from today | Lower-stakes agent judgment | Hermetic test of the plumbing (the composed text contains exactly the same statements as today's three prompts, reorganised) + user-reported correction loop | none | the extraction diff itself | **No eval suite required** (Principle II). The operator observes behaviour via the Hub's signals and the wiki, reports, instruction files are adjusted |
 | **SC-009** instance document ⇒ agents' work reflects that wiki's purpose | Lower-stakes agent judgment | Hermetic test that the instance document is what reaches the agent + user-reported correction loop | none | an instance document with a distinctive convention | **No eval suite required**; "reflects" is operator judgment on the resulting wiki |
