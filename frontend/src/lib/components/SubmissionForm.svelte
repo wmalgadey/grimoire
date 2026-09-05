@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { submitFile, submitUrl, getSubmissionDefaults } from '$lib/services/ingestSubmissionsApi';
+	import { submitIngestFile, submitIngestUrl, getIngestSubmissionDefaults } from '$lib/services/ingestSubmissionsApi';
 	import { toPresentedError, type PresentedError } from '$lib/services/apiError';
 	import ApiErrorAlert from './ApiErrorAlert.svelte';
 	import type {
@@ -54,7 +54,7 @@
 
 	onMount(async () => {
 		try {
-			const defaults = await getSubmissionDefaults();
+			const defaults = await getIngestSubmissionDefaults();
 			defaultUserPrompt = defaults.defaultUserPrompt;
 			userPromptMaxLength = defaults.userPromptMaxLength;
 			convertStepDefs = defaults.convertSteps;
@@ -129,11 +129,11 @@
 			accepted =
 				mode === 'url'
 					? options
-						? await submitUrl(url.trim(), options)
-						: await submitUrl(url.trim())
+						? await submitIngestUrl(url.trim(), options)
+						: await submitIngestUrl(url.trim())
 					: options
-						? await submitFile(fileKind, file!, options)
-						: await submitFile(fileKind, file!);
+						? await submitIngestFile(fileKind, file!, options)
+						: await submitIngestFile(fileKind, file!);
 			url = '';
 			file = null;
 			onAccepted?.(accepted);

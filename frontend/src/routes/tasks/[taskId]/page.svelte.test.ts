@@ -10,7 +10,7 @@ import type {
 } from '$lib/types';
 
 // T029 (US2): the detail route reads taskId from route params, fetches via
-// getTaskRecord, and renders TaskRecordView — including the placeholder path for an
+// getIngestTaskRecord, and renders TaskRecordView — including the placeholder path for an
 // unavailable record (404).
 // T032/T038 (US3, contracts/task-record-changed-event.md): live updates — refetch on a
 // taskRecordChanged event for this route's own taskId (and only its own), refetch
@@ -41,9 +41,9 @@ const { getTaskRecordMock, getTaskDetailMock, restartTaskMock, FakeIngestSubmiss
 // so the real exports stay in place and only the three the page itself drives are replaced.
 vi.mock('$lib/services/ingestSubmissionsApi', async (importOriginal) => ({
 	...(await importOriginal<typeof import('$lib/services/ingestSubmissionsApi')>()),
-	getTaskRecord: getTaskRecordMock,
-	getTaskDetail: getTaskDetailMock,
-	restartTask: restartTaskMock,
+	getIngestTaskRecord: getTaskRecordMock,
+	getIngestTaskDetail: getTaskDetailMock,
+	restartIngestTask: restartTaskMock,
 	IngestSubmissionApiError: FakeIngestSubmissionApiError
 }));
 

@@ -14,15 +14,15 @@ vi.mock('$lib/services/ingestSubmissionsApi', async () => {
 	);
 	return {
 		...actual,
-		submitUrl: vi.fn(),
-		submitFile: vi.fn(),
-		getSubmissionDefaults: vi.fn()
+		submitIngestUrl: vi.fn(),
+		submitIngestFile: vi.fn(),
+		getIngestSubmissionDefaults: vi.fn()
 	};
 });
 
 async function mockDefaults() {
 	const api = await import('$lib/services/ingestSubmissionsApi');
-	vi.mocked(api.getSubmissionDefaults).mockResolvedValue({
+	vi.mocked(api.getIngestSubmissionDefaults).mockResolvedValue({
 		defaultUserPrompt: DEFAULT_PROMPT,
 		userPromptMaxLength: 8000,
 		convertSteps: [
@@ -39,7 +39,7 @@ async function mockDefaults() {
 test('URL submission shows immediate acceptance with a non-terminal status', async () => {
 	await mockDefaults();
 	const api = await import('$lib/services/ingestSubmissionsApi');
-	vi.mocked(api.submitUrl).mockResolvedValue({
+	vi.mocked(api.submitIngestUrl).mockResolvedValue({
 		taskId: 'task-url-1',
 		status: 'received',
 		sourceKind: 'url',
@@ -59,13 +59,13 @@ test('URL submission shows immediate acceptance with a non-terminal status', asy
 	await expect.element(screen.getByTestId('submission-accepted')).toHaveTextContent('task-url-1');
 	await expect.element(screen.getByTestId('status-badge')).toHaveTextContent('Received');
 	// Untouched prompt/steps: the call signature matches feature 003 exactly (FR-015).
-	expect(api.submitUrl).toHaveBeenCalledWith('https://example.test/article');
+	expect(api.submitIngestUrl).toHaveBeenCalledWith('https://example.test/article');
 });
 
 test('File submission shows immediate acceptance with a non-terminal status', async () => {
 	await mockDefaults();
 	const api = await import('$lib/services/ingestSubmissionsApi');
-	vi.mocked(api.submitFile).mockResolvedValue({
+	vi.mocked(api.submitIngestFile).mockResolvedValue({
 		taskId: 'task-file-1',
 		status: 'received',
 		sourceKind: 'markdown_file',
@@ -90,13 +90,13 @@ test('File submission shows immediate acceptance with a non-terminal status', as
 
 	await expect.element(screen.getByTestId('submission-accepted')).toBeVisible();
 	await expect.element(screen.getByTestId('submission-accepted')).toHaveTextContent('task-file-1');
-	expect(api.submitFile).toHaveBeenCalledWith('markdown_file', file);
+	expect(api.submitIngestFile).toHaveBeenCalledWith('markdown_file', file);
 });
 
 test('Missing URL shows a validation error and does not call the API', async () => {
 	await mockDefaults();
 	const api = await import('$lib/services/ingestSubmissionsApi');
-	vi.mocked(api.submitUrl).mockClear();
+	vi.mocked(api.submitIngestUrl).mockClear();
 
 	const screen = await render(SubmissionForm);
 	await screen.getByTestId('submission-submit-button').click();
@@ -105,13 +105,13 @@ test('Missing URL shows a validation error and does not call the API', async () 
 	// this is not what the shared error presentation is for.
 	await expect.element(screen.getByTestId('submission-validation-error')).toBeVisible();
 	expect(screen.container.querySelector('[data-testid="submission-error"]')).toBeNull();
-	expect(api.submitUrl).not.toHaveBeenCalled();
+	expect(api.submitIngestUrl).not.toHaveBeenCalled();
 });
 
 test('Editing the user prompt sends it as a custom override', async () => {
 	await mockDefaults();
 	const api = await import('$lib/services/ingestSubmissionsApi');
-	vi.mocked(api.submitUrl).mockResolvedValue({
+	vi.mocked(api.submitIngestUrl).mockResolvedValue({
 		taskId: 'task-url-2',
 		status: 'received',
 		sourceKind: 'url',
@@ -131,7 +131,7 @@ test('Editing the user prompt sends it as a custom override', async () => {
 	await screen.getByTestId('submission-submit-button').click();
 
 	await expect.element(screen.getByTestId('submission-accepted')).toBeVisible();
-	expect(api.submitUrl).toHaveBeenCalledWith('https://example.test/steered', {
+	expect(api.submitIngestUrl).toHaveBeenCalledWith('https://example.test/steered', {
 		userPrompt: 'Focus on the security claims only.',
 		convertSteps: undefined
 	});
@@ -154,7 +154,7 @@ test('Convert step toggle is required (disabled) for PDF submissions', async () 
 test('Convert step toggle is optional and can be disabled for URL submissions', async () => {
 	await mockDefaults();
 	const api = await import('$lib/services/ingestSubmissionsApi');
-	vi.mocked(api.submitUrl).mockResolvedValue({
+	vi.mocked(api.submitIngestUrl).mockResolvedValue({
 		taskId: 'task-url-3',
 		status: 'received',
 		sourceKind: 'url',
@@ -167,7 +167,7 @@ test('Convert step toggle is optional and can be disabled for URL submissions', 
 	await screen.getByTestId('submission-submit-button').click();
 
 	await expect.element(screen.getByTestId('submission-accepted')).toBeVisible();
-	expect(api.submitUrl).toHaveBeenCalledWith('https://example.test/raw', {
+	expect(api.submitIngestUrl).toHaveBeenCalledWith('https://example.test/raw', {
 		userPrompt: undefined,
 		convertSteps: { markitdown: false }
 	});

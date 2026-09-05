@@ -27,7 +27,7 @@ const { restartMock, authorizeMock, dismissMock, withdrawMock, ApiError } = vi.h
 
 vi.mock('$lib/services/ingestSubmissionsApi', async (importOriginal) => ({
 	...(await importOriginal<typeof import('$lib/services/ingestSubmissionsApi')>()),
-	restartTask: (taskId: string) => restartMock(taskId)
+	restartIngestTask: (taskId: string) => restartMock(taskId)
 }));
 
 vi.mock('$lib/services/remediationApi', async (importOriginal) => ({
