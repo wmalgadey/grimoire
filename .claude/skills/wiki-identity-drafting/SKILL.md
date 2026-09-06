@@ -99,21 +99,24 @@ asks for:
 
 ## Step 3 — Hand it back and verify
 
-```bash
-grimoire-server wiki-identity set --from-file /tmp/foundation-draft.md
-```
-
-Add `--replace` if this instance already has an instance document in place and the draft
-is meant to overwrite it (check first with the report below — without `--replace` on an
-existing document the command refuses with `StateConflict` and leaves the bytes on disk
-untouched; re-run with `--replace` once the draft is confirmed correct, not by blindly
-retrying).
-
-Then confirm it took:
+Check first whether this instance already has one in place — don't guess:
 
 ```bash
 grimoire-server wiki-identity
 ```
 
+`source: instance` means it does. Only then decide: add `--replace` below if the draft is
+meant to overwrite what's there; leave it off if `source: default` (nothing to overwrite)
+or if an existing document should be left alone.
+
+```bash
+grimoire-server wiki-identity set --from-file /tmp/foundation-draft.md
+```
+
+Without `--replace` on an existing document the command refuses with `StateConflict` and
+leaves the bytes on disk untouched — that's the safety net if the check above was wrong,
+not a substitute for doing it.
+
+Then confirm the hand-back took by running `grimoire-server wiki-identity` again:
 `source: instance` and a `heading` matching the draft's own first heading mean it's live —
 with no restart needed, the very next Ingest, Query, or Lint run operates under it.
