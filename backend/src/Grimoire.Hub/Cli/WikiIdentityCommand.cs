@@ -95,7 +95,15 @@ public sealed class WikiIdentityCommand : AsyncCommand<WikiIdentitySettings>
 
     private (string Outcome, CliExitCode ExitCode) KeepDefault()
     {
-        _stdout.WriteLine("Instance stays on the shipped default foundation document. Nothing was written.");
+        // T068 (FR-014, "safe to re-run... must report what is there"): "default" never
+        // writes anything and never removes an instance document already in place (there is
+        // no wizard action that does — data-model.md §5), but it must not assert the shipped
+        // default is in effect when it is not. Consult the same resolution ReportIdentity
+        // uses rather than assuming a fresh instance.
+        var foundation = _paths.ResolveEffectiveFoundationPrompt(_paths.Ingest);
+        _stdout.WriteLine(foundation.Source == "instance"
+            ? $"An instance foundation document is already in effect ({FirstHeading(foundation.Path)}, sha256: {foundation.Sha256}) — 'default' does not remove it. Nothing was written."
+            : "Instance stays on the shipped default foundation document. Nothing was written.");
         WikiIdentityLogEvents.LogDefaultKept(_logger, "default_kept");
         return ("default_kept", CliExitCode.Success);
     }

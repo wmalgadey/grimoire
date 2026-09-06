@@ -39,6 +39,37 @@ public class WikiIdentitySetCommandTests
     }
 
     [Fact]
+    public async Task Default_WithAnInstanceDocumentAlreadyInPlace_ReportsItInsteadOfAssertingTheDefault()
+    {
+        var root = Path.Combine(Path.GetTempPath(), $"wiki-identity-default-instance-{Guid.NewGuid():N}");
+        var paths = TestResolvedGrimoirePathsFactory.Create(root);
+        var instanceContent = "# A Specialised Wiki\nThis instance's current identity.\n";
+
+        try
+        {
+            await File.WriteAllTextAsync(paths.InstanceFoundationPromptPath, instanceContent);
+
+            var (exitCode, stdout) = await WikiIdentityCommandTestHarness.RunSetAsync(paths, @default: true);
+
+            Assert.Equal((int)CliExitCode.Success, exitCode);
+            Assert.Contains("already in effect", stdout, StringComparison.Ordinal);
+            Assert.Contains("A Specialised Wiki", stdout, StringComparison.Ordinal);
+            Assert.Contains("Nothing was written", stdout, StringComparison.Ordinal);
+            Assert.Equal(instanceContent, await File.ReadAllTextAsync(paths.InstanceFoundationPromptPath));
+
+            var resolved = paths.ResolveEffectiveFoundationPrompt(paths.Ingest);
+            Assert.Equal("instance", resolved.Source);
+        }
+        finally
+        {
+            if (Directory.Exists(root))
+            {
+                Directory.Delete(root, recursive: true);
+            }
+        }
+    }
+
+    [Fact]
     public async Task Specialised_PrintsBriefContainingTheDescriptionVerbatim_AndWritesNothing()
     {
         var root = Path.Combine(Path.GetTempPath(), $"wiki-identity-specialised-{Guid.NewGuid():N}");
