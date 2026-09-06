@@ -1,8 +1,18 @@
 ---
 name: wiki-identity-drafting
 description: Draft a specialised foundation document for a Grimoire instance's wiki-identity wizard and hand it back via grimoire-server. Use when an operator wants this instance to maintain a specific kind of wiki instead of Grimoire's shipped default, or after running `grimoire-server wiki-identity set --specialised` and receiving a drafting brief. Only for a Claude Code session running ON the deploy host, where `grimoire-server` is available.
+argument-hint: "Optional: the operator's own description of the wiki this instance should maintain"
 allowed-tools: Bash, Read, Write, Grep, Glob
 ---
+
+## User Input
+
+```text
+$ARGUMENTS
+```
+
+If this is non-empty, it **is** the operator's own description — skip straight to Step 1's
+`grimoire-server` invocation with it, verbatim. If it's empty, Step 1 tells you to ask.
 
 # wiki-identity-drafting — Draft the document the wizard asked for
 
@@ -20,10 +30,10 @@ this checkout, this is not the deployment host — say so instead of drafting an
 
 ## Step 1 — Get the brief
 
-If the operator hasn't already told you what kind of wiki this instance should maintain,
-ask them first — that's the one question this whole skill exists to answer, and it isn't
-yours to guess or default. Once you have their own description in their own words, ask
-for the brief yourself rather than making them run a command:
+If `$ARGUMENTS` was empty and the operator hasn't otherwise told you what kind of wiki this
+instance should maintain, ask them first — that's the one question this whole skill exists
+to answer, and it isn't yours to guess or default. Once you have their own description in
+their own words, ask for the brief yourself rather than making them run a command:
 
 ```bash
 grimoire-server wiki-identity set --specialised --description "<the operator's own description, verbatim>"
