@@ -268,10 +268,8 @@ for every invocation and exit code. `status` prints the same report inline, obta
 the Hub the same way, so the two never disagree.
 
 The brief is not drafted by the wizard — it is drafted by whoever reads it, typically the
-Claude Code session already running on the deploy host. See
-[`wiki-identity-drafting-guide.md`](./wiki-identity-drafting-guide.md) for the step-by-step
-runbook: what a drafted document has to contain, what it must not contain, and how to hand
-it back.
+Claude Code session already running on the deploy host (the `wiki-identity-drafting` skill
+covers what a drafted document has to contain and how to hand it back).
 
 ### `update` — the tool catches up, the stack does not
 
