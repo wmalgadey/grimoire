@@ -42,6 +42,11 @@ public sealed class WikiIdentitySettings : HubPathSettings
 
     public override ValidationResult Validate()
     {
+        if (string.IsNullOrEmpty(Action))
+        {
+            return ValidationResult.Error("<ACTION> is required: wiki-identity set ...");
+        }
+
         if (!string.Equals(Action, "set", StringComparison.Ordinal))
         {
             return ValidationResult.Error($"Unknown action '{Action}'. Only 'set' is supported: wiki-identity set ...");

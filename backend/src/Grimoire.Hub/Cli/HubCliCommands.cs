@@ -64,7 +64,7 @@ public static class HubCliCommands
         // effect and is US3's own task (T054) — WikiIdentitySettings already requires an
         // action, so that invocation is a usage error until T054 relaxes it.
         new("wiki-identity",
-            "Report or set which wiki this instance maintains.",
+            "Set which wiki this instance maintains via 'set --default|--specialised|--from-file'.",
             typeof(WikiIdentityCommand)),
     ];
 
