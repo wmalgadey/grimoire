@@ -449,11 +449,18 @@ assert_equals "$reported" "$path_dir/grimoire-server" \
 
 captured_compose_args=()
 captured_compose_calls=()
+# A command substitution — `report="$(compose ...)"`, needed to capture the hub's report as
+# text — runs `compose` in a subshell, so array mutations above never reach the parent
+# shell. This log file is the subshell-safe equivalent: a filesystem write is visible to the
+# parent regardless of which shell made it.
+compose_call_log="$work/compose-calls.log"
+: >"$compose_call_log"
 fake_compose_exit=0
 fake_compose_output=""
 compose() {
   captured_compose_args=("$@")
   captured_compose_calls+=("$*")
+  printf '%s\n' "$*" >>"$compose_call_log"
   [[ -z "$fake_compose_output" ]] || printf '%s\n' "$fake_compose_output"
   return "$fake_compose_exit"
 }
@@ -513,6 +520,52 @@ fi
 assert_equals "$staging_propagated" "1" \
   "a failed staging cp ends the command via die rather than forwarding to a path that was never copied"
 fake_compose_exit=0
+
+# --- wiki-identity-reset: data-model.md §5 has no wizard action that deletes an instance
+# document ("a deliberate file operation, not a menu entry") — this command is that
+# deliberate operation, gated behind --yes, acting only on what the hub's own report says.
+#
+# `cmd_wiki_identity_reset` reads the report via `$(compose ...)`, and the die-exit-code
+# cases below wrap the call in an explicit `(...)` subshell — two layers a plain array
+# cannot see through, so these assertions read `$compose_call_log` (a file, visible
+# regardless of which subshell wrote it) instead of `captured_compose_calls`.
+
+fake_compose_exit=0
+fake_compose_output=$'source: default\nresolved_path: /app/Grimoire.AgentRuntime/Instructions/foundation-prompt.md\nsha256: abc123\nheading: Wiki Foundation'
+: >"$compose_call_log"
+cmd_wiki_identity_reset >/dev/null
+assert_equals "$(wc -l <"$compose_call_log" | tr -d ' ')" "1" \
+  "already on the shipped default: only the report is fetched, nothing removed"
+
+fake_compose_output=$'source: instance\nresolved_path: /var/lib/grimoire/data/foundation-prompt.md\nsha256: def456\nheading: A Specialised Wiki'
+: >"$compose_call_log"
+if (cmd_wiki_identity_reset >/dev/null 2>&1); then
+  reset_without_yes=0
+else
+  reset_without_yes=$?
+fi
+assert_equals "$reset_without_yes" "1" \
+  "an instance document without --yes refuses via die rather than removing anything"
+assert_equals "$(wc -l <"$compose_call_log" | tr -d ' ')" "1" \
+  "the refusal happens after only the report call — no rm attempted"
+
+: >"$compose_call_log"
+cmd_wiki_identity_reset --yes >/dev/null
+assert_equals "$(wc -l <"$compose_call_log" | tr -d ' ')" "2" \
+  "cmd_wiki_identity_reset --yes fetches the report, then removes the instance document"
+assert_equals "$(sed -n '2p' "$compose_call_log")" \
+  "$wiki_identity_repo exec -T hub rm -f /var/lib/grimoire/data/foundation-prompt.md" \
+  "the removal execs into the hub container at the exact path the report named"
+
+: >"$compose_call_log"
+if (cmd_wiki_identity_reset --bogus >/dev/null 2>&1); then
+  reset_bad_option=0
+else
+  reset_bad_option=$?
+fi
+assert_equals "$reset_bad_option" "1" "an unknown option is rejected"
+assert_equals "$(wc -l <"$compose_call_log" | tr -d ' ')" "0" \
+  "an unknown option is rejected before any compose call is made"
 
 fake_compose_exit=0
 fake_compose_output=$'source: default\nresolved_path: /data/foundation-prompt.md\nsha256: abc123\nheading: Wiki Foundation'

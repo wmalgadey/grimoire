@@ -67,6 +67,12 @@ exactly what a drafted document has to contain and how to hand it back with
 `grimoire-server wiki-identity set --from-file <path>` — no restart needed, the next
 Ingest, Query, or Lint run operates under it.
 
+Going back is deliberately not a wizard menu entry — `set --default` reports the default
+without ever removing a specialised document already in place. Reverting is its own command,
+[`wiki-identity-reset`](.claude/skills/wiki-identity-reset/SKILL.md), covering the
+irreversible-deletion confirmation a human should get before `grimoire-server
+wiki-identity-reset --yes` runs.
+
 ## Architecture
 
 - **Backend** (`backend/`) — .NET / C#, hexagonal (ports & adapters) architecture

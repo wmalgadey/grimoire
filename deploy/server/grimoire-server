@@ -863,6 +863,50 @@ cmd_wiki_identity() {
   fi
 }
 
+# data-model.md §5: "There is no wizard action that deletes an instance document:
+# removing one is a deliberate file operation, not a menu entry, so the wizard can never
+# leave an instance with less identity than it had." This command is that deliberate file
+# operation — not a wiki-identity wizard action, and not reachable through `cmd_wiki_identity`
+# above. It still determines nothing about identity on its own (FR-018a): it only acts on
+# what the Hub's own report already says, the same report `status` already surfaces.
+cmd_wiki_identity_reset() {
+  local repo="" yes=0 report source resolved_path
+
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+    --yes) yes=1 ;;
+    -*) die "unknown option: $1" ;;
+    *) die "unexpected argument: $1" ;;
+    esac
+    shift
+  done
+
+  repo="$(repo_dir)"
+  report="$(compose "$repo" exec -T hub dotnet /app/Grimoire.Hub.dll wiki-identity)" ||
+    die "could not reach the hub to check the current wiki identity"
+
+  source="$(printf '%s\n' "$report" | sed -n 's/^source: //p')"
+  if [[ "$source" != "instance" ]]; then
+    log "Already on the shipped default — nothing to remove"
+    return 0
+  fi
+
+  resolved_path="$(printf '%s\n' "$report" | sed -n 's/^resolved_path: //p')"
+  [[ -n "$resolved_path" ]] || die "the hub reported source: instance but no resolved_path — cannot proceed"
+
+  if ((yes != 1)); then
+    printf '%s\n' "$report" | sed 's/^/    /' >&2
+    die "an instance foundation document is in place (above) — re-run with --yes to remove it \
+and revert this instance to the shipped default. This cannot be undone; back up $resolved_path \
+first if it took real drafting effort to produce."
+  fi
+
+  log "Removing the instance foundation document: $resolved_path"
+  compose "$repo" exec -T hub rm -f "$resolved_path" ||
+    die "could not remove $resolved_path in the hub container"
+  log "Removed. This instance is back on the shipped default — no restart needed."
+}
+
 cmd_tailscale() {
   local action="${1:-status}"
   case "$action" in
@@ -1139,6 +1183,8 @@ Commands:
   update [path]              fetch origin, refresh this script's installed copy, status
   tailscale [action]         status (default) · up · drain · off
   wiki-identity <args...>    forwards to the Hub's wiki-identity wizard (see its own --help)
+  wiki-identity-reset [--yes]  remove an instance foundation document, reverting to the
+                             shipped default — refuses without --yes; irreversible
   tmux [session]             attach to the Claude Code session, starting it if needed
   install [path]             copy this script outside the checkout (default ~/.local/bin)
   version                    this tool, the commit it came from, the deployed commit
@@ -1176,6 +1222,7 @@ main() {
   update) cmd_update "$@" ;;
   tailscale) cmd_tailscale "$@" ;;
   wiki-identity) cmd_wiki_identity "$@" ;;
+  wiki-identity-reset) cmd_wiki_identity_reset "$@" ;;
   tmux) cmd_tmux "$@" ;;
   install) cmd_install "$@" ;;
   version | --version | -V) cmd_version ;;

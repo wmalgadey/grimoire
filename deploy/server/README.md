@@ -276,6 +276,27 @@ The brief is not drafted by the wizard — it is drafted by whoever reads it, ty
 Claude Code session already running on the deploy host (the `wiki-identity-drafting` skill
 covers what a drafted document has to contain and how to hand it back).
 
+**There is no wizard action that undoes this.** By design
+([`data-model.md` §5](../../specs/029-shared-foundation-prompt/data-model.md)): "removing
+[an instance document] is a deliberate file operation, not a menu entry, so the wizard can
+never leave an instance with less identity than it had." `wiki-identity set --default`
+reports that the instance stays on the default; it never removes an instance document that
+is already in place.
+
+```console
+$ grimoire-server wiki-identity-reset
+==> An instance foundation document is in place (above) — re-run with --yes to remove it...
+$ grimoire-server wiki-identity-reset --yes
+==> Removing the instance foundation document: /var/lib/grimoire/data/foundation-prompt.md
+==> Removed. This instance is back on the shipped default — no restart needed.
+```
+
+This is the deliberate file operation the data model calls for, wrapped in the one command
+that already execs into the `hub` container — not a wizard action, and irreversible without
+a backup of the removed document. `--yes` is required; without it the command shows what is
+in place and refuses. The `wiki-identity-reset` skill covers the confirmation step a human
+operator should still get before this runs.
+
 ### `update` — the tool catches up, the stack does not
 
 ```console
