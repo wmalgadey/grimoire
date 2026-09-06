@@ -308,3 +308,9 @@ wizard is a later increment.
 stays red until the recordings are re-captured against a live provider. That is ADR-012's
 instruction-change merge gate firing as designed — not a defect, and not something implementation can
 clear on its own.
+
+---
+
+## Phase 7: Convergence
+
+- [ ] T068 Make `wiki-identity set --default` report the foundation document actually in effect instead of asserting the shipped default: when resolution reports `source=instance`, say so and name it (the wizard's own report already has the facts), leaving the exit code, the `default_kept` outcome and the "nothing was written" guarantee unchanged; cover it with an integration test exercising `--default` against an instance that already has a document, alongside the existing fresh-instance case in `WikiIdentitySetCommandTests` per FR-014 (contradicts)
