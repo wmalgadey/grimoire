@@ -136,18 +136,14 @@ test('while answering, Ask becomes Stop and the input says what it is waiting fo
 	expect(onStop).toHaveBeenCalledOnce();
 });
 
-test('the model row appears only when the thread offers a choice, and reports the pick', async () => {
-	const onModelChange = vi.fn();
-	const without = await render(QueryPromptForm, { onSubmit: vi.fn() });
-	await expect.element(without.getByTestId('ask-model-picker')).not.toBeInTheDocument();
-	without.unmount();
+// #149: the composer used to carry a three-model picker whose pick was never sent and whose
+// default named a model nothing runs. It now states the one model the harness dispatches to,
+// and offers nothing to press.
+test('the composer names the model it will run and offers no choice', async () => {
+	const screen = await render(QueryPromptForm, { onSubmit: vi.fn() });
 
-	const withPicker = await render(QueryPromptForm, {
-		onSubmit: vi.fn(),
-		model: 'Claude Sonnet 4.5',
-		onModelChange
-	});
-	await withPicker.getByTestId('model-option').filter({ hasText: 'Claude Opus 4.1' }).click();
-
-	expect(onModelChange).toHaveBeenCalledWith('Claude Opus 4.1');
+	await expect
+		.element(screen.getByTestId('ask-active-model'))
+		.toHaveTextContent('claude-haiku-4-5');
+	await expect.element(screen.getByTestId('model-option')).not.toBeInTheDocument();
 });

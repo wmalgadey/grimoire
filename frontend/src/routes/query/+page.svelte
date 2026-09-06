@@ -266,8 +266,6 @@
 						disabled={runningTurnId !== null}
 						onSubmit={handleSubmit}
 						onStop={runningTurnId ? () => void handleInterrupt(runningTurnId) : undefined}
-						model={active?.model}
-						onModelChange={(model) => active && conversations.setModel(active.id, model)}
 					/>
 
 					{#if submissionError}

@@ -1,14 +1,14 @@
 <script lang="ts">
-	import ModelPicker from './ModelPicker.svelte';
-	import { MODELS } from '$lib/models';
+	import ActiveModel from './ActiveModel.svelte';
 
 	// FR-004 unchanged: client-side validation before submission. PROMPT_MAX_LENGTH mirrors the
 	// Hub's QuerySubmissionValidator.PromptMaxLength.
 	//
 	// The design turns this into the thread's composer: the input goes quiet while an answer is
 	// streaming and the Ask button becomes Stop ("Stop now lives in the composer … the input is
-	// disabled with a 'waiting for the current answer…' placeholder", chat 3), with the model
-	// choice sitting under it as a quiet row of pills.
+	// disabled with a 'waiting for the current answer…' placeholder", chat 3), and the model it
+	// runs named quietly under it — a row of selectable pills until #149, see $lib/models.ts
+	// for why there is nothing left to pick.
 	const PROMPT_MAX_LENGTH = 8000;
 
 	interface Props {
@@ -16,11 +16,9 @@
 		onSubmit: (prompt: string) => void | Promise<void>;
 		/** Given while a turn is streaming, the Ask button becomes Stop. */
 		onStop?: () => void;
-		model?: string;
-		onModelChange?: (model: string) => void;
 	}
 
-	let { disabled = false, onSubmit, onStop, model, onModelChange }: Props = $props();
+	let { disabled = false, onSubmit, onStop }: Props = $props();
 
 	let prompt = $state('');
 	// Client-side validation — nothing was sent yet, so this is not a request failure and does
@@ -95,18 +93,7 @@
 		{/if}
 	</div>
 
-	{#if model && onModelChange}
-		<div class="flex items-center gap-2">
-			<span class="text-xs text-slate-400">Model</span>
-			<ModelPicker
-				models={MODELS}
-				selected={model}
-				variant="pills"
-				onSelect={onModelChange}
-				testId="ask-model-picker"
-			/>
-		</div>
-	{/if}
+	<ActiveModel testId="ask-active-model" />
 
 	<!-- 011 T020/FR-008: the rule and the context promise are stated whether or not a turn is
 	     running — the design keeps this as a permanent footnote under the composer, so nobody
