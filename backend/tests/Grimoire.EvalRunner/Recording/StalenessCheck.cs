@@ -37,6 +37,7 @@ public static class StalenessCheck
 
     public static IReadOnlyDictionary<string, string> CurrentFingerprints(ScenarioDefinition scenario, EvalPaths paths)
         => Fingerprints.Compute(
+            paths.FoundationPromptPath,
             paths.SystemPromptPath,
             paths.DefaultUserPromptPath,
             paths.PolicyPath,

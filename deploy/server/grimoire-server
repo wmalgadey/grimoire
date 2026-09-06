@@ -38,7 +38,7 @@ MIN_COMPOSE_VERSION="2.24.0" # `!override` in the server compose overlay
 #
 # It versions the tool, never the stack it deploys — `status` and `version` report that
 # separately, from the deployment record and the checkout.
-GRIMOIRE_SERVER_VERSION="1.2.0"
+GRIMOIRE_SERVER_VERSION="1.3.0"
 
 # --- Output ------------------------------------------------------------------------
 # Progress goes to stderr so that a helper's stdout is only ever its value.
@@ -515,6 +515,24 @@ tmux_report() {
   info "attach with: grimoire-server tmux"
 }
 
+# 029-shared-foundation-prompt (FR-018a): `status`'s answer to "which wiki does this
+# instance maintain?" is obtained from the Hub, never recomputed here — the same
+# `wiki-identity` report `cmd_wiki_identity` forwards to, just captured instead of
+# exec'd so `status` can keep going and print everything else it reports. Best-effort:
+# a stack that is not up, or whose hub container is not running, must not fail `status`
+# over this — it is one more fact `status` surfaces, not a precondition for the rest.
+wiki_identity_report() {
+  local repo="$1" identity
+  if ! identity="$(compose "$repo" exec -T hub dotnet /app/Grimoire.Hub.dll wiki-identity 2>/dev/null)"; then
+    log "Wiki identity"
+    info "could not ask the hub — is it running?"
+    return
+  fi
+
+  log "Wiki identity"
+  printf '%s\n' "$identity" | sed 's/^/    /' >&2
+}
+
 # Compares dotted versions without sorting surprises: 2.9.0 is older than 2.24.0.
 version_at_least() {
   local have="$1" want="$2" i hv wv
@@ -735,6 +753,8 @@ cmd_status() {
       warn "the checkout is at $(short "$head"), not at the deployed commit — someone moved it by hand"
   fi
 
+  wiki_identity_report "$repo"
+
   # #202: "what is running?" should say so when the answer is "not what the checkout
   # would deploy" — the same drift `deploy` now warns about, surfaced here too since this
   # is the other place an operator looks to find out what is currently true of the host.
@@ -804,6 +824,17 @@ cmd_down() {
   # in the README, not a flag away from the routine stop.
   compose "$repo" down
   log "Stopped. The state volumes are untouched."
+}
+
+cmd_wiki_identity() {
+  local repo
+  repo="$(repo_dir)"
+  # 029-shared-foundation-prompt (FR-018a): pure passthrough — the wizard's logic and
+  # its exit-code convention live entirely in the Hub CLI (contracts/wiki-identity-cli.md);
+  # this only forwards argv and lets the exec'd process's exit code end the script (set -e
+  # propagates it since this is the function's last command). -T disables TTY allocation
+  # so `set --specialised --description -` can read a piped description from stdin.
+  compose "$repo" exec -T hub dotnet /app/Grimoire.Hub.dll wiki-identity "$@"
 }
 
 cmd_tailscale() {
@@ -1081,6 +1112,7 @@ Commands:
   rollback                   redeploy the commit that ran before the current one
   update [path]              fetch origin, refresh this script's installed copy, status
   tailscale [action]         status (default) · up · drain · off
+  wiki-identity <args...>    forwards to the Hub's wiki-identity wizard (see its own --help)
   tmux [session]             attach to the Claude Code session, starting it if needed
   install [path]             copy this script outside the checkout (default ~/.local/bin)
   version                    this tool, the commit it came from, the deployed commit
@@ -1117,6 +1149,7 @@ main() {
   rollback) cmd_rollback "$@" ;;
   update) cmd_update "$@" ;;
   tailscale) cmd_tailscale "$@" ;;
+  wiki-identity) cmd_wiki_identity "$@" ;;
   tmux) cmd_tmux "$@" ;;
   install) cmd_install "$@" ;;
   version | --version | -V) cmd_version ;;

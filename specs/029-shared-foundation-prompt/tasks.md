@@ -181,12 +181,12 @@ working it out.
 **Independent test**: query a default deployment and a specialised one, confirm the answers differ, and
 confirm the deployment script's status output carries the same answer.
 
-- [ ] T054 [US3] `wiki-identity` with no options reports `default`/`instance`, the resolved path, the document's hash and its first heading (FR-018)
-- [ ] T055 [P] [US3] Integration test: the reported identity differs between a default and a specialised instance in exactly that respect (FR-018, SC-007)
-- [ ] T056 [US3] In `deploy/server/grimoire-server`, add a command that forwards to the Hub's wizard through the existing `compose()` invocation and passes its exit code through unchanged — no wizard logic in the script (FR-018a)
-- [ ] T057 [US3] In `cmd_status`, print the identity the Hub reports, beside the deployed ref and the tool version, obtained from the Hub rather than recomputed (FR-018a)
-- [ ] T058 [P] [US3] Extend `deploy/server/grimoire-server.test.sh` to cover the forwarding and the status line under the script's existing conventions (FR-018a)
-- [ ] T059 [P] [US3] Bump `GRIMOIRE_SERVER_VERSION` and document the new command in `deploy/server/README.md` (FR-018a)
+- [X] T054 [US3] `wiki-identity` with no options reports `default`/`instance`, the resolved path, the document's hash and its first heading (FR-018)
+- [X] T055 [P] [US3] Integration test: the reported identity differs between a default and a specialised instance in exactly that respect (FR-018, SC-007)
+- [X] T056 [US3] In `deploy/server/grimoire-server`, add a command that forwards to the Hub's wizard through the existing `compose()` invocation and passes its exit code through unchanged — no wizard logic in the script (FR-018a)
+- [X] T057 [US3] In `cmd_status`, print the identity the Hub reports, beside the deployed ref and the tool version, obtained from the Hub rather than recomputed (FR-018a)
+- [X] T058 [P] [US3] Extend `deploy/server/grimoire-server.test.sh` to cover the forwarding and the status line under the script's existing conventions (FR-018a)
+- [X] T059 [P] [US3] Bump `GRIMOIRE_SERVER_VERSION` and document the new command in `deploy/server/README.md` (FR-018a)
 
 **Checkpoint**: the operator's "what is running here?" is answered completely.
 
@@ -194,14 +194,66 @@ confirm the deployment script's status output carries the same answer.
 
 ## Phase 6: Polish & Cross-Cutting Concerns
 
-- [ ] T060 [P] Update `deploy/README.md` and the repository `README.md` where they describe the agent instruction surface as one file per agent (FR-001, FR-002)
-- [ ] T061 [P] Add the `foundation_prompt` key to `backend/tests/Grimoire.EvalRunner/Recording/Fingerprints.cs` and thread it through `StalenessCheck`, `QueryStalenessCheck`, `LintStalenessCheck` and `RemediationReVerificationStalenessCheck` (SC-003)
-- [ ] T062 Run `./scripts/test-fast.sh` and `dotnet test backend/tests/Grimoire.IntegrationTests` and fix what they surface (SC-001..SC-007)
-- [ ] T063 **CI enforcement — logging contract**: confirm the logging-contract tests (T033, T051, T052) run in the standard PR pipeline via `.github/workflows/ci.yml`'s `Grimoire.IntegrationTests` step, covering all five Structured Log Events rows; add the step if the placement changed (FR-018)
-- [ ] T064 **CI enforcement — trace contract**: confirm the trace-contract test (T053) runs in the same pipeline step, covering both Distributed Trace Spans rows (FR-011, FR-013a)
-- [ ] T065 **Completeness audit** (MANDATORY, Constitution Principle III): cross-reference every row of `plan.md ## Observability` — 2 metrics, 5 log events, 2 spans — against its implementing task and passing test; confirm SC-008 and SC-009 are recorded as lower-stakes, covered by a hermetic plumbing test plus the user-reported correction loop and **not** by an eval suite; file any gap as a new task before the DoD is declared met (SC-001..SC-009)
+- [X] T060 [P] Update `deploy/README.md` and the repository `README.md` where they describe the agent instruction surface as one file per agent (FR-001, FR-002)
+- [X] T061 [P] Add the `foundation_prompt` key to `backend/tests/Grimoire.EvalRunner/Recording/Fingerprints.cs` and thread it through `StalenessCheck`, `QueryStalenessCheck`, `LintStalenessCheck` and `RemediationReVerificationStalenessCheck` (SC-003)
+- [X] T062 Run `./scripts/test-fast.sh` and `dotnet test backend/tests/Grimoire.IntegrationTests` and fix what they surface (SC-001..SC-007)
+  *Result: `test-fast.sh` — 199/199 passing (Domain.UnitTests 99, ArchTests 59, AgentEvals
+  Tier=Fast 41, the last including the new `FoundationPromptDrift_...` test). Full
+  `Grimoire.IntegrationTests` — 1067/1083 passing, 16 failing. Every one of the 16
+  reproduces byte-for-byte (same test names, same assertions) on a clean worktree of
+  commit `5d94049` — the tip immediately before this feature's Layer 4 (wiki-identity)
+  even existed — with zero files from this feature applied: a Spectre.Console
+  `Align.Render` crash rendering the root `--help` FIGlet logo at this sandbox's
+  fallback console width (exit 134, reproduced identically with and without this
+  feature's changes), several subprocess-spawning CLI tests that capture empty stdout
+  in this sandbox, and a handful of network-dependent (`UrlSubmission`) and
+  timing-sensitive (trace-span polling) tests. None of the 16 touch a file this feature
+  changed. Nothing was fixed because nothing surfaced is attributable to this feature;
+  all wiki-identity/foundation-prompt-specific tests (Layers 2-5) pass cleanly.*
+- [X] T063 **CI enforcement — logging contract**: confirm the logging-contract tests (T033, T051, T052) run in the standard PR pipeline via `.github/workflows/ci.yml`'s `Grimoire.IntegrationTests` step, covering all five Structured Log Events rows; add the step if the placement changed (FR-018)
+  *Confirmed: `ci.yml` line 75 runs `dotnet test backend/tests/Grimoire.IntegrationTests --configuration Release --no-build` unfiltered — every test in the project, including `WikiIdentityLoggingContractTests` and `FoundationPromptObservabilityTests`, runs on every PR. No placement change; no new step needed.*
+- [X] T064 **CI enforcement — trace contract**: confirm the trace-contract test (T053) runs in the same pipeline step, covering both Distributed Trace Spans rows (FR-011, FR-013a)
+  *Confirmed by the same unfiltered step: `WikiIdentityTraceTests` (both `hub.wiki_identity.wizard` and `hub.wiki_identity.persist` rows) runs on every PR.*
+- [X] T065 **Completeness audit** (MANDATORY, Constitution Principle III): cross-reference every row of `plan.md ## Observability` — 2 metrics, 5 log events, 2 spans — against its implementing task and passing test; confirm SC-008 and SC-009 are recorded as lower-stakes, covered by a hermetic plumbing test plus the user-reported correction loop and **not** by an eval suite; file any gap as a new task before the DoD is declared met (SC-001..SC-009)
+  *Audit result: no gap found.*
+  *Metrics (2/2): `wiki.identity.foundation_resolved_total` — `HubMetrics.RecordFoundationResolved`
+  (T030), tested by `FoundationPromptObservabilityTests` (T032). `wiki.identity.wizard_outcomes_total`
+  — `HubMetrics.RecordWikiIdentityWizardOutcome` (T046), tested by `WikiIdentityMetricsTests` (T050).*
+  *Log events (5/5): `wiki_identity_foundation_resolved` — `GrimoirePathLogEvents.LogFoundationResolved`
+  (T031), tested by `WikiIdentityLoggingContractTests.FoundationResolved_...` (T033, relocated from
+  `FoundationPromptObservabilityTests` alongside T051/T052). `wiki_identity_default_kept` —
+  `WikiIdentityLogEvents.LogDefaultKept` (T047), tested by `DefaultKept_...` (T051).
+  `wiki_identity_brief_emitted` — `LogBriefEmitted` (T047), tested by `BriefEmitted_...` (T051).
+  `wiki_identity_document_persisted` — `LogDocumentPersisted` (T048), tested by `DocumentPersisted_...`
+  (T052). `wiki_identity_replace_refused` — `LogReplaceRefused` (T048), tested by `ReplaceRefused_...`
+  (T052).*
+  *Trace spans (2/2): `hub.wiki_identity.wizard` — `WikiIdentityCommand.ExecuteAsync` (T049), tested by
+  `WikiIdentityTraceTests.Default_StartsWizardSpan_RootParented_WithAnswerAndOutcomeAttributes` (T053),
+  asserting root parenting and both attributes against the production `HubTracing.ActivitySource`
+  (Principle IV — no test-only provider). `hub.wiki_identity.persist` —
+  `WikiIdentityCommand.PersistFromFileAsync` (T049), tested by
+  `WikiIdentityTraceTests.FromFile_StartsPersistSpan_AsChildOfWizardSpan_...` (T053), asserting
+  parent/child linkage and all three attributes.*
+  *SC-001–SC-007 (deterministic harness guarantees, 100% each): SC-001/SC-003 (both documents,
+  byte-for-byte, every agent) → `FoundationPromptCompositionTests` (Layer 3). SC-002 (fail-closed) →
+  `FoundationPromptFailClosedTests` plus the six coordinator try/catch sites (Layer 3). SC-004 (default
+  leaves nothing changed) → `WikiIdentitySetCommandTests.Default_CreatesNoFile_...` (T040). SC-005
+  (replace only under explicit decision) → `WikiIdentitySetCommandTests.FromFile_WithoutReplace_...`
+  (T042). SC-006 (no prompting, ever) → `WikiIdentitySetCommandTests.MissingAnswer_...` (T044). SC-007
+  (survives restart) → `WikiIdentitySetCommandTests.InstanceDocument_Survives...` (T045) and
+  `WikiIdentityReportCommandTests` (T055).*
+  *SC-008/SC-009 (lower-stakes agent judgment, narrative — confirmed, not eval-gated): both are recorded
+  in `spec.md` with the `(lower-stakes agent judgment, narrative)` tag and satisfied by the
+  user-reported correction loop per Constitution Principle II — no formal eval suite exists or is
+  required for either. `plan.md`'s "Operator loop surface" paragraph names the two surfaces the
+  operator observes them on: the Hub CLI's own output (the wizard's report; `grimoire-server status`
+  reading the Hub's identity report, T057) and the OpenTelemetry dashboard already shipped in
+  `compose.yaml`, where `wiki_identity_foundation_resolved` shows which document each run operated
+  under. No gap: both criteria have a named observation surface and neither carries a numeric
+  threshold, matching Principle II's split exactly.*
 - [ ] T066 **Recording refresh** (operator-triggered, needs a provider credential): every recorded-replay scenario is stale once composition lands. Re-capture via the eval capture workflow and commit the refreshed recordings with their new `foundation_prompt` fingerprint. **Implementation cannot complete this task** — it requires a live provider run (SC-003)
-- [ ] T067 Record the declined scope on issue #217 and close it with #137, naming issue #224 as the part of #217's motivation that survives (FR-019)
+- [X] T067 Record the declined scope on issue #217 and close it with #137, naming issue #224 as the part of #217's motivation that survives (FR-019)
+  *Done: comment recording the decline posted on [#217](https://github.com/wmalgadey/grimoire/issues/217#issuecomment-5556024542) (closed as not planned — the generator itself stays declined); [#137](https://github.com/wmalgadey/grimoire/issues/137#issuecomment-5556025109) closed as completed (delivered by this feature's foundation document); both comments name #224 as the surviving role-specific gap.*
 
 ---
 

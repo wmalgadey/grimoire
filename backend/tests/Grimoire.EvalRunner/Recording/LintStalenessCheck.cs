@@ -17,6 +17,7 @@ public static class LintStalenessCheck
 
     public static IReadOnlyDictionary<string, string> CurrentFingerprints(LintScenarioDefinition scenario, EvalPaths paths)
         => Fingerprints.Compute(
+            paths.FoundationPromptPath,
             paths.LintSystemPromptPath,
             defaultUserPromptPath: null,
             paths.LintPolicyPath,

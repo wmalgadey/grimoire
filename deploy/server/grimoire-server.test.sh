@@ -438,6 +438,59 @@ reported="$(PATH="$path_dir:$PATH" GRIMOIRE_REPO="$fake_checkout" GRIMOIRE_STATE
 assert_equals "$reported" "$path_dir/grimoire-server" \
   "a bare-name invocation off \$PATH resolves to the absolute installed copy"
 
+# --- wiki-identity: `cmd_wiki_identity` forwards argv to the Hub's own CLI through the
+# existing `compose()` exec invocation and lets its exit code end the script unchanged;
+# `wiki_identity_report` (used by `status`) surfaces what compose returns and is
+# best-effort when the hub is not answering. Real docker is out of scope here (Principle
+# II, "test what we own" — the Hub CLI's own report/wizard behavior is Grimoire.Hub's own
+# test suite's job); what this script decides is what it passes to compose and what it
+# does with the result, so `compose` — a plain function — is overridden after sourcing to
+# observe and control both without a real container.
+
+captured_compose_args=()
+fake_compose_exit=0
+fake_compose_output=""
+compose() {
+  captured_compose_args=("$@")
+  [[ -z "$fake_compose_output" ]] || printf '%s\n' "$fake_compose_output"
+  return "$fake_compose_exit"
+}
+
+wiki_identity_repo="$work/wiki-identity-repo"
+mkdir -p "$wiki_identity_repo"
+export GRIMOIRE_REPO="$wiki_identity_repo"
+
+cmd_wiki_identity set --default >/dev/null
+assert_equals "${captured_compose_args[*]}" \
+  "$wiki_identity_repo exec -T hub dotnet /app/Grimoire.Hub.dll wiki-identity set --default" \
+  "cmd_wiki_identity forwards argv through compose exec -T"
+
+fake_compose_exit=3
+if cmd_wiki_identity set --from-file /does/not/exist >/dev/null 2>&1; then
+  propagated=0
+else
+  propagated=$?
+fi
+assert_equals "$propagated" "3" "cmd_wiki_identity propagates the Hub CLI's exit code unchanged"
+
+fake_compose_exit=0
+fake_compose_output=$'source: default\nresolved_path: /data/foundation-prompt.md\nsha256: abc123\nheading: Wiki Foundation'
+report_output="$(wiki_identity_report "$wiki_identity_repo" 2>&1)"
+case "$report_output" in
+*"Wiki identity"*"source: default"*"resolved_path: /data/foundation-prompt.md"*) ;;
+*) fail "wiki_identity_report did not surface the hub's report: got [$report_output]" ;;
+esac
+
+fake_compose_exit=1
+fake_compose_output=""
+failure_output="$(wiki_identity_report "$wiki_identity_repo" 2>&1)"
+case "$failure_output" in
+*"Wiki identity"*"is it running"*) ;;
+*) fail "wiki_identity_report's failure fallback did not explain the gap: got [$failure_output]" ;;
+esac
+
+unset GRIMOIRE_REPO
+
 if ((failures > 0)); then
   echo "$failures assertion(s) failed" >&2
   exit 1

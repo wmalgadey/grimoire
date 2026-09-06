@@ -5,19 +5,19 @@ using Spectre.Console.Cli;
 namespace Grimoire.Hub.Cli;
 
 /// <summary>
-/// Settings for <see cref="WikiIdentityCommand"/> (029-shared-foundation-prompt T038,
-/// contracts/wiki-identity-cli.md). A single positional <c>&lt;ACTION&gt;</c> — only
-/// <c>set</c> is recognised at this layer (US2, the wizard); reporting the identity in
-/// effect with no action is US3's own task (T054) — plus the four <c>set</c> options,
-/// exactly one of which must be given per invocation (FR-011, FR-013, FR-013a). All
-/// checks run in <see cref="Validate"/>, which Spectre calls before <c>ExecuteAsync</c> —
-/// a malformed invocation never touches the filesystem (FR-015/FR-016: no answer ever
-/// waits for input, and a missing one changes nothing).
+/// Settings for <see cref="WikiIdentityCommand"/> (029-shared-foundation-prompt T038/T054,
+/// contracts/wiki-identity-cli.md). A single optional positional <c>[ACTION]</c> —
+/// omitted, it reports the identity currently in effect (US3, FR-018); <c>set</c> runs
+/// the wizard (US2) — plus the four <c>set</c> options, exactly one of which must be
+/// given per <c>set</c> invocation (FR-011, FR-013, FR-013a). All checks run in
+/// <see cref="Validate"/>, which Spectre calls before <c>ExecuteAsync</c> — a malformed
+/// invocation never touches the filesystem (FR-015/FR-016: no answer ever waits for
+/// input, and a missing one changes nothing).
 /// </summary>
 public sealed class WikiIdentitySettings : HubPathSettings
 {
-    [CommandArgument(0, "<ACTION>")]
-    [Description("Only 'set' is supported.")]
+    [CommandArgument(0, "[ACTION]")]
+    [Description("Omit to report the identity in effect. Only 'set' is otherwise supported.")]
     public string? Action { get; set; }
 
     [CommandOption("--default")]
@@ -44,7 +44,7 @@ public sealed class WikiIdentitySettings : HubPathSettings
     {
         if (string.IsNullOrEmpty(Action))
         {
-            return ValidationResult.Error("<ACTION> is required: wiki-identity set ...");
+            return ValidateReportMode();
         }
 
         if (!string.Equals(Action, "set", StringComparison.Ordinal))
@@ -79,6 +79,17 @@ public sealed class WikiIdentitySettings : HubPathSettings
         if (Replace && FromFile is null)
         {
             return ValidationResult.Error("--replace is only valid with --from-file.");
+        }
+
+        return ValidationResult.Success();
+    }
+
+    private ValidationResult ValidateReportMode()
+    {
+        if (Default || Specialised || Description is not null || FromFile is not null || Replace)
+        {
+            return ValidationResult.Error(
+                "--default, --specialised, --description, --from-file, and --replace are only valid with 'set'.");
         }
 
         return ValidationResult.Success();

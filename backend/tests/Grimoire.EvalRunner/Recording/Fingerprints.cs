@@ -5,13 +5,15 @@ using Grimoire.AgentRuntime.Core.Adapters.Replay;
 namespace Grimoire.EvalRunner.Recording;
 
 /// <summary>
-/// Computes the staleness fingerprint set for one scenario (research.md R4): the agent
-/// instruction surface (ADR-007), the guardrail policy (ADR-006), the fixture tree, the
-/// scenario definition, and — for judge-scored scenarios — the judge prompt template.
-/// Model identity is provenance, not a staleness input.
+/// Computes the staleness fingerprint set for one scenario (research.md R4): the shared
+/// foundation document (029-shared-foundation-prompt, ADR-053), the agent instruction
+/// surface (ADR-007), the guardrail policy (ADR-006), the fixture tree, the scenario
+/// definition, and — for judge-scored scenarios — the judge prompt template. Model
+/// identity is provenance, not a staleness input.
 /// </summary>
 public static class Fingerprints
 {
+    public const string FoundationPromptKey = "foundation_prompt";
     public const string SystemPromptKey = "system_prompt";
     public const string DefaultUserPromptKey = "default_user_prompt";
     public const string PolicyKey = "policy";
@@ -20,6 +22,7 @@ public static class Fingerprints
     public const string JudgePromptKey = "judge_prompt";
 
     public static IReadOnlyDictionary<string, string> Compute(
+        string foundationPromptPath,
         string systemPromptPath,
         string? defaultUserPromptPath,
         string policyPath,
@@ -29,6 +32,7 @@ public static class Fingerprints
     {
         var fingerprints = new Dictionary<string, string>(StringComparer.Ordinal)
         {
+            [FoundationPromptKey] = HashFile(foundationPromptPath),
             [SystemPromptKey] = HashFile(systemPromptPath),
             [PolicyKey] = HashFile(policyPath),
             [FixtureKey] = HashDirectory(fixtureRoot),

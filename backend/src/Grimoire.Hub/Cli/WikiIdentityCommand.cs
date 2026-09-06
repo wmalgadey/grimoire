@@ -7,14 +7,16 @@ using Spectre.Console.Cli;
 namespace Grimoire.Hub.Cli;
 
 /// <summary>
-/// The wiki-identity wizard's <c>set</c> action (029-shared-foundation-prompt T038,
-/// contracts/wiki-identity-cli.md): "default" writes nothing, "specialised" emits a
-/// drafting brief built from the operator's own words
-/// (<see cref="WikiIdentityDraftingBrief"/>), and a hand-back persists a drafted document
-/// verbatim through <see cref="WikiIdentityDocumentStore"/> — this command never composes,
-/// templates, or judges content (FR-013a, ADR-053's authorship rule). No prompting path
-/// exists anywhere in here: every answer is required by <see cref="WikiIdentitySettings"/>'s
-/// own validation, so a malformed invocation never reaches this class (FR-015/FR-016).
+/// The wiki-identity command (029-shared-foundation-prompt T038/T054,
+/// contracts/wiki-identity-cli.md). With no action, reports the identity currently in
+/// effect (US3, FR-018) — read-only, no span-worthy side effect beyond the report itself.
+/// Under <c>set</c>: "default" writes nothing, "specialised" emits a drafting brief built
+/// from the operator's own words (<see cref="WikiIdentityDraftingBrief"/>), and a
+/// hand-back persists a drafted document verbatim through
+/// <see cref="WikiIdentityDocumentStore"/> — this command never composes, templates, or
+/// judges content (FR-013a, ADR-053's authorship rule). No prompting path exists anywhere
+/// in here: every answer is required by <see cref="WikiIdentitySettings"/>'s own
+/// validation, so a malformed invocation never reaches this class (FR-015/FR-016).
 /// </summary>
 public sealed class WikiIdentityCommand : AsyncCommand<WikiIdentitySettings>
 {
@@ -41,6 +43,11 @@ public sealed class WikiIdentityCommand : AsyncCommand<WikiIdentitySettings>
     protected override async Task<int> ExecuteAsync(
         CommandContext context, WikiIdentitySettings settings, CancellationToken cancellationToken)
     {
+        if (string.IsNullOrEmpty(settings.Action))
+        {
+            return (int)ReportIdentity();
+        }
+
         using var wizardSpan = HubTracing.ActivitySource.StartActivity("hub.wiki_identity.wizard");
         var answer = settings.Default ? "default" : settings.Specialised ? "specialised" : "hand-back";
         wizardSpan?.SetTag("answer", answer);
@@ -54,6 +61,36 @@ public sealed class WikiIdentityCommand : AsyncCommand<WikiIdentitySettings>
         wizardSpan?.SetTag("outcome", outcome);
         HubMetrics.RecordWikiIdentityWizardOutcome(outcome);
         return (int)exitCode;
+    }
+
+    private CliExitCode ReportIdentity()
+    {
+        // Every agent's own default copy is byte-identical (single source, build-distributed
+        // per ADR-053) and the instance document, when one exists, is shared across all three —
+        // so which agent's AgentRuntimePaths resolution runs through is arbitrary; Ingest is
+        // picked for no reason beyond consistency (data-model.md §5 "resolved per-agent path").
+        var foundation = _paths.ResolveEffectiveFoundationPrompt(_paths.Ingest);
+        var firstHeading = FirstHeading(foundation.Path);
+
+        _stdout.WriteLine($"source: {foundation.Source}");
+        _stdout.WriteLine($"resolved_path: {foundation.Path}");
+        _stdout.WriteLine($"sha256: {foundation.Sha256}");
+        _stdout.WriteLine($"heading: {firstHeading}");
+        return CliExitCode.Success;
+    }
+
+    private static string FirstHeading(string path)
+    {
+        foreach (var line in File.ReadLines(path))
+        {
+            var trimmed = line.TrimStart();
+            if (trimmed.StartsWith('#'))
+            {
+                return trimmed.TrimStart('#').Trim();
+            }
+        }
+
+        return string.Empty;
     }
 
     private (string Outcome, CliExitCode ExitCode) KeepDefault()

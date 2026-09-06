@@ -211,6 +211,7 @@ grimoire-server down                       stop; the state volumes are kept
 grimoire-server rollback                   redeploy the previously deployed commit
 grimoire-server update [path]              fetch origin, refresh this script, then status
 grimoire-server tailscale [action]         status · up · drain · off
+grimoire-server wiki-identity [args...]    forward to the Hub's wiki-identity wizard
 grimoire-server tmux [session]             attach to the Claude Code session, or start it
 grimoire-server install [path]             copy the script outside the checkout
 grimoire-server version                    the tool, where it came from, what is deployed
@@ -228,6 +229,7 @@ reports the four things a server can be wrong in independently:
 | Section | Answers |
 | --- | --- |
 | the deployment record | which ref and commit is deployed, when, and whether someone has moved the checkout by hand since |
+| `Wiki identity` | which wiki this instance maintains — asked of the Hub, never recomputed here (see `wiki-identity` below) |
 | `Containers` | what `docker compose ps` sees |
 | the smoke checks | whether the stack actually serves (the same four checks a deployment must pass) |
 | `tmux` / tailnet service | whether the Claude Code session is still there, and whether the tailnet name points at this stack |
@@ -235,6 +237,35 @@ reports the four things a server can be wrong in independently:
 The last two are reported whether or not they are set up — "no `grimoire` session" and "no
 tailnet service configured" are answers, and a server whose agent session quietly died
 overnight looks perfectly healthy from every other section.
+
+### `wiki-identity` — which wiki this instance maintains
+
+Every agent loads a shared foundation document before its own role instructions; by default
+that is the one Grimoire ships, describing a general-purpose personal knowledge wiki, but an
+operator can hand the wizard a specialised one instead:
+
+```console
+$ grimoire-server wiki-identity
+source: default
+resolved_path: /app/Grimoire.AgentRuntime/Instructions/foundation-prompt.md
+sha256: 3f9c2b1a4e7d0f5c8a6b9e2d1c4f7a0b3e6d9c2f5a8b1e4d7c0f3a6b9e2d5c8f
+heading: Wiki Foundation
+
+$ grimoire-server wiki-identity set --specialised --description "Tracks nothing but home-lab Kubernetes runbooks."
+[a drafting brief, built from that description]
+
+$ grimoire-server wiki-identity set --from-file ./drafted-foundation.md
+Instance foundation document persisted (sha256: …, 1842 bytes).
+```
+
+This is a pure forward: the wizard's logic, its exit codes, and every guarantee it makes
+(nothing is ever templated or rewritten; a document handed back is persisted byte-for-byte;
+an existing instance document is never replaced without `--replace`) live entirely in the
+Hub's own `wiki-identity` CLI command. `grimoire-server` only execs into the running `hub`
+container and passes its exit code through unchanged — see
+[`contracts/wiki-identity-cli.md`](../../specs/029-shared-foundation-prompt/contracts/wiki-identity-cli.md)
+for every invocation and exit code. `status` prints the same report inline, obtained from
+the Hub the same way, so the two never disagree.
 
 ### `update` — the tool catches up, the stack does not
 

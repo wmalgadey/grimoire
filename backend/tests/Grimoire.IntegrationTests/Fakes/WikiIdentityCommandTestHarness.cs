@@ -49,6 +49,27 @@ internal static class WikiIdentityCommandTestHarness
         return (exitCode, stdout.ToString());
     }
 
+    public static async Task<(int ExitCode, string Stdout)> RunReportAsync(
+        ResolvedGrimoirePaths paths,
+        ILogger<WikiIdentityCommand>? logger = null,
+        CancellationToken cancellationToken = default)
+    {
+        var settings = new WikiIdentitySettings();
+
+        var validation = settings.Validate();
+        if (!validation.Successful)
+        {
+            return ((int)CliExitCode.UsageError, validation.Message ?? string.Empty);
+        }
+
+        var stdout = new StringWriter();
+        var command = new WikiIdentityCommand(paths, logger ?? Microsoft.Extensions.Logging.Abstractions.NullLogger<WikiIdentityCommand>.Instance, stdout);
+        var context = new CommandContext(Array.Empty<string>(), EmptyRemainingArguments.Instance, "wiki-identity", null);
+
+        var exitCode = await ((ICommand<WikiIdentitySettings>)command).ExecuteAsync(context, settings, cancellationToken);
+        return (exitCode, stdout.ToString());
+    }
+
     private sealed class EmptyRemainingArguments : IRemainingArguments
     {
         public static readonly EmptyRemainingArguments Instance = new();

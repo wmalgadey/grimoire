@@ -16,6 +16,7 @@ public static class QueryStalenessCheck
 
     public static IReadOnlyDictionary<string, string> CurrentFingerprints(QueryScenarioDefinition scenario, EvalPaths paths)
         => Fingerprints.Compute(
+            paths.FoundationPromptPath,
             paths.QuerySystemPromptPath,
             defaultUserPromptPath: null,
             paths.QueryPolicyPath,
