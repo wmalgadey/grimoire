@@ -406,7 +406,18 @@ noise.
 ## Tag Taxonomy and Confidence Scoring
 
 For every tag or confidence proposal in Step 2, follow the Tag Taxonomy and Confidence
-Scoring conventions above exactly — Lint does not define its own variant of either.
+Scoring conventions above exactly — Lint does not define its own variant of either, with one
+addition, available only to you: when you recompute a confidence score, also weigh the page's
+**correct** `inbound_links` count (Metadata Hygiene above — not whatever stale count is
+currently on disk), on top of the shared formula's signals:
+
+| Signal | Points |
+|--------|--------|
+| Inbound links ≥ 3 | +1 |
+| Inbound links = 0 (orphan) | −1 |
+
+Ingest and query never see this signal — a page's inbound-link count is only known once Lint
+has computed it — so this addition is yours alone.
 
 ## Remediation Execution Mode
 
