@@ -23,11 +23,13 @@ this checkout, this is not the deployment host — say so instead of drafting an
 
 ## Step 1 — Get the brief
 
-If the operator already gave you a description of the wiki they want, ask for the brief
-yourself rather than asking them to run a command:
+If the operator hasn't already told you what kind of wiki this instance should maintain,
+ask them first — that's the one question this whole skill exists to answer, and it isn't
+yours to guess or default. Once you have their own description in their own words, ask
+for the brief yourself rather than making them run a command:
 
 ```bash
-grimoire-server wiki-identity set --specialised --description "Tracks nothing but home-lab Kubernetes runbooks."
+grimoire-server wiki-identity set --specialised --description "<the operator's own description, verbatim>"
 ```
 
 Use `--description -` and pipe a long description through stdin instead of a shell
