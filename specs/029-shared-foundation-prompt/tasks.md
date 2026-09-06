@@ -163,7 +163,7 @@ agent operates under it.
 - [ ] T046 [P] [US2] Add the `wiki.identity.wizard_outcomes_total{outcome}` counter with all five documented outcomes (FR-011)
 - [ ] T047 [US2] Emit `wiki_identity_default_kept` (INFO, field `outcome`) and `wiki_identity_brief_emitted` (INFO, fields `description_length`, `brief_length`) (FR-012, FR-013)
 - [ ] T048 [US2] Emit `wiki_identity_document_persisted` (INFO, fields `sha256`, `bytes`, `replaced_existing`) and `wiki_identity_replace_refused` (WARN, fields `existing_sha256`, `reason`) (FR-013a, FR-014)
-- [ ] T049 [US2] Create the `hub.wiki_identity.wizard` span (root, attributes `answer`, `outcome`, `interactive`) with `hub.wiki_identity.persist` as its child (attributes `sha256`, `replaced_existing`, `resolved_path`) (FR-011, FR-013a)
+- [ ] T049 [US2] Create the `hub.wiki_identity.wizard` span (root, attributes `answer`, `outcome`) with `hub.wiki_identity.persist` as its child (attributes `sha256`, `replaced_existing`, `resolved_path`) (FR-011, FR-013a)
 - [ ] T050 [P] [US2] Integration test asserting the outcome counter's label for each of the five outcomes (FR-011)
 - [ ] T051 [P] [US2] Deterministic integration test asserting name, level and every mandatory field of the four wizard log events (FR-012, FR-013, FR-013a, FR-014)
 - [ ] T052 [US2] Fold T033's assertions and T051's into one named logging-contract test class so the five-row contract is verifiable in one place (FR-018)

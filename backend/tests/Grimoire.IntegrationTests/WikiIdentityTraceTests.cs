@@ -17,7 +17,7 @@ namespace Grimoire.IntegrationTests;
 public class WikiIdentityTraceTests
 {
     [Fact]
-    public async Task Default_StartsWizardSpan_RootParented_WithAnswerOutcomeAndInteractiveAttributes()
+    public async Task Default_StartsWizardSpan_RootParented_WithAnswerAndOutcomeAttributes()
     {
         var spans = new ConcurrentQueue<Activity>();
         using var listener = new ActivityListener
@@ -40,7 +40,6 @@ public class WikiIdentityTraceTests
             Assert.Null(wizard.ParentId);
             Assert.Equal("default", wizard.GetTagItem("answer"));
             Assert.Equal("default_kept", wizard.GetTagItem("outcome"));
-            Assert.NotNull(wizard.GetTagItem("interactive"));
 
             Assert.Empty(spans.Where(a => a.OperationName == "hub.wiki_identity.persist"));
         }

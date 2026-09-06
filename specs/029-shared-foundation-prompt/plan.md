@@ -195,7 +195,7 @@ live in `Grimoire.IntegrationTests`, which `ci.yml` already runs).
 
 | Span name | Parent span | Attributes |
 |---|---|---|
-| `hub.wiki_identity.wizard` | root (CLI invocation) | `answer`, `outcome`, `interactive` |
+| `hub.wiki_identity.wizard` | root (CLI invocation) | `answer`, `outcome` |
 | `hub.wiki_identity.persist` | `hub.wiki_identity.wizard` | `sha256`, `replaced_existing`, `resolved_path` |
 
 **Derivation rule (MANDATORY)**: both rows map to implementation, deterministic parent/child + attribute

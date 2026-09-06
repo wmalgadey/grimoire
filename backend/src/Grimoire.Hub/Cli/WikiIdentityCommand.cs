@@ -41,15 +41,9 @@ public sealed class WikiIdentityCommand : AsyncCommand<WikiIdentitySettings>
     protected override async Task<int> ExecuteAsync(
         CommandContext context, WikiIdentitySettings settings, CancellationToken cancellationToken)
     {
-        // Informational only (T049): never gates behaviour. FR-015/FR-016 require the
-        // command to behave identically with or without a terminal attached, so this
-        // attribute records the fact without the command ever branching on it.
-        var interactive = !Console.IsInputRedirected;
-
         using var wizardSpan = HubTracing.ActivitySource.StartActivity("hub.wiki_identity.wizard");
         var answer = settings.Default ? "default" : settings.Specialised ? "specialised" : "hand-back";
         wizardSpan?.SetTag("answer", answer);
-        wizardSpan?.SetTag("interactive", interactive);
 
         var (outcome, exitCode) = settings.Default
             ? KeepDefault()
