@@ -209,6 +209,7 @@ public class ReplayAdapterTests : IDisposable
         Directory.CreateDirectory(Path.Combine(wikiRoot, "tasks"));
         var agentDir = Path.Combine(_scratch, "agents");
         Directory.CreateDirectory(agentDir);
+        File.WriteAllText(Path.Combine(agentDir, "foundation-prompt.md"), "foundation");
         File.WriteAllText(Path.Combine(agentDir, "system-prompt.md"), "prompt");
         File.WriteAllText(Path.Combine(agentDir, "default-user-prompt.md"), "user prompt");
         File.WriteAllText(Path.Combine(agentDir, "policy.json"), "{}");
@@ -233,6 +234,7 @@ public class ReplayAdapterTests : IDisposable
             ("--tasks-dir", Path.Combine(wikiRoot, "tasks")),
             ("--index-path", Path.Combine(wikiRoot, "index.md")),
             ("--log-path", Path.Combine(wikiRoot, "log.md")),
+            ("--foundation-prompt-path", Path.Combine(agentDir, "foundation-prompt.md")),
             ("--system-prompt-path", Path.Combine(agentDir, "system-prompt.md")),
             ("--default-user-prompt-path", Path.Combine(agentDir, "default-user-prompt.md")),
             ("--policy-path", Path.Combine(agentDir, "policy.json")),

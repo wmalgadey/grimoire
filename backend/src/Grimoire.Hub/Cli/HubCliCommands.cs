@@ -59,6 +59,9 @@ public static class HubCliCommands
         new("submit-source",
             "Submit a source document for ingest into the wiki via --path <path>, with optional --source-kind <kind>.",
             typeof(IngestSubmitSourceCommand)),
+        new("wiki-identity",
+            "Report which wiki this instance maintains, or set it via 'set --default|--specialised|--from-file'.",
+            typeof(WikiIdentityCommand)),
     ];
 
     static HubCliCommands()

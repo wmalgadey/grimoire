@@ -10,6 +10,11 @@ namespace Grimoire.EvalRunner.Workspace;
 /// </summary>
 public sealed record EvalPaths(string RepoRoot)
 {
+    // 029-shared-foundation-prompt (FR-008, SC-003): the single shared source, identical
+    // for all three agents — an eval run has no data root and therefore always operates
+    // under the shipped default (never an instance override).
+    public string FoundationPromptPath => Path.Combine(RepoRoot, "backend", "src", "Grimoire.AgentRuntime", "Instructions", "foundation-prompt.md");
+
     public string AgentInstructionsDir => Path.Combine(RepoRoot, "backend", "src", "Grimoire.IngestAgent", "Instructions");
 
     public string SystemPromptPath => Path.Combine(AgentInstructionsDir, "system-prompt.md");

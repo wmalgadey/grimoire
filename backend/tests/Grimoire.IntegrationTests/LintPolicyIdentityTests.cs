@@ -94,6 +94,8 @@ public class LintPolicyIdentityTests
 
         try
         {
+            var foundationPromptPath = Path.Combine(root, "foundation-prompt.md");
+            await File.WriteAllTextAsync(foundationPromptPath, "You are part of a wiki-maintaining agent team.");
             var systemPromptPath = Path.Combine(root, "system-prompt.md");
             await File.WriteAllTextAsync(systemPromptPath, "You are a test agent.");
             var missingPolicyPath = Path.Combine(root, "does-not-exist-policy.json");
@@ -112,6 +114,7 @@ public class LintPolicyIdentityTests
             var host = new AgentHost(profile);
             var run = new AgentHostRun(
                 WikiRoot: root,
+                FoundationPromptPath: foundationPromptPath,
                 SystemPromptPath: systemPromptPath,
                 PolicyPath: missingPolicyPath,
                 HeartbeatSeconds: 30);

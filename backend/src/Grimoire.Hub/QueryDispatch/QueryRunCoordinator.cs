@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using Grimoire.Hub.AgentDispatch;
 using Grimoire.Hub.QueryConversations;
 using Grimoire.Hub.Realtime;
 using Grimoire.Hub.Runtime.Paths;
@@ -147,6 +148,21 @@ public sealed class QueryRunCoordinator
 
         QueryLifecycleLogEvents.LogTurnCreated(_logger, conversationId, turnId);
 
+        EffectiveFoundationPrompt foundation;
+        try
+        {
+            foundation = _paths.ResolveEffectiveFoundationPrompt(_paths.Query);
+        }
+        catch (Exception ex)
+        {
+            await FinishTurnAsync(turnId, QueryTurnStatus.Failed,
+                $"Foundation document could not be resolved: {ex.Message}", metadata: null, CancellationToken.None);
+            return new QuerySubmissionResult.Accepted(turn);
+        }
+
+        HubMetrics.RecordFoundationResolved(foundation.Source);
+        GrimoirePathLogEvents.LogFoundationResolved(_logger, "query", foundation.Source, foundation.Path, foundation.Sha256);
+
         var request = new QueryAgentRequest(
             TurnId: turnId,
             ConversationId: conversationId,
@@ -156,6 +172,7 @@ public sealed class QueryRunCoordinator
             ContentRoot: _paths.WikiDir,
             IndexPath: _paths.IndexPath,
             LogPath: _paths.LogPath,
+            FoundationPromptPath: foundation.Path,
             SystemPromptPath: _paths.Query.SystemPromptPath,
             PolicyPath: _paths.Query.PolicyPath,
             WriteLocksDir: _paths.WriteLocksDir);
@@ -274,6 +291,7 @@ public sealed class QueryRunCoordinator
             supervisionSpan?.SetTag("outcome", status.ToString().ToLowerInvariant());
             var metadata = new QueryTurnCompletionMetadata(
                 terminalEvent.SystemPromptSha256,
+                terminalEvent.FoundationPromptSha256,
                 terminalEvent.PolicyPath,
                 terminalEvent.PolicyVersion,
                 terminalEvent.PolicySha256,
@@ -383,20 +401,34 @@ public sealed class QueryRunCoordinator
             CompletedAt: turn.CompletedAt,
             Model: metadata?.Model,
             TurnsUsed: metadata?.TurnsUsed,
-            InstructionFilePath: metadata?.SystemPromptSha256 is null ? null : "agents/query/system-prompt.md",
+            FoundationFilePath: DocumentPathIfPresent(metadata?.FoundationPromptSha256, "agents/query/foundation-prompt.md"),
+            FoundationFileSha256: metadata?.FoundationPromptSha256,
+            InstructionFilePath: DocumentPathIfPresent(metadata?.SystemPromptSha256, "agents/query/system-prompt.md"),
             InstructionFileSha256: metadata?.SystemPromptSha256,
             PolicyPath: metadata?.PolicyPath,
             PolicyVersion: metadata?.PolicyVersion,
             PolicySha256: metadata?.PolicySha256,
-            DeniedActions: [.. (metadata?.DeniedActions ?? []).Select(d =>
-                new QueryRecordedDeniedAction(d.Action, d.RequestedTarget, d.CanonicalTarget, d.Reason, d.Turn))],
+            DeniedActions: BuildRecordedDeniedActions(metadata?.DeniedActions),
             Prompt: turn.Prompt,
             Answer: turn.Answer,
             // ADR-015 (012-query-synthesis-writes): the agent process reports canonical
             // (absolute) paths; the record stores wiki-root-relative paths
             // (data-model.md "Run Completion Metadata").
-            CreatedPages: [.. (metadata?.CreatedPages ?? []).Select(canonical => ToWikiRelative(canonical, wikiRoot))]);
+            CreatedPages: BuildRecordedCreatedPages(metadata?.CreatedPages, wikiRoot));
     }
+
+    /// <summary>The recorded path for a document identity field, present only when its
+    /// hash was reported — mirrors the task artifact's instruction_files entries, which
+    /// likewise only exist for a document that actually loaded.</summary>
+    private static string? DocumentPathIfPresent(string? sha256, string path) => sha256 is null ? null : path;
+
+    private static IReadOnlyList<QueryRecordedDeniedAction> BuildRecordedDeniedActions(
+        IReadOnlyList<AgentRunEventDeniedAction>? deniedActions)
+        => [.. (deniedActions ?? []).Select(d =>
+            new QueryRecordedDeniedAction(d.Action, d.RequestedTarget, d.CanonicalTarget, d.Reason, d.Turn))];
+
+    private static IReadOnlyList<string> BuildRecordedCreatedPages(IReadOnlyList<string>? createdPages, string wikiRoot)
+        => [.. (createdPages ?? []).Select(canonical => ToWikiRelative(canonical, wikiRoot))];
 
     private static string ToWikiRelative(string canonicalPath, string wikiRoot)
         => Path.GetRelativePath(wikiRoot, canonicalPath).Replace('\\', '/');

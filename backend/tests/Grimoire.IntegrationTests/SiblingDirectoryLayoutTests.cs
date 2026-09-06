@@ -69,6 +69,8 @@ public class SiblingDirectoryLayoutTests
                     CompletedAt: DateTimeOffset.UtcNow,
                     Model: "claude-sonnet-4-5",
                     TurnsUsed: 1,
+                    FoundationFilePath: "agents/query/foundation-prompt.md",
+                    FoundationFileSha256: "sha-0",
                     InstructionFilePath: "agents/query/system-prompt.md",
                     InstructionFileSha256: "sha-1",
                     PolicyPath: "agents/query/policy.json",

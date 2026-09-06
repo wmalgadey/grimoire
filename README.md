@@ -15,11 +15,69 @@ through it once at a careful pace. See
 [`docs/codebase-complexity-metric.md`](docs/codebase-complexity-metric.md) for the exact
 formulas, thresholds, and sources.
 
+## Getting Started
+
+Grimoire ships as a self-hosted stack behind one Compose project — the Hub, the three
+agent runtimes, the frontend, and a local telemetry dashboard. The full setup (credentials,
+the `.env` configuration surface, reaching the stack from another machine) lives in
+[`deploy/server/README.md`](deploy/server/README.md); this is the short path through it.
+
+### Install and deploy
+
+```bash
+git clone https://github.com/wmalgadey/grimoire.git ~/grimoire
+cd ~/grimoire
+cp .env-example .env && chmod 600 .env && $EDITOR .env   # put a real ANTHROPIC_AUTH_TOKEN in it
+
+./deploy/server/grimoire-server install       # copies the tool outside the checkout
+export PATH="$HOME/.local/bin:$PATH"
+export GRIMOIRE_REPO=$HOME/grimoire
+
+grimoire-server deploy main                   # builds the images, brings the stack up, smoke-checks it
+```
+
+The first build is slow — the .NET SDK, Bun, and all three agent builds run — and every
+later one reuses the layer cache. `grimoire-server status` reports what is deployed, what
+origin has since, and whether the stack is actually serving; run it any time instead of
+guessing. The stack publishes to `127.0.0.1` only — reach it from elsewhere over an SSH
+tunnel or Tailscale, both covered in `deploy/server/README.md`.
+
+### Point it at your own wiki
+
+By default, every agent maintains the wiki Grimoire ships: a general-purpose personal
+knowledge base. Check which one this instance is actually running:
+
+```bash
+grimoire-server wiki-identity
+```
+
+To have it maintain something else instead, ask the wizard for a drafting brief built from
+your own description:
+
+```bash
+grimoire-server wiki-identity set --specialised --description "Tracks nothing but home-lab Kubernetes runbooks."
+```
+
+The wizard only reports and persists — it never drafts the document itself, since deciding
+what a wiki should be is agent judgment, not something the deterministic harness is allowed
+to do. Drafting is a job for whoever reads the brief, typically the Claude Code session
+already running on the deploy host: the
+[`wiki-identity-drafting`](.claude/skills/wiki-identity-drafting/SKILL.md) skill covers
+exactly what a drafted document has to contain and how to hand it back with
+`grimoire-server wiki-identity set --from-file <path>` — no restart needed, the next
+Ingest, Query, or Lint run operates under it.
+
+Going back is deliberately not a wizard menu entry — `set --default` reports the default
+without ever removing a specialised document already in place. Reverting is its own command,
+[`wiki-identity-reset`](.claude/skills/wiki-identity-reset/SKILL.md), covering the
+irreversible-deletion confirmation a human should get before `grimoire-server
+wiki-identity-reset --yes` runs.
+
 ## Architecture
 
 - **Backend** (`backend/`) — .NET / C#, hexagonal (ports & adapters) architecture
 - **Frontend** (`frontend/`) — SvelteKit
-- **Agents** (`backend/src/Grimoire.*Agent/Instructions/`) — per-agent instruction files (`system-prompt.md`, `policy.json`, plus `default-user-prompt.md` where the agent has a default steering message) that govern each agent's behavior at runtime, delivered to the configured agent directory by the agent build
+- **Agents** (`backend/src/Grimoire.*Agent/Instructions/`) — per-agent instruction files (`system-prompt.md`, `policy.json`, plus `default-user-prompt.md` where the agent has a default steering message) that govern each agent's behavior at runtime, delivered to the configured agent directory by the agent build. Every agent additionally loads one shared foundation document ([ADR-053](docs/adr/ADR-053-agent-system-prompt-composition.md)) ahead of its own `system-prompt.md`; an operator can point an instance at a specialised one instead of the shipped default via the Hub's `wiki-identity` command
 - **Evals** (`backend/tests/Grimoire.EvalRunner`, `backend/tests/Grimoire.AgentEvals`) — a standalone runner that replays committed recordings at the model port ([ADR-012](docs/adr/ADR-012-eval-runner-recorded-replay.md)), so agent *judgment* is scored against thresholds rather than pinned by deterministic tests
 
 Grimoire is split into a **deterministic harness** (the Hub: dispatch, credential scoping,

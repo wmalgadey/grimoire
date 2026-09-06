@@ -62,6 +62,9 @@ public sealed record AgentRunEvent(
     // ADR-011: terminal-event metadata a write-less agent process (Query) reports so the
     // Hub can finalize its own Query Run Artifact entirely from the event stream (R3).
     [property: JsonPropertyName("systemPromptSha256")] string? SystemPromptSha256 = null,
+    // 029-shared-foundation-prompt (ADR-053): the shared foundation document's hash,
+    // alongside SystemPromptSha256 (the agent's own role document, meaning unchanged).
+    [property: JsonPropertyName("foundationPromptSha256")] string? FoundationPromptSha256 = null,
     [property: JsonPropertyName("policyPath")] string? PolicyPath = null,
     [property: JsonPropertyName("policyVersion")] int? PolicyVersion = null,
     [property: JsonPropertyName("policySha256")] string? PolicySha256 = null,

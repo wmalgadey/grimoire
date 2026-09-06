@@ -120,6 +120,12 @@ public static class GrimoirePathResolver
         // field, no switch, no Locations entry (not independently configurable, not a
         // required input).
         var lintPidPath = Path.Combine(dataDir, GrimoirePathOptions.DefaultLintPidFileName);
+        // 029-shared-foundation-prompt (ADR-053): same treatment as indexPath/logPath/
+        // lintPidPath above — a fixed filename under the already-resolved data directory,
+        // no GrimoirePathOptions field, no switch, no Locations entry. Presence, not
+        // configuration, decides whether this file is the effective foundation document
+        // (contracts/foundation-document.md); it need not exist at startup.
+        var instanceFoundationPromptPath = Path.Combine(dataDir, "foundation-prompt.md");
         var rawOriginalsDir = Path.Combine(rawDir, "originals");
         var rawSourcesDir = Path.Combine(rawDir, "sources");
 
@@ -185,6 +191,7 @@ public static class GrimoirePathResolver
             IndexPath: indexPath,
             LogPath: logPath,
             SecretsFilePath: secretsFilePath,
+            InstanceFoundationPromptPath: instanceFoundationPromptPath,
             Ingest: ingest,
             Query: query,
             Lint: lint,
@@ -206,11 +213,12 @@ public static class GrimoirePathResolver
         var dir = Path.Combine(agentDir, agentId);
         var workerPath = Path.Combine(dir, workerFileName);
         var instructionsDir = Path.Combine(dir, "Instructions");
+        var foundationPromptPath = Path.Combine(instructionsDir, "foundation-prompt.md");
         var systemPromptPath = Path.Combine(instructionsDir, "system-prompt.md");
         var policyPath = Path.Combine(instructionsDir, "policy.json");
         var defaultUserPromptPath = hasDefaultUserPrompt ? Path.Combine(instructionsDir, "default-user-prompt.md") : null;
 
-        return new AgentRuntimePaths(dir, workerPath, instructionsDir, systemPromptPath, policyPath, defaultUserPromptPath);
+        return new AgentRuntimePaths(dir, workerPath, instructionsDir, foundationPromptPath, systemPromptPath, policyPath, defaultUserPromptPath);
     }
 
     private static string ResolveAgainst(string? configuredValue, string anchor)
@@ -294,6 +302,7 @@ public static class GrimoirePathResolver
 
         ValidateRequiredDirectory(logger, $"{agentId}_dir", derivedFromAgentDir, paths.Dir);
         ValidateRequiredDirectory(logger, $"{agentId}_instructions_dir", derivedFromAgentDir, paths.InstructionsDir);
+        ValidateRequiredFile(logger, $"{agentId}_foundation_prompt", derivedFromAgentDir, paths.FoundationPromptPath);
         ValidateRequiredFile(logger, $"{agentId}_system_prompt", derivedFromAgentDir, paths.SystemPromptPath);
         ValidateRequiredFile(logger, $"{agentId}_policy", derivedFromAgentDir, paths.PolicyPath);
         if (paths.DefaultUserPromptPath is not null)

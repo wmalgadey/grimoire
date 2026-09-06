@@ -81,6 +81,9 @@ public static class QueryConversationRecordFormat
         sb.Append("completed_at: ").Append(turn.CompletedAt?.ToString("O", CultureInfo.InvariantCulture) ?? "null").Append('\n');
         sb.Append("model: ").Append(NullableString(turn.Model)).Append('\n');
         sb.Append("turns_used: ").Append(turn.TurnsUsed?.ToString(CultureInfo.InvariantCulture) ?? "null").Append('\n');
+        sb.Append("foundation_file:\n");
+        sb.Append("  path: ").Append(NullableString(turn.FoundationFilePath)).Append('\n');
+        sb.Append("  sha256: ").Append(NullableString(turn.FoundationFileSha256)).Append('\n');
         sb.Append("instruction_file:\n");
         sb.Append("  path: ").Append(NullableString(turn.InstructionFilePath)).Append('\n');
         sb.Append("  sha256: ").Append(NullableString(turn.InstructionFileSha256)).Append('\n');
@@ -342,6 +345,8 @@ public static class QueryConversationRecordFormat
             CompletedAt: bookkeeping.CompletedAt,
             Model: bookkeeping.Model,
             TurnsUsed: bookkeeping.TurnsUsed,
+            FoundationFilePath: bookkeeping.FoundationFilePath,
+            FoundationFileSha256: bookkeeping.FoundationFileSha256,
             InstructionFilePath: bookkeeping.InstructionFilePath,
             InstructionFileSha256: bookkeeping.InstructionFileSha256,
             PolicyPath: bookkeeping.PolicyPath,
@@ -393,6 +398,8 @@ public static class QueryConversationRecordFormat
         public DateTimeOffset? CompletedAt;
         public string? Model;
         public int? TurnsUsed;
+        public string? FoundationFilePath;
+        public string? FoundationFileSha256;
         public string? InstructionFilePath;
         public string? InstructionFileSha256;
         public string? PolicyPath;
@@ -452,6 +459,7 @@ public static class QueryConversationRecordFormat
             ["completed_at"] = ParseCompletedAt,
             ["model"] = ParseModel,
             ["turns_used"] = ParseTurnsUsed,
+            ["foundation_file"] = ParseFoundationFile,
             ["instruction_file"] = ParseInstructionFile,
             ["policy"] = ParsePolicy,
             ["denied_actions"] = ParseDeniedActions,
@@ -575,6 +583,11 @@ public static class QueryConversationRecordFormat
 
     private static bool ParseAnswerChars(ParsedBookkeeping result, string raw, BookkeepingCursor cursor)
         => TryParseInt(raw, out result.AnswerChars, cursor, "answer_chars is not a non-negative integer");
+
+    private static bool ParseFoundationFile(ParsedBookkeeping result, string raw, BookkeepingCursor cursor)
+        => TryParseNestedMapping(cursor, out var nested)
+            && TryGetNullableString(nested, "path", out result.FoundationFilePath, cursor)
+            && TryGetNullableString(nested, "sha256", out result.FoundationFileSha256, cursor);
 
     private static bool ParseInstructionFile(ParsedBookkeeping result, string raw, BookkeepingCursor cursor)
         => TryParseNestedMapping(cursor, out var nested)

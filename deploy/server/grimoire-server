@@ -38,7 +38,7 @@ MIN_COMPOSE_VERSION="2.24.0" # `!override` in the server compose overlay
 #
 # It versions the tool, never the stack it deploys — `status` and `version` report that
 # separately, from the deployment record and the checkout.
-GRIMOIRE_SERVER_VERSION="1.2.0"
+GRIMOIRE_SERVER_VERSION="1.3.0"
 
 # --- Output ------------------------------------------------------------------------
 # Progress goes to stderr so that a helper's stdout is only ever its value.
@@ -515,6 +515,24 @@ tmux_report() {
   info "attach with: grimoire-server tmux"
 }
 
+# 029-shared-foundation-prompt (FR-018a): `status`'s answer to "which wiki does this
+# instance maintain?" is obtained from the Hub, never recomputed here — the same
+# `wiki-identity` report `cmd_wiki_identity` forwards to, just captured instead of
+# exec'd so `status` can keep going and print everything else it reports. Best-effort:
+# a stack that is not up, or whose hub container is not running, must not fail `status`
+# over this — it is one more fact `status` surfaces, not a precondition for the rest.
+wiki_identity_report() {
+  local repo="$1" identity
+  if ! identity="$(compose "$repo" exec -T hub dotnet /app/Grimoire.Hub.dll wiki-identity 2>/dev/null)"; then
+    log "Wiki identity"
+    info "could not ask the hub — is it running?"
+    return
+  fi
+
+  log "Wiki identity"
+  printf '%s\n' "$identity" | sed 's/^/    /' >&2
+}
+
 # Compares dotted versions without sorting surprises: 2.9.0 is older than 2.24.0.
 version_at_least() {
   local have="$1" want="$2" i hv wv
@@ -735,6 +753,8 @@ cmd_status() {
       warn "the checkout is at $(short "$head"), not at the deployed commit — someone moved it by hand"
   fi
 
+  wiki_identity_report "$repo"
+
   # #202: "what is running?" should say so when the answer is "not what the checkout
   # would deploy" — the same drift `deploy` now warns about, surfaced here too since this
   # is the other place an operator looks to find out what is currently true of the host.
@@ -804,6 +824,87 @@ cmd_down() {
   # in the README, not a flag away from the routine stop.
   compose "$repo" down
   log "Stopped. The state volumes are untouched."
+}
+
+cmd_wiki_identity() {
+  local repo
+  repo="$(repo_dir)"
+  local -a args=("$@")
+  local i host_path container_path
+
+  # --from-file <path> names a path the Hub CLI resolves inside the *hub container*'s
+  # filesystem, but the operator drafts on the *deploy host* — the one filesystem they
+  # actually have (a draft written by the wiki-identity-drafting skill, or by hand). Stage
+  # a host-existing draft into the container first so --from-file means the same thing on
+  # either side of that boundary; a path that is not on the host is forwarded unchanged,
+  # and the Hub CLI's own NotFound still answers for a genuinely bad one.
+  for ((i = 0; i < ${#args[@]}; i++)); do
+    [[ "${args[i]}" == "--from-file" ]] || continue
+    host_path="${args[i + 1]:-}"
+    [[ -n "$host_path" && -f "$host_path" ]] || continue
+    container_path="/tmp/$(basename "$host_path")"
+    compose "$repo" cp "$host_path" "hub:$container_path" ||
+      die "could not stage $host_path into the hub container"
+    args[i + 1]="$container_path"
+    break
+  done
+
+  # 029-shared-foundation-prompt (FR-018a): pure passthrough — the wizard's logic and
+  # its exit-code convention live entirely in the Hub CLI (contracts/wiki-identity-cli.md);
+  # this only forwards argv (staged above, only for a host-existing --from-file path) and
+  # lets the exec'd process's exit code end the script (set -e propagates it since this is
+  # the function's last command). -T disables TTY allocation so `set --specialised
+  # --description -` can read a piped description from stdin. The `${#args[@]}` guard
+  # avoids expanding an empty array under `set -u` (report mode passes none of this).
+  if ((${#args[@]} > 0)); then
+    compose "$repo" exec -T hub dotnet /app/Grimoire.Hub.dll wiki-identity "${args[@]}"
+  else
+    compose "$repo" exec -T hub dotnet /app/Grimoire.Hub.dll wiki-identity
+  fi
+}
+
+# data-model.md §5: "There is no wizard action that deletes an instance document:
+# removing one is a deliberate file operation, not a menu entry, so the wizard can never
+# leave an instance with less identity than it had." This command is that deliberate file
+# operation — not a wiki-identity wizard action, and not reachable through `cmd_wiki_identity`
+# above. It still determines nothing about identity on its own (FR-018a): it only acts on
+# what the Hub's own report already says, the same report `status` already surfaces.
+cmd_wiki_identity_reset() {
+  local repo="" yes=0 report source resolved_path
+
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+    --yes) yes=1 ;;
+    -*) die "unknown option: $1" ;;
+    *) die "unexpected argument: $1" ;;
+    esac
+    shift
+  done
+
+  repo="$(repo_dir)"
+  report="$(compose "$repo" exec -T hub dotnet /app/Grimoire.Hub.dll wiki-identity)" ||
+    die "could not reach the hub to check the current wiki identity"
+
+  source="$(printf '%s\n' "$report" | sed -n 's/^source: //p')"
+  if [[ "$source" != "instance" ]]; then
+    log "Already on the shipped default — nothing to remove"
+    return 0
+  fi
+
+  resolved_path="$(printf '%s\n' "$report" | sed -n 's/^resolved_path: //p')"
+  [[ -n "$resolved_path" ]] || die "the hub reported source: instance but no resolved_path — cannot proceed"
+
+  if ((yes != 1)); then
+    printf '%s\n' "$report" | sed 's/^/    /' >&2
+    die "an instance foundation document is in place (above) — re-run with --yes to remove it \
+and revert this instance to the shipped default. This cannot be undone; back up $resolved_path \
+first if it took real drafting effort to produce."
+  fi
+
+  log "Removing the instance foundation document: $resolved_path"
+  compose "$repo" exec -T hub rm -f "$resolved_path" ||
+    die "could not remove $resolved_path in the hub container"
+  log "Removed. This instance is back on the shipped default — no restart needed."
 }
 
 cmd_tailscale() {
@@ -1081,6 +1182,9 @@ Commands:
   rollback                   redeploy the commit that ran before the current one
   update [path]              fetch origin, refresh this script's installed copy, status
   tailscale [action]         status (default) · up · drain · off
+  wiki-identity <args...>    forwards to the Hub's wiki-identity wizard (see its own --help)
+  wiki-identity-reset [--yes]  remove an instance foundation document, reverting to the
+                             shipped default — refuses without --yes; irreversible
   tmux [session]             attach to the Claude Code session, starting it if needed
   install [path]             copy this script outside the checkout (default ~/.local/bin)
   version                    this tool, the commit it came from, the deployed commit
@@ -1117,6 +1221,8 @@ main() {
   rollback) cmd_rollback "$@" ;;
   update) cmd_update "$@" ;;
   tailscale) cmd_tailscale "$@" ;;
+  wiki-identity) cmd_wiki_identity "$@" ;;
+  wiki-identity-reset) cmd_wiki_identity_reset "$@" ;;
   tmux) cmd_tmux "$@" ;;
   install) cmd_install "$@" ;;
   version | --version | -V) cmd_version ;;

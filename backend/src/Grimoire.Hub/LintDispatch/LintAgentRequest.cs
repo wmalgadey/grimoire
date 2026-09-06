@@ -10,6 +10,7 @@ namespace Grimoire.Hub.LintDispatch;
 public sealed record LintAgentRequest(
     string RunId,
     string WikiRoot,
+    string FoundationPromptPath,
     string SystemPromptPath,
     string PolicyPath,
     // ADR-015 (012-query-synthesis-writes), extended by ADR-016 (013-lint-agent): the

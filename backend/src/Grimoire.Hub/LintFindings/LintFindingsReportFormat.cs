@@ -27,6 +27,10 @@ public sealed record LintFindingsReport(
     string OutcomeState,
     string? FailureReason,
     bool Partial,
+    // 029-shared-foundation-prompt (FR-006, SC-001): the foundation document's own
+    // path/hash, recorded distinguishably from the role document below.
+    string? FoundationFilePath,
+    string? FoundationFileSha256,
     string? InstructionFilePath,
     string? InstructionFileSha256,
     IReadOnlyList<LintFindingsDeniedAction> DeniedActions,
@@ -72,6 +76,9 @@ public static class LintFindingsReportFormat
         sb.Append("outcome_state: ").Append(report.OutcomeState).Append('\n');
         sb.Append("failure_reason: ").Append(NullableString(report.FailureReason)).Append('\n');
         sb.Append("partial: ").Append(report.Partial ? "true" : "false").Append('\n');
+        sb.Append("foundation_file:\n");
+        sb.Append("  path: ").Append(NullableString(report.FoundationFilePath)).Append('\n');
+        sb.Append("  sha256: ").Append(NullableString(report.FoundationFileSha256)).Append('\n');
         sb.Append("instruction_file:\n");
         sb.Append("  path: ").Append(NullableString(report.InstructionFilePath)).Append('\n');
         sb.Append("  sha256: ").Append(NullableString(report.InstructionFileSha256)).Append('\n');

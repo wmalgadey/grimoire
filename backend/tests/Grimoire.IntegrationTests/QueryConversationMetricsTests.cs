@@ -47,6 +47,8 @@ public class QueryConversationMetricsTests
         CompletedAt: DateTimeOffset.UtcNow,
         Model: null,
         TurnsUsed: null,
+        FoundationFilePath: null,
+        FoundationFileSha256: null,
         InstructionFilePath: null,
         InstructionFileSha256: null,
         PolicyPath: null,

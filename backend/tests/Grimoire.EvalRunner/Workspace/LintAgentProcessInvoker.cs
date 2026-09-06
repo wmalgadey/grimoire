@@ -130,6 +130,7 @@ public sealed class LintAgentProcessInvoker
         startInfo.ArgumentList.Add(_agentDllPath);
         AddOption(startInfo, "--run-id", runId);
         AddOption(startInfo, "--wiki-root", wikiRoot);
+        AddOption(startInfo, "--foundation-prompt-path", paths.FoundationPromptPath);
         AddOption(startInfo, "--system-prompt-path", paths.LintSystemPromptPath);
         AddOption(startInfo, "--policy-path", paths.LintPolicyPath);
         AddOption(startInfo, "--write-locks-dir", writeLocksDir);
@@ -243,6 +244,7 @@ public sealed class LintAgentProcessInvoker
         AddOption(startInfo, "--task-id", taskId);
         AddOption(startInfo, "--run-id", runId);
         AddOption(startInfo, "--wiki-root", wikiRoot);
+        AddOption(startInfo, "--foundation-prompt-path", paths.FoundationPromptPath);
         AddOption(startInfo, "--system-prompt-path", paths.LintSystemPromptPath);
         AddOption(startInfo, "--policy-path", paths.LintPolicyPath);
         AddOption(startInfo, "--write-locks-dir", writeLocksDir);

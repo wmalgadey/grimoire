@@ -162,6 +162,7 @@ public sealed class ReplayPipeline
 
         using var workspace = await EvalWorkspace.CreateAsync(
             _paths.FixtureWikiRoot(scenario.FixtureName),
+            _paths.FoundationPromptPath,
             _paths.AgentInstructionsDir,
             taskId,
             scenario.SystemPromptAppendix,

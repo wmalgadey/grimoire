@@ -12,6 +12,12 @@ namespace Grimoire.AgentRuntime.RunEvents;
 /// </summary>
 public sealed record RunCompletionMetadata(
     string? SystemPromptSha256 = null,
+    // 029-shared-foundation-prompt (ADR-053): the shared foundation document's hash,
+    // reported alongside SystemPromptSha256 (which keeps its existing meaning — the
+    // agent's own role document) so a write-less agent's Hub-side record can name both
+    // documents distinguishably (FR-006, SC-001), the same way Ingest's task artifact
+    // already does with its two-entry instruction_files list.
+    string? FoundationPromptSha256 = null,
     string? PolicyPath = null,
     int? PolicyVersion = null,
     string? PolicySha256 = null,
@@ -150,38 +156,48 @@ public sealed class RunEventEmitter : IDisposable
             reason,
             text,
             systemPromptSha256 = metadata?.SystemPromptSha256,
+            foundationPromptSha256 = metadata?.FoundationPromptSha256,
             policyPath = metadata?.PolicyPath,
             policyVersion = metadata?.PolicyVersion,
             policySha256 = metadata?.PolicySha256,
             model = metadata?.Model,
             turnsUsed = metadata?.TurnsUsed,
-            deniedActions = metadata?.DeniedActions?.Select(d => new
-            {
-                action = d.Action,
-                requestedTarget = d.RequestedTarget,
-                canonicalTarget = d.CanonicalTarget,
-                reason = d.Reason,
-                turn = d.Turn,
-            }).ToList(),
+            deniedActions = BuildDeniedActions(metadata?.DeniedActions),
             createdPages = metadata?.CreatedArtifacts,
             // ADR-018 (015-lint-board-parity): rides the terminal event like
             // deniedActions/createdPages above; null when the run proposed nothing.
-            proposedActions = metadata?.ProposedActions?.Select(p => new
-            {
-                title = p.Title,
-                description = p.Description,
-                targetPath = p.TargetPath,
-            }).ToList(),
+            proposedActions = BuildProposedActions(metadata?.ProposedActions),
             // 028-lint-at-scale (US2, FR-003): rides the terminal event like
             // deniedActions/createdPages/proposedActions above; null for every run that
             // did not compute a coverage report.
-            wikiCoverage = metadata?.WikiCoverage is { } coverage
-                ? new { pagesTotal = coverage.PagesTotal, pagesConsidered = coverage.PagesConsidered, status = coverage.Status }
-                : null,
+            wikiCoverage = BuildWikiCoverage(metadata?.WikiCoverage),
             // T035 (015-lint-board-parity, ADR-018): remediation-execution mode's
             // re-verification outcome, null for every other agent/mode.
             remediationOutcome = metadata?.RemediationOutcome,
         };
+
+    private static object? BuildDeniedActions(IReadOnlyList<DeniedActionRecord>? deniedActions)
+        => deniedActions?.Select(d => new
+        {
+            action = d.Action,
+            requestedTarget = d.RequestedTarget,
+            canonicalTarget = d.CanonicalTarget,
+            reason = d.Reason,
+            turn = d.Turn,
+        }).ToList();
+
+    private static object? BuildProposedActions(IReadOnlyList<ProposedActionRecord>? proposedActions)
+        => proposedActions?.Select(p => new
+        {
+            title = p.Title,
+            description = p.Description,
+            targetPath = p.TargetPath,
+        }).ToList();
+
+    private static object? BuildWikiCoverage(WikiCoverage? wikiCoverage)
+        => wikiCoverage is { } coverage
+            ? new { pagesTotal = coverage.PagesTotal, pagesConsidered = coverage.PagesConsidered, status = coverage.Status }
+            : null;
 
     private void Emit(object payload)
     {

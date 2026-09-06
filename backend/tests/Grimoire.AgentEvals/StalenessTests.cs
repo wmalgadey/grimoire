@@ -29,6 +29,10 @@ public class StalenessTests : IDisposable
         var real = EvalPaths.Discover();
 
         CopyDirectory(real.AgentInstructionsDir, Path.Combine(_fakeRepoRoot, "backend", "src", "Grimoire.IngestAgent", "Instructions"));
+        var fakeFoundationPromptPath = Path.Combine(
+            _fakeRepoRoot, "backend", "src", "Grimoire.AgentRuntime", "Instructions", "foundation-prompt.md");
+        Directory.CreateDirectory(Path.GetDirectoryName(fakeFoundationPromptPath)!);
+        File.Copy(real.FoundationPromptPath, fakeFoundationPromptPath);
         // FixturesRoot already contains recordings/ on disk (ADR-022: relocated from
         // data/evals/recordings/), so this one copy carries both fixtures and recordings
         // into the fake repo root.
@@ -64,6 +68,23 @@ public class StalenessTests : IDisposable
         Assert.Equal(TrustStatus.Stale, report.Status);
         Assert.Contains("system_prompt", report.ChangedFingerprints);
         Assert.Contains("capture --scenario instruction-change-adoption", report.Detail, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void FoundationPromptDrift_FlagsScenarioStale_NamingTheFingerprint()
+    {
+        // 029-shared-foundation-prompt (T061, SC-003): the shared foundation document is
+        // its own fingerprint, distinct from the agent's own system_prompt — a change to
+        // one must not be masked by, or mistaken for, a change to the other.
+        SyntheticRecordings.WriteScenario(_store, IngestScenarioDefinitions.InstructionChangeAdoption, _paths, sampleCount: 1);
+
+        File.AppendAllText(_paths.FoundationPromptPath, "\n- drift probe\n");
+
+        var report = StalenessCheck.Evaluate(IngestScenarioDefinitions.InstructionChangeAdoption, _store, _paths);
+
+        Assert.Equal(TrustStatus.Stale, report.Status);
+        Assert.Contains(Fingerprints.FoundationPromptKey, report.ChangedFingerprints);
+        Assert.DoesNotContain(Fingerprints.SystemPromptKey, report.ChangedFingerprints);
     }
 
     [Fact]

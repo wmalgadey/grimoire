@@ -194,6 +194,7 @@ public sealed class IngestCapturePipeline
         using var span = EvalRunnerTelemetry.StartCaptureRun(taskId, scenario.Id, providerLabel, provider.Model);
         using var workspace = await EvalWorkspace.CreateAsync(
             _paths.FixtureWikiRoot(scenario.FixtureName),
+            _paths.FoundationPromptPath,
             _paths.AgentInstructionsDir,
             taskId,
             scenario.SystemPromptAppendix,

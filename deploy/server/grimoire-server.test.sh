@@ -438,6 +438,153 @@ reported="$(PATH="$path_dir:$PATH" GRIMOIRE_REPO="$fake_checkout" GRIMOIRE_STATE
 assert_equals "$reported" "$path_dir/grimoire-server" \
   "a bare-name invocation off \$PATH resolves to the absolute installed copy"
 
+# --- wiki-identity: `cmd_wiki_identity` forwards argv to the Hub's own CLI through the
+# existing `compose()` exec invocation and lets its exit code end the script unchanged;
+# `wiki_identity_report` (used by `status`) surfaces what compose returns and is
+# best-effort when the hub is not answering. Real docker is out of scope here (Principle
+# II, "test what we own" — the Hub CLI's own report/wizard behavior is Grimoire.Hub's own
+# test suite's job); what this script decides is what it passes to compose and what it
+# does with the result, so `compose` — a plain function — is overridden after sourcing to
+# observe and control both without a real container.
+
+captured_compose_args=()
+captured_compose_calls=()
+# A command substitution — `report="$(compose ...)"`, needed to capture the hub's report as
+# text — runs `compose` in a subshell, so array mutations above never reach the parent
+# shell. This log file is the subshell-safe equivalent: a filesystem write is visible to the
+# parent regardless of which shell made it.
+compose_call_log="$work/compose-calls.log"
+: >"$compose_call_log"
+fake_compose_exit=0
+fake_compose_output=""
+compose() {
+  captured_compose_args=("$@")
+  captured_compose_calls+=("$*")
+  printf '%s\n' "$*" >>"$compose_call_log"
+  [[ -z "$fake_compose_output" ]] || printf '%s\n' "$fake_compose_output"
+  return "$fake_compose_exit"
+}
+
+wiki_identity_repo="$work/wiki-identity-repo"
+mkdir -p "$wiki_identity_repo"
+export GRIMOIRE_REPO="$wiki_identity_repo"
+
+cmd_wiki_identity set --default >/dev/null
+assert_equals "${captured_compose_args[*]}" \
+  "$wiki_identity_repo exec -T hub dotnet /app/Grimoire.Hub.dll wiki-identity set --default" \
+  "cmd_wiki_identity forwards argv through compose exec -T"
+
+fake_compose_exit=3
+captured_compose_calls=()
+if cmd_wiki_identity set --from-file /does/not/exist >/dev/null 2>&1; then
+  propagated=0
+else
+  propagated=$?
+fi
+assert_equals "$propagated" "3" "cmd_wiki_identity propagates the Hub CLI's exit code unchanged"
+assert_equals "${#captured_compose_calls[@]}" "1" \
+  "a --from-file path that does not exist on the host is forwarded unchanged, with no staging call"
+
+fake_compose_exit=0
+cmd_wiki_identity >/dev/null
+assert_equals "${captured_compose_args[*]}" \
+  "$wiki_identity_repo exec -T hub dotnet /app/Grimoire.Hub.dll wiki-identity" \
+  "cmd_wiki_identity with no arguments (report mode) forwards none, without tripping set -u on an empty array"
+
+# `--from-file` is resolved inside the *hub container*, but a draft is written on the
+# *deploy host* — reproduced live (review on #231): a host-existing path staged through
+# `docker compose cp` first, and the forwarded invocation rewritten to where it landed.
+fake_compose_exit=0
+fake_compose_output=""
+draft_host_path="$work/drafted-foundation.md"
+printf '# Draft\n' >"$draft_host_path"
+captured_compose_calls=()
+cmd_wiki_identity set --from-file "$draft_host_path" --replace >/dev/null
+assert_equals "${#captured_compose_calls[@]}" "2" \
+  "cmd_wiki_identity stages a host-existing --from-file path before forwarding"
+assert_equals "${captured_compose_calls[0]}" \
+  "$wiki_identity_repo cp $draft_host_path hub:/tmp/drafted-foundation.md" \
+  "the staging call copies the host file into the hub container via docker compose cp"
+assert_equals "${captured_compose_calls[1]}" \
+  "$wiki_identity_repo exec -T hub dotnet /app/Grimoire.Hub.dll wiki-identity set --from-file /tmp/drafted-foundation.md --replace" \
+  "the forwarded invocation is rewritten to the container-visible path, other args untouched"
+
+fake_compose_exit=1
+# die() calls exit, so this runs in a subshell — otherwise it would end the test runner
+# itself, not just cmd_wiki_identity.
+if (cmd_wiki_identity set --from-file "$draft_host_path" >/dev/null 2>&1); then
+  staging_propagated=0
+else
+  staging_propagated=$?
+fi
+assert_equals "$staging_propagated" "1" \
+  "a failed staging cp ends the command via die rather than forwarding to a path that was never copied"
+fake_compose_exit=0
+
+# --- wiki-identity-reset: data-model.md §5 has no wizard action that deletes an instance
+# document ("a deliberate file operation, not a menu entry") — this command is that
+# deliberate operation, gated behind --yes, acting only on what the hub's own report says.
+#
+# `cmd_wiki_identity_reset` reads the report via `$(compose ...)`, and the die-exit-code
+# cases below wrap the call in an explicit `(...)` subshell — two layers a plain array
+# cannot see through, so these assertions read `$compose_call_log` (a file, visible
+# regardless of which subshell wrote it) instead of `captured_compose_calls`.
+
+fake_compose_exit=0
+fake_compose_output=$'source: default\nresolved_path: /app/Grimoire.AgentRuntime/Instructions/foundation-prompt.md\nsha256: abc123\nheading: Wiki Foundation'
+: >"$compose_call_log"
+cmd_wiki_identity_reset >/dev/null
+assert_equals "$(wc -l <"$compose_call_log" | tr -d ' ')" "1" \
+  "already on the shipped default: only the report is fetched, nothing removed"
+
+fake_compose_output=$'source: instance\nresolved_path: /var/lib/grimoire/data/foundation-prompt.md\nsha256: def456\nheading: A Specialised Wiki'
+: >"$compose_call_log"
+if (cmd_wiki_identity_reset >/dev/null 2>&1); then
+  reset_without_yes=0
+else
+  reset_without_yes=$?
+fi
+assert_equals "$reset_without_yes" "1" \
+  "an instance document without --yes refuses via die rather than removing anything"
+assert_equals "$(wc -l <"$compose_call_log" | tr -d ' ')" "1" \
+  "the refusal happens after only the report call — no rm attempted"
+
+: >"$compose_call_log"
+cmd_wiki_identity_reset --yes >/dev/null
+assert_equals "$(wc -l <"$compose_call_log" | tr -d ' ')" "2" \
+  "cmd_wiki_identity_reset --yes fetches the report, then removes the instance document"
+assert_equals "$(sed -n '2p' "$compose_call_log")" \
+  "$wiki_identity_repo exec -T hub rm -f /var/lib/grimoire/data/foundation-prompt.md" \
+  "the removal execs into the hub container at the exact path the report named"
+
+: >"$compose_call_log"
+if (cmd_wiki_identity_reset --bogus >/dev/null 2>&1); then
+  reset_bad_option=0
+else
+  reset_bad_option=$?
+fi
+assert_equals "$reset_bad_option" "1" "an unknown option is rejected"
+assert_equals "$(wc -l <"$compose_call_log" | tr -d ' ')" "0" \
+  "an unknown option is rejected before any compose call is made"
+
+fake_compose_exit=0
+fake_compose_output=$'source: default\nresolved_path: /data/foundation-prompt.md\nsha256: abc123\nheading: Wiki Foundation'
+report_output="$(wiki_identity_report "$wiki_identity_repo" 2>&1)"
+case "$report_output" in
+*"Wiki identity"*"source: default"*"resolved_path: /data/foundation-prompt.md"*) ;;
+*) fail "wiki_identity_report did not surface the hub's report: got [$report_output]" ;;
+esac
+
+fake_compose_exit=1
+fake_compose_output=""
+failure_output="$(wiki_identity_report "$wiki_identity_repo" 2>&1)"
+case "$failure_output" in
+*"Wiki identity"*"is it running"*) ;;
+*) fail "wiki_identity_report's failure fallback did not explain the gap: got [$failure_output]" ;;
+esac
+
+unset GRIMOIRE_REPO
+
 if ((failures > 0)); then
   echo "$failures assertion(s) failed" >&2
   exit 1

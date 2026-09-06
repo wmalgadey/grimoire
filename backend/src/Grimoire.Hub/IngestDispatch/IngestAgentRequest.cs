@@ -11,6 +11,7 @@ public sealed record IngestAgentRequest(
     string IndexPath,
     string LogPath,
     string? PastedText,
+    string FoundationPromptPath,
     string SystemPromptPath,
     string DefaultUserPromptPath,
     string PolicyPath,

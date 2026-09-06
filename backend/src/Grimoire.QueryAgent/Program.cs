@@ -50,6 +50,7 @@ var intent = new QueryIntentHandler(profile, options, conversationInput, runEven
 return await new AgentHost(profile).RunAsync(
     new AgentHostRun(
         WikiRoot: options.WikiRoot,
+        FoundationPromptPath: options.FoundationPromptPath,
         SystemPromptPath: options.SystemPromptPath,
         PolicyPath: options.PolicyPath,
         HeartbeatSeconds: options.HeartbeatSeconds),
@@ -77,6 +78,7 @@ static QueryCliOptions ReadCliOptions(string[] args)
         ContentRoot: reader.GetRequired("--content-root"),
         IndexPath: reader.GetRequired("--index-path"),
         LogPath: reader.GetRequired("--log-path"),
+        FoundationPromptPath: reader.GetRequired("--foundation-prompt-path"),
         SystemPromptPath: reader.GetRequired("--system-prompt-path"),
         PolicyPath: reader.GetRequired("--policy-path"),
         WriteLocksDir: reader.GetRequired("--write-locks-dir"),
@@ -177,7 +179,7 @@ internal sealed class QueryIntentHandler : IAgentIntentHandler
         var initialConversation = BuildInitialConversation(_conversationInput);
 
         var result = await loop.RunAsync(
-            instructions.SystemPrompt.Content,
+            instructions.ComposedSystemPrompt,
             initialConversation,
             _options.TurnId,
             CancellationToken.None);
@@ -195,6 +197,7 @@ internal sealed class QueryIntentHandler : IAgentIntentHandler
 
         _runEvents.EmitCompleted(result.Narrative, new RunCompletionMetadata(
             SystemPromptSha256: instructions.SystemPrompt.Sha256,
+            FoundationPromptSha256: instructions.FoundationPrompt.Sha256,
             PolicyPath: instructions.Policy.Identity.Path,
             PolicyVersion: instructions.Policy.Identity.Version,
             PolicySha256: instructions.Policy.Identity.Sha256,

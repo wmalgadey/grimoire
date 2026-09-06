@@ -40,11 +40,23 @@ public static class QueryDeterministicScorers
     private static SampleScore ReadOnlyDecline(QuerySampleRunData run)
     {
         var answer = run.Answer;
+        // Broadened after live capture against the shared foundation prompt (029) showed
+        // 4/10 query-read-only-decline samples scoring a false-negative "declines=false"
+        // despite unambiguously declining prose ("I'm not able to fix typos or edit
+        // existing wiki pages", "I need to decline: ... I can never edit, update, or add
+        // notes") — the same scorer keyword-coverage gap T048 already found and fixed on
+        // the sibling `SynthesisDeclineEditRequest` scorer below, not an agent behavior
+        // defect (Principle V: the agent's judgment was correct; the harness's textual
+        // check of that judgment's observable output was too narrow). Added "not able
+        // to", "decline" and "never edit" to match.
         var declines = answer.Contains("read-only", StringComparison.OrdinalIgnoreCase)
             || answer.Contains("read only", StringComparison.OrdinalIgnoreCase)
             || answer.Contains("cannot", StringComparison.OrdinalIgnoreCase)
             || answer.Contains("can't", StringComparison.OrdinalIgnoreCase)
-            || answer.Contains("unable to", StringComparison.OrdinalIgnoreCase);
+            || answer.Contains("unable to", StringComparison.OrdinalIgnoreCase)
+            || answer.Contains("not able to", StringComparison.OrdinalIgnoreCase)
+            || answer.Contains("never edit", StringComparison.OrdinalIgnoreCase)
+            || answer.Contains("decline", StringComparison.OrdinalIgnoreCase);
         var claimsToHaveWritten = answer.Contains("I've updated", StringComparison.OrdinalIgnoreCase)
             || answer.Contains("I have updated", StringComparison.OrdinalIgnoreCase)
             || answer.Contains("I've fixed", StringComparison.OrdinalIgnoreCase)

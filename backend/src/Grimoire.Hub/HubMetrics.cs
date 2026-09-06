@@ -404,4 +404,22 @@ public static class HubMetrics
         => _apiErrorsTotal.Add(1,
             new KeyValuePair<string, object?>("code", code),
             new KeyValuePair<string, object?>("status", status));
+
+    // --- 029-shared-foundation-prompt (plan.md ## Observability > Business Metrics) ---
+
+    /// <summary>Foundation document resolutions, by which source was effective (FR-018).</summary>
+    private static readonly Counter<long> _foundationResolvedTotal =
+        Meter.CreateCounter<long>("wiki.identity.foundation_resolved_total",
+            description: "Foundation document resolutions, by which source was effective");
+
+    public static void RecordFoundationResolved(string source)
+        => _foundationResolvedTotal.Add(1, new KeyValuePair<string, object?>("source", source));
+
+    /// <summary>Wiki-identity wizard invocations by terminal outcome (T046, FR-011).</summary>
+    private static readonly Counter<long> _wizardOutcomesTotal =
+        Meter.CreateCounter<long>("wiki.identity.wizard_outcomes_total",
+            description: "Wiki-identity wizard invocations by terminal outcome");
+
+    public static void RecordWikiIdentityWizardOutcome(string outcome)
+        => _wizardOutcomesTotal.Add(1, new KeyValuePair<string, object?>("outcome", outcome));
 }

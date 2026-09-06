@@ -71,6 +71,7 @@ public class IngestOperationalStateAndDispatchTests
             IndexPath: indexPath,
             LogPath: logPath,
             PastedText: null,
+            FoundationPromptPath: Path.Combine(repoRoot, "backend", "src", "Grimoire.AgentRuntime", "Instructions", "foundation-prompt.md"),
             SystemPromptPath: Path.Combine(instructionsDir, "system-prompt.md"),
             DefaultUserPromptPath: Path.Combine(instructionsDir, "default-user-prompt.md"),
             PolicyPath: Path.Combine(instructionsDir, "policy.json"),

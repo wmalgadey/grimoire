@@ -1,5 +1,13 @@
 ---
-status: accepted
+status: superseded
+superseded_by: [ADR-053, ADR-054]
+reason: >-
+  Its system-prompt aspect was invalidated: an agent's system prompt is no longer "the entire
+  system prompt, one file" but a shared foundation document composed with the agent's own role
+  document (ADR-053). Under the whole-ADR supersession rule this retires the record entirely, so
+  its still-valid second aspect — the versioned default user prompt and the harness-owned message
+  scaffold — was re-decided unchanged in substance as its own single-aspect record (ADR-054).
+  Nothing here is inherited by reference.
 ---
 
 # ADR-007: Agent Instruction Surface — Single System Prompt and Versioned Default User Prompt

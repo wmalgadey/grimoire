@@ -158,6 +158,7 @@ public class IngestModelProviderErrorReportingTests
                     IndexPath: fixture.ContentPaths.IndexPath,
                     LogPath: fixture.ContentPaths.LogPath,
                     PastedText: null,
+                    FoundationPromptPath: Path.Combine(repoRoot, "backend", "src", "Grimoire.AgentRuntime", "Instructions", "foundation-prompt.md"),
                     SystemPromptPath: Path.Combine(instructionsDir, "system-prompt.md"),
                     DefaultUserPromptPath: Path.Combine(instructionsDir, "default-user-prompt.md"),
                     PolicyPath: Path.Combine(instructionsDir, "policy.json"),

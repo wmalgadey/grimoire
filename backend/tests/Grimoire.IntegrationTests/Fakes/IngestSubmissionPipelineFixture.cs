@@ -76,6 +76,7 @@ public sealed class IngestSubmissionPipelineFixture : IDisposable
             ResolvedPaths = resolvedPaths;
 
             Directory.CreateDirectory(ResolvedPaths.Ingest.InstructionsDir);
+            if (!File.Exists(ResolvedPaths.Ingest.FoundationPromptPath)) File.WriteAllText(ResolvedPaths.Ingest.FoundationPromptPath, "# Test foundation prompt\nWiki-wide rules.\n");
             if (!File.Exists(ResolvedPaths.Ingest.SystemPromptPath)) File.WriteAllText(ResolvedPaths.Ingest.SystemPromptPath, "# Test system prompt\nRules.\n");
             if (ResolvedPaths.Ingest.DefaultUserPromptPath is not null && !File.Exists(ResolvedPaths.Ingest.DefaultUserPromptPath)) File.WriteAllText(ResolvedPaths.Ingest.DefaultUserPromptPath, "Please integrate the source.\n");
 
@@ -94,6 +95,7 @@ public sealed class IngestSubmissionPipelineFixture : IDisposable
             var tasksDir = Path.Combine(memoryDir, "tasks");
             var indexPath = Path.Combine(contentRoot, "index.md");
             var logPath = Path.Combine(contentRoot, "log.md");
+            var foundationPromptPath = Path.Combine(instructionsDir, "foundation-prompt.md");
             var systemPromptPath = Path.Combine(instructionsDir, "system-prompt.md");
             var defaultUserPromptPath = Path.Combine(instructionsDir, "default-user-prompt.md");
             var policyPath = Path.Combine(instructionsDir, "policy.json");
@@ -104,6 +106,7 @@ public sealed class IngestSubmissionPipelineFixture : IDisposable
             File.WriteAllText(indexPath, "# Index\n");
             File.WriteAllText(logPath, string.Empty);
             Directory.CreateDirectory(instructionsDir);
+            File.WriteAllText(foundationPromptPath, "# Test foundation prompt\nWiki-wide rules.\n");
             File.WriteAllText(systemPromptPath, "# Test system prompt\nRules.\n");
             File.WriteAllText(defaultUserPromptPath, "Please integrate the source.\n");
 
@@ -124,10 +127,12 @@ public sealed class IngestSubmissionPipelineFixture : IDisposable
                 IndexPath: indexPath,
                 LogPath: logPath,
                 SecretsFilePath: Path.Combine(Root, ".env"),
+                InstanceFoundationPromptPath: Path.Combine(Root, "foundation-prompt.md"),
                 Ingest: new AgentRuntimePaths(
                     Dir: Path.GetDirectoryName(Path.GetDirectoryName(systemPromptPath))!,
                     WorkerPath: "unused",
                     InstructionsDir: Path.GetDirectoryName(systemPromptPath)!,
+                    FoundationPromptPath: foundationPromptPath,
                     SystemPromptPath: systemPromptPath,
                     PolicyPath: policyPath,
                     DefaultUserPromptPath: defaultUserPromptPath),
@@ -135,6 +140,7 @@ public sealed class IngestSubmissionPipelineFixture : IDisposable
                     Dir: Path.Combine(agentDir, "query"),
                     WorkerPath: "unused",
                     InstructionsDir: Path.Combine(agentDir, "query", "Instructions"),
+                    FoundationPromptPath: Path.Combine(agentDir, "query", "Instructions", "foundation-prompt.md"),
                     SystemPromptPath: Path.Combine(agentDir, "query", "Instructions", "system-prompt.md"),
                     PolicyPath: Path.Combine(agentDir, "query", "Instructions", "policy.json"),
                     DefaultUserPromptPath: null),
@@ -142,6 +148,7 @@ public sealed class IngestSubmissionPipelineFixture : IDisposable
                     Dir: Path.Combine(agentDir, "lint"),
                     WorkerPath: "unused",
                     InstructionsDir: Path.Combine(agentDir, "lint", "Instructions"),
+                    FoundationPromptPath: Path.Combine(agentDir, "lint", "Instructions", "foundation-prompt.md"),
                     SystemPromptPath: Path.Combine(agentDir, "lint", "Instructions", "system-prompt.md"),
                     PolicyPath: Path.Combine(agentDir, "lint", "Instructions", "policy.json"),
                     DefaultUserPromptPath: null),

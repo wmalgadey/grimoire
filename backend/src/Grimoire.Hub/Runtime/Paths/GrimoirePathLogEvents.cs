@@ -14,6 +14,7 @@ public static class GrimoirePathLogEvents
     private static readonly EventId PathsLocationCreatedEvent = new(41, "paths_location_created");
     private static readonly EventId PathsValidationFailedEvent = new(42, "paths_validation_failed");
     private static readonly EventId PathsConfigurationMissingEvent = new(43, "paths_configuration_missing");
+    private static readonly EventId WikiIdentityFoundationResolvedEvent = new(44, "wiki_identity_foundation_resolved");
 
     /// <summary>Once per successful startup, after validation/creation, before serving.</summary>
     public static void LogPathsResolved(ILogger logger, ResolvedGrimoirePaths paths)
@@ -79,6 +80,29 @@ public static class GrimoirePathLogEvents
         logger.LogError(PathsConfigurationMissingEvent,
             "Runtime path configuration missing. configuration_file={configuration_file} missing_keys={missing_keys}",
             configurationFile, missingKeysDisplay);
+    }
+
+    /// <summary>
+    /// 029-shared-foundation-prompt (T031, FR-018/SC-001): each time the effective foundation
+    /// document is resolved for a dispatch. Deliberately does <b>not</b> start its own span
+    /// (unlike every other event here) — plan.md ## Observability says this event lives inside
+    /// the caller's existing active dispatch span, tagging it so the resolution correlates by
+    /// <c>task_id</c> without inventing a span that would only ever have one child-free node.
+    /// </summary>
+    public static void LogFoundationResolved(ILogger logger, string agentId, string source, string resolvedPath, string sha256)
+    {
+        var current = Activity.Current;
+        current?.SetTag("signal_type", "log");
+        current?.SetTag("event_name", "wiki_identity_foundation_resolved");
+        current?.SetTag("level", "Information");
+        current?.SetTag("agent_id", agentId);
+        current?.SetTag("source", source);
+        current?.SetTag("resolved_path", resolvedPath);
+        current?.SetTag("sha256", sha256);
+
+        logger.LogInformation(WikiIdentityFoundationResolvedEvent,
+            "Foundation document resolved. agent_id={agent_id} source={source} resolved_path={resolved_path} sha256={sha256}",
+            agentId, source, resolvedPath, sha256);
     }
 
     private static Activity? StartLogEventSpan(string eventName, string level)

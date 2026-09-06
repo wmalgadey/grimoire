@@ -62,6 +62,7 @@ static async Task<int> RunLintRunAsync(string[] args, AgentProfile profile, ILog
     return await new AgentHost(profile).RunAsync(
         new AgentHostRun(
             WikiRoot: options.WikiRoot,
+            FoundationPromptPath: options.FoundationPromptPath,
             SystemPromptPath: options.SystemPromptPath,
             PolicyPath: options.PolicyPath,
             HeartbeatSeconds: options.HeartbeatSeconds),
@@ -77,6 +78,7 @@ static LintCliOptions ReadCliOptions(string[] args)
     return new LintCliOptions(
         RunId: reader.GetRequired("--run-id"),
         WikiRoot: reader.GetRequired("--wiki-root"),
+        FoundationPromptPath: reader.GetRequired("--foundation-prompt-path"),
         SystemPromptPath: reader.GetRequired("--system-prompt-path"),
         PolicyPath: reader.GetRequired("--policy-path"),
         WriteLocksDir: reader.GetRequired("--write-locks-dir"),
@@ -108,6 +110,7 @@ static async Task<int> RunRemediationExecutionAsync(string[] args, AgentProfile 
     return await new AgentHost(profile).RunAsync(
         new AgentHostRun(
             WikiRoot: options.WikiRoot,
+            FoundationPromptPath: options.FoundationPromptPath,
             SystemPromptPath: options.SystemPromptPath,
             PolicyPath: options.PolicyPath,
             HeartbeatSeconds: options.HeartbeatSeconds),
@@ -124,6 +127,7 @@ static RemediationExecutionCliOptions ReadRemediationExecutionCliOptions(string[
         TaskId: reader.GetRequired("--task-id"),
         RunId: reader.GetRequired("--run-id"),
         WikiRoot: reader.GetRequired("--wiki-root"),
+        FoundationPromptPath: reader.GetRequired("--foundation-prompt-path"),
         SystemPromptPath: reader.GetRequired("--system-prompt-path"),
         PolicyPath: reader.GetRequired("--policy-path"),
         WriteLocksDir: reader.GetRequired("--write-locks-dir"),
@@ -156,6 +160,7 @@ static async Task<int> RunMessageTurnAsync(string[] args, AgentProfile profile, 
     return await new AgentHost(profile).RunAsync(
         new AgentHostRun(
             WikiRoot: options.WikiRoot,
+            FoundationPromptPath: options.FoundationPromptPath,
             SystemPromptPath: options.SystemPromptPath,
             PolicyPath: options.PolicyPath,
             HeartbeatSeconds: options.HeartbeatSeconds),
@@ -172,6 +177,7 @@ static RemediationMessageTurnCliOptions ReadMessageTurnCliOptions(string[] args)
         TaskId: reader.GetRequired("--task-id"),
         RunId: reader.GetRequired("--run-id"),
         WikiRoot: reader.GetRequired("--wiki-root"),
+        FoundationPromptPath: reader.GetRequired("--foundation-prompt-path"),
         SystemPromptPath: reader.GetRequired("--system-prompt-path"),
         PolicyPath: reader.GetRequired("--policy-path"),
         WriteLocksDir: reader.GetRequired("--write-locks-dir"),
@@ -302,7 +308,7 @@ internal sealed class LintIntentHandler : IAgentIntentHandler
         var pagesTotal = LintPaths.CountMarkdownPages(_options.WikiRoot);
 
         var result = await loop.RunAsync(
-            instructions.SystemPrompt.Content,
+            instructions.ComposedSystemPrompt,
             initialConversation,
             _options.RunId,
             CancellationToken.None);
@@ -329,6 +335,7 @@ internal sealed class LintIntentHandler : IAgentIntentHandler
         // narrower, agent-agnostic "paths this run wrote" fact.
         _runEvents.EmitCompleted(narrative, new RunCompletionMetadata(
             SystemPromptSha256: instructions.SystemPrompt.Sha256,
+            FoundationPromptSha256: instructions.FoundationPrompt.Sha256,
             PolicyPath: instructions.Policy.Identity.Path,
             PolicyVersion: instructions.Policy.Identity.Version,
             PolicySha256: instructions.Policy.Identity.Sha256,
@@ -504,7 +511,7 @@ internal sealed class RemediationExecutionIntentHandler : IAgentIntentHandler
         };
 
         var result = await loop.RunAsync(
-            instructions.SystemPrompt.Content,
+            instructions.ComposedSystemPrompt,
             initialConversation,
             _options.TaskId,
             CancellationToken.None);
@@ -560,6 +567,7 @@ internal sealed class RemediationExecutionIntentHandler : IAgentIntentHandler
 
         var metadata = new RunCompletionMetadata(
             SystemPromptSha256: instructions.SystemPrompt.Sha256,
+            FoundationPromptSha256: instructions.FoundationPrompt.Sha256,
             PolicyPath: instructions.Policy.Identity.Path,
             PolicyVersion: instructions.Policy.Identity.Version,
             PolicySha256: instructions.Policy.Identity.Sha256,
@@ -738,13 +746,14 @@ internal sealed class MessageTurnIntentHandler : IAgentIntentHandler
         };
 
         var result = await loop.RunAsync(
-            instructions.SystemPrompt.Content,
+            instructions.ComposedSystemPrompt,
             initialConversation,
             _options.TaskId,
             CancellationToken.None);
 
         var metadata = new RunCompletionMetadata(
             SystemPromptSha256: instructions.SystemPrompt.Sha256,
+            FoundationPromptSha256: instructions.FoundationPrompt.Sha256,
             PolicyPath: instructions.Policy.Identity.Path,
             PolicyVersion: instructions.Policy.Identity.Version,
             PolicySha256: instructions.Policy.Identity.Sha256,

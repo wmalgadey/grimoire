@@ -211,6 +211,7 @@ grimoire-server down                       stop; the state volumes are kept
 grimoire-server rollback                   redeploy the previously deployed commit
 grimoire-server update [path]              fetch origin, refresh this script, then status
 grimoire-server tailscale [action]         status · up · drain · off
+grimoire-server wiki-identity [args...]    forward to the Hub's wiki-identity wizard
 grimoire-server tmux [session]             attach to the Claude Code session, or start it
 grimoire-server install [path]             copy the script outside the checkout
 grimoire-server version                    the tool, where it came from, what is deployed
@@ -228,6 +229,7 @@ reports the four things a server can be wrong in independently:
 | Section | Answers |
 | --- | --- |
 | the deployment record | which ref and commit is deployed, when, and whether someone has moved the checkout by hand since |
+| `Wiki identity` | which wiki this instance maintains — asked of the Hub, never recomputed here (see `wiki-identity` below) |
 | `Containers` | what `docker compose ps` sees |
 | the smoke checks | whether the stack actually serves (the same four checks a deployment must pass) |
 | `tmux` / tailnet service | whether the Claude Code session is still there, and whether the tailnet name points at this stack |
@@ -235,6 +237,65 @@ reports the four things a server can be wrong in independently:
 The last two are reported whether or not they are set up — "no `grimoire` session" and "no
 tailnet service configured" are answers, and a server whose agent session quietly died
 overnight looks perfectly healthy from every other section.
+
+### `wiki-identity` — which wiki this instance maintains
+
+Every agent loads a shared foundation document before its own role instructions; by default
+that is the one Grimoire ships, describing a general-purpose personal knowledge wiki, but an
+operator can hand the wizard a specialised one instead:
+
+```console
+$ grimoire-server wiki-identity
+source: default
+resolved_path: /app/Grimoire.AgentRuntime/Instructions/foundation-prompt.md
+sha256: 3f9c2b1a4e7d0f5c8a6b9e2d1c4f7a0b3e6d9c2f5a8b1e4d7c0f3a6b9e2d5c8f
+heading: Wiki Foundation
+
+$ grimoire-server wiki-identity set --specialised --description "Tracks nothing but home-lab Kubernetes runbooks."
+[a drafting brief, built from that description]
+
+$ grimoire-server wiki-identity set --from-file ./drafted-foundation.md
+Instance foundation document persisted (sha256: …, 1842 bytes).
+```
+
+`--from-file` is resolved inside the running `hub` container, not on the deploy host, so a
+draft written to the host's filesystem (as `--specialised` naturally invites) would not be
+visible to it as-is — `grimoire-server` stages a host-existing `--from-file` path into the
+container itself (`docker compose cp`, rewriting the invocation to where it landed) before
+forwarding, so the command above works regardless of which side of that boundary the path
+was meant for. Past that one piece of plumbing, this is still a pure forward: the wizard's
+logic, its exit codes, and every guarantee it makes (nothing is ever templated or
+rewritten; a document handed back is persisted byte-for-byte; an existing instance
+document is never replaced without `--replace`) live entirely in the Hub's own
+`wiki-identity` CLI command. See
+[`contracts/wiki-identity-cli.md`](../../specs/029-shared-foundation-prompt/contracts/wiki-identity-cli.md)
+for every invocation and exit code. `status` prints the same report inline, obtained from
+the Hub the same way, so the two never disagree.
+
+The brief is not drafted by the wizard — it is drafted by whoever reads it, typically the
+Claude Code session already running on the deploy host (the `wiki-identity-drafting` skill
+covers what a drafted document has to contain and how to hand it back).
+
+**There is no wizard action that undoes this.** By design
+([`data-model.md` §5](../../specs/029-shared-foundation-prompt/data-model.md)): "removing
+[an instance document] is a deliberate file operation, not a menu entry, so the wizard can
+never leave an instance with less identity than it had." `wiki-identity set --default`
+reports that the instance stays on the default; it never removes an instance document that
+is already in place.
+
+```console
+$ grimoire-server wiki-identity-reset
+==> An instance foundation document is in place (above) — re-run with --yes to remove it...
+$ grimoire-server wiki-identity-reset --yes
+==> Removing the instance foundation document: /var/lib/grimoire/data/foundation-prompt.md
+==> Removed. This instance is back on the shipped default — no restart needed.
+```
+
+This is the deliberate file operation the data model calls for, wrapped in the one command
+that already execs into the `hub` container — not a wizard action, and irreversible without
+a backup of the removed document. `--yes` is required; without it the command shows what is
+in place and refuses. The `wiki-identity-reset` skill covers the confirmation step a human
+operator should still get before this runs.
 
 ### `update` — the tool catches up, the stack does not
 

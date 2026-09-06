@@ -35,6 +35,10 @@ public sealed class EvalWorkspace : IDisposable
 
     public string AgentDir => Path.Combine(Root, "agents", "ingest");
 
+    // 029-shared-foundation-prompt (FR-008): a single shared file, copied once per
+    // workspace rather than into AgentDir — it is not Ingest's own instruction surface.
+    public string FoundationPromptPath => Path.Combine(Root, "foundation-prompt.md");
+
     public string SystemPromptPath => Path.Combine(AgentDir, "system-prompt.md");
 
     public string DefaultUserPromptPath => Path.Combine(AgentDir, "default-user-prompt.md");
@@ -48,6 +52,7 @@ public sealed class EvalWorkspace : IDisposable
     /// </summary>
     public static async Task<EvalWorkspace> CreateAsync(
         string wikiFixtureRoot,
+        string foundationPromptSourcePath,
         string agentInstructionsDir,
         string taskId,
         string? systemPromptAppendix = null,
@@ -60,7 +65,8 @@ public sealed class EvalWorkspace : IDisposable
 
         await Task.WhenAll(
             CopyDirectoryAsync(wikiFixtureRoot, workspace.WikiRoot, cancellationToken),
-            CopyDirectoryAsync(agentInstructionsDir, workspace.AgentDir, cancellationToken));
+            CopyDirectoryAsync(agentInstructionsDir, workspace.AgentDir, cancellationToken),
+            Task.Run(() => File.Copy(foundationPromptSourcePath, workspace.FoundationPromptPath, overwrite: true), cancellationToken));
 
         Directory.CreateDirectory(workspace.TasksDir);
         Directory.CreateDirectory(workspace.WriteLocksDir);

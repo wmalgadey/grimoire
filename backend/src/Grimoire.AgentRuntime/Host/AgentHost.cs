@@ -4,16 +4,28 @@ using Grimoire.AgentRuntime.RunEvents;
 namespace Grimoire.AgentRuntime.Host;
 
 /// <summary>
-/// Everything the fail-closed startup sequence loaded for this run: the system prompt,
-/// the safety policy, and — for profiles requiring the default-user-prompt document —
-/// the resolved effective user prompt with its source ("custom" override vs the
-/// versioned "default" document, ADR-007).
+/// Everything the fail-closed startup sequence loaded for this run: the shared foundation
+/// document, the agent's own role document (still named <see cref="SystemPrompt"/> — its
+/// existing recording semantics are unchanged, ADR-053), the safety policy, and — for
+/// profiles requiring the default-user-prompt document — the resolved effective user
+/// prompt with its source ("custom" override vs the versioned "default" document,
+/// ADR-054).
 /// </summary>
 public sealed record LoadedInstructions(
+    LoadedSystemPrompt FoundationPrompt,
     LoadedSystemPrompt SystemPrompt,
     LoadedPolicy Policy,
     string? EffectiveUserPrompt,
-    string? UserPromptSource);
+    string? UserPromptSource)
+{
+    /// <summary>
+    /// What the agent actually operates under (ADR-053): the foundation document verbatim,
+    /// exactly one blank line, then the role document verbatim. No harness-authored
+    /// header, label or banner — the join is <c>"\n\n"</c> and nothing else, so this text
+    /// is byte-for-byte <c>FoundationPrompt.Content + "\n\n" + SystemPrompt.Content</c>.
+    /// </summary>
+    public string ComposedSystemPrompt => FoundationPrompt.Content + "\n\n" + SystemPrompt.Content;
+}
 
 /// <summary>
 /// The host-side counterpart of the <see cref="AgentProfile"/>: the per-agent intent
@@ -98,6 +110,24 @@ public sealed class AgentHost
             await intent.PrepareAsync(cancellationToken);
 
             var promptLoader = new SystemPromptLoader();
+
+            // Foundation document loads first (ADR-053): every agent operates under it in
+            // addition to its own role document, and it is composed first in the fixed
+            // order (LoadedInstructions.ComposedSystemPrompt). A distinct failure kind
+            // ("foundation_prompt") keeps the failure reason naming this document
+            // specifically rather than the generic "instructions" the role document uses
+            // (SC-002) — a missing/unreadable/empty foundation document fails the run
+            // before any wiki write, exactly like a missing role document already does.
+            var foundationPromptResult = await promptLoader.LoadAsync(run.FoundationPromptPath, cancellationToken);
+            if (foundationPromptResult.IsSecond(out var foundationPromptFailure))
+            {
+                await intent.OnInstructionLoadFailureAsync(
+                    "foundation_prompt", run.FoundationPromptPath, foundationPromptFailure.Reason, cancellationToken);
+                runEvents.EmitFailed(foundationPromptFailure.Reason);
+                return 1;
+            }
+            foundationPromptResult.IsFirst(out var loadedFoundationPrompt);
+
             var systemPromptResult = await promptLoader.LoadAsync(run.SystemPromptPath, cancellationToken);
             if (systemPromptResult.IsSecond(out var systemPromptFailure))
             {
@@ -148,7 +178,7 @@ public sealed class AgentHost
             policyResult.IsFirst(out var loadedPolicy);
 
             var instructions = new LoadedInstructions(
-                loadedSystemPrompt!, loadedPolicy!, effectiveUserPrompt, userPromptSource);
+                loadedFoundationPrompt!, loadedSystemPrompt!, loadedPolicy!, effectiveUserPrompt, userPromptSource);
             await intent.OnInstructionsLoadedAsync(instructions, cancellationToken);
 
             // Event channel goes live once instructions and policy are loaded (contract:
@@ -174,6 +204,7 @@ public sealed class AgentHost
 /// </summary>
 public sealed record AgentHostRun(
     string WikiRoot,
+    string FoundationPromptPath,
     string SystemPromptPath,
     string PolicyPath,
     int HeartbeatSeconds,

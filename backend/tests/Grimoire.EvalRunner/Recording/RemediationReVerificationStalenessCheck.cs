@@ -20,6 +20,7 @@ public static class RemediationReVerificationStalenessCheck
     public static IReadOnlyDictionary<string, string> CurrentFingerprints(
         RemediationReVerificationScenarioDefinition scenario, EvalPaths paths)
         => Fingerprints.Compute(
+            paths.FoundationPromptPath,
             paths.LintSystemPromptPath,
             defaultUserPromptPath: null,
             paths.LintPolicyPath,
