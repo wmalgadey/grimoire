@@ -69,9 +69,17 @@ grimoire-server wiki-identity
 meant to overwrite what's there; leave it off if `source: default` (nothing to overwrite)
 or if an existing document should be left alone.
 
+`--from-file` is resolved inside the running `hub` container, not on the deploy host —
+if you drafted onto the host's filesystem (the natural place to write a file), copy it in
+first:
+
 ```bash
+docker cp /tmp/foundation-draft.md grimoire-hub-1:/tmp/foundation-draft.md
 grimoire-server wiki-identity set --from-file /tmp/foundation-draft.md
 ```
+
+There's no stdin escape hatch here — unlike `--description -`, `--from-file` has no `-`
+form, so the copy step above isn't optional.
 
 Without `--replace` on an existing document the command refuses with `StateConflict` and
 leaves the bytes on disk untouched — that's the safety net if the check above was wrong,
