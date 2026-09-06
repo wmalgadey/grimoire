@@ -3,7 +3,7 @@
 This is the runbook for whoever is drafting a specialised foundation document — a Claude
 Code session on the deploy host (the same one `grimoire-server` is routinely run from), or
 an operator working through the same steps by hand. It exists because the wizard itself
-never drafts content (FR-013a): it hands out a brief and takes a document back, and this
+never drafts content: it hands out a brief and takes a document back, and this
 file is what tells the reader what to do with the brief in between.
 
 Nothing here is wizard logic. It changes no code and no Hub behaviour — it is a companion

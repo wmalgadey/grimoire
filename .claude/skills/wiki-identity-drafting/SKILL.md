@@ -8,9 +8,9 @@ allowed-tools: Bash, Read, Write, Grep, Glob
 
 This skill belongs to the Claude Code session running on the deployment host — the same
 one that runs `grimoire-server` day to day. The wizard (`wiki-identity`) never drafts
-content itself: it hands out a brief and takes a document back (FR-013a, ADR-053). Drafting
-is agent judgment, and this session is the agent. Full rationale and the command's own
-contract live in
+content itself: it hands out a brief and takes a document back. Drafting is agent
+judgment, and this session is the agent. Full rationale and the command's own contract
+live in
 [`deploy/server/wiki-identity-drafting-guide.md`](../../../deploy/server/wiki-identity-drafting-guide.md)
 and
 [`deploy/server/README.md`](../../../deploy/server/README.md)'s `wiki-identity` section —
