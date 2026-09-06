@@ -65,6 +65,10 @@ Save the drafted document to a file, then run:
 Add --replace if an instance document is already in place and should be overwritten.
 ```
 
+The brief names its own command as bare `wiki-identity` because that's what it's called
+inside the Hub. On the deploy host it isn't a command by itself — prefix it with
+`grimoire-server`, exactly as Step 3 below does.
+
 ## Step 2 — Draft the document yourself
 
 This is the actual judgment call, not the wizard's. Write the markdown file the brief
