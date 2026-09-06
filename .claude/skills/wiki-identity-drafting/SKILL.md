@@ -10,8 +10,8 @@ This skill belongs to the Claude Code session running on the deployment host —
 one that runs `grimoire-server` day to day. The wizard (`wiki-identity`) never drafts
 content itself: it hands out a brief and takes a document back. Drafting is agent
 judgment, and this session is the agent. The command's own contract lives in
-[`deploy/server/README.md`](../../../deploy/server/README.md)'s `wiki-identity` section;
-this skill is the do-it-now version of the same three steps.
+@deploy/server/README.md's `wiki-identity` section; this skill is the do-it-now version
+of the same three steps.
 
 ## Are you on the deploy host?
 
@@ -74,8 +74,8 @@ asks for:
 - One file, no YAML frontmatter.
 - Second person, addressed to the agents that will read it ("You are maintaining a
   wiki that…") — the same voice as the shipped default at
-  `backend/src/Grimoire.AgentRuntime/Instructions/foundation-prompt.md`. Read that file
-  first if the shape is unclear; it is the working example, not just a description of one.
+  @backend/src/Grimoire.AgentRuntime/Instructions/foundation-prompt.md. Read it first if
+  the shape is unclear; it is the working example, not just a description of one.
 - Covers exactly what the brief lists — what the wiki is for, what belongs and what does
   not, page organisation and naming, and the cross-agent conventions (folder structure,
   page types, page language, frontmatter standard, tag taxonomy, confidence scoring,
