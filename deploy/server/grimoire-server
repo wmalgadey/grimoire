@@ -829,12 +829,38 @@ cmd_down() {
 cmd_wiki_identity() {
   local repo
   repo="$(repo_dir)"
+  local -a args=("$@")
+  local i host_path container_path
+
+  # --from-file <path> names a path the Hub CLI resolves inside the *hub container*'s
+  # filesystem, but the operator drafts on the *deploy host* — the one filesystem they
+  # actually have (a draft written by the wiki-identity-drafting skill, or by hand). Stage
+  # a host-existing draft into the container first so --from-file means the same thing on
+  # either side of that boundary; a path that is not on the host is forwarded unchanged,
+  # and the Hub CLI's own NotFound still answers for a genuinely bad one.
+  for ((i = 0; i < ${#args[@]}; i++)); do
+    [[ "${args[i]}" == "--from-file" ]] || continue
+    host_path="${args[i + 1]:-}"
+    [[ -n "$host_path" && -f "$host_path" ]] || continue
+    container_path="/tmp/$(basename "$host_path")"
+    compose "$repo" cp "$host_path" "hub:$container_path" ||
+      die "could not stage $host_path into the hub container"
+    args[i + 1]="$container_path"
+    break
+  done
+
   # 029-shared-foundation-prompt (FR-018a): pure passthrough — the wizard's logic and
   # its exit-code convention live entirely in the Hub CLI (contracts/wiki-identity-cli.md);
-  # this only forwards argv and lets the exec'd process's exit code end the script (set -e
-  # propagates it since this is the function's last command). -T disables TTY allocation
-  # so `set --specialised --description -` can read a piped description from stdin.
-  compose "$repo" exec -T hub dotnet /app/Grimoire.Hub.dll wiki-identity "$@"
+  # this only forwards argv (staged above, only for a host-existing --from-file path) and
+  # lets the exec'd process's exit code end the script (set -e propagates it since this is
+  # the function's last command). -T disables TTY allocation so `set --specialised
+  # --description -` can read a piped description from stdin. The `${#args[@]}` guard
+  # avoids expanding an empty array under `set -u` (report mode passes none of this).
+  if ((${#args[@]} > 0)); then
+    compose "$repo" exec -T hub dotnet /app/Grimoire.Hub.dll wiki-identity "${args[@]}"
+  else
+    compose "$repo" exec -T hub dotnet /app/Grimoire.Hub.dll wiki-identity
+  fi
 }
 
 cmd_tailscale() {

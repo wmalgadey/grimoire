@@ -254,19 +254,20 @@ heading: Wiki Foundation
 $ grimoire-server wiki-identity set --specialised --description "Tracks nothing but home-lab Kubernetes runbooks."
 [a drafting brief, built from that description]
 
-$ docker cp ./drafted-foundation.md grimoire-hub-1:/tmp/drafted-foundation.md
-$ grimoire-server wiki-identity set --from-file /tmp/drafted-foundation.md
+$ grimoire-server wiki-identity set --from-file ./drafted-foundation.md
 Instance foundation document persisted (sha256: …, 1842 bytes).
 ```
 
-`--from-file` is resolved inside the running `hub` container, not on the deploy host — a
-draft written to the host's filesystem (as `--specialised` naturally invites) has to be
-copied in first, as above, or written directly to a path the container already sees.
-`grimoire-server` only execs into the running `hub` container and passes its exit code
-through unchanged; this is a pure forward — the wizard's logic, its exit codes, and every
-guarantee it makes (nothing is ever templated or rewritten; a document handed back is
-persisted byte-for-byte; an existing instance document is never replaced without
-`--replace`) live entirely in the Hub's own `wiki-identity` CLI command. See
+`--from-file` is resolved inside the running `hub` container, not on the deploy host, so a
+draft written to the host's filesystem (as `--specialised` naturally invites) would not be
+visible to it as-is — `grimoire-server` stages a host-existing `--from-file` path into the
+container itself (`docker compose cp`, rewriting the invocation to where it landed) before
+forwarding, so the command above works regardless of which side of that boundary the path
+was meant for. Past that one piece of plumbing, this is still a pure forward: the wizard's
+logic, its exit codes, and every guarantee it makes (nothing is ever templated or
+rewritten; a document handed back is persisted byte-for-byte; an existing instance
+document is never replaced without `--replace`) live entirely in the Hub's own
+`wiki-identity` CLI command. See
 [`contracts/wiki-identity-cli.md`](../../specs/029-shared-foundation-prompt/contracts/wiki-identity-cli.md)
 for every invocation and exit code. `status` prints the same report inline, obtained from
 the Hub the same way, so the two never disagree.

@@ -58,6 +58,11 @@ a container exec, and later a user-facing surface all drive this without a termi
 ## Deployment-script glue
 
 `grimoire-server` forwards to this command through the `docker compose exec` invocation it already
-builds, and passes the exit code through unchanged. `grimoire-server status` prints the identity this
-command reports, alongside the deployed ref and the tool version. The script implements no wizard logic
-and determines no identity by its own means (FR-018a).
+builds, and passes the exit code through unchanged. When `--from-file <path>` names a path that exists
+on the deploy host, the script stages it into the `hub` container first (`docker compose cp`) and
+rewrites the invocation to the path it lands at, since the command resolves `--from-file` inside the
+container's own filesystem, not the host's — a path that is not on the host is forwarded unchanged.
+`grimoire-server status` prints the identity this command reports, alongside the deployed ref and the
+tool version. The script implements no wizard logic and determines no identity by its own means
+(FR-018a): staging a file into the container it already execs into is deployment-script plumbing, not a
+judgment about wiki content or identity.

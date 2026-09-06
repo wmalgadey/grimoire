@@ -448,10 +448,12 @@ assert_equals "$reported" "$path_dir/grimoire-server" \
 # observe and control both without a real container.
 
 captured_compose_args=()
+captured_compose_calls=()
 fake_compose_exit=0
 fake_compose_output=""
 compose() {
   captured_compose_args=("$@")
+  captured_compose_calls+=("$*")
   [[ -z "$fake_compose_output" ]] || printf '%s\n' "$fake_compose_output"
   return "$fake_compose_exit"
 }
@@ -466,12 +468,51 @@ assert_equals "${captured_compose_args[*]}" \
   "cmd_wiki_identity forwards argv through compose exec -T"
 
 fake_compose_exit=3
+captured_compose_calls=()
 if cmd_wiki_identity set --from-file /does/not/exist >/dev/null 2>&1; then
   propagated=0
 else
   propagated=$?
 fi
 assert_equals "$propagated" "3" "cmd_wiki_identity propagates the Hub CLI's exit code unchanged"
+assert_equals "${#captured_compose_calls[@]}" "1" \
+  "a --from-file path that does not exist on the host is forwarded unchanged, with no staging call"
+
+fake_compose_exit=0
+cmd_wiki_identity >/dev/null
+assert_equals "${captured_compose_args[*]}" \
+  "$wiki_identity_repo exec -T hub dotnet /app/Grimoire.Hub.dll wiki-identity" \
+  "cmd_wiki_identity with no arguments (report mode) forwards none, without tripping set -u on an empty array"
+
+# `--from-file` is resolved inside the *hub container*, but a draft is written on the
+# *deploy host* — reproduced live (review on #231): a host-existing path staged through
+# `docker compose cp` first, and the forwarded invocation rewritten to where it landed.
+fake_compose_exit=0
+fake_compose_output=""
+draft_host_path="$work/drafted-foundation.md"
+printf '# Draft\n' >"$draft_host_path"
+captured_compose_calls=()
+cmd_wiki_identity set --from-file "$draft_host_path" --replace >/dev/null
+assert_equals "${#captured_compose_calls[@]}" "2" \
+  "cmd_wiki_identity stages a host-existing --from-file path before forwarding"
+assert_equals "${captured_compose_calls[0]}" \
+  "$wiki_identity_repo cp $draft_host_path hub:/tmp/drafted-foundation.md" \
+  "the staging call copies the host file into the hub container via docker compose cp"
+assert_equals "${captured_compose_calls[1]}" \
+  "$wiki_identity_repo exec -T hub dotnet /app/Grimoire.Hub.dll wiki-identity set --from-file /tmp/drafted-foundation.md --replace" \
+  "the forwarded invocation is rewritten to the container-visible path, other args untouched"
+
+fake_compose_exit=1
+# die() calls exit, so this runs in a subshell — otherwise it would end the test runner
+# itself, not just cmd_wiki_identity.
+if (cmd_wiki_identity set --from-file "$draft_host_path" >/dev/null 2>&1); then
+  staging_propagated=0
+else
+  staging_propagated=$?
+fi
+assert_equals "$staging_propagated" "1" \
+  "a failed staging cp ends the command via die rather than forwarding to a path that was never copied"
+fake_compose_exit=0
 
 fake_compose_exit=0
 fake_compose_output=$'source: default\nresolved_path: /data/foundation-prompt.md\nsha256: abc123\nheading: Wiki Foundation'
