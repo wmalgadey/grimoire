@@ -150,61 +150,8 @@ public sealed class TaskArtifactStore
             throw new InvalidOperationException("Task artifact markdown has invalid frontmatter.");
         }
 
-        var frontmatter = sections[1]
-            .Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-            .Select(line => line.Split(':', 2, StringSplitOptions.TrimEntries))
-            .Where(parts => parts.Length == 2)
-            .ToDictionary(parts => parts[0], parts => parts[1]);
-
-        var pagesTouched = ParseStringList(frontmatter, "pages_touched");
-        var pagesCreated = ParseStringList(frontmatter, "pages_created");
-        var pagesUpdated = ParseStringList(frontmatter, "pages_updated");
-        var pagesSuperseded = ParseStringList(frontmatter, "pages_superseded");
-
-        DateTimeOffset? completedAt = frontmatter.TryGetValue("completed_at", out var completedAtRaw) && !string.Equals(completedAtRaw, "null", StringComparison.OrdinalIgnoreCase)
-            ? DateTimeOffset.Parse(completedAtRaw, CultureInfo.InvariantCulture)
-            : null;
-
-        var failureReason = ParseOptionalString(frontmatter, "failure_reason");
-        var model = ParseOptionalString(frontmatter, "model");
-
-        int? turns = frontmatter.TryGetValue("turns", out var turnsRaw) && !string.Equals(turnsRaw, "null", StringComparison.OrdinalIgnoreCase)
-            ? int.Parse(turnsRaw, CultureInfo.InvariantCulture)
-            : null;
-
-        bool? rolledBack = frontmatter.TryGetValue("rolled_back", out var rbRaw) && !string.Equals(rbRaw, "null", StringComparison.OrdinalIgnoreCase)
-            ? string.Equals(rbRaw, "true", StringComparison.OrdinalIgnoreCase)
-            : null;
-
-        var userPromptSource = ParseOptionalString(frontmatter, "user_prompt_source");
-
-        var convertSteps = ParseConvertSteps(frontmatter);
-        var title = ParseOptionalString(frontmatter, "title");
-
+        var frontmatter = ParseFrontmatter(sections[1]);
         var body = sections[2];
-        var userPrompt = ExtractSection(body, "## User Prompt");
-
-        // Denied actions and instruction_files are stored as JSON; parse inline.
-        IReadOnlyList<DeniedActionEntry>? deniedActions = null;
-        if (frontmatter.TryGetValue("denied_actions", out var daRaw) && !string.Equals(daRaw, "[]", StringComparison.OrdinalIgnoreCase))
-        {
-            try { deniedActions = JsonSerializer.Deserialize<List<DeniedActionEntry>>(daRaw, _jsonOptions); }
-            catch { /* ignore parse errors on partial reads */ }
-        }
-
-        IReadOnlyList<InstructionFileRecord>? instructionFiles = null;
-        if (frontmatter.TryGetValue("instruction_files", out var ifRaw) && !string.Equals(ifRaw, "[]", StringComparison.OrdinalIgnoreCase))
-        {
-            try { instructionFiles = JsonSerializer.Deserialize<List<InstructionFileRecord>>(ifRaw, _jsonOptions); }
-            catch { /* ignore parse errors on partial reads */ }
-        }
-
-        PolicyRecord? policy = null;
-        if (frontmatter.TryGetValue("policy", out var policyRaw) && !string.Equals(policyRaw, "null", StringComparison.OrdinalIgnoreCase))
-        {
-            try { policy = JsonSerializer.Deserialize<PolicyRecord>(policyRaw, _jsonOptions); }
-            catch { /* ignore parse errors on partial reads */ }
-        }
 
         return new TaskArtifactDocument(
             TaskId: frontmatter["task_id"],
@@ -212,24 +159,72 @@ public sealed class TaskArtifactStore
             Status: frontmatter["status"],
             Agent: frontmatter["agent"],
             StartedAt: DateTimeOffset.Parse(frontmatter["started_at"], CultureInfo.InvariantCulture),
-            CompletedAt: completedAt,
+            CompletedAt: ParseOptionalTimestamp(frontmatter, "completed_at"),
             SourceRef: Unquote(frontmatter["source_ref"]),
-            PagesTouched: pagesTouched,
-            FailureReason: failureReason,
+            PagesTouched: ParseStringList(frontmatter, "pages_touched"),
+            FailureReason: ParseOptionalString(frontmatter, "failure_reason"),
             Narrative: NarrativeWithoutUserPromptSection(body),
-            PagesCreated: pagesCreated,
-            PagesUpdated: pagesUpdated,
-            PagesSuperseded: pagesSuperseded,
-            DeniedActions: deniedActions,
-            InstructionFiles: instructionFiles,
-            Policy: policy,
-            Model: model,
-            Turns: turns,
-            RolledBack: rolledBack,
-            UserPromptSource: userPromptSource,
-            UserPrompt: userPrompt,
-            ConvertSteps: convertSteps,
-            Title: title);
+            PagesCreated: ParseStringList(frontmatter, "pages_created"),
+            PagesUpdated: ParseStringList(frontmatter, "pages_updated"),
+            PagesSuperseded: ParseStringList(frontmatter, "pages_superseded"),
+            DeniedActions: ParseJsonField<List<DeniedActionEntry>>(frontmatter, "denied_actions", "[]"),
+            InstructionFiles: ParseJsonField<List<InstructionFileRecord>>(frontmatter, "instruction_files", "[]"),
+            Policy: ParseJsonField<PolicyRecord>(frontmatter, "policy", "null"),
+            Model: ParseOptionalString(frontmatter, "model"),
+            Turns: ParseOptionalInt(frontmatter, "turns"),
+            RolledBack: ParseOptionalBool(frontmatter, "rolled_back"),
+            UserPromptSource: ParseOptionalString(frontmatter, "user_prompt_source"),
+            UserPrompt: ExtractSection(body, "## User Prompt"),
+            ConvertSteps: ParseConvertSteps(frontmatter),
+            Title: ParseOptionalString(frontmatter, "title"));
+    }
+
+    /// <summary>Splits the frontmatter block into its flat `key: value` pairs; a line without a colon is ignored.</summary>
+    private static Dictionary<string, string> ParseFrontmatter(string frontmatter)
+        => frontmatter
+            .Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Select(line => line.Split(':', 2, StringSplitOptions.TrimEntries))
+            .Where(parts => parts.Length == 2)
+            .ToDictionary(parts => parts[0], parts => parts[1]);
+
+    /// <summary>
+    /// Reads a frontmatter key that <see cref="BuildMarkdown"/> writes as the bare literal
+    /// <c>null</c> when the value is absent — the shape every optional scalar field below shares.
+    /// </summary>
+    private static bool TryGetWritten(Dictionary<string, string> fm, string key, out string raw)
+        => fm.TryGetValue(key, out raw!) && !string.Equals(raw, "null", StringComparison.OrdinalIgnoreCase);
+
+    private static DateTimeOffset? ParseOptionalTimestamp(Dictionary<string, string> fm, string key)
+        => TryGetWritten(fm, key, out var raw) ? DateTimeOffset.Parse(raw, CultureInfo.InvariantCulture) : null;
+
+    private static int? ParseOptionalInt(Dictionary<string, string> fm, string key)
+        => TryGetWritten(fm, key, out var raw) ? int.Parse(raw, CultureInfo.InvariantCulture) : null;
+
+    private static bool? ParseOptionalBool(Dictionary<string, string> fm, string key)
+        => TryGetWritten(fm, key, out var raw) ? string.Equals(raw, "true", StringComparison.OrdinalIgnoreCase) : null;
+
+    /// <summary>
+    /// Reads a frontmatter value stored as inline JSON. <paramref name="emptyLiteral"/> is the
+    /// form <see cref="BuildMarkdown"/> writes for "nothing recorded" (<c>[]</c> for the lists,
+    /// <c>null</c> for the policy). A crash mid-write can leave the value truncated; a partial
+    /// read is treated as absent rather than fatal so the surviving fields still parse.
+    /// </summary>
+    private static T? ParseJsonField<T>(Dictionary<string, string> fm, string key, string emptyLiteral)
+        where T : class
+    {
+        if (!fm.TryGetValue(key, out var raw) || string.Equals(raw, emptyLiteral, StringComparison.OrdinalIgnoreCase))
+        {
+            return null;
+        }
+
+        try
+        {
+            return JsonSerializer.Deserialize<T>(raw, _jsonOptions);
+        }
+        catch (JsonException)
+        {
+            return null;
+        }
     }
 
     private static string NarrativeWithoutUserPromptSection(string body)
@@ -287,9 +282,7 @@ public sealed class TaskArtifactStore
 
     /// <summary>Reads a nullable quoted frontmatter string, treating the bare literal <c>null</c> as absent.</summary>
     private static string? ParseOptionalString(Dictionary<string, string> fm, string key)
-        => fm.TryGetValue(key, out var raw) && !string.Equals(raw, "null", StringComparison.OrdinalIgnoreCase)
-            ? Unquote(raw)
-            : null;
+        => TryGetWritten(fm, key, out var raw) ? Unquote(raw) : null;
 
     private static readonly JsonSerializerOptions _jsonOptions = new()
     {

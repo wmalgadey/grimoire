@@ -193,37 +193,9 @@ public static class RemediationTaskRecordFormat
     {
         var pos = 0;
 
-        if (!TryReadLine(content, ref pos, out var line) || line != "---")
+        if (TryParseFrontmatter(content, ref pos) is { } frontmatterError)
         {
-            return new RemediationTaskRecordParseResult.Unreadable("missing frontmatter opening '---'");
-        }
-
-        var frontmatter = new Dictionary<string, string>(StringComparer.Ordinal);
-        while (true)
-        {
-            if (!TryReadLine(content, ref pos, out line))
-            {
-                return new RemediationTaskRecordParseResult.Unreadable("truncated frontmatter (no closing '---')");
-            }
-
-            if (line == "---")
-            {
-                break;
-            }
-
-            var colon = line.IndexOf(':', StringComparison.Ordinal);
-            if (colon <= 0)
-            {
-                return new RemediationTaskRecordParseResult.Unreadable($"malformed frontmatter line: '{line}'");
-            }
-
-            frontmatter[line[..colon].Trim()] = line[(colon + 1)..].Trim();
-        }
-
-        if (!frontmatter.TryGetValue("record_format", out var format) || format != RecordFormatVersion)
-        {
-            return new RemediationTaskRecordParseResult.Unreadable(
-                $"unsupported record_format '{frontmatter.GetValueOrDefault("record_format", "(missing)")}'");
+            return new RemediationTaskRecordParseResult.Unreadable(frontmatterError);
         }
 
         var entries = new List<RemediationTaskRecordEntry>();
@@ -232,7 +204,7 @@ public static class RemediationTaskRecordFormat
         while (true)
         {
             var (sentinelPos, sentinel) = FindSentinelLineStart(content, pos);
-            if (sentinelPos < 0 || sentinel is null)
+            if (sentinel is null)
             {
                 break;
             }
@@ -240,20 +212,7 @@ public static class RemediationTaskRecordFormat
             pos = sentinelPos;
             TryReadLine(content, ref pos, out _); // consume the sentinel line itself
 
-            var bookkeepingLines = new List<string>();
-            var closed = false;
-            while (TryReadLine(content, ref pos, out line))
-            {
-                if (line == CommentClose)
-                {
-                    closed = true;
-                    break;
-                }
-
-                bookkeepingLines.Add(line);
-            }
-
-            if (!closed)
+            if (!TryReadBookkeepingBlock(content, ref pos, out var bookkeepingLines))
             {
                 // Trailing incomplete block (crash mid-append): drop the fragment.
                 droppedTrailingFragment = true;
@@ -265,16 +224,7 @@ public static class RemediationTaskRecordFormat
                 return new RemediationTaskRecordParseResult.Unreadable($"malformed entry bookkeeping: {bookkeepingError}");
             }
 
-            string? structuralError = sentinel switch
-            {
-                ProposalSentinel => TryParseProposalBody(content, ref pos, fields, entries),
-                ContextSentinel => TryParseContextBody(content, ref pos, fields, entries),
-                MessageSentinel => TryParseMessageBody(content, ref pos, fields, entries),
-                OutcomeSentinel => TryParseOutcomeBody(content, ref pos, fields, entries),
-                _ => "unknown sentinel",
-            };
-
-            if (structuralError is not null)
+            if (ParseEntryBody(sentinel, content, ref pos, fields, entries) is { } structuralError)
             {
                 return new RemediationTaskRecordParseResult.Unreadable(structuralError);
             }
@@ -282,6 +232,80 @@ public static class RemediationTaskRecordFormat
 
         return new RemediationTaskRecordParseResult.Parsed(entries, droppedTrailingFragment);
     }
+
+    /// <summary>
+    /// Consumes the frontmatter handshake — opening <c>---</c>, flat key/value lines, closing
+    /// <c>---</c>, supported <c>record_format</c> — leaving <paramref name="pos"/> at the first
+    /// body character. Returns the unreadability reason, or <c>null</c> when the handshake held.
+    /// </summary>
+    private static string? TryParseFrontmatter(string content, ref int pos)
+    {
+        if (!TryReadLine(content, ref pos, out var line) || line != "---")
+        {
+            return "missing frontmatter opening '---'";
+        }
+
+        var frontmatter = new Dictionary<string, string>(StringComparer.Ordinal);
+        while (true)
+        {
+            if (!TryReadLine(content, ref pos, out line))
+            {
+                return "truncated frontmatter (no closing '---')";
+            }
+
+            if (line == "---")
+            {
+                break;
+            }
+
+            var colon = line.IndexOf(':', StringComparison.Ordinal);
+            if (colon <= 0)
+            {
+                return $"malformed frontmatter line: '{line}'";
+            }
+
+            frontmatter[line[..colon].Trim()] = line[(colon + 1)..].Trim();
+        }
+
+        if (!frontmatter.TryGetValue("record_format", out var format) || format != RecordFormatVersion)
+        {
+            return $"unsupported record_format '{frontmatter.GetValueOrDefault("record_format", "(missing)")}'";
+        }
+
+        return null;
+    }
+
+    /// <summary>
+    /// Reads an entry's bookkeeping comment lines up to <see cref="CommentClose"/>. Returns false
+    /// when the input ends first — the crash-mid-append fragment the caller drops.
+    /// </summary>
+    private static bool TryReadBookkeepingBlock(string content, ref int pos, out List<string> bookkeepingLines)
+    {
+        bookkeepingLines = [];
+        while (TryReadLine(content, ref pos, out var line))
+        {
+            if (line == CommentClose)
+            {
+                return true;
+            }
+
+            bookkeepingLines.Add(line);
+        }
+
+        return false;
+    }
+
+    /// <summary>Routes an entry to the body parser its sentinel names.</summary>
+    private static string? ParseEntryBody(
+        string sentinel, string content, ref int pos, Dictionary<string, string> fields, List<RemediationTaskRecordEntry> entries)
+        => sentinel switch
+        {
+            ProposalSentinel => TryParseProposalBody(content, ref pos, fields, entries),
+            ContextSentinel => TryParseContextBody(content, ref pos, fields, entries),
+            MessageSentinel => TryParseMessageBody(content, ref pos, fields, entries),
+            OutcomeSentinel => TryParseOutcomeBody(content, ref pos, fields, entries),
+            _ => "unknown sentinel",
+        };
 
     // ------------------------------------------------------------ entry parsers
 
