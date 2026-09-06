@@ -55,8 +55,7 @@ This is the actual judgment call, not the wizard's. Write the markdown file the 
 describes, exactly as it describes it — nothing more, nothing role-specific. If what the
 operator actually wants turns out to be role behaviour rather than a wiki-wide convention
 (the brief gives an example of the difference), there is no home for that yet; say so
-rather than forcing it in (tracked as
-[issue #224](https://github.com/wmalgadey/grimoire/issues/224)).
+rather than forcing it in.
 
 ## Step 3 — Hand it back and verify
 
