@@ -245,11 +245,44 @@ public sealed class RemediationRunCoordinator
             : HubTracing.ActivitySource.StartActivity("hub.remediation.run_supervision");
         supervisionSpan?.SetTag("task_id", taskId);
 
+        var terminalEvent = await AwaitTerminalEventAsync(handle, cancellationToken);
+
+        string outcomeTag;
+        string status;
+        string? reason;
+        if (terminalEvent is null)
+        {
+            HubMetrics.RecordLivenessFailure();
+            handle.Terminate();
+            outcomeTag = "liveness_failed";
+            status = RemediationTaskStates.Failed;
+            reason = $"Remediation agent run showed no liveness for {(long)_livenessWindow.TotalSeconds} seconds and was terminated.";
+        }
+        else
+        {
+            (status, reason) = ResolveTerminalOutcome(taskId, terminalEvent, supervisionSpan);
+            outcomeTag = status;
+        }
+
+        supervisionSpan?.SetTag("outcome", outcomeTag);
+        await FinishRunAsync(taskId, runId, status, reason, CancellationToken.None);
+
+        await handle.DisposeAsync();
+    }
+
+    /// <summary>
+    /// Waits for the run's first terminal event, or for the liveness watchdog to give up.
+    /// Event silence beyond the window is the sole failure authority (ADR-008, unchanged from
+    /// Ingest/Lint) and surfaces as a <c>null</c> result. The stdout pump is not awaited: it ends
+    /// with the pipe, and the no-terminal-ever case is decided here by the watchdog rather than by
+    /// the pipe closing.
+    /// </summary>
+    private async Task<AgentDispatch.AgentRunEvent?> AwaitTerminalEventAsync(
+        AgentDispatch.IAgentProcessHandle handle, CancellationToken cancellationToken)
+    {
         var lastEventTicks = _timeProvider.GetUtcNow().UtcTicks;
         var terminal = new TaskCompletionSource<AgentDispatch.AgentRunEvent?>(TaskCreationOptions.RunContinuationsAsynchronously);
 
-        // Liveness watchdog: event silence beyond the window is the sole failure
-        // authority (ADR-008), unchanged from Ingest/Lint.
         var checkInterval = TimeSpan.FromMilliseconds(Math.Min(1_000, _livenessWindow.TotalMilliseconds / 4));
         using var watchdog = _timeProvider.CreateTimer(_ =>
         {
@@ -260,7 +293,7 @@ public sealed class RemediationRunCoordinator
             }
         }, null, checkInterval, checkInterval);
 
-        var readLoop = Task.Run(async () =>
+        _ = Task.Run(async () =>
         {
             await foreach (var line in handle.ReadStdoutLinesAsync(cancellationToken))
             {
@@ -280,67 +313,47 @@ public sealed class RemediationRunCoordinator
                     terminal.TrySetResult(runEvent);
                 }
             }
-            // Pipe closed (with or without a terminal event already seen): no further
-            // transition here — the watchdog decides for the no-terminal-ever case.
         }, cancellationToken);
 
-        var terminalEvent = await terminal.Task;
+        return await terminal.Task;
+    }
 
-        if (terminalEvent is null)
+    /// <summary>
+    /// Hub mapping (contracts/remediation-lifecycle-events.md "remediationOutcome"):
+    /// completed + remediationOutcome:not_applicable ⇒ NotApplicable; completed otherwise ⇒
+    /// Completed; failed ⇒ Failed. FR-005/SC-007: a reason is always surfaced, even if the
+    /// agent's event omitted one.
+    /// </summary>
+    private static (string Status, string? Reason) ResolveTerminalOutcome(
+        string taskId, AgentDispatch.AgentRunEvent terminalEvent, Activity? supervisionSpan)
+    {
+        if (terminalEvent.Type != AgentDispatch.AgentRunEvent.TypeCompleted)
         {
-            supervisionSpan?.SetTag("outcome", "liveness_failed");
-            HubMetrics.RecordLivenessFailure();
-            handle.Terminate();
-            var reason = $"Remediation agent run showed no liveness for {(long)_livenessWindow.TotalSeconds} seconds and was terminated.";
-            await FinishRunAsync(taskId, runId, RemediationTaskStates.Failed, reason, CancellationToken.None);
-        }
-        else
-        {
-            // Hub mapping (contracts/remediation-lifecycle-events.md "remediationOutcome"):
-            // completed + remediationOutcome:not_applicable ⇒ NotApplicable; completed
-            // otherwise ⇒ Completed; failed ⇒ Failed. FR-005/SC-007: a reason is always
-            // surfaced, even if the agent's event omitted one.
-            string status;
-            string? reason;
-            if (terminalEvent.Type == AgentDispatch.AgentRunEvent.TypeCompleted)
-            {
-                // T035 (ADR-018, plan.md ## Observability): hub.remediation.re_verify is
-                // emitted here, Hub-side, purely from the terminal event's own metadata —
-                // the re-verification judgment itself happened agent-side (FR-018,
-                // Principle V); this span only records that a completed terminal event
-                // carried a verdict and what it was, for correlation with the run.
-                var stillApplicable = terminalEvent.RemediationOutcome != AgentDispatch.AgentRunEvent.RemediationOutcomeNotApplicable;
-                using (var reverifySpan = supervisionSpan is { Context: var supervisionContext }
-                    ? HubTracing.ActivitySource.StartActivity("hub.remediation.re_verify", ActivityKind.Internal, supervisionContext)
-                    : HubTracing.ActivitySource.StartActivity("hub.remediation.re_verify"))
-                {
-                    reverifySpan?.SetTag("task_id", taskId);
-                    reverifySpan?.SetTag("still_applicable", stillApplicable);
-                }
-
-                if (!stillApplicable)
-                {
-                    status = RemediationTaskStates.NotApplicable;
-                    reason = terminalEvent.Reason ?? "Agent judged the proposal no longer applicable.";
-                }
-                else
-                {
-                    status = RemediationTaskStates.Completed;
-                    reason = null;
-                }
-            }
-            else
-            {
-                status = RemediationTaskStates.Failed;
-                reason = terminalEvent.Reason ?? "Remediation agent run failed.";
-            }
-
-            supervisionSpan?.SetTag("outcome", status);
-            await FinishRunAsync(taskId, runId, status, reason, CancellationToken.None);
+            return (RemediationTaskStates.Failed, terminalEvent.Reason ?? "Remediation agent run failed.");
         }
 
-        await handle.DisposeAsync();
-        _ = readLoop; // read loop ends with the pipe; nothing to await after termination
+        var stillApplicable = terminalEvent.RemediationOutcome != AgentDispatch.AgentRunEvent.RemediationOutcomeNotApplicable;
+        RecordReVerification(taskId, stillApplicable, supervisionSpan);
+
+        return stillApplicable
+            ? (RemediationTaskStates.Completed, null)
+            : (RemediationTaskStates.NotApplicable,
+                terminalEvent.Reason ?? "Agent judged the proposal no longer applicable.");
+    }
+
+    /// <summary>
+    /// T035 (ADR-018, plan.md ## Observability): emits <c>hub.remediation.re_verify</c> Hub-side,
+    /// purely from the terminal event's own metadata — the re-verification judgment itself
+    /// happened agent-side (FR-018, Principle V). This span only records that a completed
+    /// terminal event carried a verdict and what it was, for correlation with the run.
+    /// </summary>
+    private static void RecordReVerification(string taskId, bool stillApplicable, Activity? supervisionSpan)
+    {
+        using var reverifySpan = supervisionSpan is { Context: var supervisionContext }
+            ? HubTracing.ActivitySource.StartActivity("hub.remediation.re_verify", ActivityKind.Internal, supervisionContext)
+            : HubTracing.ActivitySource.StartActivity("hub.remediation.re_verify");
+        reverifySpan?.SetTag("task_id", taskId);
+        reverifySpan?.SetTag("still_applicable", stillApplicable);
     }
 
     private async Task FinishRunAsync(string taskId, string runId, string status, string? outcomeReason, CancellationToken cancellationToken)
