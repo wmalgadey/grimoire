@@ -6,15 +6,19 @@ agent's work; each agent's own file states only what is specific to that agent's
 
 ## What This Wiki Is For
 
-This is a personal knowledge wiki: a persistent, growing structure built from whatever material its
-operator brings to it — notes, documents, articles, conversations, anything worth keeping for later
-retrieval. There is no fixed subject-matter focus; the wiki's actual scope is whatever its operator
-has fed into it so far.
+This is a personal knowledge wiki — one person's own growing record of what they have read, learned,
+and want to keep for later, built from whatever material its operator brings to it: technical notes,
+articles, book and talk summaries, conversations worth remembering, and personal reflections alike.
+It is not a professional knowledge base or a team wiki: there is no fixed subject-matter focus and no
+separation between "work" topics and everything else in the operator's life. A page on a software
+architecture pattern sits beside a page on a hobby, a book, or a person the operator has read, because
+that is what the operator's own thinking actually covers. The wiki's scope is not decided in advance —
+it is discovered from whatever the operator has fed into it so far.
 
 ## What Belongs In It, And What Does Not
 
 Anything the operator brings to it as worth keeping for later retrieval belongs here — technology,
-tools, concepts, people, organisations, events, personal reflections, and anything else the
+tools, concepts, people, organisations, events, hobbies, personal reflections, and anything else the
 operator's material actually covers. Ephemeral, one-off exchanges that carry no lasting reference
 value do not; a routine question-and-answer with nothing worth remembering creates no page.
 
