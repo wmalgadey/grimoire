@@ -15,6 +15,58 @@ through it once at a careful pace. See
 [`docs/codebase-complexity-metric.md`](docs/codebase-complexity-metric.md) for the exact
 formulas, thresholds, and sources.
 
+## Getting Started
+
+Grimoire ships as a self-hosted stack behind one Compose project — the Hub, the three
+agent runtimes, the frontend, and a local telemetry dashboard. The full setup (credentials,
+the `.env` configuration surface, reaching the stack from another machine) lives in
+[`deploy/server/README.md`](deploy/server/README.md); this is the short path through it.
+
+### Install and deploy
+
+```bash
+git clone https://github.com/wmalgadey/grimoire.git ~/grimoire
+cd ~/grimoire
+cp .env-example .env && chmod 600 .env && $EDITOR .env   # put a real ANTHROPIC_AUTH_TOKEN in it
+
+./deploy/server/grimoire-server install       # copies the tool outside the checkout
+export PATH="$HOME/.local/bin:$PATH"
+export GRIMOIRE_REPO=$HOME/grimoire
+
+grimoire-server deploy main                   # builds the images, brings the stack up, smoke-checks it
+```
+
+The first build is slow — the .NET SDK, Bun, and all three agent builds run — and every
+later one reuses the layer cache. `grimoire-server status` reports what is deployed, what
+origin has since, and whether the stack is actually serving; run it any time instead of
+guessing. The stack publishes to `127.0.0.1` only — reach it from elsewhere over an SSH
+tunnel or Tailscale, both covered in `deploy/server/README.md`.
+
+### Point it at your own wiki
+
+By default, every agent maintains the wiki Grimoire ships: a general-purpose personal
+knowledge base. Check which one this instance is actually running:
+
+```bash
+grimoire-server wiki-identity
+```
+
+To have it maintain something else instead, ask the wizard for a drafting brief built from
+your own description:
+
+```bash
+grimoire-server wiki-identity set --specialised --description "Tracks nothing but home-lab Kubernetes runbooks."
+```
+
+The wizard only reports and persists — it never drafts the document itself, since deciding
+what a wiki should be is agent judgment, not something the deterministic harness is allowed
+to do. Drafting is a job for whoever reads the brief, typically the Claude Code session
+already running on the deploy host: the
+[`wiki-identity-drafting`](.claude/skills/wiki-identity-drafting/SKILL.md) skill covers
+exactly what a drafted document has to contain and how to hand it back with
+`grimoire-server wiki-identity set --from-file <path>` — no restart needed, the next
+Ingest, Query, or Lint run operates under it.
+
 ## Architecture
 
 - **Backend** (`backend/`) — .NET / C#, hexagonal (ports & adapters) architecture
