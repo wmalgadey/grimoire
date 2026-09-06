@@ -6,10 +6,10 @@ namespace Grimoire.EvalRunner.Recording;
 
 /// <summary>
 /// Computes the staleness fingerprint set for one scenario (research.md R4): the shared
-/// foundation document (029-shared-foundation-prompt, ADR-053), the agent instruction
-/// surface (ADR-007), the guardrail policy (ADR-006), the fixture tree, the scenario
-/// definition, and — for judge-scored scenarios — the judge prompt template. Model
-/// identity is provenance, not a staleness input.
+/// foundation document (029-shared-foundation-prompt, ADR-053), the agent's own role
+/// instruction surface (ADR-053, superseding ADR-007), the guardrail policy (ADR-006),
+/// the fixture tree, the scenario definition, and — for judge-scored scenarios — the
+/// judge prompt template. Model identity is provenance, not a staleness input.
 /// </summary>
 public static class Fingerprints
 {

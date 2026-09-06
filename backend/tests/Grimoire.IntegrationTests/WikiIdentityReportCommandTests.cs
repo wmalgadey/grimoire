@@ -31,7 +31,9 @@ public class WikiIdentityReportCommandTests
             // TestResolvedGrimoirePathsFactory writes each agent's default foundation-prompt.md
             // as plain "test foundation" text with no markdown heading — the report line is
             // present but empty, which is itself the behavior worth pinning (no heading found).
-            Assert.Contains("heading: \n", stdout, StringComparison.Ordinal);
+            // Environment.NewLine, not a literal "\n": WikiIdentityCommand writes via
+            // TextWriter.WriteLine, which terminates with the platform newline.
+            Assert.Contains($"heading: {Environment.NewLine}", stdout, StringComparison.Ordinal);
             Assert.False(File.Exists(paths.InstanceFoundationPromptPath));
         }
         finally
