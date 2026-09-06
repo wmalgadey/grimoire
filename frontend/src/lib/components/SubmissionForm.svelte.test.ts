@@ -172,3 +172,16 @@ test('Convert step toggle is optional and can be disabled for URL submissions', 
 		convertSteps: { markitdown: false }
 	});
 });
+
+// #149: the dialog used to open on a Sonnet-4.5 picker whose pick was remembered in the
+// browser and never sent. It states the model the ingest run will actually use instead.
+test('the dialog names the model the ingest run will use and offers no choice', async () => {
+	await mockDefaults();
+
+	const screen = await render(SubmissionForm);
+
+	await expect
+		.element(screen.getByTestId('submission-active-model'))
+		.toHaveTextContent('claude-haiku-4-5');
+	await expect.element(screen.getByTestId('model-option')).not.toBeInTheDocument();
+});

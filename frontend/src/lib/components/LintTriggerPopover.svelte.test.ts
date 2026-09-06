@@ -24,7 +24,7 @@ beforeEach(() => {
 	});
 });
 
-test('accepted trigger: pick a model, run, and the popover closes', async () => {
+test('accepted trigger: run, and the popover closes', async () => {
 	const screen = await render(LintTriggerPopover);
 
 	await screen.getByTestId('nav-lint-button').click();
@@ -32,6 +32,19 @@ test('accepted trigger: pick a model, run, and the popover closes', async () => 
 
 	expect(triggerMock).toHaveBeenCalledOnce();
 	await expect.element(screen.getByTestId('lint-popover')).not.toBeInTheDocument();
+});
+
+// #149: this popover opened pre-selected on Opus 4.1 — a model #117 decided against and which
+// no lint run has ever used, since the pick was never transmitted. It states the model now.
+test('the popover names the model the lint run will use and offers no choice', async () => {
+	const screen = await render(LintTriggerPopover);
+
+	await screen.getByTestId('nav-lint-button').click();
+
+	await expect
+		.element(screen.getByTestId('lint-active-model'))
+		.toHaveTextContent('claude-haiku-4-5');
+	await expect.element(screen.getByTestId('model-option')).not.toBeInTheDocument();
 });
 
 test('blocked trigger (lint_run_active): the reason is shown, never a silent no-op', async () => {
@@ -73,21 +86,6 @@ test('blocked trigger (unresolved_remediation_tasks): the reason is shown too', 
 	await expect
 		.element(screen.getByTestId('lint-trigger-error'))
 		.toHaveTextContent('Remediation action tasks from the previous lint run are still unresolved');
-});
-
-test('the model choice defaults to Opus for lint and is remembered while the popover is open', async () => {
-	const screen = await render(LintTriggerPopover);
-
-	await screen.getByTestId('nav-lint-button').click();
-	await expect
-		.element(screen.getByTestId('model-option').filter({ hasText: 'Claude Opus 4.1' }))
-		.toHaveAttribute('aria-pressed', 'true');
-
-	await screen.getByTestId('model-option').filter({ hasText: 'Claude Haiku 4.5' }).click();
-
-	await expect
-		.element(screen.getByTestId('model-option').filter({ hasText: 'Claude Haiku 4.5' }))
-		.toHaveAttribute('aria-pressed', 'true');
 });
 
 test('cancel and the backdrop both dismiss without triggering a run', async () => {

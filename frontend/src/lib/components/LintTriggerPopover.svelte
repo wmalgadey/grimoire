@@ -1,9 +1,8 @@
 <script lang="ts">
 	import ApiErrorAlert from './ApiErrorAlert.svelte';
-	import ModelPicker from './ModelPicker.svelte';
+	import ActiveModel from './ActiveModel.svelte';
 	import { triggerLintRun } from '$lib/services/lintApi';
 	import { toPresentedError, type PresentedError } from '$lib/services/apiError';
-	import { DEFAULT_LINT_MODEL, MODEL_NOTES, MODELS } from '$lib/models';
 
 	// 015 FR-002/SC-003 kept: a lint run is still triggered in one action from the shell, and a
 	// blocked trigger still surfaces its reason (SC-004). What changed is where the run then
@@ -13,7 +12,6 @@
 	let open = $state(false);
 	let triggering = $state(false);
 	let triggerError: PresentedError | null = $state(null);
-	let model = $state(DEFAULT_LINT_MODEL);
 
 	// Every dismissal goes through here. Closing has to drop the error too: the popover is
 	// reused across attempts, and a failure left in state reappears the next time it opens,
@@ -72,15 +70,7 @@
 				Lint reads the whole wiki and files its findings as tasks on the board.
 			</p>
 
-			<span class="mt-1 text-xs font-medium tracking-wide text-slate-500 uppercase">Model</span>
-			<ModelPicker
-				models={MODELS}
-				selected={model}
-				notes={MODEL_NOTES}
-				direction="column"
-				onSelect={(picked) => (model = picked)}
-				testId="lint-model-picker"
-			/>
+			<ActiveModel testId="lint-active-model" />
 
 			{#if triggerError}
 				<ApiErrorAlert

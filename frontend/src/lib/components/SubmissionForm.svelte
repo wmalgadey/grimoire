@@ -14,8 +14,7 @@
 		SubmissionAcceptedResponse
 	} from '$lib/types';
 	import StatusBadge from './StatusBadge.svelte';
-	import ModelPicker from './ModelPicker.svelte';
-	import { DEFAULT_INGEST_MODEL, MODEL_NOTES, MODELS } from '$lib/models';
+	import ActiveModel from './ActiveModel.svelte';
 
 	type FileKind = Exclude<IngestSubmissionKind, 'url'>;
 
@@ -45,9 +44,6 @@
 	let userPrompt = $state('');
 	let stepOverrides: ConvertStepConfig = $state({});
 	let defaultsError: string | null = $state(null);
-	// The design's Model field, above the user prompt. Remembered here and deliberately not
-	// sent — see the TODO in $lib/models.ts: no submission contract carries a model yet.
-	let model = $state(DEFAULT_INGEST_MODEL);
 
 	const currentKind = $derived<IngestSubmissionKind>(mode === 'url' ? 'url' : fileKind);
 
@@ -184,16 +180,7 @@
 		</div>
 	{/if}
 
-	<div class="flex flex-col gap-1">
-		<span class="text-sm font-medium text-slate-700">Model</span>
-		<ModelPicker
-			models={MODELS}
-			selected={model}
-			notes={MODEL_NOTES}
-			onSelect={(picked) => (model = picked)}
-			testId="submission-model-picker"
-		/>
-	</div>
+	<ActiveModel testId="submission-active-model" />
 
 	<div class="flex flex-col gap-1">
 		<label for="submission-user-prompt" class="text-sm font-medium text-slate-700">
