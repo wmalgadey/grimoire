@@ -14,18 +14,11 @@
  * and let a conversation be opened by URL; until then the list is session-scoped.
  */
 
-import { DEFAULT_ASK_MODEL } from '$lib/models';
 import type { QueryTurn } from '$lib/types';
 
 export interface Conversation {
 	id: string;
 	turns: QueryTurn[];
-	/**
-	 * The model this conversation asks with. Client-side only for now — the submission
-	 * contract (contracts/query-conversation-api.md) carries the prompt and nothing else.
-	 * TODO(backend): accept a model on the turn submission and drop this local-only field.
-	 */
-	model: string;
 }
 
 function newId(): string {
@@ -42,8 +35,8 @@ class ConversationStore {
 	}
 
 	/** Opens a fresh conversation and makes it active; returns its id. */
-	create(model: string = DEFAULT_ASK_MODEL): string {
-		const conversation: Conversation = { id: newId(), turns: [], model };
+	create(): string {
+		const conversation: Conversation = { id: newId(), turns: [] };
 		this.list = [conversation, ...this.list];
 		this.activeId = conversation.id;
 		return conversation.id;
@@ -51,10 +44,6 @@ class ConversationStore {
 
 	open(id: string) {
 		this.activeId = id;
-	}
-
-	setModel(id: string, model: string) {
-		this.list = this.list.map((c) => (c.id === id ? { ...c, model } : c));
 	}
 
 	addTurn(conversationId: string, turn: QueryTurn) {

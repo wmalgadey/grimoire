@@ -21,7 +21,7 @@ function turn(overrides: Partial<QueryTurn> = {}): QueryTurn {
 }
 
 function conversation(overrides: Partial<Conversation> = {}): Conversation {
-	return { id: 'c-1', turns: [turn()], model: 'Claude Sonnet 4.5', ...overrides };
+	return { id: 'c-1', turns: [turn()], ...overrides };
 }
 
 test('a conversation is headed by its opening question and counts its questions', async () => {
