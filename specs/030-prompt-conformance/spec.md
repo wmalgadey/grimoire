@@ -134,13 +134,14 @@ line numbers; use these:
 - Q: What does an ingest run write into the two lifecycle fields? → A: Option C — an ingest run writes `inbound_links` as the count it can actually observe (the links the run itself created, plus `index.md`), and does **not** write `last_reviewed` at all. `last_reviewed` is written only by a run that performed an actual review pass, i.e. lint. Rationale: this makes the field's presence meaningful — `last_reviewed` exists on a page if and only if that page has genuinely been reviewed — and it makes lint's existing fallback to `timestamp` for pages without the field semantically correct rather than a workaround, since a never-reviewed page really is overdue measured from its ingest date. It also avoids both failure modes the other options carried: option A would have left `last_reviewed == timestamp` forever on pages ingest keeps touching (relocating #109's defect), and option B would have flagged pages ingest had just re-read. Consequence recorded in Assumptions: unlike A and B, C requires a change to the **lint** role document — lint's write of `last_reviewed` is currently permissive ("you *may* also set …", `LintAgent/system-prompt.md:328`) and only a rider on an inbound-link refresh write, so under C it must become definite or the field never materialises.
 - Q: How should the confidence formula and its thresholds be made coherent? → A: Option C — keep the shared formula at the five signals every agent can observe, re-baseline its thresholds so all three bands are reachable within that formula's own range, and keep lint's two inbound-link signals as a documented lint-only extension carrying its own stated thresholds. Rationale: option A (one seven-signal formula for everyone) does not survive contact with the agents — ingest reads `index.md` plus the pages its source overlaps with rather than the link graph, and a query-created synthesis page has zero inbound links by construction, so two of three agents would be scoring a signal they cannot observe. That is the reasoning lint's document already gives for keeping the signals private; C writes it down instead of undoing it. Option B (drop lint's extension so all agents score identically) was declined because it decouples the score from interlinking and orphanhood entirely, which is half of what #110 reports. The spec deliberately does not fix the new threshold numbers: FR-005 requires every band to be reachable, and which numbers achieve that is a plan-level choice. Consequence: two documented scales exist, a page's score can legitimately change when lint re-scores it, and both documents must say so (FR-006); the query role's narrative adaptation must also be reconciled (FR-006a).
 - Q: What should happen when an instance's own foundation document does not define the lifecycle fields the lint role depends on? → A: Option A — the lint run degrades: it skips the finding categories whose inputs the foundation document leaves undefined and names the omission in its own report, so the operator sees the capability loss rather than silently losing it. Rationale: this is the only option that needs no harness change and no split ownership of the frontmatter standard, and it closes the operator loop exactly as Principle V designs it. Option B was constrained before it was weighed: "fail closed" is only available as an instruction to the agent, never as a harness check, because a harness that inspects the foundation document's content to decide whether to dispatch is the harness reinterpreting instruction-file content, which Principle V forbids — and even in its legal reading it costs an instance all lint value over two frontmatter rows. Option C (a product-owned minimal field set) guarantees lint keeps working but partly reverses feature 029: the frontmatter standard would then have two owners, the operator for most rows and the product for two, and that carve-out has to physically live somewhere. Interaction with #224 (instance-owned role documents, deferred to 2.0.0), named but not designed for: option A generalises — a role document states what it needs and degrades when it is absent — whereas option C would have meant product-owned carve-outs in two places once role documents became instance-owned too.
+- Q: Which integration-depth expectation should the documents state — `5–15` or `10–15` pages per source? → A: `10–15`. Grimoire's two source documents disagree on the lower bound — `docs/foundational/llm-wiki-magrathea-skill.md:100` says 5–15, `docs/foundational/llm-wiki-nanoclaw-idea.md:45` says 10–15 — so the current `5–15` was never a softening by Grimoire; it followed Magrathea, and the choice was simply never recorded. This decision follows nanoclaw/Karpathy instead: a source that touches fewer than ten pages was probably integrated too shallowly, which is the expectation the pattern argues hardest for. Two consequences the document must carry with the number, both weighed before choosing it: the floor creates a pull toward padding — an agent facing a genuinely narrow source may manufacture connections to reach ten, which is worse wiki content and works against the confidence convention's penalty on thin sourcing — so the guidance stays a typical range and not a quota, explicitly; and the `sources/<slug>.md` summary page FR-008 now requires counts toward the total, so the effective floor for topic pages is about nine.
 
-## Open Decisions — Routed to `/speckit-clarify`
+## Decisions — Opened by `/speckit-specify`, Closed by `/speckit-clarify`
 
 This spec deliberately left four decisions open, plus a fifth (the lifecycle-field write semantics)
-that D1 surfaced. D1, the write semantics, D2 and D3 are resolved — see Clarifications above. No inline
-`[NEEDS CLARIFICATION]` markers remain. D4 is stated as a requirement that holds under either answer
-(FR-009), so the number itself is the only thing still to pick.
+that D1 surfaced once it was answered. All five are resolved — the reasoning for each is in
+Clarifications above, and no `[NEEDS CLARIFICATION]` markers remain. The table is kept as the
+one-line record of what was decided and which requirements carry it.
 
 | # | Decision | Options | Marker |
 | --- | --- | --- | --- |
@@ -148,7 +149,7 @@ that D1 surfaced. D1, the write semantics, D2 and D3 are resolved — see Clarif
 | D1a | ~~What an ingest run writes into them~~ | **RESOLVED: C** — ingest writes the inbound-link count it can observe; the review date is written only by a run that actually reviewed the page, which makes lint its sole writer and requires lint's permissive wording to become definite | FR-002a, FR-002b (resolved) |
 | D2 | ~~How the confidence formula and its thresholds are made coherent (#110)~~ | **RESOLVED: C** — shared formula keeps the five observable signals with re-baselined thresholds; lint's two inbound-link signals stay as a documented lint-only extension with its own thresholds; query's narrative adaptation is reconciled | FR-006, FR-006a (resolved) |
 | D3 | ~~What happens when an instance replaces the foundation document without defining the lifecycle fields~~ | **RESOLVED: A** — lint degrades, skipping only the finding categories whose inputs are undefined and naming each omission in its report; no harness content check, no split ownership of the frontmatter standard | FR-010, FR-010a (resolved) |
-| D4 | The integration-depth expectation (#111) | `5–15` or `10–15` pages per source | none — FR-009 requires the two documents to agree and the chosen bound to be justified in-document, which is testable either way |
+| D4 | ~~The integration-depth expectation (#111)~~ | **RESOLVED: `10–15`** — follows nanoclaw/Karpathy rather than Magrathea, the two source documents having disagreed on the lower bound; stated as a typical range, never a quota | FR-009 (resolved) |
 
 D2 depended on D1 and was sequenced after it, which is also how issues #109 and #110 are ordered on
 the board (#110's `blocked` label on #109 dissolves inside this feature). In the event D1's
@@ -272,9 +273,11 @@ role document asks for one. Two consequences:
   against. Whoever scores the page — at ingest time or at lint time — has to reconstruct what the
   sources were from the citation list alone.
 
-The same document also states an integration depth ("one source typically touches 5–15 pages") that
-disagrees with the source pattern it derives from ("10-15"), at the lower bound, in the direction of
-doing less.
+The same document also states an integration depth ("one source typically touches 5–15 pages") whose
+lower bound disagrees with the other source document Grimoire derives from. The two disagree with
+each other, not just with Grimoire: `llm-wiki-magrathea-skill.md:100` says 5–15 and
+`llm-wiki-nanoclaw-idea.md:45` says 10–15, so the current wording followed one of them without ever
+recording which or why. D4 settles it at `10–15` (see Clarifications).
 
 **Why this priority**: a missing source page is correctable — a later ingest of the same source, or
 a lint remediation, can create it — and a dangling wikilink is already inside lint's "fix it
@@ -382,9 +385,13 @@ constitutional violation.
   where the next reader of that document encounters it, not only in an issue or in this spec.
 - **FR-008**: An ingest run MUST produce a durable in-wiki record of the source it processed, and
   every citation wikilink in the pages that run wrote MUST resolve to a page that exists.
-- **FR-009**: The foundation document and the ingest role document MUST state the same expectation
-  for how many pages a source typically touches, and the document stating it MUST give the reason
-  for the bound it states. *(D4 decides the number; this requirement holds under either answer.)*
+- **FR-009**: The foundation document and the ingest role document MUST state the same integration-depth
+  expectation — `10–15` pages per source — and the document stating it MUST give the reason for that
+  bound: that Grimoire's two source documents disagree on the lower bound and this follows
+  nanoclaw/Karpathy rather than Magrathea, because a source touching fewer than ten pages was
+  probably integrated too shallowly. It MUST also state that the range is a typical depth and not a
+  quota, so that a genuinely narrow source is not padded with manufactured connections to reach the
+  floor. *(D4 resolved to `10–15`.)*
 - **FR-010**: Where an instance's own foundation document does not define the lifecycle metadata the
   lint role depends on, a lint run MUST degrade rather than fail: it carries out every finding
   category whose inputs are defined, skips those whose inputs are not, and names each skipped
