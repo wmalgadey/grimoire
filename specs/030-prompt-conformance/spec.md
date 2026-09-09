@@ -131,22 +131,24 @@ line numbers; use these:
 ### Session 2026-09-09
 
 - Q: Where should the two lifecycle fields (`inbound_links`, `last_reviewed`) be defined and maintained? → A: Option A — both become part of the shared frontmatter standard in the foundation document, written by agents at page-creation time. No backend change; the lint role document is untouched. Rationale: option B (harness-computed link count) only solves half of #109 — a harness can derive a link count, but `last_reviewed` is not a derivable value, so B leaves the review-window defect unfixed — and it would put wiki-page writes in the harness, which today only guarded agent tools perform. This keeps the whole feature inside instruction content (Principle V) and matches the recommendation recorded on #109.
+- Q: What does an ingest run write into the two lifecycle fields? → A: Option C — an ingest run writes `inbound_links` as the count it can actually observe (the links the run itself created, plus `index.md`), and does **not** write `last_reviewed` at all. `last_reviewed` is written only by a run that performed an actual review pass, i.e. lint. Rationale: this makes the field's presence meaningful — `last_reviewed` exists on a page if and only if that page has genuinely been reviewed — and it makes lint's existing fallback to `timestamp` for pages without the field semantically correct rather than a workaround, since a never-reviewed page really is overdue measured from its ingest date. It also avoids both failure modes the other options carried: option A would have left `last_reviewed == timestamp` forever on pages ingest keeps touching (relocating #109's defect), and option B would have flagged pages ingest had just re-read. Consequence recorded in Assumptions: unlike A and B, C requires a change to the **lint** role document — lint's write of `last_reviewed` is currently permissive ("you *may* also set …", `LintAgent/system-prompt.md:328`) and only a rider on an inbound-link refresh write, so under C it must become definite or the field never materialises.
 
 ## Open Decisions — Routed to `/speckit-clarify`
 
-This spec deliberately left four decisions open. D1 is resolved (see Clarifications above); the
-remaining three are carried as inline `[NEEDS CLARIFICATION]` markers on the requirements they
-change, except D4, which is stated as a requirement that holds under either answer, so the number
-itself is the only thing left to pick.
+This spec deliberately left four decisions open, plus a fifth (the lifecycle-field write semantics)
+that D1 surfaced. D1 and the write semantics are resolved — see Clarifications above. D2 and D3 are
+carried as inline `[NEEDS CLARIFICATION]` markers on the requirements they change; D4 is stated as a
+requirement that holds under either answer, so the number itself is the only thing left to pick.
 
 | # | Decision | Options | Marker |
 | --- | --- | --- | --- |
-| D1 | ~~Where the lifecycle fields live (#109)~~ | **RESOLVED: A** — `inbound_links` and `last_reviewed` become part of the shared frontmatter standard, written at page-creation time | FR-002 (resolved) |
+| D1 | ~~Where the lifecycle fields live (#109)~~ | **RESOLVED: A** — both become part of the shared frontmatter standard in the foundation document; no backend change | FR-002 (resolved) |
+| D1a | ~~What an ingest run writes into them~~ | **RESOLVED: C** — ingest writes the inbound-link count it can observe; the review date is written only by a run that actually reviewed the page, which makes lint its sole writer and requires lint's permissive wording to become definite | FR-002a, FR-002b (resolved) |
 | D2 | How the confidence formula and its thresholds are made coherent (#110) | **A** — restore both inbound-link signals to the shared formula (depends on D1-A); **B** — keep five signals and re-baseline the thresholds to the attainable range, with the deviation from the source pattern stated in the document; **C** — declare the omission deliberate, record the reasoning, and still re-check the thresholds | FR-006 |
 | D3 | What happens when an instance replaces the foundation document without defining the lifecycle fields | **A** — Lint degrades (skips the finding categories that need them); **B** — Lint fails closed; **C** — a minimal field set is product-owned and holds regardless of the foundation document | FR-010 |
 | D4 | The integration-depth expectation (#111) | `5–15` or `10–15` pages per source | none — FR-009 requires the two documents to agree and the chosen bound to be justified in-document, which is testable either way |
 
-D2 depends on D1: option D2-A is only available if D1 resolves to A. D1 is therefore sequenced
+D2 depended on D1: option D2-A is available only because D1 resolved to A. D1 was therefore sequenced
 first, which is also how issues #109 and #110 are ordered on the board (#110's `blocked` label on
 #109 dissolves inside this feature).
 
@@ -333,20 +335,25 @@ constitutional violation.
 
 ### Functional Requirements
 
-- **FR-001**: A wiki page created by an ingest run MUST carry the lifecycle metadata that the lint
-  agent maintains, so that a lint run over a freshly ingested wiki finds those fields already
-  present rather than absent on every page.
+- **FR-001**: A wiki page created by an ingest run MUST carry the inbound-link count, so that a lint
+  run over a freshly ingested wiki finds that field already present rather than absent on every page.
+  The review date is *not* written at ingest time: it MUST appear on a page only once that page has
+  actually been reviewed (FR-002a), so that its presence is itself the evidence that a review
+  happened.
 - **FR-002**: The lifecycle metadata in FR-001 MUST be defined in the shared frontmatter standard in
   the foundation document — the one place every agent reads — and every agent that reads or writes it
   MUST use that definition rather than a per-role variant. It is written by agents at page-creation
   time; no harness code computes or writes it. *(D1 resolved to A.)*
-- **FR-002a**: The frontmatter standard MUST state what an ingest run writes for each lifecycle
-  field, given that an ingest run reads `index.md` and the pages its source overlaps with rather than
-  the whole wiki and therefore cannot compute a wiki-wide inbound-link count. [NEEDS CLARIFICATION:
-  what value does an ingest run write for `inbound_links`, and does a run that *updates* an existing
-  page set `last_reviewed`? See Edge Cases: setting `last_reviewed` on every update makes the field
-  measure agent activity, which `timestamp` already measures, and an actively-ingested page would
-  then never surface as a review candidate.]
+- **FR-002a**: The frontmatter standard MUST state, per field, which runs write it. An ingest run
+  writes the inbound-link count it can actually observe — the links that run itself created, plus
+  `index.md` — rather than a placeholder, because for a newly created page that count is normally the
+  true one. An ingest run MUST NOT write the review date, on create or on update. *(D1/FR-002a
+  resolved to option C.)*
+- **FR-002b**: A run that performs an actual review of a page MUST record the review date on it. This
+  obligation MUST be stated definitely rather than permissively, because under FR-002a the reviewing
+  run is the only writer of that field: if it stays optional, the field never materialises and FR-003
+  cannot hold. *(This is the one change to the lint role document this feature requires — see
+  Assumptions.)*
 - **FR-003**: A lint run MUST distinguish a page that has not been *reviewed* recently from a page
   that has not been *ingested* recently, and its review-candidate finding MUST be the former.
 - **FR-004**: A lint run MUST NOT be required to recreate the lifecycle metadata for pages an
@@ -470,9 +477,13 @@ not merely that one is emitted.
   moved the shared conventions into the foundation document). The current-state references in the
   Input above were verified against `main` at `ade31fe` on 2026-09-08 and supersede them. The issues'
   *intent* is still authoritative; their *locations* are not.
-- The lint role document needs no textual change for US1: it already reads and writes both lifecycle
-  fields. It is the consumer of the gap, not its cause. D1's resolution to A confirms this — option B
-  would have removed the dependency from lint and invalidated the assumption.
+- **Corrected by FR-002a's resolution.** The original assumption was that the lint role document
+  needs no textual change for US1, because it already reads and writes both lifecycle fields. That is
+  wrong under option C: lint's write of the review date is permissive today ("you *may* also set
+  …", `LintAgent/system-prompt.md:328`) and is only a rider on an inbound-link refresh write, so a
+  lint run that reviews a page without refreshing its count writes nothing. Since option C makes lint
+  the *sole* writer of that field, the permissive wording has to become definite (FR-002b). Lint
+  remains untouched for everything else in US1.
 - The guarded-tool write scope is unchanged by this feature. No new tool, no new guardrail rule, no
   change to what an agent may write. D1's resolution to A is what secures this.
 - The existing replay eval suite fingerprints the foundation document and the role documents, so
