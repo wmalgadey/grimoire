@@ -135,11 +135,13 @@ line numbers; use these:
 - Q: How should the confidence formula and its thresholds be made coherent? → A: Option C — keep the shared formula at the five signals every agent can observe, re-baseline its thresholds so all three bands are reachable within that formula's own range, and keep lint's two inbound-link signals as a documented lint-only extension carrying its own stated thresholds. Rationale: option A (one seven-signal formula for everyone) does not survive contact with the agents — ingest reads `index.md` plus the pages its source overlaps with rather than the link graph, and query writes one page plus catalog and log entries without surveying the wiki, so two of three agents would be scoring a signal they cannot observe. (Correction, 2026-09-09, after review: an earlier draft of this rationale said a query-created page has "zero inbound links by construction". That was wrong and is not what the decision rests on — the load-bearing fact is that neither ingest nor query can observe the *complete link graph*, not that the count is zero. The decision is unchanged.) That is the reasoning lint's document already gives for keeping the signals private; C writes it down instead of undoing it. Option B (drop lint's extension so all agents score identically) was declined because it decouples the score from interlinking and orphanhood entirely, which is half of what #110 reports. The spec deliberately does not fix the new threshold numbers: FR-005 requires every band to be reachable, and which numbers achieve that is a plan-level choice. Consequence: two documented scales exist, a page's score can legitimately change when lint re-scores it, and both documents must say so (FR-006); the query role's narrative adaptation must also be reconciled (FR-006a).
 - Q: What should happen when an instance's own foundation document does not define the lifecycle fields the lint role depends on? → A: Option A — the lint run degrades: it skips the finding categories whose inputs the foundation document leaves undefined and names the omission in its own report, so the operator sees the capability loss rather than silently losing it. Rationale: this is the only option that needs no harness change and no split ownership of the frontmatter standard, and it closes the operator loop exactly as Principle V designs it. Option B was constrained before it was weighed: "fail closed" is only available as an instruction to the agent, never as a harness check, because a harness that inspects the foundation document's content to decide whether to dispatch is the harness reinterpreting instruction-file content, which Principle V forbids — and even in its legal reading it costs an instance all lint value over two frontmatter rows. Option C (a product-owned minimal field set) guarantees lint keeps working but partly reverses feature 029: the frontmatter standard would then have two owners, the operator for most rows and the product for two, and that carve-out has to physically live somewhere. Interaction with #224 (instance-owned role documents, deferred to 2.0.0), named but not designed for: option A generalises — a role document states what it needs and degrades when it is absent — whereas option C would have meant product-owned carve-outs in two places once role documents became instance-owned too.
 - Q: Which integration-depth expectation should the documents state — `5–15` or `10–15` pages per source? → A: `10–15`. Grimoire's two source documents disagree on the lower bound — `docs/foundational/llm-wiki-magrathea-skill.md:100` says 5–15, `docs/foundational/llm-wiki-nanoclaw-idea.md:45` says 10–15 — so the current `5–15` was never a softening by Grimoire; it followed Magrathea, and the choice was simply never recorded. This decision follows nanoclaw/Karpathy instead: a source that touches fewer than ten pages was probably integrated too shallowly, which is the expectation the pattern argues hardest for. Two consequences the document must carry with the number, both weighed before choosing it: the floor creates a pull toward padding — an agent facing a genuinely narrow source may manufacture connections to reach ten, which is worse wiki content and works against the confidence convention's penalty on thin sourcing — so the guidance stays a typical range and not a quota, explicitly; and the `sources/<slug>.md` summary page FR-008 now requires counts toward the total, so the effective floor for topic pages is about nine.
+- Q: What act qualifies as "an actual review", such that the reviewing run records the review date? → A: Option B — the run produced a substantive finding or a remediation proposal about that page. A review is an act of *observation*, not of mutation: lint saying "this page is missing tags" or "this page contradicts another" is a review of it, and nothing about that requires the page's content to change. Two consequences are binding and must be written into the documents. First, the review-candidate listing itself does **not** count — that listing is the *output* of the check the review date feeds, so counting it would make the check self-clearing: a page listed as overdue would be stamped reviewed for having been listed, and would drop off the list on the next run having had nothing done to it. Second, a page that produces no finding at all never has its review date advanced. That is accepted as intended rather than tolerated as a defect: the review-candidate list then reads "low-confidence pages that nothing has been said about", which is a fair standing signal to an operator, and a low-confidence page that keeps producing no findings is exactly the page a human should eventually look at. *(Recorded 2026-09-09; question surfaced by the Copilot review of 2026-09-09, after the first clarification session closed.)*
 
 ## Decisions — Opened by `/speckit-specify`, Closed by `/speckit-clarify`
 
 This spec deliberately left four decisions open, plus a fifth (the lifecycle-field write semantics)
-that D1 surfaced once it was answered. All five are resolved — the reasoning for each is in
+that D1 surfaced once it was answered, and a sixth (D5) that the 2026-09-09 code review surfaced
+after the first clarification session had closed. All six are resolved — the reasoning for each is in
 Clarifications above, and no `[NEEDS CLARIFICATION]` markers remain. The table is kept as the
 one-line record of what was decided and which requirements carry it.
 
@@ -149,6 +151,7 @@ one-line record of what was decided and which requirements carry it.
 | D1a | ~~What an ingest run writes into them~~ | **RESOLVED: C** — ingest writes the inbound-link count it can observe; the review date is written only by a run that actually reviewed the page, which makes lint its sole writer and requires lint's permissive wording to become definite | FR-002a, FR-002b (resolved) |
 | D2 | ~~How the confidence formula and its thresholds are made coherent (#110)~~ | **RESOLVED: C** — shared formula keeps the five observable signals with re-baselined thresholds; lint's two inbound-link signals stay as a documented lint-only extension with its own thresholds; query's narrative adaptation is reconciled | FR-006, FR-006a (resolved) |
 | D3 | ~~What happens when an instance replaces the foundation document without defining the lifecycle fields~~ | **RESOLVED: A** — lint degrades, skipping only the finding categories whose inputs are undefined and naming each omission in its report; no harness content check, no split ownership of the frontmatter standard | FR-010, FR-010a (resolved) |
+| D5 | ~~What act qualifies as "an actual review" (surfaced by review, after the first session)~~ | **RESOLVED: B** — a substantive finding or remediation proposal about the page; the review-candidate listing itself is excluded, and a page producing no finding is intentionally never stamped | FR-002b, FR-002d, FR-002e (resolved) |
 | D4 | ~~The integration-depth expectation (#111)~~ | **RESOLVED: `10–15`** — follows nanoclaw/Karpathy rather than Magrathea, the two source documents having disagreed on the lower bound; stated as a typical range, never a quota | FR-009 (resolved) |
 
 D2 depended on D1 and was sequenced after it, which is also how issues #109 and #110 are ordered on
@@ -164,24 +167,6 @@ too, D3's answer is the precedent that decides whether a role document may depen
 foundation document does not define. Naming that interaction was in scope; designing for it was not.
 Its resolution to A generalises to that case — a role document states what it needs and degrades when
 it is absent — which is why A was preferred over the product-owned carve-out in C.
-
-## Deferred Decisions — Opened by Review, Not Yet Closed
-
-One question was surfaced by the 2026-09-09 code review after the clarification session had closed.
-It is recorded here rather than answered, because answering it changes what the documents require and
-that belongs in `/speckit-clarify`, not in a review fix.
-
-- **D5 — what act qualifies as "an actual review" for the purpose of writing the review date?**
-  (FR-002b.) D1a made the reviewing run the sole writer of that field, but did not say which act
-  counts. The tension is sharp in both directions: lint's frontmatter-only survey already visits every
-  page, so if the survey qualifies, the date is refreshed on every page on every run and the review
-  window never flags anything again; but if nothing lint currently does qualifies, no run ever writes
-  the field and FR-003 cannot hold. Candidate answers include a full-page read (lint's
-  `read_file(path)` rather than `frontmatter_only`), a run that produced a finding or a remediation on
-  that page, or a human-authorised remediation execution. This MUST be settled before
-  `/speckit-plan` — the implementing document cannot be written without it. **A [NEEDS CLARIFICATION]
-  marker is deliberately not used here**: the requirement (FR-002b) is complete and testable as
-  stated — the documents must define the qualifying act — and only the answer is open.
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -394,16 +379,21 @@ constitutional violation.
   fields on the same terms; if the query role is instead given a documented exception, that exception
   MUST be stated in both the foundation document and the query role document rather than left implicit
   in a frontmatter list that simply omits the fields.
-- **FR-002b**: A run that performs an actual review of a page MUST record the review date on it, and
-  the documents MUST define which act qualifies as that review. The obligation MUST be stated
-  definitely rather than permissively, because under FR-002a the reviewing run is the only writer of
-  that field: if it stays optional, the field never materialises and FR-003 cannot hold. The
-  definition is load-bearing in both directions and MUST resolve this tension explicitly: lint's
-  frontmatter-only survey already visits every page, so if the survey qualifies, the date is stamped
-  on every page each run and the review window never flags anything; if nothing lint currently does
-  qualifies, no run ever writes the field. *(This is the one change to the lint role document this
-  feature requires — see Assumptions. Which act qualifies is an open question flagged for
-  `/speckit-clarify`; see Deferred Decisions.)*
+- **FR-002b**: A run that produces a substantive finding or a remediation proposal about a page MUST
+  record the review date on that page. The obligation MUST be stated definitely rather than
+  permissively, because under FR-002a the reviewing run is the only writer of that field: if it stays
+  optional, the field never materialises and FR-003 cannot hold. *(D5 resolved to option B. This is
+  the one change to the lint role document this feature requires — see Assumptions.)*
+- **FR-002d**: The review-candidate listing MUST NOT itself count as the qualifying act under
+  FR-002b. That listing is the output of the very check the review date feeds, so counting it would
+  make the check self-clearing: a page listed as overdue would be stamped as reviewed for having been
+  listed, and would drop off the list on the next run having had nothing done to it. The documents
+  MUST state this exclusion, not leave it to be inferred.
+- **FR-002e**: A page about which a run produces no finding does not have its review date advanced,
+  and the documents MUST present this as the intended reading rather than a gap. The
+  review-candidate list then means "low-confidence pages that nothing has been said about", which is
+  a standing signal an operator can act on; a low-confidence page that keeps producing no findings is
+  precisely the page a human should eventually look at.
 - **FR-003**: A lint run MUST distinguish a page that has not been *reviewed* recently from a page
   that has not been *ingested* recently, and its review-candidate finding MUST be the former.
 - **FR-004**: A lint run MUST NOT be required to *create* the lifecycle fields on pages a creating

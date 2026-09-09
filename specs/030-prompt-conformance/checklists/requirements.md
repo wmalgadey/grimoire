@@ -2,7 +2,7 @@
 
 **Purpose**: Validate specification completeness and quality before proceeding to planning
 **Created**: 2026-09-08
-**Last validated**: 2026-09-09 (after `/speckit-clarify`, then again after the Copilot review)
+**Last validated**: 2026-09-09 (after `/speckit-clarify`, the Copilot review, and the D5 follow-up clarification)
 **Feature**: [spec.md](../spec.md)
 
 ## Content Quality
@@ -45,10 +45,9 @@
 
 ## Notes
 
-**21/21 checklist items pass, but the spec is NOT yet ready for `/speckit-plan`** — see D5 below.
-Every item above is genuinely satisfied: no `[NEEDS CLARIFICATION]` markers remain, and every
-functional requirement now has acceptance coverage, including FR-010, which gained a scenario during
-the review round.
+**21/21 checklist items pass and the spec is ready for `/speckit-plan`.** No `[NEEDS CLARIFICATION]`
+markers remain, every functional requirement has acceptance coverage (FR-010 gained a scenario during
+the review round), and D5 — the one question that was blocking planning — is resolved.
 
 **Requirements added during clarification**: FR-002a/FR-002b (which run writes each lifecycle field,
 and the obligation on a reviewing run to record the review date definitely rather than permissively),
@@ -79,11 +78,13 @@ eleven of them correct:
 - A factual error in the D2 rationale was corrected in place with a dated note: query-created pages do
   not have "zero inbound links by construction". The decision is unaffected.
 
-**One open question blocks planning.** D5 — what act qualifies as "an actual review" for writing the
-review date — was surfaced by the review and is recorded under `## Deferred Decisions`. FR-002b is
-complete and testable as written (the documents must define the qualifying act), so no
-`[NEEDS CLARIFICATION]` marker is warranted, but the answer must be settled in `/speckit-clarify`
-before `/speckit-plan`: the implementing document cannot be written without it.
+**D5 is resolved (option B) and no longer blocks planning.** A review is an act of observation, not
+of mutation: a run that produces a substantive finding or a remediation proposal about a page has
+reviewed it, whether or not the page's content changes. Two consequences are now explicit
+requirements rather than implications — FR-002d excludes the review-candidate listing itself, which
+would otherwise make the check self-clearing, and FR-002e states that a page producing no finding is
+intentionally never stamped, so the candidate list reads "low-confidence pages nothing has been said
+about". The `## Deferred Decisions` section is retired.
 
 **One assumption was corrected rather than confirmed.** The spec originally assumed the lint role
 document needs no textual change. D1a's resolution makes lint the sole writer of the review date, and
