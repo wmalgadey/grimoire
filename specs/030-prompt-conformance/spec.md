@@ -132,7 +132,7 @@ line numbers; use these:
 
 - Q: Where should the two lifecycle fields (`inbound_links`, `last_reviewed`) be defined and maintained? → A: Option A — both become part of the shared frontmatter standard in the foundation document, written by agents at page-creation time. No backend change; the lint role document is untouched. Rationale: option B (harness-computed link count) only solves half of #109 — a harness can derive a link count, but `last_reviewed` is not a derivable value, so B leaves the review-window defect unfixed — and it would put wiki-page writes in the harness, which today only guarded agent tools perform. This keeps the whole feature inside instruction content (Principle V) and matches the recommendation recorded on #109.
 - Q: What does an ingest run write into the two lifecycle fields? → A: Option C — an ingest run writes `inbound_links` as the count it can actually observe (the links the run itself created, plus `index.md`), and does **not** write `last_reviewed` at all. `last_reviewed` is written only by a run that performed an actual review pass, i.e. lint. Rationale: this makes the field's presence meaningful — `last_reviewed` exists on a page if and only if that page has genuinely been reviewed — and it makes lint's existing fallback to `timestamp` for pages without the field semantically correct rather than a workaround, since a never-reviewed page really is overdue measured from its ingest date. It also avoids both failure modes the other options carried: option A would have left `last_reviewed == timestamp` forever on pages ingest keeps touching (relocating #109's defect), and option B would have flagged pages ingest had just re-read. Consequence recorded in Assumptions: unlike A and B, C requires a change to the **lint** role document — lint's write of `last_reviewed` is currently permissive ("you *may* also set …", `LintAgent/system-prompt.md:328`) and only a rider on an inbound-link refresh write, so under C it must become definite or the field never materialises.
-- Q: How should the confidence formula and its thresholds be made coherent? → A: Option C — keep the shared formula at the five signals every agent can observe, re-baseline its thresholds so all three bands are reachable within that formula's own range, and keep lint's two inbound-link signals as a documented lint-only extension carrying its own stated thresholds. Rationale: option A (one seven-signal formula for everyone) does not survive contact with the agents — ingest reads `index.md` plus the pages its source overlaps with rather than the link graph, and a query-created synthesis page has zero inbound links by construction, so two of three agents would be scoring a signal they cannot observe. That is the reasoning lint's document already gives for keeping the signals private; C writes it down instead of undoing it. Option B (drop lint's extension so all agents score identically) was declined because it decouples the score from interlinking and orphanhood entirely, which is half of what #110 reports. The spec deliberately does not fix the new threshold numbers: FR-005 requires every band to be reachable, and which numbers achieve that is a plan-level choice. Consequence: two documented scales exist, a page's score can legitimately change when lint re-scores it, and both documents must say so (FR-006); the query role's narrative adaptation must also be reconciled (FR-006a).
+- Q: How should the confidence formula and its thresholds be made coherent? → A: Option C — keep the shared formula at the five signals every agent can observe, re-baseline its thresholds so all three bands are reachable within that formula's own range, and keep lint's two inbound-link signals as a documented lint-only extension carrying its own stated thresholds. Rationale: option A (one seven-signal formula for everyone) does not survive contact with the agents — ingest reads `index.md` plus the pages its source overlaps with rather than the link graph, and query writes one page plus catalog and log entries without surveying the wiki, so two of three agents would be scoring a signal they cannot observe. (Correction, 2026-09-09, after review: an earlier draft of this rationale said a query-created page has "zero inbound links by construction". That was wrong and is not what the decision rests on — the load-bearing fact is that neither ingest nor query can observe the *complete link graph*, not that the count is zero. The decision is unchanged.) That is the reasoning lint's document already gives for keeping the signals private; C writes it down instead of undoing it. Option B (drop lint's extension so all agents score identically) was declined because it decouples the score from interlinking and orphanhood entirely, which is half of what #110 reports. The spec deliberately does not fix the new threshold numbers: FR-005 requires every band to be reachable, and which numbers achieve that is a plan-level choice. Consequence: two documented scales exist, a page's score can legitimately change when lint re-scores it, and both documents must say so (FR-006); the query role's narrative adaptation must also be reconciled (FR-006a).
 - Q: What should happen when an instance's own foundation document does not define the lifecycle fields the lint role depends on? → A: Option A — the lint run degrades: it skips the finding categories whose inputs the foundation document leaves undefined and names the omission in its own report, so the operator sees the capability loss rather than silently losing it. Rationale: this is the only option that needs no harness change and no split ownership of the frontmatter standard, and it closes the operator loop exactly as Principle V designs it. Option B was constrained before it was weighed: "fail closed" is only available as an instruction to the agent, never as a harness check, because a harness that inspects the foundation document's content to decide whether to dispatch is the harness reinterpreting instruction-file content, which Principle V forbids — and even in its legal reading it costs an instance all lint value over two frontmatter rows. Option C (a product-owned minimal field set) guarantees lint keeps working but partly reverses feature 029: the frontmatter standard would then have two owners, the operator for most rows and the product for two, and that carve-out has to physically live somewhere. Interaction with #224 (instance-owned role documents, deferred to 2.0.0), named but not designed for: option A generalises — a role document states what it needs and degrades when it is absent — whereas option C would have meant product-owned carve-outs in two places once role documents became instance-owned too.
 - Q: Which integration-depth expectation should the documents state — `5–15` or `10–15` pages per source? → A: `10–15`. Grimoire's two source documents disagree on the lower bound — `docs/foundational/llm-wiki-magrathea-skill.md:100` says 5–15, `docs/foundational/llm-wiki-nanoclaw-idea.md:45` says 10–15 — so the current `5–15` was never a softening by Grimoire; it followed Magrathea, and the choice was simply never recorded. This decision follows nanoclaw/Karpathy instead: a source that touches fewer than ten pages was probably integrated too shallowly, which is the expectation the pattern argues hardest for. Two consequences the document must carry with the number, both weighed before choosing it: the floor creates a pull toward padding — an agent facing a genuinely narrow source may manufacture connections to reach ten, which is worse wiki content and works against the confidence convention's penalty on thin sourcing — so the guidance stays a typical range and not a quota, explicitly; and the `sources/<slug>.md` summary page FR-008 now requires counts toward the total, so the effective floor for topic pages is about nine.
 
@@ -164,6 +164,24 @@ too, D3's answer is the precedent that decides whether a role document may depen
 foundation document does not define. Naming that interaction was in scope; designing for it was not.
 Its resolution to A generalises to that case — a role document states what it needs and degrades when
 it is absent — which is why A was preferred over the product-owned carve-out in C.
+
+## Deferred Decisions — Opened by Review, Not Yet Closed
+
+One question was surfaced by the 2026-09-09 code review after the clarification session had closed.
+It is recorded here rather than answered, because answering it changes what the documents require and
+that belongs in `/speckit-clarify`, not in a review fix.
+
+- **D5 — what act qualifies as "an actual review" for the purpose of writing the review date?**
+  (FR-002b.) D1a made the reviewing run the sole writer of that field, but did not say which act
+  counts. The tension is sharp in both directions: lint's frontmatter-only survey already visits every
+  page, so if the survey qualifies, the date is refreshed on every page on every run and the review
+  window never flags anything again; but if nothing lint currently does qualifies, no run ever writes
+  the field and FR-003 cannot hold. Candidate answers include a full-page read (lint's
+  `read_file(path)` rather than `frontmatter_only`), a run that produced a finding or a remediation on
+  that page, or a human-authorised remediation execution. This MUST be settled before
+  `/speckit-plan` — the implementing document cannot be written without it. **A [NEEDS CLARIFICATION]
+  marker is deliberately not used here**: the requirement (FR-002b) is complete and testable as
+  stated — the documents must define the qualifying act — and only the answer is open.
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -200,10 +218,11 @@ its own: the review window becomes meaningful even if nothing about confidence s
 1. **Given** a wiki fixture and a source to ingest, **When** the ingest run completes, **Then** the
    pages it created carry the lifecycle fields the shared frontmatter standard defines, in the form
    that standard defines.
-2. **Given** a wiki containing a page whose `last_reviewed` is recent and whose `timestamp` is older
+2. **Given** a `low`-confidence wiki page whose review date is recent and whose `timestamp` is older
    than the review window, **When** a lint run surveys it, **Then** the page is not listed as a
-   review candidate.
-3. **Given** a wiki containing a page whose `timestamp` is recent and whose `last_reviewed` is older
+   review candidate. *(The confidence level is part of the Given because lint reports review
+   candidates only for `low`-confidence pages; without it the scenario passes vacuously.)*
+3. **Given** a `low`-confidence wiki page whose `timestamp` is recent and whose review date is older
    than the review window, **When** a lint run surveys it, **Then** the page *is* listed as a review
    candidate.
 4. **Given** an ingest run that updated an existing page rather than creating one, **When** the run
@@ -215,8 +234,10 @@ its own: the review window becomes meaningful even if nothing about confidence s
 ### User Story 2 - A confidence score means the same thing whoever assigns it (Priority: P2)
 
 An operator reads a `confidence: high` page and reads the formula in the foundation document. The
-score they see is one the formula can actually produce, and it is the score any of the three agents
-would have assigned to the same evidence.
+score they see is one that formula can actually produce, and where a role scores it differently the
+operator can find out why from the documents rather than being surprised by it. After D2 that is the
+whole of the promise: the shared signals are applied identically by every agent, and lint's
+link-graph extension is a single, documented, deliberate variance — not silent disagreement.
 
 Neither holds today, and the second is worse than the arithmetic problem the issue reported:
 
@@ -249,8 +270,9 @@ scores they assign and the reasons they give.
    maximum and minimum attainable totals from the signals it lists, **Then** every band the
    thresholds define is reachable by at least one combination of those signals.
 2. **Given** a page with evidence that scores identically under every shared signal, **When** an
-   ingest run and a lint run each assign it a confidence score, **Then** they assign the same score,
-   or the documents state where and why the two roles' scales differ.
+   ingest run and a lint run each assign it a confidence score, **Then** either they assign the same
+   score, or the difference is wholly attributable to lint's documented link-graph extension — and
+   both documents state that this variance exists and why.
 3. **Given** the resulting documents, **When** a reader asks why the formula differs from the source
    pattern it derives from, **Then** the answer is written in the document that carries the formula,
    not only in this spec or an issue.
@@ -291,12 +313,18 @@ to a page that exists.
 
 **Acceptance Scenarios**:
 
-1. **Given** a source to ingest, **When** the ingest run completes, **Then** a source-summary page
-   representing that source exists in the wiki and carries the `resource` field pointing at the
-   original source.
+1. **Given** a source to ingest that has a canonical URI, **When** the ingest run completes, **Then**
+   a source-summary page representing that source exists in the wiki and carries the `resource` field
+   pointing at the original source.
+1a. **Given** a source with no canonical URI (pasted text, or an uploaded file with no origin URL),
+   **When** the ingest run completes, **Then** the source-summary page still exists and identifies the
+   source by other means, with no fabricated `resource` value.
 2. **Given** the pages an ingest run wrote, **When** each citation wikilink in them is resolved,
    **Then** every one names a page that exists in the wiki.
-3. **Given** the ingest and foundation documents after this feature, **When** a reader compares what
+3. **Given** an instance whose own foundation document does not define the lifecycle fields, **When**
+   a lint run executes against it, **Then** the run completes, carries out the finding categories
+   whose inputs are defined, and its report names each skipped category and why it was skipped.
+4. **Given** the ingest and foundation documents after this feature, **When** a reader compares what
    each says about how many pages a source touches, **Then** they state the same expectation and the
    document gives the reason for the bound it states.
 
@@ -350,22 +378,39 @@ constitutional violation.
   happened.
 - **FR-002**: The lifecycle metadata in FR-001 MUST be defined in the shared frontmatter standard in
   the foundation document — the one place every agent reads — and every agent that reads or writes it
-  MUST use that definition rather than a per-role variant. It is written by agents at page-creation
-  time; no harness code computes or writes it. *(D1 resolved to A.)*
-- **FR-002a**: The frontmatter standard MUST state, per field, which runs write it. An ingest run
-  writes the inbound-link count it can actually observe — the links that run itself created, plus
-  `index.md` — rather than a placeholder, because for a newly created page that count is normally the
-  true one. An ingest run MUST NOT write the review date, on create or on update. *(D1/FR-002a
-  resolved to option C.)*
-- **FR-002b**: A run that performs an actual review of a page MUST record the review date on it. This
-  obligation MUST be stated definitely rather than permissively, because under FR-002a the reviewing
-  run is the only writer of that field: if it stays optional, the field never materialises and FR-003
-  cannot hold. *(This is the one change to the lint role document this feature requires — see
-  Assumptions.)*
+  MUST use that definition rather than a per-role variant. Which run writes which field is stated
+  per field (FR-002a/FR-002b), not uniformly at page-creation time; no harness code computes or
+  writes any of it. *(D1 resolved to A.)*
+- **FR-002a**: The frontmatter standard MUST state, per field, which runs write it, and MUST define
+  the inbound-link count once, canonically. A run that creates a page writes its best observation of
+  that canonical count — for ingest, the links that run itself created; for query, the links its own
+  writes produce — rather than a placeholder. That value is **explicitly provisional**: a creating run
+  cannot see the whole link graph, so an incoming link that already existed, or one added by another
+  file in the same run, can make it wrong immediately. The standard MUST say so, and MUST NOT be read
+  as forbidding lint from recomputing it. No run other than a reviewing one writes the review date, on
+  create or on update. *(D1a resolved to option C.)*
+- **FR-002c**: The rule in FR-002a MUST cover pages created by **any** agent that creates pages,
+  which today means ingest and query. A query-created synthesis page carries the same lifecycle
+  fields on the same terms; if the query role is instead given a documented exception, that exception
+  MUST be stated in both the foundation document and the query role document rather than left implicit
+  in a frontmatter list that simply omits the fields.
+- **FR-002b**: A run that performs an actual review of a page MUST record the review date on it, and
+  the documents MUST define which act qualifies as that review. The obligation MUST be stated
+  definitely rather than permissively, because under FR-002a the reviewing run is the only writer of
+  that field: if it stays optional, the field never materialises and FR-003 cannot hold. The
+  definition is load-bearing in both directions and MUST resolve this tension explicitly: lint's
+  frontmatter-only survey already visits every page, so if the survey qualifies, the date is stamped
+  on every page each run and the review window never flags anything; if nothing lint currently does
+  qualifies, no run ever writes the field. *(This is the one change to the lint role document this
+  feature requires — see Assumptions. Which act qualifies is an open question flagged for
+  `/speckit-clarify`; see Deferred Decisions.)*
 - **FR-003**: A lint run MUST distinguish a page that has not been *reviewed* recently from a page
   that has not been *ingested* recently, and its review-candidate finding MUST be the former.
-- **FR-004**: A lint run MUST NOT be required to recreate the lifecycle metadata for pages an
-  earlier ingest run already wrote it for.
+- **FR-004**: A lint run MUST NOT be required to *create* the lifecycle fields on pages a creating
+  run already wrote them for — its write becomes a correction of an existing value rather than a
+  wiki-wide bootstrap. This does not remove lint's need to recompute the canonical count in order to
+  know whether the stored value is right (FR-002a): the saving is in what lint has to write, not in
+  what it has to read.
 - **FR-005**: The confidence scoring convention MUST be internally coherent: every band its
   thresholds define MUST be reachable from the signals it lists.
 - **FR-006**: The shared convention MUST list only signals every agent can observe, and its
@@ -380,18 +425,24 @@ constitutional violation.
   shared scoring while describing a purely narrative rule; after this feature it MUST either apply the
   shared formula, or state that synthesis pages are scored narratively and say why — one or the other,
   explicitly.
-- **FR-007**: The rationale for the confidence convention's shape — specifically why it differs from
-  the source pattern it derives from — MUST be recorded in the document that carries the convention,
-  where the next reader of that document encounters it, not only in an issue or in this spec.
+- **FR-007**: The rationale for the confidence convention's shape MUST be recorded in the document
+  that carries the convention, where the next reader of that document encounters it, not only in an
+  issue or in this spec. The rationale MUST stand on its own terms — why the shared set holds only
+  signals every agent can observe, and what lint's extension adds — rather than being framed as a
+  deviation from `docs/foundational/llm-wiki-*`, which are source material and are never cited as
+  requirements (`CLAUDE.md`).
 - **FR-008**: An ingest run MUST produce a durable in-wiki record of the source it processed, and
   every citation wikilink in the pages that run wrote MUST resolve to a page that exists.
-- **FR-009**: The foundation document and the ingest role document MUST state the same integration-depth
-  expectation — `10–15` pages per source — and the document stating it MUST give the reason for that
-  bound: that Grimoire's two source documents disagree on the lower bound and this follows
-  nanoclaw/Karpathy rather than Magrathea, because a source touching fewer than ten pages was
-  probably integrated too shallowly. It MUST also state that the range is a typical depth and not a
-  quota, so that a genuinely narrow source is not padded with manufactured connections to reach the
-  floor. *(D4 resolved to `10–15`.)*
+- **FR-009**: The foundation document and the ingest role document MUST state the same
+  integration-depth expectation — `10–15` pages per source — and the document stating it MUST give the
+  reason for that bound in its own terms: a source that touches fewer than ten pages has probably been
+  integrated too shallowly, because integrating a source means rippling it through the concept, person
+  and source pages it actually bears on rather than filing one summary. It MUST also state that the
+  range is a typical depth and not a quota, so that a genuinely narrow source is not padded with
+  manufactured connections to reach the floor. The documents MUST NOT ground this requirement in a
+  comparison to `docs/foundational/llm-wiki-*` — those are source material and are never cited as
+  requirements (`CLAUDE.md`). The provenance of the number is recorded in this spec's Clarifications
+  as decision history only. *(D4 resolved to `10–15`.)*
 - **FR-010**: Where an instance's own foundation document does not define the lifecycle metadata the
   lint role depends on, a lint run MUST degrade rather than fail: it carries out every finding
   category whose inputs are defined, skips those whose inputs are not, and names each skipped
@@ -437,16 +488,22 @@ constitutional violation.
 Principle II requires. All three are classified **lower-stakes**, and the argument is made here
 rather than assumed:
 
-- Each is a **frontmatter field or a single additional page on a newly written page** — an additive
-  wiki edit. None of them supersedes, deletes, or overwrites existing content; none is
-  guardrail-adjacent (the write scope the guarded tools enforce is unchanged by this feature, now
-  that D1 resolved to A); none is safety-critical.
+- Each is a **frontmatter field, or a single additional page** — never page body content. Some of
+  these writes do land on existing pages: FR-002a's count is corrected by lint, and FR-002b's review
+  date is written during review. What none of them does is supersede, delete, or alter what a page
+  *says*: each is a single reversible metadata value that a later run recomputes from the wiki itself,
+  which is why the blast radius stays small even on an existing page. None is guardrail-adjacent (the
+  write scope the guarded tools enforce is unchanged by this feature, now that D1 resolved to A); none
+  is safety-critical.
 - Each has a **standing correction path already in the product**: lint recomputes and refreshes
   `inbound_links` on every run, lint proposes confidence corrections as findings, and a dangling
   wikilink is explicitly inside lint's "fix it yourself" scope. The cost of a wrong outcome is that
   the next lint run fixes it or proposes the fix — the exact profile Principle II names as
   lower-stakes.
-- The consequence: **no formal eval suite gates this feature's DoD.** The user-reported correction
+- The consequence: **no formal eval suite gates the agent-judgment criteria below** (SC-003 to
+  SC-005). This says nothing about SC-001, which is a deterministic harness guarantee: re-capturing
+  the replay scenarios this feature's edits invalidate remains a hard DoD precondition, because a
+  stale recording is a broken test rather than an eval threshold. The user-reported correction
   loop satisfies these criteria — the operator observes the ingest run's output and the lint findings
   report, reports misbehaviour, the instruction file is adjusted, and the operator verifies. Capturing
   eval scenarios anyway is permitted and may well be worth it here (the documents are already
@@ -462,14 +519,18 @@ rather than assumed:
 - **SC-001** *(deterministic harness guarantee)*: 100% of eval scenarios invalidated by this
   feature's instruction-file changes are flagged stale by the existing fingerprint check and
   re-captured before the DoD is declared met; zero scenarios score against a stale recording.
-- **SC-002** *(deterministic harness guarantee)*: 100% of agent runs load the shared foundation
-  document and the role document unchanged by this feature's edits — the load mechanism, its
-  fail-closed behaviour and its per-document hash recording are unaffected. No new deterministic test
-  asserts the wording or presence of any text inside those documents.
-- **SC-003** *(agent judgment — **lower-stakes**)*: pages an ingest run creates carry the lifecycle
-  metadata the frontmatter standard defines. Deviations are observed by the operator in the ingested
-  wiki and in the lint findings report, reported, and corrected by adjusting the ingest role document;
-  the operator verifies the adjustment on a later run. No numeric threshold and no eval gate.
+- **SC-002** *(deterministic harness guarantee)*: after this feature, 100% of agent runs load the
+  **post-change** foundation and role documents, and the loading *mechanism* is unchanged by it — the
+  same composition, the same fail-closed behaviour when a document is missing or empty, the same
+  per-document hash recording. No new deterministic test asserts the wording or presence of any text
+  inside those documents.
+- **SC-003** *(agent judgment — **lower-stakes**)*: pages a creating run produces carry the lifecycle
+  metadata the frontmatter standard defines. Deviations are observed by the operator in the wiki and
+  in the lint findings report, reported, and corrected by adjusting **the instruction document that
+  owns the rule that was violated** — the foundation document where the shared standard is wrong or
+  unclear, the relevant role document where one agent alone misapplies it. Pointing the loop at a
+  fixed document would reintroduce exactly the drift this feature removes. The operator verifies the
+  adjustment on a later run. No numeric threshold and no eval gate.
 - **SC-004** *(agent judgment — **lower-stakes**)*: a lint run's review-candidate list contains pages
   overdue for *review* and not pages merely old since *ingest* — an operator acting on the list finds
   pages that genuinely warrant a fresh look. Same correction loop as SC-003.
@@ -512,6 +573,19 @@ not merely that one is emitted.
 - The wiki this instance maintains uses the shipped default foundation document. D3 concerns
   instances that replaced it; no such instance is assumed to exist today, which is why D3 is a
   documented-behaviour requirement (FR-010) rather than a migration.
+
+## Findings Recorded, Not Fixed Here
+
+- **`index.md` link style contradicts lint's counting rule.** The foundation document requires
+  `index.md` entries to use "a markdown link — not a wikilink"
+  (`foundation-prompt.md`, Catalog Upkeep), while the lint role document instructs the agent to count
+  `[[wikilink]]` occurrences in every file "**then `index.md`, then `log.md`**" and warns that
+  "dropping `index.md`'s occurrences is the most common mistake"
+  (`LintAgent/system-prompt.md`, Step 4). Under the foundation document's own rule there are no
+  wikilink occurrences in `index.md` to drop. This is the same species of drift this feature exists to
+  remove, but it is a different pair of statements from the three defects in scope, and folding it in
+  now would widen the feature after its decisions were closed. It was found while verifying a review
+  finding on 2026-09-09 and should be filed as its own issue.
 
 ## Out of Scope
 
