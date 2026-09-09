@@ -13,6 +13,9 @@ supersedes: ADR-007
 > - Related: [ADR-029](ADR-029-harness-operator-turn-delimiter.md) and
 >   [ADR-054](ADR-054-default-user-prompt-and-message-scaffold.md), which own the *user* channel;
 >   this ADR owns only the system prompt.
+> - Extended by [ADR-055](ADR-055-role-document-dependency-on-the-foundation-document.md): it decides
+>   what one of the two document layers this ADR created may assume of the other when a document loads
+>   but is silent. This ADR's own decision is unchanged.
 
 ## Context and Problem Statement
 
