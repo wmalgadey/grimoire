@@ -126,16 +126,22 @@ line numbers; use these:
 - All of the above verified by eval scenarios (agent behaviour), never by
   deterministic assertions on document wording."
 
+## Clarifications
+
+### Session 2026-09-09
+
+- Q: Where should the two lifecycle fields (`inbound_links`, `last_reviewed`) be defined and maintained? → A: Option A — both become part of the shared frontmatter standard in the foundation document, written by agents at page-creation time. No backend change; the lint role document is untouched. Rationale: option B (harness-computed link count) only solves half of #109 — a harness can derive a link count, but `last_reviewed` is not a derivable value, so B leaves the review-window defect unfixed — and it would put wiki-page writes in the harness, which today only guarded agent tools perform. This keeps the whole feature inside instruction content (Principle V) and matches the recommendation recorded on #109.
+
 ## Open Decisions — Routed to `/speckit-clarify`
 
-This spec deliberately leaves four decisions open. Three are carried as inline
-`[NEEDS CLARIFICATION]` markers on the requirements they change; the fourth (D4) is stated as a
-requirement that holds under either answer, so the number itself is the only thing left to pick.
-None of them is resolved here.
+This spec deliberately left four decisions open. D1 is resolved (see Clarifications above); the
+remaining three are carried as inline `[NEEDS CLARIFICATION]` markers on the requirements they
+change, except D4, which is stated as a requirement that holds under either answer, so the number
+itself is the only thing left to pick.
 
 | # | Decision | Options | Marker |
 | --- | --- | --- | --- |
-| D1 | Where the lifecycle fields live (#109) | **A** — `inbound_links` and `last_reviewed` become part of the shared frontmatter standard, written at page-creation time; **B** — remove Lint's dependency on them and have the harness compute the link count instead | FR-002 |
+| D1 | ~~Where the lifecycle fields live (#109)~~ | **RESOLVED: A** — `inbound_links` and `last_reviewed` become part of the shared frontmatter standard, written at page-creation time | FR-002 (resolved) |
 | D2 | How the confidence formula and its thresholds are made coherent (#110) | **A** — restore both inbound-link signals to the shared formula (depends on D1-A); **B** — keep five signals and re-baseline the thresholds to the attainable range, with the deviation from the source pattern stated in the document; **C** — declare the omission deliberate, record the reasoning, and still re-check the thresholds | FR-006 |
 | D3 | What happens when an instance replaces the foundation document without defining the lifecycle fields | **A** — Lint degrades (skips the finding categories that need them); **B** — Lint fails closed; **C** — a minimal field set is product-owned and holds regardless of the foundation document | FR-010 |
 | D4 | The integration-depth expectation (#111) | `5–15` or `10–15` pages per source | none — FR-009 requires the two documents to agree and the chosen bound to be justified in-document, which is testable either way |
@@ -330,15 +336,17 @@ constitutional violation.
 - **FR-001**: A wiki page created by an ingest run MUST carry the lifecycle metadata that the lint
   agent maintains, so that a lint run over a freshly ingested wiki finds those fields already
   present rather than absent on every page.
-- **FR-002**: The lifecycle metadata in FR-001 MUST be defined in exactly one place that all agents
-  read, and every agent that reads or writes it MUST use that definition rather than a per-role
-  variant. [NEEDS CLARIFICATION: D1 — is that place the shared frontmatter standard, with the fields
-  written at page-creation time (option A), or is the lint agent's dependency on them removed in
-  favour of a harness-computed link count (option B)? Option B is the only path in this feature that
-  changes backend behaviour, and it touches the guarded-tool surface and the already-captured
-  inbound-link eval scenario; option A is the recommendation recorded on #109. D1 must also state
-  what value an ingest run writes for an inbound-link count it cannot compute wiki-wide, and whether
-  an update sets the review date — see Edge Cases.]
+- **FR-002**: The lifecycle metadata in FR-001 MUST be defined in the shared frontmatter standard in
+  the foundation document — the one place every agent reads — and every agent that reads or writes it
+  MUST use that definition rather than a per-role variant. It is written by agents at page-creation
+  time; no harness code computes or writes it. *(D1 resolved to A.)*
+- **FR-002a**: The frontmatter standard MUST state what an ingest run writes for each lifecycle
+  field, given that an ingest run reads `index.md` and the pages its source overlaps with rather than
+  the whole wiki and therefore cannot compute a wiki-wide inbound-link count. [NEEDS CLARIFICATION:
+  what value does an ingest run write for `inbound_links`, and does a run that *updates* an existing
+  page set `last_reviewed`? See Edge Cases: setting `last_reviewed` on every update makes the field
+  measure agent activity, which `timestamp` already measures, and an actively-ingested page would
+  then never surface as a review candidate.]
 - **FR-003**: A lint run MUST distinguish a page that has not been *reviewed* recently from a page
   that has not been *ingested* recently, and its review-candidate finding MUST be the former.
 - **FR-004**: A lint run MUST NOT be required to recreate the lifecycle metadata for pages an
@@ -407,8 +415,8 @@ rather than assumed:
 
 - Each is a **frontmatter field or a single additional page on a newly written page** — an additive
   wiki edit. None of them supersedes, deletes, or overwrites existing content; none is
-  guardrail-adjacent (the write scope the guarded tools enforce is unchanged by this feature, under
-  every option except D1-B); none is safety-critical.
+  guardrail-adjacent (the write scope the guarded tools enforce is unchanged by this feature, now
+  that D1 resolved to A); none is safety-critical.
 - Each has a **standing correction path already in the product**: lint recomputes and refreshes
   `inbound_links` on every run, lint proposes confidence corrections as findings, and a dangling
   wikilink is explicitly inside lint's "fix it yourself" scope. The cost of a wrong outcome is that
@@ -420,10 +428,10 @@ rather than assumed:
   eval scenarios anyway is permitted and may well be worth it here (the documents are already
   fingerprinted by the replay suite), but under Principle II it is a choice this feature's plan makes,
   not an obligation, and a reviewer MUST NOT require one on the grounds that an LLM is involved.
-- **D1-B would change this classification.** Moving the link count into the harness makes it
-  deterministic harness behaviour rather than agent judgment, which raises the verification bar
-  (hermetic tests, guarded-tool surface) rather than lowering it. If D1 resolves to B, SC-003 is
-  restated as a deterministic guarantee and this section is revised in the same change.
+- **D1's resolution to A keeps this classification intact.** Option B would have moved the link
+  count into the harness, making it deterministic harness behaviour rather than agent judgment and
+  raising the verification bar (hermetic tests, guarded-tool surface). With A, every outcome below
+  stays agent-authored frontmatter and the lower-stakes argument holds as written.
 
 ### Measurable Outcomes
 
@@ -463,10 +471,10 @@ not merely that one is emitted.
   Input above were verified against `main` at `ade31fe` on 2026-09-08 and supersede them. The issues'
   *intent* is still authoritative; their *locations* are not.
 - The lint role document needs no textual change for US1: it already reads and writes both lifecycle
-  fields. It is the consumer of the gap, not its cause. This assumption fails if D1 resolves to
-  option B, which removes the dependency from lint.
-- The guarded-tool write scope is unchanged by this feature under every option except D1-B. No new
-  tool, no new guardrail rule, no change to what an agent may write.
+  fields. It is the consumer of the gap, not its cause. D1's resolution to A confirms this — option B
+  would have removed the dependency from lint and invalidated the assumption.
+- The guarded-tool write scope is unchanged by this feature. No new tool, no new guardrail rule, no
+  change to what an agent may write. D1's resolution to A is what secures this.
 - The existing replay eval suite fingerprints the foundation document and the role documents, so
   editing them marks the affected scenarios stale and prints the re-capture command. This is the
   mechanism SC-001 relies on; it exists today and this feature does not build it.
