@@ -132,25 +132,27 @@ line numbers; use these:
 
 - Q: Where should the two lifecycle fields (`inbound_links`, `last_reviewed`) be defined and maintained? → A: Option A — both become part of the shared frontmatter standard in the foundation document, written by agents at page-creation time. No backend change; the lint role document is untouched. Rationale: option B (harness-computed link count) only solves half of #109 — a harness can derive a link count, but `last_reviewed` is not a derivable value, so B leaves the review-window defect unfixed — and it would put wiki-page writes in the harness, which today only guarded agent tools perform. This keeps the whole feature inside instruction content (Principle V) and matches the recommendation recorded on #109.
 - Q: What does an ingest run write into the two lifecycle fields? → A: Option C — an ingest run writes `inbound_links` as the count it can actually observe (the links the run itself created, plus `index.md`), and does **not** write `last_reviewed` at all. `last_reviewed` is written only by a run that performed an actual review pass, i.e. lint. Rationale: this makes the field's presence meaningful — `last_reviewed` exists on a page if and only if that page has genuinely been reviewed — and it makes lint's existing fallback to `timestamp` for pages without the field semantically correct rather than a workaround, since a never-reviewed page really is overdue measured from its ingest date. It also avoids both failure modes the other options carried: option A would have left `last_reviewed == timestamp` forever on pages ingest keeps touching (relocating #109's defect), and option B would have flagged pages ingest had just re-read. Consequence recorded in Assumptions: unlike A and B, C requires a change to the **lint** role document — lint's write of `last_reviewed` is currently permissive ("you *may* also set …", `LintAgent/system-prompt.md:328`) and only a rider on an inbound-link refresh write, so under C it must become definite or the field never materialises.
+- Q: How should the confidence formula and its thresholds be made coherent? → A: Option C — keep the shared formula at the five signals every agent can observe, re-baseline its thresholds so all three bands are reachable within that formula's own range, and keep lint's two inbound-link signals as a documented lint-only extension carrying its own stated thresholds. Rationale: option A (one seven-signal formula for everyone) does not survive contact with the agents — ingest reads `index.md` plus the pages its source overlaps with rather than the link graph, and a query-created synthesis page has zero inbound links by construction, so two of three agents would be scoring a signal they cannot observe. That is the reasoning lint's document already gives for keeping the signals private; C writes it down instead of undoing it. Option B (drop lint's extension so all agents score identically) was declined because it decouples the score from interlinking and orphanhood entirely, which is half of what #110 reports. The spec deliberately does not fix the new threshold numbers: FR-005 requires every band to be reachable, and which numbers achieve that is a plan-level choice. Consequence: two documented scales exist, a page's score can legitimately change when lint re-scores it, and both documents must say so (FR-006); the query role's narrative adaptation must also be reconciled (FR-006a).
 
 ## Open Decisions — Routed to `/speckit-clarify`
 
 This spec deliberately left four decisions open, plus a fifth (the lifecycle-field write semantics)
-that D1 surfaced. D1 and the write semantics are resolved — see Clarifications above. D2 and D3 are
-carried as inline `[NEEDS CLARIFICATION]` markers on the requirements they change; D4 is stated as a
-requirement that holds under either answer, so the number itself is the only thing left to pick.
+that D1 surfaced. D1, the write semantics, and D2 are resolved — see Clarifications above. D3 is
+the one remaining inline `[NEEDS CLARIFICATION]` marker; D4 is stated as a requirement that holds
+under either answer, so the number itself is the only thing left to pick.
 
 | # | Decision | Options | Marker |
 | --- | --- | --- | --- |
 | D1 | ~~Where the lifecycle fields live (#109)~~ | **RESOLVED: A** — both become part of the shared frontmatter standard in the foundation document; no backend change | FR-002 (resolved) |
 | D1a | ~~What an ingest run writes into them~~ | **RESOLVED: C** — ingest writes the inbound-link count it can observe; the review date is written only by a run that actually reviewed the page, which makes lint its sole writer and requires lint's permissive wording to become definite | FR-002a, FR-002b (resolved) |
-| D2 | How the confidence formula and its thresholds are made coherent (#110) | **A** — restore both inbound-link signals to the shared formula (depends on D1-A); **B** — keep five signals and re-baseline the thresholds to the attainable range, with the deviation from the source pattern stated in the document; **C** — declare the omission deliberate, record the reasoning, and still re-check the thresholds | FR-006 |
+| D2 | ~~How the confidence formula and its thresholds are made coherent (#110)~~ | **RESOLVED: C** — shared formula keeps the five observable signals with re-baselined thresholds; lint's two inbound-link signals stay as a documented lint-only extension with its own thresholds; query's narrative adaptation is reconciled | FR-006, FR-006a (resolved) |
 | D3 | What happens when an instance replaces the foundation document without defining the lifecycle fields | **A** — Lint degrades (skips the finding categories that need them); **B** — Lint fails closed; **C** — a minimal field set is product-owned and holds regardless of the foundation document | FR-010 |
 | D4 | The integration-depth expectation (#111) | `5–15` or `10–15` pages per source | none — FR-009 requires the two documents to agree and the chosen bound to be justified in-document, which is testable either way |
 
-D2 depended on D1: option D2-A is available only because D1 resolved to A. D1 was therefore sequenced
-first, which is also how issues #109 and #110 are ordered on the board (#110's `blocked` label on
-#109 dissolves inside this feature).
+D2 depended on D1 and was sequenced after it, which is also how issues #109 and #110 are ordered on
+the board (#110's `blocked` label on #109 dissolves inside this feature). In the event D1's
+resolution made option D2-A *available* but not advisable: the same reading of the agents that
+settled D1 — ingest never sees the whole link graph — is what ruled A out.
 
 D3 is new. It did not exist when #109/#110/#111 were written; feature 029 created it by moving the
 frontmatter standard and the confidence formula into a document an operator may replace wholesale
@@ -360,15 +362,18 @@ constitutional violation.
   earlier ingest run already wrote it for.
 - **FR-005**: The confidence scoring convention MUST be internally coherent: every band its
   thresholds define MUST be reachable from the signals it lists.
-- **FR-006**: Where an agent role scores confidence on a different set of signals than the shared
-  convention lists, that difference and its consequence for the shared thresholds MUST be stated in
-  the documents, at the point where the deviating role is described. [NEEDS CLARIFICATION: D2 — is
-  coherence restored by returning the two inbound-link signals to the shared convention (option A,
-  available only if D1 resolves to A), by re-baselining the thresholds to the range the five
-  remaining signals span (option B), or by recording the omission as deliberate and re-checking the
-  thresholds against it (option C)? Whichever is chosen must also settle whether the lint role keeps
-  its private two-signal addition and whether the query role's narrative adaptation for synthesis
-  pages stays as it is.]
+- **FR-006**: The shared convention MUST list only signals every agent can observe, and its
+  thresholds MUST be re-baselined to that signal set's own attainable range (FR-005). A role that
+  scores on additional signals — today only lint, which alone can observe the link graph — keeps them
+  as a documented extension stating both the extra signals and the thresholds that apply to the wider
+  range they produce. The difference, and the fact that a page's score can therefore change when lint
+  re-scores it, MUST be stated in both documents at the point where the deviating role is described.
+  *(D2 resolved to option C.)*
+- **FR-006a**: The query role's treatment of confidence for synthesis pages MUST be reconciled with
+  the shared convention rather than left as an undeclared third reading. It today claims to follow the
+  shared scoring while describing a purely narrative rule; after this feature it MUST either apply the
+  shared formula, or state that synthesis pages are scored narratively and say why — one or the other,
+  explicitly.
 - **FR-007**: The rationale for the confidence convention's shape — specifically why it differs from
   the source pattern it derives from — MUST be recorded in the document that carries the convention,
   where the next reader of that document encounters it, not only in an issue or in this spec.
