@@ -133,20 +133,21 @@ line numbers; use these:
 - Q: Where should the two lifecycle fields (`inbound_links`, `last_reviewed`) be defined and maintained? → A: Option A — both become part of the shared frontmatter standard in the foundation document, written by agents at page-creation time. No backend change; the lint role document is untouched. Rationale: option B (harness-computed link count) only solves half of #109 — a harness can derive a link count, but `last_reviewed` is not a derivable value, so B leaves the review-window defect unfixed — and it would put wiki-page writes in the harness, which today only guarded agent tools perform. This keeps the whole feature inside instruction content (Principle V) and matches the recommendation recorded on #109.
 - Q: What does an ingest run write into the two lifecycle fields? → A: Option C — an ingest run writes `inbound_links` as the count it can actually observe (the links the run itself created, plus `index.md`), and does **not** write `last_reviewed` at all. `last_reviewed` is written only by a run that performed an actual review pass, i.e. lint. Rationale: this makes the field's presence meaningful — `last_reviewed` exists on a page if and only if that page has genuinely been reviewed — and it makes lint's existing fallback to `timestamp` for pages without the field semantically correct rather than a workaround, since a never-reviewed page really is overdue measured from its ingest date. It also avoids both failure modes the other options carried: option A would have left `last_reviewed == timestamp` forever on pages ingest keeps touching (relocating #109's defect), and option B would have flagged pages ingest had just re-read. Consequence recorded in Assumptions: unlike A and B, C requires a change to the **lint** role document — lint's write of `last_reviewed` is currently permissive ("you *may* also set …", `LintAgent/system-prompt.md:328`) and only a rider on an inbound-link refresh write, so under C it must become definite or the field never materialises.
 - Q: How should the confidence formula and its thresholds be made coherent? → A: Option C — keep the shared formula at the five signals every agent can observe, re-baseline its thresholds so all three bands are reachable within that formula's own range, and keep lint's two inbound-link signals as a documented lint-only extension carrying its own stated thresholds. Rationale: option A (one seven-signal formula for everyone) does not survive contact with the agents — ingest reads `index.md` plus the pages its source overlaps with rather than the link graph, and a query-created synthesis page has zero inbound links by construction, so two of three agents would be scoring a signal they cannot observe. That is the reasoning lint's document already gives for keeping the signals private; C writes it down instead of undoing it. Option B (drop lint's extension so all agents score identically) was declined because it decouples the score from interlinking and orphanhood entirely, which is half of what #110 reports. The spec deliberately does not fix the new threshold numbers: FR-005 requires every band to be reachable, and which numbers achieve that is a plan-level choice. Consequence: two documented scales exist, a page's score can legitimately change when lint re-scores it, and both documents must say so (FR-006); the query role's narrative adaptation must also be reconciled (FR-006a).
+- Q: What should happen when an instance's own foundation document does not define the lifecycle fields the lint role depends on? → A: Option A — the lint run degrades: it skips the finding categories whose inputs the foundation document leaves undefined and names the omission in its own report, so the operator sees the capability loss rather than silently losing it. Rationale: this is the only option that needs no harness change and no split ownership of the frontmatter standard, and it closes the operator loop exactly as Principle V designs it. Option B was constrained before it was weighed: "fail closed" is only available as an instruction to the agent, never as a harness check, because a harness that inspects the foundation document's content to decide whether to dispatch is the harness reinterpreting instruction-file content, which Principle V forbids — and even in its legal reading it costs an instance all lint value over two frontmatter rows. Option C (a product-owned minimal field set) guarantees lint keeps working but partly reverses feature 029: the frontmatter standard would then have two owners, the operator for most rows and the product for two, and that carve-out has to physically live somewhere. Interaction with #224 (instance-owned role documents, deferred to 2.0.0), named but not designed for: option A generalises — a role document states what it needs and degrades when it is absent — whereas option C would have meant product-owned carve-outs in two places once role documents became instance-owned too.
 
 ## Open Decisions — Routed to `/speckit-clarify`
 
 This spec deliberately left four decisions open, plus a fifth (the lifecycle-field write semantics)
-that D1 surfaced. D1, the write semantics, and D2 are resolved — see Clarifications above. D3 is
-the one remaining inline `[NEEDS CLARIFICATION]` marker; D4 is stated as a requirement that holds
-under either answer, so the number itself is the only thing left to pick.
+that D1 surfaced. D1, the write semantics, D2 and D3 are resolved — see Clarifications above. No inline
+`[NEEDS CLARIFICATION]` markers remain. D4 is stated as a requirement that holds under either answer
+(FR-009), so the number itself is the only thing still to pick.
 
 | # | Decision | Options | Marker |
 | --- | --- | --- | --- |
 | D1 | ~~Where the lifecycle fields live (#109)~~ | **RESOLVED: A** — both become part of the shared frontmatter standard in the foundation document; no backend change | FR-002 (resolved) |
 | D1a | ~~What an ingest run writes into them~~ | **RESOLVED: C** — ingest writes the inbound-link count it can observe; the review date is written only by a run that actually reviewed the page, which makes lint its sole writer and requires lint's permissive wording to become definite | FR-002a, FR-002b (resolved) |
 | D2 | ~~How the confidence formula and its thresholds are made coherent (#110)~~ | **RESOLVED: C** — shared formula keeps the five observable signals with re-baselined thresholds; lint's two inbound-link signals stay as a documented lint-only extension with its own thresholds; query's narrative adaptation is reconciled | FR-006, FR-006a (resolved) |
-| D3 | What happens when an instance replaces the foundation document without defining the lifecycle fields | **A** — Lint degrades (skips the finding categories that need them); **B** — Lint fails closed; **C** — a minimal field set is product-owned and holds regardless of the foundation document | FR-010 |
+| D3 | ~~What happens when an instance replaces the foundation document without defining the lifecycle fields~~ | **RESOLVED: A** — lint degrades, skipping only the finding categories whose inputs are undefined and naming each omission in its report; no harness content check, no split ownership of the frontmatter standard | FR-010, FR-010a (resolved) |
 | D4 | The integration-depth expectation (#111) | `5–15` or `10–15` pages per source | none — FR-009 requires the two documents to agree and the chosen bound to be justified in-document, which is testable either way |
 
 D2 depended on D1 and was sequenced after it, which is also how issues #109 and #110 are ordered on
@@ -154,12 +155,14 @@ the board (#110's `blocked` label on #109 dissolves inside this feature). In the
 resolution made option D2-A *available* but not advisable: the same reading of the agents that
 settled D1 — ingest never sees the whole link graph — is what ruled A out.
 
-D3 is new. It did not exist when #109/#110/#111 were written; feature 029 created it by moving the
+D3 was new. It did not exist when #109/#110/#111 were written; feature 029 created it by moving the
 frontmatter standard and the confidence formula into a document an operator may replace wholesale
 while the three role documents stayed product-owned. It interacts with #224 (instance-owned role
 documents, decided 2026-09-08, deferred to 2.0.0): if role documents later become instance-owned
 too, D3's answer is the precedent that decides whether a role document may depend on a field the
-foundation document does not define. Naming that interaction is in scope; designing for it is not.
+foundation document does not define. Naming that interaction was in scope; designing for it was not.
+Its resolution to A generalises to that case — a role document states what it needs and degrades when
+it is absent — which is why A was preferred over the product-owned carve-out in C.
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -382,13 +385,15 @@ constitutional violation.
 - **FR-009**: The foundation document and the ingest role document MUST state the same expectation
   for how many pages a source typically touches, and the document stating it MUST give the reason
   for the bound it states. *(D4 decides the number; this requirement holds under either answer.)*
-- **FR-010**: The system MUST have a defined, documented behaviour for the case where an instance's
-  own foundation document does not define the lifecycle metadata the lint role depends on.
-  [NEEDS CLARIFICATION: D3 — does the lint run degrade (skip the finding categories that need the
-  fields, and say so in its report), fail closed (refuse to run against a foundation document that
-  does not define them), or is a minimal lifecycle field set product-owned and in force regardless
-  of what the foundation document says? This decision is the precedent for #224 (instance-owned role
-  documents, deferred to 2.0.0); name that interaction, do not design for it.]
+- **FR-010**: Where an instance's own foundation document does not define the lifecycle metadata the
+  lint role depends on, a lint run MUST degrade rather than fail: it carries out every finding
+  category whose inputs are defined, skips those whose inputs are not, and names each skipped
+  category and the reason in its own report, so the operator can see the capability loss.
+  *(D3 resolved to option A.)*
+- **FR-010a**: No part of this behaviour may be implemented as a harness check on the foundation
+  document's content. The harness continues to load and compose instruction documents without
+  inspecting or reinterpreting what they say (Principle V); the degradation in FR-010 is the agent's
+  judgment under its own role document, and the report entry naming it is agent-authored narrative.
 - **FR-011**: After this feature, the foundation document and the three role documents MUST agree
   with each other on the frontmatter standard, the confidence convention, and the source-traceability
   expectation. Any deliberate per-role deviation MUST be stated as such in both documents that carry
