@@ -137,6 +137,10 @@ line numbers; use these:
 - Q: Which integration-depth expectation should the documents state — `5–15` or `10–15` pages per source? → A: `10–15`. Grimoire's two source documents disagree on the lower bound — `docs/foundational/llm-wiki-magrathea-skill.md:100` says 5–15, `docs/foundational/llm-wiki-nanoclaw-idea.md:45` says 10–15 — so the current `5–15` was never a softening by Grimoire; it followed Magrathea, and the choice was simply never recorded. This decision follows nanoclaw/Karpathy instead: a source that touches fewer than ten pages was probably integrated too shallowly, which is the expectation the pattern argues hardest for. Two consequences the document must carry with the number, both weighed before choosing it: the floor creates a pull toward padding — an agent facing a genuinely narrow source may manufacture connections to reach ten, which is worse wiki content and works against the confidence convention's penalty on thin sourcing — so the guidance stays a typical range and not a quota, explicitly; and the `sources/<slug>.md` summary page FR-008 now requires counts toward the total, so the effective floor for topic pages is about nine.
 - Q: What act qualifies as "an actual review", such that the reviewing run records the review date? → A: Option B — the run produced a substantive finding or a remediation proposal about that page. A review is an act of *observation*, not of mutation: lint saying "this page is missing tags" or "this page contradicts another" is a review of it, and nothing about that requires the page's content to change. Two consequences are binding and must be written into the documents. First, the review-candidate listing itself does **not** count — that listing is the *output* of the check the review date feeds, so counting it would make the check self-clearing: a page listed as overdue would be stamped reviewed for having been listed, and would drop off the list on the next run having had nothing done to it. Second, a page that produces no finding at all never has its review date advanced. That is accepted as intended rather than tolerated as a defect: the review-candidate list then reads "low-confidence pages that nothing has been said about", which is a fair standing signal to an operator, and a low-confidence page that keeps producing no findings is exactly the page a human should eventually look at. *(Recorded 2026-09-09; question surfaced by the Copilot review of 2026-09-09, after the first clarification session closed.)*
 
+### Session 2026-09-10
+
+- Q: What must the confidence convention satisfy to count as "coherent" — is every band being reachable enough, or must each band be reachable by more than one combination of signals? (FR-005) → A: Neither. **No MUST criteria for linting or for confidence at all.** The convention is a means for the agent: the agent is the one that evaluates it, and nothing here needs to be deterministically verified or guaranteed. Rationale, in the user's terms: confidence scoring is a judgment aid handed to an agent, so writing a checkable property about its shape would be asserting a deterministic contract over something whose whole purpose is to inform an LLM's judgment. This closes the defect `research.md` R5 raised — that FR-005 as written was already satisfied by the status quo and so would not catch the regression it was written to prevent — by removing the criterion rather than sharpening it. Note the three options offered (reachable-by-more-than-one-combination, no-perfect-score-required, move-it-to-a-success-criterion) all *tightened* FR-005; the answer rejects the premise they shared. Consequence: the thresholds still change in this feature (`high ≥ 2` on a `−3 … +2` range demands a perfect score, which is #110's actual complaint), but that change is now a recorded judgment in the planning artifacts rather than an enforced requirement, and a future weakening of it is caught by the operator reading confidence scores that look wrong (Principle II's user-reported correction loop), not by a spec gate.
+
 ## Decisions — Opened by `/speckit-specify`, Closed by `/speckit-clarify`
 
 This spec deliberately left four decisions open, plus a fifth (the lifecycle-field write semantics)
@@ -149,7 +153,7 @@ one-line record of what was decided and which requirements carry it.
 | --- | --- | --- | --- |
 | D1 | ~~Where the lifecycle fields live (#109)~~ | **RESOLVED: A** — both become part of the shared frontmatter standard in the foundation document; no backend change | FR-002 (resolved) |
 | D1a | ~~What an ingest run writes into them~~ | **RESOLVED: C** — ingest writes the inbound-link count it can observe; the review date is written only by a run that actually reviewed the page, which makes lint its sole writer and requires lint's permissive wording to become definite | FR-002a, FR-002b (resolved) |
-| D2 | ~~How the confidence formula and its thresholds are made coherent (#110)~~ | **RESOLVED: C** — shared formula keeps the five observable signals with re-baselined thresholds; lint's two inbound-link signals stay as a documented lint-only extension with its own thresholds; query's narrative adaptation is reconciled | FR-006, FR-006a (resolved) |
+| D2 | ~~How the confidence formula and its thresholds are made coherent (#110)~~ | **RESOLVED: C** — shared formula keeps the five observable signals with re-baselined thresholds; lint's two inbound-link signals stay as a documented lint-only extension with its own thresholds; query's narrative adaptation is reconciled. **Amended 2026-09-10**: the coherence property is no longer a MUST criterion — see FR-005 | FR-005, FR-006, FR-006a (resolved) |
 | D3 | ~~What happens when an instance replaces the foundation document without defining the lifecycle fields~~ | **RESOLVED: A** — lint degrades, skipping only the finding categories whose inputs are undefined and naming each omission in its report; no harness content check, no split ownership of the frontmatter standard | FR-010, FR-010a (resolved) |
 | D5 | ~~What act qualifies as "an actual review" (surfaced by review, after the first session)~~ | **RESOLVED: B** — a substantive finding or remediation proposal about the page; the review-candidate listing itself is excluded, and a page producing no finding is intentionally never stamped | FR-002b, FR-002d, FR-002e (resolved) |
 | D4 | ~~The integration-depth expectation (#111)~~ | **RESOLVED: `10–15`** — follows nanoclaw/Karpathy rather than Magrathea, the two source documents having disagreed on the lower bound; stated as a typical range, never a quota | FR-009 (resolved) |
@@ -401,10 +405,20 @@ constitutional violation.
   wiki-wide bootstrap. This does not remove lint's need to recompute the canonical count in order to
   know whether the stored value is right (FR-002a): the saving is in what lint has to write, not in
   what it has to read.
-- **FR-005**: The confidence scoring convention MUST be internally coherent: every band its
-  thresholds define MUST be reachable from the signals it lists.
-- **FR-006**: The shared convention MUST list only signals every agent can observe, and its
-  thresholds MUST be re-baselined to that signal set's own attainable range (FR-005). A role that
+- **FR-005**: The confidence scoring convention is a **judgment aid for the agent, not a checkable
+  contract**, and this spec states no MUST-level property about its shape. Nothing in this feature
+  verifies, gates, or deterministically asserts how the bands its thresholds define are distributed
+  over the signals it lists. The convention's thresholds are nonetheless re-baselined as part of this
+  feature, because the current `high ≥ 2` on an attainable range of `−3 … +2` demands a perfect score
+  — every positive signal firing and no negative one — which is what #110 reports; that
+  re-baselining is a judgment about what makes the aid usable, recorded with its reasoning in the
+  planning artifacts, not a requirement this spec enforces. Where the convention later produces
+  scores that read wrong, the correction path is an instruction-file edit observed through the
+  user-reported correction loop (Constitution Principle II), never a tightened criterion here.
+  *(Clarified 2026-09-10.)*
+- **FR-006**: The shared convention MUST list only signals every agent can observe, and states
+  thresholds matched to that signal set's own attainable range — the *listing* is the requirement;
+  the numbers are a judgment call, not a property this spec asserts (FR-005). A role that
   scores on additional signals — today only lint, which alone can observe the link graph — keeps them
   as a documented extension stating both the extra signals and the thresholds that apply to the wider
   range they produce. The difference, and the fact that a page's score can therefore change when lint
