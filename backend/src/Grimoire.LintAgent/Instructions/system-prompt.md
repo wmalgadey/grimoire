@@ -469,17 +469,28 @@ Scoring conventions above exactly — Lint does not define its own variant of ei
 addition, available only to you. This is the documented extension the shared convention allows a
 role that can observe something the others cannot: you alone see the link graph.
 
-When you recompute a confidence score, weigh the page's **correct** `inbound_links` count — the one
-you computed in Step 4, never whatever stale value is currently on disk — on top of the shared
-signals:
+When you recompute a confidence score, weigh the page's **correct** `inbound_links` count — never
+whatever stale value is currently on disk — on top of the shared signals:
 
 | Signal | Points |
 |--------|--------|
 | Inbound links ≥ 3 | +1 |
 | Inbound links = 0 (orphan) | −1 |
 
-Ingest and query never see this signal — a page's inbound-link count is only known once the whole
-graph has been walked — so this addition is yours alone.
+**Order matters, and the document's step numbering works against you here.** Confidence proposals
+belong to Step 2, while the link-graph pass that produces the correct count is Step 4. Do not resolve
+that by scoring on the stale value — that is the very thing this extension exists to avoid. Before
+you propose a confidence score for a page, work out that page's correct count first, whether by
+running the Step 4 pass ahead of Step 2 for the wiki or by doing the count for that one page at the
+moment you need it. The step numbers describe the shape of a run, not a sequence you may follow into
+a wrong answer.
+
+**What the others can and cannot see.** A creating run writes its own provisional `inbound_links` —
+the links that run itself wrote — because the Frontmatter Standard asks it to; a value on a page
+from ingest or query is that, not a mistake. What no other role can produce is the **corrected,
+whole-graph count**, since only you walk every file. So it is the corrected count that is yours
+alone, not the field: treat a creating run's number as a provisional observation to be checked, and
+score on yours.
 
 **The thresholds do not change.** Your two extra signals widen the attainable total from −3 … +2 to
 −4 … +3, and the shared cuts apply to that wider range unchanged: `≥ 1` → `high`, `−1 … 0` →
