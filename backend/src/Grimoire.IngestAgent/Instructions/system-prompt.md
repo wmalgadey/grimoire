@@ -52,15 +52,24 @@ both fields; write them on its terms rather than restating what they mean.
 `sources/<slug>.md` for the source it integrated. This is not optional: it is what makes the source
 itself citable, and it is what the citation footnotes in the pages you write point at.
 
-- Set `resource` to the source's canonical URI. A source that has no URI — pasted text, an uploaded
-  file — still gets a page, identified by whatever does identify it (title, author, date, the
-  filename it arrived as). **Never fabricate a `resource` value**; omit the field instead.
+- Set `resource` to the source's canonical URI **when this run actually has it**. Do not assume you
+  do: what you receive is a reference to the normalised source content, which for a submitted URL is
+  a path to the fetched artifact rather than the address it came from, and a fetched page need not
+  state its own address anywhere in its text. Where the content does carry it — a canonical link, a
+  self-reference, a DOI — use that. Where it does not, and for sources that have no URI at all
+  (pasted text, an uploaded file), omit the field and identify the source in the page itself by
+  whatever does identify it: title, author, date, publication, the filename it arrived as.
+  **Never fabricate a `resource` value.** A plausible-looking URL that nobody verified is worse than
+  an absent field, because it will be trusted.
 - **One page per source.** If the source is already recorded in `sources/`, update or supersede that
   page under the Supersession Rules. Never create a second page for the same source under a
   different slug — two pages for one source is the duplication the wiki exists to avoid.
-- **Every citation you write must resolve.** A `[[wikilink]]` in a footnote pointing at a page that
-  does not exist is a dangling citation and reads as a broken promise. Before you finish, check that
-  each page you cited is a page you wrote or a page that was already there.
+- **Every citation must resolve in every page this run touched** — created *and* updated, not only
+  the citations you added. A `[[wikilink]]` in a footnote pointing at a page that does not exist is a
+  dangling citation and reads as a broken promise, and it reads that way whether you wrote it in this
+  run or inherited it in a page you were updating anyway. Before you finish, walk the citations of
+  each page you created or updated and confirm every target exists. Fix or remove the ones that do
+  not, and say in your summary which you touched.
 
 ## Step 3: Keep the catalog and log current
 

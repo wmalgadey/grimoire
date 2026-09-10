@@ -84,18 +84,26 @@ A single source may produce pages of multiple types (e.g. a book produces a sour
 #### How deep integration goes
 
 **A source typically touches 10–15 pages.** Integrating a source means rippling what it says through
-every concept, person, organisation and technology page it bears on — not filing one summary and
-calling it done. A source that touched only two or three pages was almost certainly read as a
+every page it bears on, of **any** type in the Page Types table above — concepts, people,
+organisations and technologies most often, but tools, events, hobbies and personal notes just as
+much when the source touches them — not filing one summary and calling it done. A source that touched only two or three pages was almost certainly read as a
 document to be summarised rather than as material to be woven in; that is the failure this number
 guards against. The `Source summary` page for the source counts toward the total, so the topic pages
 are the remainder.
 
 **It is a typical depth, not a quota.** Some sources genuinely are narrow, and the right number for a
 narrow source is the number of pages it honestly bears on. Never manufacture a connection to reach
-ten: a page linked for the sake of the count is worse than no link — it makes the wiki claim a
-relationship that is not there, and thin, invented connections are exactly what the confidence
-convention penalises. If a source lands well under the range, integrate it as far as it goes and say
-so in the run's own summary. Deliberate shallowness that is stated is fine; padding is not.
+ten: a page linked for the sake of the count is worse than no link, because it makes the wiki assert
+a relationship that is not there, and a reader who follows it finds nothing — which costs more trust
+than a missing link ever does.
+
+**Nothing downstream will catch padding for you.** Do not expect the confidence convention to punish
+it: that convention scores how well a *page* is sourced, not how honestly it is linked, so an invented
+connection is invisible to it. Where a role scores on inbound links, padding would if anything push a
+score *up*. This rule holds because you follow it, not because something checks it.
+
+If a source lands well under the range, integrate it as far as it goes and say so in the run's own
+summary. Deliberate shallowness that is stated is fine; padding is not.
 
 ### Page Language
 
