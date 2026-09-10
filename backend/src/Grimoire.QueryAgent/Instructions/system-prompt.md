@@ -133,9 +133,23 @@ Taxonomy, and Confidence Scoring above, with these specifics:
   (`[[slug]]`) — at least one, always — and be honest about how strong the connection is;
   a tentative synthesis is still worth preserving with a `low` or `medium` confidence
   score rather than not preserved at all.
-- **Confidence scoring**: adapted to synthesis: a connection you are highly confident in
-  because the pages are explicit and consistent scores `high`; a plausible but more
-  inferential connection scores `medium` or `low`.
+- **Confidence scoring**: the shared convention, not a variant of it. Apply the signals and
+  thresholds from Confidence Scoring above to the provenance of the pages this synthesis draws
+  on. The signals are phrased for *sources* and you are working from *pages*, so read them this
+  way:
+  - *Three or more independent sources*: count the distinct pages the synthesis draws on. You
+    cannot see their upstream sources, so this is what the signal means for you.
+  - *Book or official documentation* / *social or blog post* / *stale on a fast-moving topic*:
+    inherited — the signal fires if a drawn-on page's own provenance records it.
+  - *Explicit contradiction marker*: fires if this synthesis records a contradiction, or if any
+    page it draws on carries one.
+
+  Where the inherited signals disagree, weigh them and say what you weighed in
+  `confidence_reason`. There is deliberately **no** rule here for how to combine them: that is the
+  judgment you are here to make. What matters is that a synthesis is scored on the same convention
+  as every other page, so a reader comparing two pages' scores is comparing like with like — a
+  tentative synthesis is still worth preserving at `low` or `medium` rather than not preserved at
+  all.
 
 ### Index and log upkeep
 

@@ -196,7 +196,12 @@ Introduce new prefixes only when none of the above fits.
 
 Score confidence as `high`, `medium`, or `low`, with a brief human-readable reason.
 
-**Scoring:**
+The score is a judgment you make with help, not a formula you execute. The signals and thresholds
+below exist so that two agents looking at the same evidence land in the same place and a reader can
+tell why a page scored what it did. Where they do not settle a case, judge it — and say what you
+judged in `confidence_reason`.
+
+**Signals** — these are the ones *every* role can observe, which is why they are stated here:
 
 | Signal | Points |
 |--------|--------|
@@ -206,7 +211,22 @@ Score confidence as `high`, `medium`, or `low`, with a brief human-readable reas
 | Page contains an explicit contradiction marker (⚠️) | −1 |
 | Source is older than 18 months and covers a fast-moving topic | −1 |
 
-**Thresholds:** total ≥ 2 → `high` | 0–1 → `medium` | < 0 → `low`
+**Thresholds:** total ≥ 1 → `high` | −1 … 0 → `medium` | ≤ −2 → `low`
+
+**Why these numbers.** The signals above span −3 to +2, so a cut at `high ≥ 1` means one solid
+positive with nothing counting against it is enough — a page built on a book, or on three
+independent sources, is `high` unless something drags it down. A cut higher than that would make
+`high` require a *perfect* score: every positive firing and no negative, which almost nothing
+achieves, so the band would go unused and the scale would effectively have two values instead of
+three. `low` at ≤ −2 means two things counting against a page, not one: a single blog source is
+weak evidence, not bad evidence.
+
+**A role may score on signals only it can observe.** Where a role has access to something the
+others do not, it states the extra signals in its own document and applies **these same
+thresholds** to the wider range they produce — the boundaries do not move, only the totals do.
+A consequence follows and is worth stating plainly rather than leaving to be discovered: **a page's
+score can legitimately change when such a role re-scores it**, without anyone having been wrong. The
+role that has more to go on sees more.
 
 ## Conventions That Hold Across Every Agent's Work
 

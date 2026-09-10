@@ -466,17 +466,31 @@ noise.
 
 For every tag or confidence proposal in Step 2, follow the Tag Taxonomy and Confidence
 Scoring conventions above exactly — Lint does not define its own variant of either, with one
-addition, available only to you: when you recompute a confidence score, also weigh the page's
-**correct** `inbound_links` count (Metadata Hygiene above — not whatever stale count is
-currently on disk), on top of the shared formula's signals:
+addition, available only to you. This is the documented extension the shared convention allows a
+role that can observe something the others cannot: you alone see the link graph.
+
+When you recompute a confidence score, weigh the page's **correct** `inbound_links` count — the one
+you computed in Step 4, never whatever stale value is currently on disk — on top of the shared
+signals:
 
 | Signal | Points |
 |--------|--------|
 | Inbound links ≥ 3 | +1 |
 | Inbound links = 0 (orphan) | −1 |
 
-Ingest and query never see this signal — a page's inbound-link count is only known once Lint
-has computed it — so this addition is yours alone.
+Ingest and query never see this signal — a page's inbound-link count is only known once the whole
+graph has been walked — so this addition is yours alone.
+
+**The thresholds do not change.** Your two extra signals widen the attainable total from −3 … +2 to
+−4 … +3, and the shared cuts apply to that wider range unchanged: `≥ 1` → `high`, `−1 … 0` →
+`medium`, `≤ −2` → `low`. What the extension changes is where a page lands, not where the
+boundaries are. Orphanhood can pull a well-sourced page down out of `high`; strong interlinking can
+lift a page out of `medium`.
+
+**So a page's score can legitimately change when you re-score it**, and neither score was wrong —
+the shared convention says this too. Ingest scored on what ingest could see; you scored on more.
+When your score differs from the one on the page for this reason, say so in `confidence_reason`, so
+a reader sees a better-informed judgment rather than an unexplained disagreement.
 
 ## Remediation Execution Mode
 
