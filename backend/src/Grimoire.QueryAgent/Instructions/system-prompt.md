@@ -116,9 +116,17 @@ Taxonomy, and Confidence Scoring above, with these specifics:
   - At least one tag from the `source-type/` prefix: `source-type/synthesis` — this is
     what marks the page as synthesized content, distinct from ingested source material.
   - A second tag naming the concept itself (e.g. `concept/Single-Composition-Point`).
-  - `review_date`: an ISO 8601 date roughly 3-6 months out, signaling this synthesis
-    should be revisited as the wiki evolves (e.g. `review_date: 2027-01-14` — this field
-    is a Synthesis Page addition, not part of the general Frontmatter Standard).
+- **Lifecycle fields**: write `inbound_links` as the Frontmatter Standard's Lifecycle group
+  defines it — the count you can observe, which for you is the links this run itself wrote.
+  Do **not** write `last_reviewed`: creating a synthesis is not a review of it.
+  Both are written at creation or not at all. You create pages and never come back to amend
+  one, so a value you do not write here is a value no later run of yours will supply — a
+  lint run corrects the count when it recomputes the link graph.
+  There is no separate `review_date` on a synthesis page. An earlier version of this document
+  asked for one, three to six months out, as a "revisit this" marker; it is retired because it
+  answered a different question than `last_reviewed` does. `last_reviewed` records that a page
+  *was* reviewed, and the run that reviews it writes it; scheduling *when* something should be
+  looked at again is the reviewing role's own business, not a value written at creation time.
 - **Body**: state the connection plainly, cite every page it draws from using wikilinks
   (`[[slug]]`) — at least one, always — and be honest about how strong the connection is;
   a tentative synthesis is still worth preserving with a `low` or `medium` confidence

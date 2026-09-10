@@ -89,25 +89,37 @@ write it in the language of the dominant or most-authoritative source.
 
 ### Frontmatter Standard
 
-Every wiki page except `index.md` and `log.md` requires this YAML frontmatter block:
+Every wiki page except `index.md` and `log.md` requires this YAML frontmatter block. The fields are
+grouped below by what they are *for*. The grouping is a reading aid and a way to decide where a new
+field belongs — YAML itself knows nothing about it, and the comments are illustrative.
 
 ```yaml
 ---
-type: Technology                     # exact value from the Page Types table
+# Identity — what this page is
+type: Technology                      # exact value from the Page Types table
 title: Example Technology             # human-readable display name
 description: One-sentence summary of what this page covers.
+
+# Provenance — where it came from
 timestamp: 2026-07-14T00:00:00Z       # ISO 8601, set on every create/update
+
+# Classification — how it is found
 tags:
   - tech/ExampleTech
   - concept/ExampleConcept
+
+# Assessment — how far it can be trusted
 confidence: medium
 confidence_reason: "One authoritative source; no corroboration yet."
+
+# Lifecycle — how it is maintained over time
+inbound_links: 3
 ---
 ```
 
 `type` is OKF-required; `title`, `description`, and `timestamp` are OKF-recommended; `tags`,
-`confidence`, and `confidence_reason` are Grimoire-specific extensions. Always populate all of them
-regardless — they cost nothing and make the page usable by any future consumer.
+`confidence`, `confidence_reason`, and `inbound_links` are Grimoire-specific extensions. Always
+populate all of them regardless — they cost nothing and make the page usable by any future consumer.
 
 Optional fields (add when applicable):
 
@@ -115,6 +127,7 @@ Optional fields (add when applicable):
 resource: https://example.com/original-source   # canonical URI of the underlying source/asset, if there is one!
 superseded_by: "[[new-page-slug]]"               # only when this page is being superseded
 supersedes: "[[old-page-slug]]"                  # only when this page replaces an older one
+last_reviewed: 2026-07-20                        # Lifecycle — present only once the page has been reviewed
 ```
 
 Set `resource` on `Source summary` pages (link to the original source) and on `Technology`/`Tool`
@@ -123,6 +136,38 @@ pages where an authoritative official-docs URL exists.
 `superseded_by` and `supersedes` hold wikilinks, same syntax as everywhere else in the wiki — use
 the bare page slug, not the folder path (Obsidian-style resolution works by filename regardless of
 which folder the page lives in).
+
+#### The Lifecycle fields
+
+These two carry how a page is maintained over time rather than what it says. Which run writes which
+is stated per field, because they are not written on the same occasion.
+
+**`inbound_links`** — the number of `[[wikilink]]` occurrences naming this page across all *other*
+files in the wiki, including `index.md` and `log.md`. Self-references never count. Repeats from the
+same file each count separately. This is the canonical definition; anywhere else that counts inbound
+links means exactly this and refers here rather than restating it.
+
+- **Written by**: every run that creates a page, and corrected by any run that recomputes the count.
+- **At creation the value is provisional, and knowingly so.** A creating run writes the best count it
+  can observe — for a run that integrates a source, the links that run itself wrote. No creating run
+  sees the whole link graph: it reads `index.md` and the pages its work overlaps with, not every file
+  in the wiki, so a pre-existing incoming link, or one another file adds in the same run, can make the
+  stored value wrong the moment it is written. Write it anyway. A provisional count is more useful
+  than an absent one, and being provisional is exactly why it is worth correcting later.
+- **Provisional does not mean protected.** A run that can see the whole link graph recomputes the
+  count and corrects the stored value; nothing about the creating run's number forbids that.
+- **Absent is not zero.** A page with no `inbound_links` field has never had one written; a page with
+  `inbound_links: 0` has been counted and found to be an orphan. They mean different things.
+
+**`last_reviewed`** — the date on which this page was last reviewed, as `YYYY-MM-DD`.
+
+- **Written by**: a run that actually reviewed the page, and by no other run. A run that creates or
+  updates a page without reviewing it does not write this field — not on create, not on update.
+- **Its presence is its meaning.** The field exists on a page if and only if that page has been
+  reviewed. A page that has never been reviewed simply does not carry it, and anything measuring how
+  long ago a page was looked at measures from `timestamp` in that case — which is correct rather than
+  a fallback, because a never-reviewed page really is overdue counted from the day it arrived.
+- What counts as a review is stated by the role that performs reviews, not here.
 
 Do **not** omit frontmatter — `type` is the one field every page must have.
 

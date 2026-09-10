@@ -130,11 +130,13 @@ a finding. Group everything you find under exactly these three headings, in this
 - **Missing confidence**: a page with no `confidence`/`confidence_reason` field. Propose a
   score (`high`/`medium`/`low`) and a reason, following the Confidence Scoring formula
   and thresholds above exactly — do not invent your own scoring rule.
-- **Review candidates**: a `low`-confidence page whose `last_reviewed` date (or, absent
-  that field, its `timestamp`) is older than the Review Window (default 90 days — the
-  Hub may state a different effective window in this run's context; when it does, use
-  that value instead). List these as an informational sub-section — they are not errors,
-  just pages due for a fresh look.
+- **Review candidates**: a `low`-confidence page whose `last_reviewed` date is older than the
+  Review Window (default 90 days — the Hub may state a different effective window in this run's
+  context; when it does, use that value instead). This measures how long ago the page was
+  *reviewed*, not how long ago it was written. Where the page carries no `last_reviewed` at all,
+  measure from its `timestamp`: a page nobody has ever reviewed genuinely is overdue counted from
+  the day it arrived, so this is the right reading rather than a fallback. List these as an
+  informational sub-section — they are not errors, just pages due for a fresh look.
 - **Superseded pages**: an informational list of pages already marked `superseded_by`,
   for visibility only — these are not problems to fix.
 
@@ -295,9 +297,17 @@ each entry into a reviewable task card, wording untouched.
 ## Step 4: Refresh inbound-link counts
 
 For every page you read, count how many *other* pages (plus `index.md`/`log.md`) link to
-it via `[[wikilink]]` anywhere in their body. If a page's recorded `inbound_links`
-frontmatter field does not match that count (including a page with no `inbound_links`
-field at all, whose actual count is greater than zero), refresh it:
+it via `[[wikilink]]` anywhere in their body — the Frontmatter Standard's Lifecycle group defines
+what counts. If a page's recorded `inbound_links` frontmatter field does not match that count,
+refresh it:
+
+Every run that creates a page now writes `inbound_links`, so your write is normally a **correction
+of a value that is already there** — the creating run wrote the best count it could see, which is
+explicitly provisional, and you are the only role that can see the whole link graph. Creating the
+field from nothing is the exception now (an older page, or one written before the field existed),
+not the wiki-wide bootstrapping pass it used to be. What has not changed is that you must still
+recompute the count for every page you read: you cannot know whether a stored value is right without
+working out what it should be.
 
 **Tally by extraction, not by reading comprehension.** The count is what a literal scan
 for `[[wikilink]]` occurrences finds; the meaning of the surrounding sentence plays no
@@ -324,14 +334,62 @@ prose asserts about its own count.
 
 1. `read_file` the page in full immediately before writing it (**Before any write**).
 2. `write_file` the exact same content back, with only the `inbound_links` line in the
-   frontmatter changed to the correct count (add the field if it was missing). If you also
-   completed a review of this page for the Review Window check above, you may also set
-   `last_reviewed` to today's date (`YYYY-MM-DD`) in the same write.
+   frontmatter changed to the correct count (add the field if it was missing). Where this run
+   also reviewed the page — see *Recording the review date* below — set `last_reviewed` to
+   today's date (`YYYY-MM-DD`) in the same write.
 3. Change nothing else in this write — not one character of the body, not any other
-   frontmatter field. You are now technically able to; the point is reviewability. A
-   link-count refresh that also quietly edits a paragraph hides a change nobody asked for
-   inside a routine one. A body edit is a separate, deliberate act that carries its own
+   frontmatter field beyond the two named above. You are now technically able to; the point is
+   reviewability. A link-count refresh that also quietly edits a paragraph hides a change nobody
+   asked for inside a routine one. A body edit is a separate, deliberate act that carries its own
    justification in the report.
+
+### When the foundation document does not define what you need
+
+Your role depends on definitions that live in the shared foundation document — what
+`inbound_links` counts, what the Frontmatter Standard requires, what the confidence signals and
+thresholds are. A deployment can replace that document, and the replacement may simply not mention
+something you rely on.
+
+When that happens, **degrade; do not stop.**
+
+- Carry out every finding category whose inputs the foundation document does define.
+- Skip only the parts whose inputs are undefined. Do not invent a definition to fill the gap, and do
+  not guess at what was probably meant.
+- **Name every skipped part in your findings report, with the reason** — which category you did not
+  carry out, and which definition was missing. Put it where the report's reader will see it, not in a
+  footnote.
+
+An operator who replaced the foundation document needs to see what that cost them. A capability that
+disappears silently is worse than one that visibly reduces: the report is the only place they find
+out.
+
+### Recording the review date
+
+You are the only role that writes `last_reviewed`. No other run writes it, on create or on update,
+so a page carries a review date only if you put it there. This is not optional housekeeping: if you
+skip it, the field never materialises anywhere in the wiki and the Review Window check above falls
+back to `timestamp` forever.
+
+**What qualifies as a review**: you produced a substantive finding about the page, or a remediation
+proposal for it, in this run. Review is an act of *observation*, not of mutation — saying "this page
+is missing tags" or "this page contradicts [[other-page]]" is a review of that page, and nothing
+about it requires the page's content to change.
+
+**Write it whenever that happened**, whether or not you also refreshed the page's `inbound_links`.
+If the count was already correct, write the page back with only `last_reviewed` changed. The review
+date does not ride along on a link-count refresh; it records something the refresh has nothing to do
+with.
+
+Two exclusions are part of what the field means, not caveats bolted onto it:
+
+- **Listing a page as a review candidate does not qualify.** That listing is the *output* of the
+  check this field feeds. Counting it would make the check clear itself: a page listed as overdue
+  would be stamped reviewed for having been listed, and would drop off the list on the next run with
+  nothing having been done about it.
+- **A page you produced no finding about is not stamped.** That is intended, not an oversight. The
+  review-candidate list then reads "low-confidence pages that nothing has been said about", which is
+  a fair standing signal — and a low-confidence page that keeps producing no findings is exactly the
+  page a human should eventually look at.
 
 ## Write Scope — what the guard permits, precisely
 

@@ -34,6 +34,15 @@ The source is input for a judgment act:
 One source typically touches 5–15 pages. More is fine if the source is broad; do not
 artificially limit the scope.
 
+**Lifecycle fields on every page you write.** The Frontmatter Standard's Lifecycle group defines
+both fields; write them on its terms rather than restating what they mean.
+
+- `inbound_links`: write the count you can actually observe — the links to that page you wrote in
+  this run. The Standard already says this value is provisional and why, and that a later run may
+  correct it. Write it on create and refresh it on update.
+- `last_reviewed`: **never write it.** Not on create, not on update. Integrating a source into a
+  page is not a review of that page, and this field means only what a review put there.
+
 ## Step 3: Keep the catalog and log current
 
 After every write:
