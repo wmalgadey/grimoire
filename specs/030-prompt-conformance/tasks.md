@@ -18,14 +18,16 @@ preamble, Out of Scope) and `contracts/document-consistency.md` forbids it per r
 for a string-matching test against FR-005, FR-007, FR-008, FR-009 or FR-011 is asking for a
 constitutional violation.
 
-**Logging Contract**: `plan.md ## Observability > Structured Log Events` contains **zero rows**. The
-three mandated task categories (implementation, deterministic integration test, CI enforcement) are
-therefore vacuous — there is no row to derive them from. This is stated here rather than silently
+**Logging Contract**: `plan.md ## Observability > Structured Log Events` **declares no log event** —
+the table carries a single `*(none added)*` placeholder and no signal row. The three mandated task
+categories (implementation, deterministic integration test, CI enforcement) are therefore vacuous —
+there is nothing to derive them from. This is stated here rather than silently
 omitted so a reviewer can tell the difference between "no rows" and "rows forgotten". T027 records
 the same fact at audit time.
 
-**Trace Contract**: `plan.md ## Observability > Distributed Trace Spans` contains **zero rows**. Same
-vacuity, same explicit statement, same audit task.
+**Trace Contract**: `plan.md ## Observability > Distributed Trace Spans` **declares no span**, in the
+same shape — one `*(none added)*` placeholder, no signal row. Same vacuity, same explicit statement,
+same audit task.
 
 **Organization**: Tasks are grouped by user story so each story can be implemented and reviewed as a
 unit. See *Delivery Shape* below for why they nonetheless ship as one pull request.
@@ -201,7 +203,7 @@ than an available option and the two documents state one integration-depth numbe
 **Purpose**: the whole-feature obligations — cross-document agreement, the eval re-capture that is
 this feature's one real cost, and the three mandatory completeness audits.
 
-- [ ] T020 Walk the authority table and the four invariants in [contracts/document-consistency.md](./contracts/document-consistency.md) across all four edited documents; verify the integration-depth number matches exactly, every per-role deviation is stated in both documents that carry it, no document grounds a requirement in `docs/foundational/llm-wiki-*`, and no document acquired a rule the harness would have to enforce — human review, never a test (FR-011, SC-006)
+- [ ] T020 Walk the authority table and the four reviewer checks (the items under *Invariants a reviewer checks*; these are review steps, **not** Feature-Scoped Invariants in the constitutional sense — this feature has none) in [contracts/document-consistency.md](./contracts/document-consistency.md) across all four edited documents; verify the integration-depth number matches exactly, every per-role deviation is stated in both documents that carry it, no document grounds a requirement in `docs/foundational/llm-wiki-*`, and no document acquired a rule the harness would have to enforce — human review, never a test (FR-011, SC-006)
 - [ ] T021 Rebuild the agent artifacts so the edited documents reach a running agent (ADR-043: instruction files are build-delivered, so an edited document has no effect until the artifacts are rebuilt) — phase goal, prerequisite for T023 and T025, serves no single requirement
 - [ ] T022 Run `dotnet run --project backend/tests/Grimoire.EvalRunner -- status` and confirm it now exits **3**, flagging every committed scenario whose fingerprint covers the edited documents; all nine current recordings fingerprint `foundation_prompt`, so all nine are expected — a clean exit 0 here means the fingerprints do not cover what was edited and must be investigated, not celebrated (SC-001, FR-012)
 - [ ] T023 Re-capture every flagged scenario against a live provider (`EvalRunner capture --scenario <id>`, or the `eval.yml` workflow), then run `dotnet test backend/tests/Grimoire.AgentEvals` and re-run `status`; done when the replay suite is green across all four ADR-033 classes — `IngestReplayEvalTests`, `LintReplayEvalTests`, `QueryReplayEvalTests`, `RemediationReVerificationEvalTests` — and `status` exits 0 with no scenario left stale (SC-001, FR-012)
