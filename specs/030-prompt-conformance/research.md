@@ -78,11 +78,21 @@ Three things are wrong with recording it as one:
    the harness "accepts and executes [instruction files] without special-casing or reinterpreting
    their content". An ADR restating a constitutional rule creates a second place to look for one
    rule, and invites the reading that the rule holds *because* the ADR says so.
-3. **The problem is speculative.** No instance today runs a foundation document silent on these
-   fields, and the failure mode is not a silent wrong answer that needs a detector — a wiki page
-   written without a definition the agent never received is visibly wrong in the wiki and the
-   findings report, on the surfaces the operator already reads. There is nothing to detect and no
-   false positive to guard against. Principle I: structural boundaries are earned via ADRs, not
+3. **The failure it guards against is visible, not silent — and the case it names is the very
+   defect this feature removes.** A first draft of this section claimed "no instance today runs a
+   foundation document silent on these fields". **That was false, and checking it is what makes the
+   rest of the argument honest**: the shipped
+   `backend/src/Grimoire.AgentRuntime/Instructions/foundation-prompt.md` mentions neither
+   `inbound_links` nor `last_reviewed`, while the lint role document references them ten times.
+   Silence is the *status quo*, and it is exactly what issue #109 reports.
+
+   That strengthens the withdrawal rather than reversing it. The condition has held for the whole
+   life of the two-document split, and what it produced was a documented defect — visible in the
+   wiki, in the findings report, and eventually in an issue — not a silent corruption that a
+   boundary decision would have caught. Nobody needed a detector, and there was no false positive
+   to guard against. After this feature the shipped foundation document states both fields, so the
+   only remaining case is an **operator-authored replacement** that omits them; that one is
+   genuinely hypothetical, and Principle I is explicit that structural boundaries are earned, not
    assumed upfront.
 
 **What this changes downstream**: nothing in `spec.md`. FR-010 and FR-010a already state the

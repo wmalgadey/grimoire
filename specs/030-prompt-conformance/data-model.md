@@ -130,11 +130,33 @@ both documents say so.
 
 ### Query's synthesis pages
 
-FR-006a requires query's treatment to stop being an undeclared third reading. Two admissible
-outcomes, and the document must pick one visibly:
+FR-006a requires query's treatment to stop being an undeclared third reading. Two outcomes were
+admissible; **this design picks the first**, because leaving the choice open to the implementation
+layer would let the four documents stay inconsistent — which is the defect the feature exists to
+remove.
 
-1. Apply the shared formula, treating the pages a synthesis draws from as its sources; or
-2. State that synthesis pages are scored narratively, and say why.
+**Decision: a synthesis page is scored with the shared formula, applied to the provenance of the
+wiki pages it draws on.** No narrative carve-out, no third reading.
+
+The mapping has to be stated, because the shared signals are phrased for *sources* and a synthesis
+draws on *pages*:
+
+| Shared signal | How a synthesis page evaluates it |
+|---------------|-----------------------------------|
+| Three or more independent sources | Count the distinct pages the synthesis draws on, not their upstream sources — query cannot see those. |
+| Source is a book or official documentation | Inherited: it fires if a drawn-on page's own provenance records one. |
+| Source is a social-media or blog post | Inherited the same way. |
+| Explicit contradiction marker (⚠️) | Fires if the synthesis itself records a contradiction, or if any page it draws on carries one. |
+| Source older than 18 months on a fast-moving topic | Inherited from the drawn-on pages' provenance. |
+
+**Where the inherited signals disagree, the synthesis takes the weakest reading** — a synthesis is
+no more trustworthy than the page it leans on that is least trustworthy. That is the conservative
+choice and the one a reader of the wiki can predict.
+
+This is a design-layer decision, not a spec change: FR-006a demands that the document pick one
+visibly and says nothing about which. It is also cheap to reverse — it is one paragraph in
+`Grimoire.QueryAgent/Instructions/system-prompt.md` — so if the weakest-reading rule proves wrong in
+practice, it is an instruction-file edit, exactly as Principle V's boundary smell test predicts.
 
 ---
 

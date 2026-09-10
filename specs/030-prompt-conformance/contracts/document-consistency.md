@@ -26,7 +26,7 @@ Principle V forbids and which spec.md rules out twice (Requirements preamble, Ou
 | Confidence thresholds | `FOUND` | refer | refer + state that they are unchanged by its extension | refer |
 | Lint's link-graph extension and its scale | `LINT` | — | **state** | — |
 | That a score can legitimately change when lint re-scores (FR-006) | both `FOUND` and `LINT` | — | **state** | — |
-| Synthesis-page confidence treatment (FR-006a) | `QUERY` | — | — | **state** |
+| Synthesis-page confidence treatment (FR-006a) | `QUERY` | — | — | **state** — the shared formula applied to the provenance of the pages a synthesis draws on, weakest reading wins ([data-model.md](../data-model.md)); never a narrative carve-out |
 | Source-summary page is required per ingest run | `INGEST` | **state** | refer | — |
 | Source-summary page type, path and `resource` rule | `FOUND` | refer | refer | refer |
 | Integration-depth expectation and its reason | `FOUND` | **state the same value** | — | — |

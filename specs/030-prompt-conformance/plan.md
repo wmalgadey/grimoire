@@ -70,7 +70,7 @@ No ADR is added: see *Architectural Constraints & ADRs* below.
 | **II — Pragmatic testing, classicist style** | Pass | No new test doubles at all, so the mocking-framework prohibition and the port-fake-only rule are trivially satisfied. The eval work is re-capture of existing recordings, not new scenarios. |
 | **II — Success-criteria split** | Pass | Every agent-judgment criterion (SC-003, SC-004, SC-005) is explicitly classified **lower-stakes** in spec.md with the argument stated, so no formal eval suite gates the DoD. SC-001/SC-002 are deterministic harness guarantees and keep their 100% form. |
 | **II — Test what we own** | Pass | The feature adds no test. The Ownership Test is applied below to the question of whether FR-010 warrants a structural test; the answer is no. |
-| **III — ADR-driven** | Pass | All 54 ADRs read via the index; the seven that constrain this feature are tabled below. Every one of them is *extended*, none invalidated, and the feature introduces no new system boundary and no technology choice — so no new ADR is drafted. The reasoning, including a withdrawn draft, is recorded below and in research.md R2. |
+| **III — ADR-driven** | Pass | All 54 ADRs read via the index; the eight that constrain this feature are tabled below. Every one of them is *extended*, none invalidated, and the feature introduces no new system boundary and no technology choice — so no new ADR is drafted. The reasoning, including a withdrawn draft, is recorded below and in research.md R2. |
 | **III — Boundary Rule vs Feature-Scoped Invariant** | Pass | This feature introduces **no Boundary Rule**. Nothing it changes is a dependency direction between packages, namespaces or layers; every rule it carries is agent behaviour under instruction files. `tasks.md` Phase 0 MUST state that explicitly rather than omitting the phase. |
 | **IV — Observability** | Pass, with an honest zero | The feature emits no new signal because it adds no code path. The `## Observability` section below records that, and names the existing surfaces the operator loop depends on rather than inventing signals to fill a table. |
 | **IV — Unapproved infrastructure** | Pass | None introduced. |
@@ -84,7 +84,7 @@ No ADR is added: see *Architectural Constraints & ADRs* below.
 *GATE: Agent MUST read all ADRs in `docs/adr/` before completing this section.*
 
 All 54 ADRs were reviewed via `docs/adr/index.md` (number, title, status, supersede chain); the
-seven below were read in full because they constrain this feature. Superseded and deprecated ADRs
+eight below were read in full because they constrain this feature. Superseded and deprecated ADRs
 were excluded from consideration as constraints — notably ADR-007 (superseded by ADR-053/ADR-054)
 and ADR-016 (superseded by ADR-031), both of which would otherwise look relevant.
 
@@ -96,7 +96,8 @@ and ADR-016 (superseded by ADR-031), both of which would otherwise look relevant
 | ADR-030 | Guarded Retrieval Tools — Search, Ranged Read, and Read-Only Batch | Supplies the reading vocabulary D5 was decided against. `read_file(frontmatter_only)` is what lint uses to survey every page; because D5 resolved to "produced a finding", the qualifying act does not depend on which retrieval tool was used, which keeps FR-002b independent of ADR-030's surface. |
 | ADR-015 | Query Agent Write Scope and Cross-Process Wiki Write Coordination | Constrains FR-002c. Query creates pages under a create-only rule, so any lifecycle field it writes must be written at creation; it can never come back and amend one. |
 | ADR-012 | Standalone Eval Runner and Recorded-Replay at the Model Port | Supplies SC-001's mechanism and its cost. The manifest fingerprints cover the instruction surface, so editing these documents marks every covering recording stale, and "replay tests failing on staleness in the standard PR pipeline are the merge gate for instruction changes". Re-capture is mandatory, not optional. |
-| ADR-033 | SlowEval Replay Class Set Reduced by the Lower-Stakes Eval Removal | Names the classes that must be re-captured: `IngestReplayEvalTests` and `LintReplayEvalTests`. It is also the precedent for this feature's lower-stakes classification — the reduction it records came from the same constitutional rule spec.md invokes. |
+| ADR-033 | SlowEval Replay Class Set Reduced by the Lower-Stakes Eval Removal | Names the class set in scope for re-capture. It enumerates **four** classes — `IngestReplayEvalTests`, `LintReplayEvalTests`, `QueryReplayEvalTests`, `RemediationReVerificationEvalTests` — and this feature touches the *shared* foundation document, which every one of them fingerprints; the lint role document is additionally fingerprinted by remediation re-verification. All four are therefore in FR-012's scope. It is also the precedent for this feature's lower-stakes classification. |
+| ADR-043 | Build-Distributed Agent Artifacts and Single Launch Mode | Owns where instruction documents physically live and how they reach a running agent. The edited `foundation-prompt.md` and the three role documents are build-delivered artifacts, so a changed document only takes effect after the agent artifacts are rebuilt — which is what makes the manual validation steps in `quickstart.md` require a build, not just an edit. Extension: no new file location, no new delivery mechanism. |
 
 **New ADR required?**: **No.**
 
@@ -137,11 +138,15 @@ adapter namespace, and no containment rule.
 | Degrading when the foundation document is silent | Agentic core | lint role document (FR-010) |
 | Loading and composing the two documents, fail-closed, hashed | Harness (**unchanged**) | `AgentHost` composition per ADR-053 |
 | Guarded write boundary and policy scope | Harness (**unchanged**) | `Grimoire.*/Instructions/policy.json`, `GuardedToolExecutor` |
-| Detecting that the foundation document omits a definition | **Neither — explicitly forbidden** | FR-010a, restating Constitution Principle V: the harness never inspects instruction content; the agent notices, and says so in its own report |
+| Noticing that the foundation document omits a definition, and naming what was skipped | Agentic core | lint role document (FR-010) — the agent reads its own composed context and reports the gap |
+| **The harness** detecting that omission, by any inspection of instruction content | **Forbidden** | FR-010a, restating Constitution Principle V. Not "nobody does it": the *agent* does it, the harness must not. |
 
-The last row is the load-bearing one: it is the difference between this feature respecting Principle
-V and quietly violating it. It needs no ADR to hold — Principle V already forbids the harness from
-reinterpreting instruction content, and a constitutional rule outranks an ADR.
+The last two rows are the load-bearing pair, and the distinction between them is the whole of
+FR-010 vs FR-010a: the *agent* notices the gap and says so, the *harness* never looks. Collapsing
+them into one "forbidden" row — as an earlier draft of this plan did — misroutes the implementation
+by implying nobody detects the omission at all. Neither row needs an ADR to hold: Principle V
+already forbids the harness from reinterpreting instruction content, and a constitutional rule
+outranks an ADR.
 
 ## Test Strategy
 
@@ -150,13 +155,13 @@ tasks are generated.*
 
 | Success criterion | Category | Primary test type | Doubles / external dependencies | Fixtures / sampled data | Notes |
 |-------------------|----------|-------------------|----------------------------------|-------------------------|-------|
-| **SC-001** — every recording invalidated by these edits is flagged stale and re-captured; none scores against a stale recording | Deterministic guarantee | Existing `StalenessTests` fingerprint check + `capture` runs against a live provider | Live LLM provider **for capture only**; replay thereafter uses `ReplayModelClient` | Existing scenario fixtures, unchanged | ADR-012's designed gate firing correctly. This is the feature's one real cost. No new test is written; the existing one must go red then green. |
+| **SC-001** — every recording invalidated by these edits is flagged stale and re-captured; none scores against a stale recording | Deterministic guarantee | `EvalRunner status` (exit 3 while anything is stale) over **all four** scenario sets, then `capture`, then the replay eval classes | Live LLM provider **for capture only**; replay thereafter uses `ReplayModelClient` | Existing scenario fixtures, unchanged | ADR-012's designed gate firing correctly, and the feature's one real cost. **Not** `StalenessTests`: that is a Fast-tier test of the staleness *mechanism* against a copied fake repo root with synthetic drift, so editing the real documents can never turn it red. `EvalRunner status` is the check that enumerates the committed Ingest, Lint, Query and remediation manifests. |
 | **SC-002** — every run loads the post-change documents; the load *mechanism* is unchanged | Deterministic guarantee | Existing ADR-053 composition tests, run unmodified | None | None | Deliberately **no new test**. A new test here could only assert document content, which Principle V forbids. The existing composition test proves the mechanism; that it now composes different text is the feature, not a new contract. |
 | **SC-003** — pages a creating run produces carry the lifecycle metadata | Agent judgment — **lower-stakes** | Hermetic plumbing (the guarded write lands, the run completes) + user-reported correction loop | Existing tool-call fake only | None — no eval suite required | Per Principle II and spec.md's stated argument. Reviewers MUST NOT require an eval here on the grounds that an LLM is involved. |
 | **SC-004** — the review-candidate list contains pages overdue for *review*, not merely old since *ingest* | Agent judgment — **lower-stakes** | Same as SC-003 | Existing tool-call fake only | None | Observed by the operator on the findings board. |
 | **SC-005** — an ingest run leaves a source-summary page and its citation wikilinks resolve | Agent judgment — **lower-stakes** | Same as SC-003; deviations surface as lint Structure findings, which already exist | Existing tool-call fake only | None | The correction path is a capability the product already has, which is a large part of why this is lower-stakes. |
 | **SC-006** — the four documents agree, and each deliberate deviation is stated | Review outcome, **not a test** | Human review of the diff + the final-phase completeness audit | None | None | Asserting this with a test would mean string-matching instruction files. Explicitly out of scope per spec.md and Principle V. |
-| **FR-010** — lint degrades rather than fails against a foundation document that omits the fields | Split | Hermetic: the run *completes* rather than erroring (harness-observable). Agent judgment: that the report names the skipped categories → correction loop | Fixture foundation document lacking the lifecycle rows | One fixture foundation document | Applying Principle II's Ownership Test: a structural or reflection-based test here would assert either a library behaviour or the wording of a document. Neither is ours. The hermetic half is real and worth having; the rest is agent behaviour. |
+| **FR-010** — lint degrades rather than fails against a foundation document that omits the fields | Split | Hermetic: **a new integration test** dispatching a lint run against a fixture foundation document and asserting the run reaches terminal *completion* rather than erroring. Agent judgment: that the report names the skipped categories → correction loop | Fixture foundation document lacking the lifecycle rows | One fixture foundation document | No existing test covers this: the current foundation-load tests cover *absent*, *unreadable* and *whitespace-only* documents — all fail-closed paths — not a readable document that simply omits a definition, which must **not** fail closed. Applying Principle II's Ownership Test, the assertion is a product-owned outcome (our run completes); a structural or reflection-based test would instead assert document wording, which is not ours. |
 
 **No new eval scenario is added by this feature.** Existing scenarios are re-captured, not extended.
 
@@ -208,8 +213,8 @@ so each one must name the surface where the user actually observes it:
 | Criterion | Surface the operator observes it on | Why that surface is sufficient |
 |-----------|-------------------------------------|--------------------------------|
 | SC-003 — lifecycle fields on created pages | The wiki itself (the page's frontmatter), and the task artifact for the run under `frontend/src/routes/tasks` | The field is either in the frontmatter or it is not; this is directly readable, no instrumentation needed. |
-| SC-004 — review-candidate list means review age | The lint findings board, `frontend/src/routes/board` | The review-candidate section is rendered there today; a wrong list is visible as a wrong list. |
-| SC-005 — source-summary page and resolvable citations | The wiki's `sources/` folder, plus lint Structure findings on the same board | A dangling wikilink already surfaces as a Structure finding, so the loop closes without new work. |
+| SC-004 — review-candidate list means review age | The findings board on the submission page, `frontend/src/routes/+page.svelte` | The board was merged into `/` (`frontend/src/routes/board` is only a 308 redirect to it). The review-candidate section renders there today; a wrong list is visible as a wrong list. |
+| SC-005 — source-summary page and resolvable citations | The wiki's `sources/` folder, plus lint Structure findings on the same board (`frontend/src/routes/+page.svelte`) | A dangling wikilink already surfaces as a Structure finding, so the loop closes without new work. |
 | FR-010 — degraded lint naming its skipped categories | The findings report for that run, on the board | The report is agent-authored narrative, which is exactly why it can carry the reason — the harness never sees the omission. |
 
 ## Project Structure
