@@ -57,8 +57,8 @@ implementing the degradation behaviour as a harness check on instruction-documen
 
 **Scale/Scope**: four instruction documents
 (`Grimoire.AgentRuntime/Instructions/foundation-prompt.md` plus the ingest, lint and query
-`system-prompt.md` files), one new ADR, and re-capture of the replay recordings whose fingerprints
-cover them.
+`system-prompt.md` files) and re-capture of the replay recordings whose fingerprints cover them.
+No ADR is added: see *Architectural Constraints & ADRs* below.
 
 ## Constitution Check
 
@@ -70,14 +70,14 @@ cover them.
 | **II — Pragmatic testing, classicist style** | Pass | No new test doubles at all, so the mocking-framework prohibition and the port-fake-only rule are trivially satisfied. The eval work is re-capture of existing recordings, not new scenarios. |
 | **II — Success-criteria split** | Pass | Every agent-judgment criterion (SC-003, SC-004, SC-005) is explicitly classified **lower-stakes** in spec.md with the argument stated, so no formal eval suite gates the DoD. SC-001/SC-002 are deterministic harness guarantees and keep their 100% form. |
 | **II — Test what we own** | Pass | The feature adds no test. The Ownership Test is applied below to the question of whether FR-010 warrants a structural test; the answer is no. |
-| **III — ADR-driven** | **Action required** | All 54 ADRs read via the index; the seven that constrain this feature are tabled below. One genuine cross-cutting concern is **not** covered by any of them and requires a new ADR (ADR-055, drafted with this plan). |
-| **III — Boundary Rule vs Feature-Scoped Invariant** | Pass with a caveat | ADR-055 classifies its two rules explicitly. Its degradation rule is agent behaviour, not a dependency direction, so it gets no reflection-based structural test. |
+| **III — ADR-driven** | Pass | All 54 ADRs read via the index; the seven that constrain this feature are tabled below. Every one of them is *extended*, none invalidated, and the feature introduces no new system boundary and no technology choice — so no new ADR is drafted. The reasoning, including a withdrawn draft, is recorded below and in research.md R2. |
+| **III — Boundary Rule vs Feature-Scoped Invariant** | Pass | This feature introduces **no Boundary Rule**. Nothing it changes is a dependency direction between packages, namespaces or layers; every rule it carries is agent behaviour under instruction files. `tasks.md` Phase 0 MUST state that explicitly rather than omitting the phase. |
 | **IV — Observability** | Pass, with an honest zero | The feature emits no new signal because it adds no code path. The `## Observability` section below records that, and names the existing surfaces the operator loop depends on rather than inventing signals to fill a table. |
 | **IV — Unapproved infrastructure** | Pass | None introduced. |
 | **V — Agentic core** | Pass, and this is the point | Every behaviour this feature changes is wiki-content judgment and lands exclusively in instruction files. The Agentic Boundary table below assigns each capability. |
 | **V — Instruction-file content is not deterministically tested** | Pass | Stated as a constraint in three places and carried into the Test Strategy: the only deterministic coverage is load-mechanism, which already exists and is unchanged. |
 
-**Result: PASS, conditional on ADR-055 reaching Accepted status before `/speckit-tasks`.**
+**Result: PASS.** No ADR gate blocks `/speckit-tasks`.
 
 ## Architectural Constraints & ADRs
 
@@ -98,19 +98,26 @@ and ADR-016 (superseded by ADR-031), both of which would otherwise look relevant
 | ADR-012 | Standalone Eval Runner and Recorded-Replay at the Model Port | Supplies SC-001's mechanism and its cost. The manifest fingerprints cover the instruction surface, so editing these documents marks every covering recording stale, and "replay tests failing on staleness in the standard PR pipeline are the merge gate for instruction changes". Re-capture is mandatory, not optional. |
 | ADR-033 | SlowEval Replay Class Set Reduced by the Lower-Stakes Eval Removal | Names the classes that must be re-captured: `IngestReplayEvalTests` and `LintReplayEvalTests`. It is also the precedent for this feature's lower-stakes classification — the reduction it records came from the same constitutional rule spec.md invokes. |
 
-**New ADR required?**: **Yes — `docs/adr/ADR-055-role-document-dependency-on-the-foundation-document.md`,
-drafted with this plan and included in this layer.**
+**New ADR required?**: **No.**
 
-Why a new ADR rather than an extension of ADR-053: applying Principle III's invalidation test,
-nothing in ADR-053 is reversed, narrowed or contradicted — ADR-053 decided *composition mechanics*
-(fixed order, verbatim, fail-closed on a missing or empty document, per-document hashing). D3 asks
-what happens when a document loads perfectly well but is *silent* on something a role document
-depends on. ADR-053 says nothing about that, and the question only exists because ADR-053 created
-two document layers with different owners. That is a genuine cross-cutting concern rather than a
-feature detail: it governs every future role document and every instance-authored foundation
-document, and spec.md names it as the standing precedent for #224 (instance-owned role documents,
-deferred to 2.0.0). It is drafted single-aspect and carries no feature content — it decides the
-dependency contract, never which fields lint happens to need.
+An ADR (ADR-055, "a role document degrades when the foundation document is silent, and the harness
+never looks") was drafted with the first version of this plan and then **withdrawn**. Recording why
+is more useful than pretending it never existed:
+
+- Its first rule — the agent carries out the parts of its role whose inputs are defined and names
+  what it skipped — is **agent behaviour**, which is feature content. Principle III's "Single-aspect
+  ADRs; no feature content" puts it in `spec.md`, where it already lives as FR-010.
+- Its second rule — the harness never inspects instruction *content* to decide what to do — reads
+  like a boundary, but it is **already decided**, and not by an ADR: Constitution Principle V states
+  that the harness "accepts and executes [instruction files] without special-casing or reinterpreting
+  their content". Restating a constitutional rule in an ADR adds no decision; it adds a second place
+  to look.
+- The problem it solved is **speculative**. Nothing in the system today has a foundation document
+  that is silent on these fields, and Principle I is explicit that structural boundaries are earned,
+  not assumed upfront.
+
+So D3's resolution stays exactly where `/speckit-clarify` put it — FR-010 and FR-010a in `spec.md`,
+carried into the lint role document as instruction content.
 
 **Hexagonal gate**: not engaged. No dependency on a new external system, therefore no port, no
 adapter namespace, and no containment rule.
@@ -127,14 +134,14 @@ adapter namespace, and no containment rule.
 | How synthesis-page confidence is scored | Agentic core | `Grimoire.QueryAgent/Instructions/system-prompt.md` (FR-006a) |
 | Producing a source-summary page and keeping citations resolvable | Agentic core | `Grimoire.IngestAgent/Instructions/system-prompt.md` (FR-008) |
 | Integration-depth expectation | Agentic core | foundation + ingest role documents (FR-009) |
-| Degrading when the foundation document is silent | Agentic core | lint role document (FR-010), governed by ADR-055 |
+| Degrading when the foundation document is silent | Agentic core | lint role document (FR-010) |
 | Loading and composing the two documents, fail-closed, hashed | Harness (**unchanged**) | `AgentHost` composition per ADR-053 |
 | Guarded write boundary and policy scope | Harness (**unchanged**) | `Grimoire.*/Instructions/policy.json`, `GuardedToolExecutor` |
-| Detecting that the foundation document omits a definition | **Neither — explicitly forbidden** | FR-010a and ADR-055 R2: the harness never inspects instruction content; the agent notices, and says so in its own report |
+| Detecting that the foundation document omits a definition | **Neither — explicitly forbidden** | FR-010a, restating Constitution Principle V: the harness never inspects instruction content; the agent notices, and says so in its own report |
 
-The last row is the load-bearing one. It is the difference between this feature respecting Principle
-V and quietly violating it, and it is why ADR-055 states the prohibition as a rule rather than
-leaving it as prose in a spec.
+The last row is the load-bearing one: it is the difference between this feature respecting Principle
+V and quietly violating it. It needs no ADR to hold — Principle V already forbids the harness from
+reinterpreting instruction content, and a constitutional rule outranks an ADR.
 
 ## Test Strategy
 
@@ -203,7 +210,7 @@ so each one must name the surface where the user actually observes it:
 | SC-003 — lifecycle fields on created pages | The wiki itself (the page's frontmatter), and the task artifact for the run under `frontend/src/routes/tasks` | The field is either in the frontmatter or it is not; this is directly readable, no instrumentation needed. |
 | SC-004 — review-candidate list means review age | The lint findings board, `frontend/src/routes/board` | The review-candidate section is rendered there today; a wrong list is visible as a wrong list. |
 | SC-005 — source-summary page and resolvable citations | The wiki's `sources/` folder, plus lint Structure findings on the same board | A dangling wikilink already surfaces as a Structure finding, so the loop closes without new work. |
-| FR-010 — degraded lint naming its skipped categories | The findings report for that run, on the board | The report is agent-authored narrative (ADR-055 R2), which is exactly why it can carry the reason. |
+| FR-010 — degraded lint naming its skipped categories | The findings report for that run, on the board | The report is agent-authored narrative, which is exactly why it can carry the reason — the harness never sees the omission. |
 
 ## Project Structure
 
@@ -217,7 +224,7 @@ specs/030-prompt-conformance/
 ├── data-model.md        # Phase 1 output (layer 2)
 ├── quickstart.md        # Phase 1 output (layer 2)
 ├── contracts/
-│   └── frontmatter-lifecycle-fields.md   # Phase 1 output (layer 2)
+│   └── document-consistency.md   # Phase 1 output (layer 2)
 ├── checklists/
 │   └── requirements.md  # spec quality checklist (layer 1)
 └── tasks.md             # /speckit-tasks output — NOT created here
@@ -225,8 +232,7 @@ specs/030-prompt-conformance/
 
 ### Source Code (repository root)
 
-The changed surface is four instruction documents plus one ADR. No source tree is added or
-restructured.
+The changed surface is four instruction documents. No ADR, no source tree added or restructured.
 
 ```text
 backend/src/
@@ -241,10 +247,6 @@ backend/src/
 └── Grimoire.QueryAgent/Instructions/
     └── system-prompt.md            # CHANGED — synthesis-page confidence reconciled; lifecycle
                                     #           fields on created pages
-
-docs/adr/
-├── ADR-055-role-document-dependency-on-the-foundation-document.md   # NEW (proposed)
-└── index.md                        # CHANGED — one row appended
 
 backend/tests/Grimoire.AgentEvals/Fixtures/recordings/   # RE-CAPTURED, not edited by hand
 ```

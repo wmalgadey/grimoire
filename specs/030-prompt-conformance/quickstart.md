@@ -109,7 +109,8 @@ suite; that the report explains itself is agent behaviour, observed here and cor
 instruction file if wrong.
 
 **Expected NOT to happen**: any harness-level error about the foundation document's content. If the
-harness noticed, FR-010a has been violated (ADR-055 R2).
+harness noticed, FR-010a has been violated — and with it Constitution Principle V, which forbids the
+harness from reinterpreting instruction content.
 
 ## What "done" means here
 

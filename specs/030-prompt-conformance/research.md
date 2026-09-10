@@ -1,9 +1,9 @@
 # Phase 0 Research — Feature 030, Prompt Conformance
 
 Five questions had to be settled before the design could be written. Three were left to plan level
-by the spec on purpose; one is a constitutional question about whether this feature needs an ADR;
-and one is a defect in the spec itself that this research found and deliberately did **not** fix
-here.
+by the spec on purpose; one is a constitutional question about whether this feature needs an ADR (it
+does not, and a drafted one was withdrawn); and one is a defect in the spec itself that this research
+found and deliberately did **not** fix here.
 
 ---
 
@@ -46,11 +46,12 @@ lost.
 
 ---
 
-## R2 — Does this feature require a new ADR, or does ADR-053 already cover it?
+## R2 — Does this feature require a new ADR?
 
-**Decision**: one new ADR is required — ADR-055, deciding the dependency contract between the
-foundation document and role documents. Every other change in the feature is an **extension** of an
-existing ADR and changes no ADR's status.
+**Decision**: **No.** Every change in the feature is an **extension** of an existing ADR and changes
+no ADR's status. A new ADR was drafted here (ADR-055, on what a role document may assume of the
+foundation document) and then withdrawn; both the draft and the withdrawal are recorded below,
+because the reasoning that killed it is reusable.
 
 **Rationale.** Principle III's invalidation test asks whether honouring the new requirement would
 reverse, narrow or contradict what an ADR actually decided.
@@ -62,22 +63,32 @@ reverse, narrow or contradict what an ADR actually decided.
   root with no exclusions. No new capability, so nothing to re-decide.
 - *Re-capturing recordings* — ADR-012 designed this gate; it firing is the ADR working, not
   changing.
-- *D3 / FR-010 — a document that loads fine but is silent on something a role document depends on* —
-  **not covered anywhere.** ADR-053 decided composition mechanics: fixed order, verbatim loading,
-  fail-closed on a document that is missing or empty, per-document hashing. A foundation document
-  that loads perfectly and simply does not mention `last_reviewed` passes every one of those checks.
-  The question only exists because ADR-053 created two document layers with different owners, and it
-  governs every future role document, not just lint's.
 
-**Alternatives considered.**
+**Why the drafted ADR-055 was withdrawn.** D3 asks what a role document may assume when the
+foundation document loads fine but is *silent* about something it depends on. That question is real,
+and ADR-053 does not answer it — but "not answered by an ADR" is not the same as "needs an ADR".
+Three things are wrong with recording it as one:
 
-- *Fold it into ADR-053 as an amendment.* Not available: Constitution v2.0.0 retired partial
-  amendment, and a whole-ADR supersession of ADR-053 would be disproportionate and wrong — nothing
-  ADR-053 decided has changed.
-- *Treat it as feature content and skip the ADR.* Rejected. It is durable and cross-cutting: spec.md
-  names it as the standing precedent for #224, and the answer applies to role documents that do not
-  exist yet. Principle III's "single-aspect ADRs; no feature content" cuts the other way here — the
-  ADR decides the contract, and says nothing about lifecycle fields.
+1. **Its substance is feature content, not a boundary.** The rule "the agent does the parts of its
+   role whose inputs are defined and names what it skipped" is a statement about agent behaviour
+   under instruction files. Principle III forbids an ADR from fixing behaviour: that belongs in
+   `spec.md`, where `/speckit-clarify` already put it as FR-010.
+2. **Its one boundary-shaped half is already decided, above the ADR layer.** "The harness never
+   inspects instruction content in order to decide anything" is Constitution Principle V verbatim —
+   the harness "accepts and executes [instruction files] without special-casing or reinterpreting
+   their content". An ADR restating a constitutional rule creates a second place to look for one
+   rule, and invites the reading that the rule holds *because* the ADR says so.
+3. **The problem is speculative.** No instance today runs a foundation document silent on these
+   fields, and the failure mode is not a silent wrong answer that needs a detector — a wiki page
+   written without a definition the agent never received is visibly wrong in the wiki and the
+   findings report, on the surfaces the operator already reads. There is nothing to detect and no
+   false positive to guard against. Principle I: structural boundaries are earned via ADRs, not
+   assumed upfront.
+
+**What this changes downstream**: nothing in `spec.md`. FR-010 and FR-010a already state the
+behaviour and the prohibition; they simply are not backed by an ADR, and do not need to be. Phase 0
+of `tasks.md` therefore states "no Boundary Rule introduced by this feature" rather than writing a
+structural test.
 
 ---
 
