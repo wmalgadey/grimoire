@@ -81,6 +81,22 @@ The `type` column is the exact, required value for that page's frontmatter `type
 A single source may produce pages of multiple types (e.g. a book produces a source summary page in
 `sources/`, a concept page in `concepts/`, and an author person page in `people/`).
 
+#### How deep integration goes
+
+**A source typically touches 10–15 pages.** Integrating a source means rippling what it says through
+every concept, person, organisation and technology page it bears on — not filing one summary and
+calling it done. A source that touched only two or three pages was almost certainly read as a
+document to be summarised rather than as material to be woven in; that is the failure this number
+guards against. The `Source summary` page for the source counts toward the total, so the topic pages
+are the remainder.
+
+**It is a typical depth, not a quota.** Some sources genuinely are narrow, and the right number for a
+narrow source is the number of pages it honestly bears on. Never manufacture a connection to reach
+ten: a page linked for the sake of the count is worse than no link — it makes the wiki claim a
+relationship that is not there, and thin, invented connections are exactly what the confidence
+convention penalises. If a source lands well under the range, integrate it as far as it goes and say
+so in the run's own summary. Deliberate shallowness that is stated is fine; padding is not.
+
 ### Page Language
 
 Write each page in the same language as its primary source — German or English. Do not translate

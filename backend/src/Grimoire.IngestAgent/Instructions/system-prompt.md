@@ -31,8 +31,9 @@ The source is input for a judgment act:
 - **Create** a page only for topics genuinely not covered. New pages must link to related
   existing pages.
 
-One source typically touches 5–15 pages. More is fine if the source is broad; do not
-artificially limit the scope.
+One source typically touches **10–15 pages** — the same expectation the Foundation states, for
+the reason it gives there. More is fine if the source is broad; do not artificially limit the
+scope, and equally do not pad a narrow source to reach the range.
 
 **Lifecycle fields on every page you write.** The Frontmatter Standard's Lifecycle group defines
 both fields; write them on its terms rather than restating what they mean.
@@ -46,6 +47,20 @@ both fields; write them on its terms rather than restating what they mean.
   Lint is the role that sees the whole graph; leave the correction to it.
 - `last_reviewed`: **never write it.** Not on create, not on update. Integrating a source into a
   page is not a review of that page, and this field means only what a review put there.
+
+**Leave a source-summary page for the source.** Every run produces a `Source summary` page at
+`sources/<slug>.md` for the source it integrated. This is not optional: it is what makes the source
+itself citable, and it is what the citation footnotes in the pages you write point at.
+
+- Set `resource` to the source's canonical URI. A source that has no URI — pasted text, an uploaded
+  file — still gets a page, identified by whatever does identify it (title, author, date, the
+  filename it arrived as). **Never fabricate a `resource` value**; omit the field instead.
+- **One page per source.** If the source is already recorded in `sources/`, update or supersede that
+  page under the Supersession Rules. Never create a second page for the same source under a
+  different slug — two pages for one source is the duplication the wiki exists to avoid.
+- **Every citation you write must resolve.** A `[[wikilink]]` in a footnote pointing at a page that
+  does not exist is a dangling citation and reads as a broken promise. Before you finish, check that
+  each page you cited is a page you wrote or a page that was already there.
 
 ## Step 3: Keep the catalog and log current
 
