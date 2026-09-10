@@ -138,8 +138,9 @@ remove.
 **Decision: a synthesis page is scored with the shared formula, applied to the provenance of the
 wiki pages it draws on.** No narrative carve-out, no third reading.
 
-The mapping has to be stated, because the shared signals are phrased for *sources* and a synthesis
-draws on *pages*:
+The mapping is worth stating, because the shared signals are phrased for *sources* while a synthesis
+draws on *pages* — this is vocabulary the agent needs in order to apply the formula at all, not a
+computation it is required to perform:
 
 | Shared signal | How a synthesis page evaluates it |
 |---------------|-----------------------------------|
@@ -149,14 +150,15 @@ draws on *pages*:
 | Explicit contradiction marker (⚠️) | Fires if the synthesis itself records a contradiction, or if any page it draws on carries one. |
 | Source older than 18 months on a fast-moving topic | Inherited from the drawn-on pages' provenance. |
 
-**Where the inherited signals disagree, the synthesis takes the weakest reading** — a synthesis is
-no more trustworthy than the page it leans on that is least trustworthy. That is the conservative
-choice and the one a reader of the wiki can predict.
+**Where the inherited signals disagree, the weighting is the agent's judgment — the document
+prescribes no aggregation rule.** An earlier draft of this design mandated "the synthesis takes the
+weakest reading"; that was withdrawn on 2026-09-10, because a fixed aggregation rule is exactly the
+deterministic prescription over a judgment aid that FR-005's clarification rejects. Confidence
+scoring is a means for the agent to exercise judgment, not a formula the agent executes.
 
-This is a design-layer decision, not a spec change: FR-006a demands that the document pick one
-visibly and says nothing about which. It is also cheap to reverse — it is one paragraph in
-`Grimoire.QueryAgent/Instructions/system-prompt.md` — so if the weakest-reading rule proves wrong in
-practice, it is an instruction-file edit, exactly as Principle V's boundary smell test predicts.
+What remains a decision is only the *choice between the two treatments* FR-006a offers: the shared
+formula rather than a narrative carve-out. That much the document must state visibly, so query stops
+being an undeclared third reading of a convention the other two agents share.
 
 ---
 

@@ -140,6 +140,7 @@ line numbers; use these:
 ### Session 2026-09-10
 
 - Q: What must the confidence convention satisfy to count as "coherent" — is every band being reachable enough, or must each band be reachable by more than one combination of signals? (FR-005) → A: Neither. **No MUST criteria for linting or for confidence at all.** The convention is a means for the agent: the agent is the one that evaluates it, and nothing here needs to be deterministically verified or guaranteed. Rationale, in the user's terms: confidence scoring is a judgment aid handed to an agent, so writing a checkable property about its shape would be asserting a deterministic contract over something whose whole purpose is to inform an LLM's judgment. This closes the defect `research.md` R5 raised — that FR-005 as written was already satisfied by the status quo and so would not catch the regression it was written to prevent — by removing the criterion rather than sharpening it. Note the three options offered (reachable-by-more-than-one-combination, no-perfect-score-required, move-it-to-a-success-criterion) all *tightened* FR-005; the answer rejects the premise they shared. Consequence: the thresholds still change in this feature (`high ≥ 2` on a `−3 … +2` range demands a perfect score, which is #110's actual complaint), but that change is now a recorded judgment in the planning artifacts rather than an enforced requirement, and a future weakening of it is caught by the operator reading confidence scores that look wrong (Principle II's user-reported correction loop), not by a spec gate.
+- Q: Should the query role document prescribe a fixed aggregation rule for a synthesis page's confidence, or should the agent judge it? (FR-006a) → A: Option A — no rule. The document states that the shared formula applies to the provenance of the pages a synthesis draws on, and leaves the weighting to the agent where those signals disagree. Rationale: this is the same principle as the FR-005 answer, applied to a decision the planning layer had already made unilaterally. `data-model.md` had mandated "the synthesis takes the weakest reading", which is precisely a deterministic prescription over a judgment aid; it is withdrawn here and in `contracts/document-consistency.md` and `tasks.md` T016. What survives as a decision is only the choice *between the two treatments FR-006a offers* — the shared formula rather than a narrative carve-out — because that choice is what stops query from being an undeclared third reading, and it is a statement about what the document says rather than about how the agent must weigh anything.
 
 ## Decisions — Opened by `/speckit-specify`, Closed by `/speckit-clarify`
 
@@ -428,7 +429,9 @@ constitutional violation.
   the shared convention rather than left as an undeclared third reading. It today claims to follow the
   shared scoring while describing a purely narrative rule; after this feature it MUST either apply the
   shared formula, or state that synthesis pages are scored narratively and say why — one or the other,
-  explicitly.
+  explicitly. What MUST NOT be added is an aggregation rule for the case where the signals inherited
+  from the drawn-on pages disagree: that weighting is the agent's judgment, per FR-005.
+  *(Clarified 2026-09-10.)*
 - **FR-007**: The rationale for the confidence convention's shape MUST be recorded in the document
   that carries the convention, where the next reader of that document encounters it, not only in an
   issue or in this spec. The rationale MUST stand on its own terms — why the shared set holds only

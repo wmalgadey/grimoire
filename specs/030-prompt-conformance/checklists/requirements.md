@@ -90,3 +90,21 @@ about". The `## Deferred Decisions` section is retired.
 document needs no textual change. D1a's resolution makes lint the sole writer of the review date, and
 lint's current wording is permissive (`LintAgent/system-prompt.md:328`), so that wording must become
 definite or the field never materialises.
+
+**FR-005 is deliberately not testable, and that does not fail "Requirements are testable and
+unambiguous" or "All functional requirements have clear acceptance criteria."** The 2026-09-10
+clarification removed FR-005's MUST criterion entirely: the confidence convention is a judgment aid
+for the agent, not a checkable contract, and nothing in this feature verifies or guarantees its
+shape. Both checklist items stay checked on the reading that they guard against *vagueness* — a
+requirement nobody can tell whether it is met. FR-005 is the opposite: it states unambiguously that
+there is no criterion, says why, and names the verification path that does apply (Principle II's
+user-reported correction loop). That is the same shape the checklist already accepts for the
+lower-stakes agent-judgment criteria a few lines above, and it is what makes the item below — no
+100% deterministic guarantee on an agent-judgment outcome — true rather than merely satisfied.
+
+**The same clarification withdrew a planning-layer decision.** `data-model.md` had mandated that a
+synthesis page take "the weakest reading" where the confidence signals it inherits disagree. That
+rule was a deterministic prescription over the same judgment aid, so it is gone; FR-006a now states
+that no aggregation rule may be added and the weighting is the agent's. What survives is only the
+choice between the two treatments FR-006a offers — the shared formula rather than a narrative
+carve-out — which is a statement about what the document says, not about how the agent must weigh.
