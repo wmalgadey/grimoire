@@ -119,9 +119,11 @@ Taxonomy, and Confidence Scoring above, with these specifics:
 - **Lifecycle fields**: write `inbound_links` as the Frontmatter Standard's Lifecycle group
   defines it — the count you can observe, which for you is the links this run itself wrote.
   Do **not** write `last_reviewed`: creating a synthesis is not a review of it.
-  Both are written at creation or not at all. You create pages and never come back to amend
-  one, so a value you do not write here is a value no later run of yours will supply — a
-  lint run corrects the count when it recomputes the link graph.
+  `inbound_links` is therefore written at creation or not at all: you create pages and never come
+  back to amend one, so a count you do not write here is one no later run of yours will supply, and a
+  lint run corrects it when it recomputes the link graph. That is not an argument for writing
+  `last_reviewed` early — a field whose whole meaning is "a review happened" must stay absent until
+  one has.
   There is no separate `review_date` on a synthesis page. An earlier version of this document
   asked for one, three to six months out, as a "revisit this" marker; it is retired because it
   answered a different question than `last_reviewed` does. `last_reviewed` records that a page

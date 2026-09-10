@@ -142,10 +142,12 @@ which folder the page lives in).
 These two carry how a page is maintained over time rather than what it says. Which run writes which
 is stated per field, because they are not written on the same occasion.
 
-**`inbound_links`** — the number of `[[wikilink]]` occurrences naming this page across all *other*
-files in the wiki, including `index.md` and `log.md`. Self-references never count. Repeats from the
-same file each count separately. This is the canonical definition; anywhere else that counts inbound
-links means exactly this and refers here rather than restating it.
+**`inbound_links`** — the number of `[[wikilink]]` occurrences naming this page **anywhere in** all
+*other* files in the wiki, including `index.md` and `log.md`. *Anywhere* means the whole file, body
+and frontmatter alike: a `supersedes` or `superseded_by` wikilink is an occurrence like any other.
+Self-references never count. Repeats from the same file each count separately. This is the canonical
+definition; anywhere else that counts inbound links means exactly this and refers here rather than
+restating it.
 
 - **Written by**: every run that creates a page, and corrected by any run that recomputes the count.
 - **At creation the value is provisional, and knowingly so.** A creating run writes the best count it
@@ -165,8 +167,11 @@ links means exactly this and refers here rather than restating it.
   updates a page without reviewing it does not write this field — not on create, not on update.
 - **Its presence is its meaning.** The field exists on a page if and only if that page has been
   reviewed. A page that has never been reviewed simply does not carry it, and anything measuring how
-  long ago a page was looked at measures from `timestamp` in that case — which is correct rather than
-  a fallback, because a never-reviewed page really is overdue counted from the day it arrived.
+  long ago a page was looked at falls back to `timestamp` in that case. Read that fallback for what
+  it is: `timestamp` is rewritten on every create *and update*, so it says when the page was last
+  *written*, not when it arrived. For a never-reviewed page it is the best available proxy and it
+  errs in a knowable direction — a page that keeps being updated looks fresher than its review
+  history warrants. It is a proxy, not an arrival date, and nothing should claim otherwise.
 - What counts as a review is stated by the role that performs reviews, not here.
 
 Do **not** omit frontmatter — `type` is the one field every page must have.

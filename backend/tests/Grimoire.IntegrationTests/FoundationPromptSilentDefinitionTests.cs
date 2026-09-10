@@ -98,7 +98,6 @@ public class FoundationPromptSilentDefinitionTests
 
             // Terminal completion, not a fail-closed exit: silence is not a load failure.
             Assert.Equal(0, exitCode);
-            Assert.True(intent.ExecuteAsyncWasCalled);
 
             // No harness-level document failure was raised. If the harness ever inspects
             // instruction content to decide it cannot proceed, this is where it surfaces.

@@ -37,9 +37,13 @@ artificially limit the scope.
 **Lifecycle fields on every page you write.** The Frontmatter Standard's Lifecycle group defines
 both fields; write them on its terms rather than restating what they mean.
 
-- `inbound_links`: write the count you can actually observe — the links to that page you wrote in
-  this run. The Standard already says this value is provisional and why, and that a later run may
-  correct it. Write it on create and refresh it on update.
+- `inbound_links`: **on a page you create**, write the count you can actually observe — the links to
+  that page you wrote in this run. The Standard already says this value is provisional and why, and
+  that a later run may correct it.
+  **On a page that already exists, leave the field alone.** You see only the links this run wrote,
+  not the ones already pointing at that page, so writing your partial count would replace a correct
+  value with a smaller one — a page with five inbound links would drop to the one you just added.
+  Lint is the role that sees the whole graph; leave the correction to it.
 - `last_reviewed`: **never write it.** Not on create, not on update. Integrating a source into a
   page is not a review of that page, and this field means only what a review put there.
 

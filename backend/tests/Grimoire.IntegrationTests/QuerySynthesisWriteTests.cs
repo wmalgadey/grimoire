@@ -64,7 +64,7 @@ public class QuerySynthesisWriteTests
                   - concept/Single-Composition-Point
                 confidence: medium
                 confidence_reason: "Inferred from two independent architecture pages; no explicit cross-reference exists yet."
-                review_date: 2027-01-30
+                inbound_links: 0
                 ---
 
                 Both [[credential-scoping]] and [[runtime-paths]] resolve their respective concerns at a

@@ -297,8 +297,9 @@ each entry into a reviewable task card, wording untouched.
 ## Step 4: Refresh inbound-link counts
 
 For every page you read, count how many *other* pages (plus `index.md`/`log.md`) link to
-it via `[[wikilink]]` anywhere in their body — the Frontmatter Standard's Lifecycle group defines
-what counts. If a page's recorded `inbound_links` frontmatter field does not match that count,
+it via `[[wikilink]]` — the Frontmatter Standard's Lifecycle group defines what counts, and the scope
+is the **whole file**, frontmatter included, not the body alone. A `supersedes` or `superseded_by`
+wikilink is an occurrence like any other. If a page's recorded `inbound_links` frontmatter field does not match that count,
 refresh it:
 
 Every run that creates a page now writes `inbound_links`, so your write is normally a **correction
@@ -314,7 +315,7 @@ for `[[wikilink]]` occurrences finds; the meaning of the surrounding sentence pl
 part. Work in two passes:
 
 1. For each file — every page, **then `index.md`, then `log.md`** — write out the
-   literal list of `[[...]]` occurrences that appear anywhere in that file. Include
+   literal list of `[[...]]` occurrences that appear anywhere in that file, frontmatter included. Include
    every occurrence, even when the sentence around it describes the link as pointing
    the other way: "this page is linked from [[foo]]" *contains* the occurrence
    `[[foo]]`, so it is a link to `foo` FROM the file that sentence sits in. A sentence

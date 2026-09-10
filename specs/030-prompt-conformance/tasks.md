@@ -81,7 +81,7 @@ constitution requires the absence to be stated rather than inferred from a missi
 **Purpose**: Establish the pre-edit baseline that makes the staleness gate's later red-then-green
 attributable to this feature's edits.
 
-- [X] T001 Run `dotnet run --project backend/tests/Grimoire.EvalRunner -- status` **before editing any instruction document** and record the exit code and the scenario list in the implementation PR description; expected exit 0. **Result 2026-09-10: exit 0, 8 scenarios trusted, all captured 2026-09-06.** Note the count: `recordings/` holds **nine** directories but `status` enumerates **eight** scenarios — `lint-at-scale-survey-tight-budget` has a recording but is not in any scenario set, so the gate never evaluates it. Statements elsewhere in this file that all nine recordings are covered are off by one (SC-001, FR-012 — without this baseline a red `status` after the edits cannot be attributed to them rather than to pre-existing drift)
+- [X] T001 Run `dotnet run --project backend/tests/Grimoire.EvalRunner -- status` **before editing any instruction document** and record the exit code and the scenario list in the implementation PR description; expected exit 0. **Result 2026-09-10: exit 0, 8 scenarios trusted, all captured 2026-09-06** — `instruction-change-adoption`, `adversarial-source`, `query-read-only-decline`, `query-synthesis-decline-edit-request`, `lint-at-scale-survey`, `remediation-reverify-still-applicable`, `remediation-reverify-no-longer-applicable`, `remediation-body-edit-applied`. These are the exact eight the post-edit run must flag, so the two are reconcilable line by line.** Note the count: `recordings/` holds **nine** directories but `status` enumerates **eight** scenarios — `lint-at-scale-survey-tight-budget` has a recording but is not in any scenario set, so the gate never evaluates it. Statements elsewhere in this file that all nine recordings are covered are off by one (SC-001, FR-012 — without this baseline a red `status` after the edits cannot be attributed to them rather than to pre-existing drift)
 
 **Checkpoint**: Baseline recorded. Document edits may begin.
 
@@ -268,9 +268,25 @@ three stories.
 
 ### Delivery shape: **one implementation pull request, not a stack**
 
-This decision is stated here because `CLAUDE.md` requires it to be made out loud between
+> **Superseded 2026-09-10 — this feature shipped as a stack of four implementation PRs, not one.**
+> The author directed the change at `/speckit-implement` time, and the argument below did not survive
+> contact with the implementing environment: it assumed the choice was between paying the re-capture
+> cost once or paying it per layer. In fact **no layer can pay it** — the implementing session has no
+> eval provider credential, so `capture` cannot run at all (T023). With the cost unpayable in every
+> shape, the reason for preferring one PR evaporated, and what remained was the ordinary argument for
+> a stack: four independently reviewable layers instead of one diff spanning three user stories.
+>
+> Delivered as #242 (US1) → #243 (US2) → #244 (US3) → #246 (converge), each based on the one below.
+> Every layer is red on the eval step until the re-capture runs against the final document content;
+> that is the accepted cost of the shape, stated on each PR rather than discovered by a reviewer.
+>
+> The original reasoning is kept below rather than deleted, because it is the record of what was
+> decided and why — and of which premise turned out to be wrong.
+
+This decision was stated here because `CLAUDE.md` requires it to be made out loud between
 `/speckit-tasks` and `/speckit-implement`, and because the default for a feature with more than two
-phase groups beyond Phase 0 is a stack. This feature is an exception, for one concrete reason:
+phase groups beyond Phase 0 is a stack. This feature was recorded as an exception, for one concrete
+reason:
 
 **`Grimoire.AgentEvals` runs on every push in `ci.yml`, and it goes red the moment the first
 instruction document is edited.** All eight scenarios the gate enumerates fingerprint `foundation_prompt`;
