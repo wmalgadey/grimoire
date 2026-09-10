@@ -152,29 +152,38 @@ degrades when the definitions are absent, and T002 passes.
 
 ## Phase 4: User Story 2 — A confidence score means the same thing whoever assigns it (Priority: P2)
 
-**Goal**: the shared confidence convention becomes internally coherent — every band reachable from
-the signals it lists — and lint's link-graph extension and query's synthesis treatment stop being
-silent disagreements about one convention.
+**Goal**: the shared confidence convention becomes a usable judgment aid — its bands spread over the
+signal set instead of `high` demanding a perfect score — and lint's link-graph extension and query's
+synthesis treatment stop being silent disagreements about one convention.
 
-**Independent Test**: read the resulting documents as a reviewer, compute the maximum and minimum
-attainable totals for the shared signal set and for lint's extended set, and check that every band is
-reachable in both and that each per-role deviation is stated where the deviating role is described;
-then run ingest and lint over the same fixture page and compare the scores and reasons.
+**Not a criterion.** The 2026-09-10 clarification removed FR-005's MUST-level property: confidence
+scoring is a means for the agent, and nothing here verifies or guarantees how the bands come out.
+The thresholds below are a recommendation with recorded reasoning, and this phase is complete when
+the documents *state* them coherently — not when any distribution property is proven.
+
+**Independent Test**: read the resulting documents as a reviewer and check that each per-role
+deviation is stated where the deviating role is described, and that a reader could apply the
+convention without guessing; then run ingest and lint over the same fixture page and compare the
+scores and reasons. Working out the attainable totals is a useful sanity read — [research.md](./research.md)
+R1 does it — but a band's distribution is not a pass/fail condition on this phase.
 
 **Numbers to write, from [research.md](./research.md) R1**: thresholds `high ≥ 1`, `medium −1 … 0`,
 `low ≤ −2`, applied unchanged to both the shared range (`−3 … +2`) and lint's extended range
-(`−4 … +3`). Reachability is verified for both ranges in R1; do not re-derive different cut points.
+(`−4 … +3`). R1 records why these cut points rather than others; write them as given and do not
+re-derive different ones inside an editing task. They are a recommendation, not a verified property.
 
 ### Implementation for User Story 2
 
-- [ ] T012 [US2] Re-baseline the thresholds in `FOUND` (`### Confidence Scoring`) to `high ≥ 1` / `medium −1 … 0` / `low ≤ −2` over the shared five-signal range `−3 … +2`, replacing the current `≥ 2` / `0–1` / `< 0` table whose `high` band collapses to the single point `+2` (FR-005, FR-006)
+- [ ] T012 [US2] Re-baseline the thresholds in `FOUND` (`### Confidence Scoring`) to `high ≥ 1` / `medium −1 … 0` / `low ≤ −2` over the shared five-signal range `−3 … +2`, replacing the current `≥ 2` / `0–1` / `< 0` table whose `high` band collapses to the single point `+2` — the defect #110 reports. Write no MUST-style coherence claim into the document alongside the numbers: the convention is a judgment aid, not a contract (FR-005, FR-006)
 - [ ] T013 [US2] Record the rationale for the convention's shape in `FOUND` itself, where the next reader of that document meets it — why the shared set holds only signals every agent can observe, and what a role-specific extension adds — stated on its own terms and **not** grounded in a comparison to `docs/foundational/llm-wiki-*`, which is source material and is never cited as a requirement (FR-007)
 - [ ] T014 [US2] State in `FOUND` that a role may score on additional signals as a documented extension under these same thresholds, and that a page's score can therefore legitimately change when lint re-scores it (FR-006)
 - [ ] T015 [P] [US2] In `LINT` (`## Tag Taxonomy and Confidence Scoring`), state the extension explicitly: its two link-graph signals, the resulting `−4 … +3` range, that the shared thresholds apply to it unchanged, and the same re-score consequence `FOUND` states — applied always to the corrected count, never to a stale value on disk (FR-006)
 - [ ] T016 [P] [US2] In `QUERY` (`### Synthesis Page conventions`), replace the narrative confidence rule with the shared formula applied to the provenance of the pages the synthesis draws on, carrying the per-signal vocabulary mapping from [data-model.md](./data-model.md) — one explicit choice, never a third undeclared reading. Prescribe **no** aggregation rule for disagreeing signals: that weighting is the agent's judgment (FR-006a, FR-005)
 
-**Checkpoint**: US2 is complete when all three bands are reachable by more than one signal
-combination on both scales and every deviation is stated in both documents that carry it.
+**Checkpoint**: US2 is complete when the shared convention, lint's extension and query's synthesis
+treatment each state their signals and thresholds explicitly, every deviation is stated in both
+documents that carry it, and no document asserts a coherence property or an aggregation rule the
+agent is required to satisfy.
 
 ---
 
@@ -209,11 +218,11 @@ this feature's one real cost, and the three mandatory completeness audits.
 - [ ] T023 Re-capture every flagged scenario against a live provider (`EvalRunner capture --scenario <id>`, or the `eval.yml` workflow), then run `dotnet test backend/tests/Grimoire.AgentEvals` and re-run `status`; done when the replay suite is green across all four ADR-033 classes — `IngestReplayEvalTests`, `LintReplayEvalTests`, `QueryReplayEvalTests`, `RemediationReVerificationEvalTests` — and `status` exits 0 with no scenario left stale (SC-001, FR-012)
 - [ ] T024 Run `./scripts/test-fast.sh` and `dotnet test backend/tests/Grimoire.IntegrationTests`, expecting an unchanged pass including the ADR-053 composition tests — verbatim load, in order, fail-closed, per-document SHA-256 recorded; add no assertion here about what the documents now say (SC-002)
 - [ ] T025 Run the operator-loop validation in [quickstart.md](./quickstart.md) steps 5 and 6 against a scratch wiki and record the observations on the surfaces `plan.md ## Observability > Operator loop surfaces` names — created-page frontmatter, the `sources/` folder, citation resolution, the findings board at `frontend/src/routes/+page.svelte`, and the degraded run's report (SC-003, SC-004, SC-005, FR-010)
-- [ ] T026 Observability completeness audit (MANDATORY — Constitution Principles III & IV): cross-reference every row of `plan.md ## Observability` against its implementing task; all three tables declare **zero rows**, so confirm the feature emitted no new metric, log event or span and record that zero explicitly, plus the four existing metrics `plan.md` names as already covering these runs — file any gap found as a new task before declaring the DoD met (SC-002)
-- [ ] T027 Logging and trace contract CI enforcement (MANDATORY — Constitution Principle IV): with zero Structured Log Events and zero Distributed Trace Spans rows, no logging or trace implementation, test or CI task is derivable; record that explicitly at audit time so a reviewer can distinguish "no rows" from "rows forgotten", and confirm the standard PR pipeline is otherwise unchanged (SC-002)
+- [ ] T026 Observability completeness audit (MANDATORY — Constitution Principles III & IV): cross-reference every row of `plan.md ## Observability` against its implementing task; all three tables declare **no signal rows** (each carries only a `*(none added)*` placeholder), so confirm the feature emitted no new metric, log event or span and record that zero explicitly, plus the four existing metrics `plan.md` names as already covering these runs — file any gap found as a new task before declaring the DoD met (SC-002)
+- [ ] T027 Logging and trace contract CI enforcement (MANDATORY — Constitution Principle IV): with no Structured Log Event and no Distributed Trace Span rows declared, no logging or trace implementation, test or CI task is derivable; record that explicitly at audit time so a reviewer can distinguish "no rows" from "rows forgotten", and confirm the standard PR pipeline is otherwise unchanged (SC-002)
 - [ ] T028 Agent-behavior evaluation completeness audit (MANDATORY — Constitution Principles II, III & V): confirm this feature has **no high-stakes** agent-judgment success criterion, that SC-003, SC-004 and SC-005 are classified lower-stakes in `spec.md` with the argument stated and are covered by hermetic harness plumbing plus the user-reported correction loop with the surfaces `plan.md` names, that SC-001 and SC-002 are deterministic guarantees and SC-006 is a review outcome — and file any gap as a new task before the DoD is declared met (SC-003, SC-004, SC-005, SC-006)
 - [ ] T029 [P] File the `index.md` link-style drift as its own GitHub issue — `FOUND` requires `index.md` entries to use a markdown link, while `LINT` Step 4 counts `[[wikilink]]` occurrences there and calls dropping them the most common mistake — labelled per the `issue-triage` taxonomy; recorded in `spec.md ## Findings Recorded, Not Fixed Here` and deliberately not fixed by this feature (serves the spec's Findings section, no FR)
-- [ ] T030 [P] Decide and record what happens to the FR-005 wording defect found in [research.md](./research.md) R5 — that "every band reachable" is already satisfied by the status quo and so does not require the fix #110 asks for — by routing it through `/speckit-clarify` on the spec layer (`claude/grimoire-lifecycle-confidence-nmb3mu`, PR #236) or filing it as an issue; never by editing `spec.md` from this layer (FR-005)
+- [x] T030 [P] **Done 2026-09-10.** The FR-005 wording defect from [research.md](./research.md) R5 was routed through `/speckit-clarify` and resolved: the MUST criterion was **removed**, not tightened — confidence scoring is a means for the agent, and nothing about it needs deterministic verification. All three options offered (reachable by more than one combination; no band may require a perfect score; move it to a success criterion) were rejected along with the premise they shared. Run on this branch rather than the spec layer, on the author's explicit instruction that a stack overwrites downward and the change is more visible on the top PR; `/speckit-clarify` was still the mechanism, so the dated Clarifications entry, options framing and checklist re-validation all happened (FR-005)
 - [ ] T031 Run `/speckit-converge` against the whole feature and confirm the Definition of Done holds end to end (SC-006)
 
 ---
