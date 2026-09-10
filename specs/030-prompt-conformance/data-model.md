@@ -89,7 +89,7 @@ There is no transition that removes either field.
 
 ## Entity: Confidence convention
 
-Two scales, one threshold table. Both are stated in documents, never computed by code.
+Two scales, one threshold table. Both are stated in documents, never computed by code — and, after the 2026-09-10 clarification, never asserted by a requirement either: the convention is a judgment aid the agent applies, not a contract.
 
 ### Shared signal set — every agent
 
@@ -123,10 +123,15 @@ Lint applies these to the **corrected** count, never to a stale value on disk.
 | `medium` | −1 … 0 |
 | `low` | ≤ −2 |
 
-Reachability is verified for both ranges in [research.md](./research.md) R1. That the two scales
-share one threshold table is itself a decision and must be stated in the documents, alongside the
-consequence FR-006 requires: **a page's score can legitimately change when lint re-scores it**, and
-both documents say so.
+These numbers are a **recommendation with recorded reasoning**, not a verified property: FR-005
+states no MUST-level requirement about the convention's shape, so nothing checks how the bands come
+out. [research.md](./research.md) R1 works through how each band is reached on both ranges — that is
+the argument for choosing these cut points over the current `high ≥ 2`, which demands a perfect
+score, and it is why the numbers are what they are. It is not a test they pass.
+
+That the two scales share one threshold table is itself a decision and must be stated in the
+documents, alongside the consequence FR-006 requires: **a page's score can legitimately change when
+lint re-scores it**, and both documents say so.
 
 ### Query's synthesis pages
 

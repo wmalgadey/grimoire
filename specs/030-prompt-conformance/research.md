@@ -3,14 +3,23 @@
 Five questions had to be settled before the design could be written. Three were left to plan level
 by the spec on purpose; one is a constitutional question about whether this feature needs an ADR (it
 does not, and a drafted one was withdrawn); and one is a defect in the spec itself that this research
-found and deliberately did **not** fix here.
+found, refused to fix from here, and routed to `/speckit-clarify` — where it was resolved by
+removing the requirement rather than tightening it (R5).
 
 ---
 
-## R1 — What thresholds make the confidence convention coherent?
+## R1 — What thresholds make the confidence convention usable for the agent?
 
 **Decision**: `high` ≥ 1 · `medium` −1 … 0 · `low` ≤ −2, and **the same cut points apply to lint's
 extended scale**. Lint's two extra signals move a page's total; they do not move the boundaries.
+
+**Status of this decision after the 2026-09-10 clarification**: it is a **judgment about what makes
+the aid usable, not a criterion anything verifies**. FR-005 no longer states a MUST-level property
+about the convention's shape — confidence scoring is a means for the agent, and the agent is what
+evaluates it. The numbers below are therefore a recommendation carried into the instruction document,
+and the reachability analysis is the reasoning behind them rather than a test they pass. If they
+later read wrong in practice, the correction path is an instruction-file edit through the operator
+loop, not a spec gate.
 
 **Rationale.** The shared convention after D2 carries five observable signals — two positive
 (three or more independent sources; a book or official documentation) and three negative (a
@@ -139,28 +148,39 @@ plus a named surface per criterion, which is what `plan.md` carries.
 
 ---
 
-## R5 — A defect in FR-005, found while computing R1, and deliberately not fixed here
+## R5 — A defect in FR-005, found while computing R1, and since resolved by clarification
 
-**Finding**: FR-005 says the convention "MUST be internally coherent: every band its thresholds
-define MUST be reachable from the signals it lists." **The status quo already satisfies that.** On
-the current `−3 … +2` range with `high ≥ 2`, the `high` band *is* reachable — at exactly `+2`. So
-FR-005, read literally, does not require the fix that issue #110 asks for.
+**Finding (2026-09-09)**: FR-005 said the convention "MUST be internally coherent: every band its
+thresholds define MUST be reachable from the signals it lists." **The status quo already satisfied
+that.** On the `−3 … +2` range with `high ≥ 2`, the `high` band *is* reachable — at exactly `+2`. So
+FR-005, read literally, did not require the fix issue #110 asks for.
 
 The actual defect #110 reports is narrower and sharper: `high` requires a **perfect score** — both
 positive signals firing and no negative one. "Reachable" and "reasonably reachable" are different
-properties, and the requirement as written only demands the first.
+properties, and the requirement as written only demanded the first.
 
-**This research does not change FR-005.** Editing a requirement from the plan layer is exactly the
-mistake `CLAUDE.md` records feature 026 making: it makes the layers agree with each other while
-skipping the mechanism that makes a requirements change visible as a decision. The correct route is
-`/speckit-clarify` on the spec layer (`claude/grimoire-lifecycle-confidence-nmb3mu`, PR #236),
-followed by rebasing this layer onto the corrected spec.
+**Resolution (2026-09-10)**: routed through `/speckit-clarify`, and the answer rejected the premise
+this research had assumed. Three options were offered, all of which would have *tightened* FR-005
+(reachable by more than one combination; no band may require a perfect score; move the property to a
+success criterion). The decision was **none of them: no MUST criteria for linting or for confidence
+at all.** The convention is a means for the agent to exercise judgment; nothing here needs to be
+deterministically verified or guaranteed.
 
-**Impact if left as-is**: low but real. R1's thresholds satisfy FR-005 comfortably, so the
-implementation is not blocked and the delivered documents will be correct. The exposure is that a
-future change could weaken the thresholds back toward a single-point `high` band without violating
-FR-005 as written — the requirement would not catch the regression it was written to prevent.
+That closes the defect by **removing** the criterion rather than sharpening it, and it is the better
+resolution for a reason this research had not weighed: every option on the table would have written a
+checkable property about the shape of an LLM's judgment aid, which is the same category error as
+asserting a deterministic contract over agent behaviour. The exposure the finding named — that a
+future change could weaken the thresholds without violating FR-005 — is real and is now accepted
+deliberately: it surfaces as an operator reading confidence scores that look wrong (Constitution
+Principle II's user-reported correction loop), not as a red gate.
 
-**Recommended wording, if the user chooses to route it through `/speckit-clarify`**: require that
-every band be reachable by *more than one combination* of the listed signals, which is the property
-R1's table actually demonstrates and which the status quo fails.
+**What still happens in this feature**: the thresholds change. `high ≥ 2` on a `−3 … +2` range
+demands a perfect score, which is #110's actual complaint, and R1's numbers replace it. That change
+is now a recorded judgment in these planning artifacts rather than a requirement `spec.md` enforces.
+
+**A note on process, since the first version of this section got it half right.** The finding
+correctly refused to edit `spec.md` from the plan layer and routed the question to
+`/speckit-clarify`. It was wrong only in assuming the fix had to be a *stronger* requirement — it
+proposed the "more than one combination" wording as the recommended answer. Asking the question was
+what surfaced the better option; had this research patched FR-005 itself, the spec would have gained
+a criterion the user did not want.

@@ -15,8 +15,8 @@ nothing else.
 Concretely: the shared frontmatter standard gains the two lifecycle fields lint already consumes
 (`inbound_links`, `last_reviewed`) with a per-field statement of which run writes each; the shared
 confidence convention is reduced to the signals every agent can actually observe and its thresholds
-re-baselined so all three bands are reachable, with lint's link-graph signals kept as a documented
-extension and query's narrative variant reconciled; and the ingest role document gains the
+re-baselined so the bands are usefully distributed rather than demanding a perfect score, with lint's
+link-graph signals kept as a documented extension and query's narrative variant reconciled; and the ingest role document gains the
 `sources/<slug>.md` requirement plus a corrected, self-justifying integration-depth expectation.
 
 **The technical approach is that there is no technical approach.** Every requirement in the spec is
@@ -53,7 +53,11 @@ which adds a small constant to every agent's system prompt on every run.
 
 **Constraints**: Principle V is the binding one — none of this may be reimplemented as backend code,
 and no deterministic test may assert what the documents say. FR-010a additionally forbids
-implementing the degradation behaviour as a harness check on instruction-document content.
+implementing the degradation behaviour as a harness check on instruction-document content. The
+2026-09-10 clarifications add a second constraint of the same family, aimed at the *documents* rather
+than the harness: **the confidence convention carries no MUST-level property and no aggregation
+rule** (FR-005, FR-006a). It is a judgment aid handed to an agent, so neither this plan nor the
+instruction documents may turn it into a formula the agent executes or a shape anything verifies.
 
 **Scale/Scope**: four instruction documents
 (`Grimoire.AgentRuntime/Instructions/foundation-prompt.md` plus the ingest, lint and query
@@ -76,6 +80,7 @@ No ADR is added: see *Architectural Constraints & ADRs* below.
 | **IV — Unapproved infrastructure** | Pass | None introduced. |
 | **V — Agentic core** | Pass, and this is the point | Every behaviour this feature changes is wiki-content judgment and lands exclusively in instruction files. The Agentic Boundary table below assigns each capability. |
 | **V — Instruction-file content is not deterministically tested** | Pass | Stated as a constraint in three places and carried into the Test Strategy: the only deterministic coverage is load-mechanism, which already exists and is unchanged. |
+| **V — Judgment aids are not turned into deterministic rules** | Pass, after a correction | The 2026-09-10 clarifications removed FR-005's coherence MUST and withdrew this plan's own "weakest reading wins" aggregation rule for synthesis confidence. Both were prescriptions over an agent's judgment aid. The thresholds survive as a recommendation with recorded reasoning (research.md R1); nothing verifies them. |
 
 **Result: PASS.** No ADR gate blocks `/speckit-tasks`.
 
@@ -130,9 +135,9 @@ adapter namespace, and no containment rule.
 | Which lifecycle fields a page carries, and their meaning | Agentic core | `Grimoire.AgentRuntime/Instructions/foundation-prompt.md` (frontmatter standard) |
 | Which run writes each lifecycle field | Agentic core | foundation document, stated per field (FR-002a) |
 | What counts as a review, for writing the review date | Agentic core | `Grimoire.LintAgent/Instructions/system-prompt.md` (FR-002b, FR-002d, FR-002e) |
-| The confidence signal set and its thresholds | Agentic core | foundation document (FR-005, FR-006) |
+| The confidence signal set and its thresholds | Agentic core | foundation document (FR-005, FR-006) — stated as a judgment aid; no MUST property, and nothing verifies the band distribution |
 | Lint's link-graph confidence extension and its own thresholds | Agentic core | lint role document (FR-006) |
-| How synthesis-page confidence is scored | Agentic core | `Grimoire.QueryAgent/Instructions/system-prompt.md` (FR-006a) |
+| How synthesis-page confidence is scored | Agentic core | `Grimoire.QueryAgent/Instructions/system-prompt.md` (FR-006a) — the *choice* of the shared formula over a narrative rule is stated; the weighting where inherited signals disagree is left to the agent |
 | Producing a source-summary page and keeping citations resolvable | Agentic core | `Grimoire.IngestAgent/Instructions/system-prompt.md` (FR-008) |
 | Integration-depth expectation | Agentic core | foundation + ingest role documents (FR-009) |
 | Degrading when the foundation document is silent | Agentic core | lint role document (FR-010) |
