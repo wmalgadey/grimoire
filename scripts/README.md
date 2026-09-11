@@ -22,6 +22,11 @@ only.
   test-suite audit (issues #180, #181): per-test runtime from TRX, infrastructure
   classification, tier inventory, test/production change coupling, and a scoped Stryker run
   over the guardrail surface. Not a gate.
+- [`token-report.py`](token-report.py) — counts the tracked tree in LLM tokens, grouped by
+  area (backend production/tests, frontend, specs, docs) and optionally per .NET project.
+  Answers "how much context would this cost to read?". Needs `pip install tiktoken`, which
+  is OpenAI's BPE, not Anthropic's — the absolute numbers are an approximation and only the
+  ratios between areas, or one area over time, are worth reading. Not a gate.
 - [`ci/`](ci) — helpers the workflows in `.github/workflows/` call.
 - [`nim/`](nim) — the LiteLLM/NVIDIA NIM proxy used to run agent evals without an
   Anthropic subscription (`specs/007-eval-tests-nim-endpoint/quickstart.md`).
