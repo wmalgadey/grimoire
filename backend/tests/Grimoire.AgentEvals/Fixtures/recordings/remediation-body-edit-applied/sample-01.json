@@ -1,12 +1,12 @@
 {
   "schema_version": 1,
   "sample": 1,
-  "task_id": "capture-remediation-body-edit-applied-01-4624c9ed525c40498946b9391fd9842e",
+  "task_id": "capture-remediation-body-edit-applied-01-01927262857a4fc6a322b5920a91b5ac",
   "model": "claude-haiku-4-5",
   "turns": [
     {
       "turn": 1,
-      "system_prompt_sha256": "sha256:804b06269d6482163cb3be90abdbf86a48a36e7dbc77c22cb4c4125d31ced9c8",
+      "system_prompt_sha256": "sha256:151884fc35e8179f6cc1ea8e7c0b1f068c30237b565801b2ff891b95d979bb7d",
       "conversation": [
         {
           "role": "user",
@@ -24,18 +24,18 @@
       "stop_reason": "tool_use",
       "tool_uses": [
         {
-          "tool_use_id": "toolu_01EwJfbdM7Dx18e4xCTWB1yw",
+          "tool_use_id": "toolu_01CaRKJe7VgLdpdcWXCTxzBb",
           "tool_name": "search_files",
-          "input_json": "{\u0022pattern\u0022: \u0022cache-ttl\u0022}"
+          "input_json": "{\u0022pattern\u0022: \u0022cache-ttl\\\\.md\u0022}"
         }
       ],
-      "assistant_text": "I\u0027ll re-verify this proposal against the current content of the target page, then apply the fix if it\u0027s still applicable.",
-      "input_tokens": 13686,
-      "output_tokens": 83
+      "assistant_text": "I\u0027ll start by re-verifying the current content of the target page against the proposal.",
+      "input_tokens": 16662,
+      "output_tokens": 78
     },
     {
       "turn": 2,
-      "system_prompt_sha256": "sha256:804b06269d6482163cb3be90abdbf86a48a36e7dbc77c22cb4c4125d31ced9c8",
+      "system_prompt_sha256": "sha256:151884fc35e8179f6cc1ea8e7c0b1f068c30237b565801b2ff891b95d979bb7d",
       "conversation": [
         {
           "role": "user",
@@ -43,11 +43,11 @@
         },
         {
           "role": "assistant",
-          "content_sha256": "sha256:08962e55a36ed988992607e6dd5f44d07a3873b3426de3f74bd0a4cac5366c00"
+          "content_sha256": "sha256:da6b23663331c66fa26f8551528a400a8d6d924ecc100998e109da77365c2ae5"
         },
         {
           "role": "user",
-          "content_sha256": "sha256:dba9d277acb1849441b87bdd71d8668dbca0b53ab5d260bd1218a63e6b7eb540"
+          "content_sha256": "sha256:1025f7789b9f555f60e773df81f89a2ef528091d95af4c206c4b7ccfdd163944"
         }
       ],
       "tool_names": [
@@ -61,63 +61,18 @@
       "stop_reason": "tool_use",
       "tool_uses": [
         {
-          "tool_use_id": "toolu_01W74pv2XHZuvxLYWznzP737",
-          "tool_name": "read_file",
-          "input_json": "{\u0022path\u0022: \u0022concepts/cache-ttl.md\u0022}"
-        }
-      ],
-      "assistant_text": "Now let me read the full page to verify the current content:",
-      "input_tokens": 13806,
-      "output_tokens": 74
-    },
-    {
-      "turn": 3,
-      "system_prompt_sha256": "sha256:804b06269d6482163cb3be90abdbf86a48a36e7dbc77c22cb4c4125d31ced9c8",
-      "conversation": [
-        {
-          "role": "user",
-          "content_sha256": "sha256:08fbe25f49334f5aea7a2f962c0a87ca93e30ad536bba6f28e870fce6cc4a118"
-        },
-        {
-          "role": "assistant",
-          "content_sha256": "sha256:08962e55a36ed988992607e6dd5f44d07a3873b3426de3f74bd0a4cac5366c00"
-        },
-        {
-          "role": "user",
-          "content_sha256": "sha256:dba9d277acb1849441b87bdd71d8668dbca0b53ab5d260bd1218a63e6b7eb540"
-        },
-        {
-          "role": "assistant",
-          "content_sha256": "sha256:08e1d817ff8254c4a542b03204cbcd88c4dc0a2041320c4f23e287f7e7c2fb2b"
-        },
-        {
-          "role": "user",
-          "content_sha256": "sha256:1db79beba6ab34f6ba77a97b588f8bc3b7c3cef32a5e431f9f5a998ba530aaf5"
-        }
-      ],
-      "tool_names": [
-        "list_files",
-        "read_file",
-        "search_files",
-        "batch",
-        "write_file",
-        "delete_file"
-      ],
-      "stop_reason": "tool_use",
-      "tool_uses": [
-        {
-          "tool_use_id": "toolu_01XfoauGm2WsKHFEeCFy71zC",
+          "tool_use_id": "toolu_01MHkwzn2TQ6ePYRWNYxYq12",
           "tool_name": "list_files",
           "input_json": "{\u0022path\u0022: \u0022.\u0022}"
         }
       ],
-      "assistant_text": "Let me search more broadly for the file:",
-      "input_tokens": 13912,
+      "assistant_text": "Let me search more broadly for this page:",
+      "input_tokens": 16755,
       "output_tokens": 62
     },
     {
-      "turn": 4,
-      "system_prompt_sha256": "sha256:804b06269d6482163cb3be90abdbf86a48a36e7dbc77c22cb4c4125d31ced9c8",
+      "turn": 3,
+      "system_prompt_sha256": "sha256:151884fc35e8179f6cc1ea8e7c0b1f068c30237b565801b2ff891b95d979bb7d",
       "conversation": [
         {
           "role": "user",
@@ -125,27 +80,19 @@
         },
         {
           "role": "assistant",
-          "content_sha256": "sha256:08962e55a36ed988992607e6dd5f44d07a3873b3426de3f74bd0a4cac5366c00"
+          "content_sha256": "sha256:da6b23663331c66fa26f8551528a400a8d6d924ecc100998e109da77365c2ae5"
         },
         {
           "role": "user",
-          "content_sha256": "sha256:dba9d277acb1849441b87bdd71d8668dbca0b53ab5d260bd1218a63e6b7eb540"
+          "content_sha256": "sha256:1025f7789b9f555f60e773df81f89a2ef528091d95af4c206c4b7ccfdd163944"
         },
         {
           "role": "assistant",
-          "content_sha256": "sha256:08e1d817ff8254c4a542b03204cbcd88c4dc0a2041320c4f23e287f7e7c2fb2b"
+          "content_sha256": "sha256:def10ff31334c5a5345ab62f0512d472297488b3b05cc55420f1a0da62b5b09b"
         },
         {
           "role": "user",
-          "content_sha256": "sha256:1db79beba6ab34f6ba77a97b588f8bc3b7c3cef32a5e431f9f5a998ba530aaf5"
-        },
-        {
-          "role": "assistant",
-          "content_sha256": "sha256:f8a46f83586e6c89f92d00a45e264d67064b28d5dfbba7fb31f32e73de21a72a"
-        },
-        {
-          "role": "user",
-          "content_sha256": "sha256:d0fde16f43c63b8eb9f89af660a472e420de154f5360305e4207be366658e5c9"
+          "content_sha256": "sha256:a26893cd481029c49b32bf57cf15578b8bf33eb520006cd2f81d36338711a8b0"
         }
       ],
       "tool_names": [
@@ -159,18 +106,18 @@
       "stop_reason": "tool_use",
       "tool_uses": [
         {
-          "tool_use_id": "toolu_01AJ25NdnytX4eTKZUvmDV63",
+          "tool_use_id": "toolu_01WbLoLPkM2o1mmfXKqDdwGU",
           "tool_name": "read_file",
           "input_json": "{\u0022path\u0022: \u0022cache-ttl.md\u0022}"
         }
       ],
-      "assistant_text": "The file is at the wiki root. Let me read it:",
-      "input_tokens": 13996,
+      "assistant_text": "Found it. Let me read the full content of the page:",
+      "input_tokens": 16839,
       "output_tokens": 72
     },
     {
-      "turn": 5,
-      "system_prompt_sha256": "sha256:804b06269d6482163cb3be90abdbf86a48a36e7dbc77c22cb4c4125d31ced9c8",
+      "turn": 4,
+      "system_prompt_sha256": "sha256:151884fc35e8179f6cc1ea8e7c0b1f068c30237b565801b2ff891b95d979bb7d",
       "conversation": [
         {
           "role": "user",
@@ -178,35 +125,27 @@
         },
         {
           "role": "assistant",
-          "content_sha256": "sha256:08962e55a36ed988992607e6dd5f44d07a3873b3426de3f74bd0a4cac5366c00"
+          "content_sha256": "sha256:da6b23663331c66fa26f8551528a400a8d6d924ecc100998e109da77365c2ae5"
         },
         {
           "role": "user",
-          "content_sha256": "sha256:dba9d277acb1849441b87bdd71d8668dbca0b53ab5d260bd1218a63e6b7eb540"
+          "content_sha256": "sha256:1025f7789b9f555f60e773df81f89a2ef528091d95af4c206c4b7ccfdd163944"
         },
         {
           "role": "assistant",
-          "content_sha256": "sha256:08e1d817ff8254c4a542b03204cbcd88c4dc0a2041320c4f23e287f7e7c2fb2b"
+          "content_sha256": "sha256:def10ff31334c5a5345ab62f0512d472297488b3b05cc55420f1a0da62b5b09b"
         },
         {
           "role": "user",
-          "content_sha256": "sha256:1db79beba6ab34f6ba77a97b588f8bc3b7c3cef32a5e431f9f5a998ba530aaf5"
+          "content_sha256": "sha256:a26893cd481029c49b32bf57cf15578b8bf33eb520006cd2f81d36338711a8b0"
         },
         {
           "role": "assistant",
-          "content_sha256": "sha256:f8a46f83586e6c89f92d00a45e264d67064b28d5dfbba7fb31f32e73de21a72a"
+          "content_sha256": "sha256:315962e14b371bff1e947553bf10d898e719fbce8b6a38d458d451ccf8e8ecaf"
         },
         {
           "role": "user",
-          "content_sha256": "sha256:d0fde16f43c63b8eb9f89af660a472e420de154f5360305e4207be366658e5c9"
-        },
-        {
-          "role": "assistant",
-          "content_sha256": "sha256:b8f1efa2dfccb41b77e7099b49c1f5bacefcda731a369e1a35d6035a351024cd"
-        },
-        {
-          "role": "user",
-          "content_sha256": "sha256:15126009b825d00bd5051b707f9f0cbfbb73b9893040c160d7c71abe094f33f6"
+          "content_sha256": "sha256:9bb96b00b7010fe580ee0af5acf0c9901bcae52a9abec4dd7079ccb8f8158cb4"
         }
       ],
       "tool_names": [
@@ -220,18 +159,18 @@
       "stop_reason": "tool_use",
       "tool_uses": [
         {
-          "tool_use_id": "toolu_016oYuvvT4mJ7Ktdn7JixavZ",
-          "tool_name": "write_file",
-          "input_json": "{\u0022path\u0022: \u0022cache-ttl.md\u0022, \u0022content\u0022: \u0022---\\ntype: Concept\\ntitle: Cache TTL Defaults\\ndescription: The default time-to-live applied to cache entries when none is set explicitly.\\ntimestamp: 2026-05-01T00:00:00Z\\ntags:\\n  - concept/Caching\\n  - tech/dotnet\\nconfidence: medium\\nconfidence_reason: \\\u0022Fixture data, not a real source.\\\u0022\\ninbound_links: 1\\n---\\n\\n# Cache TTL Defaults\\n\\nWhen a cache entry is written without an explicit expiry, the runtime applies a default\\ntime-to-live of 300 seconds. Callers that need an entry to survive longer must set the\\nexpiry themselves at write time.\\n\\n## Choosing a value\\n\\nThe default suits read-heavy workloads whose upstream data changes slowly. Workloads that\\ntolerate staleness poorly should set a shorter expiry explicitly rather than relying on\\nit. Cache entries written through the batch import path are exempt and never expire.\\n\u0022}"
+          "tool_use_id": "toolu_01JjoX5wHf9hrR853z6zKyjV",
+          "tool_name": "read_file",
+          "input_json": "{\u0022path\u0022: \u0022cache-ttl.md\u0022}"
         }
       ],
-      "assistant_text": "### Step 1: Re-verify against current content\n\nThe page\u0027s current body states: \u0022the runtime applies a default time-to-live of **30 seconds**\u0022.\n\nAccording to the proposal, this is incorrect and should be **300 seconds**.\n\nThe problem described in the proposal **is still present** \u2014 the page currently asserts the wrong value (30 seconds instead of 300 seconds). This proposal is **still applicable**.\n\n### Step 2: Apply the fix\n\nI will now correct the stated default from 30 seconds to 300 seconds in the body, leaving all other content unchanged.",
-      "input_tokens": 14299,
-      "output_tokens": 424
+      "assistant_text": "### Step 1: Re-verify against current content\n\nThe page currently states: \u0022the runtime applies a default time-to-live of 30 seconds.\u0022 The proposal describes this as incorrect and states the correct value is 300 seconds. This problem statement matches exactly what I observe in the page\u0027s current content.\n\n**Status: Still applicable.**\n\n### Step 2: Apply the fix\n\nI\u0027ll now read the file once more immediately before writing (as required by **Before any write**), then apply the correction:",
+      "input_tokens": 17142,
+      "output_tokens": 168
     },
     {
-      "turn": 6,
-      "system_prompt_sha256": "sha256:804b06269d6482163cb3be90abdbf86a48a36e7dbc77c22cb4c4125d31ced9c8",
+      "turn": 5,
+      "system_prompt_sha256": "sha256:151884fc35e8179f6cc1ea8e7c0b1f068c30237b565801b2ff891b95d979bb7d",
       "conversation": [
         {
           "role": "user",
@@ -239,43 +178,104 @@
         },
         {
           "role": "assistant",
-          "content_sha256": "sha256:08962e55a36ed988992607e6dd5f44d07a3873b3426de3f74bd0a4cac5366c00"
+          "content_sha256": "sha256:da6b23663331c66fa26f8551528a400a8d6d924ecc100998e109da77365c2ae5"
         },
         {
           "role": "user",
-          "content_sha256": "sha256:dba9d277acb1849441b87bdd71d8668dbca0b53ab5d260bd1218a63e6b7eb540"
+          "content_sha256": "sha256:1025f7789b9f555f60e773df81f89a2ef528091d95af4c206c4b7ccfdd163944"
         },
         {
           "role": "assistant",
-          "content_sha256": "sha256:08e1d817ff8254c4a542b03204cbcd88c4dc0a2041320c4f23e287f7e7c2fb2b"
+          "content_sha256": "sha256:def10ff31334c5a5345ab62f0512d472297488b3b05cc55420f1a0da62b5b09b"
         },
         {
           "role": "user",
-          "content_sha256": "sha256:1db79beba6ab34f6ba77a97b588f8bc3b7c3cef32a5e431f9f5a998ba530aaf5"
+          "content_sha256": "sha256:a26893cd481029c49b32bf57cf15578b8bf33eb520006cd2f81d36338711a8b0"
         },
         {
           "role": "assistant",
-          "content_sha256": "sha256:f8a46f83586e6c89f92d00a45e264d67064b28d5dfbba7fb31f32e73de21a72a"
+          "content_sha256": "sha256:315962e14b371bff1e947553bf10d898e719fbce8b6a38d458d451ccf8e8ecaf"
         },
         {
           "role": "user",
-          "content_sha256": "sha256:d0fde16f43c63b8eb9f89af660a472e420de154f5360305e4207be366658e5c9"
+          "content_sha256": "sha256:9bb96b00b7010fe580ee0af5acf0c9901bcae52a9abec4dd7079ccb8f8158cb4"
         },
         {
           "role": "assistant",
-          "content_sha256": "sha256:b8f1efa2dfccb41b77e7099b49c1f5bacefcda731a369e1a35d6035a351024cd"
+          "content_sha256": "sha256:03d93ed1b70ab792f57a1778554bcbe813792e6aa6001801462c48416c4a4b8f"
         },
         {
           "role": "user",
-          "content_sha256": "sha256:15126009b825d00bd5051b707f9f0cbfbb73b9893040c160d7c71abe094f33f6"
+          "content_sha256": "sha256:100e771c2a538362b747508df63951ef9186e97c78d9bdb1a45d68901d24f666"
+        }
+      ],
+      "tool_names": [
+        "list_files",
+        "read_file",
+        "search_files",
+        "batch",
+        "write_file",
+        "delete_file"
+      ],
+      "stop_reason": "tool_use",
+      "tool_uses": [
+        {
+          "tool_use_id": "toolu_01G9fbtEidSG4EXDCDUYAg9i",
+          "tool_name": "write_file",
+          "input_json": "{\u0022path\u0022: \u0022cache-ttl.md\u0022, \u0022content\u0022: \u0022---\\ntype: Concept\\ntitle: Cache TTL Defaults\\ndescription: The default time-to-live applied to cache entries when none is set explicitly.\\ntimestamp: 2026-05-01T00:00:00Z\\ntags:\\n  - concept/Caching\\n  - tech/dotnet\\nconfidence: medium\\nconfidence_reason: \\\u0022Fixture data, not a real source.\\\u0022\\ninbound_links: 1\\n---\\n\\n# Cache TTL Defaults\\n\\nWhen a cache entry is written without an explicit expiry, the runtime applies a default\\ntime-to-live of 300 seconds. Callers that need an entry to survive longer must set the\\nexpiry themselves at write time.\\n\\n## Choosing a value\\n\\nThe default suits read-heavy workloads whose upstream data changes slowly. Workloads that\\ntolerate staleness poorly should set a shorter expiry explicitly rather than relying on\\nit. Cache entries written through the batch import path are exempt and never expire.\\n\u0022}"
+        }
+      ],
+      "assistant_text": "Now I\u0027ll write the corrected version with only the TTL value changed from 30 to 300 seconds:",
+      "input_tokens": 17541,
+      "output_tokens": 319
+    },
+    {
+      "turn": 6,
+      "system_prompt_sha256": "sha256:151884fc35e8179f6cc1ea8e7c0b1f068c30237b565801b2ff891b95d979bb7d",
+      "conversation": [
+        {
+          "role": "user",
+          "content_sha256": "sha256:08fbe25f49334f5aea7a2f962c0a87ca93e30ad536bba6f28e870fce6cc4a118"
         },
         {
           "role": "assistant",
-          "content_sha256": "sha256:dae4ba5bd4f3d35ebd16ff5365afac9160c62e6aea72e5454f4c39bab65662b1"
+          "content_sha256": "sha256:da6b23663331c66fa26f8551528a400a8d6d924ecc100998e109da77365c2ae5"
         },
         {
           "role": "user",
-          "content_sha256": "sha256:a292d05293aea66d38a5e4c40afd51e4cfe2ac1b85540bbfc6a463617e13dbc1"
+          "content_sha256": "sha256:1025f7789b9f555f60e773df81f89a2ef528091d95af4c206c4b7ccfdd163944"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:def10ff31334c5a5345ab62f0512d472297488b3b05cc55420f1a0da62b5b09b"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:a26893cd481029c49b32bf57cf15578b8bf33eb520006cd2f81d36338711a8b0"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:315962e14b371bff1e947553bf10d898e719fbce8b6a38d458d451ccf8e8ecaf"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:9bb96b00b7010fe580ee0af5acf0c9901bcae52a9abec4dd7079ccb8f8158cb4"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:03d93ed1b70ab792f57a1778554bcbe813792e6aa6001801462c48416c4a4b8f"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:100e771c2a538362b747508df63951ef9186e97c78d9bdb1a45d68901d24f666"
+        },
+        {
+          "role": "assistant",
+          "content_sha256": "sha256:62ed3ed2eabd0d1d28d4dee9ac25742fa2bc2679175038b920c0bd8bf95836b0"
+        },
+        {
+          "role": "user",
+          "content_sha256": "sha256:bd5a742630c4fdd60efbc595ffb90cb9ca02024670759c496ca502c99da433e4"
         }
       ],
       "tool_names": [
@@ -288,9 +288,9 @@
       ],
       "stop_reason": "end_turn",
       "tool_uses": [],
-      "assistant_text": "### Step 3: Report the outcome\n\nThe correction has been successfully applied. The default cache TTL statement in the page body has been changed from 30 seconds to 300 seconds. No other content was modified.\n\n\u0060\u0060\u0060remediation-outcome\n{\u0022outcome\u0022: \u0022applied\u0022, \u0022reason\u0022: null}\n\u0060\u0060\u0060",
-      "input_tokens": 14743,
-      "output_tokens": 69
+      "assistant_text": "### Step 3: Report the outcome\n\n\u0060\u0060\u0060remediation-outcome\n{\u0022outcome\u0022: \u0022applied\u0022, \u0022reason\u0022: null}\n\u0060\u0060\u0060",
+      "input_tokens": 17880,
+      "output_tokens": 31
     }
   ],
   "outcome": {

@@ -81,6 +81,30 @@ The `type` column is the exact, required value for that page's frontmatter `type
 A single source may produce pages of multiple types (e.g. a book produces a source summary page in
 `sources/`, a concept page in `concepts/`, and an author person page in `people/`).
 
+#### How deep integration goes
+
+**A source typically touches 10–15 pages.** Integrating a source means rippling what it says through
+every page it bears on, of **any** type in the Page Types table above — concepts, people,
+organisations and technologies most often, but tools, events, hobbies and personal notes just as
+much when the source touches them — not filing one summary and calling it done. A source that touched only two or three pages was almost certainly read as a
+document to be summarised rather than as material to be woven in; that is the failure this number
+guards against. The `Source summary` page for the source counts toward the total, so the topic pages
+are the remainder.
+
+**It is a typical depth, not a quota.** Some sources genuinely are narrow, and the right number for a
+narrow source is the number of pages it honestly bears on. Never manufacture a connection to reach
+ten: a page linked for the sake of the count is worse than no link, because it makes the wiki assert
+a relationship that is not there, and a reader who follows it finds nothing — which costs more trust
+than a missing link ever does.
+
+**Nothing downstream will catch padding for you.** Do not expect the confidence convention to punish
+it: that convention scores how well a *page* is sourced, not how honestly it is linked, so an invented
+connection is invisible to it. Where a role scores on inbound links, padding would if anything push a
+score *up*. This rule holds because you follow it, not because something checks it.
+
+If a source lands well under the range, integrate it as far as it goes and say so in the run's own
+summary. Deliberate shallowness that is stated is fine; padding is not.
+
 ### Page Language
 
 Write each page in the same language as its primary source — German or English. Do not translate
@@ -89,25 +113,37 @@ write it in the language of the dominant or most-authoritative source.
 
 ### Frontmatter Standard
 
-Every wiki page except `index.md` and `log.md` requires this YAML frontmatter block:
+Every wiki page except `index.md` and `log.md` requires this YAML frontmatter block. The fields are
+grouped below by what they are *for*. The grouping is a reading aid and a way to decide where a new
+field belongs — YAML itself knows nothing about it, and the comments are illustrative.
 
 ```yaml
 ---
-type: Technology                     # exact value from the Page Types table
+# Identity — what this page is
+type: Technology                      # exact value from the Page Types table
 title: Example Technology             # human-readable display name
 description: One-sentence summary of what this page covers.
+
+# Provenance — where it came from
 timestamp: 2026-07-14T00:00:00Z       # ISO 8601, set on every create/update
+
+# Classification — how it is found
 tags:
   - tech/ExampleTech
   - concept/ExampleConcept
+
+# Assessment — how far it can be trusted
 confidence: medium
 confidence_reason: "One authoritative source; no corroboration yet."
+
+# Lifecycle — how it is maintained over time
+inbound_links: 3
 ---
 ```
 
 `type` is OKF-required; `title`, `description`, and `timestamp` are OKF-recommended; `tags`,
-`confidence`, and `confidence_reason` are Grimoire-specific extensions. Always populate all of them
-regardless — they cost nothing and make the page usable by any future consumer.
+`confidence`, `confidence_reason`, and `inbound_links` are Grimoire-specific extensions. Always
+populate all of them regardless — they cost nothing and make the page usable by any future consumer.
 
 Optional fields (add when applicable):
 
@@ -115,6 +151,7 @@ Optional fields (add when applicable):
 resource: https://example.com/original-source   # canonical URI of the underlying source/asset, if there is one!
 superseded_by: "[[new-page-slug]]"               # only when this page is being superseded
 supersedes: "[[old-page-slug]]"                  # only when this page replaces an older one
+last_reviewed: 2026-07-20                        # Lifecycle — present only once the page has been reviewed
 ```
 
 Set `resource` on `Source summary` pages (link to the original source) and on `Technology`/`Tool`
@@ -123,6 +160,43 @@ pages where an authoritative official-docs URL exists.
 `superseded_by` and `supersedes` hold wikilinks, same syntax as everywhere else in the wiki — use
 the bare page slug, not the folder path (Obsidian-style resolution works by filename regardless of
 which folder the page lives in).
+
+#### The Lifecycle fields
+
+These two carry how a page is maintained over time rather than what it says. Which run writes which
+is stated per field, because they are not written on the same occasion.
+
+**`inbound_links`** — the number of `[[wikilink]]` occurrences naming this page **anywhere in** all
+*other* files in the wiki, including `index.md` and `log.md`. *Anywhere* means the whole file, body
+and frontmatter alike: a `supersedes` or `superseded_by` wikilink is an occurrence like any other.
+Self-references never count. Repeats from the same file each count separately. This is the canonical
+definition; anywhere else that counts inbound links means exactly this and refers here rather than
+restating it.
+
+- **Written by**: every run that creates a page, and corrected by any run that recomputes the count.
+- **At creation the value is provisional, and knowingly so.** A creating run writes the best count it
+  can observe — for a run that integrates a source, the links that run itself wrote. No creating run
+  sees the whole link graph: it reads `index.md` and the pages its work overlaps with, not every file
+  in the wiki, so a pre-existing incoming link, or one another file adds in the same run, can make the
+  stored value wrong the moment it is written. Write it anyway. A provisional count is more useful
+  than an absent one, and being provisional is exactly why it is worth correcting later.
+- **Provisional does not mean protected.** A run that can see the whole link graph recomputes the
+  count and corrects the stored value; nothing about the creating run's number forbids that.
+- **Absent is not zero.** A page with no `inbound_links` field has never had one written; a page with
+  `inbound_links: 0` has been counted and found to be an orphan. They mean different things.
+
+**`last_reviewed`** — the date on which this page was last reviewed, as `YYYY-MM-DD`.
+
+- **Written by**: a run that actually reviewed the page, and by no other run. A run that creates or
+  updates a page without reviewing it does not write this field — not on create, not on update.
+- **Its presence is its meaning.** The field exists on a page if and only if that page has been
+  reviewed. A page that has never been reviewed simply does not carry it, and anything measuring how
+  long ago a page was looked at falls back to `timestamp` in that case. Read that fallback for what
+  it is: `timestamp` is rewritten on every create *and update*, so it says when the page was last
+  *written*, not when it arrived. For a never-reviewed page it is the best available proxy and it
+  errs in a knowable direction — a page that keeps being updated looks fresher than its review
+  history warrants. It is a proxy, not an arrival date, and nothing should claim otherwise.
+- What counts as a review is stated by the role that performs reviews, not here.
 
 Do **not** omit frontmatter — `type` is the one field every page must have.
 
@@ -146,7 +220,12 @@ Introduce new prefixes only when none of the above fits.
 
 Score confidence as `high`, `medium`, or `low`, with a brief human-readable reason.
 
-**Scoring:**
+The score is a judgment you make with help, not a formula you execute. The signals and thresholds
+below exist so that two agents looking at the same evidence land in the same place and a reader can
+tell why a page scored what it did. Where they do not settle a case, judge it — and say what you
+judged in `confidence_reason`.
+
+**Signals** — these are the ones *every* role can observe, which is why they are stated here:
 
 | Signal | Points |
 |--------|--------|
@@ -156,7 +235,22 @@ Score confidence as `high`, `medium`, or `low`, with a brief human-readable reas
 | Page contains an explicit contradiction marker (⚠️) | −1 |
 | Source is older than 18 months and covers a fast-moving topic | −1 |
 
-**Thresholds:** total ≥ 2 → `high` | 0–1 → `medium` | < 0 → `low`
+**Thresholds:** total ≥ 1 → `high` | −1 … 0 → `medium` | ≤ −2 → `low`
+
+**Why these numbers.** The signals above span −3 to +2, so a cut at `high ≥ 1` means one solid
+positive with nothing counting against it is enough — a page built on a book, or on three
+independent sources, is `high` unless something drags it down. A cut higher than that would make
+`high` require a *perfect* score: every positive firing and no negative, which almost nothing
+achieves, so the band would go unused and the scale would effectively have two values instead of
+three. `low` at ≤ −2 means two things counting against a page, not one: a single blog source is
+weak evidence, not bad evidence.
+
+**A role may score on signals only it can observe.** Where a role has access to something the
+others do not, it states the extra signals in its own document and applies **these same
+thresholds** to the wider range they produce — the boundaries do not move, only the totals do.
+A consequence follows and is worth stating plainly rather than leaving to be discovered: **a page's
+score can legitimately change when such a role re-scores it**, without anyone having been wrong. The
+role that has more to go on sees more.
 
 ## Conventions That Hold Across Every Agent's Work
 

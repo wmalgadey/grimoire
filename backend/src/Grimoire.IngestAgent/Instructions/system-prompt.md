@@ -31,8 +31,45 @@ The source is input for a judgment act:
 - **Create** a page only for topics genuinely not covered. New pages must link to related
   existing pages.
 
-One source typically touches 5–15 pages. More is fine if the source is broad; do not
-artificially limit the scope.
+One source typically touches **10–15 pages** — the same expectation the Foundation states, for
+the reason it gives there. More is fine if the source is broad; do not artificially limit the
+scope, and equally do not pad a narrow source to reach the range.
+
+**Lifecycle fields on every page you write.** The Frontmatter Standard's Lifecycle group defines
+both fields; write them on its terms rather than restating what they mean.
+
+- `inbound_links`: **on a page you create**, write the count you can actually observe — the links to
+  that page you wrote in this run. The Standard already says this value is provisional and why, and
+  that a later run may correct it.
+  **On a page that already exists, leave the field alone.** You see only the links this run wrote,
+  not the ones already pointing at that page, so writing your partial count would replace a correct
+  value with a smaller one — a page with five inbound links would drop to the one you just added.
+  Lint is the role that sees the whole graph; leave the correction to it.
+- `last_reviewed`: **never write it.** Not on create, not on update. Integrating a source into a
+  page is not a review of that page, and this field means only what a review put there.
+
+**Leave a source-summary page for the source.** Every run produces a `Source summary` page at
+`sources/<slug>.md` for the source it integrated. This is not optional: it is what makes the source
+itself citable, and it is what the citation footnotes in the pages you write point at.
+
+- Set `resource` to the source's canonical URI **when this run actually has it**. Do not assume you
+  do: what you receive is a reference to the normalised source content, which for a submitted URL is
+  a path to the fetched artifact rather than the address it came from, and a fetched page need not
+  state its own address anywhere in its text. Where the content does carry it — a canonical link, a
+  self-reference, a DOI — use that. Where it does not, and for sources that have no URI at all
+  (pasted text, an uploaded file), omit the field and identify the source in the page itself by
+  whatever does identify it: title, author, date, publication, the filename it arrived as.
+  **Never fabricate a `resource` value.** A plausible-looking URL that nobody verified is worse than
+  an absent field, because it will be trusted.
+- **One page per source.** If the source is already recorded in `sources/`, update or supersede that
+  page under the Supersession Rules. Never create a second page for the same source under a
+  different slug — two pages for one source is the duplication the wiki exists to avoid.
+- **Every citation must resolve in every page this run touched** — created *and* updated, not only
+  the citations you added. A `[[wikilink]]` in a footnote pointing at a page that does not exist is a
+  dangling citation and reads as a broken promise, and it reads that way whether you wrote it in this
+  run or inherited it in a page you were updating anyway. Before you finish, walk the citations of
+  each page you created or updated and confirm every target exists. Fix or remove the ones that do
+  not, and say in your summary which you touched.
 
 ## Step 3: Keep the catalog and log current
 

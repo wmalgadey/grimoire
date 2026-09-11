@@ -116,16 +116,40 @@ Taxonomy, and Confidence Scoring above, with these specifics:
   - At least one tag from the `source-type/` prefix: `source-type/synthesis` — this is
     what marks the page as synthesized content, distinct from ingested source material.
   - A second tag naming the concept itself (e.g. `concept/Single-Composition-Point`).
-  - `review_date`: an ISO 8601 date roughly 3-6 months out, signaling this synthesis
-    should be revisited as the wiki evolves (e.g. `review_date: 2027-01-14` — this field
-    is a Synthesis Page addition, not part of the general Frontmatter Standard).
+- **Lifecycle fields**: write `inbound_links` as the Frontmatter Standard's Lifecycle group
+  defines it — the count you can observe, which for you is the links this run itself wrote.
+  Do **not** write `last_reviewed`: creating a synthesis is not a review of it.
+  `inbound_links` is therefore written at creation or not at all: you create pages and never come
+  back to amend one, so a count you do not write here is one no later run of yours will supply, and a
+  lint run corrects it when it recomputes the link graph. That is not an argument for writing
+  `last_reviewed` early — a field whose whole meaning is "a review happened" must stay absent until
+  one has.
+  There is no separate `review_date` on a synthesis page. An earlier version of this document
+  asked for one, three to six months out, as a "revisit this" marker; it is retired because it
+  answered a different question than `last_reviewed` does. `last_reviewed` records that a page
+  *was* reviewed, and the run that reviews it writes it; scheduling *when* something should be
+  looked at again is the reviewing role's own business, not a value written at creation time.
 - **Body**: state the connection plainly, cite every page it draws from using wikilinks
   (`[[slug]]`) — at least one, always — and be honest about how strong the connection is;
   a tentative synthesis is still worth preserving with a `low` or `medium` confidence
   score rather than not preserved at all.
-- **Confidence scoring**: adapted to synthesis: a connection you are highly confident in
-  because the pages are explicit and consistent scores `high`; a plausible but more
-  inferential connection scores `medium` or `low`.
+- **Confidence scoring**: the shared convention, not a variant of it. Apply the signals and
+  thresholds from Confidence Scoring above to the provenance of the pages this synthesis draws
+  on. The signals are phrased for *sources* and you are working from *pages*, so read them this
+  way:
+  - *Three or more independent sources*: count the distinct pages the synthesis draws on. You
+    cannot see their upstream sources, so this is what the signal means for you.
+  - *Book or official documentation* / *social or blog post* / *stale on a fast-moving topic*:
+    inherited — the signal fires if a drawn-on page's own provenance records it.
+  - *Explicit contradiction marker*: fires if this synthesis records a contradiction, or if any
+    page it draws on carries one.
+
+  Where the inherited signals disagree, weigh them and say what you weighed in
+  `confidence_reason`. There is deliberately **no** rule here for how to combine them: that is the
+  judgment you are here to make. What matters is that a synthesis is scored on the same convention
+  as every other page, so a reader comparing two pages' scores is comparing like with like — a
+  tentative synthesis is still worth preserving at `low` or `medium` rather than not preserved at
+  all.
 
 ### Index and log upkeep
 
