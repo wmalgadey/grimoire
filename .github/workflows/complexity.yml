@@ -56,6 +56,11 @@ jobs:
       - name: Self-test mutation-history.py (pytest)
         run: python3 -m pytest scripts/test_mutation_history.py -v
 
+      # token-report.py needs tiktoken to count, but its bucketing/aggregation is pure and
+      # injected-counter tested, so this step needs no extra dependency.
+      - name: Self-test token-report.py (pytest)
+        run: python3 -m pytest scripts/test_token_report.py -v
+
       - name: Analyze PR head
         # --csv exits 0 even when functions exceed the threshold; -i -1 additionally
         # ignores the warning count. Gating happens in the delta step, not here.
